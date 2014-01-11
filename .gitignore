@@ -1,6 +1,11 @@
 *.class
-
+*.DS_Store
+target/*
+.settings/*
+/target
+/test-output
 # Package Files #
 *.jar
 *.war
 *.ear
+velocity.log*
