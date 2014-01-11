@@ -5,7 +5,6 @@ target/*
 /target
 /test-output
 # Package Files #
-*.jar
 *.war
 *.ear
 velocity.log*

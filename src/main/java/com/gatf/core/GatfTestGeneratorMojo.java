@@ -13,7 +13,6 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
@@ -21,7 +20,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -46,6 +45,7 @@ import javax.ws.rs.HttpMethod;
 import javax.ws.rs.POST;
 import javax.ws.rs.PUT;
 import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.MediaType;
@@ -351,8 +351,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                                     		hparams.put(formpnm, String.valueOf(getPrimitiveValue(argTypes[i])));
                                         continue;
                                     }
-
-                                    ViewField vf = getViewField(argTypes[i]);
+                                }
+                                else
+                                {
+                                	ViewField vf = getViewField(argTypes[i]);
                                     if(vf!=null) {
                                     	contentvf = vf;
                                     	break;
@@ -491,7 +493,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	    	for (Annotation annotation : annotations) 
 	    	{
 				if(annotation instanceof FormParam || annotation instanceof QueryParam
-		                || annotation instanceof RequestParam || annotation instanceof HeaderParam)
+		                || annotation instanceof RequestParam || annotation instanceof HeaderParam
+		                || annotation instanceof PathParam)
 					annot[0] = annotation;
 				if(annotation instanceof DefaultValue)
 					annot[1] = annotation;
@@ -671,8 +674,20 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 
     	if(claz.isEnum())return claz.getEnumConstants()[0];
     	
-    	Constructor cons = null;
+    	if (claz.equals(Map.class) || claz.equals(HashMap.class)
+                || claz.equals(LinkedHashMap.class))
+        {
+    		return getMapValue(claz, claz.getTypeParameters());
+        }
+        else if (claz.equals(List.class) || claz.equals(ArrayList.class)
+                || claz.equals(LinkedList.class) || claz.equals(Set.class) 
+                || claz.equals(HashSet.class) || claz.equals(LinkedHashSet.class)
+                || claz.equals(Collection.class))
+        {
+        	return getListSetValue(claz, claz.getTypeParameters());
+        }
     	
+    	Constructor cons = null;
     	try {
     		cons = claz.getConstructor(new Class[]{});
 		} catch (Exception e) {
@@ -681,79 +696,40 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		}
     	
     	Object object = cons.newInstance(new Object[]{});
-    	
-        Map<String,PropertyDescriptor> mapofDesc = new HashMap<String,PropertyDescriptor>();
-        PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(claz).getPropertyDescriptors();
+        PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(claz, Object.class).getPropertyDescriptors();
         for (PropertyDescriptor field : propertyDescriptors)
         {
-            if (field.getWriteMethod() != null)
+            if (field.getPropertyType().equals(Integer.class) || field.getPropertyType().equals(String.class)
+                    || field.getPropertyType().equals(Short.class) || field.getPropertyType().equals(Long.class)
+                    || field.getPropertyType().equals(Double.class) || field.getPropertyType().equals(Float.class)
+                    || field.getPropertyType().equals(Boolean.class) || field.getPropertyType().equals(int.class)
+                    || field.getPropertyType().equals(short.class) || field.getPropertyType().equals(long.class)
+                    || field.getPropertyType().equals(double.class) || field.getPropertyType().equals(float.class)
+                    || field.getPropertyType().equals(boolean.class) || field.getPropertyType().equals(Number.class)
+                    || field.getPropertyType().equals(Date.class))
             {
-                mapofDesc.put(field.getName(), field);
+                field.getWriteMethod().invoke(object, getPrimitiveValue(field.getPropertyType()));
             }
-            if (isDebugEnabled())
-                getLog().debug(field.getName());
-        }
-
-        List<Field> allFields = new ArrayList<Field>();
-
-        List<Field> allPublicFields = Arrays.asList(claz.getFields());
-        for (Field field : allPublicFields)
-        {
-            if (!java.lang.reflect.Modifier.isStatic(field.getModifiers()))
-                allFields.add(field);
-            if (isDebugEnabled())
-                getLog().debug(field.getName() + " -> " + field.getType() + " -> " + field.getGenericType());
-        }
-        List<Field> allPrivateFields = Arrays.asList(claz.getDeclaredFields());
-        for (Field field : allPrivateFields)
-        {
-            if (mapofDesc.get(field.getName()) != null)
+            else if (field.getPropertyType().equals(Map.class) || field.getPropertyType().equals(HashMap.class)
+                    || field.getPropertyType().equals(LinkedHashMap.class))
             {
-                if (!java.lang.reflect.Modifier.isStatic(field.getModifiers()) && !allFields.contains(field))
-                    allFields.add(field);
-                if (isDebugEnabled())
-                    getLog().debug(field.getName() + " -> " + field.getType() + " -> " + field.getGenericType());
+            	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
+            	field.getWriteMethod().invoke(object, getMapValue(field.getPropertyType(), type.getActualTypeArguments()));
             }
-        }
-        for (Field field : allFields)
-        {
-        	field.setAccessible(true);
-            if (field.getType().equals(Integer.class) || field.getType().equals(String.class)
-                    || field.getType().equals(Short.class) || field.getType().equals(Long.class)
-                    || field.getType().equals(Double.class) || field.getType().equals(Float.class)
-                    || field.getType().equals(Boolean.class) || field.getType().equals(int.class)
-                    || field.getType().equals(short.class) || field.getType().equals(long.class)
-                    || field.getType().equals(double.class) || field.getType().equals(float.class)
-                    || field.getType().equals(boolean.class) || field.getType().equals(Number.class)
-                    || field.getType().equals(Date.class))
+            else if (field.getPropertyType().equals(List.class) || field.getPropertyType().equals(ArrayList.class)
+                    || field.getPropertyType().equals(LinkedList.class) || field.getPropertyType().equals(Set.class) 
+                    || field.getPropertyType().equals(HashSet.class) || field.getPropertyType().equals(LinkedHashSet.class)
+                    || field.getPropertyType().equals(Collection.class))
             {
-                field.set(object, getPrimitiveValue(field.getType()));
+            	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
+            	field.getWriteMethod().invoke(object, getListSetValue(field.getPropertyType(), type.getActualTypeArguments()));
             }
-            else if (field.getType().equals(Map.class) || field.getType().equals(HashMap.class)
-                    || field.getType().equals(LinkedHashMap.class))
+            else if (!claz.equals(field.getPropertyType()))
             {
-                if (field.getGenericType() instanceof ParameterizedType)
-                {
-                    ParameterizedType type = (ParameterizedType) field.getGenericType();
-                    field.set(object, getMapValue(field.getType(), type.getActualTypeArguments()));
-                }
+            	Object fieldval = getObject(field.getPropertyType());
+            	field.getWriteMethod().invoke(object, fieldval);
             }
-            else if (field.getType().equals(List.class) || field.getType().equals(ArrayList.class)
-                    || field.getType().equals(LinkedList.class) || field.getType().equals(Set.class) 
-                    || field.getType().equals(HashSet.class) || field.getType().equals(LinkedHashSet.class))
-            {
-                if (field.getGenericType() instanceof ParameterizedType)
-                {
-                    ParameterizedType type = (ParameterizedType) field.getGenericType();
-                    field.set(object, getListSetValue(field.getType(), type.getActualTypeArguments()));
-                }
-            }
-            else if (!claz.equals(field.getType()))
-            {
-            	Object fieldval = getObject(field.getType());
-            	field.set(object, fieldval);
-            }
-            else if (claz.equals(field.getType()))
+            else if (claz.equals(field.getPropertyType()))
             {
                 getLog().info("Ignoring recursive fields...");
             }
@@ -762,8 +738,25 @@ public class GatfTestGeneratorMojo extends AbstractMojo
         return object;
     }
     
-    @SuppressWarnings({"rawtypes" })
-    private Object getPrimitiveValue(Class claz) {
+    private Object getObject(Type claz) throws Exception {
+    	ParameterizedType type = (ParameterizedType)claz;
+    	if (type.getRawType().equals(Map.class) || type.getRawType().equals(HashMap.class)
+                || type.getRawType().equals(LinkedHashMap.class))
+        {
+    		return getMapValue(type.getRawType(), type.getActualTypeArguments());
+        }
+        else if (type.getRawType().equals(List.class) || type.getRawType().equals(ArrayList.class)
+                || type.getRawType().equals(LinkedList.class) || type.getRawType().equals(Set.class) 
+                || type.getRawType().equals(HashSet.class) || type.getRawType().equals(LinkedHashSet.class)
+                || type.getRawType().equals(Collection.class))
+        {
+        	return getListSetValue(type.getRawType(), type.getActualTypeArguments());
+        }
+    	return null;
+    }
+    
+    
+    private Object getPrimitiveValue(Type claz) {
     	 if (isPrimitive(claz))
     	 {
     		 if(claz.equals(boolean.class) || claz.equals(Boolean.class)) {
@@ -787,8 +780,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     	 return null;
     }
     
-    @SuppressWarnings({"rawtypes" })
-    private boolean isPrimitive(Class claz) {
+    private boolean isPrimitive(Type claz) {
     	return (claz.equals(Integer.class) || claz.equals(String.class) || claz.equals(Short.class)
                 || claz.equals(Long.class) || claz.equals(Double.class) || claz.equals(Float.class)
                 || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
@@ -797,41 +789,52 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getMapValue(Class claz, Type[] types) throws Exception {
+	private Object getMapValue(Type type, Type[] types) throws Exception {
     	
-    	if(claz.equals(Map.class))
+    	Class claz = null;
+    	if(type.equals(Map.class) || type.equals(HashMap.class)
+                || type.equals(LinkedHashMap.class))
     		claz = HashMap.class;
     	
     	Constructor cons = claz.getConstructor(new Class[]{});
     	Object object = cons.newInstance(new Object[]{});
     	
-    	Object k = null;
-    	if(isPrimitive((Class)types[0])) {
-    		k = getPrimitiveValue((Class)types[0]);
-    	} else {
-    		k = getObject((Class)types[0]);
-    	}
-    	Object v = null;
-    	if(isPrimitive((Class)types[1])) {
-    		v = getPrimitiveValue((Class)types[1]);
-    	} else {
-    		v = getObject((Class)types[1]);
-    	}
-    	
     	for (int i = 0; i < 3; i++)
     	{
+	    	Object k = null;
+	    	if(isPrimitive(types[0])) {
+	    		k = getPrimitiveValue(types[0]);
+	    	} else {
+	    		if(types[0] instanceof Class)
+	    			k = getObject((Class)types[0]);
+	    		else
+	    		{
+	    			ParameterizedType typk = (ParameterizedType)types[0];
+	    			k = getObject(typk);
+	    		}
+	    	}
+	    	Object v = null;
+	    	if(isPrimitive(types[1])) {
+	    		v = getPrimitiveValue(types[1]);
+	    	} else {
+	    		if(types[1] instanceof Class)
+	    			v = getObject((Class)types[1]);
+	    		else
+	    			v = getObject(types[1]);
+	    	}
     		((Map)object).put(k, v);
     	}
-    	
     	return object;
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getListSetValue(Class claz, Type[] types) throws Exception {
+	private Object getListSetValue(Type type, Type[] types) throws Exception {
     	
-    	if(claz.equals(List.class))
+    	Class claz = null;
+    	if(type.equals(List.class) || type.equals(Collection.class)
+    			|| type.equals(ArrayList.class) || type.equals(LinkedList.class))
     		claz = ArrayList.class;
-    	else if(claz.equals(Set.class))
+    	else if(type.equals(Set.class) || type.equals(HashSet.class) || type.equals(LinkedHashSet.class))
     		claz = HashSet.class;
     	
     	Constructor cons = claz.getConstructor(new Class[]{});
@@ -839,15 +842,17 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     	
         if (types.length == 1)
         {
-        	Object v = null;
-        	if(isPrimitive((Class)types[0])) {
-        		v = getPrimitiveValue((Class)types[0]);
-        	} else {
-        		v = getObject((Class)types[0]);
-        	}
         	for (int i = 0; i < 3; i++) {
-				Method meth = claz.getMethod("add", new Class[]{Object.class});
-				meth.invoke(object, v);
+	        	Object v = null;
+	        	if(isPrimitive(types[0])) {
+	        		v = getPrimitiveValue(types[0]);
+	        	} else {
+		    		if(types[0] instanceof Class)
+		    			v = getObject((Class)types[0]);
+		    		else
+		    			v = getObject(types[0]);
+		    	}
+	        	((Collection)object).add(v);
 			}
         }
     	return object;
