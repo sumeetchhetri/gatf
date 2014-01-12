@@ -53,8 +53,7 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
 
-import org.apache.commons.lang.RandomStringUtils;
-import org.apache.maven.execution.MavenSession;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
@@ -117,9 +116,6 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
 @Mojo(name = "gatf", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP, defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true, threadSafe = true)
 public class GatfTestGeneratorMojo extends AbstractMojo
 {
-
-    @Component
-    protected MavenSession session;
 
     @Component
     private MavenProject project;
