@@ -14,38 +14,35 @@
 
 	<repositories>
 		<repository>
-            <id>reficio</id>
-            <url>http://repo.reficio.org/maven/</url>
-        </repository>
+			<id>reficio</id>
+			<url>http://repo.reficio.org/maven/</url>
+		</repository>
 	</repositories>
 
 	<dependencies>
 		<dependency>
-            <groupId>org.apache.maven</groupId>
-            <artifactId>maven-plugin-api</artifactId>
-            <version>3.0</version>
-        </dependency>
-        <dependency>
-	      <groupId>org.apache.maven.plugin-tools</groupId>
-	      <artifactId>maven-plugin-annotations</artifactId>
-	      <version>3.2</version>
-	    </dependency>
-	    <dependency>
-	      <groupId>org.apache.maven</groupId>
-	      <artifactId>maven-artifact</artifactId>
-	      <version>2.2.1</version>
-	    </dependency>
-	    <dependency>
-	      <groupId>org.apache.maven</groupId>
-	      <artifactId>maven-project</artifactId>
-	      <version>2.2.1</version>
-	    </dependency>
-	    <!--dependency>
-            <groupId> org.apache.maven</groupId>
-            <artifactId>maven-core</artifactId>
-            <version>3.0.4</version>
-        </dependency-->
-        
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-plugin-api</artifactId>
+			<version>3.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven.plugin-tools</groupId>
+			<artifactId>maven-plugin-annotations</artifactId>
+			<version>3.2</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-artifact</artifactId>
+			<version>2.2.1</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.maven</groupId>
+			<artifactId>maven-project</artifactId>
+			<version>2.2.1</version>
+		</dependency>
+		<!--dependency> <groupId> org.apache.maven</groupId> <artifactId>maven-core</artifactId> 
+			<version>3.0.4</version> </dependency -->
+
 		<dependency>
 			<groupId>javax.ws.rs</groupId>
 			<artifactId>jsr311-api</artifactId>
@@ -57,7 +54,7 @@
 			<artifactId>log4j</artifactId>
 			<version>1.2.16</version>
 		</dependency>
-		
+
 		<!-- TestNG testing framework for testing -->
 		<dependency>
 			<groupId>org.testng</groupId>
@@ -72,68 +69,81 @@
 		<dependency>
 			<groupId>com.jayway.restassured</groupId>
 			<artifactId>rest-assured</artifactId>
-			<version>2.0.1</version>
+			<version>2.1.0</version>
+			<exclusions>
+				<!-- Exclude Groovy because of classpath issue -->
+				<exclusion>
+					<groupId>org.codehaus.groovy</groupId>
+					<artifactId>groovy</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.groovy</groupId>
+			<artifactId>groovy-all</artifactId>
+			<!-- Needs to be the same version that REST Assured depends on -->
+			<version>2.2.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>1.7.5</version>
 		</dependency>
-		
+
 		<!-- WSDL/SOAP Builder Refer: https://github.com/reficio/soap-ws -->
-        <dependency>
-            <groupId>org.reficio</groupId>
-            <artifactId>soap-builder</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>org.reficio</groupId>
-            <artifactId>soap-client</artifactId>
-            <version>1.0.0-SNAPSHOT</version>
-        </dependency>
+		<dependency>
+			<groupId>org.reficio</groupId>
+			<artifactId>soap-builder</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.reficio</groupId>
+			<artifactId>soap-client</artifactId>
+			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
-	
+
 	<build>
-	    <plugins>
-	      <plugin>
-	        <groupId>org.apache.maven.plugins</groupId>
-	        <artifactId>maven-plugin-plugin</artifactId>
-	        <version>3.2</version>
-	        <configuration>
-	          <skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
-	        </configuration>
-	        <executions>
-	          <execution>
-	            <id>mojo-descriptor</id>
-	            <goals>
-	              <goal>descriptor</goal>
-	            </goals>
-	          </execution>
-	         </executions>
-	      </plugin>
-	      <plugin>
-	        <groupId>org.apache.maven.plugins</groupId>
-	        <artifactId>maven-shade-plugin</artifactId>
-	        <version>2.2</version>
-	        <configuration>
-	          <!-- put your configurations here -->
-	        </configuration>
-	        <executions>
-	          <execution>
-	            <phase>package</phase>
-	            <goals>
-	              <goal>shade</goal>
-	            </goals>
-	            <configuration>
-	              <transformers>
-	                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-	                  <mainClass>com.gatf.core.GatfTestGeneratorMojo</mainClass>
-	                </transformer>
-	              </transformers>
-	            </configuration>
-	          </execution>
-	        </executions>
-	      </plugin>
-	    </plugins>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-plugin-plugin</artifactId>
+				<version>3.2</version>
+				<configuration>
+					<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
+				</configuration>
+				<executions>
+					<execution>
+						<id>mojo-descriptor</id>
+						<goals>
+							<goal>descriptor</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-shade-plugin</artifactId>
+				<version>2.2</version>
+				<configuration>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>package</phase>
+						<goals>
+							<goal>shade</goal>
+						</goals>
+						<configuration>
+							<transformers>
+								<transformer
+									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+									<mainClass>com.gatf.core.GatfTestGeneratorMojo</mainClass>
+								</transformer>
+							</transformers>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+		</plugins>
 	</build>
 </project>

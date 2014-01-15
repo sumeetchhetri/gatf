@@ -57,6 +57,7 @@ import org.testng.ITestContext;
 import org.testng.Reporter;
 import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.DataProvider;
+import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 import org.testng.annotations.Test;
 import org.w3c.dom.Document;
@@ -83,6 +84,8 @@ public class ApiAcceptanceTest {
 	private static final Map<String, String> httpHeaders = new HashMap<String, String>();
 
 	private static String testCaseDir = null;
+	
+	private static String testCasesBasePath = null;
 	
 	private static String authUrl = null;
 	
@@ -114,18 +117,35 @@ public class ApiAcceptanceTest {
 		return (soapAuthWsdlKey+soapAuthOperation).equals(tcase.getWsdlKey()+tcase.getOperationName());
 	}
 	
+	private static File getResourceFile(String filename) throws Exception {
+		if(testCasesBasePath!=null && !testCasesBasePath.equalsIgnoreCase("null"))
+		{
+			File basePath = new File(testCasesBasePath);
+			File resource = new File(basePath, filename);
+			return resource;
+		}
+		else
+		{
+			URL url = Thread.currentThread().getContextClassLoader().getResource(filename);
+			File resource = new File(url.getPath());
+			return resource;
+		}
+	}
+	
 	@BeforeSuite
 	@Parameters({"testCasesPath", "baseUrl", "authEnabled", "authUrl", "authExtractAuth", "wsdlLocFile",
-		"soapAuthEnabled", "soapAuthWsdlKey", "soapAuthOperation", "soapAuthExtractAuth"})
+		"soapAuthEnabled", "soapAuthWsdlKey", "soapAuthOperation", "soapAuthExtractAuth", "testCasesBasePath"})
 	public void init(ITestContext context, String testCasesPath,
-			String baseUrl, boolean authEnabled, String authUrlp,
-			String authExtractAuthp, String wsdlLocFile, boolean soapAuthEnabled,
-			String soapAuthWsdlKeyp, String soapAuthOperationp, String soapAuthExtractAuthp) throws Exception
+			String baseUrl, @Optional boolean authEnabled, @Optional String authUrlp,
+			@Optional String authExtractAuthp, @Optional String wsdlLocFile, @Optional boolean soapAuthEnabled,
+			@Optional String soapAuthWsdlKeyp, @Optional String soapAuthOperationp, @Optional String soapAuthExtractAuthp,
+			@Optional String testCasesBasePathp) throws Exception
 	{
 		RestAssured.baseURI =  baseUrl;
 		
 		authUrl = authUrlp;
 		testCaseDir = testCasesPath;
+		testCasesBasePath = testCasesBasePathp;
 		if(authExtractAuthp!=null)
 		{
 			authExtractAuthParams = authExtractAuthp.split(",");
@@ -172,12 +192,11 @@ public class ApiAcceptanceTest {
 			}
 		}
 		
-		URL url = Thread.currentThread().getContextClassLoader().getResource(wsdlLocFile);
-		File file = new File(url.getPath());
+		File file = getResourceFile(wsdlLocFile);
 		Scanner s = new Scanner(file);
 		s.useDelimiter("\n");
 		List<String> list = new ArrayList<String>();
-		while (s.hasNext()){
+		while (s.hasNext()) {
 			list.add(s.next().replace("\r", ""));
 		}
 		s.close();
@@ -245,8 +264,7 @@ public class ApiAcceptanceTest {
 		xstream.alias("TestCases", List.class);
 		
 		List<TestCase> testcases = new ArrayList<TestCase>();
-		URL url = Thread.currentThread().getContextClassLoader().getResource(testCaseDir);
-		File dir = new File(url.getPath());
+		File dir = getResourceFile(testCaseDir);
 		if (dir.isDirectory()) {
 			File[] xmlFiles = dir.listFiles(new FilenameFilter() {
 				public boolean accept(File folder, String name) {
@@ -287,17 +305,17 @@ public class ApiAcceptanceTest {
 				Scanner s = new Scanner(file);
 				s.useDelimiter("\n");
 				List<String> list = new ArrayList<String>();
-				while (s.hasNext()){
-					list.add(s.next().replace("\r", ""));
+				while (s.hasNext()) {
+					String csvLine = s.next().replace("\r", "");
+					if(!csvLine.trim().isEmpty() && !csvLine.trim().startsWith("//")) {
+						list.add(csvLine);
+					}
 				}
 				s.close();
 
 				try {
 					for (String csvLine : list) {
-						if(!csvLine.trim().isEmpty())
-						{
-							testcases.add(new TestCase(csvLine));
-						}
+						testcases.add(new TestCase(csvLine));
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -381,8 +399,53 @@ public class ApiAcceptanceTest {
 				contentType(testCase.getExpectedResContentType()).
 				statusCode(testCase.getExpectedResCode()).when();
 
-		if(testCase.getContent()!=null && !testCase.getMethod().equals(Method.GET.name()))
+		if(testCase.getContent()!=null && !testCase.getContent().trim().isEmpty() 
+				&& !testCase.getMethod().equals(Method.GET.name()))
+		{
 			request.content(testCase.getContent());
+		}
+		else if(testCase.getFilesToUpload()!=null && !testCase.getFilesToUpload().isEmpty())
+		{
+			for (String filedet : testCase.getFilesToUpload()) {
+				String[] mulff = filedet.split(":");
+				if(mulff.length==4 || mulff.length==3) {
+					String controlname = mulff[0].trim();
+					String type = mulff[1].trim();
+					String fileNmOrTxt = mulff[2].trim();
+					
+					String contType = "";
+					if(mulff.length==4)
+					{
+						contType= mulff[3].trim();
+					}
+					
+					if(!type.equalsIgnoreCase("file") || !type.equalsIgnoreCase("file")) {
+						logger.error("Invalid type specified for file upload...skipping value - " + filedet);
+						continue;
+					}
+					if(fileNmOrTxt.isEmpty()) {
+						logger.error("No file/text specified for file upload...skipping value - " + filedet);
+						continue;
+					}
+					if(type.equalsIgnoreCase("text") && contType.isEmpty()) {
+						logger.error("No mime-type specified for text data upload...skipping value - " + filedet);
+						continue;
+					}
+					
+					if(type.equalsIgnoreCase("file")) {
+						try {
+							File file = getResourceFile(fileNmOrTxt);
+							request.multiPart(controlname, file);
+						} catch (Exception e) {
+							logger.error("No file found for file upload...skipping value - " + filedet);
+							continue;
+						}
+					} else {
+						request.multiPart(controlname, fileNmOrTxt, contType);
+					}
+				}			
+			}
+		}
 
 		if(testCase.isDetailedLog())
 		{

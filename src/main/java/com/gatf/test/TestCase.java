@@ -90,6 +90,8 @@ public class TestCase {
 	private String operationName;
 	
 	private Map<String, String> soapParameterValues = new HashMap<String, String>();
+	
+	private List<String> filesToUpload = new ArrayList<String>();
 
 	public String getUrl() {
 		return url;
@@ -235,6 +237,14 @@ public class TestCase {
 		this.operationName = operationName;
 	}
 
+	public List<String> getFilesToUpload() {
+		return filesToUpload;
+	}
+
+	public void setFilesToUpload(List<String> filesToUpload) {
+		this.filesToUpload = filesToUpload;
+	}
+
 	@Override
 	public String toString() {
 		return "TestCase [name=" + name + ", url=" + url + ", description=" + description
@@ -244,6 +254,7 @@ public class TestCase {
 				+ ", expectedResContentType=" + expectedResContentType
 				+ ", \nexpectedResContent=" + expectedResContent + ",\n skipTest=" + skipTest 
 				+ ", detailedLog=" + detailedLog + ", expectedNodes=" + expectedNodes
+				+ ", filesToUpload=" + filesToUpload
 				+ ", secure=" + secure + (!soapBase?"":(", soapBase = " +  soapBase
 				+ ", soapParameterValues = " + soapParameterValues + ", wsdlKey = " +  wsdlKey
 				+ ", operationName = " + operationName)) + "]";
@@ -256,7 +267,7 @@ public class TestCase {
 		boolean valid = false;
 		if(csvLine!=null) {
 			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>=14) {
+			if(csvParts.length>=15) {
 				setUrl(csvParts[0]);
 				setName(csvParts[1]);
 				setMethod(csvParts[2]);
@@ -287,9 +298,20 @@ public class TestCase {
 				setSkipTest(Boolean.valueOf(csvParts[11]));
 				setDetailedLog(Boolean.valueOf(csvParts[12]));
 				setSecure(Boolean.valueOf(csvParts[13]));
-				if(csvParts.length==18) {
-					setSoapBase(Boolean.valueOf(csvParts[14]));
-					String[] soapVals = csvParts[15].split("\\|");
+				String[] files = csvParts[14].split("\\|");
+				for (String multfile : files) {
+					if(!multfile.isEmpty())
+					{
+						String[] mulff = multfile.split(":");
+						//controlname,type,filenameOrText,contentType
+						if(mulff.length==4 || mulff.length==3) {
+							getFilesToUpload().add(multfile);
+						}
+					}
+				}
+				if(csvParts.length==19) {
+					setSoapBase(Boolean.valueOf(csvParts[15]));
+					String[] soapVals = csvParts[16].split("\\|");
 					for (String soapVal : soapVals) {
 						String[] kv = soapVal.split(":");
 						if(kv.length!=2) {
@@ -300,8 +322,8 @@ public class TestCase {
 							getSoapParameterValues().put(kv[0], kv[1]);
 						}
 					}
-					setWsdlKey(csvParts[16]);
-					setOperationName(csvParts[17]);
+					setWsdlKey(csvParts[17]);
+					setOperationName(csvParts[18]);
 				}
 				valid = true;
 			} else {

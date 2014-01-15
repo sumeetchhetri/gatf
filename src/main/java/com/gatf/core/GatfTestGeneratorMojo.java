@@ -47,6 +47,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -647,26 +648,19 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     private ViewField getViewField(@SuppressWarnings("rawtypes") Class claz) throws Exception
     {
     	ViewField viewField = null;
-        if ((claz.equals(Integer.class) || claz.equals(String.class) || claz.equals(Short.class)
-                || claz.equals(Long.class) || claz.equals(Double.class) || claz.equals(Float.class)
-                || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
-                || claz.equals(long.class) || claz.equals(double.class) || claz.equals(float.class)
-                || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class)))
+        if (isPrimitive(claz))
         {
             viewField = new ViewField();
             viewField.setClaz(claz);
             viewField.setValue(getPrimitiveValue(claz));
         }
-        else if (claz.equals(Map.class) || claz.equals(HashMap.class)
-                || claz.equals(LinkedHashMap.class))
+        else if (isMap(claz))
         {
         	viewField = new ViewField();
             viewField.setClaz(claz);
             viewField.setValue(getMapValue(claz, claz.getTypeParameters()));
         }
-        else if (claz.equals(List.class) || claz.equals(ArrayList.class)
-                || claz.equals(LinkedList.class) || claz.equals(Set.class) 
-                || claz.equals(HashSet.class) || claz.equals(LinkedHashSet.class))
+        else if (isCollection(claz))
         {
         	viewField = new ViewField();
             viewField.setClaz(claz);
@@ -687,15 +681,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 
     	if(claz.isEnum())return claz.getEnumConstants()[0];
     	
-    	if (claz.equals(Map.class) || claz.equals(HashMap.class)
-                || claz.equals(LinkedHashMap.class))
+    	if (isMap(claz))
         {
     		return getMapValue(claz, claz.getTypeParameters());
         }
-        else if (claz.equals(List.class) || claz.equals(ArrayList.class)
-                || claz.equals(LinkedList.class) || claz.equals(Set.class) 
-                || claz.equals(HashSet.class) || claz.equals(LinkedHashSet.class)
-                || claz.equals(Collection.class))
+        else if (isCollection(claz))
         {
         	return getListSetValue(claz, claz.getTypeParameters());
         }
@@ -712,27 +702,16 @@ public class GatfTestGeneratorMojo extends AbstractMojo
         PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(claz, Object.class).getPropertyDescriptors();
         for (PropertyDescriptor field : propertyDescriptors)
         {
-            if (field.getPropertyType().equals(Integer.class) || field.getPropertyType().equals(String.class)
-                    || field.getPropertyType().equals(Short.class) || field.getPropertyType().equals(Long.class)
-                    || field.getPropertyType().equals(Double.class) || field.getPropertyType().equals(Float.class)
-                    || field.getPropertyType().equals(Boolean.class) || field.getPropertyType().equals(int.class)
-                    || field.getPropertyType().equals(short.class) || field.getPropertyType().equals(long.class)
-                    || field.getPropertyType().equals(double.class) || field.getPropertyType().equals(float.class)
-                    || field.getPropertyType().equals(boolean.class) || field.getPropertyType().equals(Number.class)
-                    || field.getPropertyType().equals(Date.class))
+            if (isPrimitive(field.getPropertyType()))
             {
                 field.getWriteMethod().invoke(object, getPrimitiveValue(field.getPropertyType()));
             }
-            else if (field.getPropertyType().equals(Map.class) || field.getPropertyType().equals(HashMap.class)
-                    || field.getPropertyType().equals(LinkedHashMap.class))
+            else if (isMap(field.getPropertyType()))
             {
             	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
             	field.getWriteMethod().invoke(object, getMapValue(field.getPropertyType(), type.getActualTypeArguments()));
             }
-            else if (field.getPropertyType().equals(List.class) || field.getPropertyType().equals(ArrayList.class)
-                    || field.getPropertyType().equals(LinkedList.class) || field.getPropertyType().equals(Set.class) 
-                    || field.getPropertyType().equals(HashSet.class) || field.getPropertyType().equals(LinkedHashSet.class)
-                    || field.getPropertyType().equals(Collection.class))
+            else if (isCollection(field.getPropertyType()))
             {
             	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
             	field.getWriteMethod().invoke(object, getListSetValue(field.getPropertyType(), type.getActualTypeArguments()));
@@ -753,15 +732,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     
     private Object getObject(Type claz) throws Exception {
     	ParameterizedType type = (ParameterizedType)claz;
-    	if (type.getRawType().equals(Map.class) || type.getRawType().equals(HashMap.class)
-                || type.getRawType().equals(LinkedHashMap.class))
+    	if (isMap(type.getRawType()))
         {
     		return getMapValue(type.getRawType(), type.getActualTypeArguments());
         }
-        else if (type.getRawType().equals(List.class) || type.getRawType().equals(ArrayList.class)
-                || type.getRawType().equals(LinkedList.class) || type.getRawType().equals(Set.class) 
-                || type.getRawType().equals(HashSet.class) || type.getRawType().equals(LinkedHashSet.class)
-                || type.getRawType().equals(Collection.class))
+        else if (isCollection(type.getRawType()))
         {
         	return getListSetValue(type.getRawType(), type.getActualTypeArguments());
         }
@@ -799,6 +774,18 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                 || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
                 || claz.equals(long.class) || claz.equals(double.class) || claz.equals(float.class)
                 || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class));
+    }
+    
+    private boolean isCollection(Type claz) {
+    	return (claz.equals(List.class) || claz.equals(ArrayList.class)
+                || claz.equals(LinkedList.class) || claz.equals(Set.class) 
+                || claz.equals(HashSet.class) || claz.equals(LinkedHashSet.class)
+                || claz.equals(Collection.class));
+    }
+    
+    private boolean isMap(Type claz) {
+    	return (claz.equals(Map.class) || claz.equals(HashMap.class)
+                || claz.equals(LinkedHashMap.class) || claz.equals(TreeMap.class));
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
