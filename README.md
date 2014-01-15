@@ -73,35 +73,35 @@ Lets provide a sample application scneario so that we can follow through the exa
 2. User Service provides 3 API's, supporting JSON io like,
    - Get User = GET /jsonapi/users/{id}
      <br/>Response -
-    ```json
-        {"id": 1, "name": "Test", "age": 27}
-    ```
+     ```
+	        {"id": 1, "name": "Test", "age": 27}
+     ```
    - Get Users = GET /jsonapi/users
      <br/>Response -
-    ```json
+     ```
         [
             {"id": 1, "name": "Test", "age": 27}, 
             {"id": 2, "name": "Test", "age": 27}
         ]
-    ``` 
+     ``` 
    - Create User = POST /jsonapi/users
      <br/>Request -
-    ```json
+     ```
         {"id": 3, "name": "Test", "age": 27}
-    ```
+     ```
 2. User Service also provides 3 API's, supporting XML io like,
    - Get User = GET /xmlapi/users/{id}
      <br/>Response -
-    ```xml
+     ```
         <User>
             <id>1</id>
             <name>Test</name>
             <age>27</age>
         </User>
-    ```
+     ```
    - Get Users = GET /xmlapi/users
      <br/>Response -
-    ```xml
+     ```
         <Users>
             <User>
                 <id>1</id>
@@ -114,16 +114,16 @@ Lets provide a sample application scneario so that we can follow through the exa
                 <age>27</age>
             </User>
         </Users>
-    ```
+     ```
    - Create User = POST /xmlapi/users
      <br/>Request -
-    ```xml
+     ```
         <User>
             <id>3</id>
             <name>Test</name>
             <age>27</age>
         </User>
-    ```    
+     ```    
 
 
 Testcase (XML)
