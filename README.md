@@ -704,6 +704,6 @@ Apache License Version 2.0
 <br/>
 **Happy Gatfying**
 
-[1]:https://github.com/sumeetchhetri/gatf/edit/master/README.md#soap-based-acceptance-testing
+[1]:#soap-based-acceptance-testing
 
     
