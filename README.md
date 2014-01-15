@@ -31,7 +31,7 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * Headers - the HTTP headers to be passed in the request, optional (ex, Content-Type: application/json)
 * Secure - whether this request requires a prior authentication API call, optional (ex, true/false)
 * SoapBase - whether this request is a SOAP method call with runtime request generation+transformation, optional (ex, true/false)
-* WsdlKey - the wsdl key name sepcified while passing the wsdl value in the wsdl-location.csv file or the pom.xml configuration for the maven plugin, mandatory when SoapBase=true (ex, UserSoapService), Refer to the [SOAP] [1] section below
+* WsdlKey - the wsdl key name sepcified while passing the wsdl value in the wsdl-location.csv file or the pom.xml configuration for the maven plugin, mandatory when SoapBase=true (ex, UserSoapService), Refer to the [SOAP 1] section below
 * OperationName - the soap method operationName as specified in the wsdl file for that particular service, mandatory when SoapBase=true (ex, getUsers), Refer to the [SOAP] [1] section below
 * SoapParameterValues - the transformation key/value pairs used while tranforming the runtime generated soap message, Refer to the [SOAP] [1] section below
 * ExpectedResCode - the expected HTTP status code, mandatory (ex, 200)
@@ -592,6 +592,110 @@ Finally - Show me Authenticated Tests Example
 This example illustrates the soap method testcases, but you can just follow the same structure/property set to implement the testcases in eithe JSON/CSV.
 
 
+Usage
+-------
+Maven - pom.xml
+-------
+```xml
+<project ...>
+	<!-- In case the maven gatf generator needs to be used to generate testcases -->
+	<pluginRepositories>
+	        <pluginRepository>
+	            <id>testgen-repository</id>
+	            <name>Testgen Repository</name>
+	            <url>http://testgen.googlecode.com/svn/trunk/maven2/</url>
+	        </pluginRepository>
+	        <pluginRepository>
+	        	<id>gatf-repository</id>
+	            <name>Gatf Repository</name>
+	            <url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
+	        </pluginRepository>
+	</pluginRepositories>
+	
+	<!-- In case the maven gatf test class needs to be used to execute testcases -->
+	<repositories>
+		<repository>
+			<id>gatf 1.0</id>
+			<url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
+		</repository>
+	</repositories>
+	
+	<plugins>
+		<plugin>
+				<groupId>com.test</groupId>
+				<artifactId>gatf-plugin</artifactId>
+				<version>1.0</version>
+				<configuration>
+					<!--The comma separated package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
+					<testPaths>
+						<testPath>com.sample.services.*</testPath>
+					</testPaths>
+					<!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
+					<soapWsdlKeyPairs>
+						<soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
+						<soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
+						<soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
+						<soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
+					</soapWsdlKeyPairs>
+					<!--The REST API service URL prefix-->
+					<urlPrefix>rest</urlPrefix>
+					<!--The request data type, when generating request entities-->
+					<requestDataType>json</requestDataType>
+					<!--The resource path where the testcases and wsdl-locations.csv will be generated-->
+					<resourcepath>src/test/resources/generated</resourcepath>
+					<!--Whether this plugin is enabled-->
+					<enabled>true</enabled>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>gatf</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			.
+			.
+			.
+			
+	</plugins>
+	.
+	.
+	.
+	.
+</project>
+```
+
+Direct jar execution - Command line
+-----
+config.xml
+```xml
+<configuration>
+	<testPaths>
+		<testPath>com.sample.services.*</testPath>
+	</testPaths>
+	<soapWsdlKeyPairs>
+		<soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
+		<soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
+		<soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
+		<soapWsdlKeyPair>UserService,http://localhost:8080/soap/user?wsdl</soapWsdlKeyPair>
+	</soapWsdlKeyPairs>
+	<urlPrefix>rest</urlPrefix>
+	<requestDataType>json</requestDataType>
+	<resourcepath>.</resourcepath>
+	<enabled>true</enabled>
+</configuration>
+```
+Then on the command line using the file above
+```
+user@local> java -jar gatf-plugin-1.0.jar config.xml
+```
+
+Limitations
+-----
+- The generator assumes that the entities in the application are JACKSON/JAXB compliant (having proper jackson/jaxb annotations), hence it is tightly coupled with these libraries for generating request content
+
+
 License
 ------
 Apache License Version 2.0
@@ -600,7 +704,6 @@ Apache License Version 2.0
 <br/>
 **Happy Gatfying**
 
-[john gruber]:http://daringfireball.net/
-[express]:http://expressjs.com
+[1]:https://github.com/sumeetchhetri/gatf/edit/master/README.md#soap-based-acceptance-testing
 
     
