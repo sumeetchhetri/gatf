@@ -40,6 +40,7 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * ExpectedResContent - the exact expected response content to be matched with the actual result, optional
 * SkipTest - whether to skip this test, mandatory (ex, true/false)
 * DetailedLog - whether or not to log the detailed execution logs, mandatory (ex, true/false)
+* FilesToUpload - the file content or multipart data to upload, optional (ex, file:file:wsdl-locations.csv:), specifees a colon separated list of file details to be uploaded, the list defines controlname:type(file/text):fileOrText(filename/text content):contentType(only for text content)
 
 
 REST-ful Acceptance Testing
@@ -177,7 +178,7 @@ Testcase (CSV)
 --------------
 
 ```csv
-URL,NAME,HTTPMETHOD,DESCRIPTION,CONTENT,HEADERS,EXQUERYPART,EXPECTEDSTATUSCODE,EXPECTEDCONTTYPE,EXPECTEDCONT,EXPECTEDNODES,SKIPTEST,LOG,SECURE,SOAPBASE,SOAPPARAMVALUES,WSDLKEY,OPERATIONNM
+#URL,NAME,HTTPMETHOD,DESCRIPTION,CONTENT,HEADERS,EXQUERYPART,EXPECTEDSTATUSCODE,EXPECTEDCONTTYPE,EXPECTEDCONT,EXPECTEDNODES,SKIPTEST,LOG,SECURE,SOAPBASE,SOAPPARAMVALUES,WSDLKEY,OPERATIONNM
 jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader:val,,200,application/json,,id,false,false,true
 ```
 Simplest data format but cannot be used or complex request/response content
@@ -490,7 +491,7 @@ To start writing acceptance testcases supporting application level authenticatio
     <parameter name="baseUrl" value="http://localhost:8080/"/>
 	
     <!--The default folder for maven projects is {project}/src/test/resources, if this value is not specified is then the new value from this parameter is used instead of the default base path  -->
-    <parameter name="testCasesBasePath" value="data"/>
+    <parameter name="testCasesBasePath" value="somebasefolder"/>
     
     <!--The folder/path withing the testCasesBasePath folder, so if above parameter is not specified the testcases will be searched in the {project}/src/test/resources/data folder or if it is specified then the {testCasesBasePath}/data folder -->
     <parameter name="testCasesPath" value="data"/>
@@ -689,6 +690,13 @@ config.xml
 Then on the command line using the file above
 ```
 user@local> java -jar gatf-plugin-1.0.jar config.xml
+```
+
+File Upload example
+-----
+CSV example for file upload
+```
+/users/upload,File upload,POST,Testing File upload functionality reading from CSV file - Postive/REST,,Content-Type:application/octet-stream,,200,application/json,,,false,false,true,file:file:wsdl-locations.csv:,false,,,
 ```
 
 Limitations
