@@ -26,8 +26,9 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 /*
  * <configuration>
 		<testPaths>
-			<testPath>com.mtel.services.*</testPath>
+			<docTestPath>com.mtel.services.*</docTestPath>
 		</testPaths>
+		<useSoapClient>true</useSoapClient>
 		<soapWsdlKeyPairs>
 			<soapWsdlKeyPair>AuthService,http://localhost:8081/soap/auth?wsdl</soapWsdlKeyPair>
 			<soapWsdlKeyPair>ExampleService,http://localhost:8081/soap/example?wsdl</soapWsdlKeyPair>
@@ -36,6 +37,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 		</soapWsdlKeyPairs>
 		<urlPrefix>rest</urlPrefix>
 		<requestDataType>json</requestDataType>
+		<responseDataType>json</responseDataType>
+		<overrideSecure>true</overrideSecure>
 		<resourcepath>src/test/resources/generated</resourcepath>
 		<enabled>true</enabled>
 	</configuration>
@@ -54,10 +57,16 @@ public class GatfConfiguration {
 	
 	private String requestDataType;
 	
+	private String responseDataType;
+	
 	private String resourcepath;
 	
 	private boolean enabled;
-
+	
+	private boolean overrideSecure;
+	
+	private boolean useSoapClient;
+	
 	public String[] getTestPaths() {
 		return testPaths;
 	}
@@ -104,5 +113,29 @@ public class GatfConfiguration {
 
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
+	}
+
+	public String getResponseDataType() {
+		return responseDataType;
+	}
+
+	public void setResponseDataType(String responseDataType) {
+		this.responseDataType = responseDataType;
+	}
+
+	public boolean isOverrideSecure() {
+		return overrideSecure;
+	}
+
+	public void setOverrideSecure(boolean overrideSecure) {
+		this.overrideSecure = overrideSecure;
+	}
+
+	public boolean isUseSoapClient() {
+		return useSoapClient;
+	}
+
+	public void setUseSoapClient(boolean useSoapClient) {
+		this.useSoapClient = useSoapClient;
 	}
 }

@@ -338,7 +338,7 @@ public class TestCase {
 		}
 	}
 	
-public void validate(Map<String, String> httpHeaders) {
+	public void validate(Map<String, String> httpHeaders) {
 		
 		if(getName()==null || getName().trim().isEmpty())
 			throw new RuntimeException("Blank Name specified for testcase");
@@ -356,7 +356,7 @@ public void validate(Map<String, String> httpHeaders) {
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
 			}
 			
-			if(getHeaders().isEmpty())
+			if(getHeaders().isEmpty() && ("POST".equals(getMethod()) || "PUT".equals(getMethod())))
 				throw new RuntimeException("No Content-Type Header provided");
 		}
 		
@@ -392,7 +392,7 @@ public void validate(Map<String, String> httpHeaders) {
 				MediaType.valueOf(getExpectedResContentType());
 				getHeaders().put(HttpHeaders.ACCEPT, getExpectedResContentType());
 			} catch (Exception e) {
-				throw new RuntimeException("Invalid expected response content type specified for testcase");
+				//throw new RuntimeException("Invalid expected response content type specified for testcase");
 			}
 		}
 		

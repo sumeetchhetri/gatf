@@ -20,6 +20,7 @@ import static com.jayway.restassured.RestAssured.given;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FilenameFilter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -45,12 +46,15 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
+import org.reficio.ws.client.TransmissionException;
 import org.reficio.ws.client.core.SoapClient;
 import org.testng.Assert;
 import org.testng.ITestContext;
@@ -461,10 +465,17 @@ public class ApiAcceptanceTest {
 		
 		if(testCase.isSecure() && !authUrl.equals(url)) {
 			Assert.assertNotNull(sessionIdentifier);
-			if(turl.indexOf("?")!=-1) {
-				turl += "&" + authExtractAuthParams[2] + "=" + sessionIdentifier;
-			} else {
-				turl += "?" + authExtractAuthParams[2] + "=" + sessionIdentifier;
+			
+			if(turl.indexOf("?")!=-1 && turl.indexOf("{"+authExtractAuthParams[2]+"}")!=-1) {
+				turl = turl.replaceAll("\\{"+authExtractAuthParams[2]+"\\}", sessionIdentifier);
+			}
+			else
+			{
+				if(turl.indexOf("?")!=-1) {
+					turl += "&" + authExtractAuthParams[2] + "=" + sessionIdentifier;
+				} else {
+					turl += "?" + authExtractAuthParams[2] + "=" + sessionIdentifier;
+				}
 			}
 		}
 
@@ -479,14 +490,15 @@ public class ApiAcceptanceTest {
 			restResponse = resspec.delete(turl);
 
 		String resText = restResponse.asString();
-		if(testCase.getExpectedNodes()==null || testCase.getExpectedNodes().isEmpty())
-			return;
 
 		if(testCase.getExpectedResContentType().equals(MediaType.APPLICATION_JSON))
 		{
 			JsonPath jsonPath = new JsonPath(resText);
-			for (String node : testCase.getExpectedNodes()) {
-				Assert.assertNotNull(jsonPath.getString(node));
+			if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
+			{
+				for (String node : testCase.getExpectedNodes()) {
+					Assert.assertNotNull(jsonPath.getString(node));
+				}
 			}
 			if(isAuthEnabled() && authUrl.equals(url) && authExtractAuthParams[1].equalsIgnoreCase("json")) {
 				sessionIdentifier = jsonPath.getString(authExtractAuthParams[0]);
@@ -500,12 +512,15 @@ public class ApiAcceptanceTest {
 				DocumentBuilder db = dbf.newDocumentBuilder();
 				Document xmlDocument = db.parse(new ByteArrayInputStream(resText.getBytes()));
 
-				for (String node : testCase.getExpectedNodes()) {
-					String expression = node.replaceAll("\\.", "\\/");
-					expression = "/" + expression;
-					XPath xPath =  XPathFactory.newInstance().newXPath();
-					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+				if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
+				{
+					for (String node : testCase.getExpectedNodes()) {
+						String expression = node.replaceAll("\\.", "\\/");
+						expression = "/" + expression;
+						XPath xPath =  XPathFactory.newInstance().newXPath();
+						NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+						Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+					}
 				}
 				if(isAuthEnabled() && authUrl.equals(url) && authExtractAuthParams[1].equalsIgnoreCase("xml")) {
 					String expression = authExtractAuthParams[0].replaceAll("\\.", "\\/");
@@ -577,47 +592,106 @@ public class ApiAcceptanceTest {
 		}
 		SoapClient client = SoapClient.builder().endpointUri(endpoint).build();
 		
-		Document soapMessage = soapMessages.get(testCase.getWsdlKey()+testCase.getOperationName());
-		for (Map.Entry<String, String> entry : testCase.getSoapParameterValues().entrySet()) {
-			Node envelope = getNodeByNameCaseInsensitive(soapMessage.getFirstChild(), "envelope");
-			Node body = getNodeByNameCaseInsensitive(envelope, "body");
-			Node requestBody = getNextElement(body);
-			String expression = createXPathExpression(entry.getKey(), envelope, body, requestBody);
-			XPath xPath = XPathFactory.newInstance().newXPath();
-			NodeList nodelist = (NodeList) xPath.compile(expression).evaluate(soapMessage, XPathConstants.NODESET);
-			Assert.assertNotNull(nodelist!=null && nodelist.getLength()>0);
-			nodelist.item(0).getFirstChild().setNodeValue(entry.getValue());
+		if(testCase.getFilesToUpload()!=null && !testCase.getFilesToUpload().isEmpty())
+		{
+			for (String filedet : testCase.getFilesToUpload()) {
+				String[] mulff = filedet.split(":");
+				if(mulff.length==4 || mulff.length==3) {
+					String controlname = mulff[0].trim();
+					String type = mulff[1].trim();
+					String fileNmOrTxt = mulff[2].trim();
+					
+					String contType = "";
+					if(mulff.length==4)
+					{
+						contType= mulff[3].trim();
+					}
+					
+					if(!type.equalsIgnoreCase("file") || !type.equalsIgnoreCase("file")) {
+						logger.error("Invalid type specified for file upload...skipping value - " + filedet);
+						continue;
+					}
+					if(fileNmOrTxt.isEmpty()) {
+						logger.error("No file/text specified for file upload...skipping value - " + filedet);
+						continue;
+					}
+					if(type.equalsIgnoreCase("text") && contType.isEmpty()) {
+						logger.error("No mime-type specified for text data upload...skipping value - " + filedet);
+						continue;
+					}
+					
+					if(type.equalsIgnoreCase("file")) {
+						try {
+							File file = getResourceFile(fileNmOrTxt);
+							byte[] fileData = IOUtils.toByteArray(new FileInputStream(file));
+							String fileContents = Base64.encodeBase64URLSafeString(fileData);
+							testCase.getSoapParameterValues().put(controlname, fileContents);
+						} catch (Exception e) {
+							logger.error("No file found for file upload...skipping value - " + filedet);
+							continue;
+						}
+					} else {
+						testCase.getSoapParameterValues().put(controlname, fileNmOrTxt);
+					}
+				}
+			}
 		}
 		
-		Transformer transformer = TransformerFactory.newInstance().newTransformer();
-		transformer.setOutputProperty(OutputKeys.INDENT, "yes");        
-		StringWriter sw = new StringWriter();
-		StreamResult result = new StreamResult(sw);
-		DOMSource source = new DOMSource(soapMessage);
-		transformer.transform(source, result);
-		String request = sw.toString();
+		String request = testCase.getContent();
+		
+		if(request==null || request.trim().isEmpty())
+		{
+			Document soapMessage = soapMessages.get(testCase.getWsdlKey()+testCase.getOperationName());
+			for (Map.Entry<String, String> entry : testCase.getSoapParameterValues().entrySet()) {
+				Node envelope = getNodeByNameCaseInsensitive(soapMessage.getFirstChild(), "envelope");
+				Node body = getNodeByNameCaseInsensitive(envelope, "body");
+				Node requestBody = getNextElement(body);
+				String expression = createXPathExpression(entry.getKey(), envelope, body, requestBody);
+				XPath xPath = XPathFactory.newInstance().newXPath();
+				NodeList nodelist = (NodeList) xPath.compile(expression).evaluate(soapMessage, XPathConstants.NODESET);
+				Assert.assertNotNull(nodelist!=null && nodelist.getLength()>0);
+				nodelist.item(0).getFirstChild().setNodeValue(entry.getValue());
+			}
+			
+			Transformer transformer = TransformerFactory.newInstance().newTransformer();
+			transformer.setOutputProperty(OutputKeys.INDENT, "yes");        
+			StringWriter sw = new StringWriter();
+			StreamResult result = new StreamResult(sw);
+			DOMSource source = new DOMSource(soapMessage);
+			transformer.transform(source, result);
+			request = sw.toString();
+		}
+		
 		logger.info(request);
 		String resText = null;
-		if(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName())!=null)
-			resText = client.post(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName()), request);
-		else
-			resText = client.post(request);
-		logger.info(resText);
+		try {
+			if(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName())!=null)
+				resText = client.post(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName()), request);
+			else
+				resText = client.post(request);
+			logger.info(resText);
+		} catch(TransmissionException e) {
+			Assert.assertEquals(testCase.getExpectedResCode(), e.getErrorCode().intValue());
+			return;
+		}
 		
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 		try {
 			DocumentBuilder db = dbf.newDocumentBuilder();
 			Document xmlDocument = db.parse(new ByteArrayInputStream(resText.getBytes()));
 
-			for (String node : testCase.getExpectedNodes()) {
-				Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
-				Node body = getNodeByNameCaseInsensitive(envelope, "body");
-				Node requestBody = getNextElement(body);
-				Node returnBody = getNextElement(requestBody);
-				String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
-				XPath xPath =  XPathFactory.newInstance().newXPath();
-				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-				Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+			if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
+			{
+				for (String node : testCase.getExpectedNodes()) {
+					Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
+					Node body = getNodeByNameCaseInsensitive(envelope, "body");
+					Node requestBody = getNextElement(body);
+					Node returnBody = getNextElement(requestBody);
+					String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+				}
 			}
 			if(isSoapAuthEnabled() && isSoapAuthTestCase(testCase)) {
 				Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");

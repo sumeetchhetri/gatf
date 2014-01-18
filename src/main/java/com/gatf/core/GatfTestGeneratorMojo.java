@@ -15,8 +15,6 @@ package com.gatf.core;
 	limitations under the License.
 */
 
-import java.beans.Introspector;
-import java.beans.PropertyDescriptor;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
@@ -28,7 +26,9 @@ import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.net.URL;
@@ -64,6 +64,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
@@ -93,6 +94,8 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
+
 
 
 /**
@@ -109,6 +112,7 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
 			<testPaths>
 				<docTestPath>com.mtel.services.*</docTestPath>
 			</testPaths>
+			<useSoapClient>true</useSoapClient>
 			<soapWsdlKeyPairs>
 				<soapWsdlKeyPair>AuthService,http://localhost:8081/soap/auth?wsdl</soapWsdlKeyPair>
 				<soapWsdlKeyPair>ExampleService,http://localhost:8081/soap/example?wsdl</soapWsdlKeyPair>
@@ -116,7 +120,9 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
 				<soapWsdlKeyPair>UserService,http://localhost:8081/soap/user?wsdl</soapWsdlKeyPair>
 			</soapWsdlKeyPairs>
 			<urlPrefix>rest</urlPrefix>
-			<inDataType>json</inDataType>
+			<requestDataType>json</requestDataType>
+			<responseDataType>json</responseDataType>
+			<overrideSecure>true</overrideSecure>
 			<resourcepath>src/test/resources/generated</resourcepath>
 			<enabled>true</enabled>
 		</configuration>
@@ -229,7 +235,29 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	public void setInDataType(String requestDataType) {
 		this.requestDataType = requestDataType;
 	}
+	
+	@Parameter(alias = "responseDataType")
+	private String outDataType;
 
+	public String getOutDataType() {
+		return outDataType;
+	}
+
+	public void setOutDataType(String outDataType) {
+		this.outDataType = outDataType;
+	}
+
+	@Parameter(alias = "overrideSecure")
+	private boolean overrideSecure;
+	
+	public boolean isOverrideSecure() {
+		return overrideSecure;
+	}
+
+	public void setOverrideSecure(boolean overrideSecure) {
+		this.overrideSecure = overrideSecure;
+	}
+	
 	@Parameter(alias = "enabled")
 	private boolean enabled;
 	
@@ -239,6 +267,17 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
+	}
+	
+	@Parameter(alias = "useSoapClient")
+	private boolean useSoapClient;
+	
+	public boolean isUseSoapClient() {
+		return useSoapClient;
+	}
+
+	public void setUseSoapClient(boolean useSoapClient) {
+		this.useSoapClient = useSoapClient;
 	}
 
 	/**
@@ -307,9 +346,14 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             url += completeServicePath;
 
                             String completeServiceSubmitPath = url;
-                            Class<?>[] argTypes = method.getParameterTypes();
+                            Type[] argTypes = method.getGenericParameterTypes();
                             Annotation[][] argAnot = method.getParameterAnnotations();
-
+                            
+                            boolean mayBemultipartContent = false;
+                            
+                            if(isDebugEnabled())
+                            	getLog().info("Started looking at " + claz.getSimpleName() + " " + method.getName());
+                            
                             ViewField contentvf = null;
                             Map<String, String> params = new HashMap<String, String>();
                             Map<String, String> hparams = new HashMap<String, String>();
@@ -371,7 +415,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                                 	ViewField vf = getViewField(argTypes[i]);
                                     if(vf!=null) {
                                     	contentvf = vf;
+                                    	if(isDebugEnabled())
+                                    		getLog().info("Done looking at " + claz.getSimpleName() + " " + method.getName());
                                     	break;
+                                    } else {
+                                    	mayBemultipartContent = true;
                                     }
                                 }
                             }
@@ -415,6 +463,14 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             }
                             
                             String produces = null;
+                            if("JSON".equalsIgnoreCase(getOutDataType())) {
+                            	produces = MediaType.APPLICATION_JSON;
+                            } else if("XML".equalsIgnoreCase(getOutDataType())) {
+                            	produces = MediaType.APPLICATION_XML;
+                            } else {
+                            	produces = MediaType.TEXT_PLAIN;
+                            }
+                            
                             annot = method.getAnnotation(Produces.class);
                             if (annot != null)
                             {
@@ -422,26 +478,47 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             }
 
                             String content = "";
-                            if (!params.isEmpty() || consumes.equals(MediaType.APPLICATION_FORM_URLENCODED))
+                            try
                             {
-                            	for (Map.Entry<String, String> entry: params.entrySet()) {
-                            		content += entry.getKey() + "=" + entry.getValue() + "&";
-								}
+	                            if (!params.isEmpty() || consumes.equals(MediaType.APPLICATION_FORM_URLENCODED))
+	                            {
+	                            	for (Map.Entry<String, String> entry: params.entrySet()) {
+	                            		content += entry.getKey() + "=" + entry.getValue() + "&";
+									}
+	                            	consumes = MediaType.APPLICATION_FORM_URLENCODED;
+	                            }
+	                            else if(contentvf!=null && contentvf.getValue()!=null && contentvf.getValue() instanceof String)
+	                            {
+	                            	content = (String)contentvf.getValue();
+	                            }
+	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
+	                            		&& contentvf!=null && contentvf.getValue()!=null)
+	                            {
+	                            	content = new ObjectMapper().writeValueAsString(contentvf.getValue());
+	                            	consumes = MediaType.APPLICATION_JSON;
+	                            }
+	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))
+	                            		&& contentvf!=null && contentvf.getValue()!=null)
+	                            {
+	                            	JAXBContext context = JAXBContext.newInstance(contentvf.getClaz());
+	                                Marshaller m = context.createMarshaller();
+	                                m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
+	                                StringWriter writer = new StringWriter();
+	                                m.marshal(contentvf.getValue(), writer);
+	                                content = writer.toString();
+	                                consumes = MediaType.APPLICATION_XML;
+	                            }
+	                            else if((httpMethod.equals("POST") || httpMethod.equals("PUT")) && mayBemultipartContent) {
+	                            	consumes = MediaType.MULTIPART_FORM_DATA;
+	                            } else if(httpMethod.equals("GET") || httpMethod.equals("DELETE")) {
+	                            	consumes = "";
+	                            }
+                            } catch (Exception e) {
+                            	getLog().error(e);
                             }
-                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
-                            		&& contentvf!=null && contentvf.getValue()!=null)
-                            {
-                            	content = new ObjectMapper().writeValueAsString(contentvf.getValue());
-                            }
-                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))
-                            		&& contentvf!=null && contentvf.getValue()!=null)
-                            {
-                            	JAXBContext context = JAXBContext.newInstance(contentvf.getClaz());
-                                Marshaller m = context.createMarshaller();
-                                m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
-                                StringWriter writer = new StringWriter();
-                                m.marshal(contentvf.getValue(), writer);
-                                content = writer.toString();
+                            
+                            if(consumes!=null && !consumes.trim().isEmpty()) {
+                            	hparams.put(HttpHeaders.CONTENT_TYPE, consumes);
                             }
                             
                             tcase.setUrl(completeServiceSubmitPath);
@@ -451,7 +528,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             tcase.setDescription(tcase.getName());
                             tcase.setDetailedLog(false);
                             tcase.setSkipTest(false);
-                            tcase.setSecure(false);
+                            tcase.setSecure(isOverrideSecure());
                             tcase.setSoapBase(false);
                             tcase.setExpectedResCode(200);
                             tcase.setExpectedResContentType(produces);
@@ -645,50 +722,99 @@ public class GatfTestGeneratorMojo extends AbstractMojo
      * @throws Exception Add new ViewFeild objects that represnt the form elements on the test page of the give rest
      *             full service
      */
-    private ViewField getViewField(@SuppressWarnings("rawtypes") Class claz) throws Exception
+    @SuppressWarnings("rawtypes")
+    private ViewField getViewField(Type claz) throws Exception
     {
     	ViewField viewField = null;
-        if (isPrimitive(claz))
-        {
-            viewField = new ViewField();
-            viewField.setClaz(claz);
-            viewField.setValue(getPrimitiveValue(claz));
-        }
-        else if (isMap(claz))
-        {
-        	viewField = new ViewField();
-            viewField.setClaz(claz);
-            viewField.setValue(getMapValue(claz, claz.getTypeParameters()));
-        }
-        else if (isCollection(claz))
-        {
-        	viewField = new ViewField();
-            viewField.setClaz(claz);
-            viewField.setValue(getListSetValue(claz, claz.getTypeParameters()));
-        }
-        else
-        {
-            viewField = new ViewField();
-            viewField.setClaz(claz);
-            viewField.setValue(getObject(claz));
-        }
+    	try 
+    	{
+    		ParameterizedType type = null;
+    		Class clas = null;
+    		if(claz instanceof ParameterizedType)
+    		{
+    			type = (ParameterizedType)claz;
+    			clas = (Class)type.getRawType();
+    		}
+    		else
+    		{
+    			clas = (Class)claz;
+    		}
+    		
+    		List<Type> heirarchies = new ArrayList<Type>();
+	        if (isPrimitive(clas))
+	        {
+	            viewField = new ViewField();
+	            viewField.setClaz(clas);
+	            viewField.setValue(getPrimitiveValue(claz));
+	        }
+	        else if (isMap(clas))
+	        {
+	        	viewField = new ViewField();
+	            viewField.setClaz(clas);
+	            viewField.setValue(getMapValue(clas, type.getActualTypeArguments(), heirarchies));
+	        }
+	        else if (isCollection(clas))
+	        {
+	        	viewField = new ViewField();
+	            viewField.setClaz(clas);
+	            viewField.setValue(getListSetValue(clas, type.getActualTypeArguments(), heirarchies));
+	        }
+	        else if(!clas.isInterface())
+        	{
+	            viewField = new ViewField();
+	            viewField.setClaz(clas);
+	            viewField.setValue(getObject(claz, heirarchies));
+        	}
+    	} catch (Exception e) {
+    		getLog().error(e);
+    		getLog().info("Invalid class, cannot be represented as a form/object in a test case - class name = " + claz);
+    	}
         return viewField;
+    }
+    
+    @SuppressWarnings({ "rawtypes", "unchecked" })
+    private List<Field> getAllFields(Class claz) {
+    	List<Field> allFields = new ArrayList<Field>();
+    	allFields.addAll(Arrays.asList(claz.getFields()));
+    	allFields.addAll(Arrays.asList(claz.getDeclaredFields()));
+    	
+    	if(!Object.class.equals(claz.getSuperclass())) {
+    		allFields.addAll(getAllFields(claz.getSuperclass()));
+    	}
+    	return allFields;
+    }
+    
+    private String getHeirarchyStr(List<Type> fheirlst) {
+    	StringBuilder b = new StringBuilder();
+    	if(!fheirlst.isEmpty()) {
+    		for (Type type : fheirlst) {
+				b.append(type.toString()+".");
+			}
+    	}
+    	return b.toString();
     }
     
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    private Object getObject(Class claz) throws Exception {
+    private Object getObject(Class claz, List<Type> heirarchies) throws Exception {
 
     	if(claz.isEnum())return claz.getEnumConstants()[0];
     	
     	if (isMap(claz))
         {
-    		return getMapValue(claz, claz.getTypeParameters());
+    		return getMapValue(claz, claz.getTypeParameters(), heirarchies);
         }
         else if (isCollection(claz))
         {
-        	return getListSetValue(claz, claz.getTypeParameters());
+        	return getListSetValue(claz, claz.getTypeParameters(), heirarchies);
         }
+        else if(claz.isInterface() || Modifier.isAbstract(claz.getModifiers())) 
+        {
+        	return null;
+        }
+    	
+    	if(heirarchies.contains(claz) || heirarchies.size()>=2)return null;
+    	heirarchies.add(claz);
     	
     	Constructor cons = null;
     	try {
@@ -699,47 +825,81 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		}
     	
     	Object object = cons.newInstance(new Object[]{});
-        PropertyDescriptor[] propertyDescriptors = Introspector.getBeanInfo(claz, Object.class).getPropertyDescriptors();
-        for (PropertyDescriptor field : propertyDescriptors)
-        {
-            if (isPrimitive(field.getPropertyType()))
+    	List<Field> allFields = getAllFields(claz);
+    	
+    	for (Field field : allFields) {
+    		
+    		if (Modifier.isStatic(field.getModifiers()))
+    			continue;
+    			
+			if(!field.isAccessible())
+			{
+				field.setAccessible(true);
+			}
+    		
+			List<Type> fheirlst = new ArrayList<Type>(heirarchies);
+			
+			if(isDebugEnabled())
+				getLog().info("Parsing Class " + getHeirarchyStr(fheirlst) + " field " + field.getName() + " type " + field.getType().equals(boolean.class));
+            
+			if (isPrimitive(field.getType()))
             {
-                field.getWriteMethod().invoke(object, getPrimitiveValue(field.getPropertyType()));
+                field.set(object, getPrimitiveValue(field.getType()));
             }
-            else if (isMap(field.getPropertyType()))
+            else if (isMap(field.getType()))
             {
-            	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
-            	field.getWriteMethod().invoke(object, getMapValue(field.getPropertyType(), type.getActualTypeArguments()));
+            	ParameterizedType type = (ParameterizedType)field.getGenericType();
+            	field.set(object, getMapValue(field.getType(), type.getActualTypeArguments(), fheirlst));
             }
-            else if (isCollection(field.getPropertyType()))
+            else if (isCollection(field.getType()))
             {
-            	ParameterizedType type = (ParameterizedType) field.getReadMethod().getGenericReturnType();
-            	field.getWriteMethod().invoke(object, getListSetValue(field.getPropertyType(), type.getActualTypeArguments()));
+            	ParameterizedType type = (ParameterizedType)field.getGenericType();
+            	field.set(object, getListSetValue(field.getType(), type.getActualTypeArguments(), fheirlst));
             }
-            else if (!claz.equals(field.getPropertyType()))
+            else if (!claz.equals(field.getType()))
             {
-            	Object fieldval = getObject(field.getPropertyType());
-            	field.getWriteMethod().invoke(object, fieldval);
+            	Object fieldval = getObject(field.getType(), fheirlst);
+            	field.set(object, fieldval);
             }
-            else if (claz.equals(field.getPropertyType()))
+            else if (claz.equals(field.getType()))
             {
-                getLog().info("Ignoring recursive fields...");
+            	if(isDebugEnabled())
+            		getLog().info("Ignoring recursive fields...");
             }
-        }
-    
+		}
         return object;
     }
     
-    private Object getObject(Type claz) throws Exception {
-    	ParameterizedType type = (ParameterizedType)claz;
-    	if (isMap(type.getRawType()))
+    @SuppressWarnings("rawtypes")
+	private Object getObject(Type claz, List<Type> heirarchies) throws Exception {
+    	
+    	ParameterizedType type = null;
+		Class clas = null;
+		if(claz instanceof ParameterizedType)
+		{
+			type = (ParameterizedType)claz;
+			clas = (Class)type.getRawType();
+		}
+		else
+		{
+			clas = (Class)claz;
+		}
+		if (isPrimitive(clas))
         {
-    		return getMapValue(type.getRawType(), type.getActualTypeArguments());
+            return getPrimitiveValue(clas);
         }
-        else if (isCollection(type.getRawType()))
+        else if (isMap(clas))
         {
-        	return getListSetValue(type.getRawType(), type.getActualTypeArguments());
+        	return getMapValue(clas, type.getActualTypeArguments(), heirarchies);
         }
+        else if (isCollection(clas))
+        {
+        	return getListSetValue(clas, type.getActualTypeArguments(), heirarchies);
+        }
+        else if(!clas.isInterface())
+    	{
+            return getObject(clas, heirarchies);
+    	}
     	return null;
     }
     
@@ -760,9 +920,15 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     			 return rand.nextFloat();
     		 } else if(claz.equals(String.class)) {
     			 return RandomStringUtils.randomAlphabetic(10);
-    		 } else {
+    		 } else if(claz.equals(Long.class) || claz.equals(long.class) || claz.equals(Number.class)) {
     			 Random rand = new Random();
-    			 return rand.nextInt((short)123);
+    			 return new Long(rand.nextInt(123));
+    		 } else if(claz.equals(Integer.class) || claz.equals(int.class)) {
+    			 Random rand = new Random();
+    			 return new Integer(rand.nextInt(123));
+    		 } else if(claz.equals(Short.class) || claz.equals(short.class)) {
+    			 Random rand = new Random();
+    			 return new Short((short)rand.nextInt(123));
     		 }
     	 }
     	 return null;
@@ -789,71 +955,115 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getMapValue(Type type, Type[] types) throws Exception {
+	private Object getMapValue(Type type, Type[] types, List<Type> heirarchies) throws Exception {
     	
     	Class claz = null;
     	if(type.equals(Map.class) || type.equals(HashMap.class)
                 || type.equals(LinkedHashMap.class))
-    		claz = HashMap.class;
+    	{
+    		if(type.equals(Map.class))
+    		{
+    			claz = HashMap.class;
+    		}
+    		else
+    		{
+    			claz = (Class)type;
+    		}
+    	}
     	
     	Constructor cons = claz.getConstructor(new Class[]{});
     	Object object = cons.newInstance(new Object[]{});
     	
-    	for (int i = 0; i < 3; i++)
+    	for (int i = 0; i < 1; i++)
     	{
 	    	Object k = null;
 	    	if(isPrimitive(types[0])) {
 	    		k = getPrimitiveValue(types[0]);
-	    	} else {
+	    	} else if(!heirarchies.contains(types[0])) {
 	    		if(types[0] instanceof Class)
-	    			k = getObject((Class)types[0]);
+	    			k = getObject((Class)types[0], heirarchies);
 	    		else
-	    		{
-	    			ParameterizedType typk = (ParameterizedType)types[0];
-	    			k = getObject(typk);
-	    		}
+	    			k = getObject(types[0], heirarchies);
+	    		heirarchies.remove(types[0]);
 	    	}
 	    	Object v = null;
 	    	if(isPrimitive(types[1])) {
 	    		v = getPrimitiveValue(types[1]);
-	    	} else {
+	    	} else if(!heirarchies.contains(types[1])) {
 	    		if(types[1] instanceof Class)
-	    			v = getObject((Class)types[1]);
+	    			v = getObject((Class)types[1], heirarchies);
 	    		else
-	    			v = getObject(types[1]);
+	    			v = getObject(types[1], heirarchies);
+	    		heirarchies.remove(types[1]);
+	    	}
+	    	if(k==null && isDebugEnabled()) {
+	    		getLog().info(types[0].toString());
+	    		getLog().info(types[1].toString());
+	    		getLog().error("Null key " + types[0]);
 	    	}
     		((Map)object).put(k, v);
+    	}
+    	if(!isPrimitive(types[0]))
+    	{
+    		heirarchies.add(types[0]);
+    	}
+    	if(!isPrimitive(types[1]))
+    	{
+    		heirarchies.add(types[1]);
     	}
     	return object;
     }
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getListSetValue(Type type, Type[] types) throws Exception {
+	private Object getListSetValue(Type type, Type[] types, List<Type> heirarchies) throws Exception {
     	
     	Class claz = null;
     	if(type.equals(List.class) || type.equals(Collection.class)
     			|| type.equals(ArrayList.class) || type.equals(LinkedList.class))
-    		claz = ArrayList.class;
+    	{
+    		if(type.equals(List.class) || type.equals(Collection.class))
+    		{
+    			claz = ArrayList.class;
+    		}
+    		else
+    		{
+    			claz = (Class)type;
+    		}
+    	}
     	else if(type.equals(Set.class) || type.equals(HashSet.class) || type.equals(LinkedHashSet.class))
-    		claz = HashSet.class;
+    	{
+    		if(type.equals(Set.class))
+    		{
+    			claz = HashSet.class;
+    		}
+    		else
+    		{
+    			claz = (Class)type;
+    		}
+    	}
     	
     	Constructor cons = claz.getConstructor(new Class[]{});
     	Object object = cons.newInstance(new Object[]{});
     	
         if (types.length == 1)
         {
-        	for (int i = 0; i < 3; i++) {
+        	for (int i = 0; i < 1; i++) {
 	        	Object v = null;
 	        	if(isPrimitive(types[0])) {
 	        		v = getPrimitiveValue(types[0]);
-	        	} else {
+	        	} else if(!heirarchies.contains(types[0])) {
 		    		if(types[0] instanceof Class)
-		    			v = getObject((Class)types[0]);
+		    			v = getObject((Class)types[0], heirarchies);
 		    		else
-		    			v = getObject(types[0]);
+		    			v = getObject(types[0], heirarchies);
+		    		heirarchies.remove(types[0]);
 		    	}
 	        	((Collection)object).add(v);
 			}
+        	if(!isPrimitive(types[0]))
+        	{
+        		heirarchies.add(types[0]);
+        	}
         }
     	return object;
     }
@@ -973,6 +1183,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     		return;
     	}
     	
+    	if(getResourcepath()==null) {
+    		setResourcepath(".");
+    		getLog().info("No resource path specified, using the current working directory to generate testcases...");
+    	}
+    	
         Thread currentThread = Thread.currentThread();
         ClassLoader oldClassLoader = currentThread.getContextClassLoader();
         try
@@ -1033,6 +1248,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 
 	private void generateSoapTestCases() {
 		try {
+			
+			if(getSoapWsdlKeyPairs()==null || getSoapWsdlKeyPairs().length==0)
+				return;
+			
 			StringBuilder build = new StringBuilder();
 			for (String wsdlLoc : getSoapWsdlKeyPairs()) {
 				if(!wsdlLoc.trim().isEmpty())
@@ -1055,11 +1274,21 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             tcase.setDescription(tcase.getName());
                             tcase.setDetailedLog(false);
                             tcase.setSkipTest(false);
-                            tcase.setSecure(false);
-                            tcase.setSoapBase(false);
+                            tcase.setSecure(isOverrideSecure());
                             tcase.setExpectedResCode(200);
-                            tcase.setExpectedResContentType(MediaType.APPLICATION_XML);
-                            tcase.getHeaders().put("SOAPAction", operation.getSoapAction());
+                            tcase.setExpectedResContentType(MediaType.TEXT_XML);
+                            if(isUseSoapClient())
+                            {
+                            	tcase.setSoapBase(true);
+                            	tcase.setWsdlKey(wsdlLocParts[0]);
+                                tcase.setOperationName(operation.getOperationName());
+                            }
+                            else
+                            {
+                            	tcase.setSoapBase(false);
+                            	tcase.getHeaders().put("SOAPAction", operation.getSoapAction());
+                            	tcase.getHeaders().put(HttpHeaders.CONTENT_TYPE, "application/soap+xml");
+                            }
                             
                             tcases.add(tcase);
                             if(!tcases.isEmpty()) 
