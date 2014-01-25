@@ -110,7 +110,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 		<version>1.0</version>
 		<configuration>
 			<testPaths>
-				<docTestPath>com.mtel.services.*</docTestPath>
+				<testPath>com.sample.services.*</testPath>
 			</testPaths>
 			<useSoapClient>true</useSoapClient>
 			<soapWsdlKeyPairs>
@@ -763,7 +763,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
         	{
 	            viewField = new ViewField();
 	            viewField.setClaz(clas);
-	            viewField.setValue(getObject(claz, heirarchies));
+	            viewField.setValue(getObject(clas, heirarchies));
         	}
     	} catch (Exception e) {
     		getLog().error(e);

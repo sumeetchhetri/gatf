@@ -26,7 +26,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 /*
  * <configuration>
 		<testPaths>
-			<docTestPath>com.mtel.services.*</docTestPath>
+			<testPath>com.sample.services.*</testPath>
 		</testPaths>
 		<useSoapClient>true</useSoapClient>
 		<soapWsdlKeyPairs>
