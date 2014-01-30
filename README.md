@@ -42,6 +42,10 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * DetailedLog - whether or not to log the detailed execution logs, mandatory (ex, true/false)
 * FilesToUpload - the file content or multipart data to upload, optional (ex, file:file:wsdl-locations.csv:), specifees a colon separated list of file details to be uploaded, the list defines controlname:type(file/text):fileOrText(filename/text content):contentType(only for text content)
 
+Sample Application
+=======
+Have a look at the sample API application definition, test pages and the generated testcases [here][2] and [here][3]
+
 
 REST-ful Acceptance Testing
 ----------
@@ -713,5 +717,5 @@ Apache License Version 2.0
 **Happy Gatfying**
 
 [1]:#soap-based-acceptance-testing
-
-    
+[2]:http://lit-savannah-1186.herokuapp.com/tests.html
+[3]:http://lit-savannah-1186.herokuapp.com/    
