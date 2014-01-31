@@ -1,9 +1,10 @@
 Generic Automated Test Framework (GATF)
 =========
 
-**GATF** is a automated test generator and acceptance testing framework(laid on top of TestNG, Soap-ws and Rest-assured). Provides 2 components namely the **Test Generator** and the **Accpetance Test Executor** class
+**GATF** is a automated test generator and acceptance testing framework(laid on top of TestNG, Soap-ws and Rest-assured). Provides 3 components namely the **Test Generator** the **Accpetance Test Executor** and the **WorkFlow Engine**
 
   - Generates testcases (xml) for all your API's
+  - Provides a work-flow/orchestration engine for automated testcase execution
   - Both Rest-ful and SOAP based API's are supported
   - JAX-RS annotations are looked up to generate testcases for rest-ful api's
   - WSDL file is referred to genrate soap based test cases
@@ -235,7 +236,7 @@ Lets take an example from the sample application present [here][4],
 
 The example testcase above does not define a sequence value, if a work-flow sequence value is not defined for a testcase then the testcase workflow execution assumes the testcase definition order in a given testcase file as the workflow sequence. In this example [testcase-file][5] the sequence is automatically assumed to be the order of the testcase definitions. 
 
-Talking about the workflowContextParameterMap, this is a key/value pair that defines parameter names and expected response nodes(jsonpath/json, xpath/xml) for a given API invocation. After the given API execution completes the GATF engine looks for the nodes defined in the workflowContextParameterMap and assigns the values found for these nodes as variable name definitions in a global map which can be used for the next testcase executions. In the example above after the API execution for api/rest/example?token={token}&amp; completes the engine reads the response node(json path) id from the response and assigns the value thus obtained to the beanId global variable. You may have already defined this variable in your testcase definitions coming later as $beanId(GATF uses Velocity templates). So after this API call completes the variable $beanId will have the value received from the API call. The second testcase gives an exmaple of the usage of variable names in GATF. GATF looks for the URL, content body and the query parameters(namely the ExQueryPart parameter) and replaces all computed variables at that instant before the execution of the next testcase, it actually transforms your testcase depending on all your variable definitions. All variable definitions are assumed to be string values.
+Talking about the workflowContextParameterMap, this is a key/value pair that defines parameter names and expected response nodes(jsonpath/json, xpath/xml) for a given API invocation. After the given API execution completes the GATF engine looks for the nodes defined in the workflowContextParameterMap and assigns the values found for these nodes as variable name definitions in a global map which can be used for the next testcase executions. In the example above after the API execution for api/rest/example?token={token}&amp; completes the engine reads the response node(json path) id from the response and assigns the value thus obtained to the beanId global variable. You may have already defined this variable in your testcase definitions coming later as $beanId(GATF uses Velocity templates). So after this API call completes the variable **$beanId** will have the value received from the API call. The second testcase gives an exmaple of the usage of variable names in GATF. GATF looks for the URL, content body and the query parameters(namely the ExQueryPart parameter) and replaces all computed variables at that instant before the execution of the next testcase, it actually transforms your testcase depending on all your variable definitions. All variable definitions are assumed to be string values.
 
 This helps you stage your test execution steps in an orderly fashion or orchestrate the flow of tests getting executed. This is a very important feature present in GATF which helps it acheive its goal 'AUTOMATION'
 
