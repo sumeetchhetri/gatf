@@ -91,6 +91,11 @@ public class TestCase {
 	
 	private Map<String, String> soapParameterValues = new HashMap<String, String>();
 	
+	private Map<String, String> workflowContextParameterMap = new HashMap<String, String>();
+	
+	@XStreamAsAttribute
+	private int sequence = 0;
+	
 	private List<String> filesToUpload = new ArrayList<String>();
 
 	public String getUrl() {
@@ -243,6 +248,23 @@ public class TestCase {
 
 	public void setFilesToUpload(List<String> filesToUpload) {
 		this.filesToUpload = filesToUpload;
+	}
+	
+	public Map<String, String> getWorkflowContextParameterMap() {
+		return workflowContextParameterMap;
+	}
+
+	public void setWorkflowContextParameterMap(
+			Map<String, String> workflowContextParameterMap) {
+		this.workflowContextParameterMap = workflowContextParameterMap;
+	}
+
+	public int getSequence() {
+		return sequence;
+	}
+
+	public void setSequence(int sequence) {
+		this.sequence = sequence;
 	}
 
 	@Override

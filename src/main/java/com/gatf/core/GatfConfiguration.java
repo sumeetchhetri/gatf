@@ -36,6 +36,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 			<soapWsdlKeyPair>UserService,http://localhost:8081/soap/user?wsdl</soapWsdlKeyPair>
 		</soapWsdlKeyPairs>
 		<urlPrefix>rest</urlPrefix>
+		<urlSuffix>_param=value</urlSuffix>
 		<requestDataType>json</requestDataType>
 		<responseDataType>json</responseDataType>
 		<overrideSecure>true</overrideSecure>
@@ -66,6 +67,18 @@ public class GatfConfiguration {
 	private boolean overrideSecure;
 	
 	private boolean useSoapClient;
+	
+	private String urlSuffix;
+
+    public String getUrlSuffix()
+    {
+        return urlSuffix;
+    }
+
+    public void setUrlSuffix(String urlSuffix)
+    {
+        this.urlSuffix = urlSuffix;
+    }
 	
 	public String[] getTestPaths() {
 		return testPaths;

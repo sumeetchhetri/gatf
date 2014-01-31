@@ -27,10 +27,12 @@ import java.io.Writer;
 import java.lang.reflect.Field;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
+import java.util.concurrent.ConcurrentHashMap;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -49,6 +51,8 @@ import javax.xml.xpath.XPathFactory;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.VelocityEngine;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
 import org.reficio.ws.builder.SoapBuilder;
@@ -80,6 +84,8 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
+import edu.emory.mathcs.backport.java.util.Collections;
+
 
 public class ApiAcceptanceTest {
 
@@ -103,11 +109,15 @@ public class ApiAcceptanceTest {
 	
 	private static String sessionIdentifier = null;
 	
-	private static Map<String, String> soapEndpoints = new HashMap<String, String>();
+	private static final Map<String, String> soapEndpoints = new HashMap<String, String>();
 	
-	private static Map<String, Document> soapMessages = new HashMap<String, Document>();
+	private static final Map<String, Document> soapMessages = new HashMap<String, Document>();
 	
-	private static Map<String, String> soapActions = new HashMap<String, String>();
+	private static final Map<String, String> soapActions = new HashMap<String, String>();
+	
+	private static final Map<String, String> globalworkflowContext = new ConcurrentHashMap<String, String>();
+	
+	private static VelocityEngine engine = new VelocityEngine();
 	
 	private static boolean isAuthEnabled() {
 		return authExtractAuthParams!=null;
@@ -118,21 +128,26 @@ public class ApiAcceptanceTest {
 	}
 	
 	private static boolean isSoapAuthTestCase(TestCase tcase) {
-		return (soapAuthWsdlKey+soapAuthOperation).equals(tcase.getWsdlKey()+tcase.getOperationName());
+		return soapAuthWsdlKey!=null && soapAuthOperation!=null &&
+				(soapAuthWsdlKey+soapAuthOperation).equals(tcase.getWsdlKey()+tcase.getOperationName());
 	}
 	
-	private static File getResourceFile(String filename) throws Exception {
-		if(testCasesBasePath!=null && !testCasesBasePath.equalsIgnoreCase("null"))
-		{
-			File basePath = new File(testCasesBasePath);
-			File resource = new File(basePath, filename);
-			return resource;
-		}
-		else
-		{
-			URL url = Thread.currentThread().getContextClassLoader().getResource(filename);
-			File resource = new File(url.getPath());
-			return resource;
+	private static File getResourceFile(String filename) {
+		try {
+			if(testCasesBasePath!=null && !testCasesBasePath.equalsIgnoreCase("null"))
+			{
+				File basePath = new File(testCasesBasePath);
+				File resource = new File(basePath, filename);
+				return resource;
+			}
+			else
+			{
+				URL url = Thread.currentThread().getContextClassLoader().getResource(filename);
+				File resource = new File(url.getPath());
+				return resource;
+			}
+		} catch (Exception e) {
+			return null;
 		}
 	}
 	
@@ -140,11 +155,22 @@ public class ApiAcceptanceTest {
 	@Parameters({"testCasesPath", "baseUrl", "authEnabled", "authUrl", "authExtractAuth", "wsdlLocFile",
 		"soapAuthEnabled", "soapAuthWsdlKey", "soapAuthOperation", "soapAuthExtractAuth", "testCasesBasePath"})
 	public void init(ITestContext context, String testCasesPath,
-			String baseUrl, @Optional boolean authEnabled, @Optional String authUrlp,
-			@Optional String authExtractAuthp, @Optional String wsdlLocFile, @Optional boolean soapAuthEnabled,
-			@Optional String soapAuthWsdlKeyp, @Optional String soapAuthOperationp, @Optional String soapAuthExtractAuthp,
-			@Optional String testCasesBasePathp) throws Exception
+			String baseUrl, @Optional("false") boolean authEnabled, @Optional("null") String authUrlp,
+			@Optional("null") String authExtractAuthp, @Optional("null") String wsdlLocFile, @Optional("false") boolean soapAuthEnabled,
+			@Optional("null") String soapAuthWsdlKeyp, @Optional("null") String soapAuthOperationp, @Optional("null") String soapAuthExtractAuthp,
+			@Optional("null") String testCasesBasePathp) throws Exception
 	{
+		authUrlp = (authUrlp==null||authUrlp.equalsIgnoreCase("null")?null:authUrlp);
+		authExtractAuthp = (authExtractAuthp==null||authExtractAuthp.equalsIgnoreCase("null")?null:authExtractAuthp);
+		wsdlLocFile = (wsdlLocFile==null||wsdlLocFile.equalsIgnoreCase("null")?null:wsdlLocFile);
+		soapAuthWsdlKeyp = (soapAuthWsdlKeyp==null||soapAuthWsdlKeyp.equalsIgnoreCase("null")?null:soapAuthWsdlKeyp);
+		soapAuthOperationp = (soapAuthOperationp==null||soapAuthOperationp.equalsIgnoreCase("null")?null:soapAuthOperationp);
+		soapAuthOperationp = (soapAuthOperationp==null||soapAuthOperationp.equalsIgnoreCase("null")?null:soapAuthOperationp);
+		soapAuthExtractAuthp = (soapAuthExtractAuthp==null||soapAuthExtractAuthp.equalsIgnoreCase("null")?null:soapAuthExtractAuthp);
+		testCasesBasePathp = (testCasesBasePathp==null||testCasesBasePathp.equalsIgnoreCase("null")?null:testCasesBasePathp);
+		
+		engine.init();
+		
 		RestAssured.baseURI =  baseUrl;
 		
 		authUrl = authUrlp;
@@ -196,43 +222,49 @@ public class ApiAcceptanceTest {
 			}
 		}
 		
-		File file = getResourceFile(wsdlLocFile);
-		Scanner s = new Scanner(file);
-		s.useDelimiter("\n");
-		List<String> list = new ArrayList<String>();
-		while (s.hasNext()) {
-			list.add(s.next().replace("\r", ""));
-		}
-		s.close();
-
-		try {
-			for (String wsdlLoc : list) {
-				if(!wsdlLoc.trim().isEmpty())
-				{
-					String[] wsdlLocParts = wsdlLoc.split(",");
-					logger.info("Started Parsing WSDL location - " + wsdlLocParts[1]);
-					Wsdl wsdl = Wsdl.parse(wsdlLocParts[1]);
-					for (QName bindingName : wsdl.getBindings()) {
-						SoapBuilder builder = wsdl.getBuilder(bindingName);
-						for (SoapOperation operation : builder.getOperations()) {
-							String request = builder.buildInputMessage(operation);
-							DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-							DocumentBuilder db = dbf.newDocumentBuilder();
-							Document soapMessage = db.parse(new ByteArrayInputStream(request.getBytes()));
-							soapMessages.put(wsdlLocParts[0]+operation.getOperationName(), soapMessage);
-							if(operation.getSoapAction()!=null) {
-								soapActions.put(wsdlLocParts[0]+operation.getOperationName(), operation.getSoapAction());
-							}
-							logger.info("Adding message for SOAP operation - " + operation.getOperationName());
-						}
-						soapEndpoints.put(wsdlLocParts[0], builder.getServiceUrls().get(0));
-						logger.info("Adding SOAP Service endpoint - " + builder.getServiceUrls().get(0));
-					}
-					logger.info("Done Parsing WSDL location - " + wsdlLocParts[1]);
-				}
+		File file = null;
+		if(wsdlLocFile!=null && !wsdlLocFile.trim().isEmpty())
+			file = getResourceFile(wsdlLocFile);
+		
+		if(file!=null)
+		{
+			Scanner s = new Scanner(file);
+			s.useDelimiter("\n");
+			List<String> list = new ArrayList<String>();
+			while (s.hasNext()) {
+				list.add(s.next().replace("\r", ""));
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
+			s.close();
+	
+			try {
+				for (String wsdlLoc : list) {
+					if(!wsdlLoc.trim().isEmpty())
+					{
+						String[] wsdlLocParts = wsdlLoc.split(",");
+						logger.info("Started Parsing WSDL location - " + wsdlLocParts[1]);
+						Wsdl wsdl = Wsdl.parse(wsdlLocParts[1]);
+						for (QName bindingName : wsdl.getBindings()) {
+							SoapBuilder builder = wsdl.getBuilder(bindingName);
+							for (SoapOperation operation : builder.getOperations()) {
+								String request = builder.buildInputMessage(operation);
+								DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+								DocumentBuilder db = dbf.newDocumentBuilder();
+								Document soapMessage = db.parse(new ByteArrayInputStream(request.getBytes()));
+								soapMessages.put(wsdlLocParts[0]+operation.getOperationName(), soapMessage);
+								if(operation.getSoapAction()!=null) {
+									soapActions.put(wsdlLocParts[0]+operation.getOperationName(), operation.getSoapAction());
+								}
+								logger.info("Adding message for SOAP operation - " + operation.getOperationName());
+							}
+							soapEndpoints.put(wsdlLocParts[0], builder.getServiceUrls().get(0));
+							logger.info("Adding SOAP Service endpoint - " + builder.getServiceUrls().get(0));
+						}
+						logger.info("Done Parsing WSDL location - " + wsdlLocParts[1]);
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	} 
 
@@ -343,6 +375,14 @@ public class ApiAcceptanceTest {
 		testcases.addAll(pretestcases);
 		testcases.addAll(posttestcases);
 		
+		Collections.sort(testcases, new Comparator<TestCase>() {
+			public int compare(TestCase o1, TestCase o2) {
+				 return o1==null ?
+				         (o2==null ? 0 : Integer.MIN_VALUE) :
+				         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getSequence()).compareTo(o2.getSequence()));
+			}
+		});
+		
 		Object[][] objects = new Object[testcases.size()][1];
 		for (int i=0;i<objects.length;i++) {
 			objects[i] = new Object[]{testcases.get(i)};
@@ -375,6 +415,8 @@ public class ApiAcceptanceTest {
 			throw e;
 		}
 		
+		handleWorklowContext(testCase);
+		
 		if(!testCase.isSoapBase()) {
 			testRestBased(testCase);
 		} else {
@@ -384,6 +426,27 @@ public class ApiAcceptanceTest {
 		logger.info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
 		logger.info("============================================================\n");
 
+	}
+
+	private void handleWorklowContext(TestCase testCase) throws Exception {
+		if(testCase!=null) {
+			VelocityContext context = new VelocityContext(globalworkflowContext);
+			if(testCase.getUrl()!=null) {
+				StringWriter writer = new StringWriter();
+				engine.evaluate(context, writer, "ERROR", testCase.getUrl());
+				testCase.setUrl(writer.toString());
+			}
+			if(testCase.getContent()!=null) {
+				StringWriter writer = new StringWriter();
+				engine.evaluate(context, writer, "ERROR", testCase.getContent());
+				testCase.setContent(writer.toString());
+			}
+			if(testCase.getExQueryPart()!=null) {
+				StringWriter writer = new StringWriter();
+				engine.evaluate(context, writer, "ERROR", testCase.getExQueryPart());
+				testCase.setExQueryPart(writer.toString());
+			}
+		}
 	}
 
 	private void testRestBased(TestCase testCase) throws Exception {
@@ -500,6 +563,14 @@ public class ApiAcceptanceTest {
 					Assert.assertNotNull(jsonPath.getString(node));
 				}
 			}
+			if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
+			{
+				for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+					String jsonValue = jsonPath.getString(entry.getValue());
+					Assert.assertNotNull(jsonValue);
+					globalworkflowContext.put(entry.getKey(), jsonValue);
+				}
+			}
 			if(isAuthEnabled() && authUrl.equals(url) && authExtractAuthParams[1].equalsIgnoreCase("json")) {
 				sessionIdentifier = jsonPath.getString(authExtractAuthParams[0]);
 				Assert.assertNotNull(sessionIdentifier);
@@ -516,15 +587,31 @@ public class ApiAcceptanceTest {
 				{
 					for (String node : testCase.getExpectedNodes()) {
 						String expression = node.replaceAll("\\.", "\\/");
-						expression = "/" + expression;
+						if(expression.charAt(0)!='/')
+							expression = "/" + expression;
 						XPath xPath =  XPathFactory.newInstance().newXPath();
 						NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 						Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
 					}
 				}
+				if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
+				{
+					for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+						String expression = entry.getValue().replaceAll("\\.", "\\/");
+						if(expression.charAt(0)!='/')
+							expression = "/" + expression;
+						XPath xPath =  XPathFactory.newInstance().newXPath();
+						NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+						Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+						String xmlValue = xmlNodeList.item(0).getNodeValue();
+						Assert.assertNotNull(xmlValue);
+						globalworkflowContext.put(entry.getKey(), xmlValue);
+					}
+				}
 				if(isAuthEnabled() && authUrl.equals(url) && authExtractAuthParams[1].equalsIgnoreCase("xml")) {
 					String expression = authExtractAuthParams[0].replaceAll("\\.", "\\/");
-					expression = "/" + expression;
+					if(expression.charAt(0)!='/')
+						expression = "/" + expression;
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
@@ -691,6 +778,22 @@ public class ApiAcceptanceTest {
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+				}
+			}
+			if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
+			{
+				for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+					Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
+					Node body = getNodeByNameCaseInsensitive(envelope, "body");
+					Node requestBody = getNextElement(body);
+					Node returnBody = getNextElement(requestBody);
+					String expression = createXPathExpression(entry.getValue(), envelope, body, requestBody, returnBody);
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull(xmlValue);
+					globalworkflowContext.put(entry.getKey(), xmlValue);
 				}
 			}
 			if(isSoapAuthEnabled() && isSoapAuthTestCase(testCase)) {

@@ -26,13 +26,15 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * Name - the test case name, mandatory (ex, GetUsers)
 * Description - the test case description, optional (ex, Get all the users)
 * Method - the HTTP method, mandatory (ex, GET)
+* Sequence - the work-flow sequence parameter, is an integer parameter execution in the work-flow chain starts from low-high sequence value
+* WorkflowContextParameterMap - the workflow contet gloabl variable map, define key/value pairs of variable name and expected response node heirarchy(xpath values for xml, json path for json), Refer to the [Workflow][5] section below for more details
 * ExQueryPart - extra query parameters, optional (ex, limit=10, this will be appended to the Url, so the Url now becomes /api/users?limit=10)
 * Content - the body/content to be passed in the request, optional
 * Headers - the HTTP headers to be passed in the request, optional (ex, Content-Type: application/json)
 * Secure - whether this request requires a prior authentication API call, optional (ex, true/false)
 * SoapBase - whether this request is a SOAP method call with runtime request generation+transformation, optional (ex, true/false)
 * WsdlKey - the wsdl key name sepcified while passing the wsdl value in the wsdl-location.csv file or the pom.xml configuration for the maven plugin, mandatory when SoapBase=true (ex, UserSoapService), Refer to the [SOAP 1] section below
-* OperationName - the soap method operationName as specified in the wsdl file for that particular service, mandatory when SoapBase=true (ex, getUsers), Refer to the [SOAP] [1] section below
+* OperationName - the soap method operationName as specified in the wsdl file for that particular service, mandatory when SoapBase=true (ex, getUsers), Refer to the [SOAP][1] section below
 * SoapParameterValues - the transformation key/value pairs used while tranforming the runtime generated soap message, Refer to the [SOAP] [1] section below
 * ExpectedResCode - the expected HTTP status code, mandatory (ex, 200)
 * ExpectedResContentType - the expected content type, optional (ex, application/json)
@@ -41,6 +43,7 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * SkipTest - whether to skip this test, mandatory (ex, true/false)
 * DetailedLog - whether or not to log the detailed execution logs, mandatory (ex, true/false)
 * FilesToUpload - the file content or multipart data to upload, optional (ex, file:file:wsdl-locations.csv:), specifees a colon separated list of file details to be uploaded, the list defines controlname:type(file/text):fileOrText(filename/text content):contentType(only for text content)
+
 
 Sample Application
 =======
@@ -187,6 +190,54 @@ jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader
 ```
 Simplest data format but cannot be used or complex request/response content
 <br/>
+
+
+Workflow
+======
+The main focus of GATF is automation, and to acheive this goal is not simple and cannot be easily done just by generating testcases and having a testng execution phase. What we actually need is a work-flow or orchestration logic to control the flow of API invocations in an orderly fashion receiving values from the response and using these values in further API requests. GATF provides this orchestration with the help of the Sequence/WorkflowContextParameterMap parameters in your GATF testcase file.
+
+Example
+-----
+Lets take an example from the sample application present [here][4],
+
+```xml
+<TestCase url="api/rest/example?token={token}&amp;" name="com.sample.services.ExampleBeanServiceImpl.addBean" method="POST" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="true" soapBase="false">
+    <description>com.sample.services.ExampleBeanServiceImpl.addBean</description>
+    <content><![CDATA[{"id":"DfCobuXzhe","name":"TDymsEDzCE","order":53,"valid":false,"bean":{"prop1":"WmGSHlwUYz","prop2":69,"prop3":40,"prop4":1391159300719,"prop5":true,"prop6":["tPrZqJQxml"],"prop7":{"DXITdnJkDz":"QqKLlRNSQd"}},"beans":[{"prop1":"TiUfFBzpec","prop2":30,"prop3":57,"prop4":1391159300719,"prop5":true,"prop6":["VRvfIDvqLb"],"prop7":{"WlfJTXeHPf":"gKxjxsLPke"}}],"mapofBeans":{"tygvEkxPJJ":{"prop1":"TziuNauqep","prop2":30,"prop3":39,"prop4":1391159300719,"prop5":true,"prop6":["SMWsDefXEv"],"prop7":{"xNUmOnqQig":"MmtnagDQhJ"}}}}]]></content>
+    <headers>
+      <entry>
+        <string>Content-Type</string>
+        <string>application/json</string>
+      </entry>
+    </headers>
+    <workflowContextParameterMap>
+    	<entry>
+	        <string>beanId</string>
+	        <string>id</string>
+      </entry>
+    </workflowContextParameterMap>
+    <expectedNodes/>
+    <soapParameterValues/>
+    <filesToUpload/>
+</TestCase>
+<TestCase url="api/rest/example/$beanId?token={token}&amp;" name="com.sample.services.ExampleBeanServiceImpl.getBean" method="GET" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="true" soapBase="false">
+    <description>com.sample.services.ExampleBeanServiceImpl.getBean</description>
+    <content><![CDATA[]]></content>
+    <headers/>
+    <expectedNodes>
+    	<string>id</string>
+    	<string>bean.prop1</string>
+    </expectedNodes>
+    <soapParameterValues/>
+    <filesToUpload/>
+</TestCase>
+```
+
+The example testcase above does not define a sequence value, if a work-flow sequence value is not defined for a testcase then the testcase workflow execution assumes the testcase definition order in a given testcase file as the workflow sequence. In this example [testcase-file][5] the sequence is automatically assumed to be the order of the testcase definitions. 
+
+Talking about the workflowContextParameterMap, this is a key/value pair that defines parameter names and expected response nodes(jsonpath/json, xpath/xml) for a given API invocation. After the given API execution completes the GATF engine looks for the nodes defined in the workflowContextParameterMap and assigns the values found for these nodes as variable name definitions in a global map which can be used for the next testcase executions. In the example above after the API execution for api/rest/example?token={token}&amp; completes the engine reads the response node(json path) id from the response and assigns the value thus obtained to the beanId global variable. You may have already defined this variable in your testcase definitions coming later as $beanId(GATF uses Velocity templates). So after this API call completes the variable $beanId will have the value received from the API call. The second testcase gives an exmaple of the usage of variable names in GATF. GATF looks for the URL, content body and the query parameters(namely the ExQueryPart parameter) and replaces all computed variables at that instant before the execution of the next testcase, it actually transforms your testcase depending on all your variable definitions. All variable definitions are assumed to be string values.
+
+This helps you stage your test execution steps in an orderly fashion or orchestrate the flow of tests getting executed. This is a very important feature present in GATF which helps it acheive its goal 'AUTOMATION'
 
 
 SOAP based Acceptance Testing
@@ -717,5 +768,6 @@ Apache License Version 2.0
 **Happy Gatfying**
 
 [1]:#soap-based-acceptance-testing
-[2]:http://lit-savannah-1186.herokuapp.com/tests.html
-[3]:http://lit-savannah-1186.herokuapp.com/    
+[2]:http://lit-savannah-1186.herokuapp.com/api-source/
+[3]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/
+[4]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/workflow-example/

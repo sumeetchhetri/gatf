@@ -120,6 +120,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 				<soapWsdlKeyPair>UserService,http://localhost:8081/soap/user?wsdl</soapWsdlKeyPair>
 			</soapWsdlKeyPairs>
 			<urlPrefix>rest</urlPrefix>
+			<urlSuffix>_param=value</urlSuffix>
 			<requestDataType>json</requestDataType>
 			<responseDataType>json</responseDataType>
 			<overrideSecure>true</overrideSecure>
@@ -185,6 +186,19 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     public void setUrlPrefix(String urlPrefix)
     {
         this.urlPrefix = urlPrefix;
+    }
+    
+    @Parameter(alias = "urlSuffix")
+    private String urlSuffix;
+
+    public String getUrlSuffix()
+    {
+        return urlSuffix;
+    }
+
+    public void setUrlSuffix(String urlSuffix)
+    {
+        this.urlSuffix = urlSuffix;
     }
 
     @Parameter(alias = "resourcepath")
@@ -280,6 +294,27 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		this.useSoapClient = useSoapClient;
 	}
 
+	private String getUrl(String url)
+	{
+		if(url==null || url.trim().isEmpty())return null;
+		url = url.trim();
+		if(getUrlPrefix()!=null)
+		{
+			if(getUrlPrefix().trim().charAt(getUrlPrefix().trim().length() - 1) != '/')
+				url = getUrlPrefix() + "/" + url;
+			else
+				url = getUrlPrefix() + url;
+		}
+		if(getUrlSuffix()!=null && getUrlSuffix().indexOf("/")==-1)
+		{
+			if(url.indexOf("?")!=-1)
+				url += getUrlSuffix();
+			else
+				url += "?" + getUrlSuffix();
+		}
+		return url;
+	}
+	
 	/**
      * @param classes Generates all testcases for all the rest-full services found in the classes discovered
      */
@@ -340,10 +375,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                                 completeServicePath = completeServicePath.substring(1);
                             }
 
-                            String url = (getUrlPrefix() != null ? getUrlPrefix() : "");
-                            if (!url.trim().isEmpty() && url.trim().charAt(url.trim().length() - 1) != '/')
-                                url = url.trim() + "/";
-                            url += completeServicePath;
+                            String url = getUrl(completeServicePath);
 
                             String completeServiceSubmitPath = url;
                             Type[] argTypes = method.getGenericParameterTypes();
@@ -378,6 +410,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                                     {
                                         if (completeServiceSubmitPath.indexOf("?") == -1)
                                             completeServiceSubmitPath += "?";
+                                        if(completeServiceSubmitPath.charAt(completeServiceSubmitPath.length()-1)!='&')
+                                        	completeServiceSubmitPath += "&";
                                         if(((RequestParam) annotations[0]).defaultValue()!=null)
                                         	completeServiceSubmitPath += ((RequestParam) annotations[0]).value() + "={"
                                                     + ((RequestParam) annotations[0]).defaultValue() + "}&";
@@ -391,6 +425,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                                     {
                                         if (completeServiceSubmitPath.indexOf("?") == -1)
                                             completeServiceSubmitPath += "?";
+                                        if(completeServiceSubmitPath.charAt(completeServiceSubmitPath.length()-1)!='&')
+                                        	completeServiceSubmitPath += "&";
                                         if(annotations[1]!=null)
                                         	completeServiceSubmitPath += ((QueryParam) annotations[0]).value() + "={"
                                                     + ((DefaultValue)annotations[1]).value() + "}&";
@@ -500,7 +536,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
-	                            	JAXBContext context = JAXBContext.newInstance(contentvf.getClaz());
+	                            	JAXBContext context = JAXBContext.newInstance(contentvf.getValue().getClass());
 	                                Marshaller m = context.createMarshaller();
 	                                m.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, Boolean.TRUE);
 	                                StringWriter writer = new StringWriter();
@@ -519,6 +555,15 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             
                             if(consumes!=null && !consumes.trim().isEmpty()) {
                             	hparams.put(HttpHeaders.CONTENT_TYPE, consumes);
+                            }
+
+                            completeServiceSubmitPath = completeServiceSubmitPath.replaceAll("\\?&", "?");
+                            completeServiceSubmitPath = completeServiceSubmitPath.replaceAll("&&", "&");
+                            completeServiceSubmitPath = completeServiceSubmitPath.replaceAll("/\\?", "?");
+                            completeServiceSubmitPath = completeServiceSubmitPath.trim();
+                            if(completeServiceSubmitPath.charAt(completeServiceSubmitPath.length()-1)=='&')
+                            {
+                            	completeServiceSubmitPath = completeServiceSubmitPath.substring(0, completeServiceSubmitPath.length()-1);
                             }
                             
                             tcase.setUrl(completeServiceSubmitPath);
@@ -1186,6 +1231,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     	if(getResourcepath()==null) {
     		setResourcepath(".");
     		getLog().info("No resource path specified, using the current working directory to generate testcases...");
+    	} else {
+    		File dir = new File(getResourcepath());
+    		if(!dir.exists())
+            {
+    			dir.mkdirs();
+            }
     	}
     	
         Thread currentThread = Thread.currentThread();
@@ -1194,11 +1245,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo
         {
             currentThread.setContextClassLoader(getClassLoader());
             getLog().info("Inside execute");
-            if (getTestPaths() == null)
-            {
-                getLog().info("Nothing to generate..");
-                return;
-            }
             List<Class> allClasses = new ArrayList<Class>();
             if (getTestPaths() != null)
             {
@@ -1230,8 +1276,15 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                         }
                     }
                 }
+                if(!allClasses.isEmpty())
+                {
+                	generateRestTestCases(allClasses);
+                }
             }
-            generateRestTestCases(allClasses);
+            else
+            {
+            	getLog().info("Nothing to generate..");
+            }
             generateSoapTestCases();
             
             getLog().info("Done execute");
@@ -1267,7 +1320,19 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 							String request = builder.buildInputMessage(operation);
 							
 							TestCase tcase = new TestCase();
-    						tcase.setUrl(builder.getServiceUrls().get(0));
+							String url = builder.getServiceUrls().get(0);
+							if(getUrlSuffix()!=null)
+                            {
+                            	if(url.indexOf("?")!=-1)
+                            	{
+                            		url += "&" + getUrlSuffix();
+                            	}
+                            	else
+                            	{
+                            		url += "?" + getUrlSuffix();
+                                }
+                            }
+    						tcase.setUrl(url);
                             tcase.setMethod(HttpMethod.POST);
                             tcase.setContent(request);
                             tcase.setName(wsdlLocParts[0]+"."+operation.getOperationName());
