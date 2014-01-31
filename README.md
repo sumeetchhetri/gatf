@@ -28,7 +28,7 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * Description - the test case description, optional (ex, Get all the users)
 * Method - the HTTP method, mandatory (ex, GET)
 * Sequence - the work-flow sequence parameter, is an integer parameter execution in the work-flow chain starts from low-high sequence value
-* WorkflowContextParameterMap - the workflow contet gloabl variable map, define key/value pairs of variable name and expected response node heirarchy(xpath values for xml, json path for json), Refer to the [Workflow][5] section below for more details
+* WorkflowContextParameterMap - the workflow context global variable map, define key/value pairs of variable name and expected response node heirarchy(xpath values for xml, json path for json), Refer to the [Workflow][5] section below for more details
 * ExQueryPart - extra query parameters, optional (ex, limit=10, this will be appended to the Url, so the Url now becomes /api/users?limit=10)
 * Content - the body/content to be passed in the request, optional
 * Headers - the HTTP headers to be passed in the request, optional (ex, Content-Type: application/json)
@@ -772,3 +772,4 @@ Apache License Version 2.0
 [2]:http://lit-savannah-1186.herokuapp.com/api-source/
 [3]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/
 [4]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/workflow-example/
+[5]:#workflow
