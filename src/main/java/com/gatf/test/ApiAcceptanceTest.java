@@ -446,6 +446,15 @@ public class ApiAcceptanceTest {
 				engine.evaluate(context, writer, "ERROR", testCase.getExQueryPart());
 				testCase.setExQueryPart(writer.toString());
 			}
+			if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty()) {
+				List<String> expectedNodes = new ArrayList<String>();
+				for (String nodecase : testCase.getExpectedNodes()) {
+					StringWriter writer = new StringWriter();
+					engine.evaluate(context, writer, "ERROR", nodecase);
+					expectedNodes.add(writer.toString());
+				}
+				testCase.setExpectedNodes(expectedNodes);
+			}
 		}
 	}
 
@@ -560,7 +569,12 @@ public class ApiAcceptanceTest {
 			if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
 			{
 				for (String node : testCase.getExpectedNodes()) {
-					Assert.assertNotNull(jsonPath.getString(node));
+					String[] nodeCase = node.split(",");
+					String nvalue = jsonPath.getString(nodeCase[0]);
+					Assert.assertNotNull(nvalue);
+					if(nodeCase.length==2) {
+						Assert.assertEquals(nvalue, nodeCase[1]);
+					}
 				}
 			}
 			if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
@@ -586,12 +600,19 @@ public class ApiAcceptanceTest {
 				if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
 				{
 					for (String node : testCase.getExpectedNodes()) {
-						String expression = node.replaceAll("\\.", "\\/");
+						String[] nodeCase = node.split(",");
+						
+						String expression = nodeCase[0].replaceAll("\\.", "\\/");
 						if(expression.charAt(0)!='/')
 							expression = "/" + expression;
 						XPath xPath =  XPathFactory.newInstance().newXPath();
 						NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 						Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+						String xmlValue = xmlNodeList.item(0).getNodeValue();
+						Assert.assertNotNull(xmlValue);
+						if(nodeCase.length==2) {
+							Assert.assertEquals(xmlValue, nodeCase[1]);
+						}
 					}
 				}
 				if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
@@ -770,14 +791,20 @@ public class ApiAcceptanceTest {
 			if(testCase.getExpectedNodes()!=null && !testCase.getExpectedNodes().isEmpty())
 			{
 				for (String node : testCase.getExpectedNodes()) {
+					String[] nodeCase = node.split(",");
 					Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
 					Node body = getNodeByNameCaseInsensitive(envelope, "body");
 					Node requestBody = getNextElement(body);
 					Node returnBody = getNextElement(requestBody);
-					String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
+					String expression = createXPathExpression(nodeCase[0], envelope, body, requestBody, returnBody);
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue(xmlNodeList!=null && xmlNodeList.getLength()>0);
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull(xmlValue);
+					if(nodeCase.length==2) {
+						Assert.assertEquals(xmlValue, nodeCase[1]);
+					}
 				}
 			}
 			if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
