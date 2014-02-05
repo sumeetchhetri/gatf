@@ -433,5 +433,14 @@ public class TestCase {
 				throw new RuntimeException("Invalid wsdlkey/operationName specified for testcase");
 			}
 		}
+		
+		if(getWorkflowContextParameterMap()!=null)
+		{
+			for (Map.Entry<String, String> entry : getWorkflowContextParameterMap().entrySet()) {
+				if(!entry.getKey().trim().matches("(^[a-zA-Z][a-zA-Z0-9_]*)|(^[_][a-zA-Z0-9_]+)")) {
+					throw new RuntimeException("Invalid workflow variable name " + entry.getKey() + " specified for testcase...skipping...");
+				}
+			}
+		}
 	}
 }

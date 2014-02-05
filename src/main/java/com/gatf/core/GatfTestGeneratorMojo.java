@@ -530,7 +530,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
-	                            	content = new ObjectMapper().writeValueAsString(contentvf.getValue());
+	                            	content = new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(contentvf.getValue());
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
 	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))

@@ -495,7 +495,7 @@ public class ApiAcceptanceTest {
 						contType= mulff[3].trim();
 					}
 					
-					if(!type.equalsIgnoreCase("file") || !type.equalsIgnoreCase("file")) {
+					if(!type.equalsIgnoreCase("text") && !type.equalsIgnoreCase("file")) {
 						logger.error("Invalid type specified for file upload...skipping value - " + filedet);
 						continue;
 					}
