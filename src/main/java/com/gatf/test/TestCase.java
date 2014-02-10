@@ -97,6 +97,15 @@ public class TestCase {
 	private int sequence = 0;
 	
 	private List<String> filesToUpload = new ArrayList<String>();
+	
+	@XStreamAsAttribute
+	private String outFileName;
+	
+	private Map<String, String> variableMap = new HashMap<String, String>();
+	
+	private List<Map<String, String>> repeatScenarios = new ArrayList<Map<String,String>>();
+	
+	private String sourcefileName;
 
 	public String getUrl() {
 		return url;
@@ -267,6 +276,30 @@ public class TestCase {
 		this.sequence = sequence;
 	}
 
+	public String getOutFileName() {
+		return outFileName;
+	}
+
+	public void setOutFileName(String outFileName) {
+		this.outFileName = outFileName;
+	}
+
+	public Map<String, String> getVariableMap() {
+		return variableMap;
+	}
+
+	public void setVariableMap(Map<String, String> variableMap) {
+		this.variableMap = variableMap;
+	}
+
+	public List<Map<String, String>> getRepeatScenarios() {
+		return repeatScenarios;
+	}
+
+	public void setRepeatScenarios(List<Map<String, String>> repeatScenarios) {
+		this.repeatScenarios = repeatScenarios;
+	}
+
 	@Override
 	public String toString() {
 		return "TestCase [name=" + name + ", url=" + url + ", description=" + description
@@ -331,7 +364,7 @@ public class TestCase {
 						}
 					}
 				}
-				if(csvParts.length==19) {
+				if(csvParts.length>=19) {
 					setSoapBase(Boolean.valueOf(csvParts[15]));
 					String[] soapVals = csvParts[16].split("\\|");
 					for (String soapVal : soapVals) {
@@ -346,6 +379,19 @@ public class TestCase {
 					}
 					setWsdlKey(csvParts[17]);
 					setOperationName(csvParts[18]);
+					setSequence(Integer.parseInt(csvParts[19]));
+					String[] workflowParams = csvParts[20].split("\\|");
+					for (String workflowParam : workflowParams) {
+						String[] kv = workflowParam.split(":");
+						if(kv.length!=2) {
+							logger.error("Invalid Workflow Parameter key/value specified for testcase - " + workflowParam);
+						}
+						if(!kv[0].isEmpty() && !kv[1].isEmpty())
+						{
+							getWorkflowContextParameterMap().put(kv[0], kv[1]);
+						}
+					}
+					setOutFileName(csvParts[21]);
 				}
 				valid = true;
 			} else {
@@ -357,6 +403,84 @@ public class TestCase {
 		if(!valid)
 		{
 			throw new RuntimeException("Invalid CSV data provided for creating TestCase");
+		}
+	}
+	
+	public String toCSV() {
+		StringBuilder build = new StringBuilder();
+		build.append(getCsvValue(getUrl()));
+		build.append(",");
+		build.append(getCsvValue(getName()));
+		build.append(",");
+		build.append(getCsvValue(getMethod()));
+		build.append(",");
+		build.append(getCsvValue(getDescription()));
+		build.append(",");
+		build.append(getCsvValue(getContent()));
+		build.append(",");
+		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+			build.append(getCsvValue(entry.getKey()));
+			build.append(":");
+			build.append(getCsvValue(entry.getValue()));
+			build.append("|");
+		}
+		build.append(",");
+		build.append(getCsvValue(getExQueryPart()));
+		build.append(",");
+		build.append(getExpectedResCode());
+		build.append(",");
+		build.append(getCsvValue(getExpectedResContentType()));
+		build.append(",");
+		build.append(getCsvValue(getExpectedResContent()));
+		build.append(",");
+		for (String node : getExpectedNodes()) {
+			build.append(getCsvValue(node));
+			build.append("|");
+		}
+		build.append(",");
+		build.append(isSkipTest());
+		build.append(",");
+		build.append(isDetailedLog());
+		build.append(",");
+		build.append(isSecure());
+		build.append(",");
+		for (String node : getFilesToUpload()) {
+			build.append(getCsvValue(node));
+			build.append("|");
+		}
+		build.append(",");
+		build.append(isSoapBase());
+		build.append(",");
+		for (Map.Entry<String, String> entry : getSoapParameterValues().entrySet()) {
+			build.append(getCsvValue(entry.getKey()));
+			build.append(":");
+			build.append(getCsvValue(entry.getValue()));
+			build.append("|");
+		}
+		build.append(",");
+		build.append(getCsvValue(getWsdlKey()));
+		build.append(",");
+		build.append(getCsvValue(getOperationName()));
+		build.append(",");
+		build.append(getSequence());
+		build.append(",");
+		for (Map.Entry<String, String> entry : getWorkflowContextParameterMap().entrySet()) {
+			build.append(getCsvValue(entry.getKey()));
+			build.append(":");
+			build.append(getCsvValue(entry.getValue()));
+			build.append("|");
+		}
+		build.append(",");
+		build.append(getCsvValue(getOutFileName()));
+		return build.toString();
+	}
+	
+	private String getCsvValue(String value)
+	{
+		if(value==null) {
+			return "";
+		} else {
+			return value.replaceAll(",", "").replaceAll("\\|", "").replaceAll("\n", "");
 		}
 	}
 	

@@ -71,6 +71,7 @@ import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
@@ -86,6 +87,7 @@ import org.reficio.ws.builder.core.Wsdl;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.gatf.test.PostmanCollection;
 import com.gatf.test.TestCase;
 import com.gatf.view.ViewField;
 import com.thoughtworks.xstream.XStream;
@@ -125,6 +127,8 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 			<responseDataType>json</responseDataType>
 			<overrideSecure>true</overrideSecure>
 			<resourcepath>src/test/resources/generated</resourcepath>
+			<postmanCollectionVersion>2</postmanCollectionVersion>
+			<testCaseFormat>xml</testCaseFormat>
 			<enabled>true</enabled>
 		</configuration>
 		<executions>
@@ -294,6 +298,29 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		this.useSoapClient = useSoapClient;
 	}
 
+	@Parameter(alias = "postmanCollectionVersion")
+	private int postmanCollectionVersion;
+	
+	public int getPostmanCollectionVersion() {
+		return postmanCollectionVersion;
+	}
+
+	public void setPostmanCollectionVersion(int postmanCollectionVersion) {
+		this.postmanCollectionVersion = postmanCollectionVersion;
+	}
+	
+	@Parameter(alias = "testCaseFormat")
+	private String testCaseFormat;
+	
+	public String getTestCaseFormat() {
+		return testCaseFormat;
+	}
+
+	public void setTestCaseFormat(String testCaseFormat) {
+		this.testCaseFormat = testCaseFormat;
+	}
+
+	
 	private String getUrl(String url)
 	{
 		if(url==null || url.trim().isEmpty())return null;
@@ -332,7 +359,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                 if (theClassPath == null)
                     theClassPath = claz.getAnnotation(RequestMapping.class);
 
-                // Will create only documentation if this is not a rest ful web service
                 if (theClassPath != null)
                 {
                 	List<TestCase> tcases = new ArrayList<TestCase>();
@@ -583,33 +609,73 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                         }
                     }
                     if(!tcases.isEmpty()) {
-                    	XStream xstream = new XStream(
-                			new XppDriver() {
-                				public HierarchicalStreamWriter createWriter(Writer out) {
-                					return new PrettyPrintWriter(out) {
-                						boolean cdata = false;
-                						public void startNode(String name, Class clazz){
-                							super.startNode(name, clazz);
-                							cdata = (name.equals("content") || name.equals("expectedResContent"));
-                						}
-                						protected void writeText(QuickWriter writer, String text) {
-                							if(cdata) {
-                								writer.write("<![CDATA[");
-                								writer.write(text);
-                								writer.write("]]>");
-                							} else {
-                								writer.write(text);
-                							}
-                						}
-                					};
-                				}
-                			}
-                		);
-                		xstream.processAnnotations(new Class[]{TestCase.class});
-                		xstream.alias("TestCases", List.class);
+                    	
+                    	if("json".equalsIgnoreCase(getTestCaseFormat()))
+                    	{
+                    		String postManJson = new ObjectMapper().writeValueAsString(tcases);
+                			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.json";
+                    		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+                    		bw.write(postManJson);
+                    		bw.close();
+                    	}
+                    	else if("csv".equalsIgnoreCase(getTestCaseFormat()))
+                    	{
+                    		StringBuilder build = new StringBuilder();
+                    		for (TestCase testCase : tcases) {
+                    			build.append(testCase.toCSV());
+                    			build.append(SystemUtils.LINE_SEPARATOR);
+							}
+                    		String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.csv";
+                    		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+                    		bw.write(build.toString());
+                    		bw.close();
+                    	}
+                    	else
+                    	{
+	                    	XStream xstream = new XStream(
+	                			new XppDriver() {
+	                				public HierarchicalStreamWriter createWriter(Writer out) {
+	                					return new PrettyPrintWriter(out) {
+	                						boolean cdata = false;
+	                						public void startNode(String name, Class clazz){
+	                							super.startNode(name, clazz);
+	                							cdata = (name.equals("content") || name.equals("expectedResContent"));
+	                						}
+	                						protected void writeText(QuickWriter writer, String text) {
+	                							if(cdata) {
+	                								writer.write("<![CDATA[");
+	                								writer.write(text);
+	                								writer.write("]]>");
+	                							} else {
+	                								writer.write(text);
+	                							}
+	                						}
+	                					};
+	                				}
+	                			}
+	                		);
+	                		xstream.processAnnotations(new Class[]{TestCase.class});
+	                		xstream.alias("TestCases", List.class);
+	                		
+	                		String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.xml";
+	                		xstream.toXML(tcases, new FileOutputStream(file));
+                    	}
                 		
-                		String file = getResourcepath() + "/" + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.xml";
-                		xstream.toXML(tcases, new FileOutputStream(file));
+                		if(getPostmanCollectionVersion()>0)
+                		{
+                			PostmanCollection postmanCollection = new PostmanCollection();
+                			postmanCollection.setName(claz.getSimpleName());
+                			postmanCollection.setDescription(postmanCollection.getName());
+                			for (TestCase testCase : tcases) {
+                				postmanCollection.addTestCase(testCase, getPostmanCollectionVersion());
+							}
+                			
+                			String postManJson = new ObjectMapper().writeValueAsString(postmanCollection);
+                			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_postman.json";
+                    		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
+                    		bw.write(postManJson);
+                    		bw.close();
+                		}
                     }
                 }
             }
@@ -1383,7 +1449,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                         		xstream.processAnnotations(new Class[]{TestCase.class});
                         		xstream.alias("TestCases", List.class);
                         		
-                        		String file = getResourcepath() + "/" + wsdlLocParts[0] + "_testcases_soap.xml";
+                        		String file = getResourcepath() + File.separator + wsdlLocParts[0] + "_testcases_soap.xml";
                         		xstream.toXML(tcases, new FileOutputStream(file));
                             }
 							getLog().info("Adding message for SOAP operation - " + operation.getOperationName());

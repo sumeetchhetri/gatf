@@ -41,6 +41,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 		<responseDataType>json</responseDataType>
 		<overrideSecure>true</overrideSecure>
 		<resourcepath>src/test/resources/generated</resourcepath>
+		<postmanCollectionVersion>2</postmanCollectionVersion>
+		<testCaseFormat>xml</testCaseFormat>
 		<enabled>true</enabled>
 	</configuration>
  */
@@ -69,6 +71,26 @@ public class GatfConfiguration {
 	private boolean useSoapClient;
 	
 	private String urlSuffix;
+	
+	private int postmanCollectionVersion;
+	
+	private String testCaseFormat;
+	
+	public String getTestCaseFormat() {
+		return testCaseFormat;
+	}
+
+	public void setTestCaseFormat(String testCaseFormat) {
+		this.testCaseFormat = testCaseFormat;
+	}
+
+	public int getPostmanCollectionVersion() {
+		return postmanCollectionVersion;
+	}
+
+	public void setPostmanCollectionVersion(int postmanCollectionVersion) {
+		this.postmanCollectionVersion = postmanCollectionVersion;
+	}
 
     public String getUrlSuffix()
     {

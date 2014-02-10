@@ -18,9 +18,11 @@ package com.gatf.test;
 
 import static com.jayway.restassured.RestAssured.given;
 
+import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.StringWriter;
 import java.io.Writer;
@@ -97,6 +99,10 @@ public class ApiAcceptanceTest {
 	
 	private static String testCasesBasePath = null;
 	
+	private static String outFilesDir = null;
+	
+	private static String outFilesBasePath = null;
+	
 	private static String authUrl = null;
 	
 	private static String soapAuthWsdlKey = null;
@@ -151,14 +157,40 @@ public class ApiAcceptanceTest {
 		}
 	}
 	
+	private static File getNewOutResourceFile(String filename) {
+		try {
+			if(outFilesBasePath!=null && !outFilesBasePath.equalsIgnoreCase("null"))
+			{
+				File basePath = new File(outFilesBasePath);
+				File resource = new File(basePath, outFilesDir);
+				File file = new File(resource, filename);
+				if(!file.exists())
+					file.createNewFile();
+				return file;
+			}
+			else
+			{
+				URL url = Thread.currentThread().getContextClassLoader().getResource(outFilesDir);
+				File resource = new File(url.getPath());
+				File file = new File(resource, filename);
+				if(!file.exists())
+					file.createNewFile();
+				return file;
+			}
+		} catch (Exception e) {
+			return null;
+		}
+	}
+	
 	@BeforeSuite
-	@Parameters({"testCasesPath", "baseUrl", "authEnabled", "authUrl", "authExtractAuth", "wsdlLocFile",
-		"soapAuthEnabled", "soapAuthWsdlKey", "soapAuthOperation", "soapAuthExtractAuth", "testCasesBasePath"})
-	public void init(ITestContext context, String testCasesPath,
+	@Parameters({"testCaseDir", "baseUrl", "authEnabled", "authUrl", "authExtractAuth", "wsdlLocFile",
+		"soapAuthEnabled", "soapAuthWsdlKey", "soapAuthOperation", "soapAuthExtractAuth", "testCasesBasePath",
+		"outFilesDir","outFilesBasePath"})
+	public void init(ITestContext context, String testCaseDirp,
 			String baseUrl, @Optional("false") boolean authEnabled, @Optional("null") String authUrlp,
 			@Optional("null") String authExtractAuthp, @Optional("null") String wsdlLocFile, @Optional("false") boolean soapAuthEnabled,
 			@Optional("null") String soapAuthWsdlKeyp, @Optional("null") String soapAuthOperationp, @Optional("null") String soapAuthExtractAuthp,
-			@Optional("null") String testCasesBasePathp) throws Exception
+			@Optional("null") String testCasesBasePathp, @Optional("null") String outFilesDirp, @Optional("null") String outFilesBasePathp) throws Exception
 	{
 		authUrlp = (authUrlp==null||authUrlp.equalsIgnoreCase("null")?null:authUrlp);
 		authExtractAuthp = (authExtractAuthp==null||authExtractAuthp.equalsIgnoreCase("null")?null:authExtractAuthp);
@@ -168,14 +200,50 @@ public class ApiAcceptanceTest {
 		soapAuthOperationp = (soapAuthOperationp==null||soapAuthOperationp.equalsIgnoreCase("null")?null:soapAuthOperationp);
 		soapAuthExtractAuthp = (soapAuthExtractAuthp==null||soapAuthExtractAuthp.equalsIgnoreCase("null")?null:soapAuthExtractAuthp);
 		testCasesBasePathp = (testCasesBasePathp==null||testCasesBasePathp.equalsIgnoreCase("null")?null:testCasesBasePathp);
+		outFilesBasePath = (outFilesBasePathp==null||outFilesBasePathp.equalsIgnoreCase("null")?null:outFilesBasePathp);
+		outFilesDir = (outFilesDirp==null||outFilesDirp.equalsIgnoreCase("null")?null:outFilesDirp);
 		
 		engine.init();
 		
 		RestAssured.baseURI =  baseUrl;
 		
 		authUrl = authUrlp;
-		testCaseDir = testCasesPath;
+		testCaseDir = testCaseDirp;
 		testCasesBasePath = testCasesBasePathp;
+		
+		Assert.assertTrue(testCaseDir!=null && !testCaseDir.trim().isEmpty(), "Testcase directory name is blank...");
+		Assert.assertEquals(getResourceFile(testCaseDir).exists(), true, "Testcase directory not found...");
+		
+		if(outFilesDir!=null && !outFilesDir.trim().isEmpty())
+		{
+			try
+			{
+				if(outFilesBasePath!=null && !outFilesBasePath.equalsIgnoreCase("null"))
+				{
+					File basePath = new File(outFilesBasePath);
+					File resource = new File(basePath, outFilesDir);
+					if(!resource.exists())
+						resource.mkdirs();
+				}
+				else
+				{
+					URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+					File resource = new File(url.getPath());
+					File file = new File(resource, outFilesDir);
+					if(!file.exists())
+						file.mkdirs();
+				}
+			} catch (Exception e) {
+				outFilesDir = null;
+			}
+			Assert.assertNotNull(outFilesDir, "Testcase out file directory not found...");
+		}
+		else
+		{
+			outFilesDir = testCaseDir;
+			outFilesBasePath = testCasesBasePath;
+		}
+		
 		if(authExtractAuthp!=null)
 		{
 			authExtractAuthParams = authExtractAuthp.split(",");
@@ -416,20 +484,49 @@ public class ApiAcceptanceTest {
 		}
 		
 		handleWorklowContext(testCase);
+		executeTestCase(testCase);
 		
-		if(!testCase.isSoapBase()) {
-			testRestBased(testCase);
-		} else {
-			testSoapBased(testCase);
-		}
 		Reporter.log("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
 		logger.info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
 		logger.info("============================================================\n");
 
 	}
 
+	private void executeTestCase(TestCase testCase) throws Exception
+	{
+		if(!testCase.isSoapBase()) {
+			if(testCase.getRepeatScenarios()==null || testCase.getRepeatScenarios().isEmpty())
+			{
+				testRestBased(testCase);
+			}
+			else
+			{
+				for (Map<String, String> sceanrioMap : testCase.getRepeatScenarios()) {
+					globalworkflowContext.putAll(sceanrioMap);
+					testRestBased(testCase);
+				}
+			}
+		} else {
+			if(testCase.getRepeatScenarios()==null || testCase.getRepeatScenarios().isEmpty())
+			{
+				testSoapBased(testCase);
+			}
+			else
+			{
+				for (Map<String, String> sceanrioMap : testCase.getRepeatScenarios()) {
+					globalworkflowContext.putAll(sceanrioMap);
+					testSoapBased(testCase);
+				}
+			}
+		}
+	}
+	
 	private void handleWorklowContext(TestCase testCase) throws Exception {
 		if(testCase!=null) {
+			if(testCase.getVariableMap()!=null && !testCase.getVariableMap().isEmpty()) {
+				globalworkflowContext.putAll(testCase.getVariableMap());
+			}
+			
 			VelocityContext context = new VelocityContext(globalworkflowContext);
 			if(testCase.getUrl()!=null) {
 				StringWriter writer = new StringWriter();
@@ -643,6 +740,13 @@ public class ApiAcceptanceTest {
 				throw e;
 			}
 		}
+		if(testCase.getOutFileName()!=null)
+		{
+			File outFile = getNewOutResourceFile(testCase.getOutFileName());
+			BufferedWriter bw = new BufferedWriter(new FileWriter(outFile));
+			bw.write(resText);
+			bw.close();
+		}
 	}
 	
 	private String getLocalNodeName(String nodeName) {
@@ -715,7 +819,7 @@ public class ApiAcceptanceTest {
 						contType= mulff[3].trim();
 					}
 					
-					if(!type.equalsIgnoreCase("file") || !type.equalsIgnoreCase("file")) {
+					if(!type.equalsIgnoreCase("text") && !type.equalsIgnoreCase("file")) {
 						logger.error("Invalid type specified for file upload...skipping value - " + filedet);
 						continue;
 					}
@@ -770,14 +874,21 @@ public class ApiAcceptanceTest {
 			request = sw.toString();
 		}
 		
-		logger.info(request);
+		if(testCase.isDetailedLog())
+		{
+			logger.info(request);
+		}
+		
 		String resText = null;
 		try {
 			if(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName())!=null)
 				resText = client.post(soapActions.get(testCase.getWsdlKey()+testCase.getOperationName()), request);
 			else
 				resText = client.post(request);
-			logger.info(resText);
+			if(testCase.isDetailedLog())
+			{
+				logger.info(resText);
+			}
 		} catch(TransmissionException e) {
 			Assert.assertEquals(testCase.getExpectedResCode(), e.getErrorCode().intValue());
 			return;
@@ -837,6 +948,13 @@ public class ApiAcceptanceTest {
 			}
 		} catch (Exception e) {
 			throw e;
+		}
+		if(testCase.getOutFileName()!=null)
+		{
+			File outFile = getNewOutResourceFile(testCase.getOutFileName());
+			BufferedWriter bw = new BufferedWriter(new FileWriter(outFile));
+			bw.write(resText);
+			bw.close();
 		}
 	}
 }
