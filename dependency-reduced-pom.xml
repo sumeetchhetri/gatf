@@ -5,7 +5,7 @@
   <artifactId>gatf-plugin</artifactId>
   <packaging>maven-plugin</packaging>
   <name>gatf-plugin-plugin</name>
-  <version>1.0</version>
+  <version>1.1</version>
   <url>http://maven.apache.org</url>
   <build>
     <plugins>
@@ -50,6 +50,15 @@
     <repository>
       <id>reficio</id>
       <url>http://repo.reficio.org/maven/</url>
+    </repository>
+    <repository>
+      <releases />
+      <snapshots>
+        <enabled>false</enabled>
+      </snapshots>
+      <id>sonatype-nexus</id>
+      <name>Sonatype repository</name>
+      <url>https://oss.sonatype.org/content/repositories/releases</url>
     </repository>
   </repositories>
   <properties>

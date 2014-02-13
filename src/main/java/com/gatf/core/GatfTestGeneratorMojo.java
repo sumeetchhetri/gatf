@@ -142,7 +142,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  *   }
  * </pre>
  */
-@Mojo(name = "gatf", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP, defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true, threadSafe = true)
+@Mojo(name = "gatf-generator", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP, defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true, threadSafe = true)
 public class GatfTestGeneratorMojo extends AbstractMojo
 {
 

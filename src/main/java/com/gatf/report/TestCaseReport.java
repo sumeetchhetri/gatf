@@ -1,7 +1,7 @@
 package com.gatf.report;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
@@ -14,9 +14,7 @@ import com.gatf.test.TestCase;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCaseReport {
 	
-	private String envUrl;
-	
-	private String sourceFileName;
+	private String actualUrl;
 	
 	private String workflowName;
 
@@ -28,31 +26,31 @@ public class TestCaseReport {
 	
 	private Long executionTime;
 	
-	private List<Long> executionTimes;
+	private List<Long> executionTimes = new ArrayList<Long>();
 	
-	private Map<String, String> requestHeaders;
+	private Long averageExecutionTime;
 	
 	private String requestContent;
 	
-	private Map<String, String> responseHeaders;
+	private String responseHeaders;
 	
 	private String responseContent;
-
-	public String getEnvUrl() {
-		return envUrl;
+	
+	private String error;
+	
+	private String errorText;
+	
+	private Integer errorRunNumber;
+	
+	public Integer getErrorRunNumber() {
+		return errorRunNumber;
 	}
 
-	public void setEnvUrl(String envUrl) {
-		this.envUrl = envUrl;
+	public void setErrorRunNumber(Integer errorRunNumber) {
+		this.errorRunNumber = errorRunNumber;
 	}
 
-	public String getSourceFileName() {
-		return sourceFileName;
-	}
-
-	public void setSourceFileName(String sourceFileName) {
-		this.sourceFileName = sourceFileName;
-	}
+	private String testIdentifier;
 
 	public String getWorkflowName() {
 		return workflowName;
@@ -68,6 +66,11 @@ public class TestCaseReport {
 
 	public void setTestCase(TestCase testCase) {
 		this.testCase = testCase;
+		if(testCase!=null) {
+			setTestIdentifier(testCase.getSourcefileName()+"\n"+testCase.getName());
+			setActualUrl(testCase.getAurl());
+			setRequestContent(testCase.getAcontent());
+		}
 	}
 
 	public String getStatus() {
@@ -102,14 +105,6 @@ public class TestCaseReport {
 		this.executionTimes = executionTimes;
 	}
 
-	public Map<String, String> getRequestHeaders() {
-		return requestHeaders;
-	}
-
-	public void setRequestHeaders(Map<String, String> requestHeaders) {
-		this.requestHeaders = requestHeaders;
-	}
-
 	public String getRequestContent() {
 		return requestContent;
 	}
@@ -118,11 +113,11 @@ public class TestCaseReport {
 		this.requestContent = requestContent;
 	}
 
-	public Map<String, String> getResponseHeaders() {
+	public String getResponseHeaders() {
 		return responseHeaders;
 	}
 
-	public void setResponseHeaders(Map<String, String> responseHeaders) {
+	public void setResponseHeaders(String responseHeaders) {
 		this.responseHeaders = responseHeaders;
 	}
 
@@ -132,5 +127,68 @@ public class TestCaseReport {
 
 	public void setResponseContent(String responseContent) {
 		this.responseContent = responseContent;
+	}
+
+	public String getError() {
+		return error;
+	}
+
+	public void setError(String error) {
+		this.error = error;
+	}
+
+	public String getActualUrl() {
+		return actualUrl;
+	}
+
+	public void setActualUrl(String actualUrl) {
+		this.actualUrl = actualUrl;
+	}
+
+	public String getErrorText() {
+		return errorText;
+	}
+
+	public void setErrorText(String errorText) {
+		this.errorText = errorText;
+	}
+
+	public String getTestIdentifier() {
+		return testIdentifier;
+	}
+
+	public void setTestIdentifier(String testIdentifier) {
+		this.testIdentifier = testIdentifier;
+	}
+
+	public Long getAverageExecutionTime() {
+		return averageExecutionTime;
+	}
+
+	public void setAverageExecutionTime(Long averageExecutionTime) {
+		this.averageExecutionTime = averageExecutionTime;
+	}
+
+	public TestCaseReport(){}
+	
+	public TestCaseReport(TestCaseReport other) {
+		super();
+		this.actualUrl = other.actualUrl;
+		this.workflowName = other.workflowName;
+		this.testCase = other.testCase;
+		this.status = other.status;
+		this.numberOfRuns = other.numberOfRuns;
+		this.executionTime = other.executionTime;
+		if(other.executionTimes!=null)
+		{
+			this.executionTimes = new ArrayList<Long>(other.executionTimes);
+		}
+		this.requestContent = other.requestContent;
+		this.responseHeaders = other.responseHeaders;
+		this.responseContent = other.responseContent;
+		this.error = other.error;
+		this.errorText = other.errorText;
+		this.errorRunNumber = other.errorRunNumber;
+		this.testIdentifier = other.testIdentifier;
 	}
 }

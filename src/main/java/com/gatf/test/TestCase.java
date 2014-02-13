@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
@@ -28,12 +29,13 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
-import com.jayway.restassured.internal.http.Method;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 
 @XStreamAlias("TestCase")
@@ -101,12 +103,41 @@ public class TestCase {
 	@XStreamAsAttribute
 	private String outFileName;
 	
-	private Map<String, String> variableMap = new HashMap<String, String>();
-	
 	private List<Map<String, String>> repeatScenarios = new ArrayList<Map<String,String>>();
 	
+	@XStreamOmitField
+	@JsonIgnore
 	private String sourcefileName;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private String aurl;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private String aexQueryPart;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private String acontent;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private List<String> aexpectedNodes = new ArrayList<String>();
+	
+	@XStreamAsAttribute
+	private Integer numberOfExecutions = 0;
+	
+	@XStreamAsAttribute
+	private boolean repeatScenariosConcurrentExecution;
+	
+	@XStreamAsAttribute	
+	private boolean stopOnFirstFailureForPerfTest;
 
+	@XStreamOmitField
+	@JsonIgnore
+	private volatile boolean failed;
+	
 	public String getUrl() {
 		return url;
 	}
@@ -284,20 +315,86 @@ public class TestCase {
 		this.outFileName = outFileName;
 	}
 
-	public Map<String, String> getVariableMap() {
-		return variableMap;
-	}
-
-	public void setVariableMap(Map<String, String> variableMap) {
-		this.variableMap = variableMap;
-	}
-
 	public List<Map<String, String>> getRepeatScenarios() {
 		return repeatScenarios;
 	}
 
 	public void setRepeatScenarios(List<Map<String, String>> repeatScenarios) {
 		this.repeatScenarios = repeatScenarios;
+	}
+
+	public String getSourcefileName() {
+		return sourcefileName;
+	}
+
+	public void setSourcefileName(String sourcefileName) {
+		this.sourcefileName = sourcefileName;
+	}
+
+	public String getAurl() {
+		return aurl;
+	}
+
+	public void setAurl(String aurl) {
+		this.aurl = aurl;
+	}
+
+	public String getAexQueryPart() {
+		return aexQueryPart;
+	}
+
+	public void setAexQueryPart(String aexQueryPart) {
+		this.aexQueryPart = aexQueryPart;
+	}
+
+	public String getAcontent() {
+		return acontent;
+	}
+
+	public void setAcontent(String acontent) {
+		this.acontent = acontent;
+	}
+
+	public List<String> getAexpectedNodes() {
+		return aexpectedNodes;
+	}
+
+	public void setAexpectedNodes(List<String> aexpectedNodes) {
+		this.aexpectedNodes = aexpectedNodes;
+	}
+
+	public Integer getNumberOfExecutions() {
+		return numberOfExecutions;
+	}
+
+	public void setNumberOfExecutions(Integer numberOfExecutions) {
+		this.numberOfExecutions = numberOfExecutions;
+	}
+	
+	public boolean isRepeatScenariosConcurrentExecution() {
+		return repeatScenariosConcurrentExecution;
+	}
+
+	public void setRepeatScenariosConcurrentExecution(
+			boolean repeatScenariosConcurrentExecution) {
+		this.repeatScenariosConcurrentExecution = repeatScenariosConcurrentExecution;
+	}
+
+	public boolean isStopOnFirstFailureForPerfTest() {
+		return stopOnFirstFailureForPerfTest;
+	}
+
+	public void setStopOnFirstFailureForPerfTest(
+			boolean stopOnFirstFailureForPerfTest) {
+		this.stopOnFirstFailureForPerfTest = stopOnFirstFailureForPerfTest;
+	}
+
+	public boolean isFailed() {
+		return failed;
+	}
+
+	public void setFailed(boolean failed) {
+		this.failed = failed;
 	}
 
 	@Override
@@ -496,11 +593,10 @@ public class TestCase {
 			
 			if(getMethod()==null || getMethod().trim().isEmpty())
 				throw new RuntimeException("Blank HTTP Method specified for testcase");
-			try {
-				setMethod(Method.valueOf(getMethod().toUpperCase()).name());
-			} catch (Exception e) {
+			
+			if(!getMethod().toUpperCase().equals(HttpMethod.GET) && !getMethod().toUpperCase().equals(HttpMethod.PUT)
+					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE))
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
-			}
 			
 			if(getHeaders().isEmpty() && ("POST".equals(getMethod()) || "PUT".equals(getMethod())))
 				throw new RuntimeException("No Content-Type Header provided");
@@ -567,4 +663,57 @@ public class TestCase {
 			}
 		}
 	}
+
+	public TestCase(TestCase other) {
+		super();
+		this.url = other.url;
+		this.name = other.name;
+		this.method = other.method;
+		this.description = other.description;
+		this.content = other.content;
+		if(other.headers!=null)
+		{
+			this.headers = new HashMap<String, String>(other.headers);
+		}
+		this.exQueryPart = other.exQueryPart;
+		this.expectedResCode = other.expectedResCode;
+		this.expectedResContentType = other.expectedResContentType;
+		this.expectedResContent = other.expectedResContent;
+		this.skipTest = other.skipTest;
+		this.detailedLog = other.detailedLog;
+		this.secure = other.secure;
+		if(other.expectedNodes!=null)
+		{
+			this.expectedNodes = new ArrayList<String>(other.expectedNodes);
+		}
+		this.soapBase = other.soapBase;
+		this.wsdlKey = other.wsdlKey;
+		this.operationName = other.operationName;
+		if(other.soapParameterValues!=null)
+		{
+			this.soapParameterValues = new HashMap<String, String>(other.soapParameterValues);
+		}
+		if(other.workflowContextParameterMap!=null)
+		{
+			this.workflowContextParameterMap = new HashMap<String, String>(other.workflowContextParameterMap);
+		}
+		this.sequence = other.sequence;
+		this.filesToUpload = other.filesToUpload;
+		this.outFileName = other.outFileName;
+		if(other.repeatScenarios!=null)
+		{
+			this.repeatScenarios = new ArrayList<Map<String,String>>(other.repeatScenarios);
+		}
+		this.sourcefileName = other.sourcefileName;
+		this.aurl = other.aurl;
+		this.aexQueryPart = other.aexQueryPart;
+		this.acontent = other.acontent;
+		this.aexpectedNodes = new ArrayList<String>();
+		this.numberOfExecutions = other.numberOfExecutions;
+		this.repeatScenariosConcurrentExecution = other.repeatScenariosConcurrentExecution;
+		this.stopOnFirstFailureForPerfTest = other.stopOnFirstFailureForPerfTest;
+		this.failed = other.failed;
+	}
+	
+	
 }

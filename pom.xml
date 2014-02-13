@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.test</groupId>
 	<artifactId>gatf-plugin</artifactId>
-	<version>1.0</version>
+	<version>1.1</version>
 	<packaging>maven-plugin</packaging>
 	<name>gatf-plugin-plugin</name>
 	<url>http://maven.apache.org</url>
@@ -16,6 +16,17 @@
 		<repository>
 			<id>reficio</id>
 			<url>http://repo.reficio.org/maven/</url>
+		</repository>
+		<repository>
+			<id>sonatype-nexus</id>
+			<name>Sonatype repository</name>
+			<url>https://oss.sonatype.org/content/repositories/releases</url>
+			<releases>
+				<enabled>true</enabled>
+			</releases>
+			<snapshots>
+				<enabled>false</enabled>
+			</snapshots>
 		</repository>
 	</repositories>
 
@@ -40,49 +51,33 @@
 			<artifactId>maven-project</artifactId>
 			<version>2.2.1</version>
 		</dependency>
-		<!--dependency> <groupId> org.apache.maven</groupId> <artifactId>maven-core</artifactId> 
-			<version>3.0.4</version> </dependency -->
 
 		<dependency>
 			<groupId>javax.ws.rs</groupId>
-			<artifactId>jsr311-api</artifactId>
-			<version>1.1.1</version>
+			<artifactId>javax.ws.rs-api</artifactId>
+			<version>2.0</version>
 		</dependency>
-
+		            
 		<dependency>
 			<groupId>log4j</groupId>
 			<artifactId>log4j</artifactId>
 			<version>1.2.16</version>
 		</dependency>
 
-		<!-- TestNG testing framework for testing -->
 		<dependency>
-			<groupId>org.testng</groupId>
-			<artifactId>testng</artifactId>
-			<version>6.4</version>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.11</version>
 		</dependency>
-		<dependency>
+        <dependency>
 			<groupId>com.thoughtworks.xstream</groupId>
 			<artifactId>xstream</artifactId>
 			<version>1.4.5</version>
 		</dependency>
 		<dependency>
-			<groupId>com.jayway.restassured</groupId>
-			<artifactId>rest-assured</artifactId>
-			<version>2.1.0</version>
-			<exclusions>
-				<!-- Exclude Groovy because of classpath issue -->
-				<exclusion>
-					<groupId>org.codehaus.groovy</groupId>
-					<artifactId>groovy</artifactId>
-				</exclusion>
-			</exclusions>
-		</dependency>
-		<dependency>
-			<groupId>org.codehaus.groovy</groupId>
-			<artifactId>groovy-all</artifactId>
-			<!-- Needs to be the same version that REST Assured depends on -->
-			<version>2.2.0</version>
+		   <groupId>com.ning</groupId>
+		   <artifactId>async-http-client</artifactId>
+		   <version>1.8.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
@@ -105,6 +100,32 @@
 			<groupId>org.reficio</groupId>
 			<artifactId>soap-client</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
+		</dependency>
+		
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-core-asl</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-jaxrs</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-mapper-asl</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+		<dependency>
+			<groupId>org.codehaus.jackson</groupId>
+			<artifactId>jackson-xc</artifactId>
+			<version>1.9.13</version>
+		</dependency>
+		<dependency>
+		    <groupId>com.jayway.jsonpath</groupId>
+		    <artifactId>json-path</artifactId>
+		    <version>0.9.1</version>
 		</dependency>
 	</dependencies>
 
