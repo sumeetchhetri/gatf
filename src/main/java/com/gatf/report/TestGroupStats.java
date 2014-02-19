@@ -19,6 +19,10 @@ public class TestGroupStats {
 
 	private Integer totalRuns;
 	
+	private Integer failedRuns;
+	
+	private String baseUrl;
+	
 	public String getSourceFile() {
 		return sourceFile;
 	}
@@ -57,5 +61,21 @@ public class TestGroupStats {
 
 	public void setTotalRuns(Integer totalRuns) {
 		this.totalRuns = totalRuns;
+	}
+
+	public Integer getFailedRuns() {
+		return failedRuns;
+	}
+
+	public void setFailedRuns(Integer failedRuns) {
+		this.failedRuns = failedRuns;
+	}
+
+	public String getBaseUrl() {
+		return baseUrl;
+	}
+
+	public void setBaseUrl(String baseUrl) {
+		this.baseUrl = baseUrl;
 	}
 }

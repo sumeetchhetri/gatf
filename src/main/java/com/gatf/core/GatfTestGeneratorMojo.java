@@ -87,9 +87,8 @@ import org.reficio.ws.builder.core.Wsdl;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-import com.gatf.test.PostmanCollection;
-import com.gatf.test.TestCase;
-import com.gatf.view.ViewField;
+import com.gatf.test.core.TestCase;
+import com.gatf.test.postman.PostmanCollection;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
@@ -556,7 +555,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
-	                            	content = new ObjectMapper().defaultPrettyPrintingWriter().writeValueAsString(contentvf.getValue());
+	                            	content = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
 	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))

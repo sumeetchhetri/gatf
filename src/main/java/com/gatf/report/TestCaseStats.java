@@ -10,6 +10,8 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCaseStats {
 
+	private String identifier;
+	
 	private String sourceFileName;
 	
 	private String workflowName;
@@ -19,6 +21,14 @@ public class TestCaseStats {
 	private Long executionTime;
 	
 	private String status;
+
+	public String getIdentifier() {
+		return identifier;
+	}
+
+	public void setIdentifier(String identifier) {
+		this.identifier = identifier;
+	}
 
 	public String getSourceFileName() {
 		return sourceFileName;

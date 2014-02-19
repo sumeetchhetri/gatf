@@ -6,8 +6,10 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.junit.Assert;
 
-import com.gatf.test.TestCase;
+import com.gatf.test.core.TestCase;
+import com.gatf.test.dataprovider.GatfTestDataConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 @XStreamAlias("gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
@@ -30,6 +32,8 @@ public class GatfExecutorConfig {
 	
 	private String authExtractAuth;
 	
+	private String authParamsDetails;
+	
 	private String wsdlLocFile;
 	
 	private boolean soapAuthEnabled;
@@ -49,6 +53,19 @@ public class GatfExecutorConfig {
 	private Integer httpConnectionTimeout;
 	
 	private Integer httpRequestTimeout;
+	
+	private Integer concurrentUserSimulationNum;
+	
+	private String testDataConfigFile;
+	
+	private String simulationUsersProviderName;
+	
+	private boolean compareEnabled;
+	
+	private GatfTestDataConfig gatfTestDataConfig; 
+	
+	@XStreamOmitField
+	private Integer compareBaseUrlsNum;
 
 	public String getBaseUrl() {
 		return baseUrl;
@@ -169,6 +186,13 @@ public class GatfExecutorConfig {
 		return null;
 	}
 	
+	public String[] getAuthParamDetails() {
+		if(authParamsDetails!=null) {
+			return authParamsDetails.split(",");
+		}
+		return null;
+	}
+	
 	public String[] getSoapAuthExtractAuthParams() {
 		if(soapAuthExtractAuth!=null) {
 			return soapAuthExtractAuth.split(",");
@@ -214,35 +238,107 @@ public class GatfExecutorConfig {
 		this.httpRequestTimeout = httpRequestTimeout;
 	}
 	
+	public Integer getConcurrentUserSimulationNum() {
+		return concurrentUserSimulationNum;
+	}
+
+	public void setConcurrentUserSimulationNum(Integer concurrentUserSimulationNum) {
+		this.concurrentUserSimulationNum = concurrentUserSimulationNum;
+	}
+	
+	public GatfTestDataConfig getGatfTestDataConfig() {
+		return gatfTestDataConfig;
+	}
+
+	public void setGatfTestDataConfig(GatfTestDataConfig gatfTestDataConfig) {
+		this.gatfTestDataConfig = gatfTestDataConfig;
+	}
+
+	public String getTestDataConfigFile() {
+		return testDataConfigFile;
+	}
+
+	public void setTestDataConfigFile(String testDataConfigFile) {
+		this.testDataConfigFile = testDataConfigFile;
+	}
+
+	public String getSimulationUsersProviderName() {
+		return simulationUsersProviderName;
+	}
+
+	public void setSimulationUsersProviderName(String simulationUsersProviderName) {
+		this.simulationUsersProviderName = simulationUsersProviderName;
+	}
+
+	public Integer getCompareBaseUrlsNum() {
+		return compareBaseUrlsNum;
+	}
+
+	public void setCompareBaseUrlsNum(Integer compareBaseUrlsNum) {
+		this.compareBaseUrlsNum = compareBaseUrlsNum;
+	}
+
+	public boolean isCompareEnabled() {
+		return compareEnabled;
+	}
+
+	public void setCompareEnabled(boolean compareEnabled) {
+		this.compareEnabled = compareEnabled;
+	}
+
+	public String getAuthParamsDetails() {
+		return authParamsDetails;
+	}
+
+	public void setAuthParamsDetails(String authParamsDetails) {
+		this.authParamsDetails = authParamsDetails;
+	}
+
 	public void validate()
 	{
 		Assert.assertTrue("Testcase directory name is blank...", 
 				getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
 		
 		if(isAuthEnabled()) {
-			Assert.assertTrue(getAuthExtractAuthParams().length==4);
-			Assert.assertTrue(!getAuthExtractAuthParams()[0].isEmpty());
-			Assert.assertTrue(getAuthExtractAuthParams()[1].equalsIgnoreCase("json") ||
+			Assert.assertTrue("Invalid auth extract params", getAuthExtractAuthParams().length==4);
+			Assert.assertTrue("Invalid auth extract token name", !getAuthExtractAuthParams()[0].isEmpty());
+			Assert.assertTrue("Invalid auth extract mode specified, should be one of (xml,json,header,plain)", 
+					getAuthExtractAuthParams()[1].equalsIgnoreCase("json") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("xml") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("header") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("plain") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("cookie"));
-			Assert.assertTrue(!getAuthExtractAuthParams()[2].isEmpty());
-			Assert.assertTrue(getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam") ||
+			Assert.assertTrue("Invalid auth name specified", !getAuthExtractAuthParams()[2].isEmpty());
+			Assert.assertTrue("Invalid auth mode specified, should be one of (queryparam,header)", 
+					getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam") ||
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("postparam") ||
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("header"));
-			Assert.assertTrue(getAuthUrl()!=null && !getAuthUrl().isEmpty());
+			Assert.assertTrue("Invalid auth url", getAuthUrl()!=null && !getAuthUrl().isEmpty());
+			
+			Assert.assertNotNull("Invalid auth param details",getAuthParamsDetails());
+			Assert.assertTrue("Invalid auth param details", getAuthParamDetails().length==4);
+			Assert.assertTrue("Invalid auth user param name", !getAuthParamDetails()[0].isEmpty());
+			Assert.assertTrue("Invalid auth user param name mode specified, should be one of (header,postparam,queryparam)", 
+					getAuthParamDetails()[1].equalsIgnoreCase("header") ||
+					getAuthParamDetails()[1].equalsIgnoreCase("postparam") ||
+					getAuthParamDetails()[1].equalsIgnoreCase("queryparam"));
+			Assert.assertTrue("Invalid auth password param name", !getAuthParamDetails()[2].isEmpty());
+			Assert.assertTrue("Invalid auth password param name mode specified, should be one of (header,queryparam,header)", 
+					getAuthParamDetails()[3].equalsIgnoreCase("queryparam") ||
+					getAuthParamDetails()[3].equalsIgnoreCase("postparam") ||
+					getAuthParamDetails()[3].equalsIgnoreCase("header"));
+			
 		}
 		
 		if(isSoapAuthEnabled()) {
-			Assert.assertTrue(getSoapAuthWsdlKey()!=null && !getSoapAuthWsdlKey().isEmpty());
-			Assert.assertTrue(getSoapAuthOperation()!=null && !getSoapAuthOperation().isEmpty());
+			Assert.assertTrue("Invalid auth soap wsdl key", getSoapAuthWsdlKey()!=null && !getSoapAuthWsdlKey().isEmpty());
+			Assert.assertTrue("Invalid auth soap wsdl operation", getSoapAuthOperation()!=null && !getSoapAuthOperation().isEmpty());
 			
-			Assert.assertTrue(getSoapAuthExtractAuthParams().length==3);
-			Assert.assertTrue(!getSoapAuthExtractAuthParams()[0].isEmpty());
-			Assert.assertTrue(!getSoapAuthExtractAuthParams()[1].isEmpty());
-			Assert.assertTrue(!getSoapAuthExtractAuthParams()[2].isEmpty());
-			Assert.assertTrue(getSoapAuthExtractAuthParams()[2].equalsIgnoreCase("queryparam"));
+			Assert.assertTrue("Invalid auth soap extract params", getSoapAuthExtractAuthParams().length==3);
+			Assert.assertTrue("Invalid auth soap extract token name", !getSoapAuthExtractAuthParams()[0].isEmpty());
+			Assert.assertTrue("Invalid auth soap name specified", !getSoapAuthExtractAuthParams()[1].isEmpty());
+			Assert.assertTrue("Invalid auth soap name", !getSoapAuthExtractAuthParams()[2].isEmpty());
+			Assert.assertTrue("Invalid auth soap name", getSoapAuthExtractAuthParams()[2].equalsIgnoreCase("queryparam"));
 		}
 	}
 }

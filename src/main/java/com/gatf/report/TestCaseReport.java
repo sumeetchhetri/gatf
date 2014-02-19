@@ -1,20 +1,25 @@
 package com.gatf.report;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
-import com.gatf.test.TestCase;
+import com.gatf.test.core.TestCase;
+
 
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCaseReport {
 	
 	private String actualUrl;
+	
+	private String url;
 	
 	private String workflowName;
 
@@ -24,7 +29,7 @@ public class TestCaseReport {
 	
 	private Integer numberOfRuns;
 	
-	private Long executionTime;
+	private Long executionTime = 0L;
 	
 	private List<Long> executionTimes = new ArrayList<Long>();
 	
@@ -32,7 +37,13 @@ public class TestCaseReport {
 	
 	private String requestContent;
 	
+	private String requestHeaders;
+	
 	private String responseHeaders;
+	
+	private String requestContentType;
+	
+	private String responseContentType;
 	
 	private String responseContent;
 	
@@ -40,16 +51,8 @@ public class TestCaseReport {
 	
 	private String errorText;
 	
-	private Integer errorRunNumber;
+	private Map<String, String> errors = new HashMap<String, String>();
 	
-	public Integer getErrorRunNumber() {
-		return errorRunNumber;
-	}
-
-	public void setErrorRunNumber(Integer errorRunNumber) {
-		this.errorRunNumber = errorRunNumber;
-	}
-
 	private String testIdentifier;
 
 	public String getWorkflowName() {
@@ -67,9 +70,17 @@ public class TestCaseReport {
 	public void setTestCase(TestCase testCase) {
 		this.testCase = testCase;
 		if(testCase!=null) {
-			setTestIdentifier(testCase.getSourcefileName()+"\n"+testCase.getName());
-			setActualUrl(testCase.getAurl());
+			setTestIdentifier(testCase.getIdentifier()+"\n"+testCase.getName());
+			if(testCase.getAurl()!=null)
+			{
+				setActualUrl(testCase.getAurl());
+			}
+			else
+			{
+				setActualUrl(testCase.getUrl());
+			}
 			setRequestContent(testCase.getAcontent());
+			setUrl(testCase.getUrl());
 		}
 	}
 
@@ -169,6 +180,46 @@ public class TestCaseReport {
 		this.averageExecutionTime = averageExecutionTime;
 	}
 
+	public Map<String, String> getErrors() {
+		return errors;
+	}
+
+	public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
+	}
+
+	public void setErrors(Map<String, String> errors) {
+		this.errors = errors;
+	}
+
+	public String getRequestHeaders() {
+		return requestHeaders;
+	}
+
+	public void setRequestHeaders(String requestHeaders) {
+		this.requestHeaders = requestHeaders;
+	}
+
+	public String getRequestContentType() {
+		return requestContentType;
+	}
+
+	public void setRequestContentType(String requestContentType) {
+		this.requestContentType = requestContentType;
+	}
+
+	public String getResponseContentType() {
+		return responseContentType;
+	}
+
+	public void setResponseContentType(String responseContentType) {
+		this.responseContentType = responseContentType;
+	}
+
 	public TestCaseReport(){}
 	
 	public TestCaseReport(TestCaseReport other) {
@@ -188,7 +239,10 @@ public class TestCaseReport {
 		this.responseContent = other.responseContent;
 		this.error = other.error;
 		this.errorText = other.errorText;
-		this.errorRunNumber = other.errorRunNumber;
 		this.testIdentifier = other.testIdentifier;
+		if(other.errors!=null)
+		{
+			this.errors = other .errors;
+		}
 	}
 }

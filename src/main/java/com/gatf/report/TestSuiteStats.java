@@ -20,6 +20,8 @@ public class TestSuiteStats {
 	
 	private Integer totalRuns;
 	
+	private Integer failedRuns;
+	
 	private List<TestGroupStats> groupStats = new ArrayList<TestGroupStats>();
 
 	public Integer getTotalTestCount() {
@@ -60,5 +62,13 @@ public class TestSuiteStats {
 
 	public void setTotalRuns(Integer totalRuns) {
 		this.totalRuns = totalRuns;
+	}
+
+	public Integer getFailedRuns() {
+		return failedRuns;
+	}
+
+	public void setFailedRuns(Integer failedRuns) {
+		this.failedRuns = failedRuns;
 	}
 }
