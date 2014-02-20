@@ -70,6 +70,8 @@
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body">        
+								<input type="radio" checked name="chartType" value="line" onclick="isLineChart=true">Line Chart<br>
+								<input type="radio" name="chartType" value="bar" onclick="isLineChart=false">Bar Chart<br/><br/>
 								<select id="groupFilesSelect" onchange="loadStats(this.value)"><option value="All">All</option></select>
 								<br/><br/><br/>
 								<ul style="margin-left:50px" id="stats-pre-ele">
@@ -169,6 +171,7 @@
 		<script src="js/plugins/flot/jquery.flot.resize.js"></script>
 		<script src="js/plugins/flot/jquery.flot.pie.js"></script>
 		<script src="js/plugins/flot/jquery.flot.categories.js"></script>
+		<script src="js/plugins/flot/jquery.flot.orderBars.js"></script>
 
 		<script src="js/plugins/dataTables/jquery.dataTables.js"></script>
 		<script src="js/plugins/dataTables/dataTables.bootstrap.js"></script>
