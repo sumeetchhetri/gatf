@@ -1,12 +1,27 @@
 package com.gatf.executor.core;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.junit.Assert;
 
-import com.gatf.executor.core.TestCase;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
@@ -61,6 +76,14 @@ public class GatfExecutorConfig {
 	private boolean compareEnabled;
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
+	
+	private boolean enabled;
+	
+	private String[] testCaseHooksPaths;
+	
+	private boolean loadTestingEnabled;
+	
+	private Long loadTestingTime;
 	
 	@XStreamOmitField
 	private Integer compareBaseUrlsNum;
@@ -190,6 +213,14 @@ public class GatfExecutorConfig {
 		return null;
 	}
 	
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
+
 	public boolean isAuthEnabled() {
 		return authEnabled && getAuthExtractAuthParams()!=null;
 	}
@@ -282,6 +313,30 @@ public class GatfExecutorConfig {
 
 	public void setAuthParamsDetails(String authParamsDetails) {
 		this.authParamsDetails = authParamsDetails;
+	}
+
+	public String[] getTestCaseHooksPaths() {
+		return testCaseHooksPaths;
+	}
+
+	public void setTestCaseHooksPaths(String[] testCaseHooksPaths) {
+		this.testCaseHooksPaths = testCaseHooksPaths;
+	}
+
+	public boolean isLoadTestingEnabled() {
+		return loadTestingEnabled;
+	}
+
+	public void setLoadTestingEnabled(boolean loadTestingEnabled) {
+		this.loadTestingEnabled = loadTestingEnabled;
+	}
+
+	public Long getLoadTestingTime() {
+		return loadTestingTime;
+	}
+
+	public void setLoadTestingTime(Long loadTestingTime) {
+		this.loadTestingTime = loadTestingTime;
 	}
 
 	public void validate()

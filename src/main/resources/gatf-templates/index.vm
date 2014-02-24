@@ -70,8 +70,8 @@
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body">        
-								<input type="radio" checked name="chartType" value="line" onclick="isLineChart=true">Line Chart<br>
-								<input type="radio" name="chartType" value="bar" onclick="isLineChart=false">Bar Chart<br/><br/>
+								<input type="radio" checked name="chartType" value="line" onclick="reloadCharts(this.value)">Line Chart<br>
+								<input type="radio" name="chartType" value="bar" onclick="reloadCharts(this.value)">Bar Chart<br/><br/>
 								<select id="groupFilesSelect" onchange="loadStats(this.value)"><option value="All">All</option></select>
 								<br/><br/><br/>
 								<ul style="margin-left:50px" id="stats-pre-ele">
@@ -96,7 +96,7 @@
 					<div class="col-lg-4" id="secondpie" style="display:none">
 						<div class="panel panel-default" style="width:400px;">
 							<div class="panel-heading">
-								Overall Test Success/Failures - Runs
+								Overall Success/Failures - Multiple Test Runs
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body">        
@@ -115,7 +115,7 @@
 								<div class="table-responsive">
 									<table class="table table-striped table-bordered table-hover" id="dataTables-example" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
 									<thead>
-									<tr><th>Identifier</th><th>Status</th><th>Time(ms)</th><th>TestCase</th></tr>
+									<tr><th>Identifier</th><th>Method</th><th>Status</th><th>Time(ms)</th><th>TestCase</th></tr>
 									</thead>
 									</table>
 								</div>
@@ -139,7 +139,7 @@
 								<table id="tempodata" border="1" style="table-layout: fixed; width: 100%"></table>
 							 </div>
 						</div>
-						
+
 						<div class="panel panel-default" id="compare-chart-cont" style="display:none">
 							<div class="panel-heading">
 								Comparison Chart

@@ -1,5 +1,21 @@
 package com.gatf.executor.core;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -384,6 +400,11 @@ public class AcceptanceTestContext {
 				Assert.assertNotNull("Provider class is not defined", provider.getProviderClass());
 				Assert.assertNotNull("Provider args are not defined", provider.getArgs());
 				
+				if(!provider.isEnabled()) {
+					logger.info("Provider " + provider.getProviderName() + " is Disabled...");
+					continue;
+				}
+				
 				TestDataProvider testDataProvider = null;
 				if(DatabaseTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
 					testDataProvider = new DatabaseTestCaseDataProvider();
@@ -407,8 +428,8 @@ public class AcceptanceTestContext {
 						Assert.assertTrue("Provider class should implement the TestDataProvider interface", validProvider);
 						Object providerInstance = claz.newInstance();
 						testDataProvider = (TestDataProvider)providerInstance;
-					} catch (Exception e) {
-						e.printStackTrace();
+					} catch (Throwable e) {
+						throw new AssertionError(e);
 					}
 				}
 				
@@ -478,9 +499,17 @@ public class AcceptanceTestContext {
 		} else {
 			Integer ncount = finalTestReportsDups.get(key) + 1;
 			String ext = "-" + ncount;
-			finalTestReportsDups.put(key+ext, ncount);
+			finalTestReportsDups.put(key, ncount);
 			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+ext);
 			testCaseReport.getTestCase().setName(testCaseReport.getTestCase().getName()+ext);
 		}
+	}
+	
+	public void clearTestResults() {
+		
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  finalTestResults.entrySet()) {
+			entry.getValue().clear();
+		}
+		finalTestReportsDups.clear();
 	}
 }

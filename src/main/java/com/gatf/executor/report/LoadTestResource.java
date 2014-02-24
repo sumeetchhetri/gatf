@@ -23,45 +23,25 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class TestCaseCompareStatus {
+public class LoadTestResource {
 
-	private String identifer;
+	private String title;
 	
-	private String testSuiteKey;
-	
-	private String testCaseName;
-	
-	private String compareStatusError;
+	private String url;
 
-	public String getIdentifer() {
-		return identifer;
+	public String getTitle() {
+		return title;
 	}
 
-	public void setIdentifer(String identifer) {
-		this.identifer = identifer;
-	}
-	
-	public String getTestSuiteKey() {
-		return testSuiteKey;
+	public void setTitle(String title) {
+		this.title = title;
 	}
 
-	public void setTestSuiteKey(String testSuiteKey) {
-		this.testSuiteKey = testSuiteKey;
+	public String getUrl() {
+		return url;
 	}
 
-	public String getTestCaseName() {
-		return testCaseName;
-	}
-
-	public void setTestCaseName(String testCaseName) {
-		this.testCaseName = testCaseName;
-	}
-
-	public String getCompareStatusError() {
-		return compareStatusError;
-	}
-
-	public void setCompareStatusError(String compareStatusError) {
-		this.compareStatusError = compareStatusError;
+	public void setUrl(String url) {
+		this.url = url;
 	}
 }

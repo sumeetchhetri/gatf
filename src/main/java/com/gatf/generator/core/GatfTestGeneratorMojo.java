@@ -37,7 +37,6 @@ import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -87,6 +86,7 @@ import org.reficio.ws.builder.core.Wsdl;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.postman.PostmanCollection;
 import com.thoughtworks.xstream.XStream;
@@ -1184,27 +1184,40 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 
     public static void main(String[] args) throws Exception
     {
-    	if(args.length>0) {
+    	if(args.length>1) {
     		
-    		InputStream io = new FileInputStream(args[0]);
-    		XStream xstream = new XStream(new XppDriver());
-    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-    		xstream.alias("testPaths", String[].class);
-    		xstream.alias("testPath", String.class);
-    		xstream.alias("soapWsdlKeyPairs", String[].class);
-    		xstream.alias("soapWsdlKeyPair", String.class);
-    		
-    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
-    		
-    		GatfTestGeneratorMojo testGenerator = new GatfTestGeneratorMojo();
-    		testGenerator.setDebugEnabled(false);
-    		testGenerator.setEnabled(config.isEnabled());
-    		testGenerator.setInDataType(config.getRequestDataType());
-    		testGenerator.setTestPaths(config.getTestPaths());
-    		testGenerator.setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
-    		testGenerator.setUrlPrefix(config.getUrlPrefix());
-    		testGenerator.setResourcepath(config.getResourcepath());
-    		testGenerator.execute();
+    		if(args[0].equals("-generator") && !args[1].trim().isEmpty())
+    		{
+	    		InputStream io = new FileInputStream(args[1]);
+	    		XStream xstream = new XStream(new XppDriver());
+	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+	    		xstream.alias("testPaths", String[].class);
+	    		xstream.alias("testPath", String.class);
+	    		xstream.alias("soapWsdlKeyPairs", String[].class);
+	    		xstream.alias("soapWsdlKeyPair", String.class);
+	    		
+	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
+	    		
+	    		GatfTestGeneratorMojo testGenerator = new GatfTestGeneratorMojo();
+	    		testGenerator.setDebugEnabled(false);
+	    		testGenerator.setEnabled(config.isEnabled());
+	    		testGenerator.setInDataType(config.getRequestDataType());
+	    		testGenerator.setTestPaths(config.getTestPaths());
+	    		testGenerator.setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
+	    		testGenerator.setUrlPrefix(config.getUrlPrefix());
+	    		testGenerator.setResourcepath(config.getResourcepath());
+	    		testGenerator.execute();
+    		}
+    		else if(args[0].equals("-executor") && !args[1].trim().isEmpty())
+    		{
+    			GatfTestCaseExecutorMojo.main(new String[]{args[1]});
+    		}
+    		else
+    		{
+    			System.out.println("Please specify proper arguments to the program - valid invocations are, \n" +
+    					"gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
+    					"gatf-plugin-{version}.jar -executor {executor-config-file}.xml");
+    		}
     	}
     }
 

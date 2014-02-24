@@ -147,10 +147,6 @@ public class TestCase {
 	@XStreamOmitField
 	private Integer simulationNumber;
 	
-	private String preExecuteHook;
-	
-	private String postExecuteHook;
-	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -420,22 +416,6 @@ public class TestCase {
 
 	public void setSimulationNumber(Integer simulationNumber) {
 		this.simulationNumber = simulationNumber;
-	}
-
-	public String getPreExecuteHook() {
-		return preExecuteHook;
-	}
-
-	public void setPreExecuteHook(String preExecuteHook) {
-		this.preExecuteHook = preExecuteHook;
-	}
-
-	public String getPostExecuteHook() {
-		return postExecuteHook;
-	}
-
-	public void setPostExecuteHook(String postExecuteHook) {
-		this.postExecuteHook = postExecuteHook;
 	}
 
 	public boolean isFailed() {

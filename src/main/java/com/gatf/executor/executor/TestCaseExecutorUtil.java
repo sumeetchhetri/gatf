@@ -1,5 +1,20 @@
 package com.gatf.executor.executor;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -324,6 +339,7 @@ public class TestCaseExecutorUtil {
 		long start = System.currentTimeMillis();
 		
 		RequestBuilder builder = new RequestBuilder(testCase.getMethod());
+		testCaseReport.setMethod(testCase.getMethod());
 		
 		try {
 			List<Method> preHook = context.getPrePostHook(testCase, true);
@@ -343,70 +359,66 @@ public class TestCaseExecutorUtil {
 			Request request = builder.build();
 			return client.executeRequest(request, new TestCaseResponseHandler(testCase, testCaseReport, context, start));
 		} catch (Throwable e) {
-			if(testCaseReport!=null)
-			{
-				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-				testCaseReport.setStatus("Failed");
-				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
-				testCaseReport.setError(e.getMessage());
-				if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
-					testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
-				}
-				e.printStackTrace();
-				final TestCaseReport testCaseReportt = testCaseReport;
-				return new ListenableFuture<TestCaseReport>() {
-
-					public boolean cancel(boolean mayInterruptIfRunning) {
-						return false;
-					}
-
-					public boolean isCancelled() {
-						return false;
-					}
-
-					public boolean isDone() {
-						return true;
-					}
-
-					public TestCaseReport get() throws InterruptedException,
-							ExecutionException {
-						return testCaseReportt;
-					}
-
-					public TestCaseReport get(long timeout, TimeUnit unit)
-							throws InterruptedException, ExecutionException,
-							TimeoutException {
-						return testCaseReportt;
-					}
-
-					public void done() {
-					}
-
-					public void abort(Throwable t) {
-					}
-
-					public void content(TestCaseReport v) {
-					}
-
-					public void touch() {
-					}
-
-					public boolean getAndSetWriteHeaders(boolean writeHeader) {
-						return false;
-					}
-
-					public boolean getAndSetWriteBody(boolean writeBody) {
-						return false;
-					}
-
-					public ListenableFuture<TestCaseReport> addListener(
-							Runnable listener, Executor exec) {
-						return null;
-					}
-				};
+			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
+			testCaseReport.setStatus("Failed");
+			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
+			testCaseReport.setError(e.getMessage());
+			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
+				testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
 			}
+			e.printStackTrace();
+			final TestCaseReport testCaseReportt = testCaseReport;
+			return new ListenableFuture<TestCaseReport>() {
+
+				public boolean cancel(boolean mayInterruptIfRunning) {
+					return false;
+				}
+
+				public boolean isCancelled() {
+					return false;
+				}
+
+				public boolean isDone() {
+					return true;
+				}
+
+				public TestCaseReport get() throws InterruptedException,
+						ExecutionException {
+					return testCaseReportt;
+				}
+
+				public TestCaseReport get(long timeout, TimeUnit unit)
+						throws InterruptedException, ExecutionException,
+						TimeoutException {
+					return testCaseReportt;
+				}
+
+				public void done() {
+				}
+
+				public void abort(Throwable t) {
+				}
+
+				public void content(TestCaseReport v) {
+				}
+
+				public void touch() {
+				}
+
+				public boolean getAndSetWriteHeaders(boolean writeHeader) {
+					return false;
+				}
+
+				public boolean getAndSetWriteBody(boolean writeBody) {
+					return false;
+				}
+
+				public ListenableFuture<TestCaseReport> addListener(
+						Runnable listener, Executor exec) {
+					return null;
+				}
+			};
 		}
-		return null;
 	}
 	
 	private File getResourceFile(String baseFolder, String filename) {
@@ -464,7 +476,7 @@ public class TestCaseExecutorUtil {
 	
 		public com.ning.http.client.AsyncHandler.STATE onBodyPartReceived(
 				HttpResponseBodyPart bodyPart) throws Exception {
-			String contType = builder.build().getHeader(HttpHeaders.CONTENT_TYPE);
+			String contType = testCase.getExpectedResContentType();
 			if(MediaType.APPLICATION_JSON.equalsIgnoreCase(contType) || MediaType.APPLICATION_XML.equalsIgnoreCase(contType)
 					|| MediaType.TEXT_PLAIN.equalsIgnoreCase(contType) || MediaType.TEXT_HTML.equalsIgnoreCase(contType)
 					|| MediaType.TEXT_XML.equalsIgnoreCase(contType))
@@ -488,6 +500,7 @@ public class TestCaseExecutorUtil {
 				HttpResponseStatus responseStatus) throws Exception {
 			
 			int statusCode = responseStatus.getStatusCode();
+			testCaseReport.setResponseStatusCode(statusCode);
 			if (statusCode != testCase.getExpectedResCode()) {
 				testCaseReport.setError("Expected status code ["+testCase.getExpectedResCode()
 						+"] does not match actual status code ["+statusCode+"]");
@@ -507,8 +520,10 @@ public class TestCaseExecutorUtil {
 				HttpResponseHeaders headers) throws Exception {
 			if(testCase.getExpectedResContentType()!=null)
 			{
-				if(!testCase.getExpectedResContentType().equals(
-						headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)))
+				if(testCase.getExpectedResContentType()!=null && testCase.getExpectedResContentType().trim().isEmpty()
+						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)!=null 
+						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)
+							.indexOf(testCase.getExpectedResContentType())!=0)
 				{
 					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
 							+"] does not match actual content type ["+headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)+"]");
@@ -538,6 +553,10 @@ public class TestCaseExecutorUtil {
 					else if(testCase.getExpectedResContentType().equals(MediaType.APPLICATION_XML))
 					{
 						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
+					}
+					else
+					{
+						testCaseReport.setStatus("Success");
 					}
 				} else {
 					soapResponseValidator.validate(response, testCase, testCaseReport, context);

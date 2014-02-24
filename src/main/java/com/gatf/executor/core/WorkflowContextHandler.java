@@ -1,5 +1,21 @@
 package com.gatf.executor.core;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,7 +37,6 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.jayway.jsonpath.JsonPath;
 
-
 public class WorkflowContextHandler {
 
 	private final VelocityEngine engine = new VelocityEngine();
@@ -39,18 +54,49 @@ public class WorkflowContextHandler {
 	
 	private final Map<String, String> globalworkflowContext = new ConcurrentHashMap<String, String>();
 	
-	public void addGlobalVariables(Map<String, String> variableMap) {
+	private final Map<Integer, Map<String, String>> suiteWorkflowContext = new ConcurrentHashMap<Integer, Map<String, String>>();
+	
+	void initializeSuiteContext(int numberOfRuns) {
+		
+		suiteWorkflowContext.clear();
+		
+		int start = (numberOfRuns>1?1:0);
+		int end = (numberOfRuns>1?numberOfRuns+1:numberOfRuns);
+		for (int i = start; i < end; i++) {
+			suiteWorkflowContext.put(i, new ConcurrentHashMap<String, String>());
+		}
+	}
+	
+	void addGlobalVariables(Map<String, String> variableMap) {
 		if(variableMap!=null) {
 			globalworkflowContext.putAll(variableMap);
 		}
 	}
 	
-	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap) throws Exception {
-		
+	private Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
+		if(testCase.getSimulationNumber()==null) {
+			return suiteWorkflowContext.get(0);
+		} else {
+			return suiteWorkflowContext.get(testCase.getSimulationNumber());
+		}
+	}
+	
+	private Map<String, String> getGlobalSuiteAndTestLevelParameters(TestCase testCase, Map<String, String> variableMap) {
 		Map<String, String> nmap = new HashMap<String, String>(globalworkflowContext);
+		if(testCase.getSimulationNumber()==null) {
+			nmap.putAll(suiteWorkflowContext.get(0));
+		} else {
+			nmap.putAll(suiteWorkflowContext.get(testCase.getSimulationNumber()));
+		}
 		if(variableMap!=null && !variableMap.isEmpty()) {
 			nmap.putAll(variableMap);
 		}
+		return nmap;
+	}
+	
+	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap) throws Exception {
+		
+		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap);
 		
 		if(testCase!=null && !nmap.isEmpty()) {
 			
@@ -94,7 +140,7 @@ public class WorkflowContextHandler {
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
 				String jsonValue = JsonPath.read(json, entry.getValue());
 				Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", jsonValue);
-				globalworkflowContext.put(entry.getKey(), jsonValue);
+				getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
 			}
 		}
 	}
@@ -115,7 +161,7 @@ public class WorkflowContextHandler {
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
 				String xmlValue = xmlNodeList.item(0).getNodeValue();
 				Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
-				globalworkflowContext.put(entry.getKey(), xmlValue);
+				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 			}
 		}
 	}
@@ -134,7 +180,7 @@ public class WorkflowContextHandler {
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
 				String xmlValue = xmlNodeList.item(0).getNodeValue();
 				Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
-				globalworkflowContext.put(entry.getKey(), xmlValue);
+				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 			}
 		}
 	}

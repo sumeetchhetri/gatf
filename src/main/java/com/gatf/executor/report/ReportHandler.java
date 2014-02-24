@@ -1,5 +1,21 @@
 package com.gatf.executor.report;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -41,9 +57,11 @@ public class ReportHandler {
 	
 	private Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
 	
+	private List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
+	
 	private final StringBuffer reportLogsStr = new StringBuffer();
 	
-	public void doReporting(AcceptanceTestContext acontext, long startTime)
+	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName)
 	{
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
@@ -57,7 +75,8 @@ public class ReportHandler {
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
 		tempMap.putAll(acontext.getFinalTestResults());
 		
-		List<TestCaseCompareStatus> compareStatusLst = new ArrayList<TestCaseCompareStatus>();
+		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
+		
 		Map<String, TestCaseReport> firstCompareCopy = null;
 		if(acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null
 				&& acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()>1)
@@ -83,7 +102,7 @@ public class ReportHandler {
 					
 					if(firstCompareCopy!=null) 
 					{
-						doCompare(testCaseReport, firstCompareCopy, compareStatusLst);
+						doCompare(testCaseReport, firstCompareCopy, compareStatuses, entry.getKey());
 					}
 					
 					TestCaseStats tesStat = new TestCaseStats();
@@ -147,7 +166,7 @@ public class ReportHandler {
 				testGroupStats.setFailedTestCount(grpfld);
 				testGroupStats.setTotalRuns(grpruns);
 				testGroupStats.setFailedRuns(grpflruns);
-				if(compareStatusLst!=null)
+				if(compareStatuses!=null)
 				{
 					testGroupStats.setBaseUrl(reports.get(0).getTestCase().getBaseUrl());
 				}
@@ -207,7 +226,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(compareStatusLst);
+			String reportingJson = new ObjectMapper().writeValueAsString(compareStatuses);
 			context.put("compareStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -238,8 +257,10 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
 
+                if(reportFileName==null)
+                	reportFileName = "index.html";
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                        + SystemUtils.FILE_SEPARATOR + "index.html")));
+                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
                 fwriter.write(writer.toString());
                 fwriter.close();
 
@@ -247,70 +268,169 @@ public class ReportHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		acontext.clearTestResults();
+		
+		return testSuiteStats;
+	}
+	
+	public void addToLoadTestResources(int runNo, long time) {
+		LoadTestResource resource = new LoadTestResource();
+		resource.setTitle("Run-"+runNo);
+		resource.setUrl(time+".html");
+		loadTestResources.add(resource);
+	}
+	
+	public void doFinalLoadTestReport(TestSuiteStats testSuiteStats, AcceptanceTestContext acontext)
+	{
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		VelocityContext context = new VelocityContext();
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			context.put("suiteStats", reportingJson);
+			
+			reportingJson = new ObjectMapper().writeValueAsString(loadTestResources);
+			context.put("loadTestResources", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			File basePath = null;
+        	if(config.getOutFilesBasePath()!=null)
+        		basePath = new File(config.getOutFilesBasePath());
+        	else
+        	{
+        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+        		basePath = new File(url.getPath());
+        	}
+        	File resource = new File(basePath, config.getOutFilesDir());
+			
+            VelocityEngine engine = new VelocityEngine();
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.init();
+            
+            StringWriter writer = new StringWriter();
+            engine.mergeTemplate("/gatf-templates/index-load.vm", context, writer);
+
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                    + SystemUtils.FILE_SEPARATOR + "index.html")));
+            fwriter.write(writer.toString());
+            fwriter.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public TestSuiteStats doLoadTestReporting(AcceptanceTestContext acontext, long startTime)
+	{
+		TestSuiteStats testSuiteStats = new TestSuiteStats();
+		
+		int total = 0, failed = 0, totruns = 0, failruns = 0;
+		
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  acontext.getFinalTestResults().entrySet()) {
+			try {
+				List<TestCaseReport> reports = Arrays.asList(entry.getValue().toArray(new TestCaseReport[entry.getValue().size()]));
+				
+				for (TestCaseReport testCaseReport : reports) {
+					
+					total ++;
+					if(testCaseReport.getNumberOfRuns()>1)
+					{
+						totruns += testCaseReport.getNumberOfRuns();
+					}
+					
+					if(testCaseReport.getErrors()!=null && testCaseReport.getNumberOfRuns()>1)
+					{
+						failruns += testCaseReport.getErrors().size();
+						if(testCaseReport.getError()!=null) {
+							failruns += 1;
+						}
+					}
+					
+					if(!testCaseReport.getStatus().equals("Success")) {
+						failed ++;
+					}
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		long endTime = System.currentTimeMillis();
+		testSuiteStats.setTotalTestCount(total);
+		testSuiteStats.setFailedTestCount(failed);
+		testSuiteStats.setTotalRuns(totruns);
+		testSuiteStats.setFailedRuns(failruns);
+		testSuiteStats.setExecutionTime(endTime - startTime);
+		
+		acontext.clearTestResults();
+		
+		return testSuiteStats;
 	}
 	
 	private void doCompare(TestCaseReport testCaseReport, 
-			Map<String, TestCaseReport> firstCompareCopy, List<TestCaseCompareStatus> compareStatusLst) 
+			Map<String, TestCaseReport> firstCompareCopy, Map<String, List<TestCaseCompareStatus>> compareStatuses,
+			String testCaseSuiteKey) 
 	{
+		List<TestCaseCompareStatus> compareStatusLst = null;
 		TestCase tc = testCaseReport.getTestCase();
-		if(tc.getSimulationNumber()==1 &&
-				!firstCompareCopy.containsKey("Run-1"+tc.getName()))
+		if(tc.getSimulationNumber()==1 && !firstCompareCopy.containsKey("Run-1"+tc.getName()))
 		{
 			firstCompareCopy.put("Run-1"+tc.getName(), testCaseReport);
+			compareStatusLst = new ArrayList<TestCaseCompareStatus>();
+			compareStatuses.put(tc.getName(), compareStatusLst);
 		}
 		else if(tc.getSimulationNumber()>1)
 		{
+			compareStatusLst = compareStatuses.get(tc.getName());
 			TestCaseReport testCaseReportRun1 = firstCompareCopy.get("Run-1"+tc.getName());
 			TestCaseCompareStatus comStatus = new TestCaseCompareStatus();	
-			comStatus.setIdentifer(testCaseReport.getTestCase().getIdentifier());
-			comStatus.setTestCaseName(testCaseReport.getTestCase().getName());
+			comStatus.setIdentifer(testCaseReport.getTestIdentifier());
+			comStatus.setTestCaseName(tc.getName());
+			comStatus.setTestSuiteKey(testCaseSuiteKey);
 			
 			if(!testCaseReportRun1.getStatus().equals(testCaseReport.getStatus()))
 			{
-				comStatus.getCompareStatusError().add("Failed\nFinal Status do not match");
+				comStatus.setCompareStatusError("FAILED_STATUS_CODE");
 			}
-			else if(testCaseReportRun1.getResponseContent()!=null 
-					&& testCaseReport.getResponseContent()!=null)
+			if(comStatus.getCompareStatusError()==null
+					&& testCaseReportRun1.getError()!=null && !testCaseReportRun1.getError().trim().isEmpty()
+					&& testCaseReport.getError()!=null && !testCaseReport.getError().trim().isEmpty()
+					&& !testCaseReportRun1.getError().equals(testCaseReport.getError()))
 			{
-				if(testCaseReportRun1.getResponseContent()
-					.equals(testCaseReport.getResponseContent()))
-				{
-					comStatus.getCompareStatusError().add("Success");
-				}
-				else
-				{
-					comStatus.getCompareStatusError().add("Failed\nResponse Content don't match");
-				}
+				comStatus.setCompareStatusError("FAILED_ERROR_DETAILS");
 			}
-			else if(testCaseReportRun1.getError()!=null
-					&& testCaseReport.getError()!=null)
+			if(comStatus.getCompareStatusError()==null
+					&& testCaseReportRun1.getErrorText()!=null && !testCaseReportRun1.getErrorText().trim().isEmpty()
+					&& testCaseReport.getErrorText()!=null && !testCaseReport.getErrorText().trim().isEmpty()
+					&& !testCaseReportRun1.getErrorText().equals(testCaseReport.getErrorText()))
 			{
-				if(testCaseReportRun1.getError()
-						.equals(testCaseReport.getError()))
-				{
-					comStatus.getCompareStatusError().add("Success");
-				}
-				else
-				{
-					comStatus.getCompareStatusError().add("Failed\nResponse Error's don't match");
-				}
+				comStatus.setCompareStatusError("FAILED_ERROR_CONTENT");
 			}
-			else if(testCaseReportRun1.getErrorText()!=null
-					&& testCaseReport.getErrorText()!=null)
+			if(comStatus.getCompareStatusError()==null
+					&& testCaseReportRun1.getResponseContentType()!=null 
+					&& !testCaseReportRun1.getResponseContentType().trim().isEmpty()
+					&& testCaseReport.getResponseContentType()!=null 
+					&& !testCaseReport.getResponseContentType().trim().isEmpty()
+					&& !testCaseReportRun1.getResponseContentType().equals(testCaseReport.getResponseContentType()))
 			{
-				if(testCaseReportRun1.getErrorText()
-						.equals(testCaseReport.getErrorText()))
-				{
-					comStatus.getCompareStatusError().add("Success");
-				}
-				else
-				{
-					comStatus.getCompareStatusError().add("Failed\nResponse Error Details don't match");
-				}
+				comStatus.setCompareStatusError("FAILED_RESPONSE_TYPE");
 			}
-			else
+			if(comStatus.getCompareStatusError()==null
+					&& testCaseReportRun1.getResponseContent()!=null && !testCaseReportRun1.getResponseContent().trim().isEmpty()
+					&& testCaseReport.getResponseContent()!=null && !testCaseReport.getResponseContent().trim().isEmpty()
+					&& !testCaseReportRun1.getResponseContent().equals(testCaseReport.getResponseContent()))
 			{
-				comStatus.getCompareStatusError().add("Success");
+				comStatus.setCompareStatusError("FAILED_RESPONSE_CONTENT");
+			}
+			
+			if(comStatus.getCompareStatusError()==null)
+			{
+				comStatus.setCompareStatusError("SUCCESS");
 			}
 			
 			compareStatusLst.add(comStatus);

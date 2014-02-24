@@ -1,5 +1,21 @@
 package com.gatf.executor.core;
 
+/*
+Copyright 2013-2014, Sumeet Chhetri
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -27,6 +43,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
+import com.gatf.executor.dataprovider.GatfTestDataConfig;
+import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
@@ -34,7 +52,10 @@ import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.XppDriver;
 
 @Mojo(
 		name = "gatf-executor", 
@@ -125,42 +146,38 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "testCaseHooksPaths")
     private String[] testCaseHooksPath;
 	
+	@Parameter(alias = "enabled")
+	private boolean enabled;
+	
+	@Parameter(alias = "loadTestingEnabled")
+	private boolean loadTestingEnabled;
+	
+	@Parameter(alias = "loadTestingTime")
+	private Long loadTestingTime;
+	
+	@Parameter(alias = "gatfTestDataConfig")
+	private GatfTestDataConfig gatfTestDataConfig;
+	
 	private Long startTime = 0L;
 	
-	public String getBaseUrl() {
-		return baseUrl;
+	public void setProject(MavenProject project) {
+		this.project = project;
 	}
 
 	public void setBaseUrl(String baseUrl) {
 		this.baseUrl = baseUrl;
 	}
 
-	public String getTestCasesBasePath() {
-		return testCasesBasePath;
-	}
-
 	public void setTestCasesBasePath(String testCasesBasePath) {
 		this.testCasesBasePath = testCasesBasePath;
-	}
-
-	public String getTestCaseDir() {
-		return testCaseDir;
 	}
 
 	public void setTestCaseDir(String testCaseDir) {
 		this.testCaseDir = testCaseDir;
 	}
 
-	public String getOutFilesBasePath() {
-		return outFilesBasePath;
-	}
-
 	public void setOutFilesBasePath(String outFilesBasePath) {
 		this.outFilesBasePath = outFilesBasePath;
-	}
-
-	public String getOutFilesDir() {
-		return outFilesDir;
 	}
 
 	public void setOutFilesDir(String outFilesDir) {
@@ -171,24 +188,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		this.authEnabled = authEnabled;
 	}
 
-	public String getAuthUrl() {
-		return authUrl;
-	}
-
 	public void setAuthUrl(String authUrl) {
 		this.authUrl = authUrl;
-	}
-
-	public String getAuthExtractAuth() {
-		return authExtractAuth;
 	}
 
 	public void setAuthExtractAuth(String authExtractAuth) {
 		this.authExtractAuth = authExtractAuth;
 	}
 
-	public String getWsdlLocFile() {
-		return wsdlLocFile;
+	public void setAuthParamsDetails(String authParamsDetails) {
+		this.authParamsDetails = authParamsDetails;
 	}
 
 	public void setWsdlLocFile(String wsdlLocFile) {
@@ -199,137 +208,85 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		this.soapAuthEnabled = soapAuthEnabled;
 	}
 
-	public String getSoapAuthWsdlKey() {
-		return soapAuthWsdlKey;
-	}
-
 	public void setSoapAuthWsdlKey(String soapAuthWsdlKey) {
 		this.soapAuthWsdlKey = soapAuthWsdlKey;
-	}
-
-	public String getSoapAuthOperation() {
-		return soapAuthOperation;
 	}
 
 	public void setSoapAuthOperation(String soapAuthOperation) {
 		this.soapAuthOperation = soapAuthOperation;
 	}
 
-	public String getSoapAuthExtractAuth() {
-		return soapAuthExtractAuth;
-	}
-
 	public void setSoapAuthExtractAuth(String soapAuthExtractAuth) {
 		this.soapAuthExtractAuth = soapAuthExtractAuth;
-	}
-	
-	public Integer getNumConcurrentExecutions() {
-		return numConcurrentExecutions;
 	}
 
 	public void setNumConcurrentExecutions(Integer numConcurrentExecutions) {
 		this.numConcurrentExecutions = numConcurrentExecutions;
 	}
 
-	public String getConfigFile() {
-		return configFile;
-	}
-
 	public void setConfigFile(String configFile) {
 		this.configFile = configFile;
-	}
-
-	public boolean isHttpCompressionEnabled() {
-		return httpCompressionEnabled;
 	}
 
 	public void setHttpCompressionEnabled(boolean httpCompressionEnabled) {
 		this.httpCompressionEnabled = httpCompressionEnabled;
 	}
 
-	public Integer getHttpConnectionTimeout() {
-		return httpConnectionTimeout;
-	}
-
 	public void setHttpConnectionTimeout(Integer httpConnectionTimeout) {
 		this.httpConnectionTimeout = httpConnectionTimeout;
-	}
-
-	public Integer getHttpRequestTimeout() {
-		return httpRequestTimeout;
 	}
 
 	public void setHttpRequestTimeout(Integer httpRequestTimeout) {
 		this.httpRequestTimeout = httpRequestTimeout;
 	}
 
-	public Integer getConcurrentUserSimulationNum() {
-		return concurrentUserSimulationNum;
-	}
-
 	public void setConcurrentUserSimulationNum(Integer concurrentUserSimulationNum) {
 		this.concurrentUserSimulationNum = concurrentUserSimulationNum;
-	}
-
-	public String getTestDataConfigFile() {
-		return testDataConfigFile;
 	}
 
 	public void setTestDataConfigFile(String testDataConfigFile) {
 		this.testDataConfigFile = testDataConfigFile;
 	}
 
-	public String getSimulationUsersProviderName() {
-		return simulationUsersProviderName;
-	}
-
 	public void setSimulationUsersProviderName(String simulationUsersProviderName) {
 		this.simulationUsersProviderName = simulationUsersProviderName;
-	}
-	
-	public String[] getTestCaseHooksPath() {
-		return testCaseHooksPath;
-	}
-
-	public void setTestCaseHooksPath(String[] testCaseHooksPath) {
-		this.testCaseHooksPath = testCaseHooksPath;
-	}
-
-	public String getAuthParamsDetails() {
-		return authParamsDetails;
-	}
-
-	public void setAuthParamsDetails(String authParamsDetails) {
-		this.authParamsDetails = authParamsDetails;
-	}
-
-	public boolean isAuthEnabled() {
-		return authEnabled;
-	}
-
-	public boolean isSoapAuthEnabled() {
-		return soapAuthEnabled;
-	}
-	
-	public boolean isCompareEnabled() {
-		return compareEnabled;
 	}
 
 	public void setCompareEnabled(boolean compareEnabled) {
 		this.compareEnabled = compareEnabled;
 	}
 
+	public void setTestCaseHooksPath(String[] testCaseHooksPath) {
+		this.testCaseHooksPath = testCaseHooksPath;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
+
+	public void setLoadTestingEnabled(boolean loadTestingEnabled) {
+		this.loadTestingEnabled = loadTestingEnabled;
+	}
+
+	public void setLoadTestingTime(Long loadTestingTime) {
+		this.loadTestingTime = loadTestingTime;
+	}
+
+	public void setStartTime(Long startTime) {
+		this.startTime = startTime;
+	}
+
 	private void sortAndOrderTestCases(List<TestCase> allTestCases, GatfExecutorConfig configuration) {
 		List<TestCase> pretestcases = new ArrayList<TestCase>();
 		List<TestCase> posttestcases = new ArrayList<TestCase>();
 		for (TestCase testCase : allTestCases) {
-			if(testCase.getUrl().equalsIgnoreCase(getAuthUrl()) || configuration.isSoapAuthTestCase(testCase)) {
+			if(testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) || configuration.isSoapAuthTestCase(testCase)) {
 				pretestcases.add(testCase);
 			}
 			testCase.setSimulationNumber(0);
 		}
 		for (TestCase testCase : allTestCases) {
-			if(!testCase.getUrl().equalsIgnoreCase(getAuthUrl()) && !configuration.isSoapAuthTestCase(testCase)) {
+			if(!testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) && !configuration.isSoapAuthTestCase(testCase)) {
 				posttestcases.add(testCase);
 			}
 		}
@@ -358,7 +315,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	private List<TestCase> getAllTestCases(AcceptanceTestContext context)
 	{
 		List<TestCase> allTestCases = new ArrayList<TestCase>();
-		File testCaseDirectory = context.getResourceFile(getTestCaseDir());
+		File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
 		
 		TestCaseFinder finder = new XMLTestCaseFinder();
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context));
@@ -387,30 +344,85 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	}
 	
 	public void execute() throws MojoFailureException {
-			
+		
 		GatfExecutorConfig configuration = new GatfExecutorConfig();
-		configuration.setAuthEnabled(isAuthEnabled());
-		configuration.setAuthExtractAuth(getAuthExtractAuth());
-		configuration.setAuthUrl(getAuthUrl());
-		configuration.setAuthParamsDetails(getAuthParamsDetails());
-		configuration.setBaseUrl(getBaseUrl());
-		configuration.setNumConcurrentExecutions(getNumConcurrentExecutions());
-		configuration.setOutFilesBasePath(getOutFilesBasePath());
-		configuration.setOutFilesDir(getOutFilesDir());
-		configuration.setSoapAuthEnabled(isSoapAuthEnabled());
-		configuration.setSoapAuthExtractAuth(getSoapAuthExtractAuth());
-		configuration.setSoapAuthOperation(getSoapAuthOperation());
-		configuration.setSoapAuthWsdlKey(getSoapAuthWsdlKey());
-		configuration.setTestCaseDir(getTestCaseDir());
-		configuration.setTestCasesBasePath(getTestCasesBasePath());
-		configuration.setWsdlLocFile(getWsdlLocFile());
-		configuration.setHttpCompressionEnabled(isHttpCompressionEnabled());
-		configuration.setHttpConnectionTimeout(getHttpConnectionTimeout());
-		configuration.setHttpRequestTimeout(getHttpRequestTimeout());
-		configuration.setConcurrentUserSimulationNum(getConcurrentUserSimulationNum());
-		configuration.setTestDataConfigFile(getTestDataConfigFile());
-		configuration.setSimulationUsersProviderName(getSimulationUsersProviderName());
-		configuration.setCompareEnabled(isCompareEnabled());
+		configuration.setAuthEnabled(authEnabled);
+		configuration.setAuthExtractAuth(authExtractAuth);
+		configuration.setAuthUrl(authUrl);
+		configuration.setAuthParamsDetails(authParamsDetails);
+		configuration.setBaseUrl(baseUrl);
+		configuration.setNumConcurrentExecutions(numConcurrentExecutions);
+		configuration.setOutFilesBasePath(outFilesBasePath);
+		configuration.setOutFilesDir(outFilesDir);
+		configuration.setSoapAuthEnabled(soapAuthEnabled);
+		configuration.setSoapAuthExtractAuth(soapAuthExtractAuth);
+		configuration.setSoapAuthOperation(soapAuthOperation);
+		configuration.setSoapAuthWsdlKey(soapAuthWsdlKey);
+		configuration.setTestCaseDir(testCaseDir);
+		configuration.setTestCasesBasePath(testCasesBasePath);
+		configuration.setWsdlLocFile(wsdlLocFile);
+		configuration.setHttpCompressionEnabled(httpCompressionEnabled);
+		configuration.setHttpConnectionTimeout(httpConnectionTimeout);
+		configuration.setHttpRequestTimeout(httpRequestTimeout);
+		configuration.setConcurrentUserSimulationNum(concurrentUserSimulationNum);
+		configuration.setTestDataConfigFile(testDataConfigFile);
+		configuration.setSimulationUsersProviderName(simulationUsersProviderName);
+		configuration.setCompareEnabled(compareEnabled);
+		configuration.setEnabled(enabled);
+		configuration.setLoadTestingEnabled(loadTestingEnabled);
+		configuration.setLoadTestingTime(loadTestingTime);
+		
+		if(configFile!=null) {
+			try {
+				File resource = null;
+				File basePath = new File(testCasesBasePath);
+				resource = new File(basePath, configFile);
+				if(resource.exists()) {
+					XStream xstream = new XStream(new XppDriver());
+					xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+							 GatfTestDataConfig.class, GatfTestDataProvider.class});
+					xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+					xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+					xstream.alias("args", String[].class);
+					xstream.alias("arg", String.class);
+					xstream.alias("testCaseHooksPaths", String[].class);
+					xstream.alias("testCaseHooksPath", String.class);
+					
+					configuration = (GatfExecutorConfig)xstream.fromXML(resource);
+					
+					if(configuration.getTestCasesBasePath()==null)
+						configuration.setTestCasesBasePath(testCasesBasePath);
+					
+					if(configuration.getOutFilesBasePath()==null)
+						configuration.setOutFilesBasePath(outFilesBasePath);
+					
+					if(configuration.getTestCaseDir()==null)
+						configuration.setTestCaseDir(testCaseDir);
+					
+					if(configuration.getNumConcurrentExecutions()==null)
+						configuration.setNumConcurrentExecutions(numConcurrentExecutions);
+					
+					if(configuration.getHttpConnectionTimeout()==null)
+						configuration.setHttpConnectionTimeout(httpConnectionTimeout);
+					
+					if(configuration.getHttpRequestTimeout()==null)
+						configuration.setHttpRequestTimeout(httpRequestTimeout);
+					
+					if(!configuration.isHttpCompressionEnabled())
+						configuration.setHttpCompressionEnabled(httpCompressionEnabled);
+					
+					if(configuration.getConcurrentUserSimulationNum()==null)
+						configuration.setConcurrentUserSimulationNum(concurrentUserSimulationNum);
+				}
+			} catch (Exception e) {
+				throw new AssertionError(e);
+			}
+		}
+		
+		doExecute(configuration);
+	}
+	
+	public void doExecute(GatfExecutorConfig configuration) throws MojoFailureException {
 		
 		AcceptanceTestContext context = new AcceptanceTestContext(configuration, getClassLoader());
 		try {
@@ -423,7 +435,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		final TestCaseExecutorUtil testCaseExecutorUtil = new TestCaseExecutorUtil(context);
 		
-		boolean compareEnabledOnlySingleTestCaseExec = isCompareEnabled() && configuration.getGatfTestDataConfig()!=null 
+		boolean compareEnabledOnlySingleTestCaseExec = configuration.isCompareEnabled() 
+				&& configuration.getGatfTestDataConfig()!=null 
 				&& configuration.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null
 				&& !configuration.getGatfTestDataConfig().getCompareEnvBaseUrls().isEmpty(); 
 		
@@ -449,77 +462,137 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		startTime = System.currentTimeMillis();
 		
-		int numberOfRuns = 0;
+		int numberOfRuns = 1;
 		if(compareEnabledOnlySingleTestCaseExec)
 		{
 			numberOfRuns = baseUrls.size();
 		}
-		else if(getConcurrentUserSimulationNum()!=null && getConcurrentUserSimulationNum()>1)
+		else if(configuration.getConcurrentUserSimulationNum()!=null 
+				&& configuration.getConcurrentUserSimulationNum()>1)
 		{
-			numberOfRuns = getConcurrentUserSimulationNum();
+			numberOfRuns = configuration.getConcurrentUserSimulationNum();
 		}
 		
-		if(numberOfRuns>0)
+		context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+		
+		//If load testing time is greater than 10sec only then run load tests..
+		boolean isLoadTestingEnabled = !compareEnabledOnlySingleTestCaseExec 
+				&& configuration.isLoadTestingEnabled() && configuration.getLoadTestingTime()>10000;
+		
+		int loadTstReportsCount = 0;
+		
+		ReportHandler reportHandler = new ReportHandler();
+		
+		TestSuiteStats loadStats = null;
+		
+		int loadTestRunNum = 1;
+		
+		while(true)
 		{
-			final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
-			ExecutorService threadPool = Executors.newFixedThreadPool(numberOfRuns);
+			long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
 			
-			List<Future<Void>> userSimulations = new ArrayList<Future<Void>>();
-			Iterator<String> baseUrlIter = null;
-			if(baseUrls!=null)
+			if(numberOfRuns>1)
 			{
-				baseUrlIter = baseUrls.iterator();
-			}
-			for (int i = 0; i < numberOfRuns; i++) {
-				List<TestCase> simTestCases = null;
-				if(onlySingleTestCaseExecl)
-					simTestCases = copyTestCases(allTestCases, i+1, baseUrlIter.next());
-				else
-					simTestCases = copyTestCases(allTestCases, i+1, null);
-					
-				final List<TestCase> simTestCasesCopy = simTestCases;
-				userSimulations.add(
-						threadPool.submit(new Callable<Void>() {
-							public Void call() throws Exception {
-								executeTestCases(simTestCasesCopy, testCaseExecutorUtil, onlySingleTestCaseExecl);
-								return null;
-							}
-						})
-				);
-			}
-			
-			boolean doneSimulation = false;
-			while(!doneSimulation)
-			{
-				for (Future<Void> future : userSimulations) {
-					if(future.isCancelled() || future.isDone()) {
-						doneSimulation = true;
-					} else {
-						doneSimulation = false;
+				final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
+				ExecutorService threadPool = Executors.newFixedThreadPool(numberOfRuns);
+				
+				List<Future<Void>> userSimulations = new ArrayList<Future<Void>>();
+				Iterator<String> baseUrlIter = null;
+				if(baseUrls!=null)
+				{
+					baseUrlIter = baseUrls.iterator();
+				}
+				for (int i = 0; i < numberOfRuns; i++) {
+					List<TestCase> simTestCases = null;
+					if(onlySingleTestCaseExecl)
+					{
+						simTestCases = copyTestCases(allTestCases, i+1, baseUrlIter.next());
+					}
+					else
+					{
+						simTestCases = copyTestCases(allTestCases, i+1, null);
+					}
+						
+					final List<TestCase> simTestCasesCopy = simTestCases;
+					userSimulations.add(
+							threadPool.submit(new Callable<Void>() {
+								public Void call() throws Exception {
+									executeTestCases(simTestCasesCopy, testCaseExecutorUtil, onlySingleTestCaseExecl);
+									return null;
+								}
+							})
+					);
+				}
+				
+				boolean doneSimulation = false;
+				while(!doneSimulation)
+				{
+					for (Future<Void> future : userSimulations) {
+						if(future.isCancelled() || future.isDone()) {
+							doneSimulation = true;
+						} else {
+							doneSimulation = false;
+						}
+					}
+					try {
+						Thread.sleep(1000);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
 					}
 				}
-				try {
-					Thread.sleep(1000);
-				} catch (InterruptedException e) {
-					e.printStackTrace();
+			}
+			else
+			{
+				executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec);
+			}
+			
+			if(isLoadTestingEnabled) {
+				long currentTime = System.currentTimeMillis();
+				
+				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
+				
+				boolean dorep = loadTstReportsCount==0 || done 
+						|| (loadTstReportsCount==1 && configuration.getLoadTestingTime()/(currentTime - startTime)>=2);
+				
+				if(dorep) {
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, currentTime+".html");
+					if(loadStats==null) {
+						loadStats = stats;
+					} else {
+						loadStats.updateStats(stats);
+					}
+					loadTstReportsCount ++;
+					reportHandler.addToLoadTestResources(loadTestRunNum++, currentTime);
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					loadStats.updateStats(stats);
 				}
+				
+				context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+				
+				if(done) {
+					break;
+				}
+			} else {
+				reportHandler.doReporting(context, suiteStartTime, null);
+				break;
 			}
 		}
-		else
-		{
-			executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec);
-		}
 		
-		new ReportHandler().doReporting(context, startTime);
+		if(isLoadTestingEnabled) {
+			reportHandler.doFinalLoadTestReport(loadStats, context);
+		}
 	}
 	
 	private void executeTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
 			boolean onlySingleTestCaseExec) throws Exception
 	{
+		AcceptanceTestContext context = testCaseExecutorUtil.getContext();
+		
 		List<Map<String, String>> sceanrios = testCase.getRepeatScenarios();
 		if(!onlySingleTestCaseExec) {
 			if((sceanrios==null || sceanrios.isEmpty()) && testCase.getRepeatScenarioProviderName()!=null) {
-				sceanrios = testCaseExecutorUtil.getContext().getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
+				sceanrios = context.getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
 			}
 			testCase.setRepeatScenarios(sceanrios);
 		} else {
@@ -530,25 +603,25 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		List<TestCaseReport> reports = null;
 		if(testCase.getNumberOfExecutions()!=null && testCase.getNumberOfExecutions()>1)
 		{
-			reports = testCaseExecutorUtil.getContext().getPerformanceTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
+			reports = context.getPerformanceTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
 		}
 		else if(sceanrios==null || sceanrios.isEmpty())
 		{
-			reports = testCaseExecutorUtil.getContext().getSingleTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
+			reports = context.getSingleTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
 		}
 		else
 		{
-			reports = testCaseExecutorUtil.getContext().getScenarioTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
+			reports = context.getScenarioTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
 		}
 		
 		if(reports!=null) {
 			for (TestCaseReport testCaseReport : reports) {
-				List<Method> postHook = testCaseExecutorUtil.getContext().getPrePostHook(testCase, false);
+				List<Method> postHook = context.getPrePostHook(testCase, false);
 				if(postHook!=null) {
 					try {
-						TestCaseReport report = new TestCaseReport(testCaseReport);
+						//TestCaseReport report = new TestCaseReport(testCaseReport);
 						for (Method method : postHook) {
-							method.invoke(null, new Object[]{report});
+							method.invoke(null, new Object[]{testCaseReport});
 						}
 					} catch (Throwable e) {
 						e.printStackTrace();
@@ -625,9 +698,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
             currentThread.setContextClassLoader(getClassLoader());
             getLog().info("Searching for pre/post testcase execution hooks....");
             List<Class> allClasses = new ArrayList<Class>();
-            if (getTestCaseHooksPath() != null)
+            if (context.getGatfExecutorConfig().getTestCaseHooksPaths() != null)
             {
-                for (String item : getTestCaseHooksPath())
+                for (String item : context.getGatfExecutorConfig().getTestCaseHooksPaths())
                 {
                     if (item.endsWith(".*"))
                     {
@@ -696,4 +769,39 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
             getLog().error(e);
         }
     }
+	
+	public static void main(String[] args) throws MojoFailureException {
+		
+		if(args.length>1 && args[0].equals("-executor") && !args[1].trim().isEmpty()) {
+			GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+			mojo.setConfigFile(args[1]);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setHttpConnectionTimeout(10000);
+			mojo.setHttpRequestTimeout(10000);
+			mojo.setHttpCompressionEnabled(true);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setConcurrentUserSimulationNum(0);
+			mojo.setTestCaseDir("data");
+			mojo.setOutFilesDir("out");
+			mojo.execute();
+		}
+		
+		/*File resource = null;
+		resource = new File("C:\\Users\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\gatf-config.xml");
+		if(resource.exists()) {
+			XStream xstream = new XStream(new XppDriver());
+			xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+					 GatfTestDataConfig.class, GatfTestDataProvider.class});
+			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+			xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+			xstream.alias("args", String[].class);
+			xstream.alias("arg", String.class);
+			xstream.alias("testCaseHooksPaths", String[].class);
+			xstream.alias("testCaseHooksPath", String.class);
+			xstream.alias("testCaseHooksPath", String.class);
+			
+			GatfExecutorConfig config = (GatfExecutorConfig)xstream.fromXML(resource);
+			System.out.println(config);
+		}*/
+	}
 }
