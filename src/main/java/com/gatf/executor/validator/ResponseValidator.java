@@ -21,6 +21,10 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 import com.ning.http.client.Response;
 
+/**
+ * @author Sumeet Chhetri
+ * Defines contract for response level node validations after test case execution
+ */
 public interface ResponseValidator {
 
 	void validate(Response response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context);

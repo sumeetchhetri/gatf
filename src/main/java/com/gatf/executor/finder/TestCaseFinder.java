@@ -22,6 +22,10 @@ import java.util.List;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 
+/**
+ * @author Sumeet Chhetri
+ * Defines contract to find all test cases from files inside a given test case directory
+ */
 public interface TestCaseFinder {
 
 	List<TestCase> findTestCases(File directory, AcceptanceTestContext context);

@@ -23,7 +23,6 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +56,10 @@ import com.gatf.generator.core.ClassLoaderUtils;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
+/**
+ * @author Sumeet Chhetri
+ * The maven plugin main class for the Test case Executor/Workflow engine
+ */
 @Mojo(
 		name = "gatf-executor", 
 		aggregator = false, 
@@ -146,8 +149,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "testCaseHooksPaths")
     private String[] testCaseHooksPath;
 	
-	@Parameter(alias = "enabled")
-	private boolean enabled;
+	@Parameter(alias = "enabled", defaultValue = "true")
+	private Boolean enabled;
 	
 	@Parameter(alias = "loadTestingEnabled")
 	private boolean loadTestingEnabled;
@@ -157,6 +160,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	
 	@Parameter(alias = "gatfTestDataConfig")
 	private GatfTestDataConfig gatfTestDataConfig;
+	
+	@Parameter(alias = "concurrentUserRampUpTime", defaultValue = "0")
+	private Long concurrentUserRampUpTime;
+	
+	@Parameter(alias = "loadTestingReportSamples", defaultValue = "3")
+	private Integer loadTestingReportSamples;
 	
 	private Long startTime = 0L;
 	
@@ -272,6 +281,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		this.loadTestingTime = loadTestingTime;
 	}
 
+	public void setConcurrentUserRampUpTime(Long concurrentUserRampUpTime) {
+		this.concurrentUserRampUpTime = concurrentUserRampUpTime;
+	}
+
+	public void setLoadTestingReportSamples(Integer loadTestingReportSamples) {
+		this.loadTestingReportSamples = loadTestingReportSamples;
+	}
+
 	public void setStartTime(Long startTime) {
 		this.startTime = startTime;
 	}
@@ -371,6 +388,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setEnabled(enabled);
 		configuration.setLoadTestingEnabled(loadTestingEnabled);
 		configuration.setLoadTestingTime(loadTestingTime);
+		configuration.setConcurrentUserRampUpTime(concurrentUserRampUpTime);
+		configuration.setLoadTestingReportSamples(loadTestingReportSamples);
 		
 		if(configFile!=null) {
 			try {
@@ -413,6 +432,15 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					
 					if(configuration.getConcurrentUserSimulationNum()==null)
 						configuration.setConcurrentUserSimulationNum(concurrentUserSimulationNum);
+					
+					if(configuration.getLoadTestingReportSamples()==null)
+						configuration.setLoadTestingReportSamples(loadTestingReportSamples);
+					
+					if(configuration.getConcurrentUserRampUpTime()==null)
+						configuration.setConcurrentUserRampUpTime(concurrentUserRampUpTime);
+					
+					if(configuration.isEnabled()==null)
+						configuration.setEnabled(true);
 				}
 			} catch (Exception e) {
 				throw new AssertionError(e);
@@ -457,10 +485,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 		}
 		
+		List<String> baseUrlList = new ArrayList<String>(baseUrls);
+		
 		List<TestCase> allTestCases = getAllTestCases(context);
 		sortAndOrderTestCases(allTestCases, configuration);
-		
-		startTime = System.currentTimeMillis();
 		
 		int numberOfRuns = 1;
 		if(compareEnabledOnlySingleTestCaseExec)
@@ -487,56 +515,42 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		int loadTestRunNum = 1;
 		
+		long concurrentUserRampUpTimeMs = 0;
+		if(configuration.getConcurrentUserSimulationNum()>1 && configuration.getConcurrentUserRampUpTime()>0)
+			concurrentUserRampUpTimeMs = configuration.getConcurrentUserRampUpTime()
+											/configuration.getConcurrentUserSimulationNum();
+		
+		int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
+		if(loadTestingReportSamplesNum<3)
+			loadTestingReportSamplesNum = 3;
+		
+		long reportSampleTimeMs = 0;
+		if(isLoadTestingEnabled)
+			reportSampleTimeMs = configuration.getLoadTestingTime()/(loadTestingReportSamplesNum-1);
+		
+		startTime = System.currentTimeMillis();
+		
+		ExecutorService threadPool = null;
+		if(numberOfRuns>1) {
+			threadPool = Executors.newFixedThreadPool(numberOfRuns);
+		}
+		
 		while(true)
 		{
 			long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
 			
 			if(numberOfRuns>1)
 			{
-				final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
-				ExecutorService threadPool = Executors.newFixedThreadPool(numberOfRuns);
+				List<Future<Void>> userSimulations = doConcurrentRunExecution(compareEnabledOnlySingleTestCaseExec, 
+						numberOfRuns, allTestCases, baseUrlList, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
+						threadPool);
 				
-				List<Future<Void>> userSimulations = new ArrayList<Future<Void>>();
-				Iterator<String> baseUrlIter = null;
-				if(baseUrls!=null)
-				{
-					baseUrlIter = baseUrls.iterator();
-				}
-				for (int i = 0; i < numberOfRuns; i++) {
-					List<TestCase> simTestCases = null;
-					if(onlySingleTestCaseExecl)
-					{
-						simTestCases = copyTestCases(allTestCases, i+1, baseUrlIter.next());
-					}
-					else
-					{
-						simTestCases = copyTestCases(allTestCases, i+1, null);
-					}
-						
-					final List<TestCase> simTestCasesCopy = simTestCases;
-					userSimulations.add(
-							threadPool.submit(new Callable<Void>() {
-								public Void call() throws Exception {
-									executeTestCases(simTestCasesCopy, testCaseExecutorUtil, onlySingleTestCaseExecl);
-									return null;
-								}
-							})
-					);
-				}
+				concurrentUserRampUpTimeMs = 0;
 				
-				boolean doneSimulation = false;
-				while(!doneSimulation)
-				{
-					for (Future<Void> future : userSimulations) {
-						if(future.isCancelled() || future.isDone()) {
-							doneSimulation = true;
-						} else {
-							doneSimulation = false;
-						}
-					}
+				for (Future<Void> future : userSimulations) {
 					try {
-						Thread.sleep(1000);
-					} catch (InterruptedException e) {
+						future.get();
+					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
@@ -551,8 +565,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
 				
-				boolean dorep = loadTstReportsCount==0 || done 
-						|| (loadTstReportsCount==1 && configuration.getLoadTestingTime()/(currentTime - startTime)>=2);
+				long elapsedFraction = (currentTime - startTime);
+				
+				boolean dorep = done || loadTstReportsCount==0;
+
+				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
+				{
+					dorep = true;
+				}
 				
 				if(dorep) {
 					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, currentTime+".html");
@@ -579,9 +599,49 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 		}
 		
+		if(numberOfRuns>1) {
+			threadPool.shutdown();
+		}
+		
 		if(isLoadTestingEnabled) {
 			reportHandler.doFinalLoadTestReport(loadStats, context);
 		}
+	}
+	
+	
+	private List<Future<Void>> doConcurrentRunExecution(boolean compareEnabledOnlySingleTestCaseExec, Integer numberOfRuns,
+			List<TestCase> allTestCases, List<String> baseUrlList, final TestCaseExecutorUtil testCaseExecutorUtil,
+			Long concurrentUserRampUpTimeMs, ExecutorService threadPool)
+	{
+		final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
+		
+		List<Future<Void>> userSimulations = new ArrayList<Future<Void>>();
+		for (int i = 0; i < numberOfRuns; i++) {
+			List<TestCase> simTestCases = null;
+			if(onlySingleTestCaseExecl)
+			{
+				simTestCases = copyTestCases(allTestCases, i+1, baseUrlList.get(i));
+			}
+			else
+			{
+				simTestCases = copyTestCases(allTestCases, i+1, null);
+			}
+			
+			final List<TestCase> simTestCasesCopy = simTestCases;
+			userSimulations.add(
+					threadPool.submit(new Callable<Void>() {
+						public Void call() throws Exception {
+							executeTestCases(simTestCasesCopy, testCaseExecutorUtil, onlySingleTestCaseExecl);
+							return null;
+						}
+					})
+			);
+			try {
+				Thread.sleep(concurrentUserRampUpTimeMs);
+			} catch (InterruptedException e) {
+			}
+		}
+		return userSimulations;
 	}
 	
 	private void executeTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
@@ -616,13 +676,22 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		if(reports!=null) {
 			for (TestCaseReport testCaseReport : reports) {
+				
+				context.addTestCaseReport(testCaseReport);
+				
+				if(testCase.isDetailedLog())
+				{
+					getLog().info(testCaseReport.toString());
+				}
+				
 				List<Method> postHook = context.getPrePostHook(testCase, false);
 				if(postHook!=null) {
 					try {
-						//TestCaseReport report = new TestCaseReport(testCaseReport);
+						TestCaseReport report = new TestCaseReport(testCaseReport);
 						for (Method method : postHook) {
-							method.invoke(null, new Object[]{testCaseReport});
+							method.invoke(null, new Object[]{report});
 						}
+						testCaseReport.setResponseContent(report.getResponseContent());
 					} catch (Throwable e) {
 						e.printStackTrace();
 					}
@@ -783,6 +852,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			mojo.setConcurrentUserSimulationNum(0);
 			mojo.setTestCaseDir("data");
 			mojo.setOutFilesDir("out");
+			mojo.setLoadTestingReportSamples(3);
+			mojo.setConcurrentUserRampUpTime(0L);
+			mojo.setEnabled(true);
 			mojo.execute();
 		}
 		

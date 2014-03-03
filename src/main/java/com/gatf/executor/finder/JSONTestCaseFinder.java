@@ -29,6 +29,10 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 
+/**
+ * @author Sumeet Chhetri
+ * Finds all test cases from the json files inside a given test case directory
+ */
 public class JSONTestCaseFinder implements TestCaseFinder {
 
 	@SuppressWarnings("unchecked")

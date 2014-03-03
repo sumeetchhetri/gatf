@@ -1,4 +1,4 @@
-package com.gatf.executor.postman;
+package com.gatf.generator.postman;
 
 /*
 Copyright 2013-2014, Sumeet Chhetri
@@ -31,6 +31,10 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.gatf.executor.core.TestCase;
 
+/**
+ * @author Sumeet Chhetri
+ * The postman test case json representation
+ */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class PostmanTestCase {

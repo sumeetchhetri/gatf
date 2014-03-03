@@ -21,6 +21,10 @@ import java.util.List;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 
+/**
+ * @author Sumeet Chhetri
+ * The test case executor interface, generates reports after execution of test cases
+ */
 public interface TestCaseExecutor {
 
 	List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil);

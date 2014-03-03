@@ -25,6 +25,10 @@ import com.gatf.executor.report.TestCaseReport;
 import com.jayway.jsonpath.JsonPath;
 import com.ning.http.client.Response;
 
+/**
+ * @author Sumeet Chhetri
+ * The validator that handles json level node validations after test case execution
+ */
 public class JSONResponseValidator implements ResponseValidator {
 
 	public void validate(Response response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context) 

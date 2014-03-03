@@ -28,6 +28,10 @@ import com.gatf.executor.core.MapKeyValueCustomXstreamConverter;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamConverter;
 
+/**
+ * @author Sumeet Chhetri
+ * The Test data configuration properties
+ */
 @XStreamAlias("gatf-testdata-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)

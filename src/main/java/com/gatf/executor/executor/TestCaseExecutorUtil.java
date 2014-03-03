@@ -66,6 +66,11 @@ import com.ning.http.multipart.FilePart;
 import com.ning.http.multipart.StringPart;
 import com.ning.http.util.Base64;
 
+/**
+ * @author Sumeet Chhetri
+ * The main executor class which handles http layer invocations/reponse handling
+ * Uses the async-http-client library to make the execution performant/concurrent
+ */
 public class TestCaseExecutorUtil {
 
 	private Logger logger = Logger.getLogger(TestCaseExecutorUtil.class.getSimpleName());

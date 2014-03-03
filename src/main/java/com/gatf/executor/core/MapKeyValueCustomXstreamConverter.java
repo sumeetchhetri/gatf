@@ -26,6 +26,10 @@ import com.thoughtworks.xstream.converters.UnmarshallingContext;
 import com.thoughtworks.xstream.io.HierarchicalStreamReader;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 
+/**
+ * @author Sumeet Chhetri
+ * 
+ */
 public class MapKeyValueCustomXstreamConverter implements Converter
 {
     @SuppressWarnings("rawtypes")

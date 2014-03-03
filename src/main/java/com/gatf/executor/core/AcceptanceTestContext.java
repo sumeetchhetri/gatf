@@ -48,6 +48,7 @@ import com.gatf.executor.dataprovider.FileTestCaseDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.InlineValueTestCaseDataProvider;
+import com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider;
 import com.gatf.executor.dataprovider.TestDataProvider;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
@@ -57,6 +58,11 @@ import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
+/**
+ * @author Sumeet Chhetri
+ * The Executor context, holds context information for the execution of testcases and also holds
+ * test case report information
+ */
 public class AcceptanceTestContext {
 
 	private Logger logger = Logger.getLogger(TestCaseExecutorUtil.class.getSimpleName());
@@ -400,6 +406,10 @@ public class AcceptanceTestContext {
 				Assert.assertNotNull("Provider class is not defined", provider.getProviderClass());
 				Assert.assertNotNull("Provider args are not defined", provider.getArgs());
 				
+				if(provider.isEnabled()==null) {
+					provider.setEnabled(true);
+				}
+				
 				if(!provider.isEnabled()) {
 					logger.info("Provider " + provider.getProviderName() + " is Disabled...");
 					continue;
@@ -412,6 +422,8 @@ public class AcceptanceTestContext {
 					testDataProvider = new FileTestCaseDataProvider();
 				} else if(InlineValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
 					testDataProvider = new InlineValueTestCaseDataProvider();
+				} else if(RandomValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+					testDataProvider = new RandomValueTestCaseDataProvider();
 				} else {
 					try {
 						Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
@@ -501,7 +513,6 @@ public class AcceptanceTestContext {
 			String ext = "-" + ncount;
 			finalTestReportsDups.put(key, ncount);
 			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+ext);
-			testCaseReport.getTestCase().setName(testCaseReport.getTestCase().getName()+ext);
 		}
 	}
 	

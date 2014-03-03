@@ -26,6 +26,10 @@ import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
+/**
+ * @author Sumeet Chhetri
+ * The properties required to control the test suite execution
+ */
 @XStreamAlias("gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
@@ -77,7 +81,7 @@ public class GatfExecutorConfig {
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
-	private boolean enabled;
+	private Boolean enabled;
 	
 	private String[] testCaseHooksPaths;
 	
@@ -87,6 +91,10 @@ public class GatfExecutorConfig {
 	
 	@XStreamOmitField
 	private Integer compareBaseUrlsNum;
+	
+	private Long concurrentUserRampUpTime;
+	
+	private Integer loadTestingReportSamples;
 
 	public String getBaseUrl() {
 		return baseUrl;
@@ -213,11 +221,11 @@ public class GatfExecutorConfig {
 		return null;
 	}
 	
-	public boolean isEnabled() {
+	public Boolean isEnabled() {
 		return enabled;
 	}
 
-	public void setEnabled(boolean enabled) {
+	public void setEnabled(Boolean enabled) {
 		this.enabled = enabled;
 	}
 
@@ -337,6 +345,22 @@ public class GatfExecutorConfig {
 
 	public void setLoadTestingTime(Long loadTestingTime) {
 		this.loadTestingTime = loadTestingTime;
+	}
+
+	public Long getConcurrentUserRampUpTime() {
+		return concurrentUserRampUpTime;
+	}
+
+	public void setConcurrentUserRampUpTime(Long concurrentUserRampUpTime) {
+		this.concurrentUserRampUpTime = concurrentUserRampUpTime;
+	}
+
+	public Integer getLoadTestingReportSamples() {
+		return loadTestingReportSamples;
+	}
+
+	public void setLoadTestingReportSamples(Integer loadTestingReportSamples) {
+		this.loadTestingReportSamples = loadTestingReportSamples;
 	}
 
 	public void validate()

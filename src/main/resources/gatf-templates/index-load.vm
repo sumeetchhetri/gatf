@@ -68,8 +68,42 @@
 			
 			var loadTestResources = $loadTestResources;
 
+			function DateFmt() {
+			  this.dateMarkers = { 
+				 d:['getDate',function(v) { return ("0"+v).substr(-2,2)}], 
+				 m:['getMonth',function(v) { return ("0"+v).substr(-2,2)}],
+				 n:['getMonth',function(v) {
+					 var mthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+					 return mthNames[v];
+					 }],
+				 w:['getDay',function(v) {
+					 var dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+					 return dayNames[v];
+					 }],
+				 y:['getFullYear'],
+				 H:['getHours',function(v) { return ("0"+v).substr(-2,2)}],
+				 M:['getMinutes',function(v) { return ("0"+v).substr(-2,2)}],
+				 S:['getSeconds',function(v) { return ("0"+v).substr(-2,2)}],
+				 i:['toISOString',null]
+			  };
+			 
+			  this.format = function(date, fmt) {
+				var dateMarkers = this.dateMarkers
+				var dateTxt = fmt.replace(/%(.)/g, function(m, p){
+				var rv = date[(dateMarkers[p])[0]]()
+			  
+				if ( dateMarkers[p][1] != null ) rv = dateMarkers[p][1](rv)
+
+				return rv
+			  });
+				
+			  return dateTxt
+			  }
+			}
+
 			$(document).ready(function() {
-				$('#stats-pre-ele').html('<li>Total Testcases : '+suiteStats.totalTestCount+'</li> \
+				$('#stats-pre-ele').html('<li>Total Suite Runs : '+suiteStats.totalSuiteRuns+'</li> \
+					<li>Total Testcases : '+suiteStats.totalTestCount+'</li> \
 					<li>Successful TestCases : '+(suiteStats.totalTestCount - suiteStats.failedTestCount)+'</li> \
 					<li>Failed TestCases : '+suiteStats.failedTestCount+'</li> \
 					<li>Total ExecutionTime : '+suiteStats.executionTime+'ms</li> \
@@ -79,8 +113,14 @@
 				   );
 				
 				 var html = '';
+				 var fmt = new DateFmt();
+				 
 				 for(var i=0;i<loadTestResources.length;i++) {
-					html += '<li><a href="'+loadTestResources[i].url+'">'+loadTestResources[i].title+'</a></li>';
+					var timems = loadTestResources[i].url;
+					timems = timems.substring(0, timems.indexOf("."));
+					var date = new Date(parseInt(timems));
+					var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
+					html += '<li><a href="'+loadTestResources[i].url+'">'+loadTestResources[i].title+' ('+dtstr+')</a></li>';
 				 }
 				 $('#stats-pre-ele1').html(html);
 

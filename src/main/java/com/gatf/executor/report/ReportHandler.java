@@ -53,6 +53,11 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 
+/**
+ * @author Sumeet Chhetri
+ * The main report generation class which handles generation of all textual/graphical 
+ * reporting after test suite execution
+ */
 public class ReportHandler {
 	
 	private Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
@@ -166,7 +171,8 @@ public class ReportHandler {
 				testGroupStats.setFailedTestCount(grpfld);
 				testGroupStats.setTotalRuns(grpruns);
 				testGroupStats.setFailedRuns(grpflruns);
-				if(compareStatuses!=null)
+				
+				if(firstCompareCopy!=null)
 				{
 					testGroupStats.setBaseUrl(reports.get(0).getTestCase().getBaseUrl());
 				}
@@ -215,6 +221,7 @@ public class ReportHandler {
 		testSuiteStats.setTotalRuns(totruns);
 		testSuiteStats.setFailedRuns(failruns);
 		testSuiteStats.setExecutionTime(endTime - startTime);
+		testSuiteStats.setTotalSuiteRuns(1);
 		
 		try
 		{
@@ -366,6 +373,7 @@ public class ReportHandler {
 		testSuiteStats.setTotalRuns(totruns);
 		testSuiteStats.setFailedRuns(failruns);
 		testSuiteStats.setExecutionTime(endTime - startTime);
+		testSuiteStats.setTotalSuiteRuns(1);
 		
 		acontext.clearTestResults();
 		

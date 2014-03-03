@@ -27,6 +27,10 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.ning.http.client.ListenableFuture;
 
+/**
+ * @author Sumeet Chhetri
+ * The simple single test case executor
+ */
 public class SingleTestCaseExecutor implements TestCaseExecutor {
 
 	public List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {
@@ -50,7 +54,6 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 
 			e.printStackTrace();
 			
-			testCaseExecutorUtil.getContext().addTestCaseReport(testCaseReport);
 			List<TestCaseReport> lst = new ArrayList<TestCaseReport>();
 			lst.add(testCaseReport);
 			return lst;
@@ -65,8 +68,6 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			e.printStackTrace();
 		}
-		
-		testCaseExecutorUtil.getContext().addTestCaseReport(testCaseReport);
 		
 		List<TestCaseReport> lst = new ArrayList<TestCaseReport>();
 		lst.add(testCaseReport);

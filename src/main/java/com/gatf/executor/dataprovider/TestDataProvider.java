@@ -21,6 +21,12 @@ import java.util.Map;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 
+/**
+ * @author Sumeet Chhetri
+ * This interface defines the contract for implementation of a test data provider
+ * The outcome is expected to be a list of key/value pairs
+ * for e.g, (databse rows = list, database row column values = map)
+ */
 public interface TestDataProvider {
 
 	List<Map<String, String>> provide(String[] args, AcceptanceTestContext context);

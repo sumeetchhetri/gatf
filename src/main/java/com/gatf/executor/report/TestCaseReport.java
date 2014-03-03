@@ -17,7 +17,9 @@ limitations under the License.
 */
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -29,6 +31,11 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import com.gatf.executor.core.TestCase;
 
 
+/**
+ * @author Sumeet Chhetri
+ * Represents the outcome of a test case execution, holds the request/response/error details
+ * This data is used in generating graphical reports
+ */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCaseReport {
@@ -284,5 +291,71 @@ public class TestCaseReport {
 			this.errors = other .errors;
 		}
 		this.responseStatusCode = other.responseStatusCode;
+	}
+
+	@Override
+	public String toString() {
+		final int maxLen = 10;
+		StringBuilder builder = new StringBuilder();
+		builder.append("TestCaseReport [actualUrl=");
+		builder.append(actualUrl);
+		builder.append(", url=");
+		builder.append(url);
+		builder.append(", method=");
+		builder.append(method);
+		builder.append(", workflowName=");
+		builder.append(workflowName);
+		builder.append(", testCase=");
+		builder.append(testCase);
+		builder.append(", status=");
+		builder.append(status);
+		builder.append(", numberOfRuns=");
+		builder.append(numberOfRuns);
+		builder.append(", executionTime=");
+		builder.append(executionTime);
+		builder.append(", executionTimes=");
+		builder.append(executionTimes != null ? toString(executionTimes, maxLen)
+				: null);
+		builder.append(", averageExecutionTime=");
+		builder.append(averageExecutionTime);
+		builder.append(", requestContent=");
+		builder.append(requestContent);
+		builder.append(", requestHeaders=");
+		builder.append(requestHeaders);
+		builder.append(", responseHeaders=");
+		builder.append(responseHeaders);
+		builder.append(", requestContentType=");
+		builder.append(requestContentType);
+		builder.append(", responseContentType=");
+		builder.append(responseContentType);
+		builder.append(", responseContent=");
+		builder.append(responseContent);
+		builder.append(", responseStatusCode=");
+		builder.append(responseStatusCode);
+		builder.append(", error=");
+		builder.append(error);
+		builder.append(", errorText=");
+		builder.append(errorText);
+		builder.append(", errors=");
+		builder.append(errors != null ? toString(errors.entrySet(), maxLen)
+				: null);
+		builder.append(", testIdentifier=");
+		builder.append(testIdentifier);
+		builder.append("]");
+		return builder.toString();
+	}
+
+	private String toString(Collection<?> collection, int maxLen) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("[");
+		int i = 0;
+		for (Iterator<?> iterator = collection.iterator(); iterator.hasNext()
+				&& i < maxLen; i++) {
+			if (i > 0)
+				builder.append(", ");
+			builder.append(iterator.next());
+		}
+		builder.append("]");
+		return builder.toString();
 	}
 }

@@ -24,6 +24,10 @@ import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
+/**
+ * @author Sumeet Chhetri
+ * Provides final statistics for the overall test case/group executions
+ */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestSuiteStats {
@@ -37,6 +41,8 @@ public class TestSuiteStats {
 	private Integer totalRuns;
 	
 	private Integer failedRuns;
+	
+	private Integer totalSuiteRuns;
 	
 	private List<TestGroupStats> groupStats = new ArrayList<TestGroupStats>();
 
@@ -88,12 +94,21 @@ public class TestSuiteStats {
 		this.failedRuns = failedRuns;
 	}
 	
+	public Integer getTotalSuiteRuns() {
+		return totalSuiteRuns;
+	}
+
+	public void setTotalSuiteRuns(Integer totalSuiteRuns) {
+		this.totalSuiteRuns = totalSuiteRuns;
+	}
+
 	public void updateStats(TestSuiteStats stats) {
 		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
 		setFailedRuns(getFailedRuns() +  stats.getFailedRuns());
 		setFailedTestCount(getFailedTestCount() + stats.getFailedTestCount());
 		setTotalRuns(getTotalRuns() + stats.getTotalRuns());
 		setTotalTestCount(getTotalTestCount() + stats.getTotalTestCount());
+		setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
 		setGroupStats(null);
 	}
 

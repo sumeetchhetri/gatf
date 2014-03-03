@@ -27,6 +27,11 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.ning.http.client.ListenableFuture;
 
+/**
+ * @author Sumeet Chhetri
+ * The scenario based test case executor, handles repeatable test case execution
+ * based on scenario values/provider
+ */
 public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 
 	public List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {
@@ -53,8 +58,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
 					testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
 				}
-				
-				testCaseExecutorUtil.getContext().addTestCaseReport(testCaseReport);
 				lst.add(testCaseReport);
 
 				e.printStackTrace();
@@ -73,8 +76,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 					testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 					e.printStackTrace();
 				}
-				
-				testCaseExecutorUtil.getContext().addTestCaseReport(testCaseReport);
 				lst.add(testCaseReport);
 			}
 			else
@@ -96,7 +97,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				e.printStackTrace();
 			}
 			
-			testCaseExecutorUtil.getContext().addTestCaseReport(testCaseReport);
 			lst.add(testCaseReport);
 		}
 		

@@ -27,6 +27,7 @@ import java.lang.annotation.Target;
  * Apply this annotation to your methods with the following signature<br/>
  * public static void(TestCaseReport testCaseReport) {..}<br/>
  * Provides a hook so that some post processing can be done on the Test case report after execution
+ * Only the response content can be modified with this hook
  * 
  */
 @Target({java.lang.annotation.ElementType.METHOD})

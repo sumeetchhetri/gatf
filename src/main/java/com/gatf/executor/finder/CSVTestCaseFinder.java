@@ -27,6 +27,10 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 
+/**
+ * @author Sumeet Chhetri
+ * Finds all test cases from the csv files inside a given test case directory
+ */
 public class CSVTestCaseFinder implements TestCaseFinder {
 
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)

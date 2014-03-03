@@ -32,6 +32,10 @@ import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
+/**
+ * @author Sumeet Chhetri
+ * Finds all test cases from the xml files inside a given test case directory
+ */
 public class XMLTestCaseFinder implements TestCaseFinder {
 
 	@SuppressWarnings("unchecked")

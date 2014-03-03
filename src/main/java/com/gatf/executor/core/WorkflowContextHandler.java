@@ -37,6 +37,10 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.jayway.jsonpath.JsonPath;
 
+/**
+ * @author Sumeet Chhetri
+ * Holds global/suite level workflow variable/values
+ */
 public class WorkflowContextHandler {
 
 	private final VelocityEngine engine = new VelocityEngine();

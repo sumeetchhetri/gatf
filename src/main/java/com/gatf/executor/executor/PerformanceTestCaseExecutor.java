@@ -27,6 +27,10 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.ning.http.client.ListenableFuture;
 
+/**
+ * @author Sumeet Chhetri
+ * The performance test case executor, handles concurrent execution of test cases
+ */
 public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 
 	public List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {

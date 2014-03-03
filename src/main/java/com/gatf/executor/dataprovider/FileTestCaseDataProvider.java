@@ -36,6 +36,10 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.jayway.jsonpath.JsonPath;
 
+/**
+ * @author Sumeet Chhetri
+ * The file test case data provider implementation
+ */
 public class FileTestCaseDataProvider implements TestDataProvider {
 
 	private Logger logger = Logger.getLogger(DatabaseTestCaseDataProvider.class.getSimpleName());

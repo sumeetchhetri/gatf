@@ -39,6 +39,12 @@ import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 
+/**
+ * @author Sumeet Chhetri
+ * Represents the test case details, url, name, request and expected response assertions
+ * Also defines json/xml level node validation assertion steps
+ * Defines the workflow parameter mappings and repeat scenario parameters/provider
+ */
 @XStreamAlias("TestCase")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
@@ -460,7 +466,7 @@ public class TestCase {
 		boolean valid = false;
 		if(csvLine!=null) {
 			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>=15) {
+			if(csvParts.length>25) {
 				setUrl(csvParts[0]);
 				setName(csvParts[1]);
 				setMethod(csvParts[2]);
@@ -502,35 +508,37 @@ public class TestCase {
 						}
 					}
 				}
-				if(csvParts.length>=19) {
-					setSoapBase(Boolean.valueOf(csvParts[15]));
-					String[] soapVals = csvParts[16].split("\\|");
-					for (String soapVal : soapVals) {
-						String[] kv = soapVal.split(":");
-						if(kv.length!=2) {
-							logger.error("Invalid Soap Parameter key/value specified for testcase - " + soapVal);
-						}
-						if(!kv[0].isEmpty() && !kv[1].isEmpty())
-						{
-							getSoapParameterValues().put(kv[0], kv[1]);
-						}
+				setSoapBase(Boolean.valueOf(csvParts[15]));
+				String[] soapVals = csvParts[16].split("\\|");
+				for (String soapVal : soapVals) {
+					String[] kv = soapVal.split(":");
+					if(kv.length!=2) {
+						logger.error("Invalid Soap Parameter key/value specified for testcase - " + soapVal);
 					}
-					setWsdlKey(csvParts[17]);
-					setOperationName(csvParts[18]);
-					setSequence(Integer.parseInt(csvParts[19]));
-					String[] workflowParams = csvParts[20].split("\\|");
-					for (String workflowParam : workflowParams) {
-						String[] kv = workflowParam.split(":");
-						if(kv.length!=2) {
-							logger.error("Invalid Workflow Parameter key/value specified for testcase - " + workflowParam);
-						}
-						if(!kv[0].isEmpty() && !kv[1].isEmpty())
-						{
-							getWorkflowContextParameterMap().put(kv[0], kv[1]);
-						}
+					if(!kv[0].isEmpty() && !kv[1].isEmpty())
+					{
+						getSoapParameterValues().put(kv[0], kv[1]);
 					}
-					setOutFileName(csvParts[21]);
 				}
+				setWsdlKey(csvParts[17]);
+				setOperationName(csvParts[18]);
+				setSequence(Integer.parseInt(csvParts[19]));
+				String[] workflowParams = csvParts[20].split("\\|");
+				for (String workflowParam : workflowParams) {
+					String[] kv = workflowParam.split(":");
+					if(kv.length!=2) {
+						logger.error("Invalid Workflow Parameter key/value specified for testcase - " + workflowParam);
+					}
+					if(!kv[0].isEmpty() && !kv[1].isEmpty())
+					{
+						getWorkflowContextParameterMap().put(kv[0], kv[1]);
+					}
+				}
+				setOutFileName(csvParts[21]);
+				setRepeatScenarioProviderName(csvParts[22]);
+				setNumberOfExecutions(Integer.parseInt(csvParts[23]));
+				setRepeatScenariosConcurrentExecution(Boolean.valueOf(csvParts[24]));
+				setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts[25]));
 				valid = true;
 			} else {
 				valid = false;
@@ -610,6 +618,10 @@ public class TestCase {
 		}
 		build.append(",");
 		build.append(getCsvValue(getOutFileName()));
+		build.append(getCsvValue(getRepeatScenarioProviderName()));
+		build.append(getNumberOfExecutions());
+		build.append(isRepeatScenariosConcurrentExecution());
+		build.append(isStopOnFirstFailureForPerfTest());
 		return build.toString();
 	}
 	
@@ -761,6 +773,4 @@ public class TestCase {
 		this.simulationNumber = other.simulationNumber;
 		this.baseUrl = other.baseUrl;
 	}
-	
-	
 }

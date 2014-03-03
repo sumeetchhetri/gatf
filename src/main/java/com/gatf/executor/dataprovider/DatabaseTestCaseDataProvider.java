@@ -33,6 +33,10 @@ import org.junit.Assert;
 import com.CustomDriverManager;
 import com.gatf.executor.core.AcceptanceTestContext;
 
+/**
+ * @author Sumeet Chhetri
+ * The database test case data provider implementation
+ */
 public class DatabaseTestCaseDataProvider implements TestDataProvider {
 
 	private Logger logger = Logger.getLogger(DatabaseTestCaseDataProvider.class.getSimpleName());
@@ -50,7 +54,7 @@ public class DatabaseTestCaseDataProvider implements TestDataProvider {
 			}
 			
 			if(args.length<6) {
-				throw new AssertionError("All 4 arguments, namely jdbcUrl, jdbcDriver, dbUserName, " +
+				throw new AssertionError("All 6 arguments, namely jdbcUrl, jdbcDriver, dbUserName, " +
 						"dbPassword, queryString and variableNames are mandatory for DatabaseProvider");
 			}
 			

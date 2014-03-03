@@ -25,6 +25,10 @@ import org.junit.Assert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 
+/**
+ * @author Sumeet Chhetri
+ * The inline test case data provider implementation
+ */
 public class InlineValueTestCaseDataProvider implements TestDataProvider {
 
 	public List<Map<String, String>> provide(String[] args, AcceptanceTestContext context) {
@@ -35,10 +39,15 @@ public class InlineValueTestCaseDataProvider implements TestDataProvider {
 			throw new AssertionError("No arguments passed to the InlineValueTestCaseDataProvider");
 		}
 		
+		if(args.length<2) {
+			throw new AssertionError("Insufficient arguments passed, need all parameters namely," +
+					" variableNames, variable values");
+		}
+		
 		Assert.assertNotNull("variableNames cannot be empty", args[0]);
 		String variableNames = args[0].trim();
 		
-		Assert.assertTrue("variable values not defined", args.length>1);
+		Assert.assertTrue("variable values not defined", args[1]==null || args[1].trim().isEmpty());
 		
 		List<String> variableNamesArr = new ArrayList<String>();
 		for (String varName : variableNames.split(",")) {

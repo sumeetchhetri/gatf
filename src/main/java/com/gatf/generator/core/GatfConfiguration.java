@@ -45,8 +45,10 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 		<testCaseFormat>xml</testCaseFormat>
 		<enabled>true</enabled>
 	</configuration>
- */
 
+ * @author Sumeet Chhetri
+ * The test case generator configuration parameters
+ */
 @XStreamAlias("configuration")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)

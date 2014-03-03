@@ -23,6 +23,10 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
+/**
+ * @author Sumeet Chhetri
+ * The test case provider implementation properties
+ */
 @XStreamAlias("gatf-testdata-provider")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
@@ -34,7 +38,7 @@ public class GatfTestDataProvider {
 	
 	private String[] args;
 	
-	private boolean enabled;
+	private Boolean enabled;
 
 	public String getProviderName() {
 		return providerName;
@@ -60,11 +64,11 @@ public class GatfTestDataProvider {
 		this.args = args;
 	}
 
-	public boolean isEnabled() {
+	public Boolean isEnabled() {
 		return enabled;
 	}
 
-	public void setEnabled(boolean enabled) {
+	public void setEnabled(Boolean enabled) {
 		this.enabled = enabled;
 	}
 }

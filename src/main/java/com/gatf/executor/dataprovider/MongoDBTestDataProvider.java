@@ -34,6 +34,10 @@ import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import com.mongodb.util.JSON;
 
+/**
+ * @author Sumeet Chhetri
+ * The mongodb test case data provider implementation
+ */
 public class MongoDBTestDataProvider implements TestDataProvider {
 
 	private Logger logger = Logger.getLogger(MongoDBTestDataProvider.class.getSimpleName());
@@ -48,7 +52,7 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 		
 		if(args.length<6) {
 			throw new AssertionError("The arguments, namely mongodb-host, mongodb-port, mongodb-database," +
-					"mongodb-collection and variableNames are mandatory for MongoDBTestDataProvider");
+					"mongodb-collection, queryString and variableNames are mandatory for MongoDBTestDataProvider");
 		}
 		
 		Assert.assertNotNull("mongodb-host cannot be empty", args[0]);

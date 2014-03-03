@@ -36,6 +36,10 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 import com.ning.http.client.Response;
 
+/**
+ * @author Sumeet Chhetri
+ * The validator that handles soap level node validations after test case execution
+ */
 public class SOAPResponseValidator implements ResponseValidator {
 
 	public void validate(Response response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context) 

@@ -88,7 +88,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.postman.PostmanCollection;
+import com.gatf.generator.postman.PostmanCollection;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
@@ -941,7 +941,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     	}
     	return null;
     }
-    
     
     private Object getPrimitiveValue(Type claz) {
     	 if (isPrimitive(claz))
