@@ -30,6 +30,7 @@ import javax.xml.xpath.XPathFactory;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.junit.Assert;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -184,6 +185,7 @@ public class WorkflowContextHandler {
 				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
 					nodeName = nodeName.substring(21, nodeName.length()-1);
 					String responseMappedCount = JsonPath.read(json, nodeName).toString();
+					
 					int responseCount = -1;
 					try {
 						responseCount = Integer.valueOf(responseMappedCount);
@@ -239,15 +241,49 @@ public class WorkflowContextHandler {
 				Node body = SOAPResponseValidator.getNodeByNameCaseInsensitive(envelope, "body");
 				Node requestBody = SOAPResponseValidator.getNextElement(body);
 				Node returnBody = SOAPResponseValidator.getNextElement(requestBody);
-				String expression = SOAPResponseValidator.createXPathExpression(entry.getValue(), envelope, body, requestBody, returnBody);
-				XPath xPath =  XPathFactory.newInstance().newXPath();
-				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-				Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
-						xmlNodeList!=null && xmlNodeList.getLength()>0);
+				
+				String expression = nodeName.replaceAll("\\.", "\\/");
+				if(expression.charAt(0)!='/')
+					expression = "/" + expression;
+				
+				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+					expression = expression.substring(21, expression.length()-1);
+					
+					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
+					
+					List<Map<String, String>> soapValues = getNodeValueMapList(nodeName, xmlNodeList);
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), soapValues);
+					Assert.assertNotNull("Workflow soap mapping variable " + entry.getValue() +" is null", soapValues);
+				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
+					expression = expression.substring(21, expression.length()-1);
+					
+					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-				String xmlValue = xmlNodeList.item(0).getNodeValue();
-				Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
-				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
+					
+					List<Map<String, String>> soapValues = getNodeCountMapList(xmlValue, expression);
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), soapValues);
+					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", soapValues);
+				} else {
+					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
+
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
+				}
 			}
 		}
 	}
@@ -267,18 +303,122 @@ public class WorkflowContextHandler {
 					continue;
 				}
 				
-				String expression = entry.getValue().replaceAll("\\.", "\\/");
+				String expression = nodeName.replaceAll("\\.", "\\/");
 				if(expression.charAt(0)!='/')
 					expression = "/" + expression;
-				XPath xPath =  XPathFactory.newInstance().newXPath();
-				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-				Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
-						xmlNodeList!=null && xmlNodeList.getLength()>0);
 				
-				String xmlValue = xmlNodeList.item(0).getNodeValue();
-				Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
-				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
+				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+					expression = expression.substring(21, expression.length()-1);
+					
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow xml variable " + expression +" is null",  
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
+					
+					List<Map<String, String>> xmlValues = getNodeValueMapList(nodeName, xmlNodeList);
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), xmlValues);
+					Assert.assertNotNull("Workflow xml mapping variable " + entry.getValue() +" is null", xmlValues);
+				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
+					expression = expression.substring(21, expression.length()-1);
+					
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
+
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
+					
+					List<Map<String, String>> xmlValues = getNodeCountMapList(xmlValue, expression);
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), xmlValues);
+					Assert.assertNotNull("Workflow xml mapping variable " + entry.getValue() +" is null", xmlValues);
+				} else {
+					XPath xPath =  XPathFactory.newInstance().newXPath();
+					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
+							xmlNodeList!=null && xmlNodeList.getLength()>0);
+
+					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
+				}
 			}
 		}
+	}
+	
+	private List<Map<String, String>> getNodeCountMapList(String xmlValue, String nodeName)
+	{
+		int responseCount = -1;
+		try {
+			responseCount = Integer.valueOf(xmlValue);
+		} catch (Exception e) {
+			throw new AssertionError("Invalid responseMappedCount variable defined, " +
+					"derived value should be number - "+nodeName);
+		}
+		
+		List<Map<String, String>> xmlValues = new ArrayList<Map<String,String>>();
+		for (int i = 0; i < responseCount; i++) {
+			Map<String, String> row = new HashMap<String, String>();
+			row.put("index", (i+1)+"");
+			xmlValues.add(row);
+		}
+		
+		return xmlValues;
+	}
+	
+	private List<Map<String, String>> getNodeValueMapList(String nodeName, NodeList xmlNodeList)
+	{
+		List<Map<String, String>> nodeValues = new ArrayList<Map<String,String>>();
+		if(nodeName.endsWith("*")) 
+		{
+			for (int i = 0; i < xmlNodeList.getLength(); i++) {
+				Map<String, String> row = new HashMap<String, String>();
+				
+				Node node = xmlNodeList.item(0);
+				if(node.getAttributes()!=null && node.getAttributes().getLength()>0)
+				{
+					for (int j = 0; j < node.getAttributes().getLength(); j++) {
+						Attr attr = (Attr) node.getAttributes().item(j);
+						row.put(attr.getName(), attr.getValue());
+					}
+				}
+				row.put(node.getLocalName(), node.getNodeValue());
+				
+				nodeValues.add(row);
+			}
+		} 
+		else
+		{
+			String[] props = nodeName.split(",");
+			
+			for (int i = 0; i < xmlNodeList.getLength(); i++) {
+				Map<String, String> row = new HashMap<String, String>();
+				
+				Node node = xmlNodeList.item(0);
+				
+				boolean found = false;
+				for (String propName : props) {
+					if(node.getLocalName().equals(propName)) {
+						found = true;
+						break;
+					}
+				}
+				
+				if(!found)
+					continue;
+				
+				if(node.getAttributes()!=null && node.getAttributes().getLength()>0)
+				{
+					for (int j = 0; j < node.getAttributes().getLength(); j++) {
+						Attr attr = (Attr) node.getAttributes().item(j);
+						row.put(attr.getName(), attr.getValue());
+					}
+				}
+				row.put(node.getLocalName(), node.getNodeValue());
+				
+				nodeValues.add(row);
+			}
+		}
+		return nodeValues;
 	}
 }

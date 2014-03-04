@@ -50,9 +50,9 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 			throw new AssertionError("No arguments passed to the MongoDBTestDataProvider");
 		}
 		
-		if(args.length<6) {
+		if(args.length<7) {
 			throw new AssertionError("The arguments, namely mongodb-host, mongodb-port, mongodb-database," +
-					"mongodb-collection, queryString and variableNames are mandatory for MongoDBTestDataProvider");
+					"mongodb-collection, queryString, propertyNames and variableNames are mandatory for MongoDBTestDataProvider");
 		}
 		
 		Assert.assertNotNull("mongodb-host cannot be empty", args[0]);
@@ -61,6 +61,7 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 		Assert.assertNotNull("mongodb-collection cannot be empty", args[3]);
 		Assert.assertNotNull("queryString cannot be empty", args[4]);
 		Assert.assertNotNull("variableNames cannot be empty", args[5]);
+		Assert.assertNotNull("propertyNames cannot be empty", args[6]);
 		
 		
 		String host = args[0].trim();
@@ -69,6 +70,7 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 		String collName = args[3].trim();
 		String queryString = args[4].trim();
 		String variableNames = args[5].trim();
+		String propertyNames = args[6].trim();
 		
 		Assert.assertFalse("mongodb-host cannot be empty", host.isEmpty());
 		Assert.assertFalse("mongodb-port cannot be empty", port.isEmpty());
@@ -84,6 +86,18 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 		}
 		Assert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
+		
+		List<String> propertyNamesArr = new ArrayList<String>();
+		for (String varName : propertyNames.split(",")) {
+			if(!varName.trim().isEmpty()) {
+				propertyNamesArr.add(varName);
+			}
+		}
+		Assert.assertTrue("need to define at-least a single property name", 
+				!propertyNames.isEmpty() && propertyNames.split(",").length>0 && propertyNamesArr.size()>0);
+		
+		Assert.assertTrue("property name and variable name sizes don't match", 
+				propertyNamesArr.size()==variableNamesArr.size());
 		
 		String username = null, password = null;
 		if(args.length>6) {
@@ -106,6 +120,7 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 			build.append(String.format("mongodb-password is %s\n", password));
 		}
 		build.append(String.format("queryString is %s\n", queryString));
+		build.append(String.format("propertyNames is %s\n", propertyNames));
 		build.append(String.format("variableNames is %s]", variableNames));
 		logger.info(build.toString());
 		
@@ -168,8 +183,8 @@ public class MongoDBTestDataProvider implements TestDataProvider {
 						Map<String, String> row = new HashMap<String, String>();
 						for (int i = 0; i < variableNamesArr.size(); i++) {
 							Assert.assertTrue(String.format("Could not find %s field in the result document returned",
-									variableNamesArr.get(i)), object.containsField(variableNamesArr.get(i)));
-							row.put(variableNamesArr.get(i), object.get(variableNamesArr.get(i)).toString());
+									propertyNamesArr.get(i)), object.containsField(propertyNamesArr.get(i)));
+							row.put(variableNamesArr.get(i), object.get(propertyNamesArr.get(i)).toString());
 						}
 						result.add(row);
 					}
