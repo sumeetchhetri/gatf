@@ -246,7 +246,7 @@ public class WorkflowContextHandler {
 				if(expression.charAt(0)!='/')
 					expression = "/" + expression;
 				
-				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+				if(expression.startsWith("#responseMappedValue[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
 					
 					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
@@ -255,7 +255,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 					
-					List<Map<String, String>> soapValues = getNodeValueMapList(nodeName, xmlNodeList);
+					List<Map<String, String>> soapValues = getNodeValueMapList(expression, xmlNodeList);
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), soapValues);
 					Assert.assertNotNull("Workflow soap mapping variable " + entry.getValue() +" is null", soapValues);
 				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
@@ -307,7 +307,7 @@ public class WorkflowContextHandler {
 				if(expression.charAt(0)!='/')
 					expression = "/" + expression;
 				
-				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+				if(expression.startsWith("#responseMappedValue[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
 					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
@@ -315,7 +315,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow xml variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 					
-					List<Map<String, String>> xmlValues = getNodeValueMapList(nodeName, xmlNodeList);
+					List<Map<String, String>> xmlValues = getNodeValueMapList(expression, xmlNodeList);
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), xmlValues);
 					Assert.assertNotNull("Workflow xml mapping variable " + entry.getValue() +" is null", xmlValues);
 				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
