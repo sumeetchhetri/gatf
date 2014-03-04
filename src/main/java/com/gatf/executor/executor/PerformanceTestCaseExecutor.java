@@ -50,6 +50,10 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 			return reports;
 		}
 		
+		int numParallel = Runtime.getRuntime().availableProcessors();
+		
+		int counter = 0;
+		
 		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
 		for (int i = 0; i < testCase.getNumberOfExecutions()-1; i++) {
 			
@@ -78,9 +82,28 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 			
 			ListenableFuture<TestCaseReport> listenableFuture = testCaseExecutorUtil.executeTestCase(testCaseCopy, testCaseReportCopy);
 			futures.add(listenableFuture);
+			
+			if(futures.size()==numParallel) {
+				for (ListenableFuture<TestCaseReport> listenableFutureT : futures) {
+					
+					try {
+						TestCaseReport tc = listenableFutureT.get();
+						testCaseReport.setExecutionTime(testCaseReport.getExecutionTime() + tc.getExecutionTime());
+						testCaseReport.getExecutionTimes().add(tc.getExecutionTime());
+						if(tc.getError()!=null)
+						{
+							testCaseReport.getErrors().put(i+2+"", tc.getError());
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+					counter ++;
+				}
+				futures.clear();
+			}
 		}
 		
-		for (int i=0;i<futures.size();i++) {
+		for (int i=counter;i<counter+futures.size();i++) {
 			
 			ListenableFuture<TestCaseReport> listenableFuture = futures.get(i);
 			try {

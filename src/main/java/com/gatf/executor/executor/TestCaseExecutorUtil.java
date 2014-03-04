@@ -95,9 +95,11 @@ public class TestCaseExecutorUtil {
 		Builder builder = new AsyncHttpClientConfig.Builder();
 		builder.setConnectionTimeoutInMs(context.getGatfExecutorConfig().getHttpConnectionTimeout())
 				.setMaximumConnectionsPerHost(numConcurrentConns)
+				.setMaximumConnectionsTotal(100)
 				.setRequestTimeoutInMs(context.getGatfExecutorConfig().getHttpRequestTimeout())
 				.setAllowPoolingConnection(true)
 				.setCompressionEnabled(context.getGatfExecutorConfig().isHttpCompressionEnabled())
+				.setIOThreadMultiplier(2)
 				.build();
 		
 		client = new AsyncHttpClient(builder.build());
@@ -356,12 +358,20 @@ public class TestCaseExecutorUtil {
 			
 			handleRequestContent(testCase, builder);
 			
-			for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
-				builder = builder.addHeader(entry.getKey(), entry.getValue());
+			if(testCase.getHeaders()!=null)
+			{
+				for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
+					builder = builder.addHeader(entry.getKey(), entry.getValue());
+				}
 			}
 			
 			testCaseReport.setTestCase(testCase);
 			Request request = builder.build();
+			
+			if(testCase.getPreWaitMs()!=null && testCase.getPreWaitMs()>0) {
+				Thread.sleep(testCase.getPreWaitMs());
+			}
+			
 			return client.executeRequest(request, new TestCaseResponseHandler(testCase, testCaseReport, context, start));
 		} catch (Throwable e) {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
@@ -586,6 +596,13 @@ public class TestCaseExecutorUtil {
 				testCaseReport.setResponseHeaders(build.toString());
 			}
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
+			
+			if(testCase.getPostWaitMs()!=null && testCase.getPostWaitMs()>0) {
+				try {
+					Thread.sleep(testCase.getPostWaitMs());
+				} catch (InterruptedException e1) {
+				}
+			}
 			
 			return testCaseReport;
 		}

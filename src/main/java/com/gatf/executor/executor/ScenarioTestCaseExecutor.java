@@ -19,6 +19,7 @@ limitations under the License.
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -34,14 +35,20 @@ import com.ning.http.client.ListenableFuture;
  */
 public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 
+	private Logger logger = Logger.getLogger(ScenarioTestCaseExecutor.class.getSimpleName());
+	
 	public List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {
 
 		List<TestCaseReport> lst = new ArrayList<TestCaseReport>();
 		
 		WorkflowContextHandler workflowContextHandler = testCaseExecutorUtil.getContext().getWorkflowContextHandler();
 		
+		int numParallel = Runtime.getRuntime().availableProcessors();
+		
 		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
 		for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
+			
+			logger.info("Running with Scenario map = " + scenarioMap);
 			
 			TestCase testCaseCopy = new TestCase(testCase);
 			TestCaseReport testCaseReport = new TestCaseReport();
@@ -81,6 +88,25 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			else
 			{
 				futures.add(listenableFuture);
+			}
+			
+			if(futures.size()==numParallel) {
+				for (ListenableFuture<TestCaseReport> listenableFutureT : futures) {
+					
+					TestCaseReport testCaseReportT = null;
+					
+					try {
+						testCaseReportT = listenableFutureT.get();
+					} catch (Exception e) {
+						testCaseReportT.setStatus("Failed");
+						testCaseReportT.setError(e.getMessage());
+						testCaseReportT.setErrorText(ExceptionUtils.getStackTrace(e));
+						e.printStackTrace();
+					}
+					
+					lst.add(testCaseReportT);
+				}
+				futures.clear();
 			}
 		}
 		

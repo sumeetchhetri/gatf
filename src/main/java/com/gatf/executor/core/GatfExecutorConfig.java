@@ -95,6 +95,8 @@ public class GatfExecutorConfig {
 	private Long concurrentUserRampUpTime;
 	
 	private Integer loadTestingReportSamples;
+	
+	private boolean debugEnabled;
 
 	public String getBaseUrl() {
 		return baseUrl;
@@ -361,6 +363,14 @@ public class GatfExecutorConfig {
 
 	public void setLoadTestingReportSamples(Integer loadTestingReportSamples) {
 		this.loadTestingReportSamples = loadTestingReportSamples;
+	}
+
+	public boolean isDebugEnabled() {
+		return debugEnabled;
+	}
+
+	public void setDebugEnabled(boolean debugEnabled) {
+		this.debugEnabled = debugEnabled;
 	}
 
 	public void validate()

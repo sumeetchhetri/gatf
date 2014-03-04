@@ -291,57 +291,57 @@ public class TestCaseReport {
 			this.errors = other .errors;
 		}
 		this.responseStatusCode = other.responseStatusCode;
+		this.method = other.method;
 	}
 
 	@Override
 	public String toString() {
 		final int maxLen = 10;
 		StringBuilder builder = new StringBuilder();
-		builder.append("TestCaseReport [actualUrl=");
+		builder.append("TestCaseReport = [\n");
+		builder.append("actualUrl=");
 		builder.append(actualUrl);
-		builder.append(", url=");
+		builder.append("\nurl=");
 		builder.append(url);
-		builder.append(", method=");
+		builder.append("\nmethod=");
 		builder.append(method);
-		builder.append(", workflowName=");
+		builder.append("\nworkflowName=");
 		builder.append(workflowName);
-		builder.append(", testCase=");
-		builder.append(testCase);
-		builder.append(", status=");
+		builder.append("\nstatus=");
 		builder.append(status);
-		builder.append(", numberOfRuns=");
+		builder.append("\nnumberOfRuns=");
 		builder.append(numberOfRuns);
-		builder.append(", executionTime=");
+		builder.append("\nexecutionTime=");
 		builder.append(executionTime);
-		builder.append(", executionTimes=");
+		builder.append("\nexecutionTimes=");
 		builder.append(executionTimes != null ? toString(executionTimes, maxLen)
 				: null);
-		builder.append(", averageExecutionTime=");
+		builder.append("\naverageExecutionTime=");
 		builder.append(averageExecutionTime);
-		builder.append(", requestContent=");
+		builder.append("\nrequestContent=");
 		builder.append(requestContent);
-		builder.append(", requestHeaders=");
+		builder.append("\nrequestHeaders=");
 		builder.append(requestHeaders);
-		builder.append(", responseHeaders=");
+		builder.append("\nresponseHeaders=");
 		builder.append(responseHeaders);
-		builder.append(", requestContentType=");
+		builder.append("\nrequestContentType=");
 		builder.append(requestContentType);
-		builder.append(", responseContentType=");
+		builder.append("\nresponseContentType=");
 		builder.append(responseContentType);
-		builder.append(", responseContent=");
+		builder.append("\nresponseContent=");
 		builder.append(responseContent);
-		builder.append(", responseStatusCode=");
+		builder.append("\nresponseStatusCode=");
 		builder.append(responseStatusCode);
-		builder.append(", error=");
+		builder.append("\nerror=");
 		builder.append(error);
-		builder.append(", errorText=");
+		builder.append("\nerrorText=");
 		builder.append(errorText);
-		builder.append(", errors=");
+		builder.append("\nerrors=");
 		builder.append(errors != null ? toString(errors.entrySet(), maxLen)
 				: null);
-		builder.append(", testIdentifier=");
+		builder.append("\ntestIdentifier=");
 		builder.append(testIdentifier);
-		builder.append("]");
+		builder.append("]\n");
 		return builder.toString();
 	}
 
@@ -352,7 +352,7 @@ public class TestCaseReport {
 		for (Iterator<?> iterator = collection.iterator(); iterator.hasNext()
 				&& i < maxLen; i++) {
 			if (i > 0)
-				builder.append(", ");
+				builder.append("\n");
 			builder.append(iterator.next());
 		}
 		builder.append("]");

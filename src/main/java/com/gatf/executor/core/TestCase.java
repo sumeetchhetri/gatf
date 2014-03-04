@@ -17,7 +17,9 @@ limitations under the License.
 */
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -152,6 +154,15 @@ public class TestCase {
 	
 	@XStreamOmitField
 	private Integer simulationNumber;
+	
+	@XStreamAsAttribute
+	private Long preWaitMs;
+	
+	@XStreamAsAttribute
+	private Long postWaitMs;
+	
+	@XStreamAsAttribute
+	private Boolean reportResponseContent;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -424,6 +435,30 @@ public class TestCase {
 		this.simulationNumber = simulationNumber;
 	}
 
+	public Long getPreWaitMs() {
+		return preWaitMs;
+	}
+
+	public void setPreWaitMs(Long preWaitMs) {
+		this.preWaitMs = preWaitMs;
+	}
+
+	public Long getPostWaitMs() {
+		return postWaitMs;
+	}
+
+	public void setPostWaitMs(Long postWaitMs) {
+		this.postWaitMs = postWaitMs;
+	}
+
+	public Boolean getReportResponseContent() {
+		return reportResponseContent;
+	}
+
+	public void setReportResponseContent(Boolean reportResponseContent) {
+		this.reportResponseContent = reportResponseContent;
+	}
+
 	public boolean isFailed() {
 		return failed;
 	}
@@ -443,22 +478,111 @@ public class TestCase {
 	public String getSourcefileName() {
 		return sourcefileName;
 	}
-
+	
 	@Override
 	public String toString() {
-		return "TestCase [name=" + name + ", url=" + url + ", description=" + description
-				+ ", method=" + method + ", \ncontent=" + content
-				+ ",\n headers=" + headers + ", exQueryPart=" + exQueryPart
-				+ ", expectedResCode=" + expectedResCode
-				+ ", expectedResContentType=" + expectedResContentType
-				+ ", \nexpectedResContent=" + expectedResContent + ",\n skipTest=" + skipTest 
-				+ ", detailedLog=" + detailedLog + ", expectedNodes=" + expectedNodes
-				+ ", filesToUpload=" + filesToUpload
-				+ ", secure=" + secure + (!soapBase?"":(", soapBase = " +  soapBase
-				+ ", soapParameterValues = " + soapParameterValues + ", wsdlKey = " +  wsdlKey
-				+ ", operationName = " + operationName)) + "]";
+		final int maxLen = 10;
+		StringBuilder builder = new StringBuilder();
+		builder.append("TestCase = [\n");
+		builder.append("baseUrl=");
+		builder.append(baseUrl);
+		builder.append("\nurl=");
+		builder.append(url);
+		builder.append("\nname=");
+		builder.append(name);
+		builder.append("\nmethod=");
+		builder.append(method);
+		builder.append("\ndescription=");
+		builder.append(description);
+		builder.append("\ncontent=");
+		builder.append(content);
+		builder.append("\nheaders=");
+		builder.append(headers != null ? toString(headers.entrySet(), maxLen)
+				: null);
+		builder.append("\nexQueryPart=");
+		builder.append(exQueryPart);
+		builder.append("\nexpectedResCode=");
+		builder.append(expectedResCode);
+		builder.append("\nexpectedResContentType=");
+		builder.append(expectedResContentType);
+		builder.append("\nexpectedResContent=");
+		builder.append(expectedResContent);
+		builder.append("\nskipTest=");
+		builder.append(skipTest);
+		builder.append("\ndetailedLog=");
+		builder.append(detailedLog);
+		builder.append("\nsecure=");
+		builder.append(secure);
+		builder.append("\nexpectedNodes=");
+		builder.append(expectedNodes != null ? toString(expectedNodes, maxLen)
+				: null);
+		builder.append("\nsoapBase=");
+		builder.append(soapBase);
+		builder.append("\nwsdlKey=");
+		builder.append(wsdlKey);
+		builder.append("\noperationName=");
+		builder.append(operationName);
+		builder.append("\nsoapParameterValues=");
+		builder.append(soapParameterValues != null ? toString(
+				soapParameterValues.entrySet(), maxLen) : null);
+		builder.append("\nworkflowContextParameterMap=");
+		builder.append(workflowContextParameterMap != null ? toString(
+				workflowContextParameterMap.entrySet(), maxLen) : null);
+		builder.append("\nsequence=");
+		builder.append(sequence);
+		builder.append("\nfilesToUpload=");
+		builder.append(filesToUpload != null ? toString(filesToUpload, maxLen)
+				: null);
+		builder.append("\noutFileName=");
+		builder.append(outFileName);
+		builder.append("\nrepeatScenarios=");
+		builder.append(repeatScenarios != null ? toString(repeatScenarios,
+				maxLen) : null);
+		builder.append("\nrepeatScenarioProviderName=");
+		builder.append(repeatScenarioProviderName);
+		builder.append("\nsourcefileName=");
+		builder.append(sourcefileName);
+		builder.append("\naurl=");
+		builder.append(aurl);
+		builder.append("\naexQueryPart=");
+		builder.append(aexQueryPart);
+		builder.append("\nacontent=");
+		builder.append(acontent);
+		builder.append("\naexpectedNodes=");
+		builder.append(aexpectedNodes != null ? toString(aexpectedNodes, maxLen)
+				: null);
+		builder.append("\nnumberOfExecutions=");
+		builder.append(numberOfExecutions);
+		builder.append("\nrepeatScenariosConcurrentExecution=");
+		builder.append(repeatScenariosConcurrentExecution);
+		builder.append("\nstopOnFirstFailureForPerfTest=");
+		builder.append(stopOnFirstFailureForPerfTest);
+		builder.append("\nfailed=");
+		builder.append(failed);
+		builder.append("\nsimulationNumber=");
+		builder.append(simulationNumber);
+		builder.append("\npreWaitMs=");
+		builder.append(preWaitMs);
+		builder.append("\npostWaitMs=");
+		builder.append(postWaitMs);
+		builder.append("]\n");
+		return builder.toString();
 	}
-	
+
+	private String toString(Collection<?> collection, int maxLen) {
+		StringBuilder builder = new StringBuilder();
+		builder.append("[");
+		int i = 0;
+		for (Iterator<?> iterator = collection.iterator(); iterator.hasNext()
+				&& i < maxLen; i++) {
+			if (i > 0)
+				builder.append(", ");
+			builder.append(iterator.next());
+		}
+		builder.append("]");
+		return builder.toString();
+	}
+
 	public TestCase() {
 	}
 	
@@ -466,7 +590,7 @@ public class TestCase {
 		boolean valid = false;
 		if(csvLine!=null) {
 			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>25) {
+			if(csvParts.length>27) {
 				setUrl(csvParts[0]);
 				setName(csvParts[1]);
 				setMethod(csvParts[2]);
@@ -539,6 +663,8 @@ public class TestCase {
 				setNumberOfExecutions(Integer.parseInt(csvParts[23]));
 				setRepeatScenariosConcurrentExecution(Boolean.valueOf(csvParts[24]));
 				setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts[25]));
+				setPreWaitMs(Long.parseLong(csvParts[26]));
+				setPostWaitMs(Long.parseLong(csvParts[27]));
 				valid = true;
 			} else {
 				valid = false;
@@ -622,6 +748,8 @@ public class TestCase {
 		build.append(getNumberOfExecutions());
 		build.append(isRepeatScenariosConcurrentExecution());
 		build.append(isStopOnFirstFailureForPerfTest());
+		build.append(getPreWaitMs());
+		build.append(getPostWaitMs());
 		return build.toString();
 	}
 	
@@ -651,20 +779,23 @@ public class TestCase {
 					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE))
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
 			
-			if(getHeaders().isEmpty() && ("POST".equals(getMethod()) || "PUT".equals(getMethod())))
+			if(("POST".equals(getMethod()) || "PUT".equals(getMethod())) && getHeaders().isEmpty())
 				throw new RuntimeException("No Content-Type Header provided");
 		}
 		
 		Map<String, String> nHeaders = new HashMap<String, String>();
-		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
-			if(httpHeaders.containsKey(entry.getKey().toLowerCase())) {
-				nHeaders.put(httpHeaders.get(entry.getKey().toLowerCase()), entry.getValue());
-			} else {
-				logger.info("Custom HTTP Header " + entry.getKey() + " specified for testcase");
-				nHeaders.put(entry.getKey(), entry.getValue());
+		if(getHeaders()!=null)
+		{
+			for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+				if(httpHeaders.containsKey(entry.getKey().toLowerCase())) {
+					nHeaders.put(httpHeaders.get(entry.getKey().toLowerCase()), entry.getValue());
+				} else {
+					logger.info("Custom HTTP Header " + entry.getKey() + " specified for testcase");
+					nHeaders.put(entry.getKey(), entry.getValue());
+				}
 			}
+			setHeaders(nHeaders);
 		}
-		setHeaders(nHeaders);
 		
 		/*if(!getHeaders().containsKey(HttpHeaders.CONTENT_TYPE))
 			throw new RuntimeException("No Content-Type Header provided");
@@ -772,5 +903,8 @@ public class TestCase {
 		this.failed = other.failed;
 		this.simulationNumber = other.simulationNumber;
 		this.baseUrl = other.baseUrl;
+		this.preWaitMs = other.preWaitMs;
+		this.postWaitMs = other.postWaitMs;
+		this.reportResponseContent = other.reportResponseContent;
 	}
 }

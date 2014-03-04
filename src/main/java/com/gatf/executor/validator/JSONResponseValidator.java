@@ -39,7 +39,12 @@ public class JSONResponseValidator implements ResponseValidator {
 			{
 				for (String node : testCase.getAexpectedNodes()) {
 					String[] nodeCase = node.split(",");
-					String nvalue = JsonPath.read(response.getResponseBody(), nodeCase[0]);
+					String nvalue = null;
+					try {
+						nvalue = JsonPath.read(response.getResponseBody(), nodeCase[0]).toString();
+					} catch (Exception e) {
+						throw new AssertionError("Expected Node " + nodeCase[0] + " not found");
+					}
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", nvalue);
 					if(nodeCase.length==2) {
 						Assert.assertEquals(nvalue, nodeCase[1]);

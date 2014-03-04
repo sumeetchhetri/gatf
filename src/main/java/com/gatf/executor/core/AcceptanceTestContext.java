@@ -53,7 +53,6 @@ import com.gatf.executor.dataprovider.TestDataProvider;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
-import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.XppDriver;
@@ -65,7 +64,7 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
  */
 public class AcceptanceTestContext {
 
-	private Logger logger = Logger.getLogger(TestCaseExecutorUtil.class.getSimpleName());
+	private Logger logger = Logger.getLogger(AcceptanceTestContext.class.getSimpleName());
 	
 	public final static String
 	    PROP_SOAP_ACTION_11 = "SOAPAction",

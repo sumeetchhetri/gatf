@@ -28,6 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Assert;
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.jayway.jsonpath.JsonPath;
 
 /**
  * @author Sumeet Chhetri
@@ -112,11 +113,11 @@ public class RandomValueTestCaseDataProvider implements TestDataProvider {
 		return result;
 	}
 	
-	private String getPrimitiveValue(String type) {
+	public static String getPrimitiveValue(String type) {
 		if(type.equals("boolean")) {
 			Random rand = new Random();
 			return String.valueOf(rand.nextBoolean());
-		} else if(type.matches("^date\\([a-zA-Z\\-:\\s]*\\)")) {
+		} else if(type.matches("^date\\([a-zA-Z\\-:/\\s]*\\)")) {
 			String pattr = type.substring(type.indexOf("(")+1, type.lastIndexOf(")"));
 			SimpleDateFormat format = new SimpleDateFormat(pattr);
 			return format.format(new Date());
@@ -142,7 +143,7 @@ public class RandomValueTestCaseDataProvider implements TestDataProvider {
 	}
 	
 	public static void main(String[] args) {
-		System.out.println("date(mm-dd-yyyy hh:mm:ss )".matches("^date\\([a-zA-Z\\-:\\s]*\\)"));
+		System.out.println("date(mm/dd/yyyy hh:mm:ss )".matches("^date\\([a-zA-Z\\-:/\\s]*\\)"));
 		
 		final Map<String, Integer> finalTestReportsDups = new ConcurrentHashMap<String, Integer>();
 		finalTestReportsDups.put("asdasd", 1);
@@ -151,5 +152,12 @@ public class RandomValueTestCaseDataProvider implements TestDataProvider {
 		finalTestReportsDups.clear();
 		System.out.println(finalTestReportsDups);
 		System.out.println(finalTestReportsDups.containsKey("asdasd1"));
+		
+		Integer valeu = JsonPath.read("[{\"id\":1336,\"createdAt\":\"2012-08-31T13:36:58.000+0000\",\"updatedAt\":\"2012-08-31T13:36:58.000+0000\",\"address\":\"william.park@direct.development.wellogic.com\",\"folders\":[{\"id\":1339,\"createdAt\":\"2012-08-31T13:36:58.000+0000\",\"updatedAt\":\"2012-08-31T13:36:58.000+0000\",\"name\":\"Trash\",\"inboxFolder\":false,\"draftFolder\":false,\"defaultFolder\":true,\"sentFolder\":false,\"mailbox_id\":\"1336\",\"trashFolder\":true},{\"id\":1337,\"createdAt\":\"2012-08-31T13:36:58.000+0000\",\"updatedAt\":\"2012-08-31T13:36:58.000+0000\",\"name\":\"Inbox\",\"inboxFolder\":true,\"draftFolder\":false,\"defaultFolder\":true,\"sentFolder\":false,\"mailbox_id\":\"1336\",\"trashFolder\":false},{\"id\":1338,\"createdAt\":\"2012-08-31T13:36:58.000+0000\",\"updatedAt\":\"2012-08-31T13:36:58.000+0000\",\"name\":\"Sent\",\"inboxFolder\":false,\"draftFolder\":false,\"defaultFolder\":true,\"sentFolder\":true,\"mailbox_id\":\"1336\",\"trashFolder\":false},{\"id\":1340,\"createdAt\":\"2012-08-31T13:36:58.000+0000\",\"updatedAt\":\"2012-08-31T13:36:58.000+0000\",\"name\":\"Drafts\",\"inboxFolder\":false,\"draftFolder\":true,\"defaultFolder\":true,\"sentFolder\":false,\"mailbox_id\":\"1336\",\"trashFolder\":false}],\"person_id\":\"cedc6356-5c32-42be-9ec3-60107952cc12\"}]", 
+				"[0].folders[?(@.name == 'Inbox')].[0].id");
+		System.out.println(valeu);
+		
+		System.out.println(new SimpleDateFormat("X").format(new Date()));
+		System.out.println(Runtime.getRuntime().availableProcessors());
 	}
 }

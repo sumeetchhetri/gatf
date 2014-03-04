@@ -34,6 +34,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.jayway.jsonpath.JsonPath;
 
@@ -60,14 +61,19 @@ public class WorkflowContextHandler {
 	
 	private final Map<Integer, Map<String, String>> suiteWorkflowContext = new ConcurrentHashMap<Integer, Map<String, String>>();
 	
+	private final Map<Integer, Map<String, List<Map<String, String>>>> suiteWorkflowScenarioContext = 
+			new ConcurrentHashMap<Integer, Map<String, List<Map<String, String>>>>();
+	
 	void initializeSuiteContext(int numberOfRuns) {
 		
 		suiteWorkflowContext.clear();
+		suiteWorkflowScenarioContext.clear();
 		
 		int start = (numberOfRuns>1?1:0);
 		int end = (numberOfRuns>1?numberOfRuns+1:numberOfRuns);
 		for (int i = start; i < end; i++) {
 			suiteWorkflowContext.put(i, new ConcurrentHashMap<String, String>());
+			suiteWorkflowScenarioContext.put(i, new ConcurrentHashMap<String, List<Map<String, String>>>());
 		}
 	}
 	
@@ -82,6 +88,22 @@ public class WorkflowContextHandler {
 			return suiteWorkflowContext.get(0);
 		} else {
 			return suiteWorkflowContext.get(testCase.getSimulationNumber());
+		}
+	}
+	
+	private Map<String, List<Map<String, String>>> getSuiteWorkflowScnearioContext(TestCase testCase) {
+		if(testCase.getSimulationNumber()==null) {
+			return suiteWorkflowScenarioContext.get(0);
+		} else {
+			return suiteWorkflowScenarioContext.get(testCase.getSimulationNumber());
+		}
+	}
+	
+	public List<Map<String, String>> getSuiteWorkflowScnearioContextValues(TestCase testCase, String varName) {
+		if(testCase.getSimulationNumber()==null) {
+			return suiteWorkflowScenarioContext.get(0).get(varName);
+		} else {
+			return suiteWorkflowScenarioContext.get(testCase.getSimulationNumber()).get(varName);
 		}
 	}
 	
@@ -142,9 +164,58 @@ public class WorkflowContextHandler {
 		if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
-				String jsonValue = JsonPath.read(json, entry.getValue());
-				Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", jsonValue);
-				getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+				String nodeName = entry.getValue().trim();
+				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+					nodeName = nodeName.substring(21, nodeName.length()-1);
+					List<Map<String, String>> jsonValues = JsonPath.read(json, "$");
+					
+					if(!nodeName.endsWith("*")) {
+						String[] props = nodeName.split(",");
+						for (Map<String, String> jsonV : jsonValues) {
+							for (String propName : props) {
+								if(!jsonV.containsKey(propName)) {
+									jsonV.remove(propName);
+								}
+							}
+						}
+					}
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
+					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
+				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
+					nodeName = nodeName.substring(21, nodeName.length()-1);
+					String responseMappedCount = JsonPath.read(json, nodeName).toString();
+					int responseCount = -1;
+					try {
+						responseCount = Integer.valueOf(responseMappedCount);
+					} catch (Exception e) {
+						throw new AssertionError("Invalid responseMappedCount variable defined, " +
+								"derived value should be number - "+entry.getValue());
+					}
+					
+					List<Map<String, String>> jsonValues = new ArrayList<Map<String,String>>();
+					for (int i = 0; i < responseCount; i++) {
+						Map<String, String> row = new HashMap<String, String>();
+						row.put("index", (i+1)+"");
+						jsonValues.add(row);
+					}
+					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
+					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
+				} else if(nodeName.startsWith("#")) {
+					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
+							"one of alpha, alphanum, number, boolean," +
+							" -number, +number and date(format) allowed", jsonValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+				} else {
+					String jsonValue = null;
+					try {
+						jsonValue = JsonPath.read(json, nodeName).toString();
+					} catch (Exception e) {
+						throw new AssertionError("Workflow json variable " + nodeName + " not found");
+					}
+					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", jsonValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+				}
 			}
 		}
 	}
@@ -154,6 +225,16 @@ public class WorkflowContextHandler {
 		if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+				String nodeName = entry.getValue().trim();
+				if(nodeName.startsWith("#")) {
+					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
+							"one of alpha, alphanum, number, boolean," +
+							" -number, +number and date(format) allowed", jsonValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+					continue;
+				}
+
 				Node envelope = SOAPResponseValidator.getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
 				Node body = SOAPResponseValidator.getNodeByNameCaseInsensitive(envelope, "body");
 				Node requestBody = SOAPResponseValidator.getNextElement(body);
@@ -163,6 +244,7 @@ public class WorkflowContextHandler {
 				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 				Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
+
 				String xmlValue = xmlNodeList.item(0).getNodeValue();
 				Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
 				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
@@ -175,6 +257,16 @@ public class WorkflowContextHandler {
 		if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+				String nodeName = entry.getValue().trim();
+				if(nodeName.startsWith("#")) {
+					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
+							"one of alpha, alphanum, number, boolean," +
+							" -number, +number and date(format) allowed", jsonValue);
+					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+					continue;
+				}
+				
 				String expression = entry.getValue().replaceAll("\\.", "\\/");
 				if(expression.charAt(0)!='/')
 					expression = "/" + expression;
@@ -182,6 +274,7 @@ public class WorkflowContextHandler {
 				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 				Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
+				
 				String xmlValue = xmlNodeList.item(0).getNodeValue();
 				Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
 				getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);

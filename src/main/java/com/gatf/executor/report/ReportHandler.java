@@ -162,8 +162,6 @@ public class ReportHandler {
 					grpexecutionTime += testCaseReport.getExecutionTime();
 				}
 				
-				allTestCases.put(entry.getKey(), reports);
-        		
         		TestGroupStats testGroupStats = new TestGroupStats();
 				testGroupStats.setSourceFile(entry.getKey());
 				testGroupStats.setExecutionTime(grpexecutionTime);
@@ -178,8 +176,13 @@ public class ReportHandler {
 				}
 				
 				for (TestCaseReport testCaseReport : reports) {
+					if(testCaseReport.getTestCase().getReportResponseContent()!=null
+							&& !testCaseReport.getTestCase().getReportResponseContent())
+						testCaseReport.setResponseContent(null);
 					testCaseReport.setTestCase(null);
 				}
+				
+				allTestCases.put(entry.getKey(), reports);
 				
 				testSuiteStats.getGroupStats().add(testGroupStats);
         		

@@ -167,6 +167,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "loadTestingReportSamples", defaultValue = "3")
 	private Integer loadTestingReportSamples;
 	
+	@Parameter(alias = "debugEnabled", defaultValue = "false")
+	private boolean debugEnabled;
+	
 	private Long startTime = 0L;
 	
 	public void setProject(MavenProject project) {
@@ -390,6 +393,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setLoadTestingTime(loadTestingTime);
 		configuration.setConcurrentUserRampUpTime(concurrentUserRampUpTime);
 		configuration.setLoadTestingReportSamples(loadTestingReportSamples);
+		configuration.setDebugEnabled(debugEnabled);
 		
 		if(configFile!=null) {
 			try {
@@ -469,6 +473,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				&& !configuration.getGatfTestDataConfig().getCompareEnvBaseUrls().isEmpty(); 
 		
 		Set<String> baseUrls = null;
+		List<String> baseUrlList = null;
 		if(compareEnabledOnlySingleTestCaseExec) {
 			baseUrls = new LinkedHashSet<String>();
 			baseUrls.add(configuration.getBaseUrl());
@@ -482,10 +487,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			else
 			{
 				configuration.setCompareBaseUrlsNum(baseUrls.size());
+				baseUrlList = new ArrayList<String>(baseUrls);
 			}
 		}
-		
-		List<String> baseUrlList = new ArrayList<String>(baseUrls);
 		
 		List<TestCase> allTestCases = getAllTestCases(context);
 		sortAndOrderTestCases(allTestCases, configuration);
@@ -651,8 +655,24 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		List<Map<String, String>> sceanrios = testCase.getRepeatScenarios();
 		if(!onlySingleTestCaseExec) {
-			if((sceanrios==null || sceanrios.isEmpty()) && testCase.getRepeatScenarioProviderName()!=null) {
-				sceanrios = context.getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
+			if(testCase.getRepeatScenarioProviderName()!=null) {
+				List<Map<String, String>> sceanriosp = 
+						context.getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
+				if(sceanriosp!=null) {
+					if(sceanrios!=null) {
+						sceanrios.addAll(sceanriosp);
+					} else {
+						sceanrios = sceanriosp;
+					}
+				} else {
+					List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler()
+							.getSuiteWorkflowScnearioContextValues(testCase, testCase.getRepeatScenarioProviderName());
+					if(sceanrios!=null) {
+						sceanrios.addAll(sceanriowk);
+					} else {
+						sceanrios = sceanriowk;
+					}
+				}
 			}
 			testCase.setRepeatScenarios(sceanrios);
 		} else {
@@ -679,7 +699,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				context.addTestCaseReport(testCaseReport);
 				
-				if(testCase.isDetailedLog())
+				if(context.getGatfExecutorConfig().isDebugEnabled() && testCase.isDetailedLog())
 				{
 					getLog().info(testCaseReport.toString());
 				}
@@ -711,7 +731,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
 					return;
 				}
-				if(testCase.isDetailedLog())
+				if(testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled()
+						&& testCase.isDetailedLog())
 				{
 					getLog().info(testCase.toString());
 				}
@@ -725,7 +746,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				executeTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec);
 				
 				getLog().info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
-				getLog().info("============================================================\n");
+				getLog().info("============================================================\n\n\n");
 				
 			} catch (Exception e) {
 				getLog().error(e);
