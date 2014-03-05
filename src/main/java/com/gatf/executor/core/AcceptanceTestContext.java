@@ -399,53 +399,56 @@ public class AcceptanceTestContext {
 		if(gatfTestDataConfig!=null) {
 			getWorkflowContextHandler().addGlobalVariables(gatfTestDataConfig.getGlobalVariables());
 			
-			for (GatfTestDataProvider provider : gatfTestDataConfig.getProviderTestDataList()) {
-				Assert.assertNotNull("Provider name is not defined", provider.getProviderName());
-				Assert.assertNull("Duplicate Provider name found", providerTestDataMap.get(provider.getProviderName()));
-				Assert.assertNotNull("Provider class is not defined", provider.getProviderClass());
-				Assert.assertNotNull("Provider args are not defined", provider.getArgs());
-				
-				if(provider.isEnabled()==null) {
-					provider.setEnabled(true);
-				}
-				
-				if(!provider.isEnabled()) {
-					logger.info("Provider " + provider.getProviderName() + " is Disabled...");
-					continue;
-				}
-				
-				TestDataProvider testDataProvider = null;
-				if(DatabaseTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new DatabaseTestCaseDataProvider();
-				} else if(FileTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new FileTestCaseDataProvider();
-				} else if(InlineValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new InlineValueTestCaseDataProvider();
-				} else if(RandomValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new RandomValueTestCaseDataProvider();
-				} else {
-					try {
-						Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
-						Class[] classes = claz.getInterfaces();
-						boolean validProvider = false;
-						if(classes!=null) {
-							for (Class class1 : classes) {
-								if(class1.equals(TestDataProvider.class)) {
-									validProvider = true;
-									break;
+			if(gatfTestDataConfig.getProviderTestDataList()!=null)
+			{
+				for (GatfTestDataProvider provider : gatfTestDataConfig.getProviderTestDataList()) {
+					Assert.assertNotNull("Provider name is not defined", provider.getProviderName());
+					Assert.assertNull("Duplicate Provider name found", providerTestDataMap.get(provider.getProviderName()));
+					Assert.assertNotNull("Provider class is not defined", provider.getProviderClass());
+					Assert.assertNotNull("Provider args are not defined", provider.getArgs());
+					
+					if(provider.isEnabled()==null) {
+						provider.setEnabled(true);
+					}
+					
+					if(!provider.isEnabled()) {
+						logger.info("Provider " + provider.getProviderName() + " is Disabled...");
+						continue;
+					}
+					
+					TestDataProvider testDataProvider = null;
+					if(DatabaseTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+						testDataProvider = new DatabaseTestCaseDataProvider();
+					} else if(FileTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+						testDataProvider = new FileTestCaseDataProvider();
+					} else if(InlineValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+						testDataProvider = new InlineValueTestCaseDataProvider();
+					} else if(RandomValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+						testDataProvider = new RandomValueTestCaseDataProvider();
+					} else {
+						try {
+							Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
+							Class[] classes = claz.getInterfaces();
+							boolean validProvider = false;
+							if(classes!=null) {
+								for (Class class1 : classes) {
+									if(class1.equals(TestDataProvider.class)) {
+										validProvider = true;
+										break;
+									}
 								}
 							}
+							Assert.assertTrue("Provider class should implement the TestDataProvider interface", validProvider);
+							Object providerInstance = claz.newInstance();
+							testDataProvider = (TestDataProvider)providerInstance;
+						} catch (Throwable e) {
+							throw new AssertionError(e);
 						}
-						Assert.assertTrue("Provider class should implement the TestDataProvider interface", validProvider);
-						Object providerInstance = claz.newInstance();
-						testDataProvider = (TestDataProvider)providerInstance;
-					} catch (Throwable e) {
-						throw new AssertionError(e);
 					}
+					
+					List<Map<String, String>> testData = testDataProvider.provide(provider.getArgs(), this);
+					providerTestDataMap.put(provider.getProviderName(), testData);
 				}
-				
-				List<Map<String, String>> testData = testDataProvider.provide(provider.getArgs(), this);
-				providerTestDataMap.put(provider.getProviderName(), testData);
 			}
 		}
 	}

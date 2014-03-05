@@ -37,6 +37,7 @@ import org.w3c.dom.NodeList;
 
 import com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider;
 import com.gatf.executor.validator.SOAPResponseValidator;
+import com.gatf.executor.validator.XMLResponseValidator;
 import com.jayway.jsonpath.JsonPath;
 
 /**
@@ -84,7 +85,7 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	private Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
+	public Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
 		if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowContext.get(0);
 		} else {
@@ -168,10 +169,17 @@ public class WorkflowContextHandler {
 				String nodeName = entry.getValue().trim();
 				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
 					nodeName = nodeName.substring(21, nodeName.length()-1);
-					List<Map<String, String>> jsonValues = JsonPath.read(json, "$");
 					
-					if(!nodeName.endsWith("*")) {
-						String[] props = nodeName.split(",");
+					String propNames = nodeName.substring(nodeName.indexOf(" ")+1).trim();
+					String path = nodeName.substring(0, nodeName.indexOf(" ")).trim();
+					if(path.equals("")) {
+						path = "$";
+					}
+					
+					List<Map<String, String>> jsonValues = JsonPath.read(json, path);
+					
+					if(!propNames.endsWith("*")) {
+						String[] props = propNames.split(",");
 						for (Map<String, String> jsonV : jsonValues) {
 							for (String propName : props) {
 								if(!jsonV.containsKey(propName)) {
@@ -181,7 +189,7 @@ public class WorkflowContextHandler {
 						}
 					}
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
-					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
+					Assert.assertNotNull("Workflow json mapping variable " + nodeName +" is null", jsonValues);
 				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
 					nodeName = nodeName.substring(21, nodeName.length()-1);
 					String responseMappedCount = JsonPath.read(json, nodeName).toString();
@@ -228,7 +236,8 @@ public class WorkflowContextHandler {
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
 				String nodeName = entry.getValue().trim();
-				if(nodeName.startsWith("#")) {
+				if(nodeName.startsWith("#") && !nodeName.startsWith("#responseMappedValue")
+						 && !nodeName.startsWith("#responseMappedCount")) {
 					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
@@ -243,25 +252,40 @@ public class WorkflowContextHandler {
 				Node returnBody = SOAPResponseValidator.getNextElement(requestBody);
 				
 				String expression = nodeName.replaceAll("\\.", "\\/");
-				if(expression.charAt(0)!='/')
-					expression = "/" + expression;
-				
+
 				if(expression.startsWith("#responseMappedValue[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
 					
-					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					String propNames = expression.substring(expression.indexOf(" ")+1).trim();
+					String path = expression.substring(0, expression.indexOf(" ")).trim();
+					
+					if(path.length()>1 && path.charAt(0)!='/')
+						path = "/" + path;
+					
+					if(path.equals(""))
+						path = SOAPResponseValidator.createXPathExpression(path, envelope, body, requestBody) + "*";
+					else	
+						path = SOAPResponseValidator.createXPathExpression(path, envelope, body, requestBody, returnBody);
+					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
-					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					NodeList xmlNodeList = (NodeList) xPath.compile(path).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 					
-					List<Map<String, String>> soapValues = getNodeValueMapList(expression, xmlNodeList);
+					List<Map<String, String>> soapValues = getNodeValueMapList(propNames, xmlNodeList);
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), soapValues);
 					Assert.assertNotNull("Workflow soap mapping variable " + entry.getValue() +" is null", soapValues);
 				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
 					
-					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					if(expression.length()>1 && expression.charAt(0)!='/')
+						expression = "/" + expression;
+					
+					if(expression.equals(""))
+						expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody) + "*";
+					else	
+						expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
@@ -274,7 +298,15 @@ public class WorkflowContextHandler {
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), soapValues);
 					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", soapValues);
 				} else {
-					expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					
+					if(expression.length()>1 && expression.charAt(0)!='/')
+						expression = "/" + expression;
+					
+					if(expression.equals(""))
+						expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody) + "*";
+					else	
+						expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
@@ -294,7 +326,8 @@ public class WorkflowContextHandler {
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
 				String nodeName = entry.getValue().trim();
-				if(nodeName.startsWith("#")) {
+				if(nodeName.startsWith("#") && !nodeName.startsWith("#responseMappedValue")
+						 && !nodeName.startsWith("#responseMappedCount")) {
 					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
@@ -304,22 +337,32 @@ public class WorkflowContextHandler {
 				}
 				
 				String expression = nodeName.replaceAll("\\.", "\\/");
-				if(expression.charAt(0)!='/')
-					expression = "/" + expression;
 				
 				if(expression.startsWith("#responseMappedValue[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
 					
+					String propNames = expression.substring(expression.indexOf(" ")+1).trim();
+					String path = expression.substring(0, expression.indexOf(" ")).trim();
+					if(path.equals("")) {
+						path = "/*";
+					}
+					
+					if(path.charAt(0)!='/')
+						path = "/" + path;
+					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
-					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
+					NodeList xmlNodeList = (NodeList) xPath.compile(path).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Workflow xml variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 					
-					List<Map<String, String>> xmlValues = getNodeValueMapList(expression, xmlNodeList);
+					List<Map<String, String>> xmlValues = getNodeValueMapList(propNames, xmlNodeList);
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), xmlValues);
-					Assert.assertNotNull("Workflow xml mapping variable " + entry.getValue() +" is null", xmlValues);
+					Assert.assertNotNull("Workflow xml mapping variable " + expression +" is null", xmlValues);
 				} else if(expression.startsWith("#responseMappedCount[") && expression.endsWith("]")) {
 					expression = expression.substring(21, expression.length()-1);
+					
+					if(expression.charAt(0)!='/')
+						expression = "/" + expression;
 					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
@@ -333,6 +376,10 @@ public class WorkflowContextHandler {
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), xmlValues);
 					Assert.assertNotNull("Workflow xml mapping variable " + entry.getValue() +" is null", xmlValues);
 				} else {
+					
+					if(expression.charAt(0)!='/')
+						expression = "/" + expression;
+					
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
@@ -366,15 +413,15 @@ public class WorkflowContextHandler {
 		return xmlValues;
 	}
 	
-	private List<Map<String, String>> getNodeValueMapList(String nodeName, NodeList xmlNodeList)
+	private List<Map<String, String>> getNodeValueMapList(String propNames, NodeList xmlNodeList)
 	{
 		List<Map<String, String>> nodeValues = new ArrayList<Map<String,String>>();
-		if(nodeName.endsWith("*")) 
+		if(propNames.endsWith("*")) 
 		{
 			for (int i = 0; i < xmlNodeList.getLength(); i++) {
 				Map<String, String> row = new HashMap<String, String>();
 				
-				Node node = xmlNodeList.item(0);
+				Node node = xmlNodeList.item(i);
 				if(node.getAttributes()!=null && node.getAttributes().getLength()>0)
 				{
 					for (int j = 0; j < node.getAttributes().getLength(); j++) {
@@ -382,41 +429,64 @@ public class WorkflowContextHandler {
 						row.put(attr.getName(), attr.getValue());
 					}
 				}
-				row.put(node.getLocalName(), node.getNodeValue());
 				
-				nodeValues.add(row);
+				if(node.getChildNodes()!=null && node.getChildNodes().getLength()>0)
+				{
+					for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+						String xmlValue = XMLResponseValidator.getNodeValue(node.getChildNodes().item(j));
+						if(xmlValue!=null)
+							row.put(node.getChildNodes().item(j).getNodeName(), xmlValue);
+					}
+				}
+				
+				String xmlValue = XMLResponseValidator.getNodeValue(node);
+				if(xmlValue!=null)
+					row.put("this", xmlValue);
+				
+				if(row.size()>0)
+					nodeValues.add(row);
 			}
 		} 
 		else
 		{
-			String[] props = nodeName.split(",");
+			String[] props = propNames.split(",");
 			
 			for (int i = 0; i < xmlNodeList.getLength(); i++) {
 				Map<String, String> row = new HashMap<String, String>();
 				
-				Node node = xmlNodeList.item(0);
+				Node node = xmlNodeList.item(i);
 				
 				boolean found = false;
-				for (String propName : props) {
-					if(node.getLocalName().equals(propName)) {
-						found = true;
-						break;
-					}
-				}
-				
-				if(!found)
-					continue;
 				
 				if(node.getAttributes()!=null && node.getAttributes().getLength()>0)
 				{
 					for (int j = 0; j < node.getAttributes().getLength(); j++) {
 						Attr attr = (Attr) node.getAttributes().item(j);
-						row.put(attr.getName(), attr.getValue());
+						for (String propName : props) {
+							if(attr.getName().equals(propName)) {
+								found = true;
+								row.put(propName, attr.getValue());
+								break;
+							}
+						}
 					}
 				}
-				row.put(node.getLocalName(), node.getNodeValue());
 				
-				nodeValues.add(row);
+				if(!found && node.getChildNodes()!=null && node.getChildNodes().getLength()>0)
+				{
+					for (int j = 0; j < node.getChildNodes().getLength(); j++) {
+						for (String propName : props) {
+							if(node.getChildNodes().item(j).getNodeName().equals(propName)) {
+								found = true;
+								String xmlValue = XMLResponseValidator.getNodeValue(node.getChildNodes().item(j));
+								row.put(propName, xmlValue);
+								break;
+							}
+						}
+					}
+				}
+				if(row.size()>0)
+					nodeValues.add(row);
 			}
 		}
 		return nodeValues;

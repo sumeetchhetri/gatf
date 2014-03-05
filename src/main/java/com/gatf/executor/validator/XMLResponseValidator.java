@@ -26,7 +26,9 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
+import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -60,7 +62,9 @@ public class XMLResponseValidator implements ResponseValidator {
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Expected Node " + nodeCase[0] + " is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					
+					String xmlValue = getNodeValue(xmlNodeList.item(0));
+					
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", xmlValue);
 					if(nodeCase.length==2) {
 						Assert.assertEquals(xmlValue, nodeCase[1]);
@@ -84,7 +88,16 @@ public class XMLResponseValidator implements ResponseValidator {
 				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 				Assert.assertTrue("Authentication token is null", 
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
-				context.setSessionIdentifier(xmlNodeList.item(0).getNodeValue(), testCase);
+				
+				String xmlValue = getNodeValue(xmlNodeList.item(0));
+				context.setSessionIdentifier(xmlValue, testCase);
+				
+				String identifier = expression;
+				if(identifier.indexOf("/")!=-1)
+					identifier = identifier.substring(identifier.lastIndexOf("/")+1);
+				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(identifier, 
+						xmlValue);
+				
 				Assert.assertNotNull("Authentication token is null", 
 						context.getSessionIdentifier(testCase));
 			}
@@ -98,5 +111,27 @@ public class XMLResponseValidator implements ResponseValidator {
 			}
 			e.printStackTrace();
 		}
+	}
+	
+	public static String getNodeValue(Node node)
+	{
+		String xmlValue = null;
+		if(node.getNodeType()==Node.TEXT_NODE 
+				|| node.getNodeType()==Node.CDATA_SECTION_NODE)
+		{
+			xmlValue = node.getNodeValue();
+		}
+		else if(node.getNodeType()==Node.ATTRIBUTE_NODE)
+		{
+			xmlValue = ((Attr)node).getValue();
+		}
+		else if(node.getNodeType()==Node.ELEMENT_NODE
+				&& node.getChildNodes().getLength()>=1
+				&& (node.getFirstChild().getNodeType()==Node.TEXT_NODE
+				|| node.getFirstChild().getNodeType()==Node.CDATA_SECTION_NODE))
+		{
+			xmlValue = node.getFirstChild().getNodeValue();
+		}
+		return xmlValue;
 	}
 }

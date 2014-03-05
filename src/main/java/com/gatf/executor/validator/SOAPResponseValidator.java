@@ -60,11 +60,15 @@ public class SOAPResponseValidator implements ResponseValidator {
 					Node requestBody = getNextElement(body);
 					Node returnBody = getNextElement(requestBody);
 					String expression = createXPathExpression(nodeCase[0], envelope, body, requestBody, returnBody);
+					if(expression.indexOf("/[")!=-1)
+						expression = expression.replaceAll("/[", "[");
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 					Assert.assertTrue("Expected Node " + nodeCase[0] + " is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					
+					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+					
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", xmlValue);
 					if(nodeCase.length==2) {
 						Assert.assertEquals(xmlValue, nodeCase[1]);
@@ -80,11 +84,22 @@ public class SOAPResponseValidator implements ResponseValidator {
 				Node requestBody = getNextElement(body);
 				Node returnBody = getNextElement(requestBody);
 				String expression = createXPathExpression(context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[0], envelope, body, requestBody, returnBody);
+				if(expression.indexOf("/[")!=-1)
+					expression = expression.replaceAll("/[", "[");
 				XPath xPath =  XPathFactory.newInstance().newXPath();
 				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
 				Assert.assertTrue("Authentication token is null", 
 						xmlNodeList!=null && xmlNodeList.getLength()>0);
-				context.setSessionIdentifier(xmlNodeList.item(0).getFirstChild().getNodeValue(), testCase);
+				
+				String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+				context.setSessionIdentifier(xmlValue, testCase);
+				
+				String identifier = expression;
+				if(identifier.indexOf("/")!=-1)
+					identifier = identifier.substring(identifier.lastIndexOf("/")+1);
+				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(identifier, 
+						xmlValue);
+				
 				Assert.assertNotNull("Authentication token is null", 
 						context.getSessionIdentifier(testCase));
 			}

@@ -300,13 +300,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		List<TestCase> pretestcases = new ArrayList<TestCase>();
 		List<TestCase> posttestcases = new ArrayList<TestCase>();
 		for (TestCase testCase : allTestCases) {
-			if(testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) || configuration.isSoapAuthTestCase(testCase)) {
+			if((testCase.getUrl()!=null && testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl())) 
+					|| configuration.isSoapAuthTestCase(testCase)) {
 				pretestcases.add(testCase);
 			}
 			testCase.setSimulationNumber(0);
 		}
 		for (TestCase testCase : allTestCases) {
-			if(!testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) && !configuration.isSoapAuthTestCase(testCase)) {
+			if((testCase.getUrl()!=null && !testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) 
+					&& !configuration.isSoapAuthTestCase(testCase)) ||
+					(testCase.getUrl()==null && testCase.isSoapBase())) {
 				posttestcases.add(testCase);
 			}
 		}
@@ -394,6 +397,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setConcurrentUserRampUpTime(concurrentUserRampUpTime);
 		configuration.setLoadTestingReportSamples(loadTestingReportSamples);
 		configuration.setDebugEnabled(debugEnabled);
+		configuration.setGatfTestDataConfig(gatfTestDataConfig);
 		
 		if(configFile!=null) {
 			try {
@@ -729,7 +733,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				if(testCase.isSkipTest())
 				{
 					getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
-					return;
+					continue;
 				}
 				if(testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled()
 						&& testCase.isDetailedLog())

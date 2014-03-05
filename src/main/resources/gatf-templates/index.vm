@@ -64,43 +64,43 @@
 					<!-- /.col-lg-12 -->
 					<div class="col-lg-12">
 						<br/>
-						<div class="panel panel-default" style="width:500px">
-							<div class="panel-heading">
-								Final Reports
-							</div>
-							<!-- /.panel-heading -->
-							<div class="panel-body">        
-								<input type="radio" checked name="chartType" value="line" onclick="reloadCharts(this.value)">Line Chart<br>
-								<input type="radio" name="chartType" value="bar" onclick="reloadCharts(this.value)">Bar Chart<br/><br/>
-								<select id="groupFilesSelect" onchange="loadStats(this.value)"><option value="All">All</option></select>
-								<br/><br/><br/>
-								<ul style="margin-left:50px" id="stats-pre-ele">
-								</ul>
-								<br/>
-							</div>
-						</div>
-					</div>
-
-					<div class="col-lg-4">
-						<div class="panel panel-default" style="width:400px">
-							<div class="panel-heading">
-								Overall Test Success/Failures
-							</div>
-							<!-- /.panel-heading -->
-							<div class="panel-body">        
-								<div class="flot-chart-content" id="flot-pie-chart" style="width:300px;height:300px"></div>
+						<div class="col-lg-4">
+							<div class="panel panel-default">
+								<div class="panel-heading">
+									Final Reports
+								</div>
+								<!-- /.panel-heading -->
+								<div class="panel-body">        
+									<input type="radio" checked name="chartType" value="line" onclick="reloadCharts(this.value)">Line Chart<br>
+									<input type="radio" name="chartType" value="bar" onclick="reloadCharts(this.value)">Bar Chart<br/><br/>
+									<select id="groupFilesSelect" onchange="loadStats(this.value)"><option value="All">All</option></select>
+									<br/><br/><br/>
+									<ul style="margin-left:50px" id="stats-pre-ele">
+									</ul>
+									<br/>
+								</div>
 							</div>
 						</div>
-					</div>
-
-					<div class="col-lg-4" id="secondpie" style="display:none">
-						<div class="panel panel-default" style="width:400px;">
-							<div class="panel-heading">
-								Overall Success/Failures - Multiple Test Runs
+						<div class="col-lg-4">
+							<div class="panel panel-default">
+								<div class="panel-heading">
+									Overall Test Success/Failures
+								</div>
+								<!-- /.panel-heading -->
+								<div class="panel-body">        
+									<div class="flot-chart-content" id="flot-pie-chart" style="width:300px;height:300px"></div>
+								</div>
 							</div>
-							<!-- /.panel-heading -->
-							<div class="panel-body">        
-								<div class="flot-chart-content" id="flot-pie-chart2" style="width:300px;height:300px"></div>
+						</div>
+						<div class="col-lg-4">
+							<div class="panel panel-default" id="secondpie" style="display:none;">
+								<div class="panel-heading">
+									Overall Success/Failures - Multiple Test Runs
+								</div>
+								<!-- /.panel-heading -->
+								<div class="panel-body">        
+									<div class="flot-chart-content" id="flot-pie-chart2" style="width:300px;height:300px"></div>
+								</div>
 							</div>
 						</div>
 					</div>

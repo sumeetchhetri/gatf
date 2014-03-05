@@ -62,6 +62,8 @@ public class JSONResponseValidator implements ResponseValidator {
 					&& context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("json")) {
 				String identifier = JsonPath.read(response.getResponseBody(), context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
 				context.setSessionIdentifier(identifier, testCase);
+				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)
+					.put(context.getGatfExecutorConfig().getAuthExtractAuthParams()[0], identifier);
 				Assert.assertNotNull("Authentication token is null", context.getSessionIdentifier(testCase));
 			}
 			testCaseReport.setStatus("Success");

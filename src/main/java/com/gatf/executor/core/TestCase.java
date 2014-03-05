@@ -824,10 +824,13 @@ public class TestCase {
 		
 		setExQueryPart(getExQueryPart()==null?"":getExQueryPart());
 		
-		if(getUrl().indexOf("?")==-1 && !getExQueryPart().trim().isEmpty()) {
-			setUrl(getUrl() + "?" + getExQueryPart());
-		} else if(getUrl().indexOf("?")!=-1 && !getExQueryPart().trim().isEmpty()) {
-			setUrl(getUrl() + "&" + getExQueryPart());
+		if(!isSoapBase())
+		{
+			if(getUrl().indexOf("?")==-1 && !getExQueryPart().trim().isEmpty()) {
+				setUrl(getUrl() + "?" + getExQueryPart());
+			} else if(getUrl().indexOf("?")!=-1 && !getExQueryPart().trim().isEmpty()) {
+				setUrl(getUrl() + "&" + getExQueryPart());
+			}
 		}
 		
 		setDescription(getDescription()==null?"":getDescription());
@@ -906,5 +909,6 @@ public class TestCase {
 		this.preWaitMs = other.preWaitMs;
 		this.postWaitMs = other.postWaitMs;
 		this.reportResponseContent = other.reportResponseContent;
+		this.repeatScenarioProviderName = other.repeatScenarioProviderName;
 	}
 }

@@ -78,10 +78,10 @@ public class RandomValueTestCaseDataProvider implements TestDataProvider {
 			if(!varType.trim().isEmpty()) {
 				if(!varType.equals("+number") && !varType.equals("alpha") && !varType.equals("alphanum")
 						&& !varType.equals("boolean") && !varType.equals("-number") && !varType.equals("number")
-						&& !varType.matches("^date\\([a-zA-Z\\-:\\s]*\\)"))
+						&& !varType.equals("float") && !varType.matches("^date\\([a-zA-Z\\-:\\s]*\\)"))
 				{
 					throw new AssertionError("variable type needs to be one of alpha, alphanum, number, boolean," +
-							" -number, +number and date(format)");
+							" -number, +number, float, boolean and date(format)");
 				}
 				if(varType.matches("^date\\([a-zA-Z\\-:\\s]*\\)"))
 				{

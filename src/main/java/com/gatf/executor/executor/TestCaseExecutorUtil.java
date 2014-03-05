@@ -303,13 +303,28 @@ public class TestCaseExecutorUtil {
                 builder.addHeader(AcceptanceTestContext.PROP_SOAP_ACTION_11, soapAction);
                 builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
                 builder.addParameter(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
+                testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
             } else if (request.contains(AcceptanceTestContext.SOAP_1_2_NAMESPACE)) {
                 String contentType = AcceptanceTestContext.MIMETYPE_APPLICATION_XML;
                 if (soapAction != null) {
                     contentType = contentType + AcceptanceTestContext.PROP_DELIMITER + AcceptanceTestContext.PROP_SOAP_ACTION_12 + "\"" + soapAction + "\"";
                 }
                 builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, contentType);
+                testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, contentType);
             }
+			
+			String endpoint = context.getSoapEndpoints().get(testCase.getWsdlKey());
+			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
+					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
+				String sessIdentifier = context.getSessionIdentifier(testCase);
+				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
+				if(endpoint.indexOf("?")!=-1) {
+					endpoint += "&" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
+				} else {
+					endpoint += "?" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
+				}
+			}
+			testCase.setAurl(endpoint);
 			
 			if(request==null || request.trim().isEmpty())
 			{
@@ -323,21 +338,9 @@ public class TestCaseExecutorUtil {
 				DOMSource source = new DOMSource(soapMessage);
 				transformer.transform(source, result);
 				request = sw.toString();
-				
-				String endpoint = context.getSoapEndpoints().get(testCase.getWsdlKey());
-				if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
-						&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
-					String sessIdentifier = context.getSessionIdentifier(testCase);
-					Assert.assertNotNull("Authentication Token is null", sessIdentifier);
-					if(endpoint.indexOf("?")!=-1) {
-						endpoint += "&" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
-					} else {
-						endpoint += "?" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
-					}
-				}
-				testCase.setAurl(endpoint);
-				builder = builder.setUrl(testCase.getAurl()).setBody(request);
 			}
+			
+			builder = builder.setUrl(testCase.getAurl()).setBody(request);
 		}
 	}
 	
