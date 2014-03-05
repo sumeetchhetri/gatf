@@ -132,4 +132,20 @@ public class TestSuiteStats {
 		builder.append("]");
 		return builder.toString();
 	}
+	
+	public String show() {
+		StringBuilder builder = new StringBuilder();
+		builder.append("Result:\nTotalTestCount=");
+		builder.append(totalTestCount);
+		builder.append(", FailedTestCount=");
+		builder.append(failedTestCount);
+		builder.append(", ExecutionTime=");
+		builder.append(executionTime);
+		builder.append(", TotalRuns=");
+		builder.append(totalRuns);
+		builder.append(", FailedRuns=");
+		builder.append(failedRuns);
+		builder.append("\n");
+		return builder.toString();
+	}
 }

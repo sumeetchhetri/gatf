@@ -602,7 +602,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					break;
 				}
 			} else {
-				reportHandler.doReporting(context, suiteStartTime, null);
+				loadStats = reportHandler.doReporting(context, suiteStartTime, null);
 				break;
 			}
 		}
@@ -613,6 +613,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		if(isLoadTestingEnabled) {
 			reportHandler.doFinalLoadTestReport(loadStats, context);
+		}
+		
+		if(loadStats!=null) {
+			getLog().info(loadStats.show());
+			if(loadStats.getFailedTestCount()>0) {
+				throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
+			}
 		}
 	}
 	
