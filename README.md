@@ -1,7 +1,7 @@
 Generic Automated Test Framework (GATF)
 =========
 
-**GATF** is a automated test generator and acceptance testing framework(laid on top of TestNG, Soap-ws and Rest-assured). Provides 2 components namely the **Test Generator** the **Test Executor**
+**GATF** is a automated test generator and acceptance testing framework(laid on top of asyn-http-client and Soap-ws). Provides 2 components namely the **Test Generator** the **Test Executor**
 
 GATF Acceptance Test executor is data-type agnostic, which means that your testcases can be in any formats like XML, JSON or plain old CSV. Whereas the Test generator generates only XML files (so that even complex data structures can be suuported within your testcases) 
 
