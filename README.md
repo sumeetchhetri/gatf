@@ -12,7 +12,7 @@ GATF Test Generator
 ==============
 The Test Generator is responsible for generating test cases automatically by just looking at either,
 1. All your REST-full service classes annotated with @Path annotation
-1. All your soap based WSDL locations
+2. All your soap based WSDL locations
 The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV.
 
 Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter
@@ -212,7 +212,7 @@ Plugin Maven Configuration
 With the configuration below you can just execute the maven generate-test-resources goal in order to generate all your test cases and then on the command line, any other goal after the generate-test-resources goal can also be used like package or test.
 **mvn generate-test-resources**
 Sample pom.xml
-```
+```xml
 <project ...>
     <!-- In case the maven gatf generator needs to be used to generate testcases -->
     <pluginRepositories>
@@ -295,7 +295,7 @@ For direct execution, we just need to specify a simple config.xml(any name .xml)
 user@local> java -jar gatf-plugin-1.0.jar config.xml
 
 Sample config.xml
-```
+```xml
 <configuration>
     <!--The comma separated package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
     <testPaths>
@@ -336,7 +336,7 @@ Lets see what the GATF Test Executor is,
 GATF Test Executor
 ================
 The GATF Test Executor module provides a consolidated testing tool for,
-1.Single Session Test case execution
+1. Single Session Test case execution
 2. Performance Test case execution
 3. Scenario/Workflow based Test case execution
 4. Concurrent User Simulation
@@ -376,7 +376,7 @@ GATF Executor Configuration
 --------------
 The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
 
-```
+```xml
 <gatf-execute-config>
     <!-- Whether auto authentication support is enabled -->
     <authEnabled>true</authEnabled>
