@@ -7,6 +7,10 @@ GATF Acceptance Test executor is data-type agnostic, which means that your testc
 
 > The primary goal of GATF is Automation with Simplicity.
 
+Test HTML Generator Plugin
+==========
+You can also refer the [test-html-generator-plugin][7] home page if you want to generate HTML pages for all you REST endpoints automatically.
+
 
 GATF Test Generator
 ==============
@@ -48,7 +52,7 @@ repe
 * FilesToUpload - the file content or multipart data to upload, optional (ex, file:file:wsdl-locations.csv:), specifees a colon separated list of file details to be uploaded, the list defines controlname:type(file/text):fileOrText(filename/text content):contentType(only for text content)
 * OutFileName - The name of the output file where the reponse of the API test will be stored
 * RepeatScenarios - The list of variables (or scenarios) for which this test case will be repeated
-* RepeatScenarioProviderName - The repeat scenario provider name, Refer [Provider][6]
+* RepeatScenarioProviderName - The repeat scenario provider name, Refer [Provider][8]
 * RepeatScenariosConcurrentExecution - Do we want to run the repeat sceanrios concurrently?
 * NumberOfExecutions - Number of times to repeat execution of this test case
 * StopOnFirstFailureForPerfTest - In case a test case is executed multiple times (due to NumberOfExecutions), do we stop on the first failure?
@@ -1114,3 +1118,4 @@ Apache License Version 2.0
 [4]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/workflow-example/
 [5]:#workflow
 [6]:http://lit-savannah-1186.herokuapp.com/gatf-artifacts/workflow-example/data/sample-tests.xml
+[7]:https://github.com/sumeetchhetri/test-html-generator-plugin
