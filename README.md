@@ -1,19 +1,21 @@
 Generic Automated Test Framework (GATF)
 =========
 
-**GATF** is a automated test generator and acceptance testing framework(laid on top of TestNG, Soap-ws and Rest-assured). Provides 3 components namely the **Test Generator** the **Accpetance Test Executor** and the **WorkFlow Engine**
-
-  - Generates testcases (xml) for all your API's
-  - Provides a work-flow/orchestration engine for automated testcase execution
-  - Both Rest-ful and SOAP based API's are supported
-  - JAX-RS annotations are looked up to generate testcases for rest-ful api's
-  - WSDL file is referred to genrate soap based test cases
-  - Acceptance test class provided to execute all generated testcases (in most cases you would only need this class in your testng.xml for all your API tests)
-
+**GATF** is a automated test generator and acceptance testing framework(laid on top of TestNG, Soap-ws and Rest-assured). Provides 2 components namely the **Test Generator** the **Test Executor**
 
 GATF Acceptance Test executor is data-type agnostic, which means that your testcases can be in any formats like XML, JSON or plain old CSV. Whereas the Test generator generates only XML files (so that even complex data structures can be suuported within your testcases) 
 
 > The primary goal of GATF is Automation with Simplicity.
+
+
+GATF Test Generator
+==============
+The Test Generator is responsible for generating test cases automatically by just looking at either,
+1. All your REST-full service classes annotated with @Path annotation
+1. All your soap based WSDL locations
+The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV.
+
+Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter
 
 
 Lets go over the primary entity within GATF, Testcase  
@@ -22,7 +24,7 @@ Testcase
 -----------
 
 A testcase is nothing but an entity that defines any method call over HTTP, to simplify things, its just a plain object that holds information about your API call with properties like the HTTP Method, the URI, the parameters, the content, the Headers passed, the expected output and son on. Lets walk over the properties of a Testcase in details below,
-
+repe
 * Url - the Service URL, mandatory (ex, /api/users)
 * Name - the test case name, mandatory (ex, GetUsers)
 * Description - the test case description, optional (ex, Get all the users)
@@ -44,7 +46,15 @@ A testcase is nothing but an entity that defines any method call over HTTP, to s
 * SkipTest - whether to skip this test, mandatory (ex, true/false)
 * DetailedLog - whether or not to log the detailed execution logs, mandatory (ex, true/false)
 * FilesToUpload - the file content or multipart data to upload, optional (ex, file:file:wsdl-locations.csv:), specifees a colon separated list of file details to be uploaded, the list defines controlname:type(file/text):fileOrText(filename/text content):contentType(only for text content)
-
+* OutFileName - The name of the output file where the reponse of the API test will be stored
+* RepeatScenarios - The list of variables (or scenarios) for which this test case will be repeated
+* RepeatScenarioProviderName - The repeat scenario provider name, Refer [Provider][6]
+* RepeatScenariosConcurrentExecution - Do we want to run the repeat sceanrios concurrently?
+* NumberOfExecutions - Number of times to repeat execution of this test case
+* StopOnFirstFailureForPerfTest - In case a test case is executed multiple times (due to NumberOfExecutions), do we stop on the first failure?
+* PreWaitMs - Time to wait before execution of test case
+* PostWaitMs - Time to wait after execution of test case
+* ReportResponseContent - Do we want to log the test execution response data to the final test report?
 
 Sample Application
 =======
@@ -61,78 +71,78 @@ Lets provide a sample application scneario so that we can follow through the exa
 1. The application provides 3 security API's for authentication
    - Login Using user/password headers = POST /api/loginbyHeaders
      <br/>*Headers*<br/>
-     ```
-        username: user
-        password: passw
-     ```
+```
+username: user
+password: passw
+```
    - Login Using Form Parameters = POST /api/loginbyformparams
      <br/>*Headers*<br/>
-     ```
-        Content-Type: application/x-www-form-urlencoded
-     ```
+```
+Content-Type: application/x-www-form-urlencoded
+```
      *Content*<br/>
-     ```
-        username=admin&password=invalid
-     ```
+```
+username=admin&password=invalid
+```
    - Login Using Basic authentication = POST /api/loginBasicAuth
      <br/>*Headers*<br/>
-     ```
-        Authorization: Basic YWRtaW46YWRtaW4Abc=
-     ```
+```
+Authorization: Basic YWRtaW46YWRtaW4Abc=
+```
 2. User Service provides 3 API's, supporting JSON io like,
    - Get User = GET /jsonapi/users/{id}
      <br/>Response -
-     ```
-	        {"id": 1, "name": "Test", "age": 27}
-     ```
+```
+        {"id": 1, "name": "Test", "age": 27}
+```
    - Get Users = GET /jsonapi/users
      <br/>Response -
-     ```
-        [
-            {"id": 1, "name": "Test", "age": 27}, 
-            {"id": 2, "name": "Test", "age": 27}
-        ]
-     ``` 
+```
+[
+    {"id": 1, "name": "Test", "age": 27}, 
+    {"id": 2, "name": "Test", "age": 27}
+]
+``` 
    - Create User = POST /jsonapi/users
      <br/>Request -
-     ```
-        {"id": 3, "name": "Test", "age": 27}
-     ```
+```
+{"id": 3, "name": "Test", "age": 27}
+```
 2. User Service also provides 3 API's, supporting XML io like,
    - Get User = GET /xmlapi/users/{id}
      <br/>Response -
-     ```
-        <User>
-            <id>1</id>
-            <name>Test</name>
-            <age>27</age>
-        </User>
-     ```
+```
+<User>
+    <id>1</id>
+    <name>Test</name>
+    <age>27</age>
+</User>
+```
    - Get Users = GET /xmlapi/users
      <br/>Response -
-     ```
-        <Users>
-            <User>
-                <id>1</id>
-                <name>Test</name>
-                <age>27</age>
-            </User>
-            <User>
-                <id>2</id>
-                <name>Test</name>
-                <age>27</age>
-            </User>
-        </Users>
-     ```
+```
+<Users>
+    <User>
+        <id>1</id>
+        <name>Test</name>
+        <age>27</age>
+    </User>
+    <User>
+        <id>2</id>
+        <name>Test</name>
+        <age>27</age>
+    </User>
+</Users>
+```
    - Create User = POST /xmlapi/users
      <br/>Request -
-     ```
-        <User>
-            <id>3</id>
-            <name>Test</name>
-            <age>27</age>
-        </User>
-     ```    
+```
+<User>
+    <id>3</id>
+    <name>Test</name>
+    <age>27</age>
+</User>
+```    
 
 
 Testcase (XML)
@@ -191,6 +201,383 @@ jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader
 ```
 Simplest data format but cannot be used or complex request/response content
 <br/>
+
+
+Usage - GATF Test Generator
+======
+The GATF utility/plugin can be either used as a maven plugin or directly as an executable jar file
+
+Plugin Maven Configuration
+---------
+With the configuration below you can just execute the maven generate-test-resources goal in order to generate all your test cases and then on the command line, any other goal after the generate-test-resources goal can also be used like package or test.
+**mvn generate-test-resources**
+Sample pom.xml
+```
+<project ...>
+    <!-- In case the maven gatf generator needs to be used to generate testcases -->
+    <pluginRepositories>
+            <pluginRepository>
+                <id>gatf-repository</id>
+                <name>Gatf Repository</name>
+                <url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
+            </pluginRepository>
+    </pluginRepositories>
+ 
+    <!-- In case the maven gatf test class needs to be used to execute testcases -->
+    <repositories>
+        <repository>
+            <id>gatf 1.1</id>
+            <url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
+        </repository>
+    </repositories>
+ 
+    <plugins>
+        <plugin>
+                <groupId>com.test</groupId>
+                <artifactId>gatf-plugin</artifactId>
+                <version>1.1</version>
+                <configuration>
+                    <!--The comma separated package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
+                    <testPaths>
+                        <testPath>com.sample.services.*</testPath>
+                    </testPaths>
+                    <!-- Whether a soap client/http client is used to execute SOAP tests
+                         the useSoapClient, soapWsdlKeyPairs properties in the configuration are only
+                         required if we want to generate testcases for SOAP endpoints as well-->
+                    <useSoapClient>true</useSoapClient>
+                    <!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
+                    <soapWsdlKeyPairs>
+                        <soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
+                        <soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
+                        <soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
+                        <soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
+                    </soapWsdlKeyPairs>
+                    <!--The REST API service URL suffix-->   
+                    <urlSuffix>_param=value</urlSuffix>
+                    <!--The REST API service URL prefix-->
+                    <urlPrefix>rest</urlPrefix>
+                    <!--The request data type, when generating request entities-->
+                    <requestDataType>json</requestDataType>
+                    <!--The expected response data type-->
+                    <responseDataType>json</responseDataType>
+                    <!--The resource path where the testcases and wsdl-locations.csv will be generated-->
+                    <resourcepath>src/test/resources/generated</resourcepath>
+                    <!-- Generate postman collections for a given Postman Testcase version-->
+                    <postmanCollectionVersion>2</postmanCollectionVersion>
+                    <!-- The generated testcase format, can be either xml,json or csv -->
+                    <testCaseFormat>xml</testCaseFormat>
+                    <!--Whether this plugin is enabled-->
+                    <enabled>true</enabled>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>gatf</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            .
+            .
+            .
+ 
+    </plugins>
+    .
+    .
+    .
+    .
+</project>
+```
+
+Direct Execution
+--------------
+For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
+user@local> java -jar gatf-plugin-1.0.jar config.xml
+
+Sample config.xml
+```
+<configuration>
+    <!--The comma separated package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
+    <testPaths>
+        <testPath>com.sample.services.*</testPath>
+    </testPaths>
+    <!-- Whether a soap client/http client is used to execute SOAP tests
+     the useSoapClient, soapWsdlKeyPairs properties in the configuration are only
+     required if we want to generate testcases for SOAP endpoints as well -->
+    <useSoapClient>true</useSoapClient>
+    <!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
+    <soapWsdlKeyPairs>
+        <soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
+        <soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
+        <soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
+        <soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
+    </soapWsdlKeyPairs>
+    <!--The REST API service URL suffix-->   
+    <urlSuffix>_param=value</urlSuffix>
+    <!--The REST API service URL prefix-->
+    <urlPrefix>rest</urlPrefix>
+    <!--The request data type, when generating request entities-->
+    <requestDataType>json</requestDataType>
+    <!--The expected response data type-->
+    <responseDataType>json</responseDataType>
+    <!--The resource path where the testcases and wsdl-locations.csv will be generated-->
+    <resourcepath>src/test/resources/generated</resourcepath>
+    <!-- Generate postman collections for a given Postman Testcase version-->
+    <postmanCollectionVersion>2</postmanCollectionVersion>
+    <!-- The generated testcase format, can be either xml,json or csv -->
+    <testCaseFormat>xml</testCaseFormat>
+    <!--Whether this plugin is enabled-->
+    <enabled>true</enabled>
+</configuration>
+```
+
+Lets see what the GATF Test Executor is,
+
+GATF Test Executor
+================
+The GATF Test Executor module provides a consolidated testing tool for,
+1.Single Session Test case execution
+2. Performance Test case execution
+3. Scenario/Workflow based Test case execution
+4. Concurrent User Simulation
+5. Comparative Test case study against multiple environments
+6. Load Testing
+
+It also provides the following,
+1. Pie charts for overall test status (Success/Failure reports)
+2. Line/Bar charts for overall performance results
+3. Detailed test case reports with comprehensive information about a test execution request/response
+4. Maven/Executable-Jar test case execution options
+
+It uses a highly performant asynchronous http client library - async-http-client and hence achieves very good execution times.
+The framework does not use the rest-assured/TestNG libraries any more starting from version 1.1 for performance reasons.
+
+
+GATF Test Data Providers
+---------------------------
+The GATF framework provides the option to integrate to multiple data sources for fetching test case data, which include the following,
+1. Any SQL compliant database
+2. MongoDB
+3. Files - CSV/JSON/XML
+4. Inline/Value based
+5. Custom Provider
+6. Random Value Provider
+
+The framework provides automatic built-in providers for easy integration to the above mentioned data sources. But we can also define custom providers if required.
+
+GATF Pre/Post Test Case Execution Hooks
+-------------------------
+The framework also provides the facility to plugin pre/post test case execution logic in order to control the test case execution flow, provides 2 simple annotations,
+1. @PreTestCaseExecutionHook - Marks a method as a pre-test-case execution hook
+2. @PostTestCaseExecutionHook - Marks a method as a post-test-case execution hook
+
+
+GATF Executor Configuration
+--------------
+The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
+
+```
+<gatf-execute-config>
+    <!-- Whether auto authentication support is enabled -->
+    <authEnabled>true</authEnabled>
+  
+    <!-- Authentication token parameters - name(token), where to find it(json),
+        name(token) and usage of token in subsequent secure calls(query parameter) -->
+    <authExtractAuth>token,json,token,queryparam</authExtractAuth>
+  
+    <!-- The authentication URL -->
+    <authUrl>api/rest/auth/loginh</authUrl>
+  
+    <!-- The username and password parameters and their point of presence in the request -->
+    <authParamsDetails>username,header,password,header</authParamsDetails>
+  
+    <!-- The environment base URL, all requests(authentication and other testcases)
+        having relative URL's will be using this URL as their base -->
+    <baseUrl>http://localhost:8080/sampleApp</baseUrl>
+  
+    <!-- Whether the plugin is enabled -->
+    <enabled>true</enabled>
+  
+    <!-- Where should the testcase execution reports be generated, default folder name is out -->
+    <outFilesDir>out</outFilesDir>
+  
+    <!-- Where to find all the testcases(xml,json,csv files), default folder name is data -->
+    <testCaseDir>data</testCaseDir>
+  
+    <!-- Whether HTTP compression is enabled, default true -->
+    <httpCompressionEnabled>true</httpCompressionEnabled>
+    <!-- The HTTP connection timeout, default 10000 (10sec), time in ms -->
+    <httpConnectionTimeout>100000</httpConnectionTimeout>
+     
+    <!-- The HTTP request timeout, default 10000 (10sec), time in ms -->
+    <httpRequestTimeout>10000</httpRequestTimeout>
+  
+    <!-- The plugin enables the use of pre/post testcase execution hooks,
+        with the help of the @PreTestCaseExecutionHook and @PostTestCaseExecutionHook annotations,
+        Custom logic can be written using these annotations for pre/post testcase execution control,
+        this parameter defines the pacakage to scan to find the custom defined java classes defining
+        the hooks using the annotation -->
+    <testCaseHooksPaths>
+        <testCaseHooksPath>com.*</testCaseHooksPath>
+    </testCaseHooksPaths>
+  
+    <!-- The number of concurrent users to simulate, default 0 -->
+    <concurrentUserSimulationNum>1</concurrentUserSimulationNum>
+    <!-- The number of concurrent connections to the Base environment HTTP Server, default 1 -->
+    <numConcurrentExecutions>1</numConcurrentExecutions>\
+  
+    <!-- The provider name that will be used to fetch user/password details for user simulation -->
+    <simulationUsersProviderName>file-auth-provider</simulationUsersProviderName>
+  
+    <!-- Whether comparative analysis is enabled, if yes then the compareEnvBaseUrls property inside
+          gatfTestDataConfig element needs to define the multiple environments where a comparison
+          of test case executions is desired -->
+    <compareEnabled>false</compareEnabled>
+  
+    <!-- Whether load testing is enabled -->
+    <loadTestingEnabled>false</loadTestingEnabled>
+  
+    <!-- Load testing execution time, time in ms -->
+    <loadTestingTime>40000</loadTestingTime>
+ 
+    <!-- The concurrent user ramp up time during load testing, time in ms -->
+    <concurrentUserRampUpTime>500</concurrentUserRampUpTime>
+  
+    <!-- The number of report samples to be generated during the load testing window -->
+    <loadTestingReportSamples>6</loadTestingReportSamples>
+  
+    <!-- Whether debug logs are enabled or not -->
+    <debugEnabled>true</debugEnabled>
+  
+    <!-- The WSDL Location file with the wsdl endpoints -->
+    <wsdlLocFile>wsdl-locations.csv</wsdlLocFile>
+  
+    <!-- The test data configuration parameters including the global parameters, compare
+        environment URL's and the list of all the test data providers you may define-->
+    <gatfTestDataConfig>
+         
+        <!-- The list of compare environment URL's -->
+        <compareEnvBaseUrls>
+            <string>http://localhost:8081/sampleApp</string>
+        </compareEnvBaseUrls>
+  
+        <!-- The global parameter list -->
+        <globalVariables>
+            <gvar1>gvalue</gvar1>
+        </globalVariables>
+  
+        <!-- The list of test data providers --> 
+        <providerTestDataList>
+  
+            <!-- The MongoDB test data provider -->
+            <gatf-testdata-provider>
+                <!-- Provider name -->
+                <providerName>mongodb-auth-provider</providerName>
+                <!-- Provider class -->
+                <providerClass>com.gatf.executor.dataprovider.MongoDBTestDataProvider
+                </providerClass>
+                <args>
+                    <!-- MongoDB Host -->
+                    <arg>localhost</arg>
+                    <!-- MongoDB Port -->
+                    <arg>27017</arg>
+                    <!-- MongoDB Database name -->
+                    <arg>wellogic</arg>
+                    <!-- MongoDB Collection -->
+                    <arg>User</arg>
+                    <!-- MongoDB Query -->
+                    <arg>{"status": "ACTIVE"}</arg>
+                    <!-- MongoDB Collection property names -->
+                    <arg>user,password</arg>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                </args>
+            </gatf-testdata-provider>
+  
+            <!-- The Database test data provider -->
+            <gatf-testdata-provider>
+                <providerName>database-auth-provider</providerName>
+                <providerClass>com.gatf.executor.dataprovider.DatabaseTestCaseDataProvider
+                </providerClass>
+                <args>
+                    <!-- Database JDBC Url -->
+                    <arg>jdbc:mysql://localhost/globaldb</arg>
+                    <!-- Database driver class name -->
+                    <arg>com.mysql.jdbc.Driver</arg>
+                    <!-- Database username -->
+                    <arg>root</arg>
+                    <!-- Database Password -->
+                    <arg></arg>
+                    <!-- SQL Query -->
+                    <arg>SELECT USER_NAME,PASSWORD FROM BASE_USER</arg>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                </args>
+            </gatf-testdata-provider>
+  
+            <!-- The File test data provider -->
+            <gatf-testdata-provider>
+                <enabled>true</enabled>
+                <providerName>file-auth-provider</providerName>
+                <providerClass>com.gatf.executor.dataprovider.FileTestCaseDataProvider
+                </providerClass>
+                <args>
+                    <!-- File path, relative to 'testCaseDir' folder -->
+                    <arg>authfile.csv</arg>
+                    <!-- File Type, can be csv,json or xml -->
+                    <arg>csv</arg>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                </args>
+            </gatf-testdata-provider>
+  
+            <!-- The inline test data provider -->
+            <gatf-testdata-provider>
+                <enabled>true</enabled>
+                <providerName>inline-auth-provider</providerName>
+                <providerClass>com.gatf.executor.dataprovider.InlineValueTestCaseDataProvider
+                </providerClass>
+                <args>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                    <!-- Inline values follow -->
+                    <arg>user1,password</arg>                  
+                    <arg>user2,password</arg>
+                </args>
+            </gatf-testdata-provider>
+  
+            <!-- The Random values test data provider -->
+            <gatf-testdata-provider>
+                <enabled>true</enabled>
+                <providerName>random-auth-provider</providerName>
+                <providerClass>com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider</providerClass>
+                <args>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                    <!-- Provider variable types, can be one of alpha, alphanum, number, boolean,
+                         -number, +number and date(format) -->
+                    <arg>alpha,alphanum</arg>
+                </args>
+            </gatf-testdata-provider>
+  
+            <!-- The Custom test data provider -->
+            <gatf-testdata-provider>
+                <enabled>true</enabled>
+                <providerName>custom-auth-provider</providerName>
+                <providerClass>com.CustomTestDataProvider</providerClass>
+                <args>
+                    <!-- Provider variable names -->
+                    <arg>username,password</arg>
+                </args>
+            </gatf-testdata-provider>
+        </providerTestDataList>
+    </gatfTestDataConfig>
+</gatf-execute-config>
+```
+
+
+
+
 
 
 Workflow
