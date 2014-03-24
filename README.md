@@ -11,11 +11,11 @@ GATF Acceptance Test executor is data-type agnostic, which means that your testc
 GATF Test Generator
 ==============
 The Test Generator is responsible for generating test cases automatically by just looking at either,
+
 1. All your REST-full service classes annotated with @Path annotation
 2. All your soap based WSDL locations
-The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV.
 
-Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter
+The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV. Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter
 
 
 Lets go over the primary entity within GATF, Testcase  
@@ -210,6 +210,7 @@ The GATF utility/plugin can be either used as a maven plugin or directly as an e
 Plugin Maven Configuration
 ---------
 With the configuration below you can just execute the maven generate-test-resources goal in order to generate all your test cases and then on the command line, any other goal after the generate-test-resources goal can also be used like package or test.
+
 **mvn generate-test-resources**
 Sample pom.xml
 ```xml
@@ -292,7 +293,7 @@ Sample pom.xml
 Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
-user@local> java -jar gatf-plugin-1.0.jar config.xml
+user@local> **java -jar gatf-plugin-1.0.jar config.xml**
 
 Sample config.xml
 ```xml
@@ -336,6 +337,7 @@ Lets see what the GATF Test Executor is,
 GATF Test Executor
 ================
 The GATF Test Executor module provides a consolidated testing tool for,
+
 1. Single Session Test case execution
 2. Performance Test case execution
 3. Scenario/Workflow based Test case execution
@@ -344,6 +346,7 @@ The GATF Test Executor module provides a consolidated testing tool for,
 6. Load Testing
 
 It also provides the following,
+
 1. Pie charts for overall test status (Success/Failure reports)
 2. Line/Bar charts for overall performance results
 3. Detailed test case reports with comprehensive information about a test execution request/response
@@ -356,6 +359,7 @@ The framework does not use the rest-assured/TestNG libraries any more starting f
 GATF Test Data Providers
 ---------------------------
 The GATF framework provides the option to integrate to multiple data sources for fetching test case data, which include the following,
+
 1. Any SQL compliant database
 2. MongoDB
 3. Files - CSV/JSON/XML
@@ -368,6 +372,7 @@ The framework provides automatic built-in providers for easy integration to the 
 GATF Pre/Post Test Case Execution Hooks
 -------------------------
 The framework also provides the facility to plugin pre/post test case execution logic in order to control the test case execution flow, provides 2 simple annotations,
+
 1. @PreTestCaseExecutionHook - Marks a method as a pre-test-case execution hook
 2. @PostTestCaseExecutionHook - Marks a method as a post-test-case execution hook
 
