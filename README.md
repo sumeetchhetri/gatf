@@ -587,7 +587,7 @@ The complete configuration for the GATF executor framework is listed below, We j
 
 Workflow
 ======
-The main focus of GATF is automation, and to acheive this goal is not simple and cannot be easily done just by generating testcases and having a testng execution phase. What we actually need is a work-flow or orchestration logic to control the flow of API invocations in an orderly fashion receiving values from the response and using these values in further API requests. GATF provides this orchestration with the help of the Sequence/WorkflowContextParameterMap parameters in your GATF testcase file.
+The main focus of GATF is automation, and to acheive this goal is not simple and cannot be easily done just by generating testcases and having a test execution phase. What we actually need is a work-flow or orchestration logic to control the flow of API invocations in an orderly fashion receiving values from the response and using these values in further API requests. GATF provides this orchestration with the help of the Sequence/WorkflowContextParameterMap parameters in your GATF testcase file.
 
 Example
 -----
@@ -926,58 +926,6 @@ This is a manually sepcified test case example here, soapbased is set to true, t
 Observe above that we did not specify the URL and the soap message content, we only mentioned that soapBased=true and the wsdlKey value mentioned in the wsdl-locations.csv and the operationName for the add user service from the WSDL above.
 Also remember that in this case the soapParameterValues specified in the testcase above will be used to transform the soap request generated automatically during execution of the testcase.
 
-
-Enter TestNG
------
-To start writing acceptance testcases supporting application level authentication, we need to first discuss the testng.xml file that would help you acheive the desired results, TestNG testng.xml file specifies the testsuite and the testcases for your tests.
-
-
-```xml
-<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd" >
-<suite name="MTelTestSuite" parallel="false" verbose="2" >
-    <!-- The Base URL or the URL prefix, which will be prepended to all your testcase URL's-->
-    <parameter name="baseUrl" value="http://localhost:8080/"/>
-	
-    <!--The default folder for maven projects is {project}/src/test/resources, if this value is not specified is then the new value from this parameter is used instead of the default base path  -->
-    <parameter name="testCasesBasePath" value="somebasefolder"/>
-    
-    <!--The folder/path withing the testCasesBasePath folder, so if above parameter is not specified the testcases will be searched in the {project}/src/test/resources/data folder or if it is specified then the {testCasesBasePath}/data folder -->
-    <parameter name="testCasesPath" value="data"/>
-	
-    <!-- Whether authentication is required or not -->
-	<parameter name="authEnabled" value="true"/>
-    
-    <!-- In case if authentication is enabled, then the authentication/login URL-->
-	<parameter name="authUrl" value="rest/auth/loginh"/>
-    
-    <!-- A comma separated list of values specifying the name of the authentication token, how to extract it from the response, what name to use while sending it in the request and how to sent it in the request, the value below says, that fetch the token property from the response json body and use it as an authentication token in the query parameter for all subsequent requests -->
-	<parameter name="authExtractAuth" value="token,json,token,queryparam"/>
-	
-    <!-- The file location inside the testCasesBasePath which specifies wsdlkey,wsldlocation values -->
-	<parameter name="wsdlLocFile" value="wsdl-locations.csv"/>
-    
-    <!-- Whether soap endpoints also require authentication -->
-	<parameter name="soapAuthEnabled" value="true"/>
-    
-    <!-- The Authentication Service WsdlKey to use for authentication -->
-	<parameter name="soapAuthWsdlKey" value="AuthService"/>
-    
-    <!-- The SOAP operation to use to authenticate which can be found in the wsdl location specified with the key above in the wsdl-locations.csv file-->
-	<parameter name="soapAuthOperation" value="loginbyHeaders"/>
-    
-    <!-- Ditto as authExtractAuth, apart from the fact that the place to fetch the token is always the response body xml-->
-	<parameter name="soapAuthExtractAuth" value="token,token,queryparam"/>
- 		
- 	<test name="API Tests">
- 		<classes>
-         <!-- This is the generic Accpetance Test class defined by the framework-->
-	     <class name="com.gatf.test.ApiAcceptanceTest"/>
-	     </classes>
- 	</test>
-</suite>
-
-```
-In the example above the WSDL for AuthService is not defined, assuming the loginbyHeaders is a soap service defined in the assumed wsdl file :-)
 
 
 Finally - Show me Authenticated Tests Example
