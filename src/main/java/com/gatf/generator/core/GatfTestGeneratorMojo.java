@@ -31,6 +31,8 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.channels.FileChannel;
@@ -964,6 +966,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     		 } else if(claz.equals(Integer.class) || claz.equals(int.class)) {
     			 Random rand = new Random();
     			 return new Integer(rand.nextInt(123));
+    		 } else if(claz.equals(BigInteger.class)) {
+    			 Random rand = new Random();
+    			 return new BigInteger(new BigInteger("123456").bitLength(), rand);
+    		 } else if(claz.equals(BigDecimal.class)) {
+    			 Random rand = new Random();
+    			 return new BigDecimal(rand.nextInt(123));
     		 } else if(claz.equals(Short.class) || claz.equals(short.class)) {
     			 Random rand = new Random();
     			 return new Short((short)rand.nextInt(123));
@@ -977,7 +985,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                 || claz.equals(Long.class) || claz.equals(Double.class) || claz.equals(Float.class)
                 || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
                 || claz.equals(long.class) || claz.equals(double.class) || claz.equals(float.class)
-                || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class));
+                || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class)
+                || claz.equals(BigInteger.class) || claz.equals(BigDecimal.class));
     }
     
     private boolean isCollection(Type claz) {
