@@ -44,6 +44,8 @@ import org.apache.maven.project.MavenProject;
 
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
+import com.gatf.executor.dataprovider.GatfTestDataSource;
+import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
@@ -171,6 +173,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	private boolean debugEnabled;
 	
 	private Long startTime = 0L;
+	
+	private AcceptanceTestContext context;
 	
 	public void setProject(MavenProject project) {
 		this.project = project;
@@ -408,7 +412,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					XStream xstream = new XStream(new XppDriver());
 					xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
 							 GatfTestDataConfig.class, GatfTestDataProvider.class});
+					xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
 					xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+					xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
 					xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
 					xstream.alias("args", String[].class);
 					xstream.alias("arg", String.class);
@@ -454,13 +460,19 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				throw new AssertionError(e);
 			}
 		}
-		
-		doExecute(configuration);
+		try {
+			doExecute(configuration);
+		} finally {
+			//Fire all data source shutdown hooks
+			if(context!=null) {
+				context.shutdown();
+			}
+		}
 	}
 	
 	public void doExecute(GatfExecutorConfig configuration) throws MojoFailureException {
 		
-		AcceptanceTestContext context = new AcceptanceTestContext(configuration, getClassLoader());
+		context = new AcceptanceTestContext(configuration, getClassLoader());
 		try {
 			context.validateAndInit();
 			setupTestCaseHooks(context);
@@ -727,6 +739,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 						e.printStackTrace();
 					}
 				}
+				
+				if(testCase.getPostExecutionDataSourceHookName()!=null) {
+					try {
+						context.executeDataSourceHook(testCase.getPostExecutionDataSourceHookName());
+					} catch (Throwable e) {
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 	}
@@ -889,23 +909,5 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			mojo.setEnabled(true);
 			mojo.execute();
 		}
-		
-		/*File resource = null;
-		resource = new File("C:\\Users\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\gatf-config.xml");
-		if(resource.exists()) {
-			XStream xstream = new XStream(new XppDriver());
-			xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
-					 GatfTestDataConfig.class, GatfTestDataProvider.class});
-			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-			xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-			xstream.alias("args", String[].class);
-			xstream.alias("arg", String.class);
-			xstream.alias("testCaseHooksPaths", String[].class);
-			xstream.alias("testCaseHooksPath", String.class);
-			xstream.alias("testCaseHooksPath", String.class);
-			
-			GatfExecutorConfig config = (GatfExecutorConfig)xstream.fromXML(resource);
-			System.out.println(config);
-		}*/
 	}
 }

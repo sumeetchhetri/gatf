@@ -97,7 +97,7 @@ public class GatfExecutorConfig {
 	private Integer loadTestingReportSamples;
 	
 	private boolean debugEnabled;
-
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}

@@ -32,13 +32,21 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfTestDataProvider {
 
+	private String dataSourceName;
+	
 	private String providerName;
 	
 	private String providerClass;
 	
-	private String[] args;
+	private String sourceProperties;
+	
+	private String providerProperties;
+	
+	private String queryStr;
 	
 	private Boolean enabled;
+	
+	protected String[] args;
 
 	public String getProviderName() {
 		return providerName;
@@ -48,12 +56,44 @@ public class GatfTestDataProvider {
 		this.providerName = providerName;
 	}
 
-	public String getProviderClass() {
-		return providerClass;
+	public Boolean isEnabled() {
+		return enabled;
 	}
 
-	public void setProviderClass(String providerClass) {
-		this.providerClass = providerClass;
+	public void setEnabled(Boolean enabled) {
+		this.enabled = enabled;
+	}
+
+	public String getDataSourceName() {
+		return dataSourceName;
+	}
+
+	public void setDataSourceName(String dataSourceName) {
+		this.dataSourceName = dataSourceName;
+	}
+
+	public String getProviderProperties() {
+		return providerProperties;
+	}
+
+	public void setProviderProperties(String providerProperties) {
+		this.providerProperties = providerProperties;
+	}
+
+	public String getSourceProperties() {
+		return sourceProperties;
+	}
+
+	public void setSourceProperties(String sourceProperties) {
+		this.sourceProperties = sourceProperties;
+	}
+
+	public String getQueryStr() {
+		return queryStr;
+	}
+
+	public void setQueryStr(String queryStr) {
+		this.queryStr = queryStr;
 	}
 
 	public String[] getArgs() {
@@ -64,11 +104,11 @@ public class GatfTestDataProvider {
 		this.args = args;
 	}
 
-	public Boolean isEnabled() {
-		return enabled;
+	public String getProviderClass() {
+		return providerClass;
 	}
 
-	public void setEnabled(Boolean enabled) {
-		this.enabled = enabled;
+	public void setProviderClass(String providerClass) {
+		this.providerClass = providerClass;
 	}
 }

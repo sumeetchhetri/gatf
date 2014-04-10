@@ -295,6 +295,10 @@ public class TestCaseExecutorUtil {
 			builder = builder.setUrl(testCase.getAurl());
 			
 		} else {
+			
+			Assert.assertNotNull("No wsdlKey specified for SOAP test", testCase.getWsdlKey());
+			Assert.assertNotNull("No operation specified for SOAP test", testCase.getOperationName());
+			
 			String request = testCase.getAcontent();
 			
 			String soapAction = context.getSoapActions().get(testCase.getWsdlKey()+testCase.getOperationName());
@@ -314,6 +318,8 @@ public class TestCaseExecutorUtil {
             }
 			
 			String endpoint = context.getSoapEndpoints().get(testCase.getWsdlKey());
+			Assert.assertNotNull("No endpoints found for " + testCase.getWsdlKey()
+					 + ", please define the wsdlLocFile in your config", endpoint);
 			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
 					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
@@ -357,6 +363,10 @@ public class TestCaseExecutorUtil {
 				for (Method method : preHook) {
 					method.invoke(null, new Object[]{testCase});
 				}
+			}
+			
+			if(testCase.getPreExecutionDataSourceHookName()!=null) {
+				context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
 			}
 			
 			handleRequestContent(testCase, builder);
@@ -523,7 +533,10 @@ public class TestCaseExecutorUtil {
 				testCaseReport.setError("Expected status code ["+testCase.getExpectedResCode()
 						+"] does not match actual status code ["+statusCode+"]");
 				testCaseReport.setStatus("Failed");
-	            return STATE.ABORT;
+				if(testCase.isAbortOnInvalidStatusCode())
+	            {
+					return STATE.ABORT;
+	            }
 	        }
 			builder.accumulate(responseStatus);
 			return STATE.CONTINUE;
@@ -546,7 +559,10 @@ public class TestCaseExecutorUtil {
 					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
 							+"] does not match actual content type ["+headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)+"]");
 					testCaseReport.setStatus("Failed");
-					return STATE.ABORT;
+					if(testCase.isAbortOnInvalidContentType())
+					{
+						return STATE.ABORT;
+					}
 				}
 			}
 			builder.accumulate(headers);

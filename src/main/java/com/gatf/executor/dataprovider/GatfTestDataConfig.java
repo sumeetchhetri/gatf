@@ -41,8 +41,12 @@ public class GatfTestDataConfig {
 	private Map<String, String> globalVariables;
 	
 	private List<String> compareEnvBaseUrls;
+	
+	private List<GatfTestDataSource> dataSourceList;
 
 	private List<GatfTestDataProvider> providerTestDataList;
+	
+	private List<GatfTestDataSourceHook> dataSourceHooks;
 
 	public Map<String, String> getGlobalVariables() {
 		return globalVariables;
@@ -67,5 +71,21 @@ public class GatfTestDataConfig {
 
 	public void setCompareEnvBaseUrls(List<String> compareEnvBaseUrls) {
 		this.compareEnvBaseUrls = compareEnvBaseUrls;
+	}
+
+	public List<GatfTestDataSource> getDataSourceList() {
+		return dataSourceList;
+	}
+
+	public void setDataSourceList(List<GatfTestDataSource> dataSourceList) {
+		this.dataSourceList = dataSourceList;
+	}
+
+	public List<GatfTestDataSourceHook> getDataSourceHooks() {
+		return dataSourceHooks;
+	}
+
+	public void setDataSourceHooks(List<GatfTestDataSourceHook> dataSourceHooks) {
+		this.dataSourceHooks = dataSourceHooks;
 	}
 }

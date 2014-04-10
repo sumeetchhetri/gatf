@@ -35,7 +35,7 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider;
+import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
 import com.jayway.jsonpath.JsonPath;
@@ -211,7 +211,7 @@ public class WorkflowContextHandler {
 					getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
 					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
 				} else if(nodeName.startsWith("#")) {
-					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					String jsonValue = RandomValueTestDataProvider.getPrimitiveValue(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
 							" -number, +number and date(format) allowed", jsonValue);
@@ -238,7 +238,7 @@ public class WorkflowContextHandler {
 				String nodeName = entry.getValue().trim();
 				if(nodeName.startsWith("#") && !nodeName.startsWith("#responseMappedValue")
 						 && !nodeName.startsWith("#responseMappedCount")) {
-					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					String jsonValue = RandomValueTestDataProvider.getPrimitiveValue(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
 							" -number, +number and date(format) allowed", jsonValue);
@@ -328,7 +328,7 @@ public class WorkflowContextHandler {
 				String nodeName = entry.getValue().trim();
 				if(nodeName.startsWith("#") && !nodeName.startsWith("#responseMappedValue")
 						 && !nodeName.startsWith("#responseMappedCount")) {
-					String jsonValue = RandomValueTestCaseDataProvider.getPrimitiveValue(nodeName.substring(1));
+					String jsonValue = RandomValueTestDataProvider.getPrimitiveValue(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
 							" -number, +number and date(format) allowed", jsonValue);

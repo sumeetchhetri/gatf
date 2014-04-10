@@ -43,13 +43,18 @@ import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
-import com.gatf.executor.dataprovider.DatabaseTestCaseDataProvider;
-import com.gatf.executor.dataprovider.FileTestCaseDataProvider;
+import com.gatf.executor.dataprovider.DatabaseTestDataSource;
+import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
-import com.gatf.executor.dataprovider.InlineValueTestCaseDataProvider;
-import com.gatf.executor.dataprovider.RandomValueTestCaseDataProvider;
+import com.gatf.executor.dataprovider.GatfTestDataSource;
+import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
+import com.gatf.executor.dataprovider.InlineValueTestDataProvider;
+import com.gatf.executor.dataprovider.MongoDBTestDataSource;
+import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
+import com.gatf.executor.dataprovider.TestDataHook;
 import com.gatf.executor.dataprovider.TestDataProvider;
+import com.gatf.executor.dataprovider.TestDataSource;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
@@ -120,6 +125,10 @@ public class AcceptanceTestContext {
 	public Map<String, List<Map<String, String>>> getProviderTestDataMap() {
 		return providerTestDataMap;
 	}
+	
+	private final Map<String, TestDataSource> dataSourceMap = new HashMap<String, TestDataSource>();
+	
+	private final Map<String, GatfTestDataSourceHook> dataSourceHooksMap = new HashMap<String, GatfTestDataSourceHook>();
 
 	private final SingleTestCaseExecutor singleTestCaseExecutor = new SingleTestCaseExecutor();
 	
@@ -376,7 +385,6 @@ public class AcceptanceTestContext {
 		initTestDataProviderAndGlobalVariables();
 	}
 	
-	@SuppressWarnings("rawtypes")
 	private void initTestDataProviderAndGlobalVariables() {
 		GatfTestDataConfig gatfTestDataConfig = null;
 		if(gatfExecutorConfig.getTestDataConfigFile()!=null) {
@@ -399,56 +407,19 @@ public class AcceptanceTestContext {
 		if(gatfTestDataConfig!=null) {
 			getWorkflowContextHandler().addGlobalVariables(gatfTestDataConfig.getGlobalVariables());
 			
+			if(gatfTestDataConfig.getDataSourceList()!=null)
+			{
+				handleDataSources(gatfTestDataConfig.getDataSourceList());
+			}
+			
+			if(gatfTestDataConfig.getDataSourceHooks()!=null)
+			{
+				handleHooks(gatfTestDataConfig.getDataSourceHooks());
+			}
+				
 			if(gatfTestDataConfig.getProviderTestDataList()!=null)
 			{
-				for (GatfTestDataProvider provider : gatfTestDataConfig.getProviderTestDataList()) {
-					Assert.assertNotNull("Provider name is not defined", provider.getProviderName());
-					Assert.assertNull("Duplicate Provider name found", providerTestDataMap.get(provider.getProviderName()));
-					Assert.assertNotNull("Provider class is not defined", provider.getProviderClass());
-					Assert.assertNotNull("Provider args are not defined", provider.getArgs());
-					
-					if(provider.isEnabled()==null) {
-						provider.setEnabled(true);
-					}
-					
-					if(!provider.isEnabled()) {
-						logger.info("Provider " + provider.getProviderName() + " is Disabled...");
-						continue;
-					}
-					
-					TestDataProvider testDataProvider = null;
-					if(DatabaseTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-						testDataProvider = new DatabaseTestCaseDataProvider();
-					} else if(FileTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-						testDataProvider = new FileTestCaseDataProvider();
-					} else if(InlineValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-						testDataProvider = new InlineValueTestCaseDataProvider();
-					} else if(RandomValueTestCaseDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-						testDataProvider = new RandomValueTestCaseDataProvider();
-					} else {
-						try {
-							Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
-							Class[] classes = claz.getInterfaces();
-							boolean validProvider = false;
-							if(classes!=null) {
-								for (Class class1 : classes) {
-									if(class1.equals(TestDataProvider.class)) {
-										validProvider = true;
-										break;
-									}
-								}
-							}
-							Assert.assertTrue("Provider class should implement the TestDataProvider interface", validProvider);
-							Object providerInstance = claz.newInstance();
-							testDataProvider = (TestDataProvider)providerInstance;
-						} catch (Throwable e) {
-							throw new AssertionError(e);
-						}
-					}
-					
-					List<Map<String, String>> testData = testDataProvider.provide(provider.getArgs(), this);
-					providerTestDataMap.put(provider.getProviderName(), testData);
-				}
+				handleProviders(gatfTestDataConfig.getProviderTestDataList());
 			}
 		}
 	}
@@ -524,5 +495,246 @@ public class AcceptanceTestContext {
 			entry.getValue().clear();
 		}
 		finalTestReportsDups.clear();
+	}
+
+	public void shutdown() {
+		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooksMap.values()) {
+			TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
+			
+			Assert.assertNotNull("No DataSource found", dataSource);
+			
+			if(dataSourceHook.isExecuteOnShutdown()) {
+				try {
+					boolean flag = dataSource.execute(dataSourceHook.getQueryStr());
+					if(!flag) {
+						Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+								+ " failed...", null);
+					}
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooksMap.values()) {
+			TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
+			
+			Assert.assertNotNull("No DataSource found", dataSource);
+			
+			dataSource.destroy();
+		}
+	}
+	
+	public void executeDataSourceHook(String hookName) {
+		GatfTestDataSourceHook dataSourceHook = dataSourceHooksMap.get(hookName);
+		Assert.assertNotNull("No DataSourceHook found", dataSourceHook);
+		
+		TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
+		Assert.assertNull("No DataSource found", dataSource);
+		
+		boolean flag = dataSource.execute(dataSourceHook.getQueryStr());
+		if(!flag) {
+			Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+					+ " failed...", null);
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private void handleDataSources(List<GatfTestDataSource> dataSourceList)
+	{
+		for (GatfTestDataSource dataSource : dataSourceList) {
+			Assert.assertNotNull("DataSource name is not defined", dataSource.getDataSourceName());
+			Assert.assertNotNull("DataSource class is not defined", dataSource.getDataSourceClass());
+			Assert.assertNotNull("DataSource args not defined", dataSource.getArgs());
+			Assert.assertTrue("DataSource args empty", dataSource.getArgs().length>0);
+			Assert.assertNull("Duplicate DataSource name found", dataSourceMap.get(dataSource.getDataSourceName()));
+			
+			TestDataSource testDataSource = null;
+			if(DatabaseTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
+				testDataSource = new DatabaseTestDataSource();
+			} else if(MongoDBTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
+				testDataSource = new MongoDBTestDataSource();
+			} else {
+				try {
+					Class claz = getProjectClassLoader().loadClass(dataSource.getDataSourceClass());
+					Class[] classes = claz.getInterfaces();
+					boolean validProvider = false;
+					if(classes!=null) {
+						for (Class class1 : classes) {
+							if(class1.equals(TestDataSource.class)) {
+								validProvider = true;
+								break;
+							}
+						}
+					}
+					Assert.assertTrue("DataSource class should extend the TestDataSource class", validProvider);
+					Object providerInstance = claz.newInstance();
+					testDataSource = (TestDataSource)providerInstance;
+				} catch (Throwable e) {
+					throw new AssertionError(e);
+				}
+			}
+			
+			testDataSource.setArgs(dataSource.getArgs());
+			testDataSource.setContext(this);
+			testDataSource.setDataSourceName(dataSource.getDataSourceName());
+			if(dataSource.getPoolSize()>1)
+			{
+				testDataSource.setPoolSize(dataSource.getPoolSize());
+			}
+			
+			testDataSource.init();
+			
+			dataSourceMap.put(dataSource.getDataSourceName(), testDataSource);
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private void handleHooks(List<GatfTestDataSourceHook> dataSourceHooks)
+	{
+		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooks) {
+			Assert.assertNotNull("DataSourceHook name is not defined", dataSourceHook.getHookName());
+			Assert.assertNotNull("DataSourceHook query string is not defined", dataSourceHook.getQueryStr());
+			Assert.assertNull("Duplicate DataSourceHook name found", dataSourceHooksMap.get(dataSourceHook.getHookName()));
+			
+			TestDataSource dataSource = null;
+			if(dataSourceHook.getDataSourceName()!=null && dataSourceHook.getHookClass()==null)
+			{
+				dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
+				Assert.assertNotNull("No DataSource found", dataSource);
+			}
+			else if(dataSourceHook.getDataSourceName()!=null && dataSourceHook.getHookClass()!=null)
+			{
+				Assert.assertNotNull("Specify either hookClass or dataSourceName", null);
+			}
+			else if(dataSourceHook.getDataSourceName()==null && dataSourceHook.getHookClass()==null)
+			{
+				Assert.assertNotNull("Specify any one of hookClass or dataSourceName", null);
+			}
+			
+			dataSourceHooksMap.put(dataSourceHook.getHookName(), dataSourceHook);
+			
+			TestDataHook testDataHook = null;
+			if(dataSourceHook.getHookClass()!=null) {
+				try {
+					Class claz = getProjectClassLoader().loadClass(dataSourceHook.getHookClass());
+					Class[] classes = claz.getInterfaces();
+					boolean validProvider = false;
+					if(classes!=null) {
+						for (Class class1 : classes) {
+							if(class1.equals(TestDataProvider.class)) {
+								validProvider = true;
+								break;
+							}
+						}
+					}
+					Assert.assertTrue("Hook class should implement the TestDataHook class", validProvider);
+					Object providerInstance = claz.newInstance();
+					testDataHook = (TestDataHook)providerInstance;
+				} catch (Throwable e) {
+					throw new AssertionError(e);
+				}
+			} else {
+				testDataHook = dataSource;
+			}
+			
+			if(dataSourceHook.isExecuteOnStart()) {
+				try {
+					boolean flag = testDataHook.execute(dataSourceHook.getQueryStr());
+					if(!flag) {
+						Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+								+ " failed...", null);
+					}
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
+			}
+		}
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private void handleProviders(List<GatfTestDataProvider> providerTestDataList)
+	{
+		for (GatfTestDataProvider provider : providerTestDataList) {
+			Assert.assertNotNull("Provider name is not defined", provider.getProviderName());
+			
+			Assert.assertNotNull("Provider properties is not defined", provider.getProviderProperties());
+			
+			Assert.assertNull("Duplicate Provider name found", providerTestDataMap.get(provider.getProviderName()));
+			
+			TestDataSource dataSource = null;
+			if(provider.getDataSourceName()!=null && provider.getProviderClass()==null)
+			{	
+				Assert.assertNotNull("Provider DataSource name is not defined", provider.getDataSourceName());
+				dataSource = dataSourceMap.get(provider.getDataSourceName());
+				
+				Assert.assertNotNull("No DataSource found", dataSource);
+				
+				if(dataSource instanceof MongoDBTestDataSource)
+				{
+					Assert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
+					Assert.assertNotNull("Provider source properties not defined", provider.getSourceProperties());
+				}
+				
+				if(dataSource instanceof DatabaseTestDataSource)
+				{
+					Assert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
+				}
+			}
+			else if(provider.getDataSourceName()!=null && provider.getProviderClass()!=null)
+			{
+				Assert.assertNotNull("Specify either providerClass or dataSourceName", null);
+			}
+			else if(provider.getDataSourceName()==null && provider.getProviderClass()==null)
+			{
+				Assert.assertNotNull("Specify any one of providerClass or dataSourceName", null);
+			}
+			
+			
+			if(provider.isEnabled()==null) {
+				provider.setEnabled(true);
+			}
+			
+			if(!provider.isEnabled()) {
+				logger.info("Provider " + provider.getProviderName() + " is Disabled...");
+				continue;
+			}
+			
+			TestDataProvider testDataProvider = null;
+			List<Map<String, String>> testData = null;
+			if(provider.getProviderClass()!=null) {
+				if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+					testDataProvider = new FileTestDataProvider();
+				} else if(InlineValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+					testDataProvider = new InlineValueTestDataProvider();
+				} else if(RandomValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+					testDataProvider = new RandomValueTestDataProvider();
+				} else {
+					try {
+						Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
+						Class[] classes = claz.getInterfaces();
+						boolean validProvider = false;
+						if(classes!=null) {
+							for (Class class1 : classes) {
+								if(class1.equals(TestDataProvider.class)) {
+									validProvider = true;
+									break;
+								}
+							}
+						}
+						Assert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
+						Object providerInstance = claz.newInstance();
+						testDataProvider = (TestDataProvider)providerInstance;
+					} catch (Throwable e) {
+						throw new AssertionError(e);
+					}
+				}
+			} else {
+				testDataProvider = dataSource;
+			}
+			
+			testData = testDataProvider.provide(provider, this);
+			providerTestDataMap.put(provider.getProviderName(), testData);
+		}
 	}
 }

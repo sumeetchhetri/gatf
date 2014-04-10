@@ -164,6 +164,14 @@ public class TestCase {
 	@XStreamAsAttribute
 	private Boolean reportResponseContent;
 	
+	private String preExecutionDataSourceHookName;
+	
+	private String postExecutionDataSourceHookName;
+	
+	private boolean abortOnInvalidStatusCode;
+	
+	private boolean abortOnInvalidContentType;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -459,6 +467,40 @@ public class TestCase {
 		this.reportResponseContent = reportResponseContent;
 	}
 
+	public String getPreExecutionDataSourceHookName() {
+		return preExecutionDataSourceHookName;
+	}
+
+	public void setPreExecutionDataSourceHookName(
+			String preExecutionDataSourceHookName) {
+		this.preExecutionDataSourceHookName = preExecutionDataSourceHookName;
+	}
+
+	public String getPostExecutionDataSourceHookName() {
+		return postExecutionDataSourceHookName;
+	}
+
+	public void setPostExecutionDataSourceHookName(
+			String postExecutionDataSourceHookName) {
+		this.postExecutionDataSourceHookName = postExecutionDataSourceHookName;
+	}
+
+	public boolean isAbortOnInvalidStatusCode() {
+		return abortOnInvalidStatusCode;
+	}
+
+	public void setAbortOnInvalidStatusCode(boolean abortOnInvalidStatusCode) {
+		this.abortOnInvalidStatusCode = abortOnInvalidStatusCode;
+	}
+
+	public boolean isAbortOnInvalidContentType() {
+		return abortOnInvalidContentType;
+	}
+
+	public void setAbortOnInvalidContentType(boolean abortOnInvalidContentType) {
+		this.abortOnInvalidContentType = abortOnInvalidContentType;
+	}
+
 	public boolean isFailed() {
 		return failed;
 	}
@@ -565,6 +607,16 @@ public class TestCase {
 		builder.append(preWaitMs);
 		builder.append("\npostWaitMs=");
 		builder.append(postWaitMs);
+		builder.append("\nreportResponseContent=");
+		builder.append(reportResponseContent);
+		builder.append("\npreExecutionDataSourceHookName=");
+		builder.append(preExecutionDataSourceHookName);
+		builder.append("\npostExecutionDataSourceHookName=");
+		builder.append(postExecutionDataSourceHookName);
+		builder.append("\nabortOnInvalidContentType=");
+		builder.append(abortOnInvalidContentType);
+		builder.append("\nabortOnInvalidStatusCode=");
+		builder.append(abortOnInvalidStatusCode);
 		builder.append("]\n");
 		return builder.toString();
 	}
@@ -590,7 +642,7 @@ public class TestCase {
 		boolean valid = false;
 		if(csvLine!=null) {
 			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>27) {
+			if(csvParts.length>32) {
 				setUrl(csvParts[0]);
 				setName(csvParts[1]);
 				setMethod(csvParts[2]);
@@ -665,6 +717,11 @@ public class TestCase {
 				setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts[25]));
 				setPreWaitMs(Long.parseLong(csvParts[26]));
 				setPostWaitMs(Long.parseLong(csvParts[27]));
+				setReportResponseContent(Boolean.valueOf(csvParts[28]));
+				setPreExecutionDataSourceHookName(csvParts[29]);
+				setPostExecutionDataSourceHookName(csvParts[30]);
+				setAbortOnInvalidContentType(Boolean.valueOf(csvParts[31]));
+				setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts[32]));
 				valid = true;
 			} else {
 				valid = false;
@@ -744,12 +801,29 @@ public class TestCase {
 		}
 		build.append(",");
 		build.append(getCsvValue(getOutFileName()));
+		build.append(",");
 		build.append(getCsvValue(getRepeatScenarioProviderName()));
+		build.append(",");
 		build.append(getNumberOfExecutions());
+		build.append(",");
 		build.append(isRepeatScenariosConcurrentExecution());
+		build.append(",");
 		build.append(isStopOnFirstFailureForPerfTest());
+		build.append(",");
 		build.append(getPreWaitMs());
+		build.append(",");
 		build.append(getPostWaitMs());
+		build.append(",");
+		build.append(getReportResponseContent());
+		build.append(",");
+		build.append(getPreExecutionDataSourceHookName());
+		build.append(",");
+		build.append(getPostExecutionDataSourceHookName());
+		build.append(",");
+		build.append(isAbortOnInvalidContentType());
+		build.append(",");
+		build.append(isAbortOnInvalidStatusCode());
+		build.append(",");
 		return build.toString();
 	}
 	
@@ -910,5 +984,9 @@ public class TestCase {
 		this.postWaitMs = other.postWaitMs;
 		this.reportResponseContent = other.reportResponseContent;
 		this.repeatScenarioProviderName = other.repeatScenarioProviderName;
+		this.preExecutionDataSourceHookName = other.preExecutionDataSourceHookName;
+		this.postExecutionDataSourceHookName = other.postExecutionDataSourceHookName;
+		this.abortOnInvalidContentType = other.abortOnInvalidContentType;
+		this.abortOnInvalidStatusCode = other.abortOnInvalidStatusCode;
 	}
 }
