@@ -53,11 +53,6 @@ public class JSONResponseValidator implements ResponseValidator {
 			}
 			context.getWorkflowContextHandler().extractJsonWorkflowVariables(testCase, response.getResponseBody());
 			
-			String url = testCase.getAurl();
-			if(url.indexOf("?")!=-1) {
-				url = url.substring(0, url.indexOf("?"));
-			}
-			
 			if(context.getGatfExecutorConfig().isAuthEnabled() && context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl())
 					&& context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("json")) {
 				String identifier = JsonPath.read(response.getResponseBody(), context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);

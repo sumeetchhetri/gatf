@@ -74,12 +74,7 @@ public class XMLResponseValidator implements ResponseValidator {
 			
 			context.getWorkflowContextHandler().extractXmlWorkflowVariables(testCase, xmlDocument);
 			
-			String url = testCase.getAurl();
-			if(url.indexOf("?")!=-1) {
-				url = url.substring(0, url.indexOf("?"));
-			}
-			
-			if(context.getGatfExecutorConfig().isAuthEnabled() && context.getGatfExecutorConfig().getAuthUrl().equals(url) 
+			if(context.getGatfExecutorConfig().isAuthEnabled() && context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl()) 
 					&& context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("xml")) {
 				String expression = context.getGatfExecutorConfig().getAuthExtractAuthParams()[0].replaceAll("\\.", "\\/");
 				if(expression.charAt(0)!='/')

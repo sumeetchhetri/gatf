@@ -295,6 +295,10 @@ public class TestCaseExecutorUtil {
 			builder = builder.setUrl(testCase.getAurl());
 			
 		} else {
+			
+			Assert.assertNotNull("No wsdlKey specified for SOAP test", testCase.getWsdlKey());
+			Assert.assertNotNull("No operation specified for SOAP test", testCase.getOperationName());
+			
 			String request = testCase.getAcontent();
 			
 			String soapAction = context.getSoapActions().get(testCase.getWsdlKey()+testCase.getOperationName());
@@ -314,6 +318,8 @@ public class TestCaseExecutorUtil {
             }
 			
 			String endpoint = context.getSoapEndpoints().get(testCase.getWsdlKey());
+			Assert.assertNotNull("No endpoints found for " + testCase.getWsdlKey()
+					+ ", please define the wsdlLocFile in your config", endpoint);
 			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
 					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
