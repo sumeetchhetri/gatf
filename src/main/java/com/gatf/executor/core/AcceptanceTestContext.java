@@ -43,6 +43,7 @@ import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
+import com.gatf.distributed.DistributedAcceptanceContext;
 import com.gatf.executor.dataprovider.DatabaseTestDataSource;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
@@ -101,6 +102,8 @@ public class AcceptanceTestContext {
 	
 	private final Map<String, Document> soapMessages = new HashMap<String, Document>();
 	
+	private final Map<String, String> soapStrMessages = new HashMap<String, String>();
+	
 	private final Map<String, String> soapActions = new HashMap<String, String>();
 	
 	private final Map<String, ConcurrentLinkedQueue<TestCaseReport>> finalTestResults = 
@@ -152,6 +155,28 @@ public class AcceptanceTestContext {
 	{
 		this.gatfExecutorConfig = gatfExecutorConfig;
 		this.projectClassLoader = projectClassLoader;
+		getWorkflowContextHandler().init();
+	}
+	
+	public AcceptanceTestContext(DistributedAcceptanceContext dContext)
+	{
+		this.gatfExecutorConfig = dContext.getConfig();
+		this.httpHeaders.putAll(dContext.getHttpHeaders());
+		this.soapEndpoints.putAll(dContext.getSoapEndpoints());
+		this.soapActions.putAll(dContext.getSoapActions());
+		try {
+			if(dContext.getSoapMessages()!=null) {
+				DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+				DocumentBuilder db = dbf.newDocumentBuilder();
+				for (Map.Entry<String, String> soapMsg : dContext.getSoapMessages().entrySet()) {
+					Document soapMessage = db.parse(new ByteArrayInputStream(soapMsg.getValue().getBytes()));
+					this.soapMessages.put(soapMsg.getKey(), soapMessage);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			// TODO: handle exception
+		}
 		getWorkflowContextHandler().init();
 	}
 	
@@ -210,7 +235,9 @@ public class AcceptanceTestContext {
 		return workflowContextHandler;
 	}
 	
-	public void addTestCaseHooks(Method method) {
+	@SuppressWarnings("rawtypes")
+	public Class addTestCaseHooks(Method method) {
+		Class claz = null;
 		if(method!=null && Modifier.isStatic(method.getModifiers())) {
 			
 			Annotation preHook = method.getAnnotation(PreTestCaseExecutionHook.class);
@@ -225,7 +252,7 @@ public class AcceptanceTestContext {
 					logger.severe("PreTestCaseExecutionHook annotated methods should " +
 							"confirm to the method signature - `public static void {methodName} (" +
 							"TestCase testCase)`");
-					return;
+					return claz;
 				}
 				
 				if(hook.value()!=null && hook.value().length>0)
@@ -240,6 +267,7 @@ public class AcceptanceTestContext {
 				{
 					prePostTestCaseExecHooks.put("preAll", method);
 				}
+				claz = method.getDeclaringClass();
 			}
 			if(postHook!=null)
 			{
@@ -250,7 +278,7 @@ public class AcceptanceTestContext {
 					logger.severe("PostTestCaseExecutionHook annotated methods should " +
 							"confirm to the method signature - `public static void {methodName} (" +
 							"TestCaseReport testCaseReport)`");
-					return;
+					return claz;
 				}
 				
 				if(hook.value()!=null && hook.value().length>0)
@@ -265,8 +293,10 @@ public class AcceptanceTestContext {
 				{
 					prePostTestCaseExecHooks.put("postAll", method);
 				}
+				claz = method.getDeclaringClass();
 			}
 		}
+		return claz;
 	}
 	
 	public List<Method> getPrePostHook(TestCase testCase, boolean isPreHook) {
@@ -404,6 +434,10 @@ public class AcceptanceTestContext {
 			gatfTestDataConfig = gatfExecutorConfig.getGatfTestDataConfig();
 		}
 		
+		handleTestDataSourcesAndHooks(gatfTestDataConfig);
+	}
+
+	public void handleTestDataSourcesAndHooks(GatfTestDataConfig gatfTestDataConfig) {
 		if(gatfTestDataConfig!=null) {
 			getWorkflowContextHandler().addGlobalVariables(gatfTestDataConfig.getGlobalVariables());
 			
@@ -461,6 +495,11 @@ public class AcceptanceTestContext {
 							DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 							DocumentBuilder db = dbf.newDocumentBuilder();
 							Document soapMessage = db.parse(new ByteArrayInputStream(request.getBytes()));
+							
+							if(gatfExecutorConfig.isDistributedLoadTests()) {
+								soapStrMessages.put(wsdlLocParts[0]+operation.getOperationName(), request);
+							}
+							
 							soapMessages.put(wsdlLocParts[0]+operation.getOperationName(), soapMessage);
 							if(operation.getSoapAction()!=null) {
 								soapActions.put(wsdlLocParts[0]+operation.getOperationName(), operation.getSoapAction());
@@ -503,12 +542,14 @@ public class AcceptanceTestContext {
 			
 			Assert.assertNotNull("No DataSource found", dataSource);
 			
-			if(dataSourceHook.isExecuteOnShutdown()) {
+			if(dataSourceHook.isExecuteOnShutdown() && dataSourceHook.getQueryStrs()!=null) {
 				try {
-					boolean flag = dataSource.execute(dataSourceHook.getQueryStr());
-					if(!flag) {
-						Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
-								+ " failed...", null);
+					for (String query : dataSourceHook.getQueryStrs()) {
+						boolean flag = dataSource.execute(query);
+						if(!flag) {
+							Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+									+ " failed...", null);
+						}
 					}
 				} catch (Throwable e) {
 					e.printStackTrace();
@@ -532,10 +573,12 @@ public class AcceptanceTestContext {
 		TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
 		Assert.assertNull("No DataSource found", dataSource);
 		
-		boolean flag = dataSource.execute(dataSourceHook.getQueryStr());
-		if(!flag) {
-			Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
-					+ " failed...", null);
+		for (String query : dataSourceHook.getQueryStrs()) {
+			boolean flag = dataSource.execute(query);
+			if(!flag) {
+				Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+						+ " failed...", null);
+			}
 		}
 	}
 	
@@ -556,7 +599,7 @@ public class AcceptanceTestContext {
 				testDataSource = new MongoDBTestDataSource();
 			} else {
 				try {
-					Class claz = getProjectClassLoader().loadClass(dataSource.getDataSourceClass());
+					Class claz = loadCustomClass(dataSource.getDataSourceClass());
 					Class[] classes = claz.getInterfaces();
 					boolean validProvider = false;
 					if(classes!=null) {
@@ -594,7 +637,7 @@ public class AcceptanceTestContext {
 	{
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooks) {
 			Assert.assertNotNull("DataSourceHook name is not defined", dataSourceHook.getHookName());
-			Assert.assertNotNull("DataSourceHook query string is not defined", dataSourceHook.getQueryStr());
+			Assert.assertNotNull("DataSourceHook query string is not defined", dataSourceHook.getQueryStrs());
 			Assert.assertNull("Duplicate DataSourceHook name found", dataSourceHooksMap.get(dataSourceHook.getHookName()));
 			
 			TestDataSource dataSource = null;
@@ -617,7 +660,7 @@ public class AcceptanceTestContext {
 			TestDataHook testDataHook = null;
 			if(dataSourceHook.getHookClass()!=null) {
 				try {
-					Class claz = getProjectClassLoader().loadClass(dataSourceHook.getHookClass());
+					Class claz = loadCustomClass(dataSourceHook.getHookClass());
 					Class[] classes = claz.getInterfaces();
 					boolean validProvider = false;
 					if(classes!=null) {
@@ -640,10 +683,12 @@ public class AcceptanceTestContext {
 			
 			if(dataSourceHook.isExecuteOnStart()) {
 				try {
-					boolean flag = testDataHook.execute(dataSourceHook.getQueryStr());
-					if(!flag) {
-						Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
-								+ " failed...", null);
+					for (String query : dataSourceHook.getQueryStrs()) {
+						boolean flag = testDataHook.execute(query);
+						if(!flag) {
+							Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+									+ " failed...", null);
+						}
 					}
 				} catch (Throwable e) {
 					e.printStackTrace();
@@ -711,7 +756,7 @@ public class AcceptanceTestContext {
 					testDataProvider = new RandomValueTestDataProvider();
 				} else {
 					try {
-						Class claz = getProjectClassLoader().loadClass(provider.getProviderClass());
+						Class claz = loadCustomClass(provider.getProviderClass());
 						Class[] classes = claz.getInterfaces();
 						boolean validProvider = false;
 						if(classes!=null) {
@@ -736,5 +781,24 @@ public class AcceptanceTestContext {
 			testData = testDataProvider.provide(provider, this);
 			providerTestDataMap.put(provider.getProviderName(), testData);
 		}
+	}
+	
+	public DistributedAcceptanceContext getDistributedContext(String node)
+	{
+		DistributedAcceptanceContext distributedTestContext = new DistributedAcceptanceContext();
+		distributedTestContext.setConfig(gatfExecutorConfig);
+		distributedTestContext.setHttpHeaders(httpHeaders);
+		distributedTestContext.setSoapActions(soapActions);
+		distributedTestContext.setSoapEndpoints(soapEndpoints);
+		distributedTestContext.setSoapMessages(soapStrMessages);
+		distributedTestContext.setNode(node);
+		
+		return distributedTestContext;
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private Class loadCustomClass(String className) throws ClassNotFoundException
+	{
+		return getProjectClassLoader().loadClass(className);
 	}
 }

@@ -25,6 +25,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.ListenableFuture;
 
 /**
@@ -65,7 +66,7 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 				workflowContextHandler.handleContextVariables(testCaseCopy, new HashMap<String, String>());
 			} catch (Throwable e) {
 				testCaseReportCopy.setExecutionTime(0L);
-				testCaseReportCopy.setStatus("Failed");
+				testCaseReportCopy.setStatus(TestStatus.Failed.status);
 				testCaseReportCopy.setErrorText(ExceptionUtils.getStackTrace(e));
 				testCaseReportCopy.setError(e.getMessage());
 				if(e.getMessage()==null && testCaseReportCopy.getErrorText()!=null && testCaseReportCopy.getErrorText().indexOf("\n")!=-1) {

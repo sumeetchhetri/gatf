@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ import com.gatf.executor.core.TestCase;
  */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class TestCaseReport {
+public class TestCaseReport implements Serializable {
 	
 	private String actualUrl;
 	
@@ -357,5 +358,15 @@ public class TestCaseReport {
 		}
 		builder.append("]");
 		return builder.toString();
+	}
+	
+	public static enum TestStatus {
+		Success("Success"),
+		Failed("Failed");
+		
+		public String status;
+		private TestStatus(String status) {
+			this.status = status;
+		}
 	}
 }

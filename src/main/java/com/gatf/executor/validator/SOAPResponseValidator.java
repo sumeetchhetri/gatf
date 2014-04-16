@@ -34,6 +34,7 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.Response;
 
 /**
@@ -103,9 +104,9 @@ public class SOAPResponseValidator implements ResponseValidator {
 				Assert.assertNotNull("Authentication token is null", 
 						context.getSessionIdentifier(testCase));
 			}
-			testCaseReport.setStatus("Success");
+			testCaseReport.setStatus(TestStatus.Success.status);
 		} catch (Throwable e) {
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setError(e.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {

@@ -102,13 +102,17 @@
 			<gatf-testdata-source-hook>
 				<hookName>mongo-startup-hook</hookName>
 				<dataSourceName>mongodb-source</dataSourceName>
-				<queryStr>db.AuditRecord.remove()</queryStr>
+				<queryStrs>
+					<queryStr>db.AuditRecord.remove()</queryStr>
+				</queryStrs>
 				<executeOnStart>true</executeOnStart>
 			</gatf-testdata-source-hook>
 			<gatf-testdata-source-hook>
 				<hookName>db-startup-hook</hookName>
 				<dataSourceName>database-source</dataSourceName>
-				<queryStr>delete from balance</queryStr>
+				<queryStrs>
+					<queryStr>delete from balance</queryStr>
+				</queryStrs>
 				<executeOnStart>true</executeOnStart>
 			</gatf-testdata-source-hook>
 		</dataSourceHooks>

@@ -1,5 +1,7 @@
 package com.gatf.executor.dataprovider;
 
+import java.io.Serializable;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -10,7 +12,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @XStreamAlias("gatf-testdata-source-hook")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfTestDataSourceHook {
+public class GatfTestDataSourceHook implements Serializable {
 
 	private String hookName;
 	
@@ -18,7 +20,7 @@ public class GatfTestDataSourceHook {
 	
 	private String dataSourceName;
 	
-	private String queryStr;
+	private String[] queryStrs;
 	
 	private boolean executeOnStart;
 	
@@ -40,12 +42,12 @@ public class GatfTestDataSourceHook {
 		this.dataSourceName = dataSourceName;
 	}
 
-	public String getQueryStr() {
-		return queryStr;
+	public String[] getQueryStrs() {
+		return queryStrs;
 	}
 
-	public void setQueryStr(String queryStr) {
-		this.queryStr = queryStr;
+	public void setQueryStrs(String[] queryStrs) {
+		this.queryStrs = queryStrs;
 	}
 
 	public String getHookClass() {

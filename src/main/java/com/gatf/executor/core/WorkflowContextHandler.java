@@ -79,6 +79,13 @@ public class WorkflowContextHandler {
 		}
 	}
 	
+	void initializeSuiteContextWithnum(int index) {
+		suiteWorkflowContext.clear();
+		suiteWorkflowScenarioContext.clear();
+		suiteWorkflowContext.put(index, new ConcurrentHashMap<String, String>());
+		suiteWorkflowScenarioContext.put(index, new ConcurrentHashMap<String, List<Map<String, String>>>());
+	}
+	
 	void addGlobalVariables(Map<String, String> variableMap) {
 		if(variableMap!=null) {
 			globalworkflowContext.putAll(variableMap);

@@ -48,10 +48,12 @@ import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 import org.codehaus.jackson.map.ObjectMapper;
 
 import com.AlphanumComparator;
+import com.gatf.distributed.DistributedTestStatus;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 /**
  * @author Sumeet Chhetri
@@ -60,10 +62,25 @@ import com.gatf.executor.core.TestCase;
  */
 public class ReportHandler {
 	
+	public ReportHandler(String node, String identifier) {
+		if(node!=null && identifier!=null)
+		{
+			distributedTestStatus = new DistributedTestStatus();
+			distributedTestStatus.setNode(node);
+			distributedTestStatus.setIdentifier(identifier);
+		}
+	}
+	
 	private Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
 	
 	private List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
 	
+	private DistributedTestStatus distributedTestStatus = null;
+	
+	public DistributedTestStatus getDistributedTestStatus() {
+		return distributedTestStatus;
+	}
+
 	private final StringBuffer reportLogsStr = new StringBuffer();
 	
 	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName)
@@ -119,7 +136,7 @@ public class ReportHandler {
 						tesStat.setExecutionTime(testCaseReport.getAverageExecutionTime());
 					else
 						tesStat.setExecutionTime(testCaseReport.getExecutionTime());
-					tesStat.setStatus("Success");
+					tesStat.setStatus(TestStatus.Success.status);
 					total ++;
 					grptot++;
 					if(testCaseReport.getNumberOfRuns()>1)
@@ -138,10 +155,10 @@ public class ReportHandler {
 						}
 					}
 					
-					if(!testCaseReport.getStatus().equals("Success")) {
+					if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 						failed ++;
 						grpfld ++;
-						tesStat.setStatus("Failed");
+						tesStat.setStatus(TestStatus.Failed.status);
 					}
 					testCaseStats.add(tesStat);
 					if(testCaseReport.getTestCase().getHeaders()!=null)
@@ -269,11 +286,16 @@ public class ReportHandler {
 
                 if(reportFileName==null)
                 	reportFileName = "index.html";
+                
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                         + SystemUtils.FILE_SEPARATOR + reportFileName)));
                 fwriter.write(writer.toString());
                 fwriter.close();
-
+                
+                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                {
+                	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
+                }
             }
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -283,14 +305,16 @@ public class ReportHandler {
 		return testSuiteStats;
 	}
 	
-	public void addToLoadTestResources(int runNo, long time) {
+	public void addToLoadTestResources(String prefix, int runNo, String url) {
 		LoadTestResource resource = new LoadTestResource();
-		resource.setTitle("Run-"+runNo);
-		resource.setUrl(time+".html");
+		if(prefix==null)
+			prefix = "Run";
+		resource.setTitle(prefix+"-"+runNo);
+		resource.setUrl(url);
 		loadTestResources.add(resource);
 	}
 	
-	public void doFinalLoadTestReport(TestSuiteStats testSuiteStats, AcceptanceTestContext acontext)
+	public void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext)
 	{
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		VelocityContext context = new VelocityContext();
@@ -326,6 +350,52 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-load.vm", context, writer);
 
+            if(prefix==null)
+            	prefix = "";
+            
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                    + SystemUtils.FILE_SEPARATOR + prefix + "index.html")));
+            fwriter.write(writer.toString());
+            fwriter.close();
+            
+            if(distributedTestStatus!=null)
+            {
+            	distributedTestStatus.getReportFileContent().put(prefix + "index.html", writer.toString());
+            }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void doFinalDsitributedLoadTestReport(AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
+			List<List<LoadTestResource>> loadTestResources, List<String> nodes)
+	{
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		VelocityContext context = new VelocityContext();
+		context.put("suiteStats", suiteStats);
+		context.put("loadTestResources", loadTestResources);
+		context.put("nodes", nodes);
+		
+		try
+		{
+			File basePath = null;
+        	if(config.getOutFilesBasePath()!=null)
+        		basePath = new File(config.getOutFilesBasePath());
+        	else
+        	{
+        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+        		basePath = new File(url.getPath());
+        	}
+        	File resource = new File(basePath, config.getOutFilesDir());
+			
+            VelocityEngine engine = new VelocityEngine();
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.init();
+            
+            StringWriter writer = new StringWriter();
+            engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", context, writer);
+            
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                     + SystemUtils.FILE_SEPARATOR + "index.html")));
             fwriter.write(writer.toString());
@@ -361,7 +431,7 @@ public class ReportHandler {
 						}
 					}
 					
-					if(!testCaseReport.getStatus().equals("Success")) {
+					if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 						failed ++;
 					}
 				}
@@ -515,4 +585,45 @@ public class ReportHandler {
     {
     	reportLogsStr.append(ExceptionUtils.getStackTrace(t));
     }
+    
+    public List<TestCaseReport> getReports(AcceptanceTestContext context)
+    {
+    	ConcurrentLinkedQueue<TestCaseReport> q = context.getFinalTestResults().values().iterator().next();
+		List<TestCaseReport> reports = Arrays.asList(q.toArray(new TestCaseReport[q.size()]));
+		Collections.sort(reports, new Comparator<TestCaseReport>() {
+			public int compare(TestCaseReport o1, TestCaseReport o2) {
+				 return o1==null ?
+				         (o2==null ? 0 : Integer.MIN_VALUE) :
+				         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
+			}
+		});
+		return reports;
+    }
+
+	public List<LoadTestResource> getLoadTestResources() {
+		return loadTestResources;
+	}
+	
+	public void writeToReportFile(String fileName, String contents, GatfExecutorConfig config)
+	{
+		try
+		{
+			File basePath = null;
+        	if(config.getOutFilesBasePath()!=null)
+        		basePath = new File(config.getOutFilesBasePath());
+        	else
+        	{
+        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+        		basePath = new File(url.getPath());
+        	}
+        	File resource = new File(basePath, config.getOutFilesDir());
+			
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                    + SystemUtils.FILE_SEPARATOR + fileName)));
+            fwriter.write(contents);
+            fwriter.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
 }

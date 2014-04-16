@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -50,7 +51,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @XStreamAlias("TestCase")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class TestCase {
+public class TestCase implements Serializable {
 
 	private static final Logger logger = Logger.getLogger(TestCase.class);
 	
@@ -171,6 +172,10 @@ public class TestCase {
 	private boolean abortOnInvalidStatusCode;
 	
 	private boolean abortOnInvalidContentType;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private String identifierPrefix =  "Run";
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -501,6 +506,17 @@ public class TestCase {
 		this.abortOnInvalidContentType = abortOnInvalidContentType;
 	}
 
+	public String getIdentifierPrefix() {
+		if(identifierPrefix==null) {
+			identifierPrefix = "Run";
+		}
+		return identifierPrefix;
+	}
+
+	public void setIdentifierPrefix(String identifierPrefix) {
+		this.identifierPrefix = identifierPrefix;
+	}
+
 	public boolean isFailed() {
 		return failed;
 	}
@@ -513,7 +529,7 @@ public class TestCase {
 		if(getSimulationNumber()==null || getSimulationNumber()==0) {
 			return sourcefileName;
 		} else {
-			return "Run-" + getSimulationNumber();
+			return getIdentifierPrefix() + "-" + getSimulationNumber();
 		}
 	}
 	
@@ -988,5 +1004,6 @@ public class TestCase {
 		this.postExecutionDataSourceHookName = other.postExecutionDataSourceHookName;
 		this.abortOnInvalidContentType = other.abortOnInvalidContentType;
 		this.abortOnInvalidStatusCode = other.abortOnInvalidStatusCode;
+		this.identifierPrefix = other.identifierPrefix;
 	}
 }
