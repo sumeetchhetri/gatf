@@ -638,7 +638,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		ExecutorService threadPool = null;
 		if(numberOfRuns>1) {
-			threadPool = Executors.newFixedThreadPool(numberOfRuns);
+			int threadNum = 100;
+			if(numberOfRuns<100)
+				threadNum = numberOfRuns;
+			
+			threadPool = Executors.newFixedThreadPool(threadNum);
 		}
 		
 		startTime = System.currentTimeMillis();
@@ -792,6 +796,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		for (TestCase testCase : allTestCases) {
 			try {
 				testCase.validate(testCaseExecutorUtil.getContext().getHttpHeaders());
+				if(testCase.getRepeatScenarios()!=null) {
+					testCase.setRepeatScenariosOrig(testCase.getRepeatScenarios());
+				}
 			} catch (RuntimeException e) {
 				getLog().error("Got exception while running acceptance test " + testCase.getName()+"/"+testCase.getDescription(), e);
 				throw e;
@@ -845,7 +852,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		AcceptanceTestContext context = testCaseExecutorUtil.getContext();
 		
-		List<Map<String, String>> sceanrios = testCase.getRepeatScenarios();
+		List<Map<String, String>> sceanrios = testCase.getRepeatScenariosOrig();
 		if(!onlySingleTestCaseExec) {
 			if(testCase.getRepeatScenarioProviderName()!=null) {
 				List<Map<String, String>> sceanriosp = 
@@ -1119,7 +1126,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		ExecutorService threadPool = null;
 		if(numberOfRuns>1) {
-			threadPool = Executors.newFixedThreadPool(numberOfRuns);
+			int threadNum = 100;
+			if(numberOfRuns<100)
+				threadNum = numberOfRuns;
+			
+			threadPool = Executors.newFixedThreadPool(threadNum);
 		}
 		
 		String runPrefix = "DRun-"+tContext.getIndex();

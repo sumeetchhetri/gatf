@@ -44,7 +44,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 		
 		WorkflowContextHandler workflowContextHandler = testCaseExecutorUtil.getContext().getWorkflowContextHandler();
 		
-		int numParallel = Runtime.getRuntime().availableProcessors();
+		int numParallel = Runtime.getRuntime().availableProcessors()*2;
 		
 		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
 		for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {

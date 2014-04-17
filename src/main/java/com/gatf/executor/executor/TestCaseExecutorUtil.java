@@ -262,7 +262,7 @@ public class TestCaseExecutorUtil {
 			
 			if(testCase.isSecure() && !context.getGatfExecutorConfig().getAuthUrl().equals(url)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
-				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[0];
+				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[2];
 				if(context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)!=null &&
 						context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm)!=null)
 				{
@@ -331,7 +331,7 @@ public class TestCaseExecutorUtil {
 			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
 					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
-				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[0];
+				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[2];
 				if(context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)!=null &&
 						context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm)!=null)
 				{

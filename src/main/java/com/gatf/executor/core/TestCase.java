@@ -118,6 +118,10 @@ public class TestCase implements Serializable {
 	
 	private List<Map<String, String>> repeatScenarios = new ArrayList<Map<String,String>>();
 	
+	@XStreamOmitField
+	@JsonIgnore
+	private List<Map<String, String>> repeatScenariosOrig = new ArrayList<Map<String,String>>();
+	
 	private String repeatScenarioProviderName;
 	
 	@XStreamOmitField
@@ -368,6 +372,14 @@ public class TestCase implements Serializable {
 
 	public void setRepeatScenarios(List<Map<String, String>> repeatScenarios) {
 		this.repeatScenarios = repeatScenarios;
+	}
+
+	public List<Map<String, String>> getRepeatScenariosOrig() {
+		return repeatScenariosOrig;
+	}
+
+	public void setRepeatScenariosOrig(List<Map<String, String>> repeatScenariosOrig) {
+		this.repeatScenariosOrig = repeatScenariosOrig;
 	}
 
 	public void setSourcefileName(String sourcefileName) {
@@ -984,6 +996,10 @@ public class TestCase implements Serializable {
 		if(other.repeatScenarios!=null)
 		{
 			this.repeatScenarios = new ArrayList<Map<String,String>>(other.repeatScenarios);
+		}
+		if(other.repeatScenariosOrig!=null)
+		{
+			this.repeatScenariosOrig = new ArrayList<Map<String,String>>(other.repeatScenariosOrig);
 		}
 		this.sourcefileName = other.sourcefileName;
 		this.aurl = other.aurl;

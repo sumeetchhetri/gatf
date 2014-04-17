@@ -51,7 +51,7 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 			return reports;
 		}
 		
-		int numParallel = Runtime.getRuntime().availableProcessors();
+		int numParallel = Runtime.getRuntime().availableProcessors()*2;
 		
 		int counter = 0;
 		

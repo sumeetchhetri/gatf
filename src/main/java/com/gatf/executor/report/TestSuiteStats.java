@@ -19,6 +19,9 @@ limitations under the License.
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
@@ -136,7 +139,9 @@ public class TestSuiteStats implements Serializable {
 	
 	public String show() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Result:\nTotalTestCount=");
+		builder.append("Result:\nTotalSuiteRuns=");
+		builder.append(totalSuiteRuns);
+		builder.append(", TotalTestCount=");
 		builder.append(totalTestCount);
 		builder.append(", FailedTestCount=");
 		builder.append(failedTestCount);

@@ -530,7 +530,7 @@ public class AcceptanceTestContext {
 	
 	public void clearTestResults() {
 		
-		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  finalTestResults.entrySet()) {
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  getFinalTestResults().entrySet()) {
 			entry.getValue().clear();
 		}
 		finalTestReportsDups.clear();
