@@ -16,6 +16,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -30,7 +32,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @XStreamAlias("gatf-testdata-provider")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfTestDataProvider {
+public class GatfTestDataProvider implements Serializable {
 
 	private String dataSourceName;
 	

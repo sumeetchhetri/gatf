@@ -26,6 +26,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.ListenableFuture;
 
 /**
@@ -43,7 +44,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 		
 		WorkflowContextHandler workflowContextHandler = testCaseExecutorUtil.getContext().getWorkflowContextHandler();
 		
-		int numParallel = Runtime.getRuntime().availableProcessors();
+		int numParallel = Runtime.getRuntime().availableProcessors()*2;
 		
 		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
 		for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
@@ -59,7 +60,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				workflowContextHandler.handleContextVariables(testCaseCopy, scenarioMap);
 			} catch (Exception e) {
 				testCaseReport.setExecutionTime(0L);
-				testCaseReport.setStatus("Failed");
+				testCaseReport.setStatus(TestStatus.Failed.status);
 				testCaseReport.setError(e.getMessage());
 				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 				if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
@@ -78,7 +79,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				try {
 					testCaseReport = listenableFuture.get();
 				} catch (Exception e) {
-					testCaseReport.setStatus("Failed");
+					testCaseReport.setStatus(TestStatus.Failed.status);
 					testCaseReport.setError(e.getMessage());
 					testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 					e.printStackTrace();
@@ -98,7 +99,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 					try {
 						testCaseReportT = listenableFutureT.get();
 					} catch (Exception e) {
-						testCaseReportT.setStatus("Failed");
+						testCaseReportT.setStatus(TestStatus.Failed.status);
 						testCaseReportT.setError(e.getMessage());
 						testCaseReportT.setErrorText(ExceptionUtils.getStackTrace(e));
 						e.printStackTrace();
@@ -117,7 +118,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			try {
 				testCaseReport = listenableFuture.get();
 			} catch (Exception e) {
-				testCaseReport.setStatus("Failed");
+				testCaseReport.setStatus(TestStatus.Failed.status);
 				testCaseReport.setError(e.getMessage());
 				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 				e.printStackTrace();

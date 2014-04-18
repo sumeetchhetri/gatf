@@ -16,6 +16,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
 import java.util.List;
 import java.util.Map;
 
@@ -35,7 +36,7 @@ import com.thoughtworks.xstream.annotations.XStreamConverter;
 @XStreamAlias("gatf-testdata-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfTestDataConfig {
+public class GatfTestDataConfig implements Serializable {
 
 	@XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
 	private Map<String, String> globalVariables;

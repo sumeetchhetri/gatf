@@ -25,6 +25,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.ListenableFuture;
 
 /**
@@ -45,7 +46,7 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 			workflowContextHandler.handleContextVariables(testCase, new HashMap<String, String>());
 		} catch (Exception e) {
 			testCaseReport.setExecutionTime(0L);
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setError(e.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
@@ -63,7 +64,7 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		try {
 			testCaseReport = report.get();
 		} catch (Exception e) {
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setError(e.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			e.printStackTrace();

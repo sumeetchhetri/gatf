@@ -16,6 +16,8 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -33,7 +35,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @XStreamAlias("gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfExecutorConfig {
+public class GatfExecutorConfig implements Serializable {
 
 	private String baseUrl;
 	
@@ -88,6 +90,10 @@ public class GatfExecutorConfig {
 	private boolean loadTestingEnabled;
 	
 	private Long loadTestingTime;
+	
+	private boolean distributedLoadTests;
+	
+	private String[] distributedNodes;
 	
 	@XStreamOmitField
 	private Integer compareBaseUrlsNum;
@@ -347,6 +353,22 @@ public class GatfExecutorConfig {
 
 	public void setLoadTestingTime(Long loadTestingTime) {
 		this.loadTestingTime = loadTestingTime;
+	}
+
+	public boolean isDistributedLoadTests() {
+		return distributedLoadTests;
+	}
+
+	public void setDistributedLoadTests(boolean distributedLoadTests) {
+		this.distributedLoadTests = distributedLoadTests;
+	}
+
+	public String[] getDistributedNodes() {
+		return distributedNodes;
+	}
+
+	public void setDistributedNodes(String[] distributedNodes) {
+		this.distributedNodes = distributedNodes;
 	}
 
 	public Long getConcurrentUserRampUpTime() {
