@@ -543,16 +543,16 @@ public class AcceptanceTestContext {
 			Assert.assertNotNull("No DataSource found", dataSource);
 			
 			if(dataSourceHook.isExecuteOnShutdown() && dataSourceHook.getQueryStrs()!=null) {
-				try {
-					for (String query : dataSourceHook.getQueryStrs()) {
-						boolean flag = dataSource.execute(query);
-						if(!flag) {
-							Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
-									+ " failed...", null);
-						}
+				for (String query : dataSourceHook.getQueryStrs()) {
+					boolean flag = false;
+					try {
+						flag = dataSource.execute(query);
+					} catch (Throwable e) {
 					}
-				} catch (Throwable e) {
-					e.printStackTrace();
+					if(!flag) {
+						logger.severe("Shutdown DataSourceHook execution for " + dataSourceHook.getHookName()
+								+ " failed, queryString = " + query);
+					}
 				}
 			}
 		}
@@ -682,16 +682,16 @@ public class AcceptanceTestContext {
 			}
 			
 			if(dataSourceHook.isExecuteOnStart()) {
-				try {
-					for (String query : dataSourceHook.getQueryStrs()) {
-						boolean flag = testDataHook.execute(query);
-						if(!flag) {
-							Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
-									+ " failed...", null);
-						}
+				for (String query : dataSourceHook.getQueryStrs()) {
+					boolean flag = false;
+					try {
+						flag = testDataHook.execute(query);
+					} catch (Throwable e) {
 					}
-				} catch (Throwable e) {
-					e.printStackTrace();
+					if(!flag) {
+						logger.severe("Startup DataSourceHook execution for " + dataSourceHook.getHookName()
+								+ " failed, queryString = " + query);
+					}
 				}
 			}
 		}

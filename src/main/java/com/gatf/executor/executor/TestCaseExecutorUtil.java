@@ -381,7 +381,11 @@ public class TestCaseExecutorUtil {
 			}
 			
 			if(testCase.getPreExecutionDataSourceHookName()!=null) {
-				context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
+				try {
+					context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
 			}
 			
 			handleRequestContent(testCase, builder);
