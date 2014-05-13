@@ -17,6 +17,8 @@ limitations under the License.
 */
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -34,6 +36,7 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.Response;
 
 /**
@@ -67,7 +70,7 @@ public class XMLResponseValidator implements ResponseValidator {
 					
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", xmlValue);
 					if(nodeCase.length==2) {
-						Assert.assertEquals(xmlValue, nodeCase[1]);
+						doNodeLevelValidation(xmlValue, nodeCase[1], context);
 					}
 				}
 			}
@@ -96,9 +99,9 @@ public class XMLResponseValidator implements ResponseValidator {
 				Assert.assertNotNull("Authentication token is null", 
 						context.getSessionIdentifier(testCase));
 			}
-			testCaseReport.setStatus("Success");
+			testCaseReport.setStatus(TestStatus.Success.status);
 		} catch (Throwable e) {
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setError(e.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
@@ -128,5 +131,29 @@ public class XMLResponseValidator implements ResponseValidator {
 			xmlValue = node.getFirstChild().getNodeValue();
 		}
 		return xmlValue;
+	}
+	
+	public static void doNodeLevelValidation(String value, String node, AcceptanceTestContext context) {
+		if(node!=null && node.startsWith("#providerValidation[") && node.endsWith("]")) {
+			String path = node.substring(0, node.length()-1).replaceFirst("#providerValidation[", "");
+			String[] pathelements = path.split("\\.");
+			Assert.assertEquals("Invalid nomenclature for provider validation node - " + node, pathelements.length, 3);
+			List<Map<String, String>> provData = context.getProviderTestDataMap().get(pathelements[0]);
+			Assert.assertNotNull("Provider not found - " + pathelements[0], provData);
+			int index = -1;
+			try {
+				index = Integer.parseInt(pathelements[1]);
+			} catch (Exception e) {
+				Assert.assertNotNull("Provider index has to be a number - " + pathelements[1], null);
+			}
+			Assert.assertTrue("Specified index is outside provider data range - "+pathelements[1], 
+					index>=0 && index<provData.size());
+			Map<String, String> row = provData.get(index);
+			Assert.assertNotNull("Provider row not found - " + index, row);
+			Assert.assertTrue("Specified provider property not found - "+pathelements[2], row.containsKey(pathelements[2]));
+			Assert.assertEquals("Node validation failed for " + node, value, row.get(pathelements[2]));
+		} else {
+			Assert.assertEquals(value, node);
+		}
 	}
 }

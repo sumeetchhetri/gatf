@@ -242,8 +242,6 @@ public class MongoDBTestDataSource extends TestDataSource {
 			} catch (Exception e) {
 				throw new AssertionError(String.format("Fetching Test Data failed while executing query %s with the error %s", 
 						queryString, ExceptionUtils.getStackTrace(e)));
-			} finally {
-				if(mongoClient!=null)mongoClient.close();
 			}
 		} catch (Exception e) {
 			throw new AssertionError(String.format("Fetching Test Data failed while executing query %s with the error %s", 

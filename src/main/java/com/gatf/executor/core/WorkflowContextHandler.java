@@ -79,6 +79,13 @@ public class WorkflowContextHandler {
 		}
 	}
 	
+	void initializeSuiteContextWithnum(int index) {
+		suiteWorkflowContext.clear();
+		suiteWorkflowScenarioContext.clear();
+		suiteWorkflowContext.put(index, new ConcurrentHashMap<String, String>());
+		suiteWorkflowScenarioContext.put(index, new ConcurrentHashMap<String, List<Map<String, String>>>());
+	}
+	
 	void addGlobalVariables(Map<String, String> variableMap) {
 		if(variableMap!=null) {
 			globalworkflowContext.putAll(variableMap);
@@ -291,7 +298,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
 					
 					List<Map<String, String>> soapValues = getNodeCountMapList(xmlValue, expression);
@@ -312,7 +319,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 				}
@@ -369,7 +376,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
 					
 					List<Map<String, String>> xmlValues = getNodeCountMapList(xmlValue, expression);
@@ -385,7 +392,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = xmlNodeList.item(0).getNodeValue();
+					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 				}

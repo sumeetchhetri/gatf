@@ -47,6 +47,7 @@ import org.w3c.dom.Document;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.validator.JSONResponseValidator;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
@@ -261,6 +262,13 @@ public class TestCaseExecutorUtil {
 			
 			if(testCase.isSecure() && !context.getGatfExecutorConfig().getAuthUrl().equals(url)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
+				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[2];
+				if(context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)!=null &&
+						context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm)!=null)
+				{
+					sessIdentifier = context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm);
+				}
+				
 				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
 				
 				if(turl.indexOf("?")!=-1 && turl.indexOf("{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"}")!=-1) {
@@ -323,6 +331,13 @@ public class TestCaseExecutorUtil {
 			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
 					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
+				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[2];
+				if(context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)!=null &&
+						context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm)!=null)
+				{
+					sessIdentifier = context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm);
+				}
+				
 				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
 				if(endpoint.indexOf("?")!=-1) {
 					endpoint += "&" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
@@ -366,7 +381,11 @@ public class TestCaseExecutorUtil {
 			}
 			
 			if(testCase.getPreExecutionDataSourceHookName()!=null) {
-				context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
+				try {
+					context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
+				} catch (Throwable e) {
+					e.printStackTrace();
+				}
 			}
 			
 			handleRequestContent(testCase, builder);
@@ -388,7 +407,7 @@ public class TestCaseExecutorUtil {
 			return client.executeRequest(request, new TestCaseResponseHandler(testCase, testCaseReport, context, start));
 		} catch (Throwable e) {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			testCaseReport.setError(e.getMessage());
 			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
@@ -495,7 +514,7 @@ public class TestCaseExecutorUtil {
 		 * Handle error scenarios in the report
 		 */
 		public void onThrowable(Throwable t) {
-			testCaseReport.setStatus("Failed");
+			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setError(t.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(t));
 			testCase.setFailed(true);
@@ -532,7 +551,7 @@ public class TestCaseExecutorUtil {
 			if (statusCode != testCase.getExpectedResCode()) {
 				testCaseReport.setError("Expected status code ["+testCase.getExpectedResCode()
 						+"] does not match actual status code ["+statusCode+"]");
-				testCaseReport.setStatus("Failed");
+				testCaseReport.setStatus(TestStatus.Failed.status);
 				if(testCase.isAbortOnInvalidStatusCode())
 	            {
 					return STATE.ABORT;
@@ -558,7 +577,7 @@ public class TestCaseExecutorUtil {
 				{
 					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
 							+"] does not match actual content type ["+headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)+"]");
-					testCaseReport.setStatus("Failed");
+					testCaseReport.setStatus(TestStatus.Failed.status);
 					if(testCase.isAbortOnInvalidContentType())
 					{
 						return STATE.ABORT;
@@ -590,7 +609,7 @@ public class TestCaseExecutorUtil {
 					}
 					else
 					{
-						testCaseReport.setStatus("Success");
+						testCaseReport.setStatus(TestStatus.Success.status);
 					}
 				} else {
 					soapResponseValidator.validate(response, testCase, testCaseReport, context);

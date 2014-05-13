@@ -16,8 +16,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
@@ -30,7 +34,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
  */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class TestSuiteStats {
+public class TestSuiteStats implements Serializable {
 
 	private Integer totalTestCount;
 	
@@ -135,7 +139,9 @@ public class TestSuiteStats {
 	
 	public String show() {
 		StringBuilder builder = new StringBuilder();
-		builder.append("Result:\nTotalTestCount=");
+		builder.append("Result:\nTotalSuiteRuns=");
+		builder.append(totalSuiteRuns);
+		builder.append(", TotalTestCount=");
 		builder.append(totalTestCount);
 		builder.append(", FailedTestCount=");
 		builder.append(failedTestCount);

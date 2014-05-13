@@ -1,5 +1,7 @@
 package com.gatf.executor.dataprovider;
 
+import java.io.Serializable;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -10,7 +12,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @XStreamAlias("gatf-testdata-source")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfTestDataSource {
+public class GatfTestDataSource implements Serializable {
 
 	private String dataSourceName;
 	
