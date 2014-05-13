@@ -314,7 +314,8 @@ public class ReportHandler {
 		loadTestResources.add(resource);
 	}
 	
-	public void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext)
+	public void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
+			List<String> nodes, List<String> nodeurls)
 	{
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		VelocityContext context = new VelocityContext();
@@ -324,8 +325,17 @@ public class ReportHandler {
 			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 			
-			reportingJson = new ObjectMapper().writeValueAsString(loadTestResources);
-			context.put("loadTestResources", reportingJson);
+			if(nodes==null)
+			{
+				reportingJson = new ObjectMapper().writeValueAsString(loadTestResources);
+				context.put("loadTestResources", reportingJson);
+			}
+			else
+			{
+				context.put("loadTestResources", "{}");
+				context.put("nodes", nodes);
+				context.put("nodeurls", nodeurls);
+			}
 		} catch (Exception e) {
 			e.printStackTrace();
 		}

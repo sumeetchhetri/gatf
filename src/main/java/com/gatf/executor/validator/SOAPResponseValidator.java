@@ -72,7 +72,7 @@ public class SOAPResponseValidator implements ResponseValidator {
 					
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", xmlValue);
 					if(nodeCase.length==2) {
-						Assert.assertEquals(xmlValue, nodeCase[1]);
+						XMLResponseValidator.doNodeLevelValidation(xmlValue, nodeCase[1], context);
 					}
 				}
 			}

@@ -19,8 +19,6 @@ public class DistributedTestStatus implements Serializable {
 	
 	private TestSuiteStats suiteStats; 
 	
-	private List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
-	
 	public String getNode() {
 		return node;
 	}
@@ -51,13 +49,5 @@ public class DistributedTestStatus implements Serializable {
 
 	public void setSuiteStats(TestSuiteStats suiteStats) {
 		this.suiteStats = suiteStats;
-	}
-
-	public List<LoadTestResource> getLoadTestResources() {
-		return loadTestResources;
-	}
-
-	public void setLoadTestResources(List<LoadTestResource> loadTestResources) {
-		this.loadTestResources = loadTestResources;
 	}
 }

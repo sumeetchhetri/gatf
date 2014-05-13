@@ -11,7 +11,6 @@ import java.util.logging.Logger;
 
 import com.gatf.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
-import com.gatf.executor.report.TestSuiteStats;
 
 public class DistributedGatfListener {
 

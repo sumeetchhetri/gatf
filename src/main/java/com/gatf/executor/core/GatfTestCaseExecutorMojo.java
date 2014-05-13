@@ -58,7 +58,6 @@ import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
-import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
@@ -747,7 +746,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				runPrefix = "LRun-";
 			}
 					
-			reportHandler.doFinalLoadTestReport(runPrefix, loadStats, context);
+			reportHandler.doFinalLoadTestReport(runPrefix, loadStats, context, null, null);
 		}
 		
 		if(loadStats!=null) {
@@ -758,13 +757,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		}
 		
 		if(distTasks!=null) {
-			List<TestSuiteStats> suiteStats = new ArrayList<TestSuiteStats>();
-			List<List<LoadTestResource>> loadTestResources = new ArrayList<List<LoadTestResource>>();
+			TestSuiteStats finalDistStats = loadStats;
 			List<String> nodes = new ArrayList<String>();
+			List<String> nodesurls = new ArrayList<String>();
 			
-			suiteStats.add(loadStats);
-			loadTestResources.add(reportHandler.getLoadTestResources());
 			nodes.add("local-node");
+			nodesurls.add("LRun-index.html");
 			
 			for (FutureTask<DistributedTestStatus> futureTask : distTasks) {
 				try {
@@ -772,9 +770,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					if(stats!=null && stats.getSuiteStats()!=null)
 					{
 						getLog().info(stats.getSuiteStats().show());
-						suiteStats.add(stats.getSuiteStats());
-						loadTestResources.add(stats.getLoadTestResources());
 						nodes.add(stats.getNode());
+						nodesurls.add(stats.getIdentifier() + "-index.html");
+						finalDistStats.updateStats(stats.getSuiteStats());
 						
 						for (Map.Entry<String, String> fileContent : stats.getReportFileContent().entrySet()) {
 							getLog().info("Writing Distributed file to ouput directory....");
@@ -787,7 +785,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				}
 			}
 			
-			reportHandler.doFinalDsitributedLoadTestReport(context, suiteStats, loadTestResources, nodes);
+			reportHandler.doFinalLoadTestReport(null, finalDistStats, context, nodes, nodesurls);
 		}
 	}
 	
@@ -1250,7 +1248,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		}
 		
 		if(isLoadTestingEnabled) {
-			reportHandler.doFinalLoadTestReport(runPrefix, loadStats, context);
+			reportHandler.doFinalLoadTestReport(runPrefix+"-", loadStats, context, null, null);
 		}
 		
 		if(loadStats!=null) {
@@ -1259,8 +1257,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		DistributedTestStatus finalStats = reportHandler.getDistributedTestStatus();
 		finalStats.setSuiteStats(loadStats);
-		finalStats.setLoadTestResources(reportHandler.getLoadTestResources());
-		
 		return finalStats;
 	}
 	

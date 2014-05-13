@@ -48,7 +48,7 @@ public class JSONResponseValidator implements ResponseValidator {
 					}
 					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", nvalue);
 					if(nodeCase.length==2) {
-						Assert.assertEquals(nvalue, nodeCase[1]);
+						XMLResponseValidator.doNodeLevelValidation(nvalue, nodeCase[1], context);
 					}
 				}
 			}

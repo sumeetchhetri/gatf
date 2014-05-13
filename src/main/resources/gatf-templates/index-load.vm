@@ -45,7 +45,7 @@
 								<b><u>Load Test Statistics</u></b>
 								<ul style="margin-left:50px" id="stats-pre-ele">
 								</ul><br/>
-								<b><u>Load Test Sample Runs</u></b>
+								<b><u id="stats-title"></u></b>
 								<ul style="margin-left:50px" id="stats-pre-ele1">
 								</ul>
 								<br/>
@@ -65,7 +65,6 @@
 		<script>
 			
 			var suiteStats = $suiteStats;
-			
 			var loadTestResources = $loadTestResources;
 
 			function DateFmt() {
@@ -113,20 +112,28 @@
 				   );
 				
 				 var html = '';
-				 var fmt = new DateFmt();
-				 
-				 for(var i=0;i<loadTestResources.length;i++) {
-					var timems = loadTestResources[i].url;
-					if(timems.indexOf("-")==-1)
-						timems = timems.substring(0, timems.indexOf("."));
-					else
-						timems = timems.substring(timems.lastIndexOf("-")+1, timems.indexOf("."));
-					var date = new Date(parseInt(timems));
-					var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
-					html += '<li><a href="'+loadTestResources[i].url+'">'+loadTestResources[i].title+' ('+dtstr+')</a></li>';
-				 }
+				 #if($nodes)
+				 	 #set($index = 0)
+					 #foreach($node in $nodes)
+						html += '<li><a href="$nodeurls.get($index)">Report for Node - `$node`</a></li>';
+					 	#set($index = $index+1)
+					 #end
+					 $('#stats-title').html('Distributed Load Test Runs');
+				 #else
+				 	 var fmt = new DateFmt();
+					 for(var i=0;i<loadTestResources.length;i++) {
+						var timems = loadTestResources[i].url;
+						if(timems.indexOf("-")==-1)
+							timems = timems.substring(0, timems.indexOf("."));
+						else
+							timems = timems.substring(timems.lastIndexOf("-")+1, timems.indexOf("."));
+						var date = new Date(parseInt(timems));
+						var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
+						html += '<li><a href="'+loadTestResources[i].url+'">'+loadTestResources[i].title+' ('+dtstr+')</a></li>';
+					 }
+					 $('#stats-title').html('Load Test Sample Runs');
+				 #end
 				 $('#stats-pre-ele1').html(html);
-
 			});
 			
 		</script>
