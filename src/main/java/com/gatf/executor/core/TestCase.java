@@ -177,6 +177,13 @@ public class TestCase implements Serializable {
 	
 	private boolean abortOnInvalidContentType;
 	
+	private String relatedTestName;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	//Parameters carried over from related testcases
+	private Map<String, String> carriedOverVariables;
+	
 	@XStreamOmitField
 	@JsonIgnore
 	private String identifierPrefix =  "Run";
@@ -549,6 +556,22 @@ public class TestCase implements Serializable {
 		return sourcefileName;
 	}
 	
+	public String getRelatedTestName() {
+		return relatedTestName;
+	}
+
+	public void setRelatedTestName(String relatedTestName) {
+		this.relatedTestName = relatedTestName;
+	}
+
+	public Map<String, String> getCarriedOverVariables() {
+		return carriedOverVariables;
+	}
+
+	public void setCarriedOverVariables(Map<String, String> carriedOverVariables) {
+		this.carriedOverVariables = carriedOverVariables;
+	}
+
 	@Override
 	public String toString() {
 		final int maxLen = 10;
@@ -645,6 +668,8 @@ public class TestCase implements Serializable {
 		builder.append(abortOnInvalidContentType);
 		builder.append("\nabortOnInvalidStatusCode=");
 		builder.append(abortOnInvalidStatusCode);
+		builder.append("\nrelatedTestName=");
+		builder.append(relatedTestName);
 		builder.append("]\n");
 		return builder.toString();
 	}
@@ -670,7 +695,7 @@ public class TestCase implements Serializable {
 		boolean valid = false;
 		if(csvLine!=null) {
 			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>32) {
+			if(csvParts.length>33) {
 				setUrl(csvParts[0]);
 				setName(csvParts[1]);
 				setMethod(csvParts[2]);
@@ -750,6 +775,7 @@ public class TestCase implements Serializable {
 				setPostExecutionDataSourceHookName(csvParts[30]);
 				setAbortOnInvalidContentType(Boolean.valueOf(csvParts[31]));
 				setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts[32]));
+				setRelatedTestName(csvParts[33]);
 				valid = true;
 			} else {
 				valid = false;
@@ -851,6 +877,8 @@ public class TestCase implements Serializable {
 		build.append(isAbortOnInvalidContentType());
 		build.append(",");
 		build.append(isAbortOnInvalidStatusCode());
+		build.append(",");
+		build.append(getRelatedTestName());
 		build.append(",");
 		return build.toString();
 	}
@@ -1021,5 +1049,316 @@ public class TestCase implements Serializable {
 		this.abortOnInvalidContentType = other.abortOnInvalidContentType;
 		this.abortOnInvalidStatusCode = other.abortOnInvalidStatusCode;
 		this.identifierPrefix = other.identifierPrefix;
+		this.relatedTestName = other.relatedTestName;
+		this.carriedOverVariables = other.carriedOverVariables;
+	}
+
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + (abortOnInvalidContentType ? 1231 : 1237);
+		result = prime * result + (abortOnInvalidStatusCode ? 1231 : 1237);
+		result = prime * result
+				+ ((acontent == null) ? 0 : acontent.hashCode());
+		result = prime * result
+				+ ((aexQueryPart == null) ? 0 : aexQueryPart.hashCode());
+		result = prime * result
+				+ ((aexpectedNodes == null) ? 0 : aexpectedNodes.hashCode());
+		result = prime * result + ((aurl == null) ? 0 : aurl.hashCode());
+		result = prime * result + ((baseUrl == null) ? 0 : baseUrl.hashCode());
+		result = prime * result + ((content == null) ? 0 : content.hashCode());
+		result = prime * result
+				+ ((description == null) ? 0 : description.hashCode());
+		result = prime * result + (detailedLog ? 1231 : 1237);
+		result = prime * result
+				+ ((exQueryPart == null) ? 0 : exQueryPart.hashCode());
+		result = prime * result
+				+ ((expectedNodes == null) ? 0 : expectedNodes.hashCode());
+		result = prime * result + expectedResCode;
+		result = prime
+				* result
+				+ ((expectedResContent == null) ? 0 : expectedResContent
+						.hashCode());
+		result = prime
+				* result
+				+ ((expectedResContentType == null) ? 0
+						: expectedResContentType.hashCode());
+		result = prime * result + (failed ? 1231 : 1237);
+		result = prime * result
+				+ ((filesToUpload == null) ? 0 : filesToUpload.hashCode());
+		result = prime * result + ((headers == null) ? 0 : headers.hashCode());
+		result = prime
+				* result
+				+ ((identifierPrefix == null) ? 0 : identifierPrefix.hashCode());
+		result = prime * result + ((method == null) ? 0 : method.hashCode());
+		result = prime * result + ((name == null) ? 0 : name.hashCode());
+		result = prime
+				* result
+				+ ((numberOfExecutions == null) ? 0 : numberOfExecutions
+						.hashCode());
+		result = prime * result
+				+ ((operationName == null) ? 0 : operationName.hashCode());
+		result = prime * result
+				+ ((outFileName == null) ? 0 : outFileName.hashCode());
+		result = prime
+				* result
+				+ ((postExecutionDataSourceHookName == null) ? 0
+						: postExecutionDataSourceHookName.hashCode());
+		result = prime * result
+				+ ((postWaitMs == null) ? 0 : postWaitMs.hashCode());
+		result = prime
+				* result
+				+ ((preExecutionDataSourceHookName == null) ? 0
+						: preExecutionDataSourceHookName.hashCode());
+		result = prime * result
+				+ ((preWaitMs == null) ? 0 : preWaitMs.hashCode());
+		result = prime * result
+				+ ((relatedTestName == null) ? 0 : relatedTestName.hashCode());
+		result = prime
+				* result
+				+ ((repeatScenarioProviderName == null) ? 0
+						: repeatScenarioProviderName.hashCode());
+		result = prime * result
+				+ ((repeatScenarios == null) ? 0 : repeatScenarios.hashCode());
+		result = prime * result
+				+ (repeatScenariosConcurrentExecution ? 1231 : 1237);
+		result = prime
+				* result
+				+ ((repeatScenariosOrig == null) ? 0 : repeatScenariosOrig
+						.hashCode());
+		result = prime
+				* result
+				+ ((reportResponseContent == null) ? 0 : reportResponseContent
+						.hashCode());
+		result = prime * result + (secure ? 1231 : 1237);
+		result = prime * result + sequence;
+		result = prime
+				* result
+				+ ((simulationNumber == null) ? 0 : simulationNumber.hashCode());
+		result = prime * result + (skipTest ? 1231 : 1237);
+		result = prime * result + (soapBase ? 1231 : 1237);
+		result = prime
+				* result
+				+ ((soapParameterValues == null) ? 0 : soapParameterValues
+						.hashCode());
+		result = prime * result
+				+ ((sourcefileName == null) ? 0 : sourcefileName.hashCode());
+		result = prime * result + (stopOnFirstFailureForPerfTest ? 1231 : 1237);
+		result = prime * result + ((url == null) ? 0 : url.hashCode());
+		result = prime
+				* result
+				+ ((workflowContextParameterMap == null) ? 0
+						: workflowContextParameterMap.hashCode());
+		result = prime * result + ((wsdlKey == null) ? 0 : wsdlKey.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TestCase other = (TestCase) obj;
+		if (abortOnInvalidContentType != other.abortOnInvalidContentType)
+			return false;
+		if (abortOnInvalidStatusCode != other.abortOnInvalidStatusCode)
+			return false;
+		if (acontent == null) {
+			if (other.acontent != null)
+				return false;
+		} else if (!acontent.equals(other.acontent))
+			return false;
+		if (aexQueryPart == null) {
+			if (other.aexQueryPart != null)
+				return false;
+		} else if (!aexQueryPart.equals(other.aexQueryPart))
+			return false;
+		if (aexpectedNodes == null) {
+			if (other.aexpectedNodes != null)
+				return false;
+		} else if (!aexpectedNodes.equals(other.aexpectedNodes))
+			return false;
+		if (aurl == null) {
+			if (other.aurl != null)
+				return false;
+		} else if (!aurl.equals(other.aurl))
+			return false;
+		if (baseUrl == null) {
+			if (other.baseUrl != null)
+				return false;
+		} else if (!baseUrl.equals(other.baseUrl))
+			return false;
+		if (content == null) {
+			if (other.content != null)
+				return false;
+		} else if (!content.equals(other.content))
+			return false;
+		if (description == null) {
+			if (other.description != null)
+				return false;
+		} else if (!description.equals(other.description))
+			return false;
+		if (detailedLog != other.detailedLog)
+			return false;
+		if (exQueryPart == null) {
+			if (other.exQueryPart != null)
+				return false;
+		} else if (!exQueryPart.equals(other.exQueryPart))
+			return false;
+		if (expectedNodes == null) {
+			if (other.expectedNodes != null)
+				return false;
+		} else if (!expectedNodes.equals(other.expectedNodes))
+			return false;
+		if (expectedResCode != other.expectedResCode)
+			return false;
+		if (expectedResContent == null) {
+			if (other.expectedResContent != null)
+				return false;
+		} else if (!expectedResContent.equals(other.expectedResContent))
+			return false;
+		if (expectedResContentType == null) {
+			if (other.expectedResContentType != null)
+				return false;
+		} else if (!expectedResContentType.equals(other.expectedResContentType))
+			return false;
+		if (failed != other.failed)
+			return false;
+		if (filesToUpload == null) {
+			if (other.filesToUpload != null)
+				return false;
+		} else if (!filesToUpload.equals(other.filesToUpload))
+			return false;
+		if (headers == null) {
+			if (other.headers != null)
+				return false;
+		} else if (!headers.equals(other.headers))
+			return false;
+		if (identifierPrefix == null) {
+			if (other.identifierPrefix != null)
+				return false;
+		} else if (!identifierPrefix.equals(other.identifierPrefix))
+			return false;
+		if (method == null) {
+			if (other.method != null)
+				return false;
+		} else if (!method.equals(other.method))
+			return false;
+		if (name == null) {
+			if (other.name != null)
+				return false;
+		} else if (!name.equals(other.name))
+			return false;
+		if (numberOfExecutions == null) {
+			if (other.numberOfExecutions != null)
+				return false;
+		} else if (!numberOfExecutions.equals(other.numberOfExecutions))
+			return false;
+		if (operationName == null) {
+			if (other.operationName != null)
+				return false;
+		} else if (!operationName.equals(other.operationName))
+			return false;
+		if (outFileName == null) {
+			if (other.outFileName != null)
+				return false;
+		} else if (!outFileName.equals(other.outFileName))
+			return false;
+		if (postExecutionDataSourceHookName == null) {
+			if (other.postExecutionDataSourceHookName != null)
+				return false;
+		} else if (!postExecutionDataSourceHookName
+				.equals(other.postExecutionDataSourceHookName))
+			return false;
+		if (postWaitMs == null) {
+			if (other.postWaitMs != null)
+				return false;
+		} else if (!postWaitMs.equals(other.postWaitMs))
+			return false;
+		if (preExecutionDataSourceHookName == null) {
+			if (other.preExecutionDataSourceHookName != null)
+				return false;
+		} else if (!preExecutionDataSourceHookName
+				.equals(other.preExecutionDataSourceHookName))
+			return false;
+		if (preWaitMs == null) {
+			if (other.preWaitMs != null)
+				return false;
+		} else if (!preWaitMs.equals(other.preWaitMs))
+			return false;
+		if (relatedTestName == null) {
+			if (other.relatedTestName != null)
+				return false;
+		} else if (!relatedTestName.equals(other.relatedTestName))
+			return false;
+		if (repeatScenarioProviderName == null) {
+			if (other.repeatScenarioProviderName != null)
+				return false;
+		} else if (!repeatScenarioProviderName
+				.equals(other.repeatScenarioProviderName))
+			return false;
+		if (repeatScenarios == null) {
+			if (other.repeatScenarios != null)
+				return false;
+		} else if (!repeatScenarios.equals(other.repeatScenarios))
+			return false;
+		if (repeatScenariosConcurrentExecution != other.repeatScenariosConcurrentExecution)
+			return false;
+		if (repeatScenariosOrig == null) {
+			if (other.repeatScenariosOrig != null)
+				return false;
+		} else if (!repeatScenariosOrig.equals(other.repeatScenariosOrig))
+			return false;
+		if (reportResponseContent == null) {
+			if (other.reportResponseContent != null)
+				return false;
+		} else if (!reportResponseContent.equals(other.reportResponseContent))
+			return false;
+		if (secure != other.secure)
+			return false;
+		if (sequence != other.sequence)
+			return false;
+		if (simulationNumber == null) {
+			if (other.simulationNumber != null)
+				return false;
+		} else if (!simulationNumber.equals(other.simulationNumber))
+			return false;
+		if (skipTest != other.skipTest)
+			return false;
+		if (soapBase != other.soapBase)
+			return false;
+		if (soapParameterValues == null) {
+			if (other.soapParameterValues != null)
+				return false;
+		} else if (!soapParameterValues.equals(other.soapParameterValues))
+			return false;
+		if (sourcefileName == null) {
+			if (other.sourcefileName != null)
+				return false;
+		} else if (!sourcefileName.equals(other.sourcefileName))
+			return false;
+		if (stopOnFirstFailureForPerfTest != other.stopOnFirstFailureForPerfTest)
+			return false;
+		if (url == null) {
+			if (other.url != null)
+				return false;
+		} else if (!url.equals(other.url))
+			return false;
+		if (workflowContextParameterMap == null) {
+			if (other.workflowContextParameterMap != null)
+				return false;
+		} else if (!workflowContextParameterMap
+				.equals(other.workflowContextParameterMap))
+			return false;
+		if (wsdlKey == null) {
+			if (other.wsdlKey != null)
+				return false;
+		} else if (!wsdlKey.equals(other.wsdlKey))
+			return false;
+		return true;
 	}
 }

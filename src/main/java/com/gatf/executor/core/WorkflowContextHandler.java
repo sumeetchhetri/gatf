@@ -108,7 +108,7 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	public List<Map<String, String>> getSuiteWorkflowScnearioContextValues(TestCase testCase, String varName) {
+	public List<Map<String, String>> getSuiteWorkflowScenarioContextValues(TestCase testCase, String varName) {
 		if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowScenarioContext.get(0).get(varName);
 		} else {
@@ -125,6 +125,9 @@ public class WorkflowContextHandler {
 		}
 		if(variableMap!=null && !variableMap.isEmpty()) {
 			nmap.putAll(variableMap);
+		}
+		if(testCase.getCarriedOverVariables()!=null && !testCase.getCarriedOverVariables().isEmpty()) {
+			nmap.putAll(testCase.getCarriedOverVariables());
 		}
 		return nmap;
 	}

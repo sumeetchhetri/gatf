@@ -38,6 +38,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -46,6 +47,8 @@ import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.custommonkey.xmlunit.XMLAssert;
+import org.skyscreamer.jsonassert.JSONAssert;
 
 import com.AlphanumComparator;
 import com.gatf.distributed.DistributedTestStatus;
@@ -500,7 +503,12 @@ public class ReportHandler {
 					&& testCaseReport.getErrorText()!=null && !testCaseReport.getErrorText().trim().isEmpty()
 					&& !testCaseReportRun1.getErrorText().equals(testCaseReport.getErrorText()))
 			{
-				comStatus.setCompareStatusError("FAILED_ERROR_CONTENT");
+				boolean eq = compareText(testCaseReport.getResponseContentType(), testCaseReport.getErrorText(), 
+							testCaseReportRun1.getErrorText());
+				if(!eq)
+				{
+					comStatus.setCompareStatusError("FAILED_ERROR_CONTENT");
+				}
 			}
 			if(comStatus.getCompareStatusError()==null
 					&& testCaseReportRun1.getResponseContentType()!=null 
@@ -516,7 +524,12 @@ public class ReportHandler {
 					&& testCaseReport.getResponseContent()!=null && !testCaseReport.getResponseContent().trim().isEmpty()
 					&& !testCaseReportRun1.getResponseContent().equals(testCaseReport.getResponseContent()))
 			{
-				comStatus.setCompareStatusError("FAILED_RESPONSE_CONTENT");
+				boolean eq = compareText(testCaseReport.getResponseContentType(), testCaseReport.getResponseContent(), 
+						testCaseReportRun1.getResponseContent());
+				if(!eq)
+				{
+					comStatus.setCompareStatusError("FAILED_RESPONSE_CONTENT");
+				}
 			}
 			
 			if(comStatus.getCompareStatusError()==null)
@@ -635,5 +648,28 @@ public class ReportHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	private boolean compareText(String type, String lhs, String rhs)
+	{
+		if(MediaType.APPLICATION_JSON.equalsIgnoreCase(type))
+		{
+			try {
+				JSONAssert.assertEquals(lhs, rhs,false);
+				return true;
+			} catch (Exception e) {
+			} catch (AssertionError e) {
+			}
+		}
+		else if(MediaType.APPLICATION_XML.equalsIgnoreCase(type) || MediaType.TEXT_XML.equalsIgnoreCase(type))
+		{
+			try {
+				XMLAssert.assertXMLEqual(lhs, rhs);
+				return true;
+			} catch (Exception e) {
+			} catch (AssertionError e) {
+			}
+		}
+		return false;
 	}
 }

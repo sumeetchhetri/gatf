@@ -94,6 +94,7 @@ import com.gatf.generator.postman.PostmanCollection;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
@@ -1197,7 +1198,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     		if(args[0].equals("-generator") && !args[1].trim().isEmpty())
     		{
 	    		InputStream io = new FileInputStream(args[1]);
-	    		XStream xstream = new XStream(new XppDriver());
+	    		XStream xstream = new XStream(new DomDriver());
 	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 	    		xstream.alias("testPaths", String[].class);
 	    		xstream.alias("testPath", String.class);

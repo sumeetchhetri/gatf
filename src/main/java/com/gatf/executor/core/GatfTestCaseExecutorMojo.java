@@ -64,7 +64,7 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.XppDriver;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -412,6 +412,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setLoadTestingReportSamples(loadTestingReportSamples);
 		configuration.setDebugEnabled(debugEnabled);
 		configuration.setGatfTestDataConfig(gatfTestDataConfig);
+		configuration.setTestCaseHooksPaths(testCaseHooksPath);
 		
 		if(configFile!=null) {
 			try {
@@ -419,7 +420,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				File basePath = new File(testCasesBasePath);
 				resource = new File(basePath, configFile);
 				if(resource.exists()) {
-					XStream xstream = new XStream(new XppDriver());
+					XStream xstream = new XStream(new DomDriver());
 					xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
 							 GatfTestDataConfig.class, GatfTestDataProvider.class});
 					xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
@@ -526,6 +527,22 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		List<TestCase> allTestCases = getAllTestCases(context);
 		sortAndOrderTestCases(allTestCases, configuration);
+		
+		List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
+		for (TestCase testCase : allTestCases) {
+			List<TestCase> depTests = null;
+			if(testCase.getRelatedTestName()!=null && 
+					(depTests = checkIfTestExists(testCase.getRelatedTestName(), allTestCases))!=null) {
+				if(!context.getRelatedTestCases().containsKey(testCase.getRelatedTestName())) {
+					context.getRelatedTestCases().put(testCase.getRelatedTestName(), new ArrayList<TestCase>());
+				}
+				for (TestCase dtc : depTests) {
+					tempTestCases.remove(dtc);
+					context.getRelatedTestCases().get(testCase.getRelatedTestName()).add(dtc);
+				}
+			}
+		}
+		allTestCases = tempTestCases;
 		
 		int numberOfRuns = 1;
 		if(compareEnabledOnlySingleTestCaseExec)
@@ -790,6 +807,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	}
 	
 	
+	private List<TestCase> checkIfTestExists(String relatedTestCase, List<TestCase> allTestCases) {
+		List<TestCase> depTests = new ArrayList<TestCase>();
+		for (TestCase tc : allTestCases) {
+			if(relatedTestCase!=null && tc.getName().equals(relatedTestCase)) {
+				depTests.add(tc);
+			}
+		}
+		return depTests;
+	}
+
 	private void validateTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil) {
 		for (TestCase testCase : allTestCases) {
 			try {
@@ -843,7 +870,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		return userSimulations;
 	}
 	
-	private boolean executeTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
+	private boolean handleTestCaseExecution(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
 			boolean onlySingleTestCaseExec, boolean dorep) throws Exception
 	{
 		boolean success = true;
@@ -851,24 +878,25 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		AcceptanceTestContext context = testCaseExecutorUtil.getContext();
 		
 		List<Map<String, String>> sceanrios = testCase.getRepeatScenariosOrig();
-		if(!onlySingleTestCaseExec) {
-			if(testCase.getRepeatScenarioProviderName()!=null) {
-				List<Map<String, String>> sceanriosp = 
-						context.getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
-				if(sceanriosp!=null) {
-					if(sceanrios!=null) {
-						sceanrios.addAll(sceanriosp);
-					} else {
-						sceanrios = sceanriosp;
-					}
+		if(testCase.getRepeatScenarioProviderName()!=null) {
+			//actual repeat scenario map
+			List<Map<String, String>> sceanriosp = 
+					context.getProviderTestDataMap().get(testCase.getRepeatScenarioProviderName());
+			if(sceanriosp!=null) {
+				if(sceanrios!=null) {
+					sceanrios.addAll(sceanriosp);
 				} else {
-					List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler()
-							.getSuiteWorkflowScnearioContextValues(testCase, testCase.getRepeatScenarioProviderName());
-					if(sceanrios!=null) {
-						sceanrios.addAll(sceanriowk);
-					} else {
-						sceanrios = sceanriowk;
-					}
+					sceanrios = sceanriosp;
+				}
+			} 
+			//repeat scenario map obtained from #responseMapped functions
+			else {
+				List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler()
+						.getSuiteWorkflowScenarioContextValues(testCase, testCase.getRepeatScenarioProviderName());
+				if(sceanrios!=null) {
+					sceanrios.addAll(sceanriowk);
+				} else {
+					sceanrios = sceanriowk;
 				}
 			}
 			testCase.setRepeatScenarios(sceanrios);
@@ -896,6 +924,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 					success = false;
+					if(testCase.getRepeatScenarios()!=null && !testCase.getRepeatScenarios().isEmpty()) {
+						testCase.getRepeatScenarios().remove(0);
+					}
 				}
 				
 				context.addTestCaseReport(testCaseReport);
@@ -930,39 +961,72 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		return success;
 	}
 	
+	private boolean executeSingleTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil,
+			boolean onlySingleTestCaseExec, boolean dorep) {
+		boolean success = false;
+		try {
+			
+			getLog().info("Running acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
+			if(testCase.isSkipTest())
+			{
+				getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
+				return success;
+			}
+			if(testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled()
+					&& testCase.isDetailedLog())
+			{
+				getLog().info(testCase.toString());
+			}
+			
+			success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+			
+			if(success)
+			{
+				getLog().info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
+				getLog().info("============================================================\n\n\n");
+			}
+			else
+			{
+				getLog().info("Failed while acceptance test " + testCase.getName()+"/"+testCase.getDescription());
+				getLog().info("============================================================\n\n\n");
+			}
+		} catch (Exception e) {
+			getLog().error(e);
+		} catch (Error e) {
+			getLog().error(e);
+		}
+		return success;
+	}
+	
 	private void executeTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil,
 			boolean onlySingleTestCaseExec, boolean dorep) {
 		for (TestCase testCase : allTestCases) {
-			try {
-				
-				getLog().info("Running acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
-				if(testCase.isSkipTest())
-				{
-					getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
-					continue;
+			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+			if(!success) continue;
+			
+			//Execute all the related tests if the test is a success
+			Map<String, List<TestCase>> relTstcs = testCaseExecutorUtil.getContext().getRelatedTestCases();
+			if(testCase.getRelatedTestName()!=null && relTstcs.containsKey(testCase.getRelatedTestName())) {
+				List<TestCase> relatedTests = relTstcs.get(testCase.getRelatedTestName());
+				if(relatedTests!=null && relatedTests.size()>0) {
+					if(testCase.getRepeatScenarios()!=null && testCase.getRepeatScenarios().size()>0) {
+						for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
+							for (TestCase rTc : relatedTests) {
+								TestCase rTcCopy = new TestCase(rTc);
+								rTcCopy.setBaseUrl(testCase.getBaseUrl());
+								rTcCopy.setSimulationNumber(testCase.getSimulationNumber());
+								rTcCopy.setCarriedOverVariables(scenarioMap);
+								executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+							}
+						}
+					} else {
+						for (TestCase rTc : relatedTests) {
+							rTc.setBaseUrl(testCase.getBaseUrl());
+							rTc.setSimulationNumber(testCase.getSimulationNumber());
+							executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+						}
+					}
 				}
-				if(testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled()
-						&& testCase.isDetailedLog())
-				{
-					getLog().info(testCase.toString());
-				}
-				
-				boolean success = executeTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
-				
-				if(success)
-				{
-					getLog().info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
-					getLog().info("============================================================\n\n\n");
-				}
-				else
-				{
-					getLog().info("Failed while acceptance test " + testCase.getName()+"/"+testCase.getDescription());
-					getLog().info("============================================================\n\n\n");
-				}
-			} catch (Exception e) {
-				getLog().error(e);
-			} catch (Error e) {
-				getLog().error(e);
 			}
 		}
 	}

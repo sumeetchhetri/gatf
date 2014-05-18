@@ -599,11 +599,11 @@ public class TestCaseExecutorUtil {
 			if(testCaseReport.getError()==null)
 			{
 				if(!testCase.isSoapBase()) {
-					if(testCase.getExpectedResContentType().equals(MediaType.APPLICATION_JSON))
+					if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.APPLICATION_JSON))
 					{
 						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
-					else if(testCase.getExpectedResContentType().equals(MediaType.APPLICATION_XML))
+					else if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.APPLICATION_XML))
 					{
 						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
 					}

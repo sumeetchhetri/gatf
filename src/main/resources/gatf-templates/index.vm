@@ -52,6 +52,39 @@
 			handcursor {
 				cursor: pointer;cursor: hand;
 			}
+			.test
+			{
+				margin:10px 0;
+				zoom:1;
+			}
+			.test:after
+			{
+				height:0;
+				clear:both;
+				content:"";
+				visibility:hidden;
+				display:block;
+			}
+			.text
+			{
+				width:300px;
+				float:left;
+				margin-right:10px;
+				border:1px solid #F60;
+				padding:10px;
+				min-height:80px;
+			}
+			.text-del
+			{
+				text-decoration: line-through;
+				color: #A82400;
+				background-color: #E5BDB2;
+			}
+			.text-add
+			{
+				background: #D1E1AD;
+				color: #405A04;
+			}
 		</style>
 
 	</head>
@@ -139,7 +172,23 @@
 								<table id="tempodata" border="1" style="table-layout: fixed; width: 100%"></table>
 							 </div>
 						</div>
+					</div>
 
+					<div class="col-lg-12">
+						<div class="col-lg-4">
+							<div class="panel panel-default">
+								<div class="panel-heading">
+									Comparison Success/Failures
+								</div>
+								<!-- /.panel-heading -->
+								<div class="panel-body">        
+									<div class="flot-chart-content" id="flot-pie-chart-comp" style="width:300px;height:300px"></div>
+								</div>
+							</div>
+						</div>
+					</div>
+					
+					<div class="col-lg-12">
 						<div class="panel panel-default" id="compare-chart-cont" style="display:none">
 							<div class="panel-heading">
 								Comparison Chart
@@ -180,6 +229,7 @@
 		<script type="text/javascript" src="js/vkbeautify.js"></script>
 		<link href="css/prettify.css" rel="stylesheet">
 		<script type="text/javascript" src="js/gatf.js"></script>
+		<script type="text/javascript" src="js/diff_match_patch.js"></script>
 		<script>
 			
 			var testcaseReports = $testcaseReports;

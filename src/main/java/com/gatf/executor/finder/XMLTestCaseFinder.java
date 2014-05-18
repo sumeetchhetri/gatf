@@ -18,7 +18,6 @@ limitations under the License.
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -27,10 +26,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.core.util.QuickWriter;
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
-import com.thoughtworks.xstream.io.xml.XppDriver;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -41,29 +37,7 @@ public class XMLTestCaseFinder implements TestCaseFinder {
 	@SuppressWarnings("unchecked")
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)
 	{
-		XStream xstream = new XStream(
-			new XppDriver() {
-				public HierarchicalStreamWriter createWriter(Writer out) {
-					return new PrettyPrintWriter(out) {
-						boolean cdata = false;
-						@SuppressWarnings("rawtypes")
-						public void startNode(String name, Class clazz){
-							super.startNode(name, clazz);
-							cdata = (name.equals("content") || name.equals("expectedResContent"));
-						}
-						protected void writeText(QuickWriter writer, String text) {
-							if(cdata) {
-								writer.write("<![CDATA[");
-								writer.write(text);
-								writer.write("]]>");
-							} else {
-								writer.write(text);
-							}
-						}
-					};
-				}
-			}
-		);
+		XStream xstream = new XStream(new DomDriver());
 		xstream.processAnnotations(new Class[]{TestCase.class});
 		xstream.alias("TestCases", List.class);
 		

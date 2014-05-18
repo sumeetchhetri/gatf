@@ -61,7 +61,7 @@ import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.XppDriver;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -93,6 +93,8 @@ public class AcceptanceTestContext {
 	    MIMETYPE_TEXT_PLAIN = "text/plain",
 	    MIMETYPE_TEXT_XML = "text/xml",
 	    MIMETYPE_APPLICATION_XML = "application/soap+xml";
+	
+	private final Map<String, List<TestCase>> relatedTestCases = new HashMap<String, List<TestCase>>();
 	
 	private final Map<String, String> httpHeaders = new HashMap<String, String>();
 
@@ -356,6 +358,10 @@ public class AcceptanceTestContext {
 		}
 	}
 	
+	public Map<String, List<TestCase>> getRelatedTestCases() {
+		return relatedTestCases;
+	}
+
 	public static void removeFolder(File folder)
 	{
 		if(folder==null || !folder.exists())return;
@@ -422,7 +428,7 @@ public class AcceptanceTestContext {
 			Assert.assertNotNull("Testdata configuration file not found...", file);
 			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
-			XStream xstream = new XStream(new XppDriver());
+			XStream xstream = new XStream(new DomDriver());
 			xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 			xstream.alias("args", String[].class);
