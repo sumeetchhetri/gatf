@@ -23,6 +23,8 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -529,16 +531,25 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		sortAndOrderTestCases(allTestCases, configuration);
 		
 		List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
+		Map<String, Set<String>> relTsts = new HashMap<String, Set<String>>();
+		
 		for (TestCase testCase : allTestCases) {
 			List<TestCase> depTests = null;
 			if(testCase.getRelatedTestName()!=null && 
 					(depTests = checkIfTestExists(testCase.getRelatedTestName(), allTestCases))!=null) {
+				if(!relTsts.containsKey(testCase.getRelatedTestName())) {
+					relTsts.put(testCase.getRelatedTestName(), new HashSet<String>());
+				}
 				if(!context.getRelatedTestCases().containsKey(testCase.getRelatedTestName())) {
 					context.getRelatedTestCases().put(testCase.getRelatedTestName(), new ArrayList<TestCase>());
 				}
 				for (TestCase dtc : depTests) {
-					tempTestCases.remove(dtc);
-					context.getRelatedTestCases().get(testCase.getRelatedTestName()).add(dtc);
+					if(!relTsts.get(testCase.getRelatedTestName()).contains(dtc.getName()))
+					{
+						relTsts.get(testCase.getRelatedTestName()).add(dtc.getName());
+						tempTestCases.remove(dtc);
+						context.getRelatedTestCases().get(testCase.getRelatedTestName()).add(dtc);
+					}
 				}
 			}
 		}
@@ -984,6 +995,35 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			{
 				getLog().info("Successfully ran acceptance test " + testCase.getName()+"/"+testCase.getDescription());
 				getLog().info("============================================================\n\n\n");
+				
+				//Execute all the related tests if the test is a success
+				Map<String, List<TestCase>> relTstcs = testCaseExecutorUtil.getContext().getRelatedTestCases();
+				if(testCase.getRelatedTestName()!=null && relTstcs.containsKey(testCase.getRelatedTestName())) {
+					List<TestCase> relatedTests = relTstcs.get(testCase.getRelatedTestName());
+					if(relatedTests!=null && relatedTests.size()>0) {
+						if(testCase.getRepeatScenarios()!=null && testCase.getRepeatScenarios().size()>0) {
+							for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
+								for (TestCase rTc : relatedTests) {
+									TestCase rTcCopy = new TestCase(rTc);
+									rTcCopy.setBaseUrl(testCase.getBaseUrl());
+									rTcCopy.setSimulationNumber(testCase.getSimulationNumber());
+									if(rTcCopy.getCarriedOverVariables()!=null) {
+										rTcCopy.getCarriedOverVariables().putAll(scenarioMap);
+									} else {
+										rTcCopy.setCarriedOverVariables(scenarioMap);
+									}
+									executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+								}
+							}
+						} else {
+							for (TestCase rTc : relatedTests) {
+								rTc.setBaseUrl(testCase.getBaseUrl());
+								rTc.setSimulationNumber(testCase.getSimulationNumber());
+								executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+							}
+						}
+					}
+				}
 			}
 			else
 			{
@@ -1003,31 +1043,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		for (TestCase testCase : allTestCases) {
 			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
 			if(!success) continue;
-			
-			//Execute all the related tests if the test is a success
-			Map<String, List<TestCase>> relTstcs = testCaseExecutorUtil.getContext().getRelatedTestCases();
-			if(testCase.getRelatedTestName()!=null && relTstcs.containsKey(testCase.getRelatedTestName())) {
-				List<TestCase> relatedTests = relTstcs.get(testCase.getRelatedTestName());
-				if(relatedTests!=null && relatedTests.size()>0) {
-					if(testCase.getRepeatScenarios()!=null && testCase.getRepeatScenarios().size()>0) {
-						for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
-							for (TestCase rTc : relatedTests) {
-								TestCase rTcCopy = new TestCase(rTc);
-								rTcCopy.setBaseUrl(testCase.getBaseUrl());
-								rTcCopy.setSimulationNumber(testCase.getSimulationNumber());
-								rTcCopy.setCarriedOverVariables(scenarioMap);
-								executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
-							}
-						}
-					} else {
-						for (TestCase rTc : relatedTests) {
-							rTc.setBaseUrl(testCase.getBaseUrl());
-							rTc.setSimulationNumber(testCase.getSimulationNumber());
-							executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
-						}
-					}
-				}
-			}
 		}
 	}
 	

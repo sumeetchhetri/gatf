@@ -18,16 +18,14 @@ limitations under the License.
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.junit.Assert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfFunctionHandler;
 
 /**
  * @author Sumeet Chhetri
@@ -103,41 +101,12 @@ public class RandomValueTestDataProvider implements TestDataProvider {
 				String varName = variableNamesArr.get(i);
 				String varType = variableTypesArr.get(i);
 				
-				String value = getPrimitiveValue(varType);
+				String value = GatfFunctionHandler.handleFunction(varType);
 				row.put(varName, value);
 			}
 			result.add(row);
 		}
 		
 		return result;
-	}
-	
-	public static String getPrimitiveValue(String type) {
-		if(type.equals("boolean")) {
-			Random rand = new Random();
-			return String.valueOf(rand.nextBoolean());
-		} else if(type.matches("^date\\([a-zA-Z\\-:/\\s]*\\)")) {
-			String pattr = type.substring(type.indexOf("(")+1, type.lastIndexOf(")"));
-			SimpleDateFormat format = new SimpleDateFormat(pattr);
-			return format.format(new Date());
-		} else if(type.equals("float")) {
-			Random rand = new Random(12345678L);
-			return String.valueOf(rand.nextFloat());
-		} else if(type.equals("alpha")) {
-			return RandomStringUtils.randomAlphabetic(10);
-		} else if(type.equals("alphanum")) {
-			return RandomStringUtils.randomAlphanumeric(10);
-		} else if(type.equals("+number")) {
-			Random rand = new Random();
-			return String.valueOf(rand.nextInt(1234567));
-		} else if(type.equals("-number")) {
-			Random rand = new Random();
-			return String.valueOf(-rand.nextInt(1234567));
-		} else if(type.equals("number")) {
-			Random rand = new Random();
-			boolean bool = rand.nextBoolean();
-			return bool?String.valueOf(rand.nextInt(1234567)):String.valueOf(-rand.nextInt(1234567));
-		}
-		return null;
 	}
 }

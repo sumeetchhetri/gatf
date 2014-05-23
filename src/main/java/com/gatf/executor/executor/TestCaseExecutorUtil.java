@@ -158,7 +158,7 @@ public class TestCaseExecutorUtil {
 					
 					if(type.equalsIgnoreCase("file")) {
 						try {
-							File file = getResourceFile(fileNmOrTxt, context.getGatfExecutorConfig().getTestCasesBasePath());
+							File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), fileNmOrTxt);
 							if(!testCase.isSoapBase())
 							{
 								Part part = new FilePart(controlname, file);
