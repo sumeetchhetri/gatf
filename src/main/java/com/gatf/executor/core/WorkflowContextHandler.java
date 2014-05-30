@@ -47,6 +47,12 @@ public class WorkflowContextHandler {
 
 	private final VelocityEngine engine = new VelocityEngine();
 	
+	public enum ResponseType {
+		JSON,
+		XML,
+		SOAP
+	}
+	
 	public VelocityEngine getEngine() {
 		return engine;
 	}
@@ -131,6 +137,22 @@ public class WorkflowContextHandler {
 		return nmap;
 	}
 	
+	public String evaluateTemplate(TestCase testCase, String template) {
+		StringWriter writer = new StringWriter();
+		try {
+			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
+			if(testCase!=null && !nmap.isEmpty()) {
+				VelocityContext context = new VelocityContext(nmap);
+				if(template!=null) {
+					engine.evaluate(context, writer, "ERROR", template);
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return writer.toString();
+	}
+	
 	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap) throws Exception {
 		
 		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap);
@@ -167,6 +189,23 @@ public class WorkflowContextHandler {
 			testCase.setAcontent(testCase.getContent());
 			testCase.setAexQueryPart(testCase.getExQueryPart());
 			testCase.setAexpectedNodes(testCase.getExpectedNodes());
+		}
+	}
+	
+	public void extractWorkFlowVariables(TestCase testCase, Object initObj, ResponseType type) throws Exception
+	{
+		switch (type) {
+			case JSON:
+				extractJsonWorkflowVariables(testCase, (String)initObj);
+				break;
+			case XML:
+				extractXmlWorkflowVariables(testCase, (Document)initObj);
+				break;
+			case SOAP:
+				extractSoapWorkflowVariables(testCase, (Document)initObj);
+				break;
+			default:
+				break;
 		}
 	}
 	
@@ -223,7 +262,7 @@ public class WorkflowContextHandler {
 					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
-							" -number, +number, date(format) and date(format - value(unit)) allowed", jsonValue);
+							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
 				} else {
 					String jsonValue = null;
@@ -250,7 +289,7 @@ public class WorkflowContextHandler {
 					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
-							" -number, +number, date(format) and date(format - value(unit)) allowed", jsonValue);
+							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
 					continue;
 				}
@@ -300,7 +339,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow soap variable " + expression +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+					String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
 					
 					List<Map<String, String>> soapValues = getNodeCountMapList(xmlValue, expression);
@@ -321,7 +360,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow soap variable " + entry.getValue() +" is null",  
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+					String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow soap variable " + entry.getValue() +" is null", xmlValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 				}
@@ -340,7 +379,7 @@ public class WorkflowContextHandler {
 					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean," +
-							" -number, +number, date(format) and date(format - value(unit)) allowed", jsonValue);
+							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
 					continue;
 				}
@@ -378,7 +417,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+					String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
 					
 					List<Map<String, String>> xmlValues = getNodeCountMapList(xmlValue, expression);
@@ -394,7 +433,7 @@ public class WorkflowContextHandler {
 					Assert.assertTrue("Workflow xml variable " + entry.getValue() +" is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 
-					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
+					String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
 					Assert.assertNotNull("Workflow xml variable " + entry.getValue() +" is null", xmlValue);
 					getSuiteWorkflowContext(testCase).put(entry.getKey(), xmlValue);
 				}
@@ -442,13 +481,13 @@ public class WorkflowContextHandler {
 				if(node.getChildNodes()!=null && node.getChildNodes().getLength()>0)
 				{
 					for (int j = 0; j < node.getChildNodes().getLength(); j++) {
-						String xmlValue = XMLResponseValidator.getNodeValue(node.getChildNodes().item(j));
+						String xmlValue = XMLResponseValidator.getXMLNodeValue(node.getChildNodes().item(j));
 						if(xmlValue!=null)
 							row.put(node.getChildNodes().item(j).getNodeName(), xmlValue);
 					}
 				}
 				
-				String xmlValue = XMLResponseValidator.getNodeValue(node);
+				String xmlValue = XMLResponseValidator.getXMLNodeValue(node);
 				if(xmlValue!=null)
 					row.put("this", xmlValue);
 				
@@ -487,7 +526,7 @@ public class WorkflowContextHandler {
 						for (String propName : props) {
 							if(node.getChildNodes().item(j).getNodeName().equals(propName)) {
 								found = true;
-								String xmlValue = XMLResponseValidator.getNodeValue(node.getChildNodes().item(j));
+								String xmlValue = XMLResponseValidator.getXMLNodeValue(node.getChildNodes().item(j));
 								row.put(propName, xmlValue);
 								break;
 							}

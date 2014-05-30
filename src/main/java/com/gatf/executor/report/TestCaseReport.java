@@ -53,6 +53,8 @@ public class TestCaseReport implements Serializable {
 	
 	private String status;
 	
+	private String failureReason;
+	
 	private Integer numberOfRuns;
 	
 	private Long executionTime = 0L;
@@ -267,6 +269,14 @@ public class TestCaseReport implements Serializable {
 		this.method = method;
 	}
 
+	public String getFailureReason() {
+		return failureReason;
+	}
+
+	public void setFailureReason(String failureReason) {
+		this.failureReason = failureReason;
+	}
+
 	public TestCaseReport(){}
 	
 	public TestCaseReport(TestCaseReport other) {
@@ -293,6 +303,7 @@ public class TestCaseReport implements Serializable {
 		}
 		this.responseStatusCode = other.responseStatusCode;
 		this.method = other.method;
+		this.failureReason = other.failureReason;
 	}
 
 	@Override
@@ -310,6 +321,8 @@ public class TestCaseReport implements Serializable {
 		builder.append(workflowName);
 		builder.append("\nstatus=");
 		builder.append(status);
+		builder.append("\nfailureReason=");
+		builder.append(failureReason);
 		builder.append("\nnumberOfRuns=");
 		builder.append(numberOfRuns);
 		builder.append("\nexecutionTime=");
@@ -366,6 +379,18 @@ public class TestCaseReport implements Serializable {
 		
 		public String status;
 		private TestStatus(String status) {
+			this.status = status;
+		}
+	}
+	
+	public static enum TestFailureReason {
+		InvalidStatusCode("InvalidStatusCode"),
+		Exception("Exception"),
+		NodeValidationFailed("NodeValidationFailed"),
+		InvalidContentType("InvalidContentType");
+		
+		public String status;
+		private TestFailureReason(String status) {
 			this.status = status;
 		}
 	}

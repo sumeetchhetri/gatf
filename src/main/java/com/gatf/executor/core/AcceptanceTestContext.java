@@ -140,6 +140,8 @@ public class AcceptanceTestContext {
 	private final ScenarioTestCaseExecutor scenarioTestCaseExecutor = new ScenarioTestCaseExecutor();
 	
 	private final PerformanceTestCaseExecutor performanceTestCaseExecutor = new PerformanceTestCaseExecutor();
+	
+	private final Map<String, GatfTestDataProvider> liveProviders = new HashMap<String, GatfTestDataProvider>();
 
 	public SingleTestCaseExecutor getSingleTestCaseExecutor() {
 		return singleTestCaseExecutor;
@@ -703,7 +705,6 @@ public class AcceptanceTestContext {
 		}
 	}
 	
-	@SuppressWarnings("rawtypes")
 	private void handleProviders(List<GatfTestDataProvider> providerTestDataList)
 	{
 		for (GatfTestDataProvider provider : providerTestDataList) {
@@ -751,44 +752,76 @@ public class AcceptanceTestContext {
 				continue;
 			}
 			
-			TestDataProvider testDataProvider = null;
-			List<Map<String, String>> testData = null;
-			if(provider.getProviderClass()!=null) {
-				if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new FileTestDataProvider();
-				} else if(InlineValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new InlineValueTestDataProvider();
-				} else if(RandomValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
-					testDataProvider = new RandomValueTestDataProvider();
-				} else {
-					try {
-						Class claz = loadCustomClass(provider.getProviderClass());
-						Class[] classes = claz.getInterfaces();
-						boolean validProvider = false;
-						if(classes!=null) {
-							for (Class class1 : classes) {
-								if(class1.equals(TestDataProvider.class)) {
-									validProvider = true;
-									break;
-								}
-							}
-						}
-						Assert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
-						Object providerInstance = claz.newInstance();
-						testDataProvider = (TestDataProvider)providerInstance;
-					} catch (Throwable e) {
-						throw new AssertionError(e);
-					}
-				}
-			} else {
-				testDataProvider = dataSource;
+			if(provider.isLive()) {
+				liveProviders.put(provider.getProviderName(), provider);
+				logger.info("Provider " + provider.getProviderName() + " is a Live one...");
+				continue;
 			}
 			
-			testData = testDataProvider.provide(provider, this);
+			List<Map<String, String>> testData = getProviderData(provider, null);
 			providerTestDataMap.put(provider.getProviderName(), testData);
 		}
 	}
 	
+	public List<Map<String, String>> getLiveProviderData(String provName, TestCase testCase)
+	{
+		GatfTestDataProvider provider = liveProviders.get(provName);
+		return getProviderData(provider, testCase);
+	}
+	
+	@SuppressWarnings("rawtypes")
+	private List<Map<String, String>> getProviderData(GatfTestDataProvider provider, TestCase testCase) {
+		
+		TestDataSource dataSource = dataSourceMap.get(provider.getDataSourceName());
+		
+		TestDataProvider testDataProvider = null;
+		List<Map<String, String>> testData = null;
+		if(provider.getProviderClass()!=null) {
+			if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+				testDataProvider = new FileTestDataProvider();
+			} else if(InlineValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+				testDataProvider = new InlineValueTestDataProvider();
+			} else if(RandomValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass())) {
+				testDataProvider = new RandomValueTestDataProvider();
+			} else {
+				try {
+					Class claz = loadCustomClass(provider.getProviderClass());
+					Class[] classes = claz.getInterfaces();
+					boolean validProvider = false;
+					if(classes!=null) {
+						for (Class class1 : classes) {
+							if(class1.equals(TestDataProvider.class)) {
+								validProvider = true;
+								break;
+							}
+						}
+					}
+					Assert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
+					Object providerInstance = claz.newInstance();
+					testDataProvider = (TestDataProvider)providerInstance;
+				} catch (Throwable e) {
+					throw new AssertionError(e);
+				}
+			}
+		} else {
+			testDataProvider = dataSource;
+		}
+		
+		//Live provider queries can have templatized parameter names
+		if(provider.isLive() && provider.getQueryStr()!=null)
+		{
+			String oQs = provider.getQueryStr();
+			provider = new GatfTestDataProvider(provider);
+			provider.setQueryStr(getWorkflowContextHandler().evaluateTemplate(testCase, provider.getQueryStr()));
+			if(provider.getQueryStr()==null || provider.getQueryStr().isEmpty()) {
+				provider.setQueryStr(oQs);
+			}
+		}
+		
+		testData = testDataProvider.provide(provider, this);
+		return testData;
+	}
+
 	public DistributedAcceptanceContext getDistributedContext(String node)
 	{
 		DistributedAcceptanceContext distributedTestContext = new DistributedAcceptanceContext();

@@ -25,97 +25,21 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.report.TestCaseReport;
-import com.gatf.executor.report.TestCaseReport.TestStatus;
+import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.ning.http.client.Response;
 
 /**
  * @author Sumeet Chhetri
  * The validator that handles soap level node validations after test case execution
  */
-public class SOAPResponseValidator implements ResponseValidator {
+public class SOAPResponseValidator extends ResponseValidator {
 
-	public void validate(Response response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context) 
-	{
-		try
-		{
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			
-			DocumentBuilder db = dbf.newDocumentBuilder();
-			Document xmlDocument = db.parse(new ByteArrayInputStream(response.getResponseBody().getBytes()));
-
-			if(testCase.getAexpectedNodes()!=null && !testCase.getAexpectedNodes().isEmpty())
-			{
-				for (String node : testCase.getAexpectedNodes()) {
-					String[] nodeCase = node.split(",");
-					Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
-					Node body = getNodeByNameCaseInsensitive(envelope, "body");
-					Node requestBody = getNextElement(body);
-					Node returnBody = getNextElement(requestBody);
-					String expression = createXPathExpression(nodeCase[0], envelope, body, requestBody, returnBody);
-					if(expression.indexOf("/[")!=-1)
-						expression = expression.replaceAll("/[", "[");
-					XPath xPath =  XPathFactory.newInstance().newXPath();
-					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-					Assert.assertTrue("Expected Node " + nodeCase[0] + " is null", 
-							xmlNodeList!=null && xmlNodeList.getLength()>0);
-					
-					String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
-					
-					Assert.assertNotNull("Expected Node " + nodeCase[0] + " is null", xmlValue);
-					if(nodeCase.length==2) {
-						XMLResponseValidator.doNodeLevelValidation(xmlValue, nodeCase[1], context);
-					}
-				}
-			}
-			
-			context.getWorkflowContextHandler().extractSoapWorkflowVariables(testCase, xmlDocument);
-			
-			if(context.getGatfExecutorConfig().isSoapAuthEnabled() && context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
-				Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
-				Node body = getNodeByNameCaseInsensitive(envelope, "body");
-				Node requestBody = getNextElement(body);
-				Node returnBody = getNextElement(requestBody);
-				String expression = createXPathExpression(context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[0], envelope, body, requestBody, returnBody);
-				if(expression.indexOf("/[")!=-1)
-					expression = expression.replaceAll("/[", "[");
-				XPath xPath =  XPathFactory.newInstance().newXPath();
-				NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-				Assert.assertTrue("Authentication token is null", 
-						xmlNodeList!=null && xmlNodeList.getLength()>0);
-				
-				String xmlValue = XMLResponseValidator.getNodeValue(xmlNodeList.item(0));
-				context.setSessionIdentifier(xmlValue, testCase);
-				
-				String identifier = expression;
-				if(identifier.indexOf("/")!=-1)
-					identifier = identifier.substring(identifier.lastIndexOf("/")+1);
-				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(identifier, 
-						xmlValue);
-				
-				Assert.assertNotNull("Authentication token is null", 
-						context.getSessionIdentifier(testCase));
-			}
-			testCaseReport.setStatus(TestStatus.Success.status);
-		} catch (Throwable e) {
-			testCaseReport.setStatus(TestStatus.Failed.status);
-			testCaseReport.setError(e.getMessage());
-			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
-			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
-				testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
-			}
-			e.printStackTrace();
-		}
-	}
-	
 	public static String getLocalNodeName(String nodeName) {
 		if(nodeName!=null && nodeName.indexOf(":")!=-1) {
 			return nodeName.substring(nodeName.indexOf(":")+1);
@@ -171,5 +95,31 @@ public class SOAPResponseValidator implements ResponseValidator {
 					nodelist!=null && nodelist.getLength()>0);
 			nodelist.item(0).getFirstChild().setNodeValue(entry.getValue());
 		}
+	}
+	
+	protected Object getInternalObject(Response response) throws Exception
+	{
+		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+		DocumentBuilder db = dbf.newDocumentBuilder();
+		Document xmlDocument = db.parse(new ByteArrayInputStream(response.getResponseBody().getBytes()));
+		return xmlDocument;
+	}
+
+	protected String getNodeValue(Object intObj, String node) throws Exception {
+		Document xmlDocument = (Document)intObj;
+		Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
+		Node body = getNodeByNameCaseInsensitive(envelope, "body");
+		Node requestBody = getNextElement(body);
+		Node returnBody = getNextElement(requestBody);
+		String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
+		if(expression.indexOf("/[")!=-1)
+			expression = expression.replaceAll("/[", "[");
+		NodeList xmlNodeList = getNodeByXpath(expression, (Document)intObj, null);
+		String xmlValue = getXMLNodeValue(xmlNodeList.item(0));
+		return xmlValue;
+	}
+
+	protected ResponseType getType() {
+		return ResponseType.SOAP;
 	}
 }

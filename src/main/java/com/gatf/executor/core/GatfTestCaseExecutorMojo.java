@@ -904,10 +904,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			else {
 				List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler()
 						.getSuiteWorkflowScenarioContextValues(testCase, testCase.getRepeatScenarioProviderName());
-				if(sceanrios!=null) {
-					sceanrios.addAll(sceanriowk);
-				} else {
-					sceanrios = sceanriowk;
+				if(sceanriowk!=null) {
+					if(sceanrios!=null) {
+						sceanrios.addAll(sceanriowk);
+					} else {
+						sceanrios = sceanriowk;
+					}
 				}
 			}
 			testCase.setRepeatScenarios(sceanrios);

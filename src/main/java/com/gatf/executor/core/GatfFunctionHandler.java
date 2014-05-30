@@ -56,7 +56,7 @@ public class GatfFunctionHandler {
 			Random rand = new Random();
 			return String.valueOf(rand.nextBoolean());
 		} else if(function.matches(DT_FMT_REGEX)) {
-			Matcher match = specialDatePattern.matcher(function);
+			Matcher match = datePattern.matcher(function);
 			match.matches();
 			SimpleDateFormat format = new SimpleDateFormat(match.group(1));
 			return format.format(new Date());

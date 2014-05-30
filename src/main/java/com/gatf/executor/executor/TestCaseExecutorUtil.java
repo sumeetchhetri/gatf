@@ -47,6 +47,7 @@ import org.w3c.dom.Document;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.validator.JSONResponseValidator;
 import com.gatf.executor.validator.SOAPResponseValidator;
@@ -209,9 +210,12 @@ public class TestCaseExecutorUtil {
 				List<Map<String, String>> testDataLst = context.getProviderTestDataMap()
 						.get(context.getGatfExecutorConfig().getSimulationUsersProviderName());
 				String userVal = null, passwordVal = null;
-				if(testDataLst.size()>testCase.getSimulationNumber()) {
-					userVal = testDataLst.get(testCase.getSimulationNumber()).get(authParams[0]);
-					passwordVal = testDataLst.get(testCase.getSimulationNumber()).get(authParams[2]);
+				if(testDataLst.size()>=testCase.getSimulationNumber()) {
+					int index = testCase.getSimulationNumber();
+					if(index>0)
+						index -= 1;
+					userVal = testDataLst.get(index).get(authParams[0]);
+					passwordVal = testDataLst.get(index).get(authParams[2]);
 				} else {
 					Random rd = new Random();
 					int pos = rd.nextInt(testDataLst.size());
@@ -408,6 +412,7 @@ public class TestCaseExecutorUtil {
 		} catch (Throwable e) {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			testCaseReport.setStatus(TestStatus.Failed.status);
+			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			testCaseReport.setError(e.getMessage());
 			if(e.getMessage()==null && testCaseReport.getErrorText()!=null && testCaseReport.getErrorText().indexOf("\n")!=-1) {
@@ -515,6 +520,7 @@ public class TestCaseExecutorUtil {
 		 */
 		public void onThrowable(Throwable t) {
 			testCaseReport.setStatus(TestStatus.Failed.status);
+			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
 			testCaseReport.setError(t.getMessage());
 			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(t));
 			testCase.setFailed(true);
@@ -552,6 +558,7 @@ public class TestCaseExecutorUtil {
 				testCaseReport.setError("Expected status code ["+testCase.getExpectedResCode()
 						+"] does not match actual status code ["+statusCode+"]");
 				testCaseReport.setStatus(TestStatus.Failed.status);
+				testCaseReport.setFailureReason(TestFailureReason.InvalidStatusCode.status);
 				if(testCase.isAbortOnInvalidStatusCode())
 	            {
 					return STATE.ABORT;
@@ -578,6 +585,7 @@ public class TestCaseExecutorUtil {
 					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
 							+"] does not match actual content type ["+headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)+"]");
 					testCaseReport.setStatus(TestStatus.Failed.status);
+					testCaseReport.setFailureReason(TestFailureReason.InvalidContentType.status);
 					if(testCase.isAbortOnInvalidContentType())
 					{
 						return STATE.ABORT;

@@ -49,6 +49,8 @@ public class GatfTestDataProvider implements Serializable {
 	private Boolean enabled;
 	
 	protected String[] args;
+	
+	private Boolean live;
 
 	public String getProviderName() {
 		return providerName;
@@ -59,7 +61,7 @@ public class GatfTestDataProvider implements Serializable {
 	}
 
 	public Boolean isEnabled() {
-		return enabled;
+		return enabled!=null && enabled;
 	}
 
 	public void setEnabled(Boolean enabled) {
@@ -112,5 +114,32 @@ public class GatfTestDataProvider implements Serializable {
 
 	public void setProviderClass(String providerClass) {
 		this.providerClass = providerClass;
+	}
+
+	public Boolean isLive() {
+		return live!=null && live;
+	}
+
+	public void setLive(Boolean live) {
+		this.live = live;
+	}
+
+	public Boolean getEnabled() {
+		return enabled;
+	}
+	
+	public GatfTestDataProvider(){}
+
+	public GatfTestDataProvider(GatfTestDataProvider other) {
+		super();
+		this.dataSourceName = other.dataSourceName;
+		this.providerName = other.providerName;
+		this.providerClass = other.providerClass;
+		this.sourceProperties = other.sourceProperties;
+		this.providerProperties = other.providerProperties;
+		this.queryStr = other.queryStr;
+		this.enabled = other.enabled;
+		this.args = other.args;
+		this.live = other.live;
 	}
 }
