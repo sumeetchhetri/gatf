@@ -2,11 +2,9 @@ package com.gatf.distributed;
 
 import java.io.Serializable;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.TestCase;
 
 public class DistributedAcceptanceContext implements Serializable {
 

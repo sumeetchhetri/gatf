@@ -17,13 +17,20 @@ limitations under the License.
 */
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
 
+import org.junit.Assert;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.ning.http.client.Response;
 
@@ -49,5 +56,46 @@ public class XMLResponseValidator extends ResponseValidator {
 
 	protected ResponseType getType() {
 		return ResponseType.XML;
+	}
+
+	protected List<Map<String, String>> getResponseMappedValue(String expression, String propNames, Object initObj) throws Exception {
+		expression = expression.replaceAll("\\.", "\\/");
+		if(expression.equals("")) {
+			expression = "/*";
+		}
+		
+		if(expression.charAt(0)!='/')
+			expression = "/" + expression;
+		
+		XPath xPath =  XPathFactory.newInstance().newXPath();
+		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)initObj, XPathConstants.NODESET);
+		Assert.assertTrue("Workflow xml variable " + expression +" is null",  
+				xmlNodeList!=null && xmlNodeList.getLength()>0);
+		
+		List<Map<String, String>> xmlValues = WorkflowContextHandler.getNodeValueMapList(propNames, xmlNodeList);
+		return xmlValues;
+	}
+
+	protected int getResponseMappedCount(String expression, Object initObj) throws Exception {
+		expression = expression.replaceAll("\\.", "\\/");
+		if(expression.charAt(0)!='/')
+			expression = "/" + expression;
+		
+		XPath xPath =  XPathFactory.newInstance().newXPath();
+		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)initObj, XPathConstants.NODESET);
+		Assert.assertTrue("Workflow xml variable " + expression +" is null", 
+				xmlNodeList!=null && xmlNodeList.getLength()>0);
+
+		String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
+		Assert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
+		
+		int responseCount = -1;
+		try {
+			responseCount = Integer.valueOf(xmlValue);
+		} catch (Exception e) {
+			throw new AssertionError("Invalid responseMappedCount variable defined, " +
+					"derived value should be number - "+expression);
+		}
+		return responseCount;
 	}
 }

@@ -50,7 +50,9 @@ import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.validator.JSONResponseValidator;
+import com.gatf.executor.validator.NoContentResponseValidator;
 import com.gatf.executor.validator.SOAPResponseValidator;
+import com.gatf.executor.validator.TextResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
 import com.ning.http.client.AsyncHandler;
 import com.ning.http.client.AsyncHttpClient;
@@ -82,6 +84,10 @@ public class TestCaseExecutorUtil {
 	private static final XMLResponseValidator xmlResponseValidator = new XMLResponseValidator();
 	
 	private static final SOAPResponseValidator soapResponseValidator = new SOAPResponseValidator();
+	
+	private static final TextResponseValidator textResponseValidator = new TextResponseValidator();
+	
+	private static final NoContentResponseValidator noContentResponseValidator = new NoContentResponseValidator(); 
 	
 	private AsyncHttpClient client;
 	
@@ -275,16 +281,28 @@ public class TestCaseExecutorUtil {
 				
 				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
 				
-				if(turl.indexOf("?")!=-1 && turl.indexOf("{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"}")!=-1) {
-					turl = turl.replaceAll("\\{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"\\}", sessIdentifier);
-				}
-				else
+				if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam"))
 				{
-					if(turl.indexOf("?")!=-1) {
-						turl += "&" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
-					} else {
-						turl += "?" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
+					if(turl.indexOf("?")!=-1 && turl.indexOf("{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"}")!=-1) {
+						turl = turl.replaceAll("\\{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"\\}", sessIdentifier);
 					}
+					else
+					{
+						if(turl.indexOf("?")!=-1) {
+							turl += "&" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
+						} else {
+							turl += "?" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
+						}
+					}
+				}
+				else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("header"))
+				{
+					testCase.getHeaders().put(context.getGatfExecutorConfig().getAuthExtractAuthParams()[2], sessIdentifier);
+				}
+				else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("cookie"))
+				{
+					testCase.getHeaders().put("Cookie", context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] 
+							+ "=" + sessIdentifier);
 				}
 			}
 
@@ -615,8 +633,13 @@ public class TestCaseExecutorUtil {
 					{
 						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
+					else if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.TEXT_PLAIN))
+					{
+						textResponseValidator.validate(response, testCase, testCaseReport, context);
+					}
 					else
 					{
+						noContentResponseValidator.validate(response, testCase, testCaseReport, context);
 						testCaseReport.setStatus(TestStatus.Success.status);
 					}
 				} else {

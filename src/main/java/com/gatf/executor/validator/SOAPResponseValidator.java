@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import java.io.ByteArrayInputStream;
+import java.util.List;
 import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -31,6 +32,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.ning.http.client.Response;
 
@@ -121,5 +123,60 @@ public class SOAPResponseValidator extends ResponseValidator {
 
 	protected ResponseType getType() {
 		return ResponseType.SOAP;
+	}
+
+	protected List<Map<String, String>> getResponseMappedValue(String expression, String propNames, Object nodeLst) throws Exception {
+		expression = expression.replaceAll("\\.", "\\/");
+		if(expression.length()>1 && expression.charAt(0)!='/')
+			expression = "/" + expression;
+		
+		Node envelope = getNodeByNameCaseInsensitive(((Document)nodeLst).getFirstChild(), "envelope");
+		Node body = getNodeByNameCaseInsensitive(envelope, "body");
+		Node requestBody = getNextElement(body);
+		Node returnBody = getNextElement(requestBody);
+		if(expression.equals(""))
+			expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody) + "*";
+		else	
+			expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+		
+		XPath xPath =  XPathFactory.newInstance().newXPath();
+		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)nodeLst, XPathConstants.NODESET);
+		Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+				xmlNodeList!=null && xmlNodeList.getLength()>0);
+		
+		List<Map<String, String>> soapValues = WorkflowContextHandler.getNodeValueMapList(propNames, xmlNodeList);
+		return soapValues;
+	}
+
+	protected int getResponseMappedCount(String expression, Object nodeLst) throws Exception {
+		expression = expression.replaceAll("\\.", "\\/");
+		if(expression.length()>1 && expression.charAt(0)!='/')
+			expression = "/" + expression;
+		
+		Node envelope = getNodeByNameCaseInsensitive(((Document)nodeLst).getFirstChild(), "envelope");
+		Node body = getNodeByNameCaseInsensitive(envelope, "body");
+		Node requestBody = getNextElement(body);
+		Node returnBody = getNextElement(requestBody);
+		if(expression.equals(""))
+			expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody) + "*";
+		else	
+			expression = SOAPResponseValidator.createXPathExpression(expression, envelope, body, requestBody, returnBody);
+		
+		XPath xPath =  XPathFactory.newInstance().newXPath();
+		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)nodeLst, XPathConstants.NODESET);
+		Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+				xmlNodeList!=null && xmlNodeList.getLength()>0);
+
+		String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
+		Assert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
+		
+		int responseCount = -1;
+		try {
+			responseCount = Integer.valueOf(xmlValue);
+		} catch (Exception e) {
+			throw new AssertionError("Invalid responseMappedCount variable defined, " +
+					"derived value should be number - "+expression);
+		}
+		return responseCount;
 	}
 }

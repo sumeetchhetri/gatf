@@ -17,14 +17,9 @@ limitations under the License.
 */
 
 import java.io.File;
-import java.io.FilenameFilter;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -32,61 +27,18 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
  * @author Sumeet Chhetri
  * Finds all test cases from the xml files inside a given test case directory
  */
-public class XMLTestCaseFinder implements TestCaseFinder {
+public class XMLTestCaseFinder extends TestCaseFinder {
+
+	protected TestCaseFileType getFileType() {
+		return TestCaseFileType.XML;
+	}
 
 	@SuppressWarnings("unchecked")
-	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)
-	{
+	protected List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
 		XStream xstream = new XStream(new DomDriver());
 		xstream.processAnnotations(new Class[]{TestCase.class});
 		xstream.alias("TestCases", List.class);
-		
-		List<TestCase> testcases = new ArrayList<TestCase>();
-		if (dir.isDirectory()) {
-			File[] xmlFiles = dir.listFiles(new FilenameFilter() {
-				public boolean accept(File folder, String name) {
-					return name.toLowerCase().endsWith(".xml");
-				}
-			});
-
-			for (File file : xmlFiles) {
-				try {
-					List<TestCase> xmlTestCases = (List<TestCase>)xstream.fromXML(file);
-					if(xmlTestCases!=null && !xmlTestCases.isEmpty())
-					{
-						for (TestCase testCase : xmlTestCases) {
-							testCase.setSourcefileName(file.getName());
-							if(testCase.getSimulationNumber()==null)
-							{
-								testCase.setSimulationNumber(0);
-							}
-							testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
-							testcases.add(testCase);
-						}
-						
-						Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-						if(context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
-						{
-							runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-						}
-						
-						if(runNums!=null && runNums>1)
-						{
-							for (int i = 0; i < runNums; i++)
-							{
-								context.getFinalTestResults().put("Run-" + (i+1), new ConcurrentLinkedQueue<TestCaseReport>());
-							}
-						}
-						else
-						{
-							context.getFinalTestResults().put(file.getName(), new ConcurrentLinkedQueue<TestCaseReport>());
-						}
-					}
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
-		}
-		return testcases;
+		List<TestCase> xmlTestCases = (List<TestCase>)xstream.fromXML(testCaseFile);
+		return xmlTestCases;
 	}
 }

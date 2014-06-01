@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,12 +34,15 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfFunctionHandler;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.ning.http.client.Response;
+import com.ning.http.client.cookie.Cookie;
 
 /**
  * @author Sumeet Chhetri
@@ -49,6 +53,8 @@ public abstract class ResponseValidator {
 	protected abstract Object getInternalObject(Response response) throws Exception;
 	protected abstract ResponseType getType();
 	protected abstract String getNodeValue(Object intObj, String node) throws Exception;
+	protected abstract List<Map<String, String>> getResponseMappedValue(String expression, String propNames, Object nodeLst) throws Exception;
+	protected abstract int getResponseMappedCount(String expression, Object nodeLst) throws Exception;
 	
 	public boolean hasValidationFunction(String node) {
 		return node!=null && node.endsWith("]") && (node.startsWith("#providerValidation[") 
@@ -200,7 +206,7 @@ public abstract class ResponseValidator {
 		try
 		{
 			Object intObj = getInternalObject(response);
-			if(testCase.getAexpectedNodes()!=null && !testCase.getAexpectedNodes().isEmpty())
+			if(intObj!=null && testCase.getAexpectedNodes()!=null && !testCase.getAexpectedNodes().isEmpty())
 			{
 				for (String node : testCase.getAexpectedNodes()) {
 					List<String> nodeProps = getNodeProperties(node);
@@ -220,11 +226,32 @@ public abstract class ResponseValidator {
 				}
 			}
 			
-			context.getWorkflowContextHandler().extractWorkFlowVariables(testCase, intObj, getType());
+			extractWorkflowVariables(testCase, intObj, context.getWorkflowContextHandler());
+			
+			List<Cookie> cookies = response.getCookies();
+			context.getWorkflowContextHandler().storeCookies(testCase, cookies);
 			
 			if(context.getGatfExecutorConfig().isAuthEnabled() && context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl())) {
-				String identifier = getNodeValue(intObj, context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
-				Assert.assertNotNull("Authentication token is null", identifier);
+				String identifier = null;
+				String authext = "";
+				if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("cookie")) {
+					authext = "cookie ";
+					for (Cookie cookie : cookies) {
+						if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[0].equals(cookie.getName()))
+						{
+							identifier = cookie.getValue();
+							break;
+						}
+					}
+				} else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("header")) {
+					authext = "header ";
+					identifier = response.getHeader(context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
+				} else {
+					authext = "response-content ";
+					identifier = getNodeValue(intObj, context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
+				}
+				Assert.assertNotNull("Authentication token not found for "+ authext
+						+ "(" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[0] + ")", identifier);
 				context.setSessionIdentifier(identifier, testCase);
 				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)
 					.put(context.getGatfExecutorConfig().getAuthExtractAuthParams()[2], identifier);
@@ -249,6 +276,64 @@ public abstract class ResponseValidator {
 				testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
 			}
 			e.printStackTrace();
+		}
+	}
+	
+	public void extractWorkflowVariables(TestCase testCase, Object intObj, WorkflowContextHandler wfh) throws Exception
+	{
+		if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
+		{
+			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
+				String nodeName = entry.getValue().trim();
+				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+					nodeName = nodeName.substring(21, nodeName.length()-1);
+					
+					String propNames = nodeName.substring(nodeName.indexOf(" ")+1).trim();
+					String path = nodeName.substring(0, nodeName.indexOf(" ")).trim();
+
+					List<Map<String, String>> nodeValues = getResponseMappedValue(path, propNames, intObj);
+					
+					if(!propNames.endsWith("*")) {
+						String[] props = propNames.split(",");
+						for (Map<String, String> nodeV : nodeValues) {
+							for (String propName : props) {
+								if(!nodeV.containsKey(propName)) {
+									nodeV.remove(propName);
+								}
+							}
+						}
+					}
+					wfh.getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), nodeValues);
+					Assert.assertNotNull("Workflow json mapping variable " + nodeName +" is null", nodeValues);
+				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
+					nodeName = nodeName.substring(21, nodeName.length()-1);
+
+					int responseCount = getResponseMappedCount(nodeName, intObj);
+					List<Map<String, String>> jsonValues = new ArrayList<Map<String,String>>();
+					for (int i = 0; i < responseCount; i++) {
+						Map<String, String> row = new HashMap<String, String>();
+						row.put("index", (i+1)+"");
+						jsonValues.add(row);
+					}
+					wfh.getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
+					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
+				} else if(nodeName.startsWith("#")) {
+					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
+					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
+							"one of alpha, alphanum, number, boolean, float" +
+							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
+					wfh.getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+				} else {
+					String nodeValue = null;
+					try {
+						nodeValue = getNodeValue(intObj, nodeName);
+					} catch (Exception e) {
+						throw new AssertionError("Workflow json variable " + nodeName + " not found");
+					}
+					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					wfh.getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
+				}
+			}
 		}
 	}
 }

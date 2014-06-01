@@ -403,16 +403,16 @@ public class GatfExecutorConfig implements Serializable {
 		if(isAuthEnabled()) {
 			Assert.assertTrue("Invalid auth extract params", getAuthExtractAuthParams().length==4);
 			Assert.assertTrue("Invalid auth extract token name", !getAuthExtractAuthParams()[0].isEmpty());
-			Assert.assertTrue("Invalid auth extract mode specified, should be one of (xml,json,header,plain)", 
+			Assert.assertTrue("Invalid auth extract mode specified, should be one of (xml,json,header,plain,cookie)", 
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("json") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("xml") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("header") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("plain") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("cookie"));
 			Assert.assertTrue("Invalid auth name specified", !getAuthExtractAuthParams()[2].isEmpty());
-			Assert.assertTrue("Invalid auth mode specified, should be one of (queryparam,header)", 
+			Assert.assertTrue("Invalid auth mode specified, should be one of (queryparam,header,cookie)", 
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam") ||
-					getAuthExtractAuthParams()[3].equalsIgnoreCase("postparam") ||
+					getAuthExtractAuthParams()[3].equalsIgnoreCase("cookie") ||
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("header"));
 			Assert.assertTrue("Invalid auth url", getAuthUrl()!=null && !getAuthUrl().isEmpty());
 			

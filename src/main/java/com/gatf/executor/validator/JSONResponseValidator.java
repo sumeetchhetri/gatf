@@ -16,6 +16,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+import java.util.List;
+import java.util.Map;
+
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.jayway.jsonpath.JsonPath;
 import com.ning.http.client.Response;
@@ -43,5 +46,28 @@ public class JSONResponseValidator extends ResponseValidator {
 
 	protected ResponseType getType() {
 		return ResponseType.JSON;
+	}
+
+	protected List<Map<String, String>> getResponseMappedValue(String expression, String propNames, Object nodeLst) throws Exception {
+		if(expression.equals("")) {
+			expression = "$";
+		}
+		
+		List<Map<String, String>> jsonValues = JsonPath.read((String)nodeLst, expression);
+		return jsonValues;
+	}
+
+	protected int getResponseMappedCount(String expression, Object nodeLst) throws Exception {
+		String responseMappedCount = JsonPath.read((String)nodeLst, expression).toString();
+		
+		int responseCount = -1;
+		try {
+			responseCount = Integer.valueOf(responseMappedCount);
+		} catch (Exception e) {
+			throw new AssertionError("Invalid responseMappedCount variable defined, " +
+					"derived value should be number - "+expression);
+		}
+		
+		return responseCount;
 	}
 }
