@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import java.io.File;
+import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
@@ -181,6 +182,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	
 	@Parameter(alias = "debugEnabled", defaultValue = "false")
 	private boolean debugEnabled;
+	
+	@Parameter(alias = "distributedLoadTests", defaultValue = "false")
+	private boolean distributedLoadTests;
+	
+	@Parameter(alias = "distributedNodes")
+    private String[] distributedNodes;
 	
 	private Long startTime = 0L;
 	
@@ -415,6 +422,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setDebugEnabled(debugEnabled);
 		configuration.setGatfTestDataConfig(gatfTestDataConfig);
 		configuration.setTestCaseHooksPaths(testCaseHooksPath);
+		configuration.setDistributedLoadTests(distributedLoadTests);
+		configuration.setDistributedNodes(distributedNodes);
 		
 		if(configFile!=null) {
 			try {
@@ -777,13 +786,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			reportHandler.doFinalLoadTestReport(runPrefix, loadStats, context, null, null);
 		}
 		
-		if(loadStats!=null) {
-			getLog().info(loadStats.show());
-			if(loadStats.getFailedTestCount()>0) {
-				throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
-			}
-		}
-		
 		if(distTasks!=null) {
 			TestSuiteStats finalDistStats = loadStats;
 			List<String> nodes = new ArrayList<String>();
@@ -814,6 +816,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 			
 			reportHandler.doFinalLoadTestReport(null, finalDistStats, context, nodes, nodesurls);
+		}
+		
+		if(loadStats!=null) {
+			getLog().info(loadStats.show());
+			if(loadStats.getFailedTestCount()>0) {
+				throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
+			}
 		}
 	}
 	
@@ -985,6 +994,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
 				return success;
 			}
+			
+			if(!testCaseExecutorUtil.getContext().getWorkflowContextHandler().isExecuteTest(testCase))
+			{
+				getLog().info("Execute Condition for Testcase " 
+							+ testCase.getName() + " returned false."
+							+ " Condition was (" + testCase.getExecuteOnCondition() + ")"
+							+ " Evaluation was (" + testCase.getAexecuteOnCondition() + ")");
+				return success;
+			}
+			
 			if(testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled()
 					&& testCase.isDetailedLog())
 			{
@@ -1051,22 +1070,25 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@SuppressWarnings({ "unchecked", "rawtypes" })
     private ClassLoader getClassLoader()
     {
-        try
-        {
-            List classpathElements = project.getCompileClasspathElements();
-            classpathElements.add(project.getBuild().getOutputDirectory());
-            classpathElements.add(project.getBuild().getTestOutputDirectory());
-            URL[] urls = new URL[classpathElements.size()];
-            for (int i = 0; i < classpathElements.size(); i++)
-            {
-                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
-            }
-            return new URLClassLoader(urls, getClass().getClassLoader());
-        }
-        catch (Exception e)
-        {
-            getLog().error("Couldn't get the classloader.");
-        }
+		if(project!=null)
+		{
+	        try
+	        {
+	            List classpathElements = project.getCompileClasspathElements();
+	            classpathElements.add(project.getBuild().getOutputDirectory());
+	            classpathElements.add(project.getBuild().getTestOutputDirectory());
+	            URL[] urls = new URL[classpathElements.size()];
+	            for (int i = 0; i < classpathElements.size(); i++)
+	            {
+	                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
+	            }
+	            return new URLClassLoader(urls, getClass().getClassLoader());
+	        }
+	        catch (Exception e)
+	        {
+	            getLog().error("Couldn't get the classloader.");
+	        }
+		}
         return getClass().getClassLoader();
     }
 	
@@ -1348,5 +1370,50 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		} else {
 			context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 		}
+	}
+	
+	public static GatfExecutorConfig getConfig(InputStream resource)
+	{
+		XStream xstream = new XStream(new DomDriver());
+		xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+				 GatfTestDataConfig.class, GatfTestDataProvider.class});
+		xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+		xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+		xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
+		xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+		xstream.alias("args", String[].class);
+		xstream.alias("arg", String.class);
+		xstream.alias("testCaseHooksPaths", String[].class);
+		xstream.alias("testCaseHooksPath", String.class);
+		xstream.alias("queryStrs", String[].class);
+		xstream.alias("queryStr", String.class);
+		xstream.alias("distributedNodes", String[].class);
+		xstream.alias("distributedNode", String.class);
+		xstream.alias("string", String.class);
+		
+		GatfExecutorConfig configuration = (GatfExecutorConfig)xstream.fromXML(resource);
+		return configuration;
+	}
+	
+	public static String getConfigStr(GatfExecutorConfig configuration)
+	{
+		XStream xstream = new XStream(new DomDriver());
+		xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+				 GatfTestDataConfig.class, GatfTestDataProvider.class});
+		xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+		xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+		xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
+		xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+		xstream.alias("args", String[].class);
+		xstream.alias("arg", String.class);
+		xstream.alias("testCaseHooksPaths", String[].class);
+		xstream.alias("testCaseHooksPath", String.class);
+		xstream.alias("queryStrs", String[].class);
+		xstream.alias("queryStr", String.class);
+		xstream.alias("distributedNodes", String[].class);
+		xstream.alias("distributedNode", String.class);
+		xstream.alias("string", String.class);
+		
+		return xstream.toXML(configuration);
 	}
 }

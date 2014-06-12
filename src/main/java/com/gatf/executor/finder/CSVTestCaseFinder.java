@@ -33,7 +33,7 @@ public class CSVTestCaseFinder extends TestCaseFinder {
 		return TestCaseFileType.CSV;
 	}
 
-	protected List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
+	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
 		Scanner s = new Scanner(testCaseFile);
 		s.useDelimiter("\n");
 		List<String> list = new ArrayList<String>();

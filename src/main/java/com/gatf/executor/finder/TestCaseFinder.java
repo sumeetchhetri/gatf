@@ -47,24 +47,24 @@ public abstract class TestCaseFinder {
 	}
 	
 	protected abstract TestCaseFileType getFileType();
-	protected abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
+	public abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
 	
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)
 	{
 		List<TestCase> testcases = new ArrayList<TestCase>();
 		if (dir.isDirectory()) {
-			File[] csvFiles = dir.listFiles(new FilenameFilter() {
+			File[] files = dir.listFiles(new FilenameFilter() {
 				public boolean accept(File folder, String name) {
 					return name.toLowerCase().endsWith(getFileType().ext);
 				}
 			});
 
-			for (File file : csvFiles) {
+			for (File file : files) {
 				try {
-					testcases = resolveTestCases(file);
-					if(testcases != null)
+					List<TestCase> testcasesTemp = resolveTestCases(file);
+					if(testcasesTemp != null)
 					{
-						for (TestCase testCase : testcases) {
+						for (TestCase testCase : testcasesTemp) {
 							testCase.setSourcefileName(file.getName());
 							if(testCase.getSimulationNumber()==null)
 							{
@@ -90,6 +90,7 @@ public abstract class TestCaseFinder {
 						{
 							context.getFinalTestResults().put(file.getName(), new ConcurrentLinkedQueue<TestCaseReport>());
 						}
+						testcases.addAll(testcasesTemp);
 					}
 				} catch (Exception e) {
 					e.printStackTrace();

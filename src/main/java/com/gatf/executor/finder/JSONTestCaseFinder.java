@@ -35,7 +35,7 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
+	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
 		ObjectMapper jsonMapper = new ObjectMapper();
 		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new TypeReference<List<TestCase>>(){});
 		return jsonTestCases;

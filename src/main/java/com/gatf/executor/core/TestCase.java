@@ -188,6 +188,16 @@ public class TestCase implements Serializable {
 	@JsonIgnore
 	private String identifierPrefix =  "Run";
 	
+	private String executeOnCondition;
+	
+	private List<String> logicalValidations;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private List<String> alogicalValidations = new ArrayList<String>();
+	
+	private String aExecuteOnCondition;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -572,6 +582,38 @@ public class TestCase implements Serializable {
 		this.carriedOverVariables = carriedOverVariables;
 	}
 
+	public String getExecuteOnCondition() {
+		return executeOnCondition;
+	}
+
+	public void setExecuteOnCondition(String executeOnCondition) {
+		this.executeOnCondition = executeOnCondition;
+	}
+
+	public List<String> getLogicalValidations() {
+		return logicalValidations;
+	}
+
+	public void setLogicalValidations(List<String> logicalValidations) {
+		this.logicalValidations = logicalValidations;
+	}
+
+	public List<String> getAlogicalValidations() {
+		return alogicalValidations;
+	}
+
+	public void setAlogicalValidations(List<String> alogicalValidations) {
+		this.alogicalValidations = alogicalValidations;
+	}
+
+	public String getAexecuteOnCondition() {
+		return aExecuteOnCondition;
+	}
+
+	public void setAexecuteOnCondition(String aExecuteOnCondition) {
+		this.aExecuteOnCondition = aExecuteOnCondition;
+	}
+
 	@Override
 	public String toString() {
 		final int maxLen = 10;
@@ -670,6 +712,11 @@ public class TestCase implements Serializable {
 		builder.append(abortOnInvalidStatusCode);
 		builder.append("\nrelatedTestName=");
 		builder.append(relatedTestName);
+		builder.append("\nexecuteOnCondition=");
+		builder.append(executeOnCondition);
+		builder.append("\nlogicalValidations=");
+		builder.append(logicalValidations != null ? toString(logicalValidations, maxLen)
+				: null);
 		builder.append("]\n");
 		return builder.toString();
 	}
@@ -701,6 +748,7 @@ public class TestCase implements Serializable {
 				setMethod(csvParts[2]);
 				setDescription(csvParts[3]);
 				setContent(csvParts[4]);
+				setHeaders(new HashMap<String, String>());
 				String[] headers = csvParts[5].split("\\|");
 				for (String header : headers) {
 					String[] kv = header.split(":");
@@ -716,6 +764,7 @@ public class TestCase implements Serializable {
 				setExpectedResCode(Integer.parseInt(csvParts[7]));
 				setExpectedResContentType(csvParts[8]);
 				setExpectedResContent(csvParts[9]);
+				setExpectedNodes(new ArrayList<String>());
 				String[] nodes = csvParts[10].split("\\|");
 				for (String node : nodes) {
 					if(!node.isEmpty())
@@ -726,6 +775,7 @@ public class TestCase implements Serializable {
 				setSkipTest(Boolean.valueOf(csvParts[11]));
 				setDetailedLog(Boolean.valueOf(csvParts[12]));
 				setSecure(Boolean.valueOf(csvParts[13]));
+				setFilesToUpload(new ArrayList<String>());
 				String[] files = csvParts[14].split("\\|");
 				for (String multfile : files) {
 					if(!multfile.isEmpty())
@@ -738,6 +788,7 @@ public class TestCase implements Serializable {
 					}
 				}
 				setSoapBase(Boolean.valueOf(csvParts[15]));
+				setSoapParameterValues(new HashMap<String, String>());
 				String[] soapVals = csvParts[16].split("\\|");
 				for (String soapVal : soapVals) {
 					String[] kv = soapVal.split(":");
@@ -752,6 +803,7 @@ public class TestCase implements Serializable {
 				setWsdlKey(csvParts[17]);
 				setOperationName(csvParts[18]);
 				setSequence(Integer.parseInt(csvParts[19]));
+				setWorkflowContextParameterMap(new HashMap<String, String>());
 				String[] workflowParams = csvParts[20].split("\\|");
 				for (String workflowParam : workflowParams) {
 					String[] kv = workflowParam.split(":");
@@ -776,6 +828,15 @@ public class TestCase implements Serializable {
 				setAbortOnInvalidContentType(Boolean.valueOf(csvParts[31]));
 				setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts[32]));
 				setRelatedTestName(csvParts[33]);
+				setExecuteOnCondition(csvParts[34]);
+				setLogicalValidations(new ArrayList<String>());
+				nodes = csvParts[35].split("\\|");
+				for (String node : nodes) {
+					if(!node.isEmpty())
+					{
+						getLogicalValidations().add(node);
+					}
+				}
 				valid = true;
 			} else {
 				valid = false;
@@ -880,6 +941,12 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(getRelatedTestName());
 		build.append(",");
+		build.append(getExecuteOnCondition());
+		build.append(",");
+		for (String node : getLogicalValidations()) {
+			build.append(getCsvValue(node));
+			build.append("|");
+		}
 		return build.toString();
 	}
 	
@@ -1051,6 +1118,10 @@ public class TestCase implements Serializable {
 		this.identifierPrefix = other.identifierPrefix;
 		this.relatedTestName = other.relatedTestName;
 		this.carriedOverVariables = other.carriedOverVariables;
+		this.executeOnCondition = other.executeOnCondition;
+		this.logicalValidations = other.logicalValidations;
+		this.alogicalValidations = other.alogicalValidations;
+		this.aExecuteOnCondition = other.aExecuteOnCondition;
 	}
 
 	@Override
@@ -1067,12 +1138,20 @@ public class TestCase implements Serializable {
 				+ ((aexpectedNodes == null) ? 0 : aexpectedNodes.hashCode());
 		result = prime * result + ((aurl == null) ? 0 : aurl.hashCode());
 		result = prime * result + ((baseUrl == null) ? 0 : baseUrl.hashCode());
+		result = prime
+				* result
+				+ ((carriedOverVariables == null) ? 0 : carriedOverVariables
+						.hashCode());
 		result = prime * result + ((content == null) ? 0 : content.hashCode());
 		result = prime * result
 				+ ((description == null) ? 0 : description.hashCode());
 		result = prime * result + (detailedLog ? 1231 : 1237);
 		result = prime * result
 				+ ((exQueryPart == null) ? 0 : exQueryPart.hashCode());
+		result = prime
+				* result
+				+ ((executeOnCondition == null) ? 0 : executeOnCondition
+						.hashCode());
 		result = prime * result
 				+ ((expectedNodes == null) ? 0 : expectedNodes.hashCode());
 		result = prime * result + expectedResCode;
@@ -1084,13 +1163,16 @@ public class TestCase implements Serializable {
 				* result
 				+ ((expectedResContentType == null) ? 0
 						: expectedResContentType.hashCode());
-		result = prime * result + (failed ? 1231 : 1237);
 		result = prime * result
 				+ ((filesToUpload == null) ? 0 : filesToUpload.hashCode());
 		result = prime * result + ((headers == null) ? 0 : headers.hashCode());
 		result = prime
 				* result
 				+ ((identifierPrefix == null) ? 0 : identifierPrefix.hashCode());
+		result = prime
+				* result
+				+ ((logicalValidations == null) ? 0 : logicalValidations
+						.hashCode());
 		result = prime * result + ((method == null) ? 0 : method.hashCode());
 		result = prime * result + ((name == null) ? 0 : name.hashCode());
 		result = prime
@@ -1192,6 +1274,11 @@ public class TestCase implements Serializable {
 				return false;
 		} else if (!baseUrl.equals(other.baseUrl))
 			return false;
+		if (carriedOverVariables == null) {
+			if (other.carriedOverVariables != null)
+				return false;
+		} else if (!carriedOverVariables.equals(other.carriedOverVariables))
+			return false;
 		if (content == null) {
 			if (other.content != null)
 				return false;
@@ -1208,6 +1295,11 @@ public class TestCase implements Serializable {
 			if (other.exQueryPart != null)
 				return false;
 		} else if (!exQueryPart.equals(other.exQueryPart))
+			return false;
+		if (executeOnCondition == null) {
+			if (other.executeOnCondition != null)
+				return false;
+		} else if (!executeOnCondition.equals(other.executeOnCondition))
 			return false;
 		if (expectedNodes == null) {
 			if (other.expectedNodes != null)
@@ -1226,8 +1318,6 @@ public class TestCase implements Serializable {
 				return false;
 		} else if (!expectedResContentType.equals(other.expectedResContentType))
 			return false;
-		if (failed != other.failed)
-			return false;
 		if (filesToUpload == null) {
 			if (other.filesToUpload != null)
 				return false;
@@ -1242,6 +1332,11 @@ public class TestCase implements Serializable {
 			if (other.identifierPrefix != null)
 				return false;
 		} else if (!identifierPrefix.equals(other.identifierPrefix))
+			return false;
+		if (logicalValidations == null) {
+			if (other.logicalValidations != null)
+				return false;
+		} else if (!logicalValidations.equals(other.logicalValidations))
 			return false;
 		if (method == null) {
 			if (other.method != null)

@@ -34,7 +34,7 @@ public class XMLTestCaseFinder extends TestCaseFinder {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
+	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
 		XStream xstream = new XStream(new DomDriver());
 		xstream.processAnnotations(new Class[]{TestCase.class});
 		xstream.alias("TestCases", List.class);

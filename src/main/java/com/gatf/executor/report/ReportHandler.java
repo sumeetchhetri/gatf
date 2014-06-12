@@ -74,7 +74,7 @@ public class ReportHandler {
 		}
 	}
 	
-	private Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
+	private static Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
 	
 	private List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
 	
@@ -545,7 +545,7 @@ public class ReportHandler {
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public void unzipZipFile(InputStream zipFile, String directoryToExtractTo)
+    public static void unzipZipFile(InputStream zipFile, String directoryToExtractTo)
     {
         ZipInputStream in = new ZipInputStream(zipFile);
         try

@@ -466,6 +466,19 @@ public class AcceptanceTestContext {
 		}
 	}
 
+	public static Map<String, String> getHttpHeadersMap() throws Exception
+	{
+		Map<String, String> headers = new HashMap<String, String>();
+		Field[] declaredFields = HttpHeaders.class.getDeclaredFields();
+		for (Field field : declaredFields) {
+			if (java.lang.reflect.Modifier.isStatic(field.getModifiers())
+					&& field.getType().equals(String.class)) {
+				headers.put(field.get(null).toString().toLowerCase(), field.get(null).toString());
+			}
+		}
+		return headers;
+	}
+	
 	private void initSoapContextAndHttpHeaders() throws Exception
 	{
 		Field[] declaredFields = HttpHeaders.class.getDeclaredFields();

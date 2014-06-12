@@ -91,6 +91,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.generator.postman.PostmanCollection;
+import com.gatf.ui.GatfConfigToolMojo;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
@@ -144,7 +145,18 @@ import edu.emory.mathcs.backport.java.util.Arrays;
  *   }
  * </pre>
  */
-@Mojo(name = "gatf-generator", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP, defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true, threadSafe = true)
+@Mojo(
+		name = "gatf-generator", 
+		aggregator = false, 
+		executionStrategy = "always", 
+		inheritByDefault = true, 
+		instantiationStrategy = InstantiationStrategy.PER_LOOKUP, 
+		defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, 
+		requiresDependencyResolution = ResolutionScope.TEST, 
+		requiresDirectInvocation = false, 
+		requiresOnline = false, 
+		requiresProject = true, 
+		threadSafe = true)
 public class GatfTestGeneratorMojo extends AbstractMojo
 {
 
@@ -1120,22 +1132,25 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     @SuppressWarnings({ "unchecked", "rawtypes" })
     private ClassLoader getClassLoader()
     {
-        try
-        {
-            List classpathElements = project.getCompileClasspathElements();
-            classpathElements.add(project.getBuild().getOutputDirectory());
-            classpathElements.add(project.getBuild().getTestOutputDirectory());
-            URL[] urls = new URL[classpathElements.size()];
-            for (int i = 0; i < classpathElements.size(); i++)
-            {
-                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
-            }
-            return new URLClassLoader(urls, getClass().getClassLoader());
-        }
-        catch (Exception e)
-        {
-            getLog().error("Couldn't get the classloader.");
-        }
+		if(project!=null)
+		{
+	        try
+	        {
+	            List classpathElements = project.getCompileClasspathElements();
+	            classpathElements.add(project.getBuild().getOutputDirectory());
+	            classpathElements.add(project.getBuild().getTestOutputDirectory());
+	            URL[] urls = new URL[classpathElements.size()];
+	            for (int i = 0; i < classpathElements.size(); i++)
+	            {
+	                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
+	            }
+	            return new URLClassLoader(urls, getClass().getClassLoader());
+	        }
+	        catch (Exception e)
+	        {
+	            getLog().error("Couldn't get the classloader.");
+	        }
+		}
         return getClass().getClassLoader();
     }
 
@@ -1219,7 +1234,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     		}
     		else if(args[0].equals("-executor") && !args[1].trim().isEmpty())
     		{
-    			GatfTestCaseExecutorMojo.main(new String[]{args[1]});
+    			GatfTestCaseExecutorMojo.main(args);
+    		}
+    		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
+    				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
+    		{
+    			GatfConfigToolMojo.main(args);
     		}
     		else
     		{
