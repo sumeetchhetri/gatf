@@ -194,9 +194,7 @@ public class TestCase implements Serializable {
 	
 	@XStreamOmitField
 	@JsonIgnore
-	private List<String> alogicalValidations = new ArrayList<String>();
-	
-	private String aExecuteOnCondition;
+	private Map<String, String> currentScenarioVariables;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -598,20 +596,13 @@ public class TestCase implements Serializable {
 		this.logicalValidations = logicalValidations;
 	}
 
-	public List<String> getAlogicalValidations() {
-		return alogicalValidations;
+	public Map<String, String> getCurrentScenarioVariables() {
+		return currentScenarioVariables;
 	}
 
-	public void setAlogicalValidations(List<String> alogicalValidations) {
-		this.alogicalValidations = alogicalValidations;
-	}
-
-	public String getAexecuteOnCondition() {
-		return aExecuteOnCondition;
-	}
-
-	public void setAexecuteOnCondition(String aExecuteOnCondition) {
-		this.aExecuteOnCondition = aExecuteOnCondition;
+	public void setCurrentScenarioVariables(
+			Map<String, String> currentScenarioVariables) {
+		this.currentScenarioVariables = currentScenarioVariables;
 	}
 
 	@Override
@@ -1120,8 +1111,7 @@ public class TestCase implements Serializable {
 		this.carriedOverVariables = other.carriedOverVariables;
 		this.executeOnCondition = other.executeOnCondition;
 		this.logicalValidations = other.logicalValidations;
-		this.alogicalValidations = other.alogicalValidations;
-		this.aExecuteOnCondition = other.aExecuteOnCondition;
+		this.currentScenarioVariables = other.currentScenarioVariables;
 	}
 
 	@Override

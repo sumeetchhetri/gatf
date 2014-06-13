@@ -63,6 +63,7 @@ import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
@@ -983,6 +984,20 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		return success;
 	}
 	
+	private void addSkippedTestCase(TestCase testCase, String skipReason)
+	{
+		TestCaseReport testCaseReport = new TestCaseReport();
+		testCaseReport.setTestCase(testCase);
+		testCaseReport.setStatus(TestStatus.Skipped.status);
+		if(skipReason!=null) {
+			testCaseReport.setError(String.format("Execute Condition Failed (%s)", skipReason));
+			testCaseReport.setFailureReason(TestFailureReason.ExecuteConditionFailed.status);
+		}
+		testCaseReport.setNumberOfRuns(1);
+		testCaseReport.setExecutionTime(0L);
+		context.addTestCaseReport(testCaseReport);
+	}
+	
 	private boolean executeSingleTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil,
 			boolean onlySingleTestCaseExec, boolean dorep) {
 		boolean success = false;
@@ -992,15 +1007,18 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			if(testCase.isSkipTest())
 			{
 				getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
+				getLog().info("============================================================\n\n\n");
+				addSkippedTestCase(testCase, null);
 				return success;
 			}
 			
-			if(!testCaseExecutorUtil.getContext().getWorkflowContextHandler().isExecuteTest(testCase))
+			if(testCase.getExecuteOnCondition()!=null && !testCaseExecutorUtil.getContext().getWorkflowContextHandler()
+					.velocityValidate(testCase, testCase.getExecuteOnCondition(), null))
 			{
-				getLog().info("Execute Condition for Testcase " 
-							+ testCase.getName() + " returned false."
-							+ " Condition was (" + testCase.getExecuteOnCondition() + ")"
-							+ " Evaluation was (" + testCase.getAexecuteOnCondition() + ")");
+				getLog().info("Execute Condition for Testcase " + testCase.getName() + " returned false."
+							+ " Condition was (" + testCase.getExecuteOnCondition() + ")");
+				getLog().info("============================================================\n\n\n");
+				addSkippedTestCase(testCase, testCase.getExecuteOnCondition());
 				return success;
 			}
 			

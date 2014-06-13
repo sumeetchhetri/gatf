@@ -38,6 +38,8 @@ public class TestGroupStats implements Serializable {
 	private Integer totalTestCount;
 	
 	private Integer failedTestCount;
+	
+	private Integer skippedTestCount;
 
 	private Integer totalRuns;
 	
@@ -99,5 +101,13 @@ public class TestGroupStats implements Serializable {
 
 	public void setBaseUrl(String baseUrl) {
 		this.baseUrl = baseUrl;
+	}
+
+	public Integer getSkippedTestCount() {
+		return skippedTestCount;
+	}
+
+	public void setSkippedTestCount(Integer skippedTestCount) {
+		this.skippedTestCount = skippedTestCount;
 	}
 }

@@ -91,7 +91,7 @@ public class ReportHandler {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
 		
-		int total = 0, failed = 0, totruns = 0, failruns = 0;
+		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		List<TestCaseStats> testCaseStats = new ArrayList<TestCaseStats>();
 		
 		AlphanumComparator comparator = new AlphanumComparator();
@@ -120,7 +120,7 @@ public class ReportHandler {
 					}
 				});
 				
-				int grptot = 0, grpfld = 0, grpruns = 0, grpflruns = 0;
+				int grptot = 0, grpfld = 0, grpskp = 0, grpruns = 0, grpflruns = 0;
 				long grpexecutionTime = 0;
 				
 				for (TestCaseReport testCaseReport : reports) {
@@ -158,7 +158,11 @@ public class ReportHandler {
 						}
 					}
 					
-					if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
+					if(testCaseReport.getStatus().equals(TestStatus.Skipped.status)) {
+						skipped ++;
+						grpskp ++;
+						tesStat.setStatus(TestStatus.Skipped.status);
+					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 						failed ++;
 						grpfld ++;
 						tesStat.setStatus(TestStatus.Failed.status);
@@ -187,6 +191,7 @@ public class ReportHandler {
 				testGroupStats.setExecutionTime(grpexecutionTime);
 				testGroupStats.setTotalTestCount(grptot);
 				testGroupStats.setFailedTestCount(grpfld);
+				testGroupStats.setSkippedTestCount(grpskp);
 				testGroupStats.setTotalRuns(grpruns);
 				testGroupStats.setFailedRuns(grpflruns);
 				
@@ -241,6 +246,7 @@ public class ReportHandler {
 		long endTime = System.currentTimeMillis();
 		testSuiteStats.setTotalTestCount(total);
 		testSuiteStats.setFailedTestCount(failed);
+		testSuiteStats.setSkippedTestCount(skipped);
 		testSuiteStats.setTotalRuns(totruns);
 		testSuiteStats.setFailedRuns(failruns);
 		testSuiteStats.setExecutionTime(endTime - startTime);
@@ -422,7 +428,7 @@ public class ReportHandler {
 	{
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
 		
-		int total = 0, failed = 0, totruns = 0, failruns = 0;
+		int total = 0, failed = 0, skipped = 0, totruns = 0, failruns = 0;
 		
 		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  acontext.getFinalTestResults().entrySet()) {
 			try {
@@ -444,7 +450,9 @@ public class ReportHandler {
 						}
 					}
 					
-					if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
+					if(testCaseReport.getStatus().equals(TestStatus.Skipped.status)) {
+						skipped ++;
+					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 						failed ++;
 					}
 				}
@@ -456,6 +464,7 @@ public class ReportHandler {
 		long endTime = System.currentTimeMillis();
 		testSuiteStats.setTotalTestCount(total);
 		testSuiteStats.setFailedTestCount(failed);
+		testSuiteStats.setSkippedTestCount(skipped);
 		testSuiteStats.setTotalRuns(totruns);
 		testSuiteStats.setFailedRuns(failruns);
 		testSuiteStats.setExecutionTime(endTime - startTime);

@@ -114,6 +114,7 @@ public class TestCaseReport implements Serializable {
 			}
 			setRequestContent(testCase.getAcontent());
 			setUrl(testCase.getUrl());
+			setMethod(testCase.getMethod());
 		}
 	}
 
@@ -375,6 +376,7 @@ public class TestCaseReport implements Serializable {
 	
 	public static enum TestStatus {
 		Success("Success"),
+		Skipped("Skipped"),
 		Failed("Failed");
 		
 		public String status;
@@ -387,7 +389,8 @@ public class TestCaseReport implements Serializable {
 		InvalidStatusCode("InvalidStatusCode"),
 		Exception("Exception"),
 		NodeValidationFailed("NodeValidationFailed"),
-		InvalidContentType("InvalidContentType");
+		InvalidContentType("InvalidContentType"),
+		ExecuteConditionFailed("ExecConditionFailed");
 		
 		public String status;
 		private TestFailureReason(String status) {

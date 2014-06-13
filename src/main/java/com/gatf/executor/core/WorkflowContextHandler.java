@@ -29,7 +29,6 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
-import com.gatf.executor.validator.ResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
 import com.ning.http.client.cookie.Cookie;
 
@@ -207,38 +206,28 @@ public class WorkflowContextHandler {
 				}
 				testCase.setAexpectedNodes(expectedNodes);
 			}
-			if(testCase.getLogicalValidations()!=null && !testCase.getLogicalValidations().isEmpty()) {
-				List<String> logicalValidations = new ArrayList<String>();
-				for (String lvld : testCase.getLogicalValidations()) {
-					StringWriter writer = new StringWriter();
-					engine.evaluate(context, writer, "ERROR", lvld);
-					logicalValidations.add(writer.toString());
-				}
-				testCase.setAlogicalValidations(logicalValidations);
-			}
 		} else if(testCase!=null) {
 			testCase.setAurl(testCase.getUrl());
 			testCase.setAcontent(testCase.getContent());
 			testCase.setAexQueryPart(testCase.getExQueryPart());
 			testCase.setAexpectedNodes(testCase.getExpectedNodes());
-			testCase.setAlogicalValidations(testCase.getLogicalValidations());
 		}
 	}
 	
-	public boolean isExecuteTest(TestCase testCase) {
-		if(testCase.getExecuteOnCondition()!=null) {
+	public boolean velocityValidate(TestCase testCase, String template, Map<String, String> smap) {
+		if(testCase!=null && template!=null) {
 			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
+			if(smap!=null) {
+				nmap.putAll(smap);
+			}
 			StringWriter writer = new StringWriter();
-			VelocityContext context = new VelocityContext(nmap);
+			String condition = "#if(" +  template + ")true#end";
 			try {
-				engine.evaluate(context, writer, "ERROR", testCase.getExecuteOnCondition());
+				engine.evaluate(new VelocityContext(nmap), writer, "ERROR", condition);
 			} catch (Exception e) {
 				e.printStackTrace();
-				return false;
 			}
-			testCase.setAexecuteOnCondition(writer.toString());
-			String resp = ResponseValidator.velocityValidate(testCase.getAexecuteOnCondition());
-			return "true".equals(resp);
+			return "true".equals(writer.toString());
 		}
 		return true;
 	}

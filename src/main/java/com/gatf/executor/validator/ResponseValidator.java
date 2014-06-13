@@ -16,7 +16,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -28,8 +27,6 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.velocity.VelocityContext;
-import org.apache.velocity.app.VelocityEngine;
 import org.junit.Assert;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
@@ -53,7 +50,6 @@ import com.ning.http.client.cookie.Cookie;
  */
 public abstract class ResponseValidator {
 
-	private static final VelocityEngine engine = new VelocityEngine();
 	protected abstract Object getInternalObject(Response response) throws Exception;
 	protected abstract ResponseType getType();
 	protected abstract String getNodeValue(Object intObj, String node) throws Exception;
@@ -229,14 +225,10 @@ public abstract class ResponseValidator {
 					}
 				}
 			}
-			if(intObj!=null && testCase.getAlogicalValidations()!=null && !testCase.getAlogicalValidations().isEmpty())
+			
+			if(testCase.getRepeatScenarios()==null && testCase.getRepeatScenarioProviderName()==null)
 			{
-				for (int i=0;i<testCase.getAlogicalValidations().size();i++) {
-					String node = testCase.getLogicalValidations().get(i);
-					String tnode = testCase.getAlogicalValidations().get(i);
-					String validationResult = velocityValidate(tnode);
-					Assert.assertEquals("Logical Validation failed for (" + node + ")", "true", validationResult);
-				}
+				validateLogicalConditions(testCase, context, null);
 			}
 			
 			extractWorkflowVariables(testCase, intObj, context.getWorkflowContextHandler());
@@ -292,18 +284,15 @@ public abstract class ResponseValidator {
 		}
 	}
 	
-	public static String velocityValidate(String tnode) {
-		if(tnode!=null) {
-			StringWriter writer = new StringWriter();
-			String condition = "#if(" +  tnode + ")true#end";
-			try {
-				engine.evaluate(new VelocityContext(), writer, "ERROR", condition);
-			} catch (Exception e) {
-				e.printStackTrace();
+	public static void validateLogicalConditions(TestCase testCase, AcceptanceTestContext context, Map<String, String> smap)
+	{
+		if(testCase.getLogicalValidations()!=null && !testCase.getLogicalValidations().isEmpty())
+		{
+			for (String node : testCase.getLogicalValidations()) {
+				boolean validationResult = context.getWorkflowContextHandler().velocityValidate(testCase, node, smap);
+				Assert.assertTrue("Logical Validation failed for (" + node + ")", validationResult);
 			}
-			return writer.toString();
 		}
-		return null;
 	}
 	
 	public void extractWorkflowVariables(TestCase testCase, Object intObj, WorkflowContextHandler wfh) throws Exception

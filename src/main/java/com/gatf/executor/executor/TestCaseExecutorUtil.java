@@ -392,7 +392,6 @@ public class TestCaseExecutorUtil {
 		long start = System.currentTimeMillis();
 		
 		RequestBuilder builder = new RequestBuilder(testCase.getMethod());
-		testCaseReport.setMethod(testCase.getMethod());
 		
 		try {
 			List<Method> preHook = context.getPrePostHook(testCase, true);

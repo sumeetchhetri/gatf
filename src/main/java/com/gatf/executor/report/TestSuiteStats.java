@@ -40,6 +40,8 @@ public class TestSuiteStats implements Serializable {
 	
 	private Integer failedTestCount;
 	
+	private Integer skippedTestCount;
+	
 	private Long executionTime;
 	
 	private Integer totalRuns;
@@ -106,6 +108,14 @@ public class TestSuiteStats implements Serializable {
 		this.totalSuiteRuns = totalSuiteRuns;
 	}
 
+	public Integer getSkippedTestCount() {
+		return skippedTestCount;
+	}
+
+	public void setSkippedTestCount(Integer skippedTestCount) {
+		this.skippedTestCount = skippedTestCount;
+	}
+
 	public void updateStats(TestSuiteStats stats) {
 		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
 		setFailedRuns(getFailedRuns() +  stats.getFailedRuns());
@@ -113,6 +123,7 @@ public class TestSuiteStats implements Serializable {
 		setTotalRuns(getTotalRuns() + stats.getTotalRuns());
 		setTotalTestCount(getTotalTestCount() + stats.getTotalTestCount());
 		setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
+		setSkippedTestCount(getSkippedTestCount() + stats.getSkippedTestCount());
 		setGroupStats(null);
 	}
 
@@ -124,6 +135,8 @@ public class TestSuiteStats implements Serializable {
 		builder.append(totalTestCount);
 		builder.append(", failedTestCount=");
 		builder.append(failedTestCount);
+		builder.append(", skippedTestCount=");
+		builder.append(skippedTestCount);
 		builder.append(", executionTime=");
 		builder.append(executionTime);
 		builder.append(", totalRuns=");
@@ -145,6 +158,8 @@ public class TestSuiteStats implements Serializable {
 		builder.append(totalTestCount);
 		builder.append(", FailedTestCount=");
 		builder.append(failedTestCount);
+		builder.append(", SkippedTestCount=");
+		builder.append(skippedTestCount);
 		builder.append(", ExecutionTime=");
 		builder.append(executionTime);
 		builder.append(", TotalRuns=");

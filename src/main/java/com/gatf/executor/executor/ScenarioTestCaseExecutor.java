@@ -28,6 +28,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
+import com.gatf.executor.validator.ResponseValidator;
 import com.ning.http.client.ListenableFuture;
 
 /**
@@ -56,6 +57,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			TestCaseReport testCaseReport = new TestCaseReport();
 			testCaseReport.setTestCase(testCaseCopy);
 			testCaseReport.setNumberOfRuns(1);
+			testCaseCopy.setCurrentScenarioVariables(scenarioMap);
 
 			try {
 				workflowContextHandler.handleContextVariables(testCaseCopy, scenarioMap);
@@ -80,9 +82,18 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			{
 				try {
 					testCaseReport = listenableFuture.get();
+					ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
+							testCaseExecutorUtil.getContext(), scenarioMap);
+					testCaseReport.getTestCase().setCurrentScenarioVariables(null);
 				} catch (Exception e) {
 					testCaseReport.setStatus(TestStatus.Failed.status);
 					testCaseReport.setFailureReason(TestFailureReason.Exception.status);
+					testCaseReport.setError(e.getMessage());
+					testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
+					e.printStackTrace();
+				} catch (AssertionError e) {
+					testCaseReport.setStatus(TestStatus.Failed.status);
+					testCaseReport.setFailureReason(TestFailureReason.NodeValidationFailed.status);
 					testCaseReport.setError(e.getMessage());
 					testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 					e.printStackTrace();
@@ -101,11 +112,20 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 					
 					try {
 						testCaseReportT = listenableFutureT.get();
+						ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
+								testCaseExecutorUtil.getContext(), scenarioMap);
+						testCaseReport.getTestCase().setCurrentScenarioVariables(null);
 					} catch (Exception e) {
 						testCaseReportT.setStatus(TestStatus.Failed.status);
 						testCaseReport.setFailureReason(TestFailureReason.Exception.status);
 						testCaseReportT.setError(e.getMessage());
 						testCaseReportT.setErrorText(ExceptionUtils.getStackTrace(e));
+						e.printStackTrace();
+					} catch (AssertionError e) {
+						testCaseReport.setStatus(TestStatus.Failed.status);
+						testCaseReport.setFailureReason(TestFailureReason.NodeValidationFailed.status);
+						testCaseReport.setError(e.getMessage());
+						testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 						e.printStackTrace();
 					}
 					
@@ -121,9 +141,18 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			
 			try {
 				testCaseReport = listenableFuture.get();
+				ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
+						testCaseExecutorUtil.getContext(), testCaseReport.getTestCase().getCurrentScenarioVariables());
+				testCaseReport.getTestCase().setCurrentScenarioVariables(null);
 			} catch (Exception e) {
 				testCaseReport.setStatus(TestStatus.Failed.status);
 				testCaseReport.setFailureReason(TestFailureReason.Exception.status);
+				testCaseReport.setError(e.getMessage());
+				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
+				e.printStackTrace();
+			} catch (AssertionError e) {
+				testCaseReport.setStatus(TestStatus.Failed.status);
+				testCaseReport.setFailureReason(TestFailureReason.NodeValidationFailed.status);
 				testCaseReport.setError(e.getMessage());
 				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 				e.printStackTrace();
