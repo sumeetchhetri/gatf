@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>GATF - Test Reports</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- Page-Level Plugin CSS - Tables -->
+		<link href="css/plugins/dataTables/dataTables.bootstrap.css" rel="stylesheet">
+		
+		<style>
+			.flot-x-axis div.flot-tick-label { 
+				/* Rotate Axis Labels */
+				transform: translateX(50%) rotate(20deg); /* CSS3 */
+				transform-origin: 0 0;
+				
+				-ms-transform: translateX(50%) rotate(20deg); /* IE */
+				-ms-transform-origin: 0 0;
+
+				-moz-transform: translateX(50%) rotate(20deg); /* Firefox */
+				-moz-transform-origin: 0 0;
+
+				-webkit-transform: translateX(50%) rotate(20deg); /* Safari and Chrome */
+				-webkit-transform-origin: 0 0;
+
+				-o-transform: translateX(50%) rotate(20deg); /* Opera */
+				-o-transform-origin: 0 0;
+			}
+
+			#wrapper {
+				width: 100%;
+			}
+
+			#page-wrapper {
+				padding: 0 15px;
+				min-height: 568px;
+				background-color: #fff;
+			}
+			.string { color: green; }
+			.number { color: darkorange; }
+			.boolean { color: blue; }
+			.null { color: magenta; }
+			.key { color: red; }
+
+			pre {
+				background-color: white;
+				width;auto;
+			}
+
+			handcursor {
+				cursor: pointer;cursor: hand;
+			}
+			.test
+			{
+				margin:10px 0;
+				zoom:1;
+			}
+			.test:after
+			{
+				height:0;
+				clear:both;
+				content:"";
+				visibility:hidden;
+				display:block;
+			}
+			.text
+			{
+				width:300px;
+				float:left;
+				margin-right:10px;
+				border:1px solid #F60;
+				padding:10px;
+				min-height:80px;
+			}
+			.text-del
+			{
+				text-decoration: line-through;
+				color: #A82400;
+				background-color: #E5BDB2;
+			}
+			.text-add
+			{
+				background: #D1E1AD;
+				color: #405A04;
+			}
+		</style>
+
+	</head>
+
+	<body>
+		<div id="wrapper">		 
+			<div id="page-wrapper">
+				<!-- /.row -->
+				<div class="row">
+					<!-- /.col-lg-12 -->					
+					<div class="col-lg-12">
+						<div class="panel panel-default">
+							<div class="panel-heading" id="stat-detreport-heading">
+								All Testcases
+							</div>
+							<!-- /.panel-heading -->
+							<div class="panel-body">
+								<div class="table-responsive">
+									<table class="table table-striped table-bordered table-hover" id="dataTables-example" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
+									<thead>
+									<tr><th>Identifier</th><th>Method</th><th>Status</th><th>Time(ms)</th><th>TestCase</th></tr>
+									</thead>
+									</table>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- /.row -->
+			</div>
+			<!-- /#page-wrapper -->
+		</div>
+		<!-- /#wrapper -->
+
+		<!-- Core Scripts - Include with every page -->
+		<script src="js/jquery-2.1.0.min.js"></script>
+		<script src="js/bootstrap.min.js"></script>
+
+		<!-- Page-Level Plugin Scripts - Flot -->
+		<!--[if lte IE 8]><script src="js/excanvas.min.js"></script><![endif]-->
+		<script src="js/plugins/flot/jquery.flot.js"></script>
+		<script src="js/plugins/flot/jquery.flot.tooltip.min.js"></script>
+		<script src="js/plugins/flot/jquery.flot.resize.js"></script>
+		<script src="js/plugins/flot/jquery.flot.pie.js"></script>
+		<script src="js/plugins/flot/jquery.flot.categories.js"></script>
+		<script src="js/plugins/flot/jquery.flot.orderBars.js"></script>
+
+		<script src="js/plugins/dataTables/jquery.dataTables.js"></script>
+		<script src="js/plugins/dataTables/dataTables.bootstrap.js"></script>
+
+		<script type="text/javascript" src="js/prettify.js"></script>
+		<script type="text/javascript" src="js/vkbeautify.js"></script>
+		<link href="css/prettify.css" rel="stylesheet">
+		<script type="text/javascript" src="js/gatf.js"></script>
+		<script type="text/javascript" src="js/diff_match_patch.js"></script>
+		<script>
+			
+			var testcaseReports = $testcaseReports;
+			
+			var compareStats = $compareStats;
+			
+			var userSimulation = $userSimulation;
+			
+			var compareEnabled = $compareEnabled;
+
+			var isShowTable = true;
+
+			var isShowOthers = false;
+			
+			$(document).ready(function() {
+				loadStats('All');
+				var panelHeight =	$(dtdatatable).parent().height();
+				window.parent.postMessage(["setHeight", panelHeight], "*");
+				$('#dataTables-example_length select').change(function(){
+					dtdatatable.fnDraw();
+					var panelHeight =	$(dtdatatable).parent().height();
+					window.parent.postMessage(["setHeight", panelHeight], "*");
+				});
+			});
+			
+		</script>
+	</body>
+</html>

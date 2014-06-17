@@ -102,10 +102,13 @@
 
 			$(document).ready(function() {
 				$('#stats-pre-ele').html('<li>Total Suite Runs : '+suiteStats.totalSuiteRuns+'</li> \
-					<li>Total Testcases : '+suiteStats.totalTestCount+'</li> \
-					<li>Successful TestCases : '+(suiteStats.totalTestCount - suiteStats.failedTestCount)+'</li> \
+					<li>Concurrent User Runs : '+suiteStats.totalUserSuiteRuns+'</li> \
+					<li>Total TestCases : '+suiteStats.totalTestCount+'</li> \
+					<li>Successful TestCases : '+(suiteStats.totalTestCount - suiteStats.failedTestCount - suiteStats.skippedTestCount)+'</li> \
 					<li>Failed TestCases : '+suiteStats.failedTestCount+'</li> \
+					<li>Skipped TestCases : '+suiteStats.skippedTestCount+'</li> \
 					<li>Total ExecutionTime : '+suiteStats.executionTime+'ms</li> \
+					<li>Transactions Per Second : '+Math.floor((suiteStats.totalTestCount-suiteStats.skippedTestCount)*1000/suiteStats.executionTime)+'</li> \
 					<li>Total Multiple Test Runs : '+suiteStats.totalRuns+'</li> \
 					<li>Successful Multiple Test Runs : '+(suiteStats.totalRuns - suiteStats.failedRuns)+'</li> \
 					<li>Failed Multiple Test Runs : '+suiteStats.failedRuns+'</li>'

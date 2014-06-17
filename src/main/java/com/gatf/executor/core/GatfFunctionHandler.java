@@ -45,7 +45,7 @@ public class GatfFunctionHandler {
 	private static final String ALPHA = "alpha";
 	private static final String FLOAT = "float";
 	private static final String BOOLEAN = "boolean";
-	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s]*) ([-+]) (\\d+)([h|m|s|S|])\\)$";
+	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s]*) ([-+]) (\\d+)([M|d|h|m|s|S|])\\)$";
 	static final String DT_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s]*)\\)";
 	
 	static Pattern specialDatePattern = Pattern.compile(DT_FUNC_FMT_REGEX);

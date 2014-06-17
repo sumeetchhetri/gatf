@@ -690,10 +690,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			
 			boolean dorep = false;
 			
+			boolean done = false;
+			
 			if(isLoadTestingEnabled) {
 				long currentTime = System.currentTimeMillis();
 				
-				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
+				done = (currentTime - startTime) > configuration.getLoadTestingTime();
 				
 				long elapsedFraction = (currentTime - startTime);
 				
@@ -705,6 +707,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				}
 			} else {
 				dorep = true;
+				done = true;
 			}
 			
 			if(numberOfRuns>1)
@@ -715,60 +718,88 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				concurrentUserRampUpTimeMs = 0;
 				
+				int runNumber = 1;
+				TestSuiteStats stats = null;
+				long currentTime = System.currentTimeMillis();
+				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				for (Future future : userSimulations) {
 					try {
 						future.get();
+						if(dorep && !compareEnabledOnlySingleTestCaseExec) {
+							if(!isLoadTestingEnabled) {
+								fileurl = null;
+							}
+							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, loadTestRunNum);
+						}
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
+				if(compareEnabledOnlySingleTestCaseExec) {
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, 1);
+				}
+				else if(dorep) {
+					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns);
+					if(isLoadTestingEnabled) {
+						if(loadStats==null) {
+							loadStats = stats;
+							loadStats.setTotalUserSuiteRuns(numberOfRuns);
+						} else {
+							stats.setGroupStats(null);
+							loadStats.updateStats(stats, false);
+						}
+						loadTstReportsCount ++;
+						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+						reportHandler.clearForLoadTests(context);
+					} else {
+						loadStats = stats;
+					}
+				} else {
+					stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					loadStats.updateStats(stats, false);
+				}
 			}
 			else
 			{
+				long currentTime = System.currentTimeMillis();
+				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, 
 						dorep);
+				if(compareEnabledOnlySingleTestCaseExec) {
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, 1);
+				}
+				else if(dorep) {
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, loadTestRunNum);
+					if(isLoadTestingEnabled) {
+						loadTstReportsCount ++;
+						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+						if(loadStats==null) {
+							loadStats = stats;
+							loadStats.setTotalUserSuiteRuns(numberOfRuns);
+						} else {
+							stats.setGroupStats(null);
+							loadStats.updateStats(stats, false);
+						}
+						reportHandler.clearForLoadTests(context);
+					} else {
+						loadStats = stats;
+						loadStats.setTotalUserSuiteRuns(numberOfRuns);
+					}
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					loadStats.updateStats(stats, false);
+				}
 			}
 			
 			if(isLoadTestingEnabled) {
-				long currentTime = System.currentTimeMillis();
-				
-				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
-				
-				long elapsedFraction = (currentTime - startTime);
-				
-				dorep = done || loadTstReportsCount==0;
-
-				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
-				{
-					dorep = true;
-				}
-				
-				if(dorep) {
-					String fileurl = currentTime+".html";
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl);
-					if(loadStats==null) {
-						loadStats = stats;
-					} else {
-						loadStats.updateStats(stats);
-					}
-					loadTstReportsCount ++;
-					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
-				} else {
-					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
-					loadStats.updateStats(stats);
-				}
-				
 				if(distTasks!=null && distTasks.size()>0) {
 					initSuiteContextForDistributedTests(context, numberOfRuns);
 				} else {
 					context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 				}
-				
-				if(done) {
-					break;
-				}
-			} else {
-				loadStats = reportHandler.doReporting(context, suiteStartTime, null);
+			}
+			
+			if(done) {
 				break;
 			}
 		}
@@ -776,6 +807,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		if(numberOfRuns>1) {
 			threadPool.shutdown();
 		}
+		
+		loadStats.setTotalUserSuiteRuns(numberOfRuns);
 		
 		if(isLoadTestingEnabled) {
 			String runPrefix = null;
@@ -803,7 +836,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 						getLog().info(stats.getSuiteStats().show());
 						nodes.add(stats.getNode());
 						nodesurls.add(stats.getIdentifier() + "-index.html");
-						finalDistStats.updateStats(stats.getSuiteStats());
+						finalDistStats.updateStats(stats.getSuiteStats(), false);
 						
 						for (Map.Entry<String, String> fileContent : stats.getReportFileContent().entrySet()) {
 							getLog().info("Writing Distributed file to ouput directory....");
@@ -1284,7 +1317,97 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			
 			boolean dorep = false;
 			
+			boolean done = false;
+			
 			if(isLoadTestingEnabled) {
+				long currentTime = System.currentTimeMillis();
+				
+				done = (currentTime - startTime) > configuration.getLoadTestingTime();
+				
+				long elapsedFraction = (currentTime - startTime);
+				
+				dorep = done || loadTstReportsCount==0;
+
+				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
+				{
+					dorep = true;
+				}
+			} else {
+				dorep = true;
+				done = true;
+			}
+			
+			if(numberOfRuns>1)
+			{
+				List<Future> userSimulations = doConcurrentRunExecution(false, 
+						numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
+						threadPool, dorep);
+				
+				concurrentUserRampUpTimeMs = 0;
+				
+				int runNumber = 1;
+				TestSuiteStats stats = null;
+				long currentTime = System.currentTimeMillis();
+				String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
+				for (Future future : userSimulations) {
+					try {
+						future.get();
+						if(dorep) {
+							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, loadTestRunNum);
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				if(dorep) {
+					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns);
+					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+					if(loadStats==null) {
+						loadStats = stats;
+					} else {
+						stats.setGroupStats(null);
+						loadStats.updateStats(stats, false);
+					}
+					loadTstReportsCount ++;
+					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+					reportHandler.clearForLoadTests(context);
+				} else {
+					stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					loadStats.updateStats(stats, false);
+				}
+			}
+			else
+			{
+				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep);
+				if(dorep) {
+					long currentTime = System.currentTimeMillis();
+					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, loadTestRunNum);
+					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+					loadTstReportsCount ++;
+					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+					if(loadStats==null) {
+						loadStats = stats;
+					} else {
+						stats.setGroupStats(null);
+						loadStats.updateStats(stats, false);
+					}
+					reportHandler.clearForLoadTests(context);
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					loadStats.updateStats(stats, false);
+				}
+			}
+			
+			loadTestRunNum++;
+			
+			initSuiteContextForDistributedTests(context, numberOfRuns);
+			
+			if(done) {
+				break;
+			}
+			
+			/*if(isLoadTestingEnabled) {
 				long currentTime = System.currentTimeMillis();
 				
 				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
@@ -1319,8 +1442,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 			else
 			{
-				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, 
-						dorep);
+				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep);
 			}
 			
 			if(isLoadTestingEnabled) {
@@ -1339,18 +1461,18 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				if(dorep) {
 					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, 
-							fileurl);
+					TestSuiteStats stats = null;//reportHandler.doReporting(context, suiteStartTime, 
+							//fileurl);
 					if(loadStats==null) {
 						loadStats = stats;
 					} else {
-						loadStats.updateStats(stats);
+						loadStats.updateStats(stats, false);
 					}
 					loadTstReportsCount ++;
 					reportHandler.addToLoadTestResources(runPrefix, loadTestRunNum++, fileurl);
 				} else {
 					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
-					loadStats.updateStats(stats);
+					loadStats.updateStats(stats, false);
 				}
 				
 				initSuiteContextForDistributedTests(context, numberOfRuns);
@@ -1359,9 +1481,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					break;
 				}
 			} else {
-				loadStats = reportHandler.doReporting(context, suiteStartTime, null);
+				//loadStats = reportHandler.doReporting(context, suiteStartTime, null);
 				break;
-			}
+			}*/
 		}
 		
 		if(numberOfRuns>1) {

@@ -80,238 +80,19 @@ public class ReportHandler {
 	
 	private DistributedTestStatus distributedTestStatus = null;
 	
+	private List<TestCaseStats> testCaseStats = new ArrayList<TestCaseStats>();
+	
+	private TestSuiteStats testSuiteStats = new TestSuiteStats();
+	
 	public DistributedTestStatus getDistributedTestStatus() {
 		return distributedTestStatus;
 	}
 
-	private final StringBuffer reportLogsStr = new StringBuffer();
-	
-	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName)
+	public void clearForLoadTests(AcceptanceTestContext context)
 	{
-		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
-		TestSuiteStats testSuiteStats = new TestSuiteStats();
-		
-		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
-		List<TestCaseStats> testCaseStats = new ArrayList<TestCaseStats>();
-		
-		AlphanumComparator comparator = new AlphanumComparator();
-		
-		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
-		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
-		tempMap.putAll(acontext.getFinalTestResults());
-		
-		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
-		
-		Map<String, TestCaseReport> firstCompareCopy = null;
-		if(acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null
-				&& acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()>1)
-		{
-			firstCompareCopy = new HashMap<String, TestCaseReport>();
-		}
-		
-		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  tempMap.entrySet()) {
-			try {
-				List<TestCaseReport> reports = Arrays.asList(entry.getValue().toArray(new TestCaseReport[entry.getValue().size()]));
-				Collections.sort(reports, new Comparator<TestCaseReport>() {
-					public int compare(TestCaseReport o1, TestCaseReport o2) {
-						 return o1==null ?
-						         (o2==null ? 0 : Integer.MIN_VALUE) :
-						         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
-					}
-				});
-				
-				int grptot = 0, grpfld = 0, grpskp = 0, grpruns = 0, grpflruns = 0;
-				long grpexecutionTime = 0;
-				
-				for (TestCaseReport testCaseReport : reports) {
-					
-					if(firstCompareCopy!=null) 
-					{
-						doCompare(testCaseReport, firstCompareCopy, compareStatuses, entry.getKey());
-					}
-					
-					TestCaseStats tesStat = new TestCaseStats();
-					tesStat.setIdentifier(entry.getKey());
-					tesStat.setSourceFileName(testCaseReport.getTestCase().getSourcefileName());
-					tesStat.setWorkflowName(testCaseReport.getWorkflowName());
-					tesStat.setTestCaseName(testCaseReport.getTestCase().getName());
-					if(testCaseReport.getAverageExecutionTime()!=null)
-						tesStat.setExecutionTime(testCaseReport.getAverageExecutionTime());
-					else
-						tesStat.setExecutionTime(testCaseReport.getExecutionTime());
-					tesStat.setStatus(TestStatus.Success.status);
-					total ++;
-					grptot++;
-					if(testCaseReport.getNumberOfRuns()>1)
-					{
-						grpruns += testCaseReport.getNumberOfRuns();
-						totruns += testCaseReport.getNumberOfRuns();
-					}
-					
-					if(testCaseReport.getErrors()!=null && testCaseReport.getNumberOfRuns()>1)
-					{
-						grpflruns += testCaseReport.getErrors().size();
-						failruns += testCaseReport.getErrors().size();
-						if(testCaseReport.getError()!=null) {
-							failruns += 1;
-							grpflruns += 1;
-						}
-					}
-					
-					if(testCaseReport.getStatus().equals(TestStatus.Skipped.status)) {
-						skipped ++;
-						grpskp ++;
-						tesStat.setStatus(TestStatus.Skipped.status);
-					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
-						failed ++;
-						grpfld ++;
-						tesStat.setStatus(TestStatus.Failed.status);
-					}
-					testCaseStats.add(tesStat);
-					if(testCaseReport.getTestCase().getHeaders()!=null)
-					{
-						StringBuilder build = new StringBuilder();
-						for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
-							build.append(headerVal.getKey());
-							build.append(": ");
-				            build.append(headerVal.getValue());
-				            build.append("\n");
-				            
-				            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
-				            	testCaseReport.setRequestContentType(headerVal.getValue());
-				            }
-						}
-						testCaseReport.setRequestHeaders(build.toString());
-					}
-					grpexecutionTime += testCaseReport.getExecutionTime();
-				}
-				
-        		TestGroupStats testGroupStats = new TestGroupStats();
-				testGroupStats.setSourceFile(entry.getKey());
-				testGroupStats.setExecutionTime(grpexecutionTime);
-				testGroupStats.setTotalTestCount(grptot);
-				testGroupStats.setFailedTestCount(grpfld);
-				testGroupStats.setSkippedTestCount(grpskp);
-				testGroupStats.setTotalRuns(grpruns);
-				testGroupStats.setFailedRuns(grpflruns);
-				
-				if(firstCompareCopy!=null)
-				{
-					testGroupStats.setBaseUrl(reports.get(0).getTestCase().getBaseUrl());
-				}
-				
-				for (TestCaseReport testCaseReport : reports) {
-					if(testCaseReport.getTestCase().getReportResponseContent()!=null
-							&& !testCaseReport.getTestCase().getReportResponseContent())
-						testCaseReport.setResponseContent(null);
-					testCaseReport.setTestCase(null);
-				}
-				
-				allTestCases.put(entry.getKey(), reports);
-				
-				testSuiteStats.getGroupStats().add(testGroupStats);
-        		
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
-		VelocityContext context = new VelocityContext();
-		try
-		{
-			String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
-			context.put("testcaseReports", reportingJson);
-			
-			context.put("userSimulation", false);
-			if(config.getConcurrentUserSimulationNum()!=null && config.getConcurrentUserSimulationNum()>1) {
-				context.put("userSimulation", true);
-			}
-			
-			context.put("compareEnabled", false);
-			if(firstCompareCopy!=null) {
-				context.put("compareEnabled", true);
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		try
-		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
-			context.put("testcaseStats", reportingJson);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		long endTime = System.currentTimeMillis();
-		testSuiteStats.setTotalTestCount(total);
-		testSuiteStats.setFailedTestCount(failed);
-		testSuiteStats.setSkippedTestCount(skipped);
-		testSuiteStats.setTotalRuns(totruns);
-		testSuiteStats.setFailedRuns(failruns);
-		testSuiteStats.setExecutionTime(endTime - startTime);
-		testSuiteStats.setTotalSuiteRuns(1);
-		
-		try
-		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
-			context.put("suiteStats", reportingJson);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		try
-		{
-			String reportingJson = new ObjectMapper().writeValueAsString(compareStatuses);
-			context.put("compareStats", reportingJson);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		
-		try
-		{
-			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
-            if (resourcesIS != null)
-            {
-            	
-            	File basePath = null;
-            	if(config.getOutFilesBasePath()!=null)
-            		basePath = new File(config.getOutFilesBasePath());
-            	else
-            	{
-            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-            		basePath = new File(url.getPath());
-            	}
-            	File resource = new File(basePath, config.getOutFilesDir());
-                unzipZipFile(resourcesIS, resource.getAbsolutePath());
-                
-                VelocityEngine engine = new VelocityEngine();
-                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
-                engine.init();
-                
-                StringWriter writer = new StringWriter();
-                engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
-
-                if(reportFileName==null)
-                	reportFileName = "index.html";
-                
-                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
-                fwriter.write(writer.toString());
-                fwriter.close();
-                
-                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
-                {
-                	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
-                }
-            }
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-		acontext.clearTestResults();
-		
-		return testSuiteStats;
+		testCaseStats = new ArrayList<TestCaseStats>();
+		testSuiteStats = new TestSuiteStats();
+		context.clearTestResults();
 	}
 	
 	public void addToLoadTestResources(String prefix, int runNo, String url) {
@@ -386,7 +167,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public void doFinalDsitributedLoadTestReport(AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
+	public void doFinalDistributedLoadTestReport(AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
 			List<List<LoadTestResource>> loadTestResources, List<String> nodes)
 	{
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
@@ -601,40 +382,6 @@ public class ReportHandler {
             return;
         }
     }
-    
-    public void doLog(String message)
-    {
-    	reportLogsStr.append(message);
-    }
-    
-    public void doLog(String message, Throwable t)
-    {
-    	String cmsg = message + "\n" + ExceptionUtils.getStackTrace(t);
-    	reportLogsStr.append(cmsg);
-    }
-    
-    public void doLog(Throwable t)
-    {
-    	reportLogsStr.append(ExceptionUtils.getStackTrace(t));
-    }
-    
-    public List<TestCaseReport> getReports(AcceptanceTestContext context)
-    {
-    	ConcurrentLinkedQueue<TestCaseReport> q = context.getFinalTestResults().values().iterator().next();
-		List<TestCaseReport> reports = Arrays.asList(q.toArray(new TestCaseReport[q.size()]));
-		Collections.sort(reports, new Comparator<TestCaseReport>() {
-			public int compare(TestCaseReport o1, TestCaseReport o2) {
-				 return o1==null ?
-				         (o2==null ? 0 : Integer.MIN_VALUE) :
-				         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
-			}
-		});
-		return reports;
-    }
-
-	public List<LoadTestResource> getLoadTestResources() {
-		return loadTestResources;
-	}
 	
 	public void writeToReportFile(String fileName, String contents, GatfExecutorConfig config)
 	{
@@ -680,5 +427,579 @@ public class ReportHandler {
 			}
 		}
 		return false;
+	}
+
+	public void doConcurrentRunReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int runNumber,
+			int loadTestRunNum) {
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
+		
+		AlphanumComparator comparator = new AlphanumComparator();
+		
+		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
+		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
+		
+		tempMap.put("Run-"+ runNumber, acontext.getFinalTestResults().get("Run-"+ runNumber));
+		
+		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
+		
+		Map<String, TestCaseReport> firstCompareCopy = null;
+		if(acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null
+				&& acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()>1)
+		{
+			firstCompareCopy = new HashMap<String, TestCaseReport>();
+		}
+		
+		VelocityContext context = new VelocityContext();
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+			context.put("testcaseReports", reportingJson);
+			
+			context.put("userSimulation", false);
+			if(config.getConcurrentUserSimulationNum()!=null && config.getConcurrentUserSimulationNum()>1) {
+				context.put("userSimulation", true);
+			}
+			
+			context.put("compareEnabled", false);
+			if(firstCompareCopy!=null) {
+				context.put("compareEnabled", true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		String orf = reportFileName;
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  tempMap.entrySet()) {
+			reportFileName = orf;
+			try {
+				List<TestCaseReport> reports = new ArrayList<TestCaseReport>(entry.getValue());
+				Collections.sort(reports, new Comparator<TestCaseReport>() {
+					public int compare(TestCaseReport o1, TestCaseReport o2) {
+						 return o1==null ?
+						         (o2==null ? 0 : Integer.MIN_VALUE) :
+						         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
+					}
+				});
+				
+				int grptot = 0, grpfld = 0, grpskp = 0, grpruns = 0, grpflruns = 0;
+				long grpexecutionTime = 0;
+				
+				for (TestCaseReport testCaseReport : reports) {
+					
+					if(firstCompareCopy!=null) 
+					{
+						doCompare(testCaseReport, firstCompareCopy, compareStatuses, entry.getKey());
+					}
+					
+					TestCaseStats tesStat = new TestCaseStats();
+					tesStat.setIdentifier(entry.getKey());
+					tesStat.setSourceFileName(testCaseReport.getTestCase().getSourcefileName());
+					tesStat.setWorkflowName(testCaseReport.getWorkflowName());
+					tesStat.setTestCaseName(testCaseReport.getTestCase().getName());
+					if(testCaseReport.getAverageExecutionTime()!=null)
+						tesStat.setExecutionTime(testCaseReport.getAverageExecutionTime());
+					else
+						tesStat.setExecutionTime(testCaseReport.getExecutionTime());
+					tesStat.setStatus(TestStatus.Success.status);
+					total ++;
+					grptot++;
+					if(testCaseReport.getNumberOfRuns()>1)
+					{
+						grpruns += testCaseReport.getNumberOfRuns();
+						totruns += testCaseReport.getNumberOfRuns();
+					}
+					
+					if(testCaseReport.getErrors()!=null && testCaseReport.getNumberOfRuns()>1)
+					{
+						grpflruns += testCaseReport.getErrors().size();
+						failruns += testCaseReport.getErrors().size();
+						if(testCaseReport.getError()!=null) {
+							failruns += 1;
+							grpflruns += 1;
+						}
+					}
+					
+					if(testCaseReport.getStatus().equals(TestStatus.Skipped.status)) {
+						skipped ++;
+						grpskp ++;
+						tesStat.setStatus(TestStatus.Skipped.status);
+					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
+						failed ++;
+						grpfld ++;
+						tesStat.setStatus(TestStatus.Failed.status);
+					}
+					testCaseStats.add(tesStat);
+					if(testCaseReport.getTestCase().getHeaders()!=null)
+					{
+						StringBuilder build = new StringBuilder();
+						for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
+							build.append(headerVal.getKey());
+							build.append(": ");
+				            build.append(headerVal.getValue());
+				            build.append("\n");
+				            
+				            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
+				            	testCaseReport.setRequestContentType(headerVal.getValue());
+				            }
+						}
+						testCaseReport.setRequestHeaders(build.toString());
+					}
+					grpexecutionTime += testCaseReport.getExecutionTime();
+				}
+				
+        		TestGroupStats testGroupStats = new TestGroupStats();
+				testGroupStats.setSourceFile(entry.getKey());
+				testGroupStats.setExecutionTime(grpexecutionTime);
+				testGroupStats.setTotalTestCount(grptot);
+				testGroupStats.setFailedTestCount(grpfld);
+				testGroupStats.setSkippedTestCount(grpskp);
+				testGroupStats.setTotalRuns(grpruns);
+				testGroupStats.setFailedRuns(grpflruns);
+				
+				if(firstCompareCopy!=null)
+				{
+					testGroupStats.setBaseUrl(reports.get(0).getTestCase().getBaseUrl());
+				}
+				
+				for (TestCaseReport testCaseReport : reports) {
+					if(testCaseReport.getTestCase().getReportResponseContent()!=null
+							&& !testCaseReport.getTestCase().getReportResponseContent())
+						testCaseReport.setResponseContent(null);
+					testCaseReport.setTestCase(null);
+				}
+				
+				allTestCases.put(entry.getKey(), reports);
+				
+				testSuiteStats.getGroupStats().add(testGroupStats);
+				
+				if(firstCompareCopy==null) {
+					try
+					{
+						String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+						context.put("testcaseReports", reportingJson);
+						allTestCases.clear();
+						context.put("compareStats", "{}");
+						InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+			            if (resourcesIS != null)
+			            {
+			            	
+			            	File basePath = null;
+			            	if(config.getOutFilesBasePath()!=null)
+			            		basePath = new File(config.getOutFilesBasePath());
+			            	else
+			            	{
+			            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+			            		basePath = new File(url.getPath());
+			            	}
+			            	File resource = new File(basePath, config.getOutFilesDir());
+			                if(runNumber==1 && loadTestRunNum==1)
+			                	unzipZipFile(resourcesIS, resource.getAbsolutePath());
+			                
+			                VelocityEngine engine = new VelocityEngine();
+			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+			                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+			                engine.init();
+			                
+			                StringWriter writer = new StringWriter();
+			                engine.mergeTemplate("/gatf-templates/index-run.vm", context, writer);
+
+			                if(reportFileName==null)
+			                	reportFileName = "index.html";
+			                
+			                if(entry.getKey().startsWith("Run") && !entry.getKey().endsWith(".xml")) {
+			                	reportFileName = reportFileName.replaceFirst("\\.html", "");
+			                	reportFileName += entry.getKey().substring(4);
+			                	reportFileName += ".html";
+			                } else if(!reportFileName.equals("index.html")) {
+			                	reportFileName = reportFileName.replaceFirst("\\.html", "");
+			                	reportFileName += "1.html";
+			                } else {
+			                	reportFileName = "index1.html";
+			                }
+			                
+			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+			                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
+			                fwriter.write(writer.toString());
+			                fwriter.close();
+			                
+			                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+			                {
+			                	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
+			                }
+			            }
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+        		
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		if(testSuiteStats.getTotalSuiteRuns()==0) {
+			testSuiteStats.setTotalTestCount(total);
+			testSuiteStats.setFailedTestCount(failed);
+			testSuiteStats.setSkippedTestCount(skipped);
+			testSuiteStats.setTotalRuns(totruns);
+			testSuiteStats.setFailedRuns(failruns);
+			testSuiteStats.setTotalUserSuiteRuns(1);
+			testSuiteStats.setTotalSuiteRuns(1);
+			testSuiteStats.setExecutionTime(0L);
+		} else {
+			TestSuiteStats tempst = new TestSuiteStats();
+			tempst.setTotalTestCount(total);
+			tempst.setFailedTestCount(failed);
+			tempst.setSkippedTestCount(skipped);
+			tempst.setTotalRuns(totruns);
+			tempst.setFailedRuns(failruns);
+			tempst.setTotalSuiteRuns(1);
+			tempst.setExecutionTime(0L);
+			testSuiteStats.updateStats(tempst, true);
+		}
+		
+		acontext.getFinalTestResults().get("Run-"+ runNumber).clear();
+	}
+
+	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, int numberOfRuns) {
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		
+		VelocityContext context = new VelocityContext();
+		try
+		{
+			context.put("userSimulation", false);
+			if(config.getConcurrentUserSimulationNum()!=null && config.getConcurrentUserSimulationNum()>1) {
+				context.put("userSimulation", true);
+			}
+			
+			context.put("compareEnabled", false);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+
+		context.put("testcaseReports", "[]");
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
+			context.put("testcaseStats", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			testSuiteStats.setTotalUserSuiteRuns(numberOfRuns);
+			testSuiteStats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			context.put("suiteStats", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			context.put("compareStats", "{}");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            if (resourcesIS != null)
+            {
+            	
+            	File basePath = null;
+            	if(config.getOutFilesBasePath()!=null)
+            		basePath = new File(config.getOutFilesBasePath());
+            	else
+            	{
+            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+            		basePath = new File(url.getPath());
+            	}
+            	File resource = new File(basePath, config.getOutFilesDir());
+                
+                VelocityEngine engine = new VelocityEngine();
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.init();
+                
+                if(reportFileName==null)
+                	reportFileName = "index.html";
+                
+                context.put("thisFile", reportFileName.replaceFirst(".html", ""));
+                context.put("isShowTable", false);
+                
+                StringWriter writer = new StringWriter();
+                engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
+
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
+                fwriter.write(writer.toString());
+                fwriter.close();
+                
+                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                {
+                	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
+                }
+            }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		acontext.clearTestResults();
+		
+		return testSuiteStats;
+	}
+
+	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int loadTestRunNum) {
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
+		
+		AlphanumComparator comparator = new AlphanumComparator();
+		
+		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
+		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
+		tempMap.putAll(acontext.getFinalTestResults());
+		
+		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
+		
+		Map<String, TestCaseReport> firstCompareCopy = null;
+		if(acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null
+				&& acontext.getGatfExecutorConfig().getCompareBaseUrlsNum()>1)
+		{
+			firstCompareCopy = new HashMap<String, TestCaseReport>();
+		}
+		
+		VelocityContext context = new VelocityContext();
+		try
+		{
+			context.put("userSimulation", false);
+			if(config.getConcurrentUserSimulationNum()!=null && config.getConcurrentUserSimulationNum()>1) {
+				context.put("userSimulation", true);
+			}
+			
+			context.put("compareEnabled", false);
+			if(firstCompareCopy!=null) {
+				context.put("compareEnabled", true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		boolean unzipped = false;
+		String orf = reportFileName;
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  tempMap.entrySet()) {
+			reportFileName = orf;
+			try {
+				List<TestCaseReport> reports = new ArrayList<TestCaseReport>(entry.getValue());
+				Collections.sort(reports, new Comparator<TestCaseReport>() {
+					public int compare(TestCaseReport o1, TestCaseReport o2) {
+						 return o1==null ?
+						         (o2==null ? 0 : Integer.MIN_VALUE) :
+						         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
+					}
+				});
+				
+				int grptot = 0, grpfld = 0, grpskp = 0, grpruns = 0, grpflruns = 0;
+				long grpexecutionTime = 0;
+				
+				for (TestCaseReport testCaseReport : reports) {
+					
+					if(firstCompareCopy!=null) 
+					{
+						doCompare(testCaseReport, firstCompareCopy, compareStatuses, entry.getKey());
+					}
+					
+					TestCaseStats tesStat = new TestCaseStats();
+					tesStat.setIdentifier(entry.getKey());
+					tesStat.setSourceFileName(testCaseReport.getTestCase().getSourcefileName());
+					tesStat.setWorkflowName(testCaseReport.getWorkflowName());
+					tesStat.setTestCaseName(testCaseReport.getTestCase().getName());
+					if(testCaseReport.getAverageExecutionTime()!=null)
+						tesStat.setExecutionTime(testCaseReport.getAverageExecutionTime());
+					else
+						tesStat.setExecutionTime(testCaseReport.getExecutionTime());
+					tesStat.setStatus(TestStatus.Success.status);
+					total ++;
+					grptot++;
+					if(testCaseReport.getNumberOfRuns()>1)
+					{
+						grpruns += testCaseReport.getNumberOfRuns();
+						totruns += testCaseReport.getNumberOfRuns();
+					}
+					
+					if(testCaseReport.getErrors()!=null && testCaseReport.getNumberOfRuns()>1)
+					{
+						grpflruns += testCaseReport.getErrors().size();
+						failruns += testCaseReport.getErrors().size();
+						if(testCaseReport.getError()!=null) {
+							failruns += 1;
+							grpflruns += 1;
+						}
+					}
+					
+					if(testCaseReport.getStatus().equals(TestStatus.Skipped.status)) {
+						skipped ++;
+						grpskp ++;
+						tesStat.setStatus(TestStatus.Skipped.status);
+					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
+						failed ++;
+						grpfld ++;
+						tesStat.setStatus(TestStatus.Failed.status);
+					}
+					testCaseStats.add(tesStat);
+					if(testCaseReport.getTestCase().getHeaders()!=null)
+					{
+						StringBuilder build = new StringBuilder();
+						for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
+							build.append(headerVal.getKey());
+							build.append(": ");
+				            build.append(headerVal.getValue());
+				            build.append("\n");
+				            
+				            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
+				            	testCaseReport.setRequestContentType(headerVal.getValue());
+				            }
+						}
+						testCaseReport.setRequestHeaders(build.toString());
+					}
+					grpexecutionTime += testCaseReport.getExecutionTime();
+				}
+				
+        		TestGroupStats testGroupStats = new TestGroupStats();
+				testGroupStats.setSourceFile(entry.getKey());
+				testGroupStats.setExecutionTime(grpexecutionTime);
+				testGroupStats.setTotalTestCount(grptot);
+				testGroupStats.setFailedTestCount(grpfld);
+				testGroupStats.setSkippedTestCount(grpskp);
+				testGroupStats.setTotalRuns(grpruns);
+				testGroupStats.setFailedRuns(grpflruns);
+				
+				if(firstCompareCopy!=null)
+				{
+					testGroupStats.setBaseUrl(reports.get(0).getTestCase().getBaseUrl());
+				}
+				
+				for (TestCaseReport testCaseReport : reports) {
+					if(testCaseReport.getTestCase().getReportResponseContent()!=null
+							&& !testCaseReport.getTestCase().getReportResponseContent())
+						testCaseReport.setResponseContent(null);
+					testCaseReport.setTestCase(null);
+				}
+				
+				allTestCases.put(entry.getKey(), reports);
+				
+				testSuiteStats.getGroupStats().add(testGroupStats);
+				
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		long endTime = System.currentTimeMillis();
+		
+		if(testSuiteStats.getTotalSuiteRuns()==0) {
+			testSuiteStats.setTotalTestCount(total);
+			testSuiteStats.setFailedTestCount(failed);
+			testSuiteStats.setSkippedTestCount(skipped);
+			testSuiteStats.setTotalRuns(totruns);
+			testSuiteStats.setFailedRuns(failruns);
+			testSuiteStats.setExecutionTime(endTime - startTime);
+			testSuiteStats.setTotalUserSuiteRuns(1);
+			testSuiteStats.setTotalSuiteRuns(1);
+		} else {
+			TestSuiteStats tempst = new TestSuiteStats();
+			tempst.setTotalTestCount(total);
+			tempst.setFailedTestCount(failed);
+			tempst.setSkippedTestCount(skipped);
+			tempst.setTotalRuns(totruns);
+			tempst.setFailedRuns(failruns);
+			tempst.setExecutionTime(endTime - startTime);
+			tempst.setTotalSuiteRuns(1);
+			testSuiteStats.updateStats(tempst, true);
+		}
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+			context.put("testcaseReports", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
+			context.put("testcaseStats", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			context.put("suiteStats", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(compareStatuses);
+			context.put("compareStats", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            if (resourcesIS != null)
+            {
+            	
+            	File basePath = null;
+            	if(config.getOutFilesBasePath()!=null)
+            		basePath = new File(config.getOutFilesBasePath());
+            	else
+            	{
+            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+            		basePath = new File(url.getPath());
+            	}
+            	File resource = new File(basePath, config.getOutFilesDir());
+                if(!unzipped)
+                	unzipZipFile(resourcesIS, resource.getAbsolutePath());
+                
+                VelocityEngine engine = new VelocityEngine();
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.init();
+                
+                if(orf==null)
+                	orf = "index.html";
+                
+                context.put("thisFile", orf.replaceFirst(".html", ""));
+                context.put("isShowTable", true);
+                
+                StringWriter writer = new StringWriter();
+                engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
+
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                        + SystemUtils.FILE_SEPARATOR + orf)));
+                fwriter.write(writer.toString());
+                fwriter.close();
+                
+                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                {
+                	distributedTestStatus.getReportFileContent().put(orf, writer.toString());
+                }
+            }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		acontext.clearTestResults();
+		
+		return testSuiteStats;
 	}
 }

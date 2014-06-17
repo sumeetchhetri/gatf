@@ -100,10 +100,12 @@ public class TestCaseExecutorUtil {
 			numConcurrentConns = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
 		}
 		
+		int maxConns = numConcurrentConns>100?numConcurrentConns:100;
+		
 		Builder builder = new AsyncHttpClientConfig.Builder();
 		builder.setConnectionTimeoutInMs(context.getGatfExecutorConfig().getHttpConnectionTimeout())
 				.setMaximumConnectionsPerHost(numConcurrentConns)
-				.setMaximumConnectionsTotal(100)
+				.setMaximumConnectionsTotal(maxConns)
 				.setRequestTimeoutInMs(context.getGatfExecutorConfig().getHttpRequestTimeout())
 				.setAllowPoolingConnection(true)
 				.setCompressionEnabled(context.getGatfExecutorConfig().isHttpCompressionEnabled())
@@ -620,7 +622,7 @@ public class TestCaseExecutorUtil {
 		 */
 		public TestCaseReport onCompleted() throws Exception {
 			Response response = builder.build();
-			
+			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			if(testCaseReport.getError()==null)
 			{
 				if(!testCase.isSoapBase()) {
@@ -663,7 +665,6 @@ public class TestCaseExecutorUtil {
 				}
 				testCaseReport.setResponseHeaders(build.toString());
 			}
-			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			
 			if(testCase.getPostWaitMs()!=null && testCase.getPostWaitMs()>0) {
 				try {

@@ -19,9 +19,6 @@ limitations under the License.
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
@@ -48,7 +45,9 @@ public class TestSuiteStats implements Serializable {
 	
 	private Integer failedRuns;
 	
-	private Integer totalSuiteRuns;
+	private Integer totalSuiteRuns = 0;
+	
+	private Integer totalUserSuiteRuns = 0;
 	
 	private List<TestGroupStats> groupStats = new ArrayList<TestGroupStats>();
 
@@ -116,15 +115,23 @@ public class TestSuiteStats implements Serializable {
 		this.skippedTestCount = skippedTestCount;
 	}
 
-	public void updateStats(TestSuiteStats stats) {
+	public Integer getTotalUserSuiteRuns() {
+		return totalUserSuiteRuns;
+	}
+
+	public void setTotalUserSuiteRuns(Integer totalUserSuiteRuns) {
+		this.totalUserSuiteRuns = totalUserSuiteRuns;
+	}
+
+	public void updateStats(TestSuiteStats stats, boolean isUserRuns) {
 		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
 		setFailedRuns(getFailedRuns() +  stats.getFailedRuns());
 		setFailedTestCount(getFailedTestCount() + stats.getFailedTestCount());
 		setTotalRuns(getTotalRuns() + stats.getTotalRuns());
 		setTotalTestCount(getTotalTestCount() + stats.getTotalTestCount());
-		setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
+		if(!isUserRuns)
+			setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
 		setSkippedTestCount(getSkippedTestCount() + stats.getSkippedTestCount());
-		setGroupStats(null);
 	}
 
 	@Override
@@ -133,6 +140,8 @@ public class TestSuiteStats implements Serializable {
 		StringBuilder builder = new StringBuilder();
 		builder.append("TestSuiteStats [totalTestCount=");
 		builder.append(totalTestCount);
+		builder.append(", TotalUserSuiteRuns=");
+		builder.append(totalUserSuiteRuns);
 		builder.append(", failedTestCount=");
 		builder.append(failedTestCount);
 		builder.append(", skippedTestCount=");
@@ -154,6 +163,8 @@ public class TestSuiteStats implements Serializable {
 		StringBuilder builder = new StringBuilder();
 		builder.append("Result:\nTotalSuiteRuns=");
 		builder.append(totalSuiteRuns);
+		builder.append(", TotalUserSuiteRuns=");
+		builder.append(totalUserSuiteRuns);
 		builder.append(", TotalTestCount=");
 		builder.append(totalTestCount);
 		builder.append(", FailedTestCount=");
