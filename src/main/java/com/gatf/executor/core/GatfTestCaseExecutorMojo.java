@@ -190,6 +190,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "distributedNodes")
     private String[] distributedNodes;
 	
+	@Parameter(alias = "ignoreFiles")
+	private String[] ignoreFiles;
+	
+	@Parameter(alias = "orderedFiles")
+	private String[] orderedFiles;
+	
 	private Long startTime = 0L;
 	
 	private AcceptanceTestContext context;
@@ -425,6 +431,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setTestCaseHooksPaths(testCaseHooksPath);
 		configuration.setDistributedLoadTests(distributedLoadTests);
 		configuration.setDistributedNodes(distributedNodes);
+		configuration.setIgnoreFiles(ignoreFiles);
+		configuration.setOrderedFiles(orderedFiles);
 		
 		if(configFile!=null) {
 			try {
@@ -447,6 +455,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					xstream.alias("queryStr", String.class);
 					xstream.alias("distributedNodes", String[].class);
 					xstream.alias("distributedNode", String.class);
+					xstream.alias("ignoreFiles", String[].class);
+					xstream.alias("orderedFiles", String[].class);
+					xstream.alias("string", String.class);
 					
 					configuration = (GatfExecutorConfig)xstream.fromXML(resource);
 					
@@ -736,7 +747,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					}
 				}
 				if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, 1);
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl);
 				}
 				else if(dorep) {
 					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns);
@@ -766,10 +777,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, 
 						dorep);
 				if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, 1);
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl);
 				}
 				else if(dorep) {
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, loadTestRunNum);
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl);
 					if(isLoadTestingEnabled) {
 						loadTstReportsCount ++;
 						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
@@ -1382,7 +1393,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				if(dorep) {
 					long currentTime = System.currentTimeMillis();
 					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, loadTestRunNum);
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl);
 					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
 					loadTstReportsCount ++;
 					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
@@ -1406,84 +1417,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			if(done) {
 				break;
 			}
-			
-			/*if(isLoadTestingEnabled) {
-				long currentTime = System.currentTimeMillis();
-				
-				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
-				
-				long elapsedFraction = (currentTime - startTime);
-				
-				dorep = done || loadTstReportsCount==0;
-
-				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
-				{
-					dorep = true;
-				}
-			} else {
-				dorep = true;
-			}
-			
-			if(numberOfRuns>1)
-			{
-				List<Future> userSimulations = doConcurrentRunExecution(false, 
-						numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
-						threadPool, dorep);
-				
-				concurrentUserRampUpTimeMs = 0;
-				
-				for (Future future : userSimulations) {
-					try {
-						future.get();
-					} catch (Exception e) {
-						e.printStackTrace();
-					}
-				}
-			}
-			else
-			{
-				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep);
-			}
-			
-			if(isLoadTestingEnabled) {
-				long currentTime = System.currentTimeMillis();
-				
-				boolean done = (currentTime - startTime) > configuration.getLoadTestingTime();
-				
-				long elapsedFraction = (currentTime - startTime);
-				
-				dorep = done || loadTstReportsCount==0;
-
-				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
-				{
-					dorep = true;
-				}
-				
-				if(dorep) {
-					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
-					TestSuiteStats stats = null;//reportHandler.doReporting(context, suiteStartTime, 
-							//fileurl);
-					if(loadStats==null) {
-						loadStats = stats;
-					} else {
-						loadStats.updateStats(stats, false);
-					}
-					loadTstReportsCount ++;
-					reportHandler.addToLoadTestResources(runPrefix, loadTestRunNum++, fileurl);
-				} else {
-					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
-					loadStats.updateStats(stats, false);
-				}
-				
-				initSuiteContextForDistributedTests(context, numberOfRuns);
-				
-				if(done) {
-					break;
-				}
-			} else {
-				//loadStats = reportHandler.doReporting(context, suiteStartTime, null);
-				break;
-			}*/
 		}
 		
 		if(numberOfRuns>1) {
@@ -1529,6 +1462,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		xstream.alias("queryStr", String.class);
 		xstream.alias("distributedNodes", String[].class);
 		xstream.alias("distributedNode", String.class);
+		xstream.alias("ignoreFiles", String[].class);
+		xstream.alias("ignoreFile", String.class);
+		xstream.alias("orderedFiles", String[].class);
+		xstream.alias("orderedFile", String.class);
 		xstream.alias("string", String.class);
 		
 		GatfExecutorConfig configuration = (GatfExecutorConfig)xstream.fromXML(resource);
@@ -1552,6 +1489,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		xstream.alias("queryStr", String.class);
 		xstream.alias("distributedNodes", String[].class);
 		xstream.alias("distributedNode", String.class);
+		xstream.alias("ignoreFiles", String[].class);
+		xstream.alias("orderedFiles", String[].class);
 		xstream.alias("string", String.class);
 		
 		return xstream.toXML(configuration);

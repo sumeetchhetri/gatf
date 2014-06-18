@@ -104,6 +104,10 @@ public class GatfExecutorConfig implements Serializable {
 	
 	private boolean debugEnabled;
 	
+	private String[] ignoreFiles;
+	
+	private String[] orderedFiles;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -393,6 +397,22 @@ public class GatfExecutorConfig implements Serializable {
 
 	public void setDebugEnabled(boolean debugEnabled) {
 		this.debugEnabled = debugEnabled;
+	}
+
+	public String[] getIgnoreFiles() {
+		return ignoreFiles;
+	}
+
+	public void setIgnoreFiles(String[] ignoreFiles) {
+		this.ignoreFiles = ignoreFiles;
+	}
+
+	public String[] getOrderedFiles() {
+		return orderedFiles;
+	}
+
+	public void setOrderedFiles(String[] orderedFiles) {
+		this.orderedFiles = orderedFiles;
 	}
 
 	public void validate()

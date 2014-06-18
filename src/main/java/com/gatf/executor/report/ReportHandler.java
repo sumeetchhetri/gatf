@@ -753,7 +753,7 @@ public class ReportHandler {
 		return testSuiteStats;
 	}
 
-	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int loadTestRunNum) {
+	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		

@@ -51,6 +51,9 @@ public abstract class TestCaseFinder {
 	
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)
 	{
+		String[] ignoreFiles = context.getGatfExecutorConfig().getIgnoreFiles();
+		String[] orderedFiles = context.getGatfExecutorConfig().getOrderedFiles();
+		
 		List<TestCase> testcases = new ArrayList<TestCase>();
 		if (dir.isDirectory()) {
 			File[] files = dir.listFiles(new FilenameFilter() {
@@ -58,8 +61,66 @@ public abstract class TestCaseFinder {
 					return name.toLowerCase().endsWith(getFileType().ext);
 				}
 			});
+			
+			List<File> allFiles = new ArrayList<File>();
+			if(orderedFiles!=null)
+			{
+				for (String fileN : orderedFiles) {
+					for (File file : files) {
+						if(file.getName().equals(fileN)) {
+							allFiles.add(file);
+							break;
+						}
+					}
+				}
+				for (File file : files) {
+					if(!allFiles.contains(file)) {
+						allFiles.add(file);
+					}
+				}
+			}
+			else
+			{
+				for (File file : files) {
+					allFiles.add(file);
+				}
+			}
 
-			for (File file : files) {
+			for (File file : allFiles) {
+				boolean isIgnore = false;
+				
+				if(ignoreFiles!=null)
+				{
+					for (String fileN : ignoreFiles) {
+						fileN = fileN.trim();
+						if(fileN.isEmpty()) {
+							continue;
+						}
+						if(fileN.equals("*") || fileN.equals("*.*")) {
+							isIgnore = true;
+						} else if(fileN.startsWith("*.")) {
+							String ext = fileN.substring(2);
+							if(file.getName().endsWith(ext)) {
+								isIgnore = true; 
+							}
+						} else if(fileN.endsWith("*")) {
+							fileN = fileN.substring(fileN.length()-1);
+							if(file.getName().startsWith(fileN)) {
+								isIgnore = true; 
+							}
+						} else if(fileN.startsWith("*")) {
+							fileN = fileN.substring(1);
+							if(file.getName().endsWith(fileN)) {
+								isIgnore = true; 
+							}
+						} else if(file.getName().equals(fileN)) {
+							isIgnore = true;
+						}
+					}
+					if(isIgnore)
+						continue;
+				}
+				
 				try {
 					List<TestCase> testcasesTemp = resolveTestCases(file);
 					if(testcasesTemp != null)
