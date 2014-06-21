@@ -1,17 +1,25 @@
 package com.gatf.distributed;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.net.URL;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.IOUtils;
+
 import com.gatf.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.report.ReportHandler;
 
 public class DistributedGatfTester {
 
@@ -77,7 +85,8 @@ public class DistributedGatfTester {
 	}
 	
 	public FutureTask<DistributedTestStatus> distributeTests(List<TestCase> simTestCases, 
-			final DistributedConnection connection, boolean dorep, int index, int numberOfRuns)
+			final DistributedConnection connection, boolean dorep, int index, int numberOfRuns,
+			final AcceptanceTestContext context)
 	{
 		if(connection==null)return null;
 		
@@ -106,6 +115,27 @@ public class DistributedGatfTester {
 							logger.info("Waiting for GATF tests Results from node " + connection.node);
 							res = (DistributedTestStatus)connection.ois.readObject();
 							logger.info("Received GATF tests Results from node " + connection.node);
+							
+							String fileName = "dist-" + res.getZipFileName();
+							File basePath = null;
+				        	if(context.getGatfExecutorConfig().getOutFilesBasePath()!=null)
+				        		basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
+				        	else
+				        	{
+				        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+				        		basePath = new File(url.getPath());
+				        	}
+				        	File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
+				        	
+				        	File zipFile = new File(resource, fileName);
+				        	FileOutputStream fos = new FileOutputStream(zipFile);
+							IOUtils.copy(connection.ois, fos);
+							fos.flush();
+							fos.close();
+				        	
+				        	ReportHandler.unzipZipFile(new FileInputStream(zipFile), resource.getAbsolutePath());
+							
+							logger.info("Received GATF tests Result files from node " + connection.node);
 						} catch (Exception e) {
 							e.printStackTrace();
 							logger.info("Failure occurred while waiting for GATF tests Results from node " + connection.node);

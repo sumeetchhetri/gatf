@@ -18,8 +18,10 @@ limitations under the License.
 
 import java.io.BufferedWriter;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
@@ -36,6 +38,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -84,6 +87,10 @@ public class ReportHandler {
 	
 	private TestSuiteStats testSuiteStats = new TestSuiteStats();
 	
+	private Map<String, List<Long>> testExecutionTimes90Percentile = new HashMap<String, List<Long>>();
+	
+	private Map<String, List<Long>> testExecutionTimes50Percentile = new HashMap<String, List<Long>>();
+	
 	public DistributedTestStatus getDistributedTestStatus() {
 		return distributedTestStatus;
 	}
@@ -93,6 +100,65 @@ public class ReportHandler {
 		testCaseStats = new ArrayList<TestCaseStats>();
 		testSuiteStats = new TestSuiteStats();
 		context.clearTestResults();
+	}
+	
+	private void addExecutionTime(String testName, Long time, boolean is90)
+	{
+		Map<String, List<Long>> mapo = is90?testExecutionTimes90Percentile:testExecutionTimes50Percentile;
+		if(!mapo.containsKey(testName)) {
+			mapo.put(testName, new ArrayList<Long>());
+		}
+		List<Long> times = mapo.get(testName);
+		if(times.size()==1000)
+		{
+			Collections.sort(times);
+			int index = Math.round((float)(is90?0.9:0.5) * times.size());
+			times = times.subList(index+1, times.size());
+			mapo.put(testName, times);
+		}
+		else
+		{
+			times.add(time);
+		}
+	}
+	
+	public void deducePercentileTimes()
+	{
+		Map<String, List<Long>> mapo = testExecutionTimes90Percentile;
+		for (Map.Entry<String, List<Long>> entry : mapo.entrySet()) {
+			List<Long> times90 = entry.getValue();
+			Collections.sort(times90);
+			int index = Math.round((float)0.9 * times90.size());
+			long time = times90.get(index-1);
+			times90.clear();
+			times90.add(time);
+			
+			List<Long> times50 = testExecutionTimes50Percentile.get(entry.getKey());
+			Collections.sort(times50);
+			index = Math.round((float)0.5 * times50.size());
+			time = times50.get(index-1);
+			times50.clear();
+			
+			times90.add(time);
+			mapo.put(entry.getKey(), times90);
+		}
+	}
+	
+	public Map<String, List<Long>> getPercentileTimes()
+	{
+		deducePercentileTimes();
+		return testExecutionTimes90Percentile;
+	}
+	
+	public void mergePercentileTimes(Map<String, List<Long>> times)
+	{
+		for (Map.Entry<String, List<Long>> entry : times.entrySet()) {
+			List<Long> times90 = testExecutionTimes90Percentile.get(entry.getKey());
+			List<Long> times50 = testExecutionTimes50Percentile.get(entry.getKey());
+			
+			times90.add(entry.getValue().get(0));
+			times50.add(entry.getValue().get(1));
+		}
 	}
 	
 	public void addToLoadTestResources(String prefix, int runNo, String url) {
@@ -160,7 +226,7 @@ public class ReportHandler {
             
             if(distributedTestStatus!=null)
             {
-            	distributedTestStatus.getReportFileContent().put(prefix + "index.html", writer.toString());
+            	//distributedTestStatus.getReportFileContent().put(prefix + "index.html", writer.toString());
             }
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -210,6 +276,7 @@ public class ReportHandler {
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
 		
 		int total = 0, failed = 0, skipped = 0, totruns = 0, failruns = 0;
+		long grpexecutionTime = 0L;
 		
 		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  acontext.getFinalTestResults().entrySet()) {
 			try {
@@ -236,6 +303,11 @@ public class ReportHandler {
 					} else if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 						failed ++;
 					}
+					
+					grpexecutionTime += testCaseReport.getExecutionTime();
+					
+					addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime(), true);
+					addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime(), false);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -250,6 +322,7 @@ public class ReportHandler {
 		testSuiteStats.setFailedRuns(failruns);
 		testSuiteStats.setExecutionTime(endTime - startTime);
 		testSuiteStats.setTotalSuiteRuns(1);
+		testSuiteStats.setActualExecutionTime(grpexecutionTime);
 		
 		acontext.clearTestResults();
 		
@@ -375,6 +448,55 @@ public class ReportHandler {
                 	logger.severe(ExceptionUtils.getStackTrace(e));
                 }
             }
+        }
+        catch (IOException ioe)
+        {
+        	logger.severe(ExceptionUtils.getStackTrace(ioe));
+            return;
+        }
+    }
+    
+    /**
+     * @param zipFile
+     * @param directoryToExtractTo Provides file unzip functionality
+     */
+    public static void zipDirectory(File directory, final String fileFilter, String zipFileName)
+    {
+        try
+        {
+            if (!directory.exists() || !directory.isDirectory())
+            {
+                directory.mkdirs();
+                logger.info("Invalid Directory provided for zipping...");
+                return;
+            }
+            File zipFile = new File(directory, zipFileName);
+            FileOutputStream fos = new FileOutputStream(zipFile);
+        	ZipOutputStream zos = new ZipOutputStream (fos);
+        	
+        	File[] files = directory.listFiles(new FilenameFilter() {
+				public boolean accept(File folder, String name) {
+					return name.toLowerCase().endsWith(fileFilter);
+				}
+			});
+        	
+        	for (File file : files) {
+        		FileInputStream fis = new FileInputStream(file);
+        		ZipEntry zipEntry = new ZipEntry(file.getName());
+        		zos.putNextEntry(zipEntry);
+
+        		byte[] bytes = new byte[1024];
+        		int length;
+        		while ((length = fis.read(bytes)) >= 0) {
+        			zos.write(bytes, 0, length);
+        		}
+
+        		zos.closeEntry();
+        		fis.close();
+			}
+        	
+            zos.close();
+			fos.close();
         }
         catch (IOException ioe)
         {
@@ -546,6 +668,9 @@ public class ReportHandler {
 						testCaseReport.setRequestHeaders(build.toString());
 					}
 					grpexecutionTime += testCaseReport.getExecutionTime();
+					
+					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), true);
+					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), false);
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -572,6 +697,7 @@ public class ReportHandler {
 				allTestCases.put(entry.getKey(), reports);
 				
 				testSuiteStats.getGroupStats().add(testGroupStats);
+				testSuiteStats.setActualExecutionTime(testSuiteStats.getActualExecutionTime() + grpexecutionTime);
 				
 				if(firstCompareCopy==null) {
 					try
@@ -623,10 +749,10 @@ public class ReportHandler {
 			                fwriter.write(writer.toString());
 			                fwriter.close();
 			                
-			                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+			                /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
 			                {
 			                	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
-			                }
+			                }*/
 			            }
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -646,7 +772,6 @@ public class ReportHandler {
 			testSuiteStats.setFailedRuns(failruns);
 			testSuiteStats.setTotalUserSuiteRuns(1);
 			testSuiteStats.setTotalSuiteRuns(1);
-			testSuiteStats.setExecutionTime(0L);
 		} else {
 			TestSuiteStats tempst = new TestSuiteStats();
 			tempst.setTotalTestCount(total);
@@ -655,14 +780,14 @@ public class ReportHandler {
 			tempst.setTotalRuns(totruns);
 			tempst.setFailedRuns(failruns);
 			tempst.setTotalSuiteRuns(1);
-			tempst.setExecutionTime(0L);
 			testSuiteStats.updateStats(tempst, true);
 		}
 		
 		acontext.getFinalTestResults().get("Run-"+ runNumber).clear();
 	}
 
-	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, int numberOfRuns) {
+	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, 
+			int numberOfRuns, String prefix, boolean isLoadTestingEnabled) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		
 		VelocityContext context = new VelocityContext();
@@ -731,6 +856,8 @@ public class ReportHandler {
                 
                 context.put("thisFile", reportFileName.replaceFirst(".html", ""));
                 context.put("isShowTable", false);
+                context.put("runPrefix", prefix==null?"":prefix);
+                context.put("isLoadTestingEnabled", isLoadTestingEnabled);
                 
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
@@ -740,10 +867,10 @@ public class ReportHandler {
                 fwriter.write(writer.toString());
                 fwriter.close();
                 
-                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
                 	distributedTestStatus.getReportFileContent().put(reportFileName, writer.toString());
-                }
+                }*/
             }
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -753,7 +880,8 @@ public class ReportHandler {
 		return testSuiteStats;
 	}
 
-	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName) {
+	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, String prefix,
+			boolean isLoadTestingEnabled) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
@@ -866,6 +994,9 @@ public class ReportHandler {
 						testCaseReport.setRequestHeaders(build.toString());
 					}
 					grpexecutionTime += testCaseReport.getExecutionTime();
+					
+					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), true);
+					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), false);
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -892,6 +1023,7 @@ public class ReportHandler {
 				allTestCases.put(entry.getKey(), reports);
 				
 				testSuiteStats.getGroupStats().add(testGroupStats);
+				testSuiteStats.setActualExecutionTime(testSuiteStats.getActualExecutionTime() + grpexecutionTime);
 				
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -906,7 +1038,6 @@ public class ReportHandler {
 			testSuiteStats.setSkippedTestCount(skipped);
 			testSuiteStats.setTotalRuns(totruns);
 			testSuiteStats.setFailedRuns(failruns);
-			testSuiteStats.setExecutionTime(endTime - startTime);
 			testSuiteStats.setTotalUserSuiteRuns(1);
 			testSuiteStats.setTotalSuiteRuns(1);
 		} else {
@@ -916,7 +1047,6 @@ public class ReportHandler {
 			tempst.setSkippedTestCount(skipped);
 			tempst.setTotalRuns(totruns);
 			tempst.setFailedRuns(failruns);
-			tempst.setExecutionTime(endTime - startTime);
 			tempst.setTotalSuiteRuns(1);
 			testSuiteStats.updateStats(tempst, true);
 		}
@@ -939,6 +1069,7 @@ public class ReportHandler {
 		
 		try
 		{
+			testSuiteStats.setExecutionTime(endTime - startTime);
 			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 		} catch (Exception e) {
@@ -981,6 +1112,8 @@ public class ReportHandler {
                 
                 context.put("thisFile", orf.replaceFirst(".html", ""));
                 context.put("isShowTable", true);
+                context.put("runPrefix", prefix==null?"":prefix);
+                context.put("isLoadTestingEnabled", isLoadTestingEnabled);
                 
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
@@ -990,10 +1123,10 @@ public class ReportHandler {
                 fwriter.write(writer.toString());
                 fwriter.close();
                 
-                if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
                 	distributedTestStatus.getReportFileContent().put(orf, writer.toString());
-                }
+                }*/
             }
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1001,5 +1134,63 @@ public class ReportHandler {
 		acontext.clearTestResults();
 		
 		return testSuiteStats;
+	}
+
+	public void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled) {
+		
+		deducePercentileTimes();
+		
+		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+		
+		VelocityContext context = new VelocityContext();
+		
+		try
+		{
+			String reportingJson = new ObjectMapper().writeValueAsString(testExecutionTimes90Percentile);
+			context.put("testcaseTAReports", reportingJson);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		
+		try
+		{
+			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            if (resourcesIS != null)
+            {
+            	
+            	File basePath = null;
+            	if(config.getOutFilesBasePath()!=null)
+            		basePath = new File(config.getOutFilesBasePath());
+            	else
+            	{
+            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+            		basePath = new File(url.getPath());
+            	}
+            	File resource = new File(basePath, config.getOutFilesDir());
+                
+                VelocityEngine engine = new VelocityEngine();
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.init();
+                
+                context.put("isLoadTestingEnabled", isLoadTestingEnabled);
+                
+                StringWriter writer = new StringWriter();
+                engine.mergeTemplate("/gatf-templates/index-ta.vm", context, writer);
+
+                prefix = prefix==null?"":prefix;
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                        + SystemUtils.FILE_SEPARATOR + prefix + "index-ta.html")));
+                fwriter.write(writer.toString());
+                fwriter.close();
+                
+                /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
+                {
+                	distributedTestStatus.getReportFileContent().put("", writer.toString());
+                }*/
+            }
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
 	}
 }

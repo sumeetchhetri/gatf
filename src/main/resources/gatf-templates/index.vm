@@ -202,6 +202,10 @@
 							</div>
 						</div> 
 					</div>
+					
+					<div class="panel panel-default">
+						<iframe id="dtiframe-ta" style="width:100%" frameborder="0" scrolling="no"></iframe>
+					</div>
 				</div>
 				<!-- /.row -->
 			</div>
@@ -245,10 +249,16 @@
 			var compareEnabled = $compareEnabled;
 
 			var isShowTable = $isShowTable;
+			
+			var isShowTableTA = false;
 
 			var isShowOthers = true;
 			
 			var thisFile = "$thisFile";
+			
+			var runPrefix = "$runPrefix";
+			
+			var isLoadTestingEnabled = $isLoadTestingEnabled;		
 			
 		</script>
 	</body>

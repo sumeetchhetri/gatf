@@ -39,7 +39,9 @@ public class TestSuiteStats implements Serializable {
 	
 	private Integer skippedTestCount;
 	
-	private Long executionTime;
+	private Long executionTime = 0L;
+	
+	private Long actualExecutionTime = 0L;
 	
 	private Integer totalRuns;
 	
@@ -83,6 +85,14 @@ public class TestSuiteStats implements Serializable {
 		this.executionTime = executionTime;
 	}
 
+	public Long getActualExecutionTime() {
+		return actualExecutionTime;
+	}
+
+	public void setActualExecutionTime(Long actualExecutionTime) {
+		this.actualExecutionTime = actualExecutionTime;
+	}
+
 	public Integer getTotalRuns() {
 		return totalRuns;
 	}
@@ -124,7 +134,7 @@ public class TestSuiteStats implements Serializable {
 	}
 
 	public void updateStats(TestSuiteStats stats, boolean isUserRuns) {
-		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
+		setActualExecutionTime(getActualExecutionTime() + stats.getActualExecutionTime());
 		setFailedRuns(getFailedRuns() +  stats.getFailedRuns());
 		setFailedTestCount(getFailedTestCount() + stats.getFailedTestCount());
 		setTotalRuns(getTotalRuns() + stats.getTotalRuns());

@@ -108,6 +108,8 @@ public class GatfExecutorConfig implements Serializable {
 	
 	private String[] orderedFiles;
 	
+	private boolean isOrderByFileName;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -413,6 +415,14 @@ public class GatfExecutorConfig implements Serializable {
 
 	public void setOrderedFiles(String[] orderedFiles) {
 		this.orderedFiles = orderedFiles;
+	}
+
+	public boolean isOrderByFileName() {
+		return isOrderByFileName;
+	}
+
+	public void setOrderByFileName(boolean isOrderByFileName) {
+		this.isOrderByFileName = isOrderByFileName;
 	}
 
 	public void validate()

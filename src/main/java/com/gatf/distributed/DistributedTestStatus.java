@@ -15,7 +15,9 @@ public class DistributedTestStatus implements Serializable {
 	
 	private String identifier;
 	
-	private Map<String, String> reportFileContent = new HashMap<String, String>();
+	private String zipFileName;
+	
+	private Map<String, List<Long>> percentileTimes;
 	
 	private TestSuiteStats suiteStats; 
 	
@@ -35,19 +37,27 @@ public class DistributedTestStatus implements Serializable {
 		this.identifier = identifier;
 	}
 
-	public Map<String, String> getReportFileContent() {
-		return reportFileContent;
-	}
-
-	public void setReportFileContent(Map<String, String> reportFileContent) {
-		this.reportFileContent = reportFileContent;
-	}
-
 	public TestSuiteStats getSuiteStats() {
 		return suiteStats;
 	}
 
 	public void setSuiteStats(TestSuiteStats suiteStats) {
 		this.suiteStats = suiteStats;
+	}
+
+	public String getZipFileName() {
+		return zipFileName;
+	}
+
+	public void setZipFileName(String zipFileName) {
+		this.zipFileName = zipFileName;
+	}
+
+	public Map<String, List<Long>> getPercentileTimes() {
+		return percentileTimes;
+	}
+
+	public void setPercentileTimes(Map<String, List<Long>> percentileTimes) {
+		this.percentileTimes = percentileTimes;
 	}
 }

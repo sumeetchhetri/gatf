@@ -22,9 +22,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.AlphanumComparator;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
+
+import edu.emory.mathcs.backport.java.util.Collections;
 
 /**
  * @author Sumeet Chhetri
@@ -53,6 +56,7 @@ public abstract class TestCaseFinder {
 	{
 		String[] ignoreFiles = context.getGatfExecutorConfig().getIgnoreFiles();
 		String[] orderedFiles = context.getGatfExecutorConfig().getOrderedFiles();
+		boolean isOrderByFileName = context.getGatfExecutorConfig().isOrderByFileName();
 		
 		List<TestCase> testcases = new ArrayList<TestCase>();
 		if (dir.isDirectory()) {
@@ -84,8 +88,25 @@ public abstract class TestCaseFinder {
 				for (File file : files) {
 					allFiles.add(file);
 				}
+				AlphanumComparator comparator = new AlphanumComparator();
+				if(isOrderByFileName) {
+					Collections.sort(allFiles, comparator);
+				}
 			}
 
+			if(ignoreFiles!=null)
+			{
+				for (String fileN : ignoreFiles) {
+					fileN = fileN.trim();
+					if(fileN.isEmpty()) {
+						continue;
+					}
+					if(fileN.equals("*") || fileN.equals("*.*")) {
+						return testcases;
+					}
+				}
+			}
+			
 			for (File file : allFiles) {
 				boolean isIgnore = false;
 				
@@ -96,9 +117,8 @@ public abstract class TestCaseFinder {
 						if(fileN.isEmpty()) {
 							continue;
 						}
-						if(fileN.equals("*") || fileN.equals("*.*")) {
-							isIgnore = true;
-						} else if(fileN.startsWith("*.")) {
+						
+						if(fileN.startsWith("*.")) {
 							String ext = fileN.substring(2);
 							if(file.getName().endsWith(ext)) {
 								isIgnore = true; 

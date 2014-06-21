@@ -1,5 +1,7 @@
 package com.gatf.distributed;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -7,10 +9,15 @@ import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.URL;
+import java.util.UUID;
 import java.util.logging.Logger;
+
+import org.apache.commons.io.IOUtils;
 
 import com.gatf.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.report.ReportHandler;
 
 public class DistributedGatfListener {
 
@@ -99,7 +106,28 @@ public class DistributedGatfListener {
 				logger.info("Started executing GATF tests...");
 				GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
 				DistributedTestStatus report = mojo.handleDistributedTests(context, tContext);
+				
+				String fileName = UUID.randomUUID().toString()+".zip";
+				report.setZipFileName(fileName);
+				
 				oos.writeObject(report);
+				oos.flush();
+				logger.info("Writing GATF results...");
+				
+				File basePath = null;
+	        	if(context.getConfig().getOutFilesBasePath()!=null)
+	        		basePath = new File(context.getConfig().getOutFilesBasePath());
+	        	else
+	        	{
+	        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+	        		basePath = new File(url.getPath());
+	        	}
+	        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
+	        	
+				ReportHandler.zipDirectory(resource, ".html", fileName);
+				
+				File zipFile = new File(resource, fileName);
+				IOUtils.copy(new FileInputStream(zipFile), oos);
 				oos.flush();
 				logger.info("Writing GATF results...");
 			}
