@@ -1,4 +1,4 @@
-package com.gatf.ui;
+ package com.gatf.ui;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -507,8 +507,32 @@ public class GatfConfigToolMojo extends AbstractMojo {
 											throw new RuntimeException("Testcase with same name already exists");
 										}
 									}
+				        			tcs.add(testCase);
 			        			}
-			        			tcs.add(testCase);
+			        			else
+			        			{
+			        				boolean found = false;
+			        				for (TestCase tc : tcs) {
+										if(tc.getName().equals(testCase.getName())) {
+											found = true;
+											break;
+										}
+									}
+			        				
+			        				if(!found) {
+			        					throw new RuntimeException("Testcase with name does not exist");
+			        				}
+			        				
+			        				List<TestCase> ttcs = new ArrayList<TestCase>();
+			        				for (TestCase tc : tcs) {
+										if(tc.getName().equals(testCase.getName())) {
+											ttcs.add(testCase);
+										} else {
+											ttcs.add(tc);
+										}
+									}
+			        				tcs = ttcs;
+			        			}
 			        			
 			        			XStream xstream = new XStream(
 		                			new XppDriver() {

@@ -621,7 +621,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			if(configuration.isDistributedLoadTests() && configuration.getDistributedNodes()!=null
 					&& configuration.getDistributedNodes().length>0 && numberOfRuns>1)
 			{
-				distTasks = new ArrayList<FutureTask<DistributedTestStatus>>();
 				distConnections = new ArrayList<DistributedConnection>();
 				
 				for (String node : configuration.getDistributedNodes()) {
@@ -633,6 +632,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				
 				if(distConnections.size()>0)
 				{
+					distTasks = new ArrayList<FutureTask<DistributedTestStatus>>();
+					
 					int dnumruns = 0, dtotnds = 0;
 					if(numberOfRuns<distConnections.size()) {
 						dtotnds = numberOfRuns - 1;
@@ -673,7 +674,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 		}
 		
+		boolean distributedTests = false;
 		if(distTasks!=null && distTasks.size()>0) {
+			distributedTests = true;
 			initSuiteContextForDistributedTests(context, numberOfRuns);
 			if(numberOfRuns==1) {
 				for (TestCase tc : allTestCases) {
@@ -834,7 +837,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		
 		getLog().info(loadStats.show());
 		
-		if(distTasks!=null) {
+		if(distTasks!=null && distTasks.size()>0) {
 			TestSuiteStats finalDistStats = loadStats;
 			List<String> nodes = new ArrayList<String>();
 			List<String> nodesurls = new ArrayList<String>();
