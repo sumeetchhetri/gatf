@@ -92,11 +92,10 @@ import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.generator.postman.PostmanCollection;
 import com.gatf.ui.GatfConfigToolMojo;
+import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.DomDriver;
-import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
 import edu.emory.mathcs.backport.java.util.Arrays;
@@ -649,23 +648,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	                    	XStream xstream = new XStream(
 	                			new XppDriver() {
 	                				public HierarchicalStreamWriter createWriter(Writer out) {
-	                					return new PrettyPrintWriter(out) {
-	                						boolean cdata = false;
-	                						public void startNode(String name, Class clazz){
-	                							super.startNode(name, clazz);
-	                							cdata = (name.equals("content") || name.equals("expectedResContent"));
-	                						}
-	                						protected void writeText(QuickWriter writer, String text) {
-	                							if(cdata) {
-	                								writer.write("<![CDATA[");
-	                								writer.write(text);
-	                								writer.write("]]>");
-	                							} else {
-	                								writer.write(text);
-	                							}
-	                						}
-	                					};
-	                				}
+	                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+		                			}
 	                			}
 	                		);
 	                		xstream.processAnnotations(new Class[]{TestCase.class});
@@ -1213,7 +1197,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     		if(args[0].equals("-generator") && !args[1].trim().isEmpty())
     		{
 	    		InputStream io = new FileInputStream(args[1]);
-	    		XStream xstream = new XStream(new DomDriver());
+	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
 	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 	    		xstream.alias("testPaths", String[].class);
 	    		xstream.alias("testPath", String.class);
@@ -1397,23 +1381,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo
                             	XStream xstream = new XStream(
                         			new XppDriver() {
                         				public HierarchicalStreamWriter createWriter(Writer out) {
-                        					return new PrettyPrintWriter(out) {
-                        						boolean cdata = false;
-                        						public void startNode(String name, @SuppressWarnings("rawtypes") Class clazz){
-                        							super.startNode(name, clazz);
-                        							cdata = (name.equals("content") || name.equals("expectedResContent"));
-                        						}
-                        						protected void writeText(QuickWriter writer, String text) {
-                        							if(cdata) {
-                        								writer.write("<![CDATA[");
-                        								writer.write(text);
-                        								writer.write("]]>");
-                        							} else {
-                        								writer.write(text);
-                        							}
-                        						}
-                        					};
-                        				}
+		                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+			                			}
                         			}
                         		);
                         		xstream.processAnnotations(new Class[]{TestCase.class});

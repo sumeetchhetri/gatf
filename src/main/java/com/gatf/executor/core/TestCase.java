@@ -55,6 +55,8 @@ public class TestCase implements Serializable {
 
 	private static final Logger logger = Logger.getLogger(TestCase.class);
 	
+	public static final String[] CDATA_NODES = new String[]{"content","expectedResContent"};
+	
 	@XStreamAsAttribute
 	private String baseUrl;
 	

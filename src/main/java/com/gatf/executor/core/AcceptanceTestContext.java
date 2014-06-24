@@ -430,7 +430,7 @@ public class AcceptanceTestContext {
 			Assert.assertNotNull("Testdata configuration file not found...", file);
 			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
-			XStream xstream = new XStream(new DomDriver());
+			XStream xstream = new XStream(new DomDriver("UTF-8"));
 			xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 			xstream.alias("args", String[].class);

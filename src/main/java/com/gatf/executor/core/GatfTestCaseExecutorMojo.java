@@ -440,7 +440,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				File basePath = new File(testCasesBasePath);
 				resource = new File(basePath, configFile);
 				if(resource.exists()) {
-					XStream xstream = new XStream(new DomDriver());
+					XStream xstream = new XStream(new DomDriver("UTF-8"));
 					xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
 							 GatfTestDataConfig.class, GatfTestDataProvider.class});
 					xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
@@ -856,12 +856,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 						finalDistStats.updateStats(stats.getSuiteStats(), false);
 						
 						reportHandler.mergePercentileTimes(stats.getPercentileTimes());
-						
-						/*for (Map.Entry<String, String> fileContent : stats.getReportFileContent().entrySet()) {
-							getLog().info("Writing Distributed file to ouput directory....");
-							reportHandler.writeToReportFile(fileContent.getKey(), fileContent.getValue(), 
-									context.getGatfExecutorConfig());
-						}*/
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -1420,8 +1414,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				}
 			}
 			
-			loadTestRunNum++;
-			
 			initSuiteContextForDistributedTests(context, numberOfRuns);
 			
 			if(done) {
@@ -1434,6 +1426,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		}
 		
 		if(isLoadTestingEnabled) {
+			loadStats.setExecutionTime(System.currentTimeMillis() - startTime);
 			reportHandler.doFinalLoadTestReport(runPrefix+"-", loadStats, context, null, null);
 		}
 		
@@ -1459,7 +1452,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	
 	public static GatfExecutorConfig getConfig(InputStream resource)
 	{
-		XStream xstream = new XStream(new DomDriver());
+		XStream xstream = new XStream(new DomDriver("UTF-8"));
 		xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
 				 GatfTestDataConfig.class, GatfTestDataProvider.class});
 		xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
@@ -1486,7 +1479,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	
 	public static String getConfigStr(GatfExecutorConfig configuration)
 	{
-		XStream xstream = new XStream(new DomDriver());
+		XStream xstream = new XStream(new DomDriver("UTF-8"));
 		xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
 				 GatfTestDataConfig.class, GatfTestDataProvider.class});
 		xstream.alias("gatf-testdata-source", GatfTestDataSource.class);

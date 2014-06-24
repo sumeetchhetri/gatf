@@ -49,10 +49,9 @@ import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
+import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
 
 
@@ -88,7 +87,6 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	public GatfConfigToolMojo() {
 	}
 
-	@SuppressWarnings("rawtypes")
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		HttpServer server = new HttpServer();
 
@@ -461,22 +459,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        			XStream xstream = new XStream(
 			                			new XppDriver() {
 			                				public HierarchicalStreamWriter createWriter(Writer out) {
-			                					return new PrettyPrintWriter(out) {
-			                						boolean cdata = false;
-													public void startNode(String name, Class clazz){
-			                							super.startNode(name, clazz);
-			                							cdata = (name.equals("content") || name.equals("expectedResContent"));
-			                						}
-			                						protected void writeText(QuickWriter writer, String text) {
-			                							if(cdata) {
-			                								writer.write("<![CDATA[");
-			                								writer.write(text);
-			                								writer.write("]]>");
-			                							} else {
-			                								writer.write(text);
-			                							}
-			                						}
-			                					};
+			                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
 			                				}
 			                			}
 			                		);
@@ -537,22 +520,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        			XStream xstream = new XStream(
 		                			new XppDriver() {
 		                				public HierarchicalStreamWriter createWriter(Writer out) {
-		                					return new PrettyPrintWriter(out) {
-		                						boolean cdata = false;
-		                						public void startNode(String name, Class clazz){
-		                							super.startNode(name, clazz);
-		                							cdata = (name.equals("content") || name.equals("expectedResContent"));
-		                						}
-		                						protected void writeText(QuickWriter writer, String text) {
-		                							if(cdata) {
-		                								writer.write("<![CDATA[");
-		                								writer.write(text);
-		                								writer.write("]]>");
-		                							} else {
-		                								writer.write(text);
-		                							}
-		                						}
-		                					};
+		                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
 		                				}
 		                			}
 		                		);
