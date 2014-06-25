@@ -161,7 +161,7 @@
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body" style="height:auto;overflow:scroll;overflow-y:hidden">  
-								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" onclick="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" onclick="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" onclick="showHide('legend-cont')">Legend</span></div><br/>
+								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" onclick="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" onclick="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" onclick="showHide('legend-cont')">Legend</span>&nbsp;&nbsp;90%<input id="ninetyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>&nbsp;&nbsp;50%<input id="fiftyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/></div><br/>
 								<div class="flot-chart-content" id="flot-line-chart" style="width:auto;height:500px"></div>
 							 </div>
 						</div>
@@ -258,7 +258,7 @@
 			
 			var runPrefix = "$runPrefix";
 			
-			var isLoadTestingEnabled = $isLoadTestingEnabled;		
+			var isShowTAFrame = true;	
 			
 		</script>
 	</body>

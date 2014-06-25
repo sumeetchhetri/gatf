@@ -20,12 +20,10 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.AlphanumComparator;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.report.TestCaseReport;
 
 import edu.emory.mathcs.backport.java.util.Collections;
 
@@ -160,17 +158,7 @@ public abstract class TestCaseFinder {
 							runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
 						}
 						
-						if(runNums!=null && runNums>1)
-						{
-							for (int i = 0; i < runNums; i++)
-							{
-								context.getFinalTestResults().put("Run-" + (i+1), new ConcurrentLinkedQueue<TestCaseReport>());
-							}
-						}
-						else
-						{
-							context.getFinalTestResults().put(file.getName(), new ConcurrentLinkedQueue<TestCaseReport>());
-						}
+						context.initializeResultsHolders(runNums, file.getName());
 						testcases.addAll(testcasesTemp);
 					}
 				} catch (Exception e) {

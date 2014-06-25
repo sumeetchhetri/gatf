@@ -1,12 +1,9 @@
 package com.gatf.distributed;
 
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.TestSuiteStats;
 
 public class DistributedTestStatus implements Serializable {
@@ -17,7 +14,9 @@ public class DistributedTestStatus implements Serializable {
 	
 	private String zipFileName;
 	
-	private Map<String, List<Long>> percentileTimes;
+	private Map<String, List<Long>> testPercentileTimes;
+	
+	private Map<String, List<Long>> runPercentileTimes;
 	
 	private TestSuiteStats suiteStats; 
 	
@@ -53,11 +52,19 @@ public class DistributedTestStatus implements Serializable {
 		this.zipFileName = zipFileName;
 	}
 
-	public Map<String, List<Long>> getPercentileTimes() {
-		return percentileTimes;
+	public Map<String, List<Long>> getTestPercentileTimes() {
+		return testPercentileTimes;
 	}
 
-	public void setPercentileTimes(Map<String, List<Long>> percentileTimes) {
-		this.percentileTimes = percentileTimes;
+	public void setTestPercentileTimes(Map<String, List<Long>> percentileTimes) {
+		this.testPercentileTimes = percentileTimes;
+	}
+
+	public Map<String, List<Long>> getRunPercentileTimes() {
+		return runPercentileTimes;
+	}
+
+	public void setRunPercentileTimes(Map<String, List<Long>> runPercentileTimes) {
+		this.runPercentileTimes = runPercentileTimes;
 	}
 }

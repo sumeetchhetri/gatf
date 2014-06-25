@@ -158,16 +158,22 @@
 			
 			var testcaseTAReports = $testcaseTAReports;
 			
-			var isLoadTestingEnabled = $isLoadTestingEnabled;	
+			var runTAReports = $runTAReports;
+			
+			var isShowTAFrame = false;
+			
+			var isShowTAWrapper = $isShowTAWrapper;
 			
 			$(document).ready(function() {
 				showTATable();
-				if(isLoadTestingEnabled)
+				if(isShowTAWrapper)
 				{
 					$('#wrapper').show();
+					window.parent.postMessage(["hideTAFrame", ''], "*");
 				}
 				var panelHeight =	$('#dataTables-ta').parent().height();
 				window.parent.postMessage(["setTAHeight", panelHeight], "*");
+				window.parent.postMessage(["sendRunReport", JSON.stringify(runTAReports)], "*");
 			});
 			
 		</script>

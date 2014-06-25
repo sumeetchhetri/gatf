@@ -674,9 +674,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 		}
 		
-		boolean distributedTests = false;
 		if(distTasks!=null && distTasks.size()>0) {
-			distributedTests = true;
 			initSuiteContextForDistributedTests(context, numberOfRuns);
 			if(numberOfRuns==1) {
 				for (TestCase tc : allTestCases) {
@@ -855,7 +853,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 						nodesurls.add(stats.getIdentifier() + "-index.html");
 						finalDistStats.updateStats(stats.getSuiteStats(), false);
 						
-						reportHandler.mergePercentileTimes(stats.getPercentileTimes());
+						reportHandler.mergeTestPercentileTimes(stats.getTestPercentileTimes());
+						reportHandler.mergeRunPercentileTimes(stats.getRunPercentileTimes());
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
@@ -1435,8 +1434,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		}
 		
 		DistributedTestStatus finalStats = reportHandler.getDistributedTestStatus();
-		Map<String, List<Long>> percentileTimes = reportHandler.getPercentileTimes();
-		finalStats.setPercentileTimes(percentileTimes);
+		finalStats.setTestPercentileTimes(reportHandler.getTestPercentileTimes());
+		finalStats.setRunPercentileTimes(reportHandler.getRunPercentileTimes());
 		finalStats.setSuiteStats(loadStats);
 		return finalStats;
 	}

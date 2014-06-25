@@ -156,6 +156,8 @@
 
 			var isShowOthers = false;
 			
+			var isShowTAFrame = false;
+			
 			$(document).ready(function() {
 				loadStats('All');
 				var panelHeight =	$(dtdatatable).parent().height();

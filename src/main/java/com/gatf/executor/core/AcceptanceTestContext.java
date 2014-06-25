@@ -37,6 +37,7 @@ import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
@@ -852,5 +853,20 @@ public class AcceptanceTestContext {
 	private Class loadCustomClass(String className) throws ClassNotFoundException
 	{
 		return getProjectClassLoader().loadClass(className);
+	}
+	
+	public void initializeResultsHolders(int runNums, String fileName)
+	{
+		if(runNums>1)
+		{
+			for (int i = 0; i < runNums; i++)
+			{
+				finalTestResults.put("Run-" + (i+1), new ConcurrentLinkedQueue<TestCaseReport>());
+			}
+		}
+		else
+		{
+			finalTestResults.put(fileName, new ConcurrentLinkedQueue<TestCaseReport>());
+		}
 	}
 }

@@ -87,9 +87,9 @@ public class ReportHandler {
 	
 	private TestSuiteStats testSuiteStats = new TestSuiteStats();
 	
-	private Map<String, List<Long>> testExecutionTimes90Percentile = new HashMap<String, List<Long>>();
+	private TestExecutionPercentile testPercentiles = new TestExecutionPercentile();
 	
-	private Map<String, List<Long>> testExecutionTimes50Percentile = new HashMap<String, List<Long>>();
+	private TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
 	
 	public DistributedTestStatus getDistributedTestStatus() {
 		return distributedTestStatus;
@@ -102,64 +102,7 @@ public class ReportHandler {
 		context.clearTestResults();
 	}
 	
-	private void addExecutionTime(String testName, Long time, boolean is90)
-	{
-		Map<String, List<Long>> mapo = is90?testExecutionTimes90Percentile:testExecutionTimes50Percentile;
-		if(!mapo.containsKey(testName)) {
-			mapo.put(testName, new ArrayList<Long>());
-		}
-		List<Long> times = mapo.get(testName);
-		if(times.size()==1000)
-		{
-			Collections.sort(times);
-			int index = Math.round((float)(is90?0.9:0.5) * times.size());
-			times = times.subList(index+1, times.size());
-			mapo.put(testName, times);
-		}
-		else
-		{
-			times.add(time);
-		}
-	}
 	
-	public void deducePercentileTimes()
-	{
-		Map<String, List<Long>> mapo = testExecutionTimes90Percentile;
-		for (Map.Entry<String, List<Long>> entry : mapo.entrySet()) {
-			List<Long> times90 = entry.getValue();
-			Collections.sort(times90);
-			int index = Math.round((float)0.9 * times90.size());
-			long time = times90.get(index-1);
-			times90.clear();
-			times90.add(time);
-			
-			List<Long> times50 = testExecutionTimes50Percentile.get(entry.getKey());
-			Collections.sort(times50);
-			index = Math.round((float)0.5 * times50.size());
-			time = times50.get(index-1);
-			times50.clear();
-			
-			times90.add(time);
-			mapo.put(entry.getKey(), times90);
-		}
-	}
-	
-	public Map<String, List<Long>> getPercentileTimes()
-	{
-		deducePercentileTimes();
-		return testExecutionTimes90Percentile;
-	}
-	
-	public void mergePercentileTimes(Map<String, List<Long>> times)
-	{
-		for (Map.Entry<String, List<Long>> entry : times.entrySet()) {
-			List<Long> times90 = testExecutionTimes90Percentile.get(entry.getKey());
-			List<Long> times50 = testExecutionTimes50Percentile.get(entry.getKey());
-			
-			times90.add(entry.getValue().get(0));
-			times50.add(entry.getValue().get(1));
-		}
-	}
 	
 	public void addToLoadTestResources(String prefix, int runNo, String url) {
 		LoadTestResource resource = new LoadTestResource();
@@ -306,8 +249,8 @@ public class ReportHandler {
 					
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime(), true);
-					addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime(), false);
+					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -669,8 +612,8 @@ public class ReportHandler {
 					}
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), true);
-					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), false);
+					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -995,8 +938,8 @@ public class ReportHandler {
 					}
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), true);
-					addExecutionTime(tesStat.getTestCaseName(), tesStat.getExecutionTime(), false);
+					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -1138,7 +1081,8 @@ public class ReportHandler {
 
 	public void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled) {
 		
-		deducePercentileTimes();
+		Map<String, List<Long>> testPercentileValues = testPercentiles.getPercentileTimes();
+		Map<String, List<Long>> runPercentileValues = runPercentiles.getPercentileTimes();
 		
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		
@@ -1146,8 +1090,39 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testExecutionTimes90Percentile);
+			String reportingJson = new ObjectMapper().writeValueAsString(testPercentileValues);
 			context.put("testcaseTAReports", reportingJson);
+			
+			if(testPercentileValues.size()>0)
+				context.put("isShowTAWrapper", testPercentileValues.values().iterator().next().size()>0);
+			else
+				context.put("isShowTAWrapper", false);
+			
+			if(runPercentileValues.size()>0)
+			{
+				List<Long> times90 = new ArrayList<Long>();
+				List<Long> times50 = new ArrayList<Long>();
+				for (List<Long> times : runPercentileValues.values()) {
+					times90.add(times.get(0));
+					times50.add(times.get(1));
+				}
+				
+				runPercentileValues.put("All", times90);
+				
+				Collections.sort(times90);
+				int index = Math.round((float)0.9 * times90.size());
+				long time = times90.get(index-1);
+				times90.clear();
+				times90.add(time);
+				
+				Collections.sort(times50);
+				index = Math.round((float)0.5 * times50.size());
+				time = times50.get(index-1);
+				times90.add(time);
+			}
+			
+			reportingJson = new ObjectMapper().writeValueAsString(runPercentileValues);
+			context.put("runTAReports", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -1192,5 +1167,25 @@ public class ReportHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public void mergeTestPercentileTimes(Map<String, List<Long>> times)
+	{
+		testPercentiles.mergePercentileTimes(times);
+	}
+	
+	public void mergeRunPercentileTimes(Map<String, List<Long>> times)
+	{
+		runPercentiles.mergePercentileTimes(times);
+	}
+	
+	public Map<String, List<Long>> getTestPercentileTimes()
+	{
+		return testPercentiles.getPercentileTimes();
+	}
+	
+	public Map<String, List<Long>> getRunPercentileTimes()
+	{
+		return runPercentiles.getPercentileTimes();
 	}
 }
