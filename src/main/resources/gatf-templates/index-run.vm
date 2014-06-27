@@ -140,6 +140,7 @@
 		<link href="css/prettify.css" rel="stylesheet">
 		<script type="text/javascript" src="js/gatf.js"></script>
 		<script type="text/javascript" src="js/diff_match_patch.js"></script>
+		<script type="text/javascript" src="js/jquery.blockUI.js"></script>
 		<script>
 			
 			var testcaseReports = $testcaseReports;

@@ -116,6 +116,28 @@ public class TestCaseExecutorUtil {
 		this.context = context;
 	}
 	
+	private TestCaseExecutorUtil(){}
+	
+	public static TestCaseExecutorUtil getSingleConnection(AcceptanceTestContext context)
+	{
+		int maxConns = 1;
+		
+		Builder builder = new AsyncHttpClientConfig.Builder();
+		builder.setConnectionTimeoutInMs(10000)
+				.setMaximumConnectionsPerHost(1)
+				.setMaximumConnectionsTotal(maxConns)
+				.setRequestTimeoutInMs(100000)
+				.setAllowPoolingConnection(true)
+				.setCompressionEnabled(false)
+				.setIOThreadMultiplier(2)
+				.build();
+		
+		TestCaseExecutorUtil util = new TestCaseExecutorUtil();
+		util.client = new AsyncHttpClient(builder.build());
+		util.context = context;
+		return util;
+	}
+	
 	public AcceptanceTestContext getContext() {
 		return context;
 	}
@@ -210,13 +232,13 @@ public class TestCaseExecutorUtil {
 			if(testCase.getSimulationNumber()>0 && context.getProviderTestDataMap()!=null 
 					&& !context.getProviderTestDataMap().isEmpty() 
 					&& context.getProviderTestDataMap()
-						.get(context.getGatfExecutorConfig().getSimulationUsersProviderName())!=null
+						.get(context.getGatfExecutorConfig().getAuthDataProvider())!=null
 					&& context.getGatfExecutorConfig().isAuthEnabled()
 					&& context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl())) 
 			{
 				String[] authParams = context.getGatfExecutorConfig().getAuthParamDetails();
 				List<Map<String, String>> testDataLst = context.getProviderTestDataMap()
-						.get(context.getGatfExecutorConfig().getSimulationUsersProviderName());
+						.get(context.getGatfExecutorConfig().getAuthDataProvider());
 				String userVal = null, passwordVal = null;
 				if(testDataLst.size()>=testCase.getSimulationNumber()) {
 					int index = testCase.getSimulationNumber();
@@ -675,5 +697,10 @@ public class TestCaseExecutorUtil {
 			
 			return testCaseReport;
 		}
+	}
+	
+	public void shutdown()
+	{
+		client.close();
 	}
 }

@@ -154,8 +154,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "testDataConfigFile")
 	private String testDataConfigFile;
 	
-	@Parameter(alias = "simulationUsersProviderName")
-	private String simulationUsersProviderName;
+	@Parameter(alias = "authDataProvider")
+	private String authDataProvider;
 	
 	@Parameter(alias = "compareEnabled")
 	private boolean compareEnabled;
@@ -290,8 +290,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		this.testDataConfigFile = testDataConfigFile;
 	}
 
-	public void setSimulationUsersProviderName(String simulationUsersProviderName) {
-		this.simulationUsersProviderName = simulationUsersProviderName;
+	public void setAuthDataProvider(String authDataProvider) {
+		this.authDataProvider = authDataProvider;
 	}
 
 	public void setCompareEnabled(boolean compareEnabled) {
@@ -419,7 +419,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setHttpRequestTimeout(httpRequestTimeout);
 		configuration.setConcurrentUserSimulationNum(concurrentUserSimulationNum);
 		configuration.setTestDataConfigFile(testDataConfigFile);
-		configuration.setSimulationUsersProviderName(simulationUsersProviderName);
+		configuration.setAuthDataProvider(authDataProvider);
 		configuration.setCompareEnabled(compareEnabled);
 		configuration.setEnabled(enabled);
 		configuration.setLoadTestingEnabled(loadTestingEnabled);
@@ -872,6 +872,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
 			}
 		}
+		
+		testCaseExecutorUtil.shutdown();
 	}
 	
 	
@@ -1498,5 +1500,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		xstream.alias("string", String.class);
 		
 		return xstream.toXML(configuration);
+	}
+
+	public AcceptanceTestContext getContext() {
+		return context;
 	}
 }

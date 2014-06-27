@@ -83,7 +83,7 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	void initializeSuiteContextWithnum(int index) {
+	public void initializeSuiteContextWithnum(int index) {
 		suiteWorkflowContext.clear();
 		suiteWorkflowScenarioContext.clear();
 		cookies.clear();

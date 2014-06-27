@@ -747,6 +747,7 @@ public class ReportHandler {
 		}
 
 		context.put("testcaseReports", "[]");
+		context.put("isMultipleRuns", acontext.getGatfExecutorConfig().getConcurrentUserSimulationNum()>1);
 		
 		try
 		{
@@ -1002,6 +1003,8 @@ public class ReportHandler {
 			e.printStackTrace();
 		}
 		
+		context.put("isMultipleRuns", acontext.getGatfExecutorConfig().getConcurrentUserSimulationNum()>1);
+		
 		try
 		{
 			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
@@ -1187,5 +1190,24 @@ public class ReportHandler {
 	public Map<String, List<Long>> getRunPercentileTimes()
 	{
 		return runPercentiles.getPercentileTimes();
+	}
+	
+	public static void setTestCaseReportProps(TestCaseReport testCaseReport)
+	{
+		if(testCaseReport.getTestCase().getHeaders()!=null)
+		{
+			StringBuilder build = new StringBuilder();
+			for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
+				build.append(headerVal.getKey());
+				build.append(": ");
+	            build.append(headerVal.getValue());
+	            build.append("\n");
+	            
+	            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
+	            	testCaseReport.setRequestContentType(headerVal.getValue());
+	            }
+			}
+			testCaseReport.setRequestHeaders(build.toString());
+		}
 	}
 }

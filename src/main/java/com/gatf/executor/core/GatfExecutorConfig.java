@@ -77,7 +77,7 @@ public class GatfExecutorConfig implements Serializable {
 	
 	private String testDataConfigFile;
 	
-	private String simulationUsersProviderName;
+	private String authDataProvider;
 	
 	private boolean compareEnabled;
 	
@@ -305,12 +305,12 @@ public class GatfExecutorConfig implements Serializable {
 		this.testDataConfigFile = testDataConfigFile;
 	}
 
-	public String getSimulationUsersProviderName() {
-		return simulationUsersProviderName;
+	public String getAuthDataProvider() {
+		return authDataProvider;
 	}
 
-	public void setSimulationUsersProviderName(String simulationUsersProviderName) {
-		this.simulationUsersProviderName = simulationUsersProviderName;
+	public void setAuthDataProvider(String authDataProvider) {
+		this.authDataProvider = authDataProvider;
 	}
 
 	public Integer getCompareBaseUrlsNum() {
