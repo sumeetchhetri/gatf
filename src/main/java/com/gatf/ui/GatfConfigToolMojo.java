@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.ws.rs.HttpMethod;
+import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -27,6 +30,7 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -36,6 +40,8 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.GatfPlugin;
+import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
@@ -52,11 +58,12 @@ import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.generator.core.GatfConfiguration;
+import com.gatf.generator.core.GatfTestGeneratorMojo;
 import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.XppDriver;
-import org.apache.commons.lang.StringUtils;
 
 
 /**
@@ -90,6 +97,8 @@ public class GatfConfigToolMojo extends AbstractMojo {
 
 	private AcceptanceTestContext context = null;
 	
+	private TestCase authTestCase = null;
+	
 	public GatfConfigToolMojo() {
 	}
 
@@ -105,7 +114,34 @@ public class GatfConfigToolMojo extends AbstractMojo {
         
         final GatfConfigToolMojo mojo = this;
         
-        createConfigFileIfNotExists(mojo);
+        createConfigFileIfNotExists(mojo, true, null);
+        createConfigFileIfNotExists(mojo, false, null);
+        
+        if(!new File(mojo.rootDir, AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM).exists())
+        {
+        	try {
+        		File loggingApiFile = new File(mojo.rootDir, AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM);
+				loggingApiFile.createNewFile();
+	        	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(loggingApiFile));
+				bos.write("<TestCases></TestCases>".getBytes());
+				bos.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+        }
+        
+        if(!new File(mojo.rootDir, "gatf-issuetracking-api-int.xml").exists())
+        {
+        	try {
+        		File issueTrackingApi = new File(mojo.rootDir, "gatf-issuetracking-api-int.xml");
+				issueTrackingApi.createNewFile();
+	        	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(issueTrackingApi));
+				bos.write("<TestCases></TestCases>".getBytes());
+				bos.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+        }
         
         server.addListener(new NetworkListener("ConfigServer", ipAddress, port));
         
@@ -120,13 +156,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			    new HttpHandler() {
 			        public void service(Request request, Response response) throws Exception {
 			        	try {
-			        		createConfigFileIfNotExists(mojo);
-		        			GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-								new File(rootDir, "gatf-config.xml")));
-		        			if(gatfConfig == null) {
-		        				throw new RuntimeException("Invalid configuration present");
-		        			}
-		        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+			        		GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 		        			String basepath = gatfConfig.getOutFilesBasePath()==null?rootDir:gatfConfig.getOutFilesBasePath();
 		        			String dirPath = basepath + "/" + gatfConfig.getOutFilesDir();
 	        				if(!new File(dirPath).exists()) {
@@ -140,6 +170,12 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        		String testCaseName = request.getParameter("testCaseName");
 				        		if(action.equals("replayTest"))
 				        		{
+				        			TestCaseReport tcReport = new ObjectMapper().readValue(request.getInputStream(), 
+				        					TestCaseReport.class);
+				        			if(tcReport == null) {
+				        				throw new RuntimeException("Invalid testcase report details provided");
+				        			}
+				        			
 				        			String filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/"
 				        					+ testcaseFileName;
 				        			if(!new File(filePath).exists()) {
@@ -171,8 +207,43 @@ public class GatfConfigToolMojo extends AbstractMojo {
 					        			found.setSimulationNumber(0);
 					        			found.setSourcefileName(testcaseFileName);
 										found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+										found.setAurl(tcReport.getActualUrl());
+										found.setAcontent(tcReport.getRequestContent());
+										found.setAexpectedNodes(tcReport.getAexpectedNodes());
+										found.setLogicalValidations(null);
+										found.setExecuteOnCondition(null);
+										found.setPreWaitMs(0L);
+										found.setPostWaitMs(0L);
+										found.setPreExecutionDataSourceHookName(null);
+										found.setPostExecutionDataSourceHookName(null);
+										if(found.getHeaders()!=null)
+										{
+											found.getHeaders().clear();
+										}
+										else
+										{
+											found.setHeaders(new HashMap<String, String>());
+										}
+										if(tcReport.getRequestHeaders()!=null)
+										{
+											String[] headers = tcReport.getRequestHeaders().split("\n");
+											for(String header: headers)
+											{
+												if(header.indexOf(": ")!=-1)
+												{
+													found.getHeaders().put(header.substring(0, header.indexOf(": ")),
+															header.substring(header.indexOf(": ")+2));
+												}
+											}
+										}
+										if(found.isSecure() && gatfConfig.isAuthEnabled() && authTestCase!=null)
+										{
+											reports = context.getSingleTestCaseExecutor().execute(authTestCase, 
+													testCaseExecutorUtil);
+										}
 										context.getWorkflowContextHandler().initializeSuiteContextWithnum(0);
-					        			reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
+					        			reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
+					        					testCaseExecutorUtil);
 				        			}
 				        			testCaseExecutorUtil.shutdown();
 				        			
@@ -198,39 +269,37 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		server.getServerConfiguration().addHttpHandler(
 		    new HttpHandler() {
 		        public void service(Request request, Response response) throws Exception {
+		        	String configType = request.getParameter("configType");
 		        	if(request.getMethod().equals(Method.GET) ) {
 		        		try {
-		        			if(!new File(rootDir, "gatf-config.xml").exists()) {
-		        				createConfigFileIfNotExists(mojo);
-		        				String configJson = "No configuration present in config";
-		        				response.setContentLength(configJson.length());
-					            response.getWriter().write(configJson);
-		        				response.setStatus(HttpStatus.OK_200);
-		        			} else {
-			        			GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-									new File(rootDir, "gatf-config.xml")));
-			        			if(gatfConfig == null) {
-			        				throw new RuntimeException("Invalid configuration present in gatf-config.xml");
-			        			}
-			        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
-			        			String configJson = new ObjectMapper().writeValueAsString(gatfConfig);
-			        			response.setContentType(MediaType.APPLICATION_JSON);
-					            response.setContentLength(configJson.length());
-					            response.getWriter().write(configJson);
-					            response.setStatus(HttpStatus.OK_200);
+		        			String configJson = null;
+		        			if(configType.equalsIgnoreCase("executor")) {
+		        				createConfigFileIfNotExists(mojo, true, null);
+		        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+			        			configJson = new ObjectMapper().writeValueAsString(gatfConfig);
+		        			} else if(configType.equalsIgnoreCase("generator")) {
+		        				createConfigFileIfNotExists(mojo, false, null);
+		        				GatfConfiguration gatfConfig = getGatfConfiguration(mojo, null);
+			        			configJson = new ObjectMapper().writeValueAsString(gatfConfig);
 		        			}
+		        			response.setContentType(MediaType.APPLICATION_JSON);
+				            response.setContentLength(configJson.length());
+				            response.getWriter().write(configJson);
+				            response.setStatus(HttpStatus.OK_200);
 						} catch (Exception e) {
 							handleError(e, response, null);
 						}
 		        	} else if(request.getMethod().equals(Method.POST) ) {
 		        		try {
-		        			createConfigFileIfNotExists(mojo);
-		        			GatfExecutorConfig gatfConfig = new ObjectMapper().readValue(request.getInputStream(), 
-		        					GatfExecutorConfig.class);
-		        			if(gatfConfig == null) {
-		        				throw new RuntimeException("Invalid configuration provided");
+		        			if(configType.equalsIgnoreCase("executor")) {
+		        				GatfExecutorConfig gatfConfig = new ObjectMapper().readValue(request.getInputStream(), 
+			        					GatfExecutorConfig.class);
+			        			getGatfExecutorConfig(mojo, gatfConfig);
+		        			} else if(configType.equalsIgnoreCase("generator")) {
+		        				GatfConfiguration gatfConfig = new ObjectMapper().readValue(request.getInputStream(), 
+			        					GatfConfiguration.class);
+			        			getGatfConfiguration(mojo, gatfConfig);
 		        			}
-		        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
 		        			response.setStatus(HttpStatus.OK_200);
 						} catch (Exception e) {
 							handleError(e, response, HttpStatus.BAD_REQUEST_400);
@@ -245,13 +314,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        public void service(Request request, Response response) throws Exception {
 			        	if(request.getMethod().equals(Method.GET) ) {
 			        		try {
-			        			createConfigFileIfNotExists(mojo);
-			        			GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-									new File(rootDir, "gatf-config.xml")));
-			        			if(gatfConfig == null) {
-			        				throw new RuntimeException("Invalid configuration present in gatf-config.xml");
-			        			}
-			        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+			        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 			        			
 			        			Map<String, List<String>> miscMap = new HashMap<String, List<String>>();
 		        				if(gatfConfig.getGatfTestDataConfig()!=null && 
@@ -314,13 +377,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        		try {
 			        			String testcaseFileName = request.getParameter("testcaseFileName");
 			        			if(StringUtils.isNotBlank(testcaseFileName)) {
-			        				createConfigFileIfNotExists(mojo);
-			        				GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-										new File(rootDir, "gatf-config.xml")));
-				        			if(gatfConfig == null) {
-				        				throw new RuntimeException("Invalid configuration present");
-				        			}
-				        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+			        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 				        			if(!testcaseFileName.endsWith(".xml"))
 				        			{
 				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
@@ -349,13 +406,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        		try {
 			        			String testcaseFileName = request.getParameter("testcaseFileName");
 			        			if(StringUtils.isNotBlank(testcaseFileName)) {
-			        				createConfigFileIfNotExists(mojo);
-			        				GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-										new File(rootDir, "gatf-config.xml")));
-				        			if(gatfConfig == null) {
-				        				throw new RuntimeException("Invalid configuration present");
-				        			}
-				        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+			        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 				        			if(!testcaseFileName.endsWith(".xml"))
 				        			{
 				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
@@ -380,13 +431,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 							}
 			        	} else if(request.getMethod().equals(Method.GET) ) {
 			        		try {
-			        			createConfigFileIfNotExists(mojo);
-			        			GatfExecutorConfig gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-									new File(rootDir, "gatf-config.xml")));
-			        			if(gatfConfig == null) {
-			        				throw new RuntimeException("");
-			        			}
-			        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+			        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
 			        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
 		        				if(!new File(dirPath).exists()) {
@@ -419,37 +464,42 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		server.getServerConfiguration().addHttpHandler(
 			    new HttpHandler() {
 			        public void service(Request request, Response response) throws Exception {
+			        	String configType = request.getParameter("configType");
 			        	String testcaseFileName = request.getParameter("testcaseFileName");
+			        	boolean isApiIntType = configType!=null && (configType.equals("loggingapi") || configType.equals("issuetrackerapi"));
 	        			if(StringUtils.isBlank(testcaseFileName)) {
 	        				response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
 	        				return;
 	        			}
 	        			GatfExecutorConfig gatfConfig = null;
 	        			String filePath = null;
-	        			try {
-	        				createConfigFileIfNotExists(mojo);
-	        				gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-								new File(rootDir, "gatf-config.xml")));
-		        			if(gatfConfig == null) {
-		        				throw new RuntimeException("Invalid configuration present");
-		        			}
-		        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
-		        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-		        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
-	        				if(!new File(dirPath).exists()) {
-	        					new File(dirPath).mkdir();
-	        				}
-		        			filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/"
-		        					+ testcaseFileName;
-		        			if(!new File(filePath).exists()) {
-		        				throw new RuntimeException("Test case file does not exist");
-		        			}
-	        			} catch (Exception e) {
-	        				handleError(e, response, null);
-							return;
-						}
+	        			if(!isApiIntType)
+	        			{
+		        			try {
+		        				gatfConfig = getGatfExecutorConfig(mojo, null);
+			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+			        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
+		        				if(!new File(dirPath).exists()) {
+		        					new File(dirPath).mkdir();
+		        				}
+			        			filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/"
+			        					+ testcaseFileName;
+			        			if(!new File(filePath).exists()) {
+			        				throw new RuntimeException("Test case file does not exist");
+			        			}
+		        			} catch (Exception e) {
+		        				handleError(e, response, null);
+								return;
+							}
+	        			}
+	        			else
+	        			{
+	        				gatfConfig = getGatfExecutorConfig(mojo, null);
+	        				String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+	        				filePath = basepath + "/" + testcaseFileName;
+	        			}
 	        			boolean isUpdate = request.getMethod().equals(Method.PUT);
-	        			if(request.getMethod().equals(Method.DELETE)) {
+	        			if(!isApiIntType && request.getMethod().equals(Method.DELETE)) {
 			        		try {
 			        			String testCaseName = request.getHeader("testcasename");
 			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
@@ -487,6 +537,12 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        			if(testCase.getName()==null) {
 			        				throw new RuntimeException("Testcase does not specify name");
 			        			}
+			        			
+			        			if(isApiIntType && !testCase.getName().equals("authapi") && !testCase.getName().equals("targetapi"))
+			        			{
+			        				throw new RuntimeException("Only authapi or targetapi allowed for name");
+			        			}
+			        			
 			        			testCase.validate(AcceptanceTestContext.getHttpHeadersMap());
 			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
 			        			if(!isUpdate)
@@ -541,7 +597,65 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        	} else if(request.getMethod().equals(Method.GET) ) {
 			        		try {
 			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-			        			String json = new ObjectMapper().writeValueAsString(tcs);
+			        			List<TestCase> tcsn = new ArrayList<TestCase>();
+			        			boolean isAuthApi = false;
+			        			boolean isTargetApi = false;
+			        			for (TestCase testCase : tcs) {
+			        				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
+			        						|| testCase.getName().equals("targetapi"))))
+				        			{
+			        					if(!isAuthApi)isAuthApi = testCase.getName().equals("authapi");
+			        					if(!isTargetApi)isTargetApi = testCase.getName().equals("targetapi");
+			        					tcsn.add(testCase);
+				        			}
+								}
+			        			if(isApiIntType)
+			        			{
+			        				boolean changed = false;
+			        				if(!isAuthApi)
+			        				{
+			        					TestCase tc = new TestCase();
+			        					tc.setMethod(HttpMethod.POST);
+			        					tc.setUrl("auth");
+			        					tc.setName("authapi");
+			        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+			        					tc.setRepeatScenarioProviderName("");
+			        					tc.setPreExecutionDataSourceHookName("");
+			        					tc.setPostExecutionDataSourceHookName("");
+			        					tc.setServerApiAuth(true);
+			        					tcsn.add(tc);
+			        					changed = true;
+			        				}
+			        				if(!isTargetApi)
+			        				{
+			        					TestCase tc = new TestCase();
+			        					tc.setMethod(HttpMethod.POST);
+			        					tc.setUrl("target");
+			        					tc.setName("targetapi");
+			        					tc.setSecure(isAuthApi);
+			        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+			        					tc.setRepeatScenarioProviderName("");
+			        					tc.setPreExecutionDataSourceHookName("");
+			        					tc.setPostExecutionDataSourceHookName("");
+			        					tc.setServerApiTarget(true);
+			        					tcsn.add(tc);
+			        					changed = true;
+			        				}
+			        				if(changed)
+			        				{
+			        					XStream xstream = new XStream(
+				                			new XppDriver() {
+				                				public HierarchicalStreamWriter createWriter(Writer out) {
+				                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+				                				}
+				                			}
+				                		);
+				                		xstream.processAnnotations(new Class[]{TestCase.class});
+				                		xstream.alias("TestCases", List.class);
+				                		xstream.toXML(tcsn, new FileOutputStream(filePath));
+			        				}
+			        			}
+			        			String json = new ObjectMapper().writeValueAsString(tcsn);
 			        			response.setContentType(MediaType.APPLICATION_JSON);
 					            response.setContentLength(json.length());
 					            response.getWriter().write(json);
@@ -561,20 +675,10 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			    	Thread _executorThread = null;
 			    	volatile String status = "";
 			        public void service(Request request, Response response) throws Exception {
-	        			GatfExecutorConfig gatfConfig = null;
+			        	GatfPluginConfig gatfConfig = null;
+			        	final String pluginType = request.getParameter("pluginType");
 	        			try {
-	        				createConfigFileIfNotExists(mojo);
-	        				gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(
-								new File(rootDir, "gatf-config.xml")));
-		        			if(gatfConfig == null) {
-		        				throw new RuntimeException("Invalid configuration present");
-		        			}
-		        			sanitizeAndSaveGatfConfig(gatfConfig, mojo);
-		        			String basepath = gatfConfig.getOutFilesBasePath()==null?rootDir:gatfConfig.getOutFilesBasePath();
-		        			String dirPath = basepath + "/" + gatfConfig.getOutFilesDir()==null?"out":gatfConfig.getOutFilesDir();
-	        				if(!new File(dirPath).exists()) {
-	        					new File(dirPath).mkdir();
-	        				}
+	        				gatfConfig = getGatfPluginConfig(pluginType, mojo);
 	        				if(request.getMethod().equals(Method.GET) ) {
 	        					if(isStarted.get()) {
 	        						throw new RuntimeException("Execution already in progress..");
@@ -599,15 +703,14 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	        				else if(request.getMethod().equals(Method.PUT) ) {
 	        					if(!isStarted.get() && !isDone.get()) {
 	        						isStarted.set(true);
-	        						final GatfExecutorConfig config = gatfConfig;
+	        						final GatfPluginConfig config = gatfConfig;
 	        						_executorThread = new Thread(new Runnable() {
 										public void run() {
-											GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
+											GatfPlugin executorMojo = getGatfPlugin(pluginType);
 			        						executorMojo.setProject(project);
 			        						try {
-			        							sanitizeAndSaveGatfConfig(config, mojo);
 												executorMojo.doExecute(config);
-												mojo.context = executorMojo.getContext();
+												initializeMojoProps(executorMojo, mojo);
 											} catch (Throwable e) {
 												e.printStackTrace();
 												if(e.getMessage()!=null)
@@ -615,13 +718,17 @@ public class GatfConfigToolMojo extends AbstractMojo {
 												else
 													status = ExceptionUtils.getStackTrace(e);
 											} finally { 
-												//Fire all data source shutdown hooks
-												if(executorMojo.getContext()!=null) {
-													executorMojo.getContext().shutdown();
-												}
+												executorMojo.shutdown();
 											}
 			        						isDone.set(true);
 											isStarted.set(false);
+										}
+
+										private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
+											if(executorMojo instanceof GatfTestCaseExecutorMojo) {
+												mojo.context = ((GatfTestCaseExecutorMojo)executorMojo).getContext();
+												mojo.authTestCase = ((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase();
+											}
 										}
 									});
 	        						_executorThread.start();
@@ -686,9 +793,8 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		}
 	}
 	
-	private static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojo mojo) throws IOException
+	private static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojo mojo, boolean isChanged) throws IOException
 	{
-		boolean isChanged = false;
 		if(gatfConfig.getTestCasesBasePath()==null) {
 			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.rootDir);
@@ -741,13 +847,24 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		}
 	}
 
-	private static void createConfigFileIfNotExists(GatfConfigToolMojo mojo)
+	private static void createConfigFileIfNotExists(GatfConfigToolMojo mojo, boolean isExecutor, Object config)
 	{
-		if(!new File(mojo.rootDir, "gatf-config.xml").exists()) {
+		if(isExecutor && !new File(mojo.rootDir, "gatf-config.xml").exists()) {
 			try {
 				new File(mojo.rootDir, "gatf-config.xml").createNewFile();
-				GatfExecutorConfig gatfConfig = new GatfExecutorConfig();
-				sanitizeAndSaveGatfConfig(gatfConfig, mojo);
+				GatfExecutorConfig gatfConfig = config==null?new GatfExecutorConfig():(GatfExecutorConfig)config;
+				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
+			} catch (IOException e) {
+			}
+        }
+		else if(!isExecutor && !new File(mojo.rootDir, "gatf-generator.xml").exists()) {
+			try {
+				new File(mojo.rootDir, "gatf-generator.xml").createNewFile();
+				GatfConfiguration gatfConfig = config==null?new GatfConfiguration():(GatfConfiguration)config;
+
+				FileUtils.writeStringToFile(new File(mojo.rootDir, "gatf-generator.xml"), 
+						GatfTestGeneratorMojo.getConfigStr(gatfConfig));
+			
 			} catch (IOException e) {
 			}
         }
@@ -776,5 +893,76 @@ public class GatfConfigToolMojo extends AbstractMojo {
         response.getWriter().write(configJson);
 		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);
 		if(status==null)e.printStackTrace();
+	}
+	
+	private static GatfExecutorConfig getGatfExecutorConfig(GatfConfigToolMojo mojo, GatfExecutorConfig config) throws Exception
+	{
+		createConfigFileIfNotExists(mojo, true, config);
+		GatfExecutorConfig gatfConfig = config;
+		if(gatfConfig == null)
+		{
+			gatfConfig = GatfTestCaseExecutorMojo.getConfig(new FileInputStream(new File(mojo.rootDir, "gatf-config.xml")));
+		}
+		if(gatfConfig == null) {
+			throw new RuntimeException("Invalid configuration present");
+		}
+		sanitizeAndSaveGatfConfig(gatfConfig, mojo, config!=null);
+		return gatfConfig;
+	}
+	
+	private static GatfConfiguration getGatfConfiguration(GatfConfigToolMojo mojo, GatfConfiguration config) throws Exception
+	{
+		createConfigFileIfNotExists(mojo, false, config);
+		GatfConfiguration gatfConfig = config;
+		if(gatfConfig == null)
+		{
+			gatfConfig = GatfTestGeneratorMojo.getConfig(new FileInputStream(new File(mojo.rootDir, "gatf-generator.xml")));
+		}
+		if(gatfConfig == null) {
+			throw new RuntimeException("Invalid configuration present");
+		}
+		if(gatfConfig.getResourcepath()==null)
+		{
+			gatfConfig.setResourcepath(mojo.rootDir + "/generated");
+		}
+		FileUtils.writeStringToFile(new File(mojo.rootDir, "gatf-generator.xml"), 
+				GatfTestGeneratorMojo.getConfigStr(gatfConfig));
+		return gatfConfig;
+	}
+	
+	private static GatfPlugin getGatfPlugin(String type)
+	{
+		if(type.equals("executor"))
+		{
+			return new GatfTestCaseExecutorMojo();
+		}
+		else
+		{
+			return new GatfTestGeneratorMojo();
+		}
+	}
+	
+	private static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojo mojo) throws Exception
+	{
+		if(type.equals("executor"))
+		{
+			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+			return gatfConfig;
+		}
+		else
+		{
+			GatfConfiguration gatfConfig = getGatfConfiguration(mojo, null);
+			return gatfConfig;
+		}
+	}
+	
+	public static void main2(String[] args) throws Exception
+	{
+		ObjectMapper jsonMapper = new ObjectMapper();
+    	jsonMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    	jsonMapper.configure(DeserializationConfig.Feature.AUTO_DETECT_FIELDS, true);
+    	String schemaJson = jsonMapper.generateJsonSchema(GatfConfiguration.class).toString();
+    	schemaJson = schemaJson.replaceAll("'", "\'");
+    	System.out.println(schemaJson);
 	}
 }

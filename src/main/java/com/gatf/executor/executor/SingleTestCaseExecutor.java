@@ -76,4 +76,25 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		lst.add(testCaseReport);
 		return lst;
 	}
+	
+	public List<TestCaseReport> executeDirectTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {
+
+		TestCaseReport testCaseReport = new TestCaseReport();
+		testCaseReport.setTestCase(testCase);
+		testCaseReport.setNumberOfRuns(1);
+		
+		ListenableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
+		try {
+			testCaseReport = report.get();
+		} catch (Exception e) {
+			testCaseReport.setStatus(TestStatus.Failed.status);
+			testCaseReport.setError(e.getMessage());
+			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
+			e.printStackTrace();
+		}
+		
+		List<TestCaseReport> lst = new ArrayList<TestCaseReport>();
+		lst.add(testCaseReport);
+		return lst;
+	}
 }

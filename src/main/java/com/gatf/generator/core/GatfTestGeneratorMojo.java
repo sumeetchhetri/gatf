@@ -74,6 +74,7 @@ import javax.xml.namespace.QName;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.maven.plugin.AbstractMojo;
+import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
@@ -88,6 +89,8 @@ import org.reficio.ws.builder.core.Wsdl;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
+import com.gatf.GatfPlugin;
+import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.generator.postman.PostmanCollection;
@@ -156,7 +159,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 		requiresOnline = false, 
 		requiresProject = true, 
 		threadSafe = true)
-public class GatfTestGeneratorMojo extends AbstractMojo
+public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 {
 
     @Component
@@ -355,6 +358,22 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		return url;
 	}
 	
+	public MavenProject getProject() {
+		return project;
+	}
+
+	public void setProject(MavenProject project) {
+		this.project = project;
+	}
+
+	public String getRequestDataType() {
+		return requestDataType;
+	}
+
+	public void setRequestDataType(String requestDataType) {
+		this.requestDataType = requestDataType;
+	}
+
 	/**
      * @param classes Generates all testcases for all the rest-full services found in the classes discovered
      */
@@ -965,7 +984,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
     			 return new Integer(rand.nextInt(123));
     		 } else if(claz.equals(BigInteger.class)) {
     			 Random rand = new Random();
-    			 return new BigInteger(new BigInteger("123456").bitLength(), rand);
+    			 return new BigInteger(new BigInteger("1234567890123456789").bitLength(), rand);
     		 } else if(claz.equals(BigDecimal.class)) {
     			 Random rand = new Random();
     			 return new BigDecimal(rand.nextInt(123));
@@ -1203,6 +1222,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	    		xstream.alias("testPath", String.class);
 	    		xstream.alias("soapWsdlKeyPairs", String[].class);
 	    		xstream.alias("soapWsdlKeyPair", String.class);
+	    		xstream.alias("string", String.class);
 	    		
 	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
 	    		
@@ -1214,6 +1234,13 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 	    		testGenerator.setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
 	    		testGenerator.setUrlPrefix(config.getUrlPrefix());
 	    		testGenerator.setResourcepath(config.getResourcepath());
+	    		testGenerator.setInDataType(config.getRequestDataType());
+	    		testGenerator.setOutDataType(config.getResponseDataType()); 
+	    		testGenerator.setOverrideSecure(config.isOverrideSecure());
+	    		testGenerator.setUrlSuffix(config.getUrlSuffix());
+	    		testGenerator.setUseSoapClient(config.isUseSoapClient());
+	    		testGenerator.setTestCaseFormat(config.getTestCaseFormat());
+	    		testGenerator.setPostmanCollectionVersion(config.getPostmanCollectionVersion());
 	    		testGenerator.execute();
     		}
     		else if(args[0].equals("-executor") && !args[1].trim().isEmpty())
@@ -1406,5 +1433,55 @@ public class GatfTestGeneratorMojo extends AbstractMojo
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public static GatfConfiguration getConfig(InputStream resource)
+	{
+		XStream xstream = new XStream(new DomDriver("UTF-8"));
+		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+		xstream.alias("testPaths", String[].class);
+		xstream.alias("testPath", String.class);
+		xstream.alias("soapWsdlKeyPairs", String[].class);
+		xstream.alias("soapWsdlKeyPair", String.class);
+		xstream.alias("string", String.class);
+		
+		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(resource);
+		return config;
+	}
+	
+	public static String getConfigStr(GatfConfiguration configuration)
+	{
+		XStream xstream = new XStream(new DomDriver("UTF-8"));
+		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+		xstream.alias("testPaths", String[].class);
+		xstream.alias("testPath", String.class);
+		xstream.alias("soapWsdlKeyPairs", String[].class);
+		xstream.alias("soapWsdlKeyPair", String.class);
+		xstream.alias("string", String.class);
+		
+		return xstream.toXML(configuration);
+	}
+
+	public void doExecute(GatfPluginConfig configuration) throws MojoFailureException {
+		GatfConfiguration config = (GatfConfiguration)configuration;
+		
+		setDebugEnabled(false);
+		setEnabled(config.isEnabled());
+		setInDataType(config.getRequestDataType());
+		setTestPaths(config.getTestPaths());
+		setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
+		setUrlPrefix(config.getUrlPrefix());
+		setResourcepath(config.getResourcepath());
+		setInDataType(config.getRequestDataType());
+		setOutDataType(config.getResponseDataType()); 
+		setOverrideSecure(config.isOverrideSecure());
+		setUrlSuffix(config.getUrlSuffix());
+		setUseSoapClient(config.isUseSoapClient());
+		setTestCaseFormat(config.getTestCaseFormat());
+		setPostmanCollectionVersion(config.getPostmanCollectionVersion());
+		execute();
+	}
+
+	public void shutdown() {
 	}
 }

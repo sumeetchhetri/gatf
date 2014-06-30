@@ -294,9 +294,13 @@ public class TestCaseExecutorUtil {
 				testCase.setContent(content);
 			}
 			
-			if(testCase.isSecure() && !context.getGatfExecutorConfig().getAuthUrl().equals(url)) {
+			String authUrl = testCase.isServerApiTarget()?"":context.getGatfExecutorConfig().getAuthUrl();
+			String[] authExtractAuthParams = testCase.isServerApiTarget()?context.getGatfExecutorConfig().getServerApiAuthExtractAuthParams()
+					:context.getGatfExecutorConfig().getAuthExtractAuthParams();
+			
+			if(testCase.isSecure() && !authUrl.equals(url)) {
 				String sessIdentifier = context.getSessionIdentifier(testCase);
-				String tokenNm = context.getGatfExecutorConfig().getAuthExtractAuthParams()[2];
+				String tokenNm = authExtractAuthParams[2];
 				if(context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)!=null &&
 						context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm)!=null)
 				{
@@ -305,28 +309,27 @@ public class TestCaseExecutorUtil {
 				
 				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
 				
-				if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam"))
+				if(authExtractAuthParams[3].equalsIgnoreCase("queryparam"))
 				{
-					if(turl.indexOf("?")!=-1 && turl.indexOf("{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"}")!=-1) {
-						turl = turl.replaceAll("\\{"+context.getGatfExecutorConfig().getAuthExtractAuthParams()[2]+"\\}", sessIdentifier);
+					if(turl.indexOf("?")!=-1 && turl.indexOf("{"+authExtractAuthParams[2]+"}")!=-1) {
+						turl = turl.replaceAll("\\{"+authExtractAuthParams[2]+"\\}", sessIdentifier);
 					}
 					else
 					{
 						if(turl.indexOf("?")!=-1) {
-							turl += "&" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
+							turl += "&" + authExtractAuthParams[2] + "=" + sessIdentifier;
 						} else {
-							turl += "?" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] + "=" + sessIdentifier;
+							turl += "?" + authExtractAuthParams[2] + "=" + sessIdentifier;
 						}
 					}
 				}
-				else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("header"))
+				else if(authExtractAuthParams[3].equalsIgnoreCase("header"))
 				{
-					testCase.getHeaders().put(context.getGatfExecutorConfig().getAuthExtractAuthParams()[2], sessIdentifier);
+					testCase.getHeaders().put(authExtractAuthParams[2], sessIdentifier);
 				}
-				else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[3].equalsIgnoreCase("cookie"))
+				else if(authExtractAuthParams[3].equalsIgnoreCase("cookie"))
 				{
-					testCase.getHeaders().put("Cookie", context.getGatfExecutorConfig().getAuthExtractAuthParams()[2] 
-							+ "=" + sessIdentifier);
+					testCase.getHeaders().put("Cookie", authExtractAuthParams[2] + "=" + sessIdentifier);
 				}
 			}
 

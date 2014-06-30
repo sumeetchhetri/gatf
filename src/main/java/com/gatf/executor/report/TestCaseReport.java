@@ -84,6 +84,10 @@ public class TestCaseReport implements Serializable {
 	private Map<String, String> errors = new HashMap<String, String>();
 	
 	private String testIdentifier;
+	
+	private List<String> aexpectedNodes = new ArrayList<String>();
+	
+	private String serverLogs;
 
 	public String getWorkflowName() {
 		return workflowName;
@@ -115,6 +119,7 @@ public class TestCaseReport implements Serializable {
 			setRequestContent(testCase.getAcontent());
 			setUrl(testCase.getUrl());
 			setMethod(testCase.getMethod());
+			setAexpectedNodes(testCase.getAexpectedNodes());
 		}
 	}
 
@@ -276,6 +281,22 @@ public class TestCaseReport implements Serializable {
 
 	public void setFailureReason(String failureReason) {
 		this.failureReason = failureReason;
+	}
+
+	public List<String> getAexpectedNodes() {
+		return aexpectedNodes;
+	}
+
+	public void setAexpectedNodes(List<String> aexpectedNodes) {
+		this.aexpectedNodes = aexpectedNodes;
+	}
+
+	public String getServerLogs() {
+		return serverLogs;
+	}
+
+	public void setServerLogs(String serverLogs) {
+		this.serverLogs = serverLogs;
 	}
 
 	public TestCaseReport(){}

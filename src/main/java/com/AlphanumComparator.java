@@ -22,6 +22,7 @@
  *
  */
 package com;
+import java.io.File;
 import java.util.Comparator;
 
 /**
@@ -75,6 +76,11 @@ public class AlphanumComparator implements Comparator<String>
         return chunk.toString();
     }
 
+    public int compare(File o1, File o2)
+    {
+    	return compare(o1.getName(), o2.getName());
+    }
+    
     public int compare(String o1, String o2)
     {
         int thisMarker = 0;

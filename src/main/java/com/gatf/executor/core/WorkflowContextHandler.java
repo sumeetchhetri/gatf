@@ -99,7 +99,9 @@ public class WorkflowContextHandler {
 	}
 	
 	public Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
-		if(testCase.getSimulationNumber()==null) {
+		if(testCase.isServerApiAuth()) {
+			return suiteWorkflowContext.get(-1);
+		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowContext.get(0);
 		} else {
 			return suiteWorkflowContext.get(testCase.getSimulationNumber());

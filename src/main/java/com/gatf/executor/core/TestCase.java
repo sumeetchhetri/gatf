@@ -198,6 +198,14 @@ public class TestCase implements Serializable {
 	@JsonIgnore
 	private Map<String, String> currentScenarioVariables;
 	
+	@XStreamOmitField
+	@JsonIgnore
+	private boolean isServerApiAuth = false;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private boolean isServerApiTarget = false;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -605,6 +613,22 @@ public class TestCase implements Serializable {
 	public void setCurrentScenarioVariables(
 			Map<String, String> currentScenarioVariables) {
 		this.currentScenarioVariables = currentScenarioVariables;
+	}
+
+	public boolean isServerApiAuth() {
+		return isServerApiAuth;
+	}
+
+	public void setServerApiAuth(boolean isServerApiAuth) {
+		this.isServerApiAuth = isServerApiAuth;
+	}
+
+	public boolean isServerApiTarget() {
+		return isServerApiTarget;
+	}
+
+	public void setServerApiTarget(boolean isServerApiTarget) {
+		this.isServerApiTarget = isServerApiTarget;
 	}
 
 	@Override

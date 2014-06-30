@@ -47,6 +47,8 @@ import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 
+import com.gatf.GatfPlugin;
+import com.gatf.GatfPluginConfig;
 import com.gatf.distributed.DistributedAcceptanceContext;
 import com.gatf.distributed.DistributedGatfTester;
 import com.gatf.distributed.DistributedGatfTester.DistributedConnection;
@@ -86,7 +88,7 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 		requiresOnline = false, 
 		requiresProject = true, 
 		threadSafe = true)
-public class GatfTestCaseExecutorMojo extends AbstractMojo {
+public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin {
 
 	@Component
     private MavenProject project;
@@ -196,11 +198,25 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	@Parameter(alias = "orderedFiles")
 	private String[] orderedFiles;
 	
+	@Parameter(alias = "isFetchFailureLogs", defaultValue = "false")
+	private boolean isFetchFailureLogs;
+	
+	@Parameter(alias = "isServerLogsApiAuthEnabled", defaultValue = "false")
+	private boolean isServerLogsApiAuthEnabled;
+	
+	@Parameter(alias = "serverLogsApiFileName")
+	private String serverLogsApiFileName;
+	
+	@Parameter(alias = "serverLogsApiAuthExtractAuth")
+	private String serverLogsApiAuthExtractAuth;
+	
 	private Long startTime = 0L;
 	
 	private AcceptanceTestContext context;
 	
 	private DistributedGatfTester distributedGatfTester;
+	
+	private TestCase authTestCase;
 	
 	public void setProject(MavenProject project) {
 		this.project = project;
@@ -336,6 +352,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 			testCase.setSimulationNumber(0);
 		}
+		if(configuration.isAuthEnabled() && pretestcases.size()>0) {
+			authTestCase = pretestcases.get(0);
+		}
 		for (TestCase testCase : allTestCases) {
 			if((testCase.getUrl()!=null && !testCase.getUrl().equalsIgnoreCase(configuration.getAuthUrl()) 
 					&& !configuration.isSoapAuthTestCase(testCase)) ||
@@ -371,13 +390,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
 		
 		TestCaseFinder finder = new XMLTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
 		
 		finder = new JSONTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
 		
 		finder = new CSVTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
 		
 		return allTestCases;
 	}
@@ -433,6 +452,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 		configuration.setDistributedNodes(distributedNodes);
 		configuration.setIgnoreFiles(ignoreFiles);
 		configuration.setOrderedFiles(orderedFiles);
+		configuration.setFetchFailureLogs(isFetchFailureLogs);
+		configuration.setServerLogsApiFileName(serverLogsApiFileName);
+		configuration.setServerLogsApiAuthExtractAuth(serverLogsApiAuthExtractAuth);
+		configuration.setServerLogsApiAuthEnabled(isServerLogsApiAuthEnabled);
 		
 		if(configFile!=null) {
 			try {
@@ -506,6 +529,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				context.shutdown();
 			}
 		}
+	}
+	
+	public void doExecute(GatfPluginConfig configuration) throws MojoFailureException {
+		doExecute((GatfExecutorConfig)configuration);
 	}
 	
 	@SuppressWarnings({ "rawtypes" })
@@ -776,7 +803,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				long currentTime = System.currentTimeMillis();
 				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, 
-						dorep);
+						dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec);
 				if(compareEnabledOnlySingleTestCaseExec) {
 					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled);
 				}
@@ -926,7 +953,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 					threadPool.submit(new Callable<Void>() {
 						public Void call() throws Exception {
 							executeTestCases(simTestCasesCopy, testCaseExecutorUtil, 
-									onlySingleTestCaseExecl, doRep);
+									onlySingleTestCaseExecl, doRep, false);
 							return null;
 						}
 					})
@@ -941,7 +968,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	}
 	
 	private boolean handleTestCaseExecution(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
-			boolean onlySingleTestCaseExec, boolean dorep) throws Exception
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) throws Exception
 	{
 		boolean success = true;
 		
@@ -1028,6 +1055,29 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 						e.printStackTrace();
 					}
 				}
+				
+				if(!success && isFetchFailureLogs) {
+					List<TestCase> serverLogsApis = context.getServerLogsApiLst();
+					if(serverLogsApis.size()>0) {
+						TestCase api = context.getServerLogApi(true);
+						if(api!=null && context.getSessionIdentifier(api)==null) {
+							context.getSingleTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
+						}
+						api = context.getServerLogApi(false);
+						List<TestCaseReport> logData = context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
+						if(logData!=null && logData.size()>0) {
+							if(logData.get(0).getStatus().equals(TestStatus.Success.status))
+								testCaseReport.setServerLogs(logData.get(0).getResponseContent());
+							else
+							{
+								String content = logData.get(0).getError()!=null?logData.get(0).getError():"";
+								content += "\n";
+								content += logData.get(0).getErrorText()!=null?logData.get(0).getErrorText():"";
+								testCaseReport.setServerLogs(content);
+							}
+						}
+					}
+				}
 			}
 		}
 		return success;
@@ -1048,7 +1098,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	}
 	
 	private boolean executeSingleTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil,
-			boolean onlySingleTestCaseExec, boolean dorep) {
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) {
 		boolean success = false;
 		try {
 			
@@ -1077,7 +1127,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 				getLog().info(testCase.toString());
 			}
 			
-			success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+			success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
 			
 			if(success)
 			{
@@ -1100,14 +1150,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 									} else {
 										rTcCopy.setCarriedOverVariables(scenarioMap);
 									}
-									executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+									executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
 								}
 							}
 						} else {
 							for (TestCase rTc : relatedTests) {
 								rTc.setBaseUrl(testCase.getBaseUrl());
 								rTc.setSimulationNumber(testCase.getSimulationNumber());
-								executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+								executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
 							}
 						}
 					}
@@ -1127,9 +1177,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 	}
 	
 	private void executeTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil,
-			boolean onlySingleTestCaseExec, boolean dorep) {
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) {
 		for (TestCase testCase : allTestCases) {
-			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep);
+			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
 			if(!success) continue;
 		}
 	}
@@ -1394,7 +1444,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 			}
 			else
 			{
-				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep);
+				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false);
 				if(dorep) {
 					long currentTime = System.currentTimeMillis();
 					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
@@ -1504,5 +1554,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo {
 
 	public AcceptanceTestContext getContext() {
 		return context;
+	}
+
+	public TestCase getAuthTestCase() {
+		return authTestCase;
+	}
+
+	public void shutdown() {
+		context.shutdown();
 	}
 }

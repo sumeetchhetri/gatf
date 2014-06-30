@@ -16,11 +16,14 @@ package com.gatf.generator.core;
 	limitations under the License.
 */
 
+import java.io.Serializable;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
+import com.gatf.GatfPluginConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
 /*
@@ -52,7 +55,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @XStreamAlias("configuration")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfConfiguration {
+public class GatfConfiguration implements Serializable, GatfPluginConfig {
 
 	private String[] testPaths;
 	

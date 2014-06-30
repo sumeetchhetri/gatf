@@ -236,30 +236,34 @@ public abstract class ResponseValidator {
 			List<Cookie> cookies = response.getCookies();
 			context.getWorkflowContextHandler().storeCookies(testCase, cookies);
 			
-			if(context.getGatfExecutorConfig().isAuthEnabled() && context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl())) {
+			boolean authEnabled = testCase.isServerApiAuth()?context.getGatfExecutorConfig().isServerLogsApiAuthEnabled()
+					:context.getGatfExecutorConfig().isAuthEnabled();
+			String authUrl = testCase.isServerApiAuth()?testCase.getUrl():context.getGatfExecutorConfig().getAuthUrl();
+			String[] authExtractAuthParams = testCase.isServerApiAuth()?context.getGatfExecutorConfig().getServerApiAuthExtractAuthParams()
+					:context.getGatfExecutorConfig().getAuthExtractAuthParams();
+			
+			if(authEnabled && authUrl.equals(testCase.getUrl())) {
 				String identifier = null;
 				String authext = "";
-				if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("cookie")) {
+				if(authExtractAuthParams[1].equalsIgnoreCase("cookie")) {
 					authext = "cookie ";
 					for (Cookie cookie : cookies) {
-						if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[0].equals(cookie.getName()))
+						if(authExtractAuthParams[0].equals(cookie.getName()))
 						{
 							identifier = cookie.getValue();
 							break;
 						}
 					}
-				} else if(context.getGatfExecutorConfig().getAuthExtractAuthParams()[1].equalsIgnoreCase("header")) {
+				} else if(authExtractAuthParams[1].equalsIgnoreCase("header")) {
 					authext = "header ";
-					identifier = response.getHeader(context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
+					identifier = response.getHeader(authExtractAuthParams[0]);
 				} else {
 					authext = "response-content ";
-					identifier = getNodeValue(intObj, context.getGatfExecutorConfig().getAuthExtractAuthParams()[0]);
+					identifier = getNodeValue(intObj, authExtractAuthParams[0]);
 				}
-				Assert.assertNotNull("Authentication token not found for "+ authext
-						+ "(" + context.getGatfExecutorConfig().getAuthExtractAuthParams()[0] + ")", identifier);
+				Assert.assertNotNull("Authentication token not found for "+ authext + "(" + authExtractAuthParams[0] + ")", identifier);
 				context.setSessionIdentifier(identifier, testCase);
-				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase)
-					.put(context.getGatfExecutorConfig().getAuthExtractAuthParams()[2], identifier);
+				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(authExtractAuthParams[2], identifier);
 				Assert.assertNotNull("Authentication token is null", context.getSessionIdentifier(testCase));
 			}
 			testCaseReport.setStatus(TestStatus.Success.status);

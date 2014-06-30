@@ -24,6 +24,7 @@ import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 import org.junit.Assert;
 
+import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
@@ -35,7 +36,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @XStreamAlias("gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
-public class GatfExecutorConfig implements Serializable {
+public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	private String baseUrl;
 	
@@ -109,6 +110,14 @@ public class GatfExecutorConfig implements Serializable {
 	private String[] orderedFiles;
 	
 	private boolean isOrderByFileName;
+	
+	private boolean isServerLogsApiAuthEnabled;
+	
+	private String serverLogsApiFileName;
+	
+	private String serverLogsApiAuthExtractAuth;
+	
+	private boolean isFetchFailureLogs;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -217,6 +226,13 @@ public class GatfExecutorConfig implements Serializable {
 	public String[] getAuthExtractAuthParams() {
 		if(authExtractAuth!=null) {
 			return authExtractAuth.split(",");
+		}
+		return null;
+	}
+	
+	public String[] getServerApiAuthExtractAuthParams() {
+		if(serverLogsApiAuthExtractAuth!=null) {
+			return serverLogsApiAuthExtractAuth.split(",");
 		}
 		return null;
 	}
@@ -353,6 +369,14 @@ public class GatfExecutorConfig implements Serializable {
 		this.loadTestingEnabled = loadTestingEnabled;
 	}
 
+	public boolean isFetchFailureLogs() {
+		return isFetchFailureLogs;
+	}
+
+	public void setFetchFailureLogs(boolean isFetchFailureLogs) {
+		this.isFetchFailureLogs = isFetchFailureLogs;
+	}
+
 	public Long getLoadTestingTime() {
 		return loadTestingTime;
 	}
@@ -423,6 +447,30 @@ public class GatfExecutorConfig implements Serializable {
 
 	public void setOrderByFileName(boolean isOrderByFileName) {
 		this.isOrderByFileName = isOrderByFileName;
+	}
+
+	public boolean isServerLogsApiAuthEnabled() {
+		return isServerLogsApiAuthEnabled;
+	}
+
+	public void setServerLogsApiAuthEnabled(boolean isServerLogsApiAuthEnabled) {
+		this.isServerLogsApiAuthEnabled = isServerLogsApiAuthEnabled;
+	}
+
+	public String getServerLogsApiFileName() {
+		return serverLogsApiFileName;
+	}
+
+	public void setServerLogsApiFileName(String serverLogsApiFileName) {
+		this.serverLogsApiFileName = serverLogsApiFileName;
+	}
+
+	public String getServerLogsApiAuthExtractAuth() {
+		return serverLogsApiAuthExtractAuth;
+	}
+
+	public void setServerLogsApiAuthExtractAuth(String serverLogsApiAuthExtractAuth) {
+		this.serverLogsApiAuthExtractAuth = serverLogsApiAuthExtractAuth;
 	}
 
 	public void validate()

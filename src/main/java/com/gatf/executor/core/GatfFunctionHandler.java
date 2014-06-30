@@ -38,6 +38,7 @@ public class GatfFunctionHandler {
 	private static final String HOUR = "h";
 	private static final String DAY = "d";
 	private static final String MONTH = "M";
+	private static final String YEAR = "y";
 	private static final String NUMBER = "number";
 	private static final String NUMBER_MINUS = "-number";
 	private static final String NUMBER_PLUS = "+number";
@@ -45,8 +46,8 @@ public class GatfFunctionHandler {
 	private static final String ALPHA = "alpha";
 	private static final String FLOAT = "float";
 	private static final String BOOLEAN = "boolean";
-	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s]*) ([-+]) (\\d+)([M|d|h|m|s|S|])\\)$";
-	static final String DT_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s]*)\\)";
+	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*) ([-+]) (\\d+)([y|M|d|h|m|s|S|])\\)$";
+	static final String DT_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*)\\)";
 	
 	static Pattern specialDatePattern = Pattern.compile(DT_FUNC_FMT_REGEX);
 	static Pattern datePattern = Pattern.compile(DT_FMT_REGEX);
@@ -74,7 +75,9 @@ public class GatfFunctionHandler {
 				cal.setTime(dt);
 				
 				value = (operation.equals(MINUS)?-value:value);
-				if(unit.equals(MONTH)) {
+				if(unit.equals(YEAR)) {
+					cal.add(Calendar.YEAR, value);
+				} else if(unit.equals(MONTH)) {
 					cal.add(Calendar.MONTH, value);
 				} else if(unit.equals(DAY)) {
 					cal.add(Calendar.DAY_OF_YEAR, value);
@@ -110,5 +113,11 @@ public class GatfFunctionHandler {
 			return bool?String.valueOf(rand.nextInt(1234567)):String.valueOf(-rand.nextInt(1234567));
 		}
 		return null;
+	}
+	
+	public static void main(String[] args)
+	{
+		System.out.println(handleFunction("date(yyyy-MM-dd'T'HH:mm:ss - 1y)"));
+		System.out.println(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date()));
 	}
 }

@@ -60,6 +60,8 @@ import com.gatf.executor.dataprovider.TestDataSource;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
+import com.gatf.executor.finder.TestCaseFinder;
+import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
@@ -95,6 +97,8 @@ public class AcceptanceTestContext {
 	    MIMETYPE_TEXT_XML = "text/xml",
 	    MIMETYPE_APPLICATION_XML = "application/soap+xml";
 	
+	public static final String GATF_SERVER_LOGS_API_FILE_NM = "gatf-logging-api-int.xml";
+	
 	private final Map<String, List<TestCase>> relatedTestCases = new HashMap<String, List<TestCase>>();
 	
 	private final Map<String, String> httpHeaders = new HashMap<String, String>();
@@ -115,6 +119,8 @@ public class AcceptanceTestContext {
 	private final Map<String, Integer> finalTestReportsDups = new ConcurrentHashMap<String, Integer>();
 	
 	private final WorkflowContextHandler workflowContextHandler = new WorkflowContextHandler();
+	
+	private List<TestCase> serverLogsApiLst = new ArrayList<TestCase>();
 	
 	private GatfExecutorConfig gatfExecutorConfig;
 	
@@ -207,10 +213,16 @@ public class AcceptanceTestContext {
 		if(simulationNumber==null) {
 			simulationNumber = 0;
 		}
+		if(testCase.isServerApiAuth()) {
+			simulationNumber = -1;
+		}
 		sessionIdentifiers.put(simulationNumber, identifier);
 	}
 	
 	public String getSessionIdentifier(TestCase testCase) {
+		if(testCase.isServerApiAuth()) {
+			return sessionIdentifiers.get(-1);
+		}
 		if(testCase.getSimulationNumber()!=null)
 			return sessionIdentifiers.get(testCase.getSimulationNumber());
 		return sessionIdentifiers.get(0);
@@ -422,8 +434,24 @@ public class AcceptanceTestContext {
 		initSoapContextAndHttpHeaders();
 		
 		initTestDataProviderAndGlobalVariables();
+		
+		initServerLogsApis();
 	}
 	
+	private void initServerLogsApis() {
+		if(gatfExecutorConfig.getServerLogsApiFileName()!=null) {
+			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+			File resource = new File(basePath, GATF_SERVER_LOGS_API_FILE_NM);
+			if(resource.exists()) {
+				TestCaseFinder finder = new XMLTestCaseFinder();
+				serverLogsApiLst.addAll(finder.findTestCases(resource, this, false));
+				if(getServerLogApi(true)!=null) {
+					getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+				}
+			}
+		}
+	}
+
 	private void initTestDataProviderAndGlobalVariables() {
 		GatfTestDataConfig gatfTestDataConfig = null;
 		if(gatfExecutorConfig.getTestDataConfigFile()!=null) {
@@ -868,5 +896,29 @@ public class AcceptanceTestContext {
 		{
 			finalTestResults.put(fileName, new ConcurrentLinkedQueue<TestCaseReport>());
 		}
+	}
+	
+	public List<TestCase> getServerLogsApiLst() {
+		return serverLogsApiLst;
+	}
+	
+	public TestCase getServerLogApi(boolean isAuth)
+	{
+		if(serverLogsApiLst.size()>0)
+		{
+			for (TestCase tc : serverLogsApiLst) {
+				if(isAuth && gatfExecutorConfig.isServerLogsApiAuthEnabled() && "authapi".equals(tc.getName()))
+				{
+					tc.setServerApiAuth(true);
+					return tc;
+				}
+				else if(!isAuth && "targetapi".equals(tc.getName()))
+				{
+					tc.setServerApiTarget(true);
+					return tc;
+				}
+			}
+		}
+		return null;
 	}
 }

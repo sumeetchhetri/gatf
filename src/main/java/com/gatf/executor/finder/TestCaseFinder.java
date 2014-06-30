@@ -50,7 +50,7 @@ public abstract class TestCaseFinder {
 	protected abstract TestCaseFileType getFileType();
 	public abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
 	
-	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context)
+	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context, boolean considerConfig)
 	{
 		String[] ignoreFiles = context.getGatfExecutorConfig().getIgnoreFiles();
 		String[] orderedFiles = context.getGatfExecutorConfig().getOrderedFiles();
@@ -65,19 +65,45 @@ public abstract class TestCaseFinder {
 			});
 			
 			List<File> allFiles = new ArrayList<File>();
-			if(orderedFiles!=null)
+			if(considerConfig)
 			{
-				for (String fileN : orderedFiles) {
+				if(orderedFiles!=null)
+				{
+					for (String fileN : orderedFiles) {
+						for (File file : files) {
+							if(file.getName().equals(fileN)) {
+								allFiles.add(file);
+								break;
+							}
+						}
+					}
 					for (File file : files) {
-						if(file.getName().equals(fileN)) {
+						if(!allFiles.contains(file)) {
 							allFiles.add(file);
-							break;
 						}
 					}
 				}
-				for (File file : files) {
-					if(!allFiles.contains(file)) {
+				else
+				{
+					for (File file : files) {
 						allFiles.add(file);
+					}
+					AlphanumComparator comparator = new AlphanumComparator();
+					if(isOrderByFileName) {
+						Collections.sort(allFiles, comparator);
+					}
+				}
+	
+				if(ignoreFiles!=null)
+				{
+					for (String fileN : ignoreFiles) {
+						fileN = fileN.trim();
+						if(fileN.isEmpty()) {
+							continue;
+						}
+						if(fileN.equals("*") || fileN.equals("*.*")) {
+							return testcases;
+						}
 					}
 				}
 			}
@@ -86,29 +112,12 @@ public abstract class TestCaseFinder {
 				for (File file : files) {
 					allFiles.add(file);
 				}
-				AlphanumComparator comparator = new AlphanumComparator();
-				if(isOrderByFileName) {
-					Collections.sort(allFiles, comparator);
-				}
-			}
-
-			if(ignoreFiles!=null)
-			{
-				for (String fileN : ignoreFiles) {
-					fileN = fileN.trim();
-					if(fileN.isEmpty()) {
-						continue;
-					}
-					if(fileN.equals("*") || fileN.equals("*.*")) {
-						return testcases;
-					}
-				}
 			}
 			
 			for (File file : allFiles) {
 				boolean isIgnore = false;
 				
-				if(ignoreFiles!=null)
+				if(considerConfig && ignoreFiles!=null)
 				{
 					for (String fileN : ignoreFiles) {
 						fileN = fileN.trim();
@@ -149,11 +158,14 @@ public abstract class TestCaseFinder {
 							{
 								testCase.setSimulationNumber(0);
 							}
-							testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+							if(considerConfig)
+							{
+								testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+							}
 						}
 						
 						Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-						if(context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
+						if(considerConfig && context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
 						{
 							runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
 						}
