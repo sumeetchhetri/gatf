@@ -19,6 +19,7 @@ limitations under the License.
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Scanner;
 
 import com.gatf.executor.core.TestCase;
@@ -28,6 +29,18 @@ import com.gatf.executor.core.TestCase;
  * Finds all test cases from the csv files inside a given test case directory
  */
 public class CSVTestCaseFinder extends TestCaseFinder {
+	
+	private Map<Integer, Integer> mappings;
+	
+	private boolean ignoreHeaderLine = false;
+	
+	public CSVTestCaseFinder(){}
+	
+	public CSVTestCaseFinder(Map<Integer, Integer> mappings, boolean ignoreHeaderLine)
+	{
+		this.mappings = mappings;
+		this.ignoreHeaderLine = ignoreHeaderLine;
+	}
 
 	protected TestCaseFileType getFileType() {
 		return TestCaseFileType.CSV;
@@ -37,8 +50,14 @@ public class CSVTestCaseFinder extends TestCaseFinder {
 		Scanner s = new Scanner(testCaseFile);
 		s.useDelimiter("\n");
 		List<String> list = new ArrayList<String>();
+		boolean isFirstLine = true;
 		while (s.hasNext()) {
 			String csvLine = s.next().replace("\r", "");
+			if(ignoreHeaderLine && isFirstLine)
+			{
+				isFirstLine = false;
+				continue;
+			}
 			if(!csvLine.trim().isEmpty() && !csvLine.trim().startsWith("//")) {
 				list.add(csvLine);
 			}
@@ -48,9 +67,20 @@ public class CSVTestCaseFinder extends TestCaseFinder {
 		List<TestCase> testcases = new ArrayList<TestCase>();
 		if(!list.isEmpty())
 		{
+			List<TestCase> testcasesTemp = new ArrayList<TestCase>();
+			boolean invalid = false;
 			for (String csvLine : list) {
-				TestCase testCase = new TestCase(csvLine);
-				testcases.add(testCase);
+				try {
+					TestCase testCase = mappings==null?new TestCase(csvLine):new TestCase(csvLine, mappings);
+					testcasesTemp.add(testCase);
+				} catch (Exception e) {
+					System.out.println("Invalid testcase format in file - " + testCaseFile.getPath() + ", Ignoring....");
+					invalid = true;
+					break;
+				}
+			}
+			if(!invalid) {
+				testcases.addAll(testcasesTemp);
 			}
 		}
 		return testcases;

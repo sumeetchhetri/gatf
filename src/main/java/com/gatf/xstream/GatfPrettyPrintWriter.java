@@ -13,6 +13,8 @@ package com.gatf.xstream;
 
 import java.io.Writer;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.thoughtworks.xstream.core.util.FastStack;
 import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.AbstractWriter;
@@ -203,12 +205,6 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
         depth++ ;
         readyForNewLine = true;
         tagIsEmpty = true;
-        if(cdataNodes!=null)
-        {
-        	for (String cNode : cdataNodes) {
-        		cdata = name.equals(cNode);
-			}
-        }
     }
 
     public void startNode(String name, Class clazz) {
@@ -217,6 +213,7 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
         {
         	for (String cNode : cdataNodes) {
         		cdata = name.equals(cNode);
+        		break;
 			}
         }
     }
@@ -243,6 +240,8 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
     }
 
     protected void writeText(QuickWriter writer, String text) {
+    	if(StringUtils.isBlank(text))
+    		return;
     	if(cdata) {
 			writer.write("<![CDATA[");
 			writer.write(text);

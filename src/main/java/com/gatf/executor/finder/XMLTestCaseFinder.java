@@ -38,7 +38,12 @@ public class XMLTestCaseFinder extends TestCaseFinder {
 		XStream xstream = new XStream(new DomDriver("UTF-8"));
 		xstream.processAnnotations(new Class[]{TestCase.class});
 		xstream.alias("TestCases", List.class);
-		List<TestCase> xmlTestCases = (List<TestCase>)xstream.fromXML(testCaseFile);
-		return xmlTestCases;
+		try {
+			List<TestCase> xmlTestCases = (List<TestCase>)xstream.fromXML(testCaseFile);
+			return xmlTestCases;
+		} catch (Exception e) {
+			System.out.println("Invalid testcase format in file - " + testCaseFile.getPath() + ", Ignoring....");
+			return null;
+		}
 	}
 }

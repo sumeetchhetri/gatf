@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
@@ -50,19 +51,47 @@ public abstract class TestCaseFinder {
 	protected abstract TestCaseFileType getFileType();
 	public abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
 	
+	private static final FileFilter dfilter = new FileFilter() {
+		public boolean accept(File file) {
+			return file.isDirectory();
+		}
+	};
+	
+	public static void getFiles(File dir, FilenameFilter filter, List<File> fileLst)
+	{
+		if (dir.isDirectory()) {
+			File[] files = dir.listFiles(filter);
+			for (File file : files) {
+				fileLst.add(file);
+				getFiles(file, filter, fileLst);
+			}
+			
+			files = dir.listFiles(dfilter);
+			for (File file : files) {
+				getFiles(file, filter, fileLst);
+			}
+		}
+	}
+	
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context, boolean considerConfig)
 	{
-		String[] ignoreFiles = context.getGatfExecutorConfig().getIgnoreFiles();
-		String[] orderedFiles = context.getGatfExecutorConfig().getOrderedFiles();
-		boolean isOrderByFileName = context.getGatfExecutorConfig().isOrderByFileName();
+		if(context==null)
+			considerConfig = false;
+		
+		String[] ignoreFiles = considerConfig?context.getGatfExecutorConfig().getIgnoreFiles():null;
+		String[] orderedFiles = considerConfig?context.getGatfExecutorConfig().getOrderedFiles():null;
+		boolean isOrderByFileName = considerConfig?context.getGatfExecutorConfig().isOrderByFileName():false;
+		
+		FilenameFilter filter = new FilenameFilter() {
+			public boolean accept(File folder, String name) {
+				return name.toLowerCase().endsWith(getFileType().ext);
+			}
+		};
 		
 		List<TestCase> testcases = new ArrayList<TestCase>();
 		if (dir.isDirectory()) {
-			File[] files = dir.listFiles(new FilenameFilter() {
-				public boolean accept(File folder, String name) {
-					return name.toLowerCase().endsWith(getFileType().ext);
-				}
-			});
+			List<File> files = new ArrayList<File>();
+			getFiles(dir, filter, files);
 			
 			List<File> allFiles = new ArrayList<File>();
 			if(considerConfig)
@@ -131,7 +160,7 @@ public abstract class TestCaseFinder {
 								isIgnore = true; 
 							}
 						} else if(fileN.endsWith("*")) {
-							fileN = fileN.substring(fileN.length()-1);
+							fileN = fileN.substring(0, fileN.lastIndexOf("*"));
 							if(file.getName().startsWith(fileN)) {
 								isIgnore = true; 
 							}
@@ -164,13 +193,16 @@ public abstract class TestCaseFinder {
 							}
 						}
 						
-						Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-						if(considerConfig && context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
+						if(considerConfig)
 						{
-							runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+							Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
+							if(considerConfig && context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
+							{
+								runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+							}
+							
+							context.initializeResultsHolders(runNums, file.getName());
 						}
-						
-						context.initializeResultsHolders(runNums, file.getName());
 						testcases.addAll(testcasesTemp);
 					}
 				} catch (Exception e) {

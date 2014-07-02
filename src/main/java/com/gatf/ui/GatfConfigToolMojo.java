@@ -600,6 +600,8 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        			List<TestCase> tcsn = new ArrayList<TestCase>();
 			        			boolean isAuthApi = false;
 			        			boolean isTargetApi = false;
+			        			if(tcs==null)
+			        				throw new RuntimeException("No Testcases found...");
 			        			for (TestCase testCase : tcs) {
 			        				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
 			        						|| testCase.getName().equals("targetapi"))))

@@ -23,12 +23,17 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.commons.lang.StringEscapeUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
@@ -55,15 +60,16 @@ public class TestCase implements Serializable {
 
 	private static final Logger logger = Logger.getLogger(TestCase.class);
 	
+	private static final String PRE = UUID.randomUUID().toString() + "__";
+	
+	private static final Pattern quotedString = Pattern.compile("((?<![\\\\])['\"])((?:.(?!(?<![\\\\])\\1))*.?)\\1");
+	
 	public static final String[] CDATA_NODES = new String[]{"content","expectedResContent"};
 	
-	@XStreamAsAttribute
 	private String baseUrl;
 	
-	@XStreamAsAttribute
 	private String url;
 	
-	@XStreamAsAttribute
 	private String name;
 	
 	@XStreamAsAttribute
@@ -72,6 +78,8 @@ public class TestCase implements Serializable {
 	private String description;
 	
 	private String content;
+	
+	private String contentFile;
 	
 	private Map<String, String> headers = new HashMap<String, String>();
 	
@@ -100,10 +108,8 @@ public class TestCase implements Serializable {
 	@XStreamAsAttribute
 	private boolean soapBase;
 	
-	@XStreamAsAttribute
 	private String wsdlKey;
 	
-	@XStreamAsAttribute
 	private String operationName;
 	
 	private Map<String, String> soapParameterValues = new HashMap<String, String>();
@@ -113,9 +119,8 @@ public class TestCase implements Serializable {
 	@XStreamAsAttribute
 	private int sequence = 0;
 	
-	private List<String> filesToUpload = new ArrayList<String>();
+	private List<String> multipartContent = new ArrayList<String>();
 	
-	@XStreamAsAttribute
 	private String outFileName;
 	
 	private List<Map<String, String>> repeatScenarios = new ArrayList<Map<String,String>>();
@@ -147,7 +152,7 @@ public class TestCase implements Serializable {
 	private List<String> aexpectedNodes = new ArrayList<String>();
 	
 	@XStreamAsAttribute
-	private Integer numberOfExecutions = 0;
+	private Integer numberOfExecutions = 1;
 	
 	@XStreamAsAttribute
 	private boolean repeatScenariosConcurrentExecution;
@@ -175,8 +180,10 @@ public class TestCase implements Serializable {
 	
 	private String postExecutionDataSourceHookName;
 	
+	@XStreamAsAttribute
 	private boolean abortOnInvalidStatusCode;
 	
+	@XStreamAsAttribute
 	private boolean abortOnInvalidContentType;
 	
 	private String relatedTestName;
@@ -236,6 +243,14 @@ public class TestCase implements Serializable {
 
 	public void setContent(String content) {
 		this.content = content;
+	}
+
+	public String getContentFile() {
+		return contentFile;
+	}
+
+	public void setContentFile(String contentFile) {
+		this.contentFile = contentFile;
 	}
 
 	public Map<String, String> getHeaders() {
@@ -358,12 +373,12 @@ public class TestCase implements Serializable {
 		this.operationName = operationName;
 	}
 
-	public List<String> getFilesToUpload() {
-		return filesToUpload;
+	public List<String> getMultipartContent() {
+		return multipartContent;
 	}
 
-	public void setFilesToUpload(List<String> filesToUpload) {
-		this.filesToUpload = filesToUpload;
+	public void setMultipartContent(List<String> multipartContent) {
+		this.multipartContent = multipartContent;
 	}
 	
 	public Map<String, String> getWorkflowContextParameterMap() {
@@ -683,7 +698,7 @@ public class TestCase implements Serializable {
 		builder.append("\nsequence=");
 		builder.append(sequence);
 		builder.append("\nfilesToUpload=");
-		builder.append(filesToUpload != null ? toString(filesToUpload, maxLen)
+		builder.append(multipartContent != null ? toString(multipartContent, maxLen)
 				: null);
 		builder.append("\noutFileName=");
 		builder.append(outFileName);
@@ -758,106 +773,38 @@ public class TestCase implements Serializable {
 	public TestCase(String csvLine) {
 		boolean valid = false;
 		if(csvLine!=null) {
-			String[] csvParts = csvLine.split(",");
-			if(csvParts.length>33) {
-				setUrl(csvParts[0]);
-				setName(csvParts[1]);
-				setMethod(csvParts[2]);
-				setDescription(csvParts[3]);
-				setContent(csvParts[4]);
-				setHeaders(new HashMap<String, String>());
-				String[] headers = csvParts[5].split("\\|");
-				for (String header : headers) {
-					String[] kv = header.split(":");
-					if(kv.length!=2) {
-						logger.error("Invalid Header specified for testcase - " + header);
-					}
-					if(!kv[0].isEmpty() && !kv[1].isEmpty())
-					{
-						getHeaders().put(kv[0], kv[1]);
-					}
-				}
-				setExQueryPart(csvParts[6]);
-				setExpectedResCode(Integer.parseInt(csvParts[7]));
-				setExpectedResContentType(csvParts[8]);
-				setExpectedResContent(csvParts[9]);
-				setExpectedNodes(new ArrayList<String>());
-				String[] nodes = csvParts[10].split("\\|");
-				for (String node : nodes) {
-					if(!node.isEmpty())
-					{
-						getExpectedNodes().add(node);
-					}
-				}
-				setSkipTest(Boolean.valueOf(csvParts[11]));
-				setDetailedLog(Boolean.valueOf(csvParts[12]));
-				setSecure(Boolean.valueOf(csvParts[13]));
-				setFilesToUpload(new ArrayList<String>());
-				String[] files = csvParts[14].split("\\|");
-				for (String multfile : files) {
-					if(!multfile.isEmpty())
-					{
-						String[] mulff = multfile.split(":");
-						//controlname,type,filenameOrText,contentType
-						if(mulff.length==4 || mulff.length==3) {
-							getFilesToUpload().add(multfile);
-						}
-					}
-				}
-				setSoapBase(Boolean.valueOf(csvParts[15]));
-				setSoapParameterValues(new HashMap<String, String>());
-				String[] soapVals = csvParts[16].split("\\|");
-				for (String soapVal : soapVals) {
-					String[] kv = soapVal.split(":");
-					if(kv.length!=2) {
-						logger.error("Invalid Soap Parameter key/value specified for testcase - " + soapVal);
-					}
-					if(!kv[0].isEmpty() && !kv[1].isEmpty())
-					{
-						getSoapParameterValues().put(kv[0], kv[1]);
-					}
-				}
-				setWsdlKey(csvParts[17]);
-				setOperationName(csvParts[18]);
-				setSequence(Integer.parseInt(csvParts[19]));
-				setWorkflowContextParameterMap(new HashMap<String, String>());
-				String[] workflowParams = csvParts[20].split("\\|");
-				for (String workflowParam : workflowParams) {
-					String[] kv = workflowParam.split(":");
-					if(kv.length!=2) {
-						logger.error("Invalid Workflow Parameter key/value specified for testcase - " + workflowParam);
-					}
-					if(!kv[0].isEmpty() && !kv[1].isEmpty())
-					{
-						getWorkflowContextParameterMap().put(kv[0], kv[1]);
-					}
-				}
-				setOutFileName(csvParts[21]);
-				setRepeatScenarioProviderName(csvParts[22]);
-				setNumberOfExecutions(Integer.parseInt(csvParts[23]));
-				setRepeatScenariosConcurrentExecution(Boolean.valueOf(csvParts[24]));
-				setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts[25]));
-				setPreWaitMs(Long.parseLong(csvParts[26]));
-				setPostWaitMs(Long.parseLong(csvParts[27]));
-				setReportResponseContent(Boolean.valueOf(csvParts[28]));
-				setPreExecutionDataSourceHookName(csvParts[29]);
-				setPostExecutionDataSourceHookName(csvParts[30]);
-				setAbortOnInvalidContentType(Boolean.valueOf(csvParts[31]));
-				setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts[32]));
-				setRelatedTestName(csvParts[33]);
-				setExecuteOnCondition(csvParts[34]);
-				setLogicalValidations(new ArrayList<String>());
-				nodes = csvParts[35].split("\\|");
-				for (String node : nodes) {
-					if(!node.isEmpty())
-					{
-						getLogicalValidations().add(node);
-					}
-				}
-				valid = true;
-			} else {
-				valid = false;
+			List<String> csvParts = getAndSanitizeParts(csvLine);
+			for (int i = 0; i < csvParts.size(); i++) {
+				setProperties(csvParts, i);
 			}
+			valid = csvParts.size()>4;
+		} else {
+			valid = false;
+		}
+		if(!valid)
+		{
+			throw new RuntimeException("Invalid CSV data provided for creating TestCase");
+		}
+	}
+	
+	public TestCase(String csvLine, Map<Integer, Integer> mappings) {
+		boolean valid = false;
+		if(csvLine!=null) {
+			List<String> csvParts = getAndSanitizeParts(csvLine);
+			List<String> csvPartsN = new ArrayList<String>(40);
+			for (int i = 0; i < 40; i++) {
+				csvPartsN.add(null);
+			}
+			for (int i = 0; i < csvParts.size(); i++) {
+				if(mappings.get(i)!=null)
+				{
+					csvPartsN.set(mappings.get(i), csvParts.get(i));
+				}
+			}
+			for (int i = 0; i < csvPartsN.size(); i++) {
+				setProperties(csvPartsN, i);
+			}
+			valid = csvPartsN.size()>4;
 		} else {
 			valid = false;
 		}
@@ -905,7 +852,7 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(isSecure());
 		build.append(",");
-		for (String node : getFilesToUpload()) {
+		for (String node : getMultipartContent()) {
 			build.append(getCsvValue(node));
 			build.append("|");
 		}
@@ -978,23 +925,23 @@ public class TestCase implements Serializable {
 	
 	public void validate(Map<String, String> httpHeaders) {
 		
-		if(getName()==null || getName().trim().isEmpty())
+		if(StringUtils.isBlank(getName()))
 			throw new RuntimeException("Blank Name specified for testcase");
 		
 		if(!isSoapBase())
 		{
-			if(getUrl()==null || getUrl().trim().isEmpty())
+			if(StringUtils.isBlank(getUrl()))
 				throw new RuntimeException("Blank URL sepcified for testcase");
 			
-			if(getMethod()==null || getMethod().trim().isEmpty())
+			if(StringUtils.isBlank(getMethod()))
 				throw new RuntimeException("Blank HTTP Method specified for testcase");
 			
 			if(!getMethod().toUpperCase().equals(HttpMethod.GET) && !getMethod().toUpperCase().equals(HttpMethod.PUT)
 					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE))
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
 			
-			if(("POST".equals(getMethod()) || "PUT".equals(getMethod())) && getHeaders().isEmpty())
-				throw new RuntimeException("No Content-Type Header provided");
+			//if(("POST".equals(getMethod()) || "PUT".equals(getMethod())) && getHeaders().isEmpty())
+			//	throw new RuntimeException("No Content-Type Header provided");
 		}
 		
 		Map<String, String> nHeaders = new HashMap<String, String>();
@@ -1011,10 +958,11 @@ public class TestCase implements Serializable {
 			setHeaders(nHeaders);
 		}
 		
-		/*if(!getHeaders().containsKey(HttpHeaders.CONTENT_TYPE))
+		if(!isSoapBase() && (StringUtils.isNotBlank(getContent()) || StringUtils.isNotBlank(getContentFile())) && 
+				(getHeaders()==null || !getHeaders().containsKey(HttpHeaders.CONTENT_TYPE)))
 			throw new RuntimeException("No Content-Type Header provided");
 		
-		try {
+		/*try {
 			MediaType.valueOf(getHeaders().get(HttpHeaders.CONTENT_TYPE));
 		} catch (Exception e) {
 			throw new RuntimeException("Invalid Content-Type Header specified for testcase");
@@ -1026,7 +974,7 @@ public class TestCase implements Serializable {
 			throw new RuntimeException("Invalid expected Status code specified for testcase");
 		}
 		
-		if(getExpectedResContentType()!=null)
+		if(StringUtils.isNotBlank(getExpectedResContentType()))
 		{
 			try {
 				MediaType.valueOf(getExpectedResContentType());
@@ -1103,7 +1051,7 @@ public class TestCase implements Serializable {
 			this.workflowContextParameterMap = new HashMap<String, String>(other.workflowContextParameterMap);
 		}
 		this.sequence = other.sequence;
-		this.filesToUpload = other.filesToUpload;
+		this.multipartContent = other.multipartContent;
 		this.outFileName = other.outFileName;
 		if(other.repeatScenarios!=null)
 		{
@@ -1180,7 +1128,7 @@ public class TestCase implements Serializable {
 				+ ((expectedResContentType == null) ? 0
 						: expectedResContentType.hashCode());
 		result = prime * result
-				+ ((filesToUpload == null) ? 0 : filesToUpload.hashCode());
+				+ ((multipartContent == null) ? 0 : multipartContent.hashCode());
 		result = prime * result + ((headers == null) ? 0 : headers.hashCode());
 		result = prime
 				* result
@@ -1334,10 +1282,10 @@ public class TestCase implements Serializable {
 				return false;
 		} else if (!expectedResContentType.equals(other.expectedResContentType))
 			return false;
-		if (filesToUpload == null) {
-			if (other.filesToUpload != null)
+		if (multipartContent == null) {
+			if (other.multipartContent != null)
 				return false;
-		} else if (!filesToUpload.equals(other.filesToUpload))
+		} else if (!multipartContent.equals(other.multipartContent))
 			return false;
 		if (headers == null) {
 			if (other.headers != null)
@@ -1471,5 +1419,195 @@ public class TestCase implements Serializable {
 		} else if (!wsdlKey.equals(other.wsdlKey))
 			return false;
 		return true;
+	}
+	
+	private static List<String> getAndSanitizeParts(String csvLine) {
+		
+		Matcher match = quotedString.matcher(csvLine);
+		int i = 0;
+		List<String> csvParts = new ArrayList<String>();
+		Map<String, String> params = new HashMap<String, String>();
+		while(match.find())
+		{
+			csvLine = csvLine.replace(match.group(0), PRE+i);
+			params.put(PRE+i, match.group(2));
+			i++;
+		}
+		String[] parts = csvLine.split(",");
+		for (i=0;i<parts.length;i++) {
+			String part = parts[i];
+			if(params.containsKey(part)) {
+				part = params.get(part);
+			}
+			csvParts.add(part);
+		}
+		return csvParts;
+	}
+	
+	private void setProperties(List<String> csvParts, int index)
+	{
+		if(index==0 && csvParts.size()>0 && csvParts.get(0)!=null)
+			setUrl(csvParts.get(0));
+		if(index==1 && csvParts.size()>1 && csvParts.get(1)!=null)
+			setName(csvParts.get(1));
+		if(index==2 && csvParts.size()>2 && csvParts.get(2)!=null)
+			setMethod(csvParts.get(2));
+		if(index==3 && csvParts.size()>3 && csvParts.get(3)!=null)
+			setDescription(csvParts.get(3));
+		if(index==4 && csvParts.size()>4 && StringUtils.isNotBlank(csvParts.get(4)))
+			setContent(StringEscapeUtils.unescapeJava(csvParts.get(4)));
+		else if(index==4 && csvParts.size()>4)
+			setContent(null);
+		if(index==5 && csvParts.size()>5 && csvParts.get(5)!=null)
+		{	
+			setHeaders(new HashMap<String, String>());
+			String[] headers = csvParts.get(5).split("\\|");
+			for (String header : headers) {
+				String[] kv = header.split(":");
+				if(kv.length!=2) {
+					logger.error("Invalid Header specified for testcase - " + header);
+				}
+				if(!kv[0].isEmpty() && !kv[1].isEmpty())
+				{
+					getHeaders().put(kv[0], kv[1]);
+				}
+			}
+		}
+		if(index==6 && csvParts.size()>6 && csvParts.get(6)!=null)
+			setExQueryPart(csvParts.get(6));
+		if(index==7 && csvParts.size()>7 && csvParts.get(7)!=null)
+			setExpectedResCode(Integer.parseInt(csvParts.get(7)));
+		if(index==8 && csvParts.size()>8 && csvParts.get(8)!=null)
+			setExpectedResContentType(csvParts.get(8));
+		if(index==9 && csvParts.size()>9 && StringUtils.isNotBlank(csvParts.get(9)))
+			setExpectedResContent(StringEscapeUtils.unescapeJava(csvParts.get(9)));
+		else if(index==9 && csvParts.size()>9)
+			setExpectedResContent(null);
+		if(index==10 && csvParts.size()>10 && csvParts.get(10)!=null)
+		{
+			setExpectedNodes(new ArrayList<String>());
+			String[] nodes = csvParts.get(10).split("\\|");
+			for (String node : nodes) {
+				if(!node.isEmpty())
+				{
+					getExpectedNodes().add(node);
+				}
+			}
+		}
+		if(index==11 && csvParts.size()>11 && csvParts.get(11)!=null)
+			setSkipTest(Boolean.valueOf(csvParts.get(11)));
+		if(index==12 && csvParts.size()>12 && csvParts.get(12)!=null)
+			setDetailedLog(Boolean.valueOf(csvParts.get(12)));
+		if(index==13 && csvParts.size()>13 && csvParts.get(13)!=null)
+			setSecure(Boolean.valueOf(csvParts.get(13)));
+		if(index==14 && csvParts.size()>14 && csvParts.get(14)!=null)
+		{
+			setMultipartContent(new ArrayList<String>());
+			String[] files = csvParts.get(14).split("\\|");
+			for (String multfile : files) {
+				if(!multfile.isEmpty())
+				{
+					String[] mulff = multfile.split(":");
+					//controlname,type,filenameOrText,contentType
+					if(mulff.length==4 || mulff.length==3) {
+						getMultipartContent().add(multfile);
+					}
+				}
+			}
+		}
+		if(index==15 && csvParts.size()>15 && csvParts.get(15)!=null)
+			setSoapBase(Boolean.valueOf(csvParts.get(15)));
+		if(index==16 && csvParts.size()>16 && csvParts.get(16)!=null)
+		{
+			setSoapParameterValues(new HashMap<String, String>());
+			String[] soapVals = csvParts.get(16).split("\\|");
+			for (String soapVal : soapVals) {
+				String[] kv = soapVal.split(":");
+				if(kv.length!=2) {
+					logger.error("Invalid Soap Parameter key/value specified for testcase - " + soapVal);
+				}
+				if(!kv[0].isEmpty() && !kv[1].isEmpty())
+				{
+					getSoapParameterValues().put(kv[0], kv[1]);
+				}
+			}
+		}
+		if(index==17 && csvParts.size()>17 && csvParts.get(17)!=null)
+			setWsdlKey(csvParts.get(17));
+		if(index==18 && csvParts.size()>18 && csvParts.get(18)!=null)
+			setOperationName(csvParts.get(18));
+		if(index==19 && csvParts.size()>19 && csvParts.get(19)!=null)
+			setSequence(Integer.parseInt(csvParts.get(19)));
+		if(index==20 && csvParts.size()>20 && csvParts.get(20)!=null)
+		{	
+			setWorkflowContextParameterMap(new HashMap<String, String>());
+			String[] workflowParams = csvParts.get(20).split("\\|");
+			for (String workflowParam : workflowParams) {
+				String[] kv = workflowParam.split(":");
+				if(kv.length!=2) {
+					logger.error("Invalid Workflow Parameter key/value specified for testcase - " + workflowParam);
+				}
+				if(!kv[0].isEmpty() && !kv[1].isEmpty())
+				{
+					getWorkflowContextParameterMap().put(kv[0], kv[1]);
+				}
+			}
+		}
+		if(index==21 && csvParts.size()>21 && csvParts.get(21)!=null)
+			setOutFileName(csvParts.get(21));
+		if(index==22 && csvParts.size()>22 && csvParts.get(22)!=null)
+			setRepeatScenarioProviderName(csvParts.get(22));
+		if(index==23 && csvParts.size()>23 && csvParts.get(23)!=null)
+			setNumberOfExecutions(Integer.parseInt(csvParts.get(23)));
+		if(index==24 && csvParts.size()>24 && csvParts.get(24)!=null)
+			setRepeatScenariosConcurrentExecution(Boolean.valueOf(csvParts.get(24)));
+		if(index==25 && csvParts.size()>25 && csvParts.get(25)!=null)
+			setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts.get(25)));
+		if(index==26 && csvParts.size()>26 && csvParts.get(26)!=null)
+			setPreWaitMs(Long.parseLong(csvParts.get(26)));
+		if(index==27 && csvParts.size()>27 && csvParts.get(27)!=null)
+			setPostWaitMs(Long.parseLong(csvParts.get(27)));
+		if(index==28 && csvParts.size()>28 && csvParts.get(28)!=null)
+			setReportResponseContent(Boolean.valueOf(csvParts.get(28)));
+		if(index==29 && csvParts.size()>29 && csvParts.get(29)!=null)
+			setPreExecutionDataSourceHookName(csvParts.get(29));
+		if(index==30 && csvParts.size()>30 && csvParts.get(30)!=null)
+			setPostExecutionDataSourceHookName(csvParts.get(30));
+		if(index==31 && csvParts.size()>31 && csvParts.get(31)!=null)
+			setAbortOnInvalidContentType(Boolean.valueOf(csvParts.get(31)));
+		if(index==32 && csvParts.size()>32 && csvParts.get(32)!=null)
+			setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts.get(32)));
+		if(index==33 && csvParts.size()>33 && csvParts.get(33)!=null)
+			setRelatedTestName(csvParts.get(33));
+		if(index==34 && csvParts.size()>34 && csvParts.get(34)!=null)
+			setExecuteOnCondition(csvParts.get(34));
+		if(index==35 && csvParts.size()>35 && csvParts.get(35)!=null)
+		{
+			setLogicalValidations(new ArrayList<String>());
+			String[] nodes = csvParts.get(35).split("\\|");
+			for (String node : nodes) {
+				if(!node.isEmpty())
+				{
+					getLogicalValidations().add(node);
+				}
+			}
+		}
+		if(index==35)
+		{	
+			if(getNumberOfExecutions()==null)
+				setNumberOfExecutions(1);
+			if(getHeaders().size()==0)
+				setHeaders(null);
+			if(getExpectedNodes().size()==0)
+				setExpectedNodes(null);
+			if(getWorkflowContextParameterMap().size()==0)
+				setWorkflowContextParameterMap(null);
+			if(getSoapParameterValues().size()==0)
+				setSoapParameterValues(null);
+			if(getRepeatScenarios().size()==0)
+				setRepeatScenarios(null);
+			if(getMultipartContent().size()==0)
+				setMultipartContent(null);
+		}
 	}
 }

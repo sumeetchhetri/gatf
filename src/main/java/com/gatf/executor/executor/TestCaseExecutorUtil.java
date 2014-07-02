@@ -38,8 +38,10 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.output.NullOutputStream;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
 import org.w3c.dom.Document;
@@ -159,9 +161,9 @@ public class TestCaseExecutorUtil {
 				builder = builder.setBody(testCase.getAcontent());
 			}
 		}
-		else if(testCase.getFilesToUpload()!=null && !testCase.getFilesToUpload().isEmpty())
+		else if(testCase.getMultipartContent()!=null && !testCase.getMultipartContent().isEmpty())
 		{
-			for (String filedet : testCase.getFilesToUpload()) {
+			for (String filedet : testCase.getMultipartContent()) {
 				String[] mulff = filedet.split(":");
 				if(mulff.length==4 || mulff.length==3) {
 					String controlname = mulff[0].trim();
@@ -182,8 +184,8 @@ public class TestCaseExecutorUtil {
 						logger.severe("No file/text specified for file upload...skipping value - " + filedet);
 						continue;
 					}
-					if(type.equalsIgnoreCase("text") && contType.isEmpty()) {
-						logger.severe("No mime-type specified for text data upload...skipping value - " + filedet);
+					if(contType.isEmpty() && type.equalsIgnoreCase("text")) {
+						logger.severe("No mime-type specified...skipping value - " + filedet);
 						continue;
 					}
 					
@@ -192,7 +194,7 @@ public class TestCaseExecutorUtil {
 							File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), fileNmOrTxt);
 							if(!testCase.isSoapBase())
 							{
-								Part part = new FilePart(controlname, file);
+								Part part = new FilePart(controlname, file, contType, null);
 								builder = builder.addBodyPart(part);
 							}
 							else
@@ -219,6 +221,21 @@ public class TestCaseExecutorUtil {
 				}			
 			}
 		}
+		else if(StringUtils.isNotBlank(testCase.getContentFile()))
+		{
+			String content = null;
+			File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), testCase.getContentFile());
+			if(testCase.isSoapBase())
+			{
+				byte[] fileData = IOUtils.toByteArray(new FileInputStream(file));
+				content = Base64.encode(fileData);
+			}
+			else
+			{
+				content = FileUtils.readFileToString(file);
+			}
+			builder.setBody(content);
+		}
 		
 		//Now set the URL with authentication tokens etc...
 		if(!testCase.isSoapBase()) {
@@ -229,7 +246,7 @@ public class TestCaseExecutorUtil {
 				url = url.substring(0, url.indexOf("?"));
 			}
 			
-			if(testCase.getSimulationNumber()>0 && context.getProviderTestDataMap()!=null 
+			if(testCase.getSimulationNumber()>=0 && context.getProviderTestDataMap()!=null 
 					&& !context.getProviderTestDataMap().isEmpty() 
 					&& context.getProviderTestDataMap()
 						.get(context.getGatfExecutorConfig().getAuthDataProvider())!=null
@@ -651,15 +668,17 @@ public class TestCaseExecutorUtil {
 			if(testCaseReport.getError()==null)
 			{
 				if(!testCase.isSoapBase()) {
-					if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.APPLICATION_JSON))
+					if(MediaType.APPLICATION_JSON.equalsIgnoreCase(testCase.getExpectedResContentType()))
 					{
 						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
-					else if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.APPLICATION_XML))
+					else if(MediaType.APPLICATION_XML.equalsIgnoreCase(testCase.getExpectedResContentType())
+							|| MediaType.TEXT_XML.equalsIgnoreCase(testCase.getExpectedResContentType()))
 					{
 						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
-					else if(testCase.getExpectedResContentType().equalsIgnoreCase(MediaType.TEXT_PLAIN))
+					else if(MediaType.TEXT_PLAIN.equalsIgnoreCase(testCase.getExpectedResContentType())
+							|| MediaType.TEXT_HTML.equalsIgnoreCase(testCase.getExpectedResContentType()))
 					{
 						textResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
