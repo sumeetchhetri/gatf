@@ -595,21 +595,7 @@ public class ReportHandler {
 						tesStat.setStatus(TestStatus.Failed.status);
 					}
 					testCaseStats.add(tesStat);
-					if(testCaseReport.getTestCase().getHeaders()!=null)
-					{
-						StringBuilder build = new StringBuilder();
-						for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
-							build.append(headerVal.getKey());
-							build.append(": ");
-				            build.append(headerVal.getValue());
-				            build.append("\n");
-				            
-				            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
-				            	testCaseReport.setRequestContentType(headerVal.getValue());
-				            }
-						}
-						testCaseReport.setRequestHeaders(build.toString());
-					}
+					populateRequestResponseHeaders(testCaseReport);
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
 					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
@@ -922,21 +908,7 @@ public class ReportHandler {
 						tesStat.setStatus(TestStatus.Failed.status);
 					}
 					testCaseStats.add(tesStat);
-					if(testCaseReport.getTestCase().getHeaders()!=null)
-					{
-						StringBuilder build = new StringBuilder();
-						for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
-							build.append(headerVal.getKey());
-							build.append(": ");
-				            build.append(headerVal.getValue());
-				            build.append("\n");
-				            
-				            if(headerVal.getKey().equalsIgnoreCase(HttpHeaders.CONTENT_TYPE)) {
-				            	testCaseReport.setRequestContentType(headerVal.getValue());
-				            }
-						}
-						testCaseReport.setRequestHeaders(build.toString());
-					}
+					populateRequestResponseHeaders(testCaseReport);
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
 					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
@@ -1192,11 +1164,11 @@ public class ReportHandler {
 		return runPercentiles.getPercentileTimes();
 	}
 	
-	public static void setTestCaseReportProps(TestCaseReport testCaseReport)
+	public static void populateRequestResponseHeaders(TestCaseReport testCaseReport)
 	{
-		if(testCaseReport.getTestCase().getHeaders()!=null)
+		StringBuilder build = new StringBuilder();
+		if(testCaseReport.getTestCase()!=null && testCaseReport.getTestCase().getHeaders()!=null)
 		{
-			StringBuilder build = new StringBuilder();
 			for (Map.Entry<String, String> headerVal : testCaseReport.getTestCase().getHeaders().entrySet()) {
 				build.append(headerVal.getKey());
 				build.append(": ");
@@ -1208,6 +1180,27 @@ public class ReportHandler {
 	            }
 			}
 			testCaseReport.setRequestHeaders(build.toString());
+		}
+		
+		if(testCaseReport.getResHeaders()!=null)
+		{
+			build = new StringBuilder();
+			for (Map.Entry<String, List<String>> entry : testCaseReport.getResHeaders().entrySet()) {
+				build.append(entry.getKey());
+				build.append(": ");
+				
+				boolean needsComma = false;
+	            for (String value : entry.getValue()) {
+	                if (needsComma) {
+	                	build.append(", ");
+	                } else {
+	                    needsComma = true;
+	                }
+	                build.append(value);
+	            }
+	            build.append("\n");
+			}
+			testCaseReport.setResponseHeaders(build.toString());
 		}
 	}
 }

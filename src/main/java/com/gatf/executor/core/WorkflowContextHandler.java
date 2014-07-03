@@ -176,6 +176,10 @@ public class WorkflowContextHandler {
 			Map<String, String> cookieMap = cookies.get(simNumber);
 			if(cookieMap!=null) {
 				for (Map.Entry<String, String> entry : cookieMap.entrySet()) {
+					if(testCase.getHeaders()==null)
+					{
+						testCase.setHeaders(new HashMap<String, String>());
+					}
 					testCase.getHeaders().put("Cookie", entry.getKey() + "=" + entry.getValue());
 				}
 			}

@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -201,6 +202,10 @@ public class TestCaseExecutorUtil {
 							{
 								byte[] fileData = IOUtils.toByteArray(new FileInputStream(file));
 								String fileContents = Base64.encode(fileData);
+								if(testCase.getSoapParameterValues()==null)
+								{
+									testCase.setSoapParameterValues(new HashMap<String, String>());
+								}
 								testCase.getSoapParameterValues().put(controlname, fileContents);
 							}
 						} catch (Exception e) {
@@ -215,6 +220,10 @@ public class TestCaseExecutorUtil {
 						}
 						else
 						{
+							if(testCase.getSoapParameterValues()==null)
+							{
+								testCase.setSoapParameterValues(new HashMap<String, String>());
+							}
 							testCase.getSoapParameterValues().put(controlname, fileNmOrTxt);
 						}
 					}
@@ -273,6 +282,10 @@ public class TestCaseExecutorUtil {
 				String content = "";
 				
 				if(authParams[1].equals("header")) {
+					if(testCase.getHeaders()==null)
+					{
+						testCase.setHeaders(new HashMap<String, String>());
+					}
 					testCase.getHeaders().put(authParams[0], userVal);
 				} else if(authParams[1].equals("queryparam")) {
 					if(turl.indexOf("?")!=-1 && turl.indexOf("{"+authParams[0]+"}")!=-1) {
@@ -691,23 +704,7 @@ public class TestCaseExecutorUtil {
 					soapResponseValidator.validate(response, testCase, testCaseReport, context);
 				}
 				testCaseReport.setResponseContent(response.getResponseBody());
-				StringBuilder build = new StringBuilder();
-				for (Map.Entry<String, List<String>> entry : response.getHeaders().entrySet()) {
-					build.append(entry.getKey());
-					build.append(": ");
-					
-					boolean needsComma = false;
-		            for (String value : entry.getValue()) {
-		                if (needsComma) {
-		                	build.append(", ");
-		                } else {
-		                    needsComma = true;
-		                }
-		                build.append(value);
-		            }
-		            build.append("\n");
-				}
-				testCaseReport.setResponseHeaders(build.toString());
+				testCaseReport.setResHeaders(response.getHeaders());
 			}
 			
 			if(testCase.getPostWaitMs()!=null && testCase.getPostWaitMs()>0) {

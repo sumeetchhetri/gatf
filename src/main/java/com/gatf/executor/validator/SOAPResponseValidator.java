@@ -86,6 +86,7 @@ public class SOAPResponseValidator extends ResponseValidator {
 	
 	public static void processSOAPRequest(Document soapMessage, TestCase testCase) throws Exception
 	{
+		if(testCase.getSoapParameterValues()==null)return;
 		for (Map.Entry<String, String> entry : testCase.getSoapParameterValues().entrySet()) {
 			Node envelope = getNodeByNameCaseInsensitive(soapMessage.getFirstChild(), "envelope");
 			Node body = getNodeByNameCaseInsensitive(envelope, "body");

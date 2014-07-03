@@ -826,11 +826,14 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(getCsvValue(getContent()));
 		build.append(",");
-		for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
-			build.append(getCsvValue(entry.getKey()));
-			build.append(":");
-			build.append(getCsvValue(entry.getValue()));
-			build.append("|");
+		if(getHeaders()!=null)
+		{
+			for (Map.Entry<String, String> entry : getHeaders().entrySet()) {
+				build.append(getInternalCsvValue(entry.getKey()));
+				build.append(":");
+				build.append(getInternalCsvValue(entry.getValue()));
+				build.append("|");
+			}
 		}
 		build.append(",");
 		build.append(getCsvValue(getExQueryPart()));
@@ -841,9 +844,12 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(getCsvValue(getExpectedResContent()));
 		build.append(",");
-		for (String node : getExpectedNodes()) {
-			build.append(getCsvValue(node));
-			build.append("|");
+		if(getExpectedNodes()!=null)
+		{
+			for (String node : getExpectedNodes()) {
+				build.append(getInternalCsvValue(node));
+				build.append("|");
+			}
 		}
 		build.append(",");
 		build.append(isSkipTest());
@@ -852,18 +858,24 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(isSecure());
 		build.append(",");
-		for (String node : getMultipartContent()) {
-			build.append(getCsvValue(node));
-			build.append("|");
+		if(getMultipartContent()!=null)
+		{
+			for (String node : getMultipartContent()) {
+				build.append(getInternalCsvValue(node));
+				build.append("|");
+			}
 		}
 		build.append(",");
 		build.append(isSoapBase());
 		build.append(",");
-		for (Map.Entry<String, String> entry : getSoapParameterValues().entrySet()) {
-			build.append(getCsvValue(entry.getKey()));
-			build.append(":");
-			build.append(getCsvValue(entry.getValue()));
-			build.append("|");
+		if(getSoapParameterValues()!=null)
+		{
+			for (Map.Entry<String, String> entry : getSoapParameterValues().entrySet()) {
+				build.append(getInternalCsvValue(entry.getKey()));
+				build.append(":");
+				build.append(getInternalCsvValue(entry.getValue()));
+				build.append("|");
+			}
 		}
 		build.append(",");
 		build.append(getCsvValue(getWsdlKey()));
@@ -872,11 +884,14 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(getSequence());
 		build.append(",");
-		for (Map.Entry<String, String> entry : getWorkflowContextParameterMap().entrySet()) {
-			build.append(getCsvValue(entry.getKey()));
-			build.append(":");
-			build.append(getCsvValue(entry.getValue()));
-			build.append("|");
+		if(getWorkflowContextParameterMap()!=null)
+		{
+			for (Map.Entry<String, String> entry : getWorkflowContextParameterMap().entrySet()) {
+				build.append(getInternalCsvValue(entry.getKey()));
+				build.append(":");
+				build.append(getInternalCsvValue(entry.getValue()));
+				build.append("|");
+			}
 		}
 		build.append(",");
 		build.append(getCsvValue(getOutFileName()));
@@ -907,14 +922,26 @@ public class TestCase implements Serializable {
 		build.append(",");
 		build.append(getExecuteOnCondition());
 		build.append(",");
-		for (String node : getLogicalValidations()) {
-			build.append(getCsvValue(node));
-			build.append("|");
+		if(getLogicalValidations()!=null)
+		{
+			for (String node : getLogicalValidations()) {
+				build.append(getInternalCsvValue(node));
+				build.append(":");
+			}
 		}
 		return build.toString();
 	}
 	
 	private String getCsvValue(String value)
+	{
+		if(value==null) {
+			return "";
+		} else {
+			return "\"" + value + "\"";
+		}
+	}
+	
+	private String getInternalCsvValue(String value)
 	{
 		if(value==null) {
 			return "";
@@ -1086,6 +1113,8 @@ public class TestCase implements Serializable {
 		this.executeOnCondition = other.executeOnCondition;
 		this.logicalValidations = other.logicalValidations;
 		this.currentScenarioVariables = other.currentScenarioVariables;
+		this.isServerApiAuth = other.isServerApiAuth;
+		this.isServerApiTarget = other.isServerApiTarget;
 	}
 
 	@Override
@@ -1495,11 +1524,11 @@ public class TestCase implements Serializable {
 			}
 		}
 		if(index==11 && csvParts.size()>11 && csvParts.get(11)!=null)
-			setSkipTest(Boolean.valueOf(csvParts.get(11)));
+			setSkipTest(getBooleanValue(csvParts.get(11)));
 		if(index==12 && csvParts.size()>12 && csvParts.get(12)!=null)
-			setDetailedLog(Boolean.valueOf(csvParts.get(12)));
+			setDetailedLog(getBooleanValue(csvParts.get(12)));
 		if(index==13 && csvParts.size()>13 && csvParts.get(13)!=null)
-			setSecure(Boolean.valueOf(csvParts.get(13)));
+			setSecure(getBooleanValue(csvParts.get(13)));
 		if(index==14 && csvParts.size()>14 && csvParts.get(14)!=null)
 		{
 			setMultipartContent(new ArrayList<String>());
@@ -1508,7 +1537,7 @@ public class TestCase implements Serializable {
 				if(!multfile.isEmpty())
 				{
 					String[] mulff = multfile.split(":");
-					//controlname,type,filenameOrText,contentType
+					//controlname:type:filenameOrText:contentType
 					if(mulff.length==4 || mulff.length==3) {
 						getMultipartContent().add(multfile);
 					}
@@ -1516,7 +1545,7 @@ public class TestCase implements Serializable {
 			}
 		}
 		if(index==15 && csvParts.size()>15 && csvParts.get(15)!=null)
-			setSoapBase(Boolean.valueOf(csvParts.get(15)));
+			setSoapBase(getBooleanValue(csvParts.get(15)));
 		if(index==16 && csvParts.size()>16 && csvParts.get(16)!=null)
 		{
 			setSoapParameterValues(new HashMap<String, String>());
@@ -1560,23 +1589,23 @@ public class TestCase implements Serializable {
 		if(index==23 && csvParts.size()>23 && csvParts.get(23)!=null)
 			setNumberOfExecutions(Integer.parseInt(csvParts.get(23)));
 		if(index==24 && csvParts.size()>24 && csvParts.get(24)!=null)
-			setRepeatScenariosConcurrentExecution(Boolean.valueOf(csvParts.get(24)));
+			setRepeatScenariosConcurrentExecution(getBooleanValue(csvParts.get(24)));
 		if(index==25 && csvParts.size()>25 && csvParts.get(25)!=null)
-			setStopOnFirstFailureForPerfTest(Boolean.valueOf(csvParts.get(25)));
+			setStopOnFirstFailureForPerfTest(getBooleanValue(csvParts.get(25)));
 		if(index==26 && csvParts.size()>26 && csvParts.get(26)!=null)
 			setPreWaitMs(Long.parseLong(csvParts.get(26)));
 		if(index==27 && csvParts.size()>27 && csvParts.get(27)!=null)
 			setPostWaitMs(Long.parseLong(csvParts.get(27)));
 		if(index==28 && csvParts.size()>28 && csvParts.get(28)!=null)
-			setReportResponseContent(Boolean.valueOf(csvParts.get(28)));
+			setReportResponseContent(getBooleanValue(csvParts.get(28)));
 		if(index==29 && csvParts.size()>29 && csvParts.get(29)!=null)
 			setPreExecutionDataSourceHookName(csvParts.get(29));
 		if(index==30 && csvParts.size()>30 && csvParts.get(30)!=null)
 			setPostExecutionDataSourceHookName(csvParts.get(30));
 		if(index==31 && csvParts.size()>31 && csvParts.get(31)!=null)
-			setAbortOnInvalidContentType(Boolean.valueOf(csvParts.get(31)));
+			setAbortOnInvalidContentType(getBooleanValue(csvParts.get(31)));
 		if(index==32 && csvParts.size()>32 && csvParts.get(32)!=null)
-			setAbortOnInvalidStatusCode(Boolean.valueOf(csvParts.get(32)));
+			setAbortOnInvalidStatusCode(getBooleanValue(csvParts.get(32)));
 		if(index==33 && csvParts.size()>33 && csvParts.get(33)!=null)
 			setRelatedTestName(csvParts.get(33));
 		if(index==34 && csvParts.size()>34 && csvParts.get(34)!=null)
@@ -1584,7 +1613,7 @@ public class TestCase implements Serializable {
 		if(index==35 && csvParts.size()>35 && csvParts.get(35)!=null)
 		{
 			setLogicalValidations(new ArrayList<String>());
-			String[] nodes = csvParts.get(35).split("\\|");
+			String[] nodes = csvParts.get(35).split(":");
 			for (String node : nodes) {
 				if(!node.isEmpty())
 				{
@@ -1609,5 +1638,16 @@ public class TestCase implements Serializable {
 			if(getMultipartContent().size()==0)
 				setMultipartContent(null);
 		}
+	}
+	
+	private boolean getBooleanValue(String value)
+	{
+		if(value.trim().equalsIgnoreCase("y") || value.trim().equalsIgnoreCase("yes")
+				|| value.trim().equalsIgnoreCase("1"))
+			return true;
+		else if(value.trim().equalsIgnoreCase("n") || value.trim().equalsIgnoreCase("no")
+				|| value.trim().equalsIgnoreCase("0"))
+			return false;
+		return Boolean.valueOf(value);
 	}
 }

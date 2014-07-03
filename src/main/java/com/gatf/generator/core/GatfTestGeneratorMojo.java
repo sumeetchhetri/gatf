@@ -635,7 +635,21 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             tcase.setSoapBase(false);
                             tcase.setExpectedResCode(200);
                             tcase.setExpectedResContentType(produces);
-                            tcase.setHeaders(hparams);
+                            
+                            if(hparams.size()>0)
+                            	tcase.setHeaders(hparams);
+                            if(tcase.getNumberOfExecutions()==null)
+                            	tcase.setNumberOfExecutions(1);
+                			if(tcase.getExpectedNodes().size()==0)
+                				tcase.setExpectedNodes(null);
+                			if(tcase.getWorkflowContextParameterMap().size()==0)
+                				tcase.setWorkflowContextParameterMap(null);
+                			if(tcase.getSoapParameterValues().size()==0)
+                				tcase.setSoapParameterValues(null);
+                			if(tcase.getRepeatScenarios().size()==0)
+                				tcase.setRepeatScenarios(null);
+                			if(tcase.getMultipartContent().size()==0)
+                				tcase.setMultipartContent(null);
                             
                             tcases.add(tcase);
                         }
@@ -1398,6 +1412,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             else
                             {
                             	tcase.setSoapBase(false);
+                            	if(tcase.getHeaders()==null)
+            					{
+            						tcase.setHeaders(new HashMap<String, String>());
+            					}
                             	tcase.getHeaders().put("SOAPAction", operation.getSoapAction());
                             	tcase.getHeaders().put(HttpHeaders.CONTENT_TYPE, "application/soap+xml");
                             }

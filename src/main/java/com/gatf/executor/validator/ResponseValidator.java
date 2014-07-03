@@ -58,38 +58,48 @@ public abstract class ResponseValidator {
 	
 	public boolean hasValidationFunction(String node) {
 		return node!=null && node.endsWith("]") && (node.startsWith("#providerValidation[") 
-				|| node.startsWith("#liveProviderValidation["));
+				|| node.startsWith("#liveProviderValidation[") || node.startsWith("#responseHeaders["));
 	}
 	
 	public void doNodeLevelValidation(String lhs, String lhsv, String oper, String rhsv, 
-			AcceptanceTestContext context, TestCase testCase) {
+			AcceptanceTestContext context, TestCase testCase, TestCaseReport testCaseReport) {
 		if(hasValidationFunction(lhs)) 
 		{
 			boolean isLiveProvider = lhs.startsWith("#liveProviderValidation[");
+			boolean isResponseHeader = lhs.startsWith("#responseHeaders[");
 			String path = lhs.substring(lhs.indexOf("[")+1, lhs.length()-1);
-			String[] pathelements = path.split("\\.");
-			if(pathelements.length<3)
+			if(isResponseHeader)
 			{
-				throw new AssertionError("Invalid nomenclature for provider validation node, can have only 3 elements) - " + lhs);
+				Assert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
+						&& testCaseReport.getResHeaders().containsKey(path));
+				lhsv = testCaseReport.getResHeaders().get(path).get(0);
 			}
-			List<Map<String, String>> provData = null;
-			if(isLiveProvider)
-				provData = context.getLiveProviderData(pathelements[0], testCase);
 			else
-				provData = context.getProviderTestDataMap().get(pathelements[0]);
-			Assert.assertNotNull("Provider not found - " + pathelements[0], provData);
-			int index = -1;
-			try {
-				index = Integer.parseInt(pathelements[1]);
-			} catch (Exception e) {
-				Assert.assertNotNull("Provider index has to be a number - " + pathelements[1], null);
+			{
+				String[] pathelements = path.split("\\.");
+				if(pathelements.length<3)
+				{
+					throw new AssertionError("Invalid nomenclature for provider validation node, can have only 3 elements) - " + lhs);
+				}
+				List<Map<String, String>> provData = null;
+				if(isLiveProvider)
+					provData = context.getLiveProviderData(pathelements[0], testCase);
+				else
+					provData = context.getProviderTestDataMap().get(pathelements[0]);
+				Assert.assertNotNull("Provider not found - " + pathelements[0], provData);
+				int index = -1;
+				try {
+					index = Integer.parseInt(pathelements[1]);
+				} catch (Exception e) {
+					Assert.assertNotNull("Provider index has to be a number - " + pathelements[1], null);
+				}
+				Assert.assertTrue("Specified index is outside provider data range - "+pathelements[1], 
+						index>=0 && index<provData.size());
+				Map<String, String> row = provData.get(index);
+				Assert.assertNotNull("Provider row not found - " + index, row);
+				Assert.assertTrue("Specified provider property not found - "+pathelements[2], row.containsKey(pathelements[2]));
+				lhsv = row.get(pathelements[2]);
 			}
-			Assert.assertTrue("Specified index is outside provider data range - "+pathelements[1], 
-					index>=0 && index<provData.size());
-			Map<String, String> row = provData.get(index);
-			Assert.assertNotNull("Provider row not found - " + index, row);
-			Assert.assertTrue("Specified provider property not found - "+pathelements[2], row.containsKey(pathelements[2]));
-			lhsv = row.get(pathelements[2]);
 		}
 		compare(lhsv, oper, rhsv, lhs);
 	}
@@ -221,7 +231,7 @@ public abstract class ResponseValidator {
 						String lhsv = nodeVal;
 						String oper = nodeProps.size()>2?nodeProps.get(1):"==";
 						String rhsv = nodeProps.get(nodeProps.size()-1);
-						doNodeLevelValidation(lhs, lhsv, oper, rhsv, context, testCase);
+						doNodeLevelValidation(lhs, lhsv, oper, rhsv, context, testCase, testCaseReport);
 					}
 				}
 			}

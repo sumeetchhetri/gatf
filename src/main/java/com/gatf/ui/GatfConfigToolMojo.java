@@ -20,6 +20,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -55,6 +56,7 @@ import com.gatf.executor.dataprovider.InlineValueTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
+import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
@@ -105,7 +107,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		HttpServer server = new HttpServer();
 
-		final String mainDir = rootDir + "/" + "gatf-config-tool";
+		final String mainDir = rootDir + SystemUtils.FILE_SEPARATOR + "gatf-config-tool";
 		InputStream resourcesIS = GatfConfigToolMojo.class.getResourceAsStream("/gatf-config-tool.zip");
         if (resourcesIS != null)
         {
@@ -158,7 +160,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        	try {
 			        		GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 		        			String basepath = gatfConfig.getOutFilesBasePath()==null?rootDir:gatfConfig.getOutFilesBasePath();
-		        			String dirPath = basepath + "/" + gatfConfig.getOutFilesDir();
+		        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
 	        				if(!new File(dirPath).exists()) {
 	        					new File(dirPath).mkdir();
 	        				}
@@ -176,7 +178,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        				throw new RuntimeException("Invalid testcase report details provided");
 				        			}
 				        			
-				        			String filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/"
+				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
 				        					+ testcaseFileName;
 				        			if(!new File(filePath).exists()) {
 				        				throw new RuntimeException("Test case file does not exist");
@@ -253,7 +255,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        			}
 				        			
 				        			TestCaseReport report = reports.get(0);
-				        			ReportHandler.setTestCaseReportProps(report);
+				        			ReportHandler.populateRequestResponseHeaders(report);
 				        			String configJson = new ObjectMapper().writeValueAsString(report);
 									response.setContentLength(configJson.length());
 						            response.getWriter().write(configJson);
@@ -383,11 +385,11 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
 				        			}
 				        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-				        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
+				        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 			        				if(!new File(dirPath).exists()) {
 			        					new File(dirPath).mkdir();
 			        				}
-				        			String filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/" + testcaseFileName;
+				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 				        			if(new File(filePath).exists()) {
 				        				throw new RuntimeException("Testcase file already exists");
 				        			}
@@ -412,11 +414,11 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
 				        			}
 				        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-				        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
+				        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 			        				if(!new File(dirPath).exists()) {
 			        					new File(dirPath).mkdir();
 			        				}
-				        			String filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/" + testcaseFileName;
+				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 				        			if(new File(filePath).exists()) {
 				        				new File(filePath).delete();
 				        			} else {
@@ -433,21 +435,31 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			        		try {
 			        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
 			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-			        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
+			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 		        				if(!new File(dirPath).exists()) {
 		        					new File(dirPath).mkdir();
 		        				}
-			        			File[] xmlFiles = new File(dirPath).listFiles(new FilenameFilter() {
+			        			/*File[] xmlFiles = new File(dirPath).listFiles(new FilenameFilter() {
 			        				public boolean accept(File folder, String name) {
 			        					return name.toLowerCase().endsWith(".xml");
 			        				}
-			        			});
+			        			});*/
+			        			
+			        			FilenameFilter filter = new FilenameFilter() {
+			        				public boolean accept(File folder, String name) {
+			        					return name.toLowerCase().endsWith(".xml");
+			        				}
+			        			};
+			        			
+			        			File dirFPath = new File(dirPath);
+			        			List<File> fileLst = new ArrayList<File>();
+			        			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
+			        			
 			        			List<String> fileNames = new ArrayList<String>();
-			        			if(xmlFiles!=null) {
-				        			for (File file : xmlFiles) {
-				        				fileNames.add(file.getName());
-									}
-			        			}
+			        			for (File file : fileLst) {
+			        				fileNames.add(getRelativePath(file, dirFPath));
+								}
+			        			
 			        			String json = new ObjectMapper().writeValueAsString(fileNames);
 			        			response.setContentType(MediaType.APPLICATION_JSON);
 					            response.setContentLength(json.length());
@@ -478,11 +490,11 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		        			try {
 		        				gatfConfig = getGatfExecutorConfig(mojo, null);
 			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-			        			String dirPath = basepath + "/" + gatfConfig.getTestCaseDir();
+			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 		        				if(!new File(dirPath).exists()) {
 		        					new File(dirPath).mkdir();
 		        				}
-			        			filePath = basepath + "/" + gatfConfig.getTestCaseDir() + "/"
+			        			filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
 			        					+ testcaseFileName;
 			        			if(!new File(filePath).exists()) {
 			        				throw new RuntimeException("Test case file does not exist");
@@ -496,7 +508,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	        			{
 	        				gatfConfig = getGatfExecutorConfig(mojo, null);
 	        				String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-	        				filePath = basepath + "/" + testcaseFileName;
+	        				filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 	        			}
 	        			boolean isUpdate = request.getMethod().equals(Method.PUT);
 	        			if(!isApiIntType && request.getMethod().equals(Method.DELETE)) {
@@ -684,13 +696,15 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	        				if(request.getMethod().equals(Method.GET) ) {
 	        					if(isStarted.get()) {
 	        						throw new RuntimeException("Execution already in progress..");
-	        					} else if(!status.equals("")) {
-	        						String temp = status;
-	        						status = "";
-	        						throw new RuntimeException("Execution failed with Error - " + temp);
 	        					} else if(isDone.get()) {
 	        						isDone.set(false);
 	        						isStarted.set(false);
+	        						
+	        						String temp = status;
+	        						status = "";
+	        						if(temp!=null)
+	        							throw new RuntimeException("Execution failed with Error - " + temp);
+	        						
 	        						String text = "Execution completed, check Reports Section";
 				        			response.setContentType(MediaType.TEXT_PLAIN);
 						            response.setContentLength(text.length());
@@ -739,13 +753,15 @@ public class GatfConfigToolMojo extends AbstractMojo {
 						            response.setContentLength(text.length());
 						            response.getWriter().write(text);
 				        			response.setStatus(HttpStatus.OK_200);
-	        					} else if(!status.equals("")) {
-	        						String temp = status;
-	        						status = "";
-	        						throw new RuntimeException("Execution failed with Error - " + temp);
 	        					} else if(isDone.get()) {
 	        						isDone.set(false);
 	        						isStarted.set(false);
+	        						
+	        						String temp = status;
+	        						status = "";
+	        						if(temp!=null)
+	        							throw new RuntimeException("Execution failed with Error - " + temp);
+	        						
 	        						String text = "Execution completed, check Reports Section";
 				        			response.setContentType(MediaType.TEXT_PLAIN);
 						            response.setContentLength(text.length());
@@ -760,15 +776,17 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				        		if(isStarted.get() && _executorThread!=null) {
 				        			_executorThread.interrupt();
 				        			_executorThread = null;
-	        					} else if(!status.equals("")) {
-	        						String temp = status;
-	        						status = "";
-	        						throw new RuntimeException("Execution failed with Error - " + temp);
 	        					} else if(!isStarted.get()) {
 	        						throw new RuntimeException("Testcase execution is not in progress...");
 	        					} else if(isDone.get()) {
 	        						isDone.set(false);
 	        						isStarted.set(false);
+	        						
+	        						String temp = status;
+	        						status = "";
+	        						if(temp!=null)
+	        							throw new RuntimeException("Execution failed with Error - " + temp);
+	        						
 	        						String text = "Execution completed, check Reports Section";
 				        			response.setContentType(MediaType.TEXT_PLAIN);
 						            response.setContentLength(text.length());
@@ -956,6 +974,17 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			GatfConfiguration gatfConfig = getGatfConfiguration(mojo, null);
 			return gatfConfig;
 		}
+	}
+	
+	// returns null if file isn't relative to folder
+	public static String getRelativePath(File file, File folder) {
+	    String filePath = file.getAbsolutePath();
+	    String folderPath = folder.getAbsolutePath();
+	    if (filePath.startsWith(folderPath)) {
+	        return filePath.substring(folderPath.length() + 1);
+	    } else {
+	        return null;
+	    }
 	}
 	
 	public static void main2(String[] args) throws Exception

@@ -17,6 +17,7 @@ limitations under the License.
 */
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -200,6 +201,10 @@ public class PostmanTestCase {
 		else
 			setDataMode("params");
 		setData(testCase.getContent());
+		if(testCase.getHeaders()==null)
+		{
+			testCase.setHeaders(new HashMap<String, String>());
+		}
 		Map<String, String> headers = testCase.getHeaders();
 		if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty())
 		{

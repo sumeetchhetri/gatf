@@ -25,11 +25,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
 import com.gatf.executor.core.TestCase;
+import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 
 /**
@@ -89,6 +91,10 @@ public class TestCaseReport implements Serializable {
 	
 	private String serverLogs;
 
+	@XStreamOmitField
+	@JsonIgnore
+	private Map<String, List<String>> resHeaders;
+	
 	public String getWorkflowName() {
 		return workflowName;
 	}
@@ -289,6 +295,14 @@ public class TestCaseReport implements Serializable {
 
 	public void setAexpectedNodes(List<String> aexpectedNodes) {
 		this.aexpectedNodes = aexpectedNodes;
+	}
+
+	public Map<String, List<String>> getResHeaders() {
+		return resHeaders;
+	}
+
+	public void setResHeaders(Map<String, List<String>> resHeaders) {
+		this.resHeaders = resHeaders;
 	}
 
 	public String getServerLogs() {

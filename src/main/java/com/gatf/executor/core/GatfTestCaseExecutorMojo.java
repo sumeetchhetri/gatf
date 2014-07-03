@@ -1060,7 +1060,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					List<TestCase> serverLogsApis = context.getServerLogsApiLst();
 					if(serverLogsApis.size()>0) {
 						TestCase api = context.getServerLogApi(true);
-						if(api!=null && context.getSessionIdentifier(api)==null) {
+						if(api!=null && !api.isSkipTest() && context.getSessionIdentifier(api)==null) {
 							context.getSingleTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
 						}
 						api = context.getServerLogApi(false);

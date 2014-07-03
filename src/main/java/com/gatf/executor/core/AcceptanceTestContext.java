@@ -26,6 +26,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
+import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,7 +67,6 @@ import com.gatf.executor.dataprovider.TestDataSource;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
-import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
@@ -448,13 +448,22 @@ public class AcceptanceTestContext {
 		initServerLogsApis();
 	}
 	
-	private void initServerLogsApis() {
+	private void initServerLogsApis() throws Exception {
 		if(gatfExecutorConfig.getServerLogsApiFileName()!=null) {
 			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
-			File resource = new File(basePath, GATF_SERVER_LOGS_API_FILE_NM);
+			String serverApiLogFileNm = gatfExecutorConfig.getServerLogsApiFileName();
+			serverApiLogFileNm = serverApiLogFileNm==null?GATF_SERVER_LOGS_API_FILE_NM:serverApiLogFileNm;
+			File resource = new File(basePath, serverApiLogFileNm);
 			if(resource.exists()) {
 				TestCaseFinder finder = new XMLTestCaseFinder();
-				serverLogsApiLst.addAll(finder.findTestCases(resource, this, false));
+				serverLogsApiLst.addAll(finder.resolveTestCases(resource));
+				for (TestCase testCase : serverLogsApiLst) {
+					testCase.setSourcefileName(serverApiLogFileNm);
+					if(testCase.getSimulationNumber()==null)
+					{
+						testCase.setSimulationNumber(0);
+					}
+				}
 				if(getServerLogApi(true)!=null) {
 					getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
 				}
@@ -925,6 +934,7 @@ public class AcceptanceTestContext {
 				else if(!isAuth && "targetapi".equals(tc.getName()))
 				{
 					tc.setServerApiTarget(true);
+					tc.setSecure(gatfExecutorConfig.isServerLogsApiAuthEnabled());
 					return tc;
 				}
 			}
@@ -1055,7 +1065,7 @@ public class AcceptanceTestContext {
 		for (File file : fileLst) {
 			if(!file.isDirectory()) {
 				String data = FileUtils.readFileToString(file);
-				data = data.replace("secure=\"false\"", "secure=\"true\"");
+				data = data.replace(" </url>", "</url>");
 				FileUtils.write(file, data);
 			}
 		}
