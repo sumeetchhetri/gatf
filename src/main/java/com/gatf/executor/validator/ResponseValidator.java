@@ -50,7 +50,7 @@ import com.ning.http.client.cookie.Cookie;
  */
 public abstract class ResponseValidator {
 
-	protected abstract Object getInternalObject(Response response) throws Exception;
+	protected abstract Object getInternalObject(TestCaseReport testCaseReport) throws Exception;
 	protected abstract ResponseType getType();
 	protected abstract String getNodeValue(Object intObj, String node) throws Exception;
 	protected abstract List<Map<String, String>> getResponseMappedValue(String expression, String propNames, Object nodeLst) throws Exception;
@@ -215,7 +215,7 @@ public abstract class ResponseValidator {
 	{
 		try
 		{
-			Object intObj = getInternalObject(response);
+			Object intObj = getInternalObject(testCaseReport);
 			if(intObj!=null && testCase.getAexpectedNodes()!=null && !testCase.getAexpectedNodes().isEmpty())
 			{
 				for (String node : testCase.getAexpectedNodes()) {

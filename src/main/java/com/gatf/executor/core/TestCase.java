@@ -174,7 +174,7 @@ public class TestCase implements Serializable {
 	private Long postWaitMs;
 	
 	@XStreamAsAttribute
-	private Boolean reportResponseContent;
+	private Boolean reportResponseContent = true;
 	
 	private String preExecutionDataSourceHookName;
 	

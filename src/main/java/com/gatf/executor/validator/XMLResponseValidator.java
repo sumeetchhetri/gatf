@@ -32,7 +32,7 @@ import org.w3c.dom.NodeList;
 
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
-import com.ning.http.client.Response;
+import com.gatf.executor.report.TestCaseReport;
 
 /**
  * @author Sumeet Chhetri
@@ -40,11 +40,11 @@ import com.ning.http.client.Response;
  */
 public class XMLResponseValidator extends ResponseValidator {
 
-	protected Object getInternalObject(Response response) throws Exception
+	protected Object getInternalObject(TestCaseReport testCaseReport) throws Exception
 	{
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 		DocumentBuilder db = dbf.newDocumentBuilder();
-		Document xmlDocument = db.parse(new ByteArrayInputStream(response.getResponseBody().getBytes()));
+		Document xmlDocument = db.parse(new ByteArrayInputStream(testCaseReport.getResponseContent().getBytes()));
 		return xmlDocument;
 	}
 

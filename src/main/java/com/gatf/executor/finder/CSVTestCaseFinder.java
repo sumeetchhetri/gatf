@@ -68,20 +68,19 @@ public class CSVTestCaseFinder extends TestCaseFinder {
 		if(!list.isEmpty())
 		{
 			List<TestCase> testcasesTemp = new ArrayList<TestCase>();
-			boolean invalid = false;
+			//boolean invalid = false;
 			for (String csvLine : list) {
-				try {
-					TestCase testCase = mappings==null?new TestCase(csvLine):new TestCase(csvLine, mappings);
-					testcasesTemp.add(testCase);
-				} catch (Exception e) {
+				TestCase testCase = mappings==null?new TestCase(csvLine):new TestCase(csvLine, mappings);
+				testcasesTemp.add(testCase);
+				/*} catch (Exception e) {
 					System.out.println("Invalid testcase format in file - " + testCaseFile.getPath() + ", Ignoring....");
 					invalid = true;
 					break;
-				}
+				}*/
 			}
-			if(!invalid) {
+			/*if(!invalid) {
 				testcases.addAll(testcasesTemp);
-			}
+			}*/
 		}
 		return testcases;
 	}

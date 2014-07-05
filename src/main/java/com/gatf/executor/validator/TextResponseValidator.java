@@ -4,7 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
-import com.ning.http.client.Response;
+import com.gatf.executor.report.TestCaseReport;
 
 /**
  * @author Sumeet Chhetri
@@ -12,8 +12,8 @@ import com.ning.http.client.Response;
  */
 public class TextResponseValidator extends ResponseValidator {
 
-	protected Object getInternalObject(Response response) throws Exception {
-		return response.getResponseBody();
+	protected Object getInternalObject(TestCaseReport testCaseReport) throws Exception {
+		return testCaseReport.getResponseContent();
 	}
 
 	protected ResponseType getType() {

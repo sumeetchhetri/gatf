@@ -31,7 +31,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.jackson.map.DeserializationConfig;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -119,155 +118,619 @@ public class GatfConfigToolMojo extends AbstractMojo {
         createConfigFileIfNotExists(mojo, true, null);
         createConfigFileIfNotExists(mojo, false, null);
         
-        if(!new File(mojo.rootDir, AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM).exists())
-        {
-        	try {
-        		File loggingApiFile = new File(mojo.rootDir, AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM);
-				loggingApiFile.createNewFile();
-	        	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(loggingApiFile));
-				bos.write("<TestCases></TestCases>".getBytes());
-				bos.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-        }
-        
-        if(!new File(mojo.rootDir, "gatf-issuetracking-api-int.xml").exists())
-        {
-        	try {
-        		File issueTrackingApi = new File(mojo.rootDir, "gatf-issuetracking-api-int.xml");
-				issueTrackingApi.createNewFile();
-	        	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(issueTrackingApi));
-				bos.write("<TestCases></TestCases>".getBytes());
-				bos.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
-        }
+        createServerApiAndIssueTrackingApiFilesIfNotExists();
         
         server.addListener(new NetworkListener("ConfigServer", ipAddress, port));
         
-        server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			        public void service(Request request, Response response) throws Exception {
-			        	new CacheLessStaticHttpHandler(mainDir).service(request, response);
-			        }
-			    }, "/");
+        handleRootContext(server, mainDir);
+        
+        handleConfigureSection(server);
+        
+        handleReportSection(server);
 		
+		handleMiscSection(server);
+		
+		handleTestCaseFilesSection(server);
+		
+		hanldeTestCaseSection(server);
+		
+		handleExecutionSection(server);
+		
+		try {
+		    server.start();
+		    System.out.println("Press any key to stop the server...");
+		    System.in.read();
+		} catch (Exception e) {
+		    System.err.println(e);
+		}
+	}
+	
+	private void createServerApiAndIssueTrackingApiFilesIfNotExists() {
+		String[] configFiles = {AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM, "gatf-issuetracking-api-int.xml"};
+		for (String fileNm : configFiles) {
+			if(!new File(rootDir, fileNm).exists())
+	        {
+	        	try {
+	        		File loggingApiFile = new File(rootDir, fileNm);
+					loggingApiFile.createNewFile();
+		        	BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(loggingApiFile));
+					bos.write("<TestCases></TestCases>".getBytes());
+					bos.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+	        }
+		}
+	}
+
+	private void handleExecutionSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
 		server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			        public void service(Request request, Response response) throws Exception {
-			        	try {
-			        		GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
-		        			String basepath = gatfConfig.getOutFilesBasePath()==null?rootDir:gatfConfig.getOutFilesBasePath();
-		        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
+		    new HttpHandler() {
+		    	AtomicBoolean isStarted = new AtomicBoolean(false);
+		    	AtomicBoolean isDone = new AtomicBoolean(false);
+		    	Thread _executorThread = null;
+		    	volatile String status = "";
+		        public void service(Request request, Response response) throws Exception {
+		        	GatfPluginConfig gatfConfig = null;
+		        	final String pluginType = request.getParameter("pluginType");
+        			try {
+        				gatfConfig = getGatfPluginConfig(pluginType, mojo);
+        				if(request.getMethod().equals(Method.GET) ) {
+        					if(isStarted.get()) {
+        						throw new RuntimeException("Execution already in progress..");
+        					} else if(isDone.get()) {
+        						isDone.set(false);
+        						isStarted.set(false);
+        						
+        						String temp = status;
+        						status = "";
+        						if(temp!=null)
+        							throw new RuntimeException("Execution failed with Error - " + temp);
+        						
+        						String text = "Execution completed, check Reports Section";
+			        			response.setContentType(MediaType.TEXT_PLAIN);
+					            response.setContentLength(text.length());
+					            response.getWriter().write(text);
+			        			response.setStatus(HttpStatus.OK_200);
+        					} else if(!isStarted.get()) {
+        						throw new RuntimeException("Please Start the Execution....");
+        					} else {
+        						throw new RuntimeException("Unknown Error...");
+        					}
+        				}
+        				else if(request.getMethod().equals(Method.PUT) ) {
+        					if(!isStarted.get() && !isDone.get()) {
+        						isStarted.set(true);
+        						final GatfPluginConfig config = gatfConfig;
+        						_executorThread = new Thread(new Runnable() {
+									public void run() {
+										GatfPlugin executorMojo = getGatfPlugin(pluginType);
+		        						executorMojo.setProject(project);
+		        						try {
+											executorMojo.doExecute(config);
+											initializeMojoProps(executorMojo, mojo);
+										} catch (Throwable e) {
+											e.printStackTrace();
+											if(e.getMessage()!=null)
+												status = e.getMessage();
+											else
+												status = ExceptionUtils.getStackTrace(e);
+										} finally { 
+											executorMojo.shutdown();
+										}
+		        						isDone.set(true);
+										isStarted.set(false);
+									}
+
+									private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
+										if(executorMojo instanceof GatfTestCaseExecutorMojo) {
+											mojo.context = ((GatfTestCaseExecutorMojo)executorMojo).getContext();
+											mojo.authTestCase = ((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase();
+										}
+									}
+								});
+        						_executorThread.start();
+        						String text = "Execution Started";
+			        			response.setContentType(MediaType.TEXT_PLAIN);
+					            response.setContentLength(text.length());
+					            response.getWriter().write(text);
+			        			response.setStatus(HttpStatus.OK_200);
+        					} else if(isDone.get()) {
+        						isDone.set(false);
+        						isStarted.set(false);
+        						
+        						String temp = status;
+        						status = "";
+        						if(temp!=null)
+        							throw new RuntimeException("Execution failed with Error - " + temp);
+        						
+        						String text = "Execution completed, check Reports Section";
+			        			response.setContentType(MediaType.TEXT_PLAIN);
+					            response.setContentLength(text.length());
+					            response.getWriter().write(text);
+			        			response.setStatus(HttpStatus.OK_200);
+        					} else if(isStarted.get()) {
+        						throw new RuntimeException("Execution already in progress..");
+        					} else {
+        						throw new RuntimeException("Unknown Error...");
+        					}
+			        	} else if(request.getMethod().equals(Method.DELETE) ) {
+			        		if(isStarted.get() && _executorThread!=null) {
+			        			_executorThread.interrupt();
+			        			_executorThread = null;
+        					} else if(!isStarted.get()) {
+        						throw new RuntimeException("Testcase execution is not in progress...");
+        					} else if(isDone.get()) {
+        						isDone.set(false);
+        						isStarted.set(false);
+        						
+        						String temp = status;
+        						status = "";
+        						if(temp!=null)
+        							throw new RuntimeException("Execution failed with Error - " + temp);
+        						
+        						String text = "Execution completed, check Reports Section";
+			        			response.setContentType(MediaType.TEXT_PLAIN);
+					            response.setContentLength(text.length());
+					            response.getWriter().write(text);
+			        			response.setStatus(HttpStatus.OK_200);
+        					} else {
+        						throw new RuntimeException("Unknown Error...");
+        					}
+			        	}
+        			} catch (Exception e) {
+        				handleError(e, response, HttpStatus.BAD_REQUEST_400);
+						return;
+					}
+		        }
+		    },
+		    "/execute");
+	}
+
+	private void hanldeTestCaseSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
+		server.getServerConfiguration().addHttpHandler(
+		    new HttpHandler() {
+		        public void service(Request request, Response response) throws Exception {
+		        	String configType = request.getParameter("configType");
+		        	String testcaseFileName = request.getParameter("testcaseFileName");
+		        	boolean isApiIntType = configType!=null && (configType.equals("loggingapi") || configType.equals("issuetrackerapi"));
+        			if(StringUtils.isBlank(testcaseFileName)) {
+        				response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
+        				return;
+        			}
+        			GatfExecutorConfig gatfConfig = null;
+        			String filePath = null;
+        			if(!isApiIntType)
+        			{
+	        			try {
+	        				gatfConfig = getGatfExecutorConfig(mojo, null);
+		        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+		        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 	        				if(!new File(dirPath).exists()) {
 	        					new File(dirPath).mkdir();
 	        				}
-	        				if(request.getMethod().equals(Method.GET) ) {
-				        		new CacheLessStaticHttpHandler(dirPath).service(request, response);
-				        	} else if(request.getMethod().equals(Method.PUT) ) {
-				        		String action = request.getParameter("action");
-				        		String testcaseFileName = request.getParameter("testcaseFileName");
-				        		String testCaseName = request.getParameter("testCaseName");
-				        		if(action.equals("replayTest"))
-				        		{
-				        			TestCaseReport tcReport = new ObjectMapper().readValue(request.getInputStream(), 
-				        					TestCaseReport.class);
-				        			if(tcReport == null) {
-				        				throw new RuntimeException("Invalid testcase report details provided");
-				        			}
-				        			
-				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
-				        					+ testcaseFileName;
-				        			if(!new File(filePath).exists()) {
-				        				throw new RuntimeException("Test case file does not exist");
-				        			}
-				        			
-				        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-				        			TestCase found = null;
-				        			for (TestCase tc : tcs) {
-										if(tc.getName().equals(testCaseName)) {
-											found = tc;
-											break;
-										}
-									}
-				        			if(found==null) {
-				        				throw new RuntimeException("Testcase does not exist");
-				        			}
-				        			
-				        			if(context==null) {
-				        				throw new RuntimeException("Please Execute the GATF Suite first..");
-				        			}
-				        			
-				        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
-				        			List<TestCaseReport> reports = null;
-				        			synchronized(context)
-				        			{
-					        			context.clearTestResults();
-					        			found = new TestCase(found);
-					        			found.setSimulationNumber(0);
-					        			found.setSourcefileName(testcaseFileName);
-										found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
-										found.setAurl(tcReport.getActualUrl());
-										found.setAcontent(tcReport.getRequestContent());
-										found.setAexpectedNodes(tcReport.getAexpectedNodes());
-										found.setLogicalValidations(null);
-										found.setExecuteOnCondition(null);
-										found.setPreWaitMs(0L);
-										found.setPostWaitMs(0L);
-										found.setPreExecutionDataSourceHookName(null);
-										found.setPostExecutionDataSourceHookName(null);
-										if(found.getHeaders()!=null)
-										{
-											found.getHeaders().clear();
-										}
-										else
-										{
-											found.setHeaders(new HashMap<String, String>());
-										}
-										if(tcReport.getRequestHeaders()!=null)
-										{
-											String[] headers = tcReport.getRequestHeaders().split("\n");
-											for(String header: headers)
-											{
-												if(header.indexOf(": ")!=-1)
-												{
-													found.getHeaders().put(header.substring(0, header.indexOf(": ")),
-															header.substring(header.indexOf(": ")+2));
-												}
-											}
-										}
-										if(found.isSecure() && gatfConfig.isAuthEnabled() && authTestCase!=null)
-										{
-											reports = context.getSingleTestCaseExecutor().execute(authTestCase, 
-													testCaseExecutorUtil);
-										}
-										context.getWorkflowContextHandler().initializeSuiteContextWithnum(0);
-					        			reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
-					        					testCaseExecutorUtil);
-				        			}
-				        			testCaseExecutorUtil.shutdown();
-				        			
-				        			if(reports==null || reports.size()==0)
-				        			{
-				        				throw new RuntimeException("Could not execute Testcase");
-				        			}
-				        			
-				        			TestCaseReport report = reports.get(0);
-				        			ReportHandler.populateRequestResponseHeaders(report);
-				        			String configJson = new ObjectMapper().writeValueAsString(report);
-									response.setContentLength(configJson.length());
-						            response.getWriter().write(configJson);
-									response.setStatus(HttpStatus.OK_200);
-				        		}
-				        	}
-			        	} catch (Exception e) {
-			        		handleError(e, response, null);
+		        			filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
+		        					+ testcaseFileName;
+		        			if(!new File(filePath).exists()) {
+		        				throw new RuntimeException("Test case file does not exist");
+		        			}
+	        			} catch (Exception e) {
+	        				handleError(e, response, null);
+							return;
 						}
-			        }
-			    }, "/reports");
-		
+        			}
+        			else
+        			{
+        				gatfConfig = getGatfExecutorConfig(mojo, null);
+        				String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+        				filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+        			}
+        			boolean isUpdate = request.getMethod().equals(Method.PUT);
+        			if(!isApiIntType && request.getMethod().equals(Method.DELETE)) {
+		        		try {
+		        			String testCaseName = request.getHeader("testcasename");
+		        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+		        			TestCase found = null;
+		        			for (TestCase tc : tcs) {
+								if(tc.getName().equals(testCaseName)) {
+									found = tc;
+									break;
+								}
+							}
+		        			if(found==null) {
+		        				throw new RuntimeException("Testcase does not exist");
+		        			}
+		        			tcs.remove(found);
+		        			
+		        			XStream xstream = new XStream(
+		                			new XppDriver() {
+		                				public HierarchicalStreamWriter createWriter(Writer out) {
+		                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+		                				}
+		                			}
+		                		);
+		                		xstream.processAnnotations(new Class[]{TestCase.class});
+		                		xstream.alias("TestCases", List.class);
+		                		xstream.toXML(tcs, new FileOutputStream(filePath));
+			        			
+			        			response.setStatus(HttpStatus.OK_200);
+		        		} catch (Exception e) {
+		        			handleError(e, response, HttpStatus.BAD_REQUEST_400);
+						}
+        			} else if(request.getMethod().equals(Method.POST) || isUpdate) {
+		        		try {
+		        			TestCase testCase = new ObjectMapper().readValue(request.getInputStream(), 
+		        					TestCase.class);
+		        			if(testCase.getName()==null) {
+		        				throw new RuntimeException("Testcase does not specify name");
+		        			}
+		        			
+		        			if(isApiIntType && !testCase.getName().equals("authapi") && !testCase.getName().equals("targetapi"))
+		        			{
+		        				throw new RuntimeException("Only authapi or targetapi allowed for name");
+		        			}
+		        			
+		        			testCase.validate(AcceptanceTestContext.getHttpHeadersMap());
+		        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+		        			if(!isUpdate)
+		        			{
+			        			for (TestCase tc : tcs) {
+									if(tc.getName().equals(testCase.getName())) {
+										throw new RuntimeException("Testcase with same name already exists");
+									}
+								}
+			        			tcs.add(testCase);
+		        			}
+		        			else
+		        			{
+		        				boolean found = false;
+		        				for (TestCase tc : tcs) {
+									if(tc.getName().equals(testCase.getName())) {
+										found = true;
+										break;
+									}
+								}
+		        				
+		        				if(!found) {
+		        					throw new RuntimeException("Testcase with name does not exist");
+		        				}
+		        				
+		        				List<TestCase> ttcs = new ArrayList<TestCase>();
+		        				for (TestCase tc : tcs) {
+									if(tc.getName().equals(testCase.getName())) {
+										ttcs.add(testCase);
+									} else {
+										ttcs.add(tc);
+									}
+								}
+		        				tcs = ttcs;
+		        			}
+		        			
+		        			XStream xstream = new XStream(
+	                			new XppDriver() {
+	                				public HierarchicalStreamWriter createWriter(Writer out) {
+	                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+	                				}
+	                			}
+	                		);
+	                		xstream.processAnnotations(new Class[]{TestCase.class});
+	                		xstream.alias("TestCases", List.class);
+	                		xstream.toXML(tcs, new FileOutputStream(filePath));
+		        			
+		        			response.setStatus(HttpStatus.OK_200);
+						} catch (Throwable e) {
+							handleError(e, response, null);
+						}
+		        	} else if(request.getMethod().equals(Method.GET) ) {
+		        		try {
+		        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+		        			List<TestCase> tcsn = new ArrayList<TestCase>();
+		        			boolean isAuthApi = false;
+		        			boolean isTargetApi = false;
+		        			if(tcs==null)
+		        				throw new RuntimeException("No Testcases found...");
+		        			for (TestCase testCase : tcs) {
+		        				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
+		        						|| testCase.getName().equals("targetapi"))))
+			        			{
+		        					if(!isAuthApi)isAuthApi = testCase.getName().equals("authapi");
+		        					if(!isTargetApi)isTargetApi = testCase.getName().equals("targetapi");
+		        					tcsn.add(testCase);
+			        			}
+							}
+		        			if(isApiIntType)
+		        			{
+		        				boolean changed = false;
+		        				if(!isAuthApi)
+		        				{
+		        					TestCase tc = new TestCase();
+		        					tc.setMethod(HttpMethod.POST);
+		        					tc.setUrl("auth");
+		        					tc.setName("authapi");
+		        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+		        					tc.setRepeatScenarioProviderName("");
+		        					tc.setPreExecutionDataSourceHookName("");
+		        					tc.setPostExecutionDataSourceHookName("");
+		        					tc.setServerApiAuth(true);
+		        					tcsn.add(tc);
+		        					changed = true;
+		        				}
+		        				if(!isTargetApi)
+		        				{
+		        					TestCase tc = new TestCase();
+		        					tc.setMethod(HttpMethod.POST);
+		        					tc.setUrl("target");
+		        					tc.setName("targetapi");
+		        					tc.setSecure(isAuthApi);
+		        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+		        					tc.setRepeatScenarioProviderName("");
+		        					tc.setPreExecutionDataSourceHookName("");
+		        					tc.setPostExecutionDataSourceHookName("");
+		        					tc.setServerApiTarget(true);
+		        					tcsn.add(tc);
+		        					changed = true;
+		        				}
+		        				if(changed)
+		        				{
+		        					XStream xstream = new XStream(
+			                			new XppDriver() {
+			                				public HierarchicalStreamWriter createWriter(Writer out) {
+			                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+			                				}
+			                			}
+			                		);
+			                		xstream.processAnnotations(new Class[]{TestCase.class});
+			                		xstream.alias("TestCases", List.class);
+			                		xstream.toXML(tcsn, new FileOutputStream(filePath));
+		        				}
+		        			}
+		        			String json = new ObjectMapper().writeValueAsString(tcsn);
+		        			response.setContentType(MediaType.APPLICATION_JSON);
+				            response.setContentLength(json.length());
+				            response.getWriter().write(json);
+		        			response.setStatus(HttpStatus.OK_200);
+						} catch (Exception e) {
+							handleError(e, response, HttpStatus.BAD_REQUEST_400);
+						}
+		        	}
+		        }
+		    },
+		    "/testcases");
+	}
+
+	private void handleTestCaseFilesSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
+		server.getServerConfiguration().addHttpHandler(
+		    new HttpHandler() {
+		        public void service(Request request, Response response) throws Exception {
+		        	if(request.getMethod().equals(Method.POST)) {
+		        		try {
+		        			String testcaseFileName = request.getParameter("testcaseFileName");
+		        			if(StringUtils.isNotBlank(testcaseFileName)) {
+		        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+			        			if(!testcaseFileName.endsWith(".xml"))
+			        			{
+			        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+			        			}
+			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+		        				if(!new File(dirPath).exists()) {
+		        					new File(dirPath).mkdir();
+		        				}
+			        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+			        			if(new File(filePath).exists()) {
+			        				throw new RuntimeException("Testcase file already exists");
+			        			}
+			        			new File(filePath).createNewFile();
+			        			BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
+			        			bos.write("<TestCases></TestCases>".getBytes());
+			        			bos.close();
+			        			response.setStatus(HttpStatus.OK_200);
+		        			} else {
+		        				throw new RuntimeException("No testcaseFileName query parameter specified");
+		        			}
+						} catch (Exception e) {
+							handleError(e, response, null);
+						}
+		        	} else if(request.getMethod().equals(Method.PUT)) {
+		        		try {
+		        			String testcaseFileName = request.getParameter("testcaseFileName");
+		        			String testcaseFileNameTo = request.getParameter("testcaseFileNameTo");
+		        			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(testcaseFileNameTo)) {
+		        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+			        			if(!testcaseFileName.endsWith(".xml") || !testcaseFileNameTo.endsWith(".xml"))
+			        			{
+			        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+			        			}
+			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+		        				if(!new File(dirPath).exists()) {
+		        					new File(dirPath).mkdir();
+		        				}
+		        				
+		        				if(testcaseFileName.indexOf("\\")!=-1)
+		        				{
+		        					if(testcaseFileNameTo.indexOf("\\")!=-1)
+		        					{
+		        						String pres = testcaseFileName.substring(0, testcaseFileName.lastIndexOf("\\"));
+		        						String pret = testcaseFileNameTo.substring(0, testcaseFileNameTo.lastIndexOf("\\"));
+		        						if(!pres.equals(pret)) {
+		        							throw new RuntimeException("Source and Target filenames should have the same directory tree");
+		        						}
+		        					}
+		        					else
+		        					{
+		        						throw new RuntimeException("Source and Target filenames should have the same directory tree");
+		        					}
+		        				}
+		        				else if(testcaseFileNameTo.indexOf("\\")!=-1)
+		        				{
+		        					if(testcaseFileName.indexOf("\\")!=-1)
+		        					{
+		        						String pres = testcaseFileName.substring(0, testcaseFileName.lastIndexOf("\\"));
+		        						String pret = testcaseFileNameTo.substring(0, testcaseFileNameTo.lastIndexOf("\\"));
+		        						if(!pres.equals(pret)) {
+		        							throw new RuntimeException("Source and Target filenames should have the same directory tree");
+		        						}
+		        					}
+		        					else
+		        					{
+		        						throw new RuntimeException("Source and Target filenames should have the same directory tree");
+		        					}
+		        				}
+		        				
+			        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+			        			String tofilePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileNameTo;
+			        			if(new File(filePath).exists()) {
+			        				if(!new File(filePath).renameTo(new File(tofilePath))) {
+			        					throw new RuntimeException("File rename operation failed");
+			        				}
+			        			} else {
+			        				throw new RuntimeException("Source Testcase file does not exist");
+			        			}
+			        			response.setStatus(HttpStatus.OK_200);
+		        			} else {
+		        				throw new RuntimeException("Both testcaseFileName and testcaseFileNameTo required");
+		        			}
+						} catch (Exception e) {
+							handleError(e, response, null);
+						}
+		        	} else if(request.getMethod().equals(Method.DELETE)) {
+		        		try {
+		        			String testcaseFileName = request.getParameter("testcaseFileName");
+		        			if(StringUtils.isNotBlank(testcaseFileName)) {
+		        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+			        			if(!testcaseFileName.endsWith(".xml"))
+			        			{
+			        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+			        			}
+			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+		        				if(!new File(dirPath).exists()) {
+		        					new File(dirPath).mkdir();
+		        				}
+			        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+			        			if(new File(filePath).exists()) {
+			        				new File(filePath).delete();
+			        			} else {
+			        				throw new RuntimeException("Testcase file does not exist");
+			        			}
+			        			response.setStatus(HttpStatus.OK_200);
+		        			} else {
+		        				throw new RuntimeException("No testcaseFileName query parameter specified");
+		        			}
+						} catch (Exception e) {
+							handleError(e, response, null);
+						}
+		        	} else if(request.getMethod().equals(Method.GET) ) {
+		        		try {
+		        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+		        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
+		        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+	        				if(!new File(dirPath).exists()) {
+	        					new File(dirPath).mkdir();
+	        				}
+		        			
+		        			FilenameFilter filter = new FilenameFilter() {
+		        				public boolean accept(File folder, String name) {
+		        					return name.toLowerCase().endsWith(".xml");
+		        				}
+		        			};
+		        			
+		        			File dirFPath = new File(dirPath);
+		        			List<File> fileLst = new ArrayList<File>();
+		        			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
+		        			
+		        			List<File> allFiles = TestCaseFinder.filterFiles(gatfConfig.getIgnoreFiles(), fileLst, dirFPath);
+		        			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles);
+		        			
+		        			List<String> fileNames = new ArrayList<String>();
+		        			for (File file : allFiles) {
+		        				fileNames.add(TestCaseFinder.getRelativePath(file, dirFPath));
+							}
+		        			
+		        			String json = new ObjectMapper().writeValueAsString(fileNames);
+		        			response.setContentType(MediaType.APPLICATION_JSON);
+				            response.setContentLength(json.length());
+				            response.getWriter().write(json);
+		        			response.setStatus(HttpStatus.OK_200);
+						} catch (Exception e) {
+							handleError(e, response, HttpStatus.BAD_REQUEST_400);
+						}
+		        	}
+		        }
+		    },
+		    "/testcasefiles");
+	}
+
+	private void handleMiscSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
+		server.getServerConfiguration().addHttpHandler(
+		    new HttpHandler() {
+		        public void service(Request request, Response response) throws Exception {
+		        	if(request.getMethod().equals(Method.GET) ) {
+		        		try {
+		        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+		        			
+		        			Map<String, List<String>> miscMap = new HashMap<String, List<String>>();
+	        				if(gatfConfig.getGatfTestDataConfig()!=null && 
+	        						gatfConfig.getGatfTestDataConfig().getDataSourceList()!=null) {
+	        					List<String> dataLst = new ArrayList<String>();
+	        					dataLst.add("");
+	        					for (GatfTestDataSource ds : gatfConfig.getGatfTestDataConfig().getDataSourceList()) {
+	        						dataLst.add(ds.getDataSourceName());
+								}
+	        					miscMap.put("datasources", dataLst);
+		        			}
+	        				if(gatfConfig.getGatfTestDataConfig()!=null && 
+	        						gatfConfig.getGatfTestDataConfig().getProviderTestDataList()!=null) {
+	        					List<String> dataLst = new ArrayList<String>();
+	        					dataLst.add("");
+	        					for (GatfTestDataProvider pv : gatfConfig.getGatfTestDataConfig().getProviderTestDataList()) {
+	        						dataLst.add(pv.getProviderName());
+								}
+	        					miscMap.put("providers", dataLst);
+	        				}
+	        				if(gatfConfig.getGatfTestDataConfig()!=null && 
+	        						gatfConfig.getGatfTestDataConfig().getDataSourceHooks()!=null) {
+	        					List<String> dataLst = new ArrayList<String>();
+	        					dataLst.add("");
+	        					for (GatfTestDataSourceHook hk : gatfConfig.getGatfTestDataConfig().getDataSourceHooks()) {
+	        						dataLst.add(hk.getHookName());
+								}
+	        					miscMap.put("hooks", dataLst);
+	        				}
+	        				List<String> dataLst = new ArrayList<String>();
+	        				dataLst.add("");
+	        				dataLst.add(MongoDBTestDataSource.class.getName());
+	        				dataLst.add(DatabaseTestDataSource.class.getName());
+	        				miscMap.put("datasourcecls", dataLst);
+		        			
+	        				dataLst = new ArrayList<String>();
+	        				dataLst.add("");
+	        				dataLst.add(FileTestDataProvider.class.getName());
+	        				dataLst.add(InlineValueTestDataProvider.class.getName());
+	        				dataLst.add(RandomValueTestDataProvider.class.getName());
+	        				miscMap.put("providercls", dataLst);
+		        			
+		        			String configJson = new ObjectMapper().writeValueAsString(miscMap);
+		        			response.setContentType(MediaType.APPLICATION_JSON);
+				            response.setContentLength(configJson.length());
+				            response.getWriter().write(configJson);
+				            response.setStatus(HttpStatus.OK_200);
+						} catch (Exception e) {
+							handleError(e, response, null);
+						}
+		        	}
+		        }
+		    },
+		    "/misc");
+	}
+
+	private void handleConfigureSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
 		server.getServerConfiguration().addHttpHandler(
 		    new HttpHandler() {
 		        public void service(Request request, Response response) throws Exception {
@@ -310,509 +773,203 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		        }
 		    },
 		    "/configure");
-		
+	}
+
+	private void handleReportSection(HttpServer server) {
+		final GatfConfigToolMojo mojo = this;
 		server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			        public void service(Request request, Response response) throws Exception {
-			        	if(request.getMethod().equals(Method.GET) ) {
-			        		try {
-			        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
-			        			
-			        			Map<String, List<String>> miscMap = new HashMap<String, List<String>>();
-		        				if(gatfConfig.getGatfTestDataConfig()!=null && 
-		        						gatfConfig.getGatfTestDataConfig().getDataSourceList()!=null) {
-		        					List<String> dataLst = new ArrayList<String>();
-		        					dataLst.add("");
-		        					for (GatfTestDataSource ds : gatfConfig.getGatfTestDataConfig().getDataSourceList()) {
-		        						dataLst.add(ds.getDataSourceName());
-									}
-		        					miscMap.put("datasources", dataLst);
-			        			}
-		        				if(gatfConfig.getGatfTestDataConfig()!=null && 
-		        						gatfConfig.getGatfTestDataConfig().getProviderTestDataList()!=null) {
-		        					List<String> dataLst = new ArrayList<String>();
-		        					dataLst.add("");
-		        					for (GatfTestDataProvider pv : gatfConfig.getGatfTestDataConfig().getProviderTestDataList()) {
-		        						dataLst.add(pv.getProviderName());
-									}
-		        					miscMap.put("providers", dataLst);
-		        				}
-		        				if(gatfConfig.getGatfTestDataConfig()!=null && 
-		        						gatfConfig.getGatfTestDataConfig().getDataSourceHooks()!=null) {
-		        					List<String> dataLst = new ArrayList<String>();
-		        					dataLst.add("");
-		        					for (GatfTestDataSourceHook hk : gatfConfig.getGatfTestDataConfig().getDataSourceHooks()) {
-		        						dataLst.add(hk.getHookName());
-									}
-		        					miscMap.put("hooks", dataLst);
-		        				}
-		        				List<String> dataLst = new ArrayList<String>();
-		        				dataLst.add("");
-		        				dataLst.add(MongoDBTestDataSource.class.getName());
-		        				dataLst.add(DatabaseTestDataSource.class.getName());
-		        				miscMap.put("datasourcecls", dataLst);
-			        			
-		        				dataLst = new ArrayList<String>();
-		        				dataLst.add("");
-		        				dataLst.add(FileTestDataProvider.class.getName());
-		        				dataLst.add(InlineValueTestDataProvider.class.getName());
-		        				dataLst.add(RandomValueTestDataProvider.class.getName());
-		        				miscMap.put("providercls", dataLst);
-			        			
-			        			String configJson = new ObjectMapper().writeValueAsString(miscMap);
-			        			response.setContentType(MediaType.APPLICATION_JSON);
-					            response.setContentLength(configJson.length());
-					            response.getWriter().write(configJson);
-					            response.setStatus(HttpStatus.OK_200);
-							} catch (Exception e) {
-								handleError(e, response, null);
-							}
-			        	}
-			        }
-			    },
-			    "/misc");
-		
-		server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			        public void service(Request request, Response response) throws Exception {
-			        	if(request.getMethod().equals(Method.POST)) {
-			        		try {
-			        			String testcaseFileName = request.getParameter("testcaseFileName");
-			        			if(StringUtils.isNotBlank(testcaseFileName)) {
-			        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
-				        			if(!testcaseFileName.endsWith(".xml"))
-				        			{
-				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+		    new HttpHandler() {
+		        public void service(Request request, Response response) throws Exception {
+		        	try {
+		        		final GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
+	        			String basepath = gatfConfig.getOutFilesBasePath()==null?rootDir:gatfConfig.getOutFilesBasePath();
+	        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
+        				if(!new File(dirPath).exists()) {
+        					new File(dirPath).mkdir();
+        				}
+        				if(request.getMethod().equals(Method.GET) ) {
+			        		new CacheLessStaticHttpHandler(dirPath).service(request, response);
+			        	} else if(request.getMethod().equals(Method.PUT) ) {
+			        		String action = request.getParameter("action");
+			        		String testcaseFileName = request.getParameter("testcaseFileName");
+			        		String testCaseName = request.getParameter("testCaseName");
+			        		boolean isServerLogsApi = request.getParameter("isServerLogsApi")!=null;
+			        		if(action.equals("replayTest") || action.equals("playTest"))
+			        		{
+			        			boolean isReplay = action.equals("replayTest");
+			        			TestCase origfound = null;
+			        			if(!isServerLogsApi)
+			        			{
+				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
+				        					+ testcaseFileName;
+				        			if(!new File(filePath).exists()) {
+				        				throw new RuntimeException("Test case file does not exist");
 				        			}
-				        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-				        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
-			        				if(!new File(dirPath).exists()) {
-			        					new File(dirPath).mkdir();
-			        				}
-				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
-				        			if(new File(filePath).exists()) {
-				        				throw new RuntimeException("Testcase file already exists");
-				        			}
-				        			new File(filePath).createNewFile();
-				        			BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
-				        			bos.write("<TestCases></TestCases>".getBytes());
-				        			bos.close();
-				        			response.setStatus(HttpStatus.OK_200);
-			        			} else {
-			        				throw new RuntimeException("No testcaseFileName query parameter specified");
-			        			}
-							} catch (Exception e) {
-								handleError(e, response, null);
-							}
-			        	} else if(request.getMethod().equals(Method.DELETE)) {
-			        		try {
-			        			String testcaseFileName = request.getParameter("testcaseFileName");
-			        			if(StringUtils.isNotBlank(testcaseFileName)) {
-			        				GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
-				        			if(!testcaseFileName.endsWith(".xml"))
-				        			{
-				        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
-				        			}
-				        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-				        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
-			        				if(!new File(dirPath).exists()) {
-			        					new File(dirPath).mkdir();
-			        				}
-				        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
-				        			if(new File(filePath).exists()) {
-				        				new File(filePath).delete();
-				        			} else {
-				        				throw new RuntimeException("Testcase file does not exist");
-				        			}
-				        			response.setStatus(HttpStatus.OK_200);
-			        			} else {
-			        				throw new RuntimeException("No testcaseFileName query parameter specified");
-			        			}
-							} catch (Exception e) {
-								handleError(e, response, null);
-							}
-			        	} else if(request.getMethod().equals(Method.GET) ) {
-			        		try {
-			        			GatfExecutorConfig gatfConfig = getGatfExecutorConfig(mojo, null);
-			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
-		        				if(!new File(dirPath).exists()) {
-		        					new File(dirPath).mkdir();
-		        				}
-			        			/*File[] xmlFiles = new File(dirPath).listFiles(new FilenameFilter() {
-			        				public boolean accept(File folder, String name) {
-			        					return name.toLowerCase().endsWith(".xml");
-			        				}
-			        			});*/
-			        			
-			        			FilenameFilter filter = new FilenameFilter() {
-			        				public boolean accept(File folder, String name) {
-			        					return name.toLowerCase().endsWith(".xml");
-			        				}
-			        			};
-			        			
-			        			File dirFPath = new File(dirPath);
-			        			List<File> fileLst = new ArrayList<File>();
-			        			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
-			        			
-			        			List<String> fileNames = new ArrayList<String>();
-			        			for (File file : fileLst) {
-			        				fileNames.add(getRelativePath(file, dirFPath));
-								}
-			        			
-			        			String json = new ObjectMapper().writeValueAsString(fileNames);
-			        			response.setContentType(MediaType.APPLICATION_JSON);
-					            response.setContentLength(json.length());
-					            response.getWriter().write(json);
-			        			response.setStatus(HttpStatus.OK_200);
-							} catch (Exception e) {
-								handleError(e, response, HttpStatus.BAD_REQUEST_400);
-							}
-			        	}
-			        }
-			    },
-			    "/testcasefiles");
-		
-		server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			        public void service(Request request, Response response) throws Exception {
-			        	String configType = request.getParameter("configType");
-			        	String testcaseFileName = request.getParameter("testcaseFileName");
-			        	boolean isApiIntType = configType!=null && (configType.equals("loggingapi") || configType.equals("issuetrackerapi"));
-	        			if(StringUtils.isBlank(testcaseFileName)) {
-	        				response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);
-	        				return;
-	        			}
-	        			GatfExecutorConfig gatfConfig = null;
-	        			String filePath = null;
-	        			if(!isApiIntType)
-	        			{
-		        			try {
-		        				gatfConfig = getGatfExecutorConfig(mojo, null);
-			        			String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-			        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
-		        				if(!new File(dirPath).exists()) {
-		        					new File(dirPath).mkdir();
-		        				}
-			        			filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
-			        					+ testcaseFileName;
-			        			if(!new File(filePath).exists()) {
-			        				throw new RuntimeException("Test case file does not exist");
-			        			}
-		        			} catch (Exception e) {
-		        				handleError(e, response, null);
-								return;
-							}
-	        			}
-	        			else
-	        			{
-	        				gatfConfig = getGatfExecutorConfig(mojo, null);
-	        				String basepath = gatfConfig.getTestCasesBasePath()==null?rootDir:gatfConfig.getTestCasesBasePath();
-	        				filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
-	        			}
-	        			boolean isUpdate = request.getMethod().equals(Method.PUT);
-	        			if(!isApiIntType && request.getMethod().equals(Method.DELETE)) {
-			        		try {
-			        			String testCaseName = request.getHeader("testcasename");
-			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-			        			TestCase found = null;
-			        			for (TestCase tc : tcs) {
-									if(tc.getName().equals(testCaseName)) {
-										found = tc;
-										break;
-									}
-								}
-			        			if(found==null) {
-			        				throw new RuntimeException("Testcase does not exist");
-			        			}
-			        			tcs.remove(found);
-			        			
-			        			XStream xstream = new XStream(
-			                			new XppDriver() {
-			                				public HierarchicalStreamWriter createWriter(Writer out) {
-			                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-			                				}
-			                			}
-			                		);
-			                		xstream.processAnnotations(new Class[]{TestCase.class});
-			                		xstream.alias("TestCases", List.class);
-			                		xstream.toXML(tcs, new FileOutputStream(filePath));
 				        			
-				        			response.setStatus(HttpStatus.OK_200);
-			        		} catch (Exception e) {
-			        			handleError(e, response, HttpStatus.BAD_REQUEST_400);
-							}
-	        			} else if(request.getMethod().equals(Method.POST) || isUpdate) {
-			        		try {
-			        			TestCase testCase = new ObjectMapper().readValue(request.getInputStream(), 
-			        					TestCase.class);
-			        			if(testCase.getName()==null) {
-			        				throw new RuntimeException("Testcase does not specify name");
-			        			}
-			        			
-			        			if(isApiIntType && !testCase.getName().equals("authapi") && !testCase.getName().equals("targetapi"))
-			        			{
-			        				throw new RuntimeException("Only authapi or targetapi allowed for name");
-			        			}
-			        			
-			        			testCase.validate(AcceptanceTestContext.getHttpHeadersMap());
-			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-			        			if(!isUpdate)
-			        			{
+				        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
 				        			for (TestCase tc : tcs) {
-										if(tc.getName().equals(testCase.getName())) {
-											throw new RuntimeException("Testcase with same name already exists");
-										}
-									}
-				        			tcs.add(testCase);
-			        			}
-			        			else
-			        			{
-			        				boolean found = false;
-			        				for (TestCase tc : tcs) {
-										if(tc.getName().equals(testCase.getName())) {
-											found = true;
+										if(tc.getName().equals(testCaseName)) {
+											origfound = tc;
 											break;
 										}
 									}
-			        				
-			        				if(!found) {
-			        					throw new RuntimeException("Testcase with name does not exist");
-			        				}
-			        				
-			        				List<TestCase> ttcs = new ArrayList<TestCase>();
-			        				for (TestCase tc : tcs) {
-										if(tc.getName().equals(testCase.getName())) {
-											ttcs.add(testCase);
-										} else {
-											ttcs.add(tc);
+				        			if(origfound==null) {
+				        				throw new RuntimeException("Testcase does not exist");
+				        			}
+			        			}
+			        			
+			        			if(context==null) {
+			        				try {
+			        					GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
+		        						executorMojo.setProject(project);
+		        						executorMojo.initilaizeContext(gatfConfig, false);
+		        						context = executorMojo.getContext();
+		        						
+		        						if(!isServerLogsApi)
+		        						{
+			        						executorMojo.getAllTestCases(context);
+			        						authTestCase = executorMojo.getAuthTestCase();
+		        						}
+									} catch (Exception e) {
+										e.printStackTrace();
+										throw new RuntimeException("Please Execute the GATF Suite first..");
+									}
+			        			}
+			        			
+			        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
+			        			List<TestCaseReport> reports = null;
+			        			
+			        			boolean isAuthExec = false;
+			        			TestCase found = null;
+			        			synchronized(context)
+			        			{
+				        			context.clearTestResults();
+				        			if(!isServerLogsApi)
+				        			{
+					        			found = new TestCase(origfound);
+					        			found.setSimulationNumber(0);
+					        			found.setSourcefileName(testcaseFileName);
+										found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+										found.setLogicalValidations(null);
+										found.setExecuteOnCondition(null);
+										found.setPreWaitMs(0L);
+										found.setPostWaitMs(0L);
+										found.setPreExecutionDataSourceHookName(null);
+										found.setPostExecutionDataSourceHookName(null);
+										
+										if(found.getHeaders()!=null)
+										{
+											found.getHeaders().clear();
+										}
+										else
+										{
+											found.setHeaders(new HashMap<String, String>());
+										}
+										
+										if(isReplay)
+										{
+											TestCaseReport tcReport = new ObjectMapper().readValue(request.getInputStream(), 
+						        					TestCaseReport.class);
+						        			if(tcReport == null) {
+						        				throw new RuntimeException("Invalid testcase report details provided");
+						        			}
+											
+						        			found.setAurl(tcReport.getActualUrl());
+											found.setAcontent(tcReport.getRequestContent());
+											found.setAexpectedNodes(tcReport.getAexpectedNodes());
+						        			
+											if(found.getAurl().startsWith(found.getBaseUrl().trim())) {
+												String turl = found.getAurl().replace(found.getBaseUrl().trim(), "");
+												found.setAurl(turl);
+											}
+											
+											if(StringUtils.isNotBlank(tcReport.getRequestHeaders()))
+											{
+												String[] headers = tcReport.getRequestHeaders().split("\n");
+												for(String header: headers)
+												{
+													if(header.indexOf(": ")!=-1)
+													{
+														found.getHeaders().put(header.substring(0, header.indexOf(": ")),
+																header.substring(header.indexOf(": ")+2));
+													}
+												}
+											}
+										}
+										isAuthExec = found.isSecure() && gatfConfig.isAuthEnabled() && authTestCase!=null;
+										context.getWorkflowContextHandler().initializeSuiteContextWithnum(0);
+				        			}
+				        			
+									TestCase authTestCaseT = authTestCase;
+									if(isServerLogsApi)
+									{
+										authTestCaseT = context.getServerLogApi(true);
+										isAuthExec = gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT!=null;
+										isReplay = false;
+										context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+									}
+									
+									if(isAuthExec)
+									{
+										reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
+												testCaseExecutorUtil);
+									}
+									if(isReplay && testCaseName.equals(found.getName()))
+									{
+										reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
+												testCaseExecutorUtil);
+									}
+									else
+									{
+										if(isServerLogsApi)
+										{
+											found = context.getServerLogApi(false);
+										}
+										else
+										{
+											found = new TestCase(origfound);
+						        			found.setSimulationNumber(0);
+						        			found.setSourcefileName(testcaseFileName);
+											found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+										}
+										if(testCaseName.equals(found.getName()))
+										{
+											reports = context.getSingleTestCaseExecutor().execute(found, 
+													testCaseExecutorUtil);
 										}
 									}
-			        				tcs = ttcs;
 			        			}
+			        			testCaseExecutorUtil.shutdown();
 			        			
-			        			XStream xstream = new XStream(
-		                			new XppDriver() {
-		                				public HierarchicalStreamWriter createWriter(Writer out) {
-		                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-		                				}
-		                			}
-		                		);
-		                		xstream.processAnnotations(new Class[]{TestCase.class});
-		                		xstream.alias("TestCases", List.class);
-		                		xstream.toXML(tcs, new FileOutputStream(filePath));
-			        			
-			        			response.setStatus(HttpStatus.OK_200);
-							} catch (Throwable e) {
-								handleError(e, response, null);
-							}
-			        	} else if(request.getMethod().equals(Method.GET) ) {
-			        		try {
-			        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-			        			List<TestCase> tcsn = new ArrayList<TestCase>();
-			        			boolean isAuthApi = false;
-			        			boolean isTargetApi = false;
-			        			if(tcs==null)
-			        				throw new RuntimeException("No Testcases found...");
-			        			for (TestCase testCase : tcs) {
-			        				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
-			        						|| testCase.getName().equals("targetapi"))))
-				        			{
-			        					if(!isAuthApi)isAuthApi = testCase.getName().equals("authapi");
-			        					if(!isTargetApi)isTargetApi = testCase.getName().equals("targetapi");
-			        					tcsn.add(testCase);
-				        			}
-								}
-			        			if(isApiIntType)
+			        			if(reports==null || reports.size()==0)
 			        			{
-			        				boolean changed = false;
-			        				if(!isAuthApi)
-			        				{
-			        					TestCase tc = new TestCase();
-			        					tc.setMethod(HttpMethod.POST);
-			        					tc.setUrl("auth");
-			        					tc.setName("authapi");
-			        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
-			        					tc.setRepeatScenarioProviderName("");
-			        					tc.setPreExecutionDataSourceHookName("");
-			        					tc.setPostExecutionDataSourceHookName("");
-			        					tc.setServerApiAuth(true);
-			        					tcsn.add(tc);
-			        					changed = true;
-			        				}
-			        				if(!isTargetApi)
-			        				{
-			        					TestCase tc = new TestCase();
-			        					tc.setMethod(HttpMethod.POST);
-			        					tc.setUrl("target");
-			        					tc.setName("targetapi");
-			        					tc.setSecure(isAuthApi);
-			        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
-			        					tc.setRepeatScenarioProviderName("");
-			        					tc.setPreExecutionDataSourceHookName("");
-			        					tc.setPostExecutionDataSourceHookName("");
-			        					tc.setServerApiTarget(true);
-			        					tcsn.add(tc);
-			        					changed = true;
-			        				}
-			        				if(changed)
-			        				{
-			        					XStream xstream = new XStream(
-				                			new XppDriver() {
-				                				public HierarchicalStreamWriter createWriter(Writer out) {
-				                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-				                				}
-				                			}
-				                		);
-				                		xstream.processAnnotations(new Class[]{TestCase.class});
-				                		xstream.alias("TestCases", List.class);
-				                		xstream.toXML(tcsn, new FileOutputStream(filePath));
-			        				}
+			        				throw new RuntimeException("Could not execute Testcase");
 			        			}
-			        			String json = new ObjectMapper().writeValueAsString(tcsn);
-			        			response.setContentType(MediaType.APPLICATION_JSON);
-					            response.setContentLength(json.length());
-					            response.getWriter().write(json);
-			        			response.setStatus(HttpStatus.OK_200);
-							} catch (Exception e) {
-								handleError(e, response, HttpStatus.BAD_REQUEST_400);
-							}
+			        			
+			        			TestCaseReport report = reports.get(0);
+			        			ReportHandler.populateRequestResponseHeaders(report);
+			        			String configJson = new ObjectMapper().writeValueAsString(report);
+								response.setContentLength(configJson.length());
+					            response.getWriter().write(configJson);
+								response.setStatus(HttpStatus.OK_200);
+			        		}
 			        	}
-			        }
-			    },
-			    "/testcases");
-		
-		server.getServerConfiguration().addHttpHandler(
-			    new HttpHandler() {
-			    	AtomicBoolean isStarted = new AtomicBoolean(false);
-			    	AtomicBoolean isDone = new AtomicBoolean(false);
-			    	Thread _executorThread = null;
-			    	volatile String status = "";
-			        public void service(Request request, Response response) throws Exception {
-			        	GatfPluginConfig gatfConfig = null;
-			        	final String pluginType = request.getParameter("pluginType");
-	        			try {
-	        				gatfConfig = getGatfPluginConfig(pluginType, mojo);
-	        				if(request.getMethod().equals(Method.GET) ) {
-	        					if(isStarted.get()) {
-	        						throw new RuntimeException("Execution already in progress..");
-	        					} else if(isDone.get()) {
-	        						isDone.set(false);
-	        						isStarted.set(false);
-	        						
-	        						String temp = status;
-	        						status = "";
-	        						if(temp!=null)
-	        							throw new RuntimeException("Execution failed with Error - " + temp);
-	        						
-	        						String text = "Execution completed, check Reports Section";
-				        			response.setContentType(MediaType.TEXT_PLAIN);
-						            response.setContentLength(text.length());
-						            response.getWriter().write(text);
-				        			response.setStatus(HttpStatus.OK_200);
-	        					} else if(!isStarted.get()) {
-	        						throw new RuntimeException("Please Start the Execution....");
-	        					} else {
-	        						throw new RuntimeException("Unknown Error...");
-	        					}
-	        				}
-	        				else if(request.getMethod().equals(Method.PUT) ) {
-	        					if(!isStarted.get() && !isDone.get()) {
-	        						isStarted.set(true);
-	        						final GatfPluginConfig config = gatfConfig;
-	        						_executorThread = new Thread(new Runnable() {
-										public void run() {
-											GatfPlugin executorMojo = getGatfPlugin(pluginType);
-			        						executorMojo.setProject(project);
-			        						try {
-												executorMojo.doExecute(config);
-												initializeMojoProps(executorMojo, mojo);
-											} catch (Throwable e) {
-												e.printStackTrace();
-												if(e.getMessage()!=null)
-													status = e.getMessage();
-												else
-													status = ExceptionUtils.getStackTrace(e);
-											} finally { 
-												executorMojo.shutdown();
-											}
-			        						isDone.set(true);
-											isStarted.set(false);
-										}
-
-										private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
-											if(executorMojo instanceof GatfTestCaseExecutorMojo) {
-												mojo.context = ((GatfTestCaseExecutorMojo)executorMojo).getContext();
-												mojo.authTestCase = ((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase();
-											}
-										}
-									});
-	        						_executorThread.start();
-	        						String text = "Execution Started";
-				        			response.setContentType(MediaType.TEXT_PLAIN);
-						            response.setContentLength(text.length());
-						            response.getWriter().write(text);
-				        			response.setStatus(HttpStatus.OK_200);
-	        					} else if(isDone.get()) {
-	        						isDone.set(false);
-	        						isStarted.set(false);
-	        						
-	        						String temp = status;
-	        						status = "";
-	        						if(temp!=null)
-	        							throw new RuntimeException("Execution failed with Error - " + temp);
-	        						
-	        						String text = "Execution completed, check Reports Section";
-				        			response.setContentType(MediaType.TEXT_PLAIN);
-						            response.setContentLength(text.length());
-						            response.getWriter().write(text);
-				        			response.setStatus(HttpStatus.OK_200);
-	        					} else if(isStarted.get()) {
-	        						throw new RuntimeException("Execution already in progress..");
-	        					} else {
-	        						throw new RuntimeException("Unknown Error...");
-	        					}
-				        	} else if(request.getMethod().equals(Method.DELETE) ) {
-				        		if(isStarted.get() && _executorThread!=null) {
-				        			_executorThread.interrupt();
-				        			_executorThread = null;
-	        					} else if(!isStarted.get()) {
-	        						throw new RuntimeException("Testcase execution is not in progress...");
-	        					} else if(isDone.get()) {
-	        						isDone.set(false);
-	        						isStarted.set(false);
-	        						
-	        						String temp = status;
-	        						status = "";
-	        						if(temp!=null)
-	        							throw new RuntimeException("Execution failed with Error - " + temp);
-	        						
-	        						String text = "Execution completed, check Reports Section";
-				        			response.setContentType(MediaType.TEXT_PLAIN);
-						            response.setContentLength(text.length());
-						            response.getWriter().write(text);
-				        			response.setStatus(HttpStatus.OK_200);
-	        					} else {
-	        						throw new RuntimeException("Unknown Error...");
-	        					}
-				        	}
-	        			} catch (Exception e) {
-	        				handleError(e, response, HttpStatus.BAD_REQUEST_400);
-							return;
-						}
-			        }
-			    },
-			    "/execute");
-		
-		try {
-		    server.start();
-		    System.out.println("Press any key to stop the server...");
-		    System.in.read();
-		} catch (Exception e) {
-		    System.err.println(e);
-		}
+		        	} catch (Exception e) {
+		        		handleError(e, response, null);
+					}
+		        }
+		    }, "/reports");
 	}
-	
+
+	private void handleRootContext(HttpServer server, final String mainDir) {
+		server.getServerConfiguration().addHttpHandler(
+		    new HttpHandler() {
+		        public void service(Request request, Response response) throws Exception {
+		        	new CacheLessStaticHttpHandler(mainDir).service(request, response);
+		        }
+		    }, "/");
+	}
+
 	private static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojo mojo, boolean isChanged) throws IOException
 	{
 		if(gatfConfig.getTestCasesBasePath()==null) {
@@ -974,26 +1131,5 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			GatfConfiguration gatfConfig = getGatfConfiguration(mojo, null);
 			return gatfConfig;
 		}
-	}
-	
-	// returns null if file isn't relative to folder
-	public static String getRelativePath(File file, File folder) {
-	    String filePath = file.getAbsolutePath();
-	    String folderPath = folder.getAbsolutePath();
-	    if (filePath.startsWith(folderPath)) {
-	        return filePath.substring(folderPath.length() + 1);
-	    } else {
-	        return null;
-	    }
-	}
-	
-	public static void main2(String[] args) throws Exception
-	{
-		ObjectMapper jsonMapper = new ObjectMapper();
-    	jsonMapper.configure(DeserializationConfig.Feature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-    	jsonMapper.configure(DeserializationConfig.Feature.AUTO_DETECT_FIELDS, true);
-    	String schemaJson = jsonMapper.generateJsonSchema(GatfConfiguration.class).toString();
-    	schemaJson = schemaJson.replaceAll("'", "\'");
-    	System.out.println(schemaJson);
 	}
 }

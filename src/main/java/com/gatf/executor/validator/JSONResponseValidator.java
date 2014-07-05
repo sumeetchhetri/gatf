@@ -20,8 +20,8 @@ import java.util.List;
 import java.util.Map;
 
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
+import com.gatf.executor.report.TestCaseReport;
 import com.jayway.jsonpath.JsonPath;
-import com.ning.http.client.Response;
 
 /**
  * @author Sumeet Chhetri
@@ -29,9 +29,9 @@ import com.ning.http.client.Response;
  */
 public class JSONResponseValidator extends ResponseValidator {
 
-	protected Object getInternalObject(Response response) throws Exception
+	protected Object getInternalObject(TestCaseReport testCaseReport) throws Exception
 	{
-		return response.getResponseBody();
+		return testCaseReport.getResponseContent();
 	}
 
 	protected String getNodeValue(Object intObj, String node) throws Exception {

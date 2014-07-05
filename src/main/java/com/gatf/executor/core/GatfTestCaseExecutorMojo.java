@@ -384,7 +384,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 	
-	private List<TestCase> getAllTestCases(AcceptanceTestContext context)
+	public List<TestCase> getAllTestCases(AcceptanceTestContext context)
 	{
 		List<TestCase> allTestCases = new ArrayList<TestCase>();
 		File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
@@ -397,6 +397,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		finder = new CSVTestCaseFinder();
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
+		
+		sortAndOrderTestCases(allTestCases, context.getGatfExecutorConfig());
 		
 		return allTestCases;
 	}
@@ -538,14 +540,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	@SuppressWarnings({ "rawtypes" })
 	public void doExecute(GatfExecutorConfig configuration) throws MojoFailureException {
 		
-		context = new AcceptanceTestContext(configuration, getClassLoader());
-		try {
-			context.validateAndInit();
-			setupTestCaseHooks(context);
-		} catch (Throwable e) {
-			getLog().error(e);
-			throw new MojoFailureException("Configuration is invalid", e);
-		}
+		initilaizeContext(configuration, true);
 		
 		distributedGatfTester = new DistributedGatfTester();
 		
@@ -576,7 +571,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		
 		List<TestCase> allTestCases = getAllTestCases(context);
-		sortAndOrderTestCases(allTestCases, configuration);
 		
 		List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
 		Map<String, Set<String>> relTsts = new HashMap<String, Set<String>>();
@@ -904,6 +898,17 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	}
 	
 	
+	public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws MojoFailureException {
+		context = new AcceptanceTestContext(configuration, getClassLoader());
+		try {
+			context.validateAndInit(flag);
+			setupTestCaseHooks(context);
+		} catch (Throwable e) {
+			getLog().error(e);
+			throw new MojoFailureException("Configuration is invalid", e);
+		}
+	}
+
 	private List<TestCase> checkIfTestExists(String relatedTestCase, List<TestCase> allTestCases) {
 		List<TestCase> depTests = new ArrayList<TestCase>();
 		for (TestCase tc : allTestCases) {
@@ -1061,7 +1066,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					if(serverLogsApis.size()>0) {
 						TestCase api = context.getServerLogApi(true);
 						if(api!=null && !api.isSkipTest() && context.getSessionIdentifier(api)==null) {
-							context.getSingleTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
+							context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
 						}
 						api = context.getServerLogApi(false);
 						List<TestCaseReport> logData = context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);

@@ -93,96 +93,20 @@ public abstract class TestCaseFinder {
 			List<File> files = new ArrayList<File>();
 			getFiles(dir, filter, files);
 			
-			List<File> allFiles = new ArrayList<File>();
 			if(considerConfig)
 			{
-				if(orderedFiles!=null)
-				{
-					for (String fileN : orderedFiles) {
-						for (File file : files) {
-							if(file.getName().equals(fileN)) {
-								allFiles.add(file);
-								break;
-							}
-						}
-					}
-					for (File file : files) {
-						if(!allFiles.contains(file)) {
-							allFiles.add(file);
-						}
-					}
-				}
-				else
-				{
-					for (File file : files) {
-						allFiles.add(file);
-					}
-					AlphanumComparator comparator = new AlphanumComparator();
-					if(isOrderByFileName) {
-						Collections.sort(allFiles, comparator);
-					}
-				}
-	
-				if(ignoreFiles!=null)
-				{
-					for (String fileN : ignoreFiles) {
-						fileN = fileN.trim();
-						if(fileN.isEmpty()) {
-							continue;
-						}
-						if(fileN.equals("*") || fileN.equals("*.*")) {
-							return testcases;
-						}
-					}
-				}
-			}
-			else
-			{
-				for (File file : files) {
-					allFiles.add(file);
-				}
+				files = filterFiles(ignoreFiles, files, dir);
+				files = orderFiles(orderedFiles, isOrderByFileName, files, dir);
 			}
 			
-			for (File file : allFiles) {
-				boolean isIgnore = false;
-				
-				if(considerConfig && ignoreFiles!=null)
-				{
-					for (String fileN : ignoreFiles) {
-						fileN = fileN.trim();
-						if(fileN.isEmpty()) {
-							continue;
-						}
-						
-						if(fileN.startsWith("*.")) {
-							String ext = fileN.substring(2);
-							if(file.getName().endsWith(ext)) {
-								isIgnore = true; 
-							}
-						} else if(fileN.endsWith("*")) {
-							fileN = fileN.substring(0, fileN.lastIndexOf("*"));
-							if(file.getName().startsWith(fileN)) {
-								isIgnore = true; 
-							}
-						} else if(fileN.startsWith("*")) {
-							fileN = fileN.substring(1);
-							if(file.getName().endsWith(fileN)) {
-								isIgnore = true; 
-							}
-						} else if(file.getName().equals(fileN)) {
-							isIgnore = true;
-						}
-					}
-					if(isIgnore)
-						continue;
-				}
-				
+			for (File file : files) {
+				String relativeFileName = getRelativePath(file, dir);
 				try {
 					List<TestCase> testcasesTemp = resolveTestCases(file);
 					if(testcasesTemp != null)
 					{
 						for (TestCase testCase : testcasesTemp) {
-							testCase.setSourcefileName(file.getName());
+							testCase.setSourcefileName(relativeFileName);
 							if(testCase.getSimulationNumber()==null)
 							{
 								testCase.setSimulationNumber(0);
@@ -201,15 +125,138 @@ public abstract class TestCaseFinder {
 								runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
 							}
 							
-							context.initializeResultsHolders(runNums, file.getName());
+							context.initializeResultsHolders(runNums, relativeFileName);
 						}
 						testcases.addAll(testcasesTemp);
 					}
 				} catch (Exception e) {
-					e.printStackTrace();
+					System.out.println("Ignoring file due to invalid testcase format ... " + relativeFileName);
+					//e.printStackTrace();
 				}
 			}
 		}
 		return testcases;
+	}
+	
+	// returns null if file isn't relative to folder
+	public static String getRelativePath(File file, File folder) {
+	    String filePath = file.getAbsolutePath();
+	    String folderPath = folder.getAbsolutePath();
+	    if (filePath.startsWith(folderPath)) {
+	        return filePath.substring(folderPath.length() + 1);
+	    } else {
+	        return null;
+	    }
+	}
+	
+	public static List<File> filterFiles(String[] ignoreFiles, List<File> testFiles, File dir)
+	{
+		if(ignoreFiles!=null)
+		{
+			List<File> files = new ArrayList<File>();
+			for (String fileN : ignoreFiles) {
+				fileN = fileN.trim();
+				if(fileN.isEmpty()) {
+					continue;
+				}
+				if(fileN.equals("*") || fileN.equals("*.*")) {
+					return files;
+				}
+			}
+			
+			for (File file : testFiles) {
+				boolean isIgnore = false;
+				
+				String completeFileName = getRelativePath(file, dir);
+				String fileName = file.getName();
+				
+				for (String fileN : ignoreFiles) {
+					fileN = fileN.trim();
+					
+					boolean isCompleteNameMatch = fileN.indexOf("\\")!=-1;
+					
+					if(fileN.isEmpty()) {
+						continue;
+					}
+					
+					if(fileN.startsWith("*.")) {
+						String ext = fileN.substring(2);
+						if((isCompleteNameMatch && completeFileName.endsWith(ext))
+								|| (!isCompleteNameMatch && fileName.endsWith(ext))) {
+							isIgnore = true;
+							break;
+						}
+					} else if(fileN.endsWith("*")) {
+						fileN = fileN.substring(0, fileN.lastIndexOf("*"));
+						if((isCompleteNameMatch && completeFileName.startsWith(fileN))
+								|| (!isCompleteNameMatch && fileName.startsWith(fileN))) {
+							isIgnore = true; 
+							break;
+						}
+					} else if(fileN.startsWith("*")) {
+						fileN = fileN.substring(1);
+						if((isCompleteNameMatch && completeFileName.endsWith(fileN))
+								|| (!isCompleteNameMatch && fileName.endsWith(fileN))) {
+							isIgnore = true;
+							break;
+						}
+					} else if((isCompleteNameMatch && completeFileName.equals(fileN))
+							|| (!isCompleteNameMatch && fileName.equals(fileN))) {
+						isIgnore = true;
+						break;
+					}
+				}
+				if(isIgnore)
+					continue;
+				
+				files.add(file);
+			}
+			return files;
+		}
+		return testFiles;
+	}
+	
+	public static List<File> orderFiles(String[] orderedFiles, boolean isOrderByFileName, List<File> files, File dir)
+	{
+		if(orderedFiles!=null)
+		{
+			List<File> allFiles = new ArrayList<File>();
+			for (String fileN : orderedFiles) {
+				for (File file : files) {
+					String completeFileName = getRelativePath(file, dir);
+					if(completeFileName.equals(fileN)) {
+						allFiles.add(file);
+						break;
+					}
+				}
+			}
+			for (File file : files) {
+				if(!allFiles.contains(file)) {
+					allFiles.add(file);
+				}
+			}
+			return allFiles;
+		}
+		else
+		{
+			if(isOrderByFileName) {
+				AlphanumComparator<File> comparator = new AlphanumComparator<File>();
+				Collections.sort(files, comparator);
+			}
+			return files;
+		}
+	}
+	
+	public static List<File> filterValidTestCaseFiles(List<File> testFiles)
+	{
+		List<File> allFiles = new ArrayList<File>();
+		for (File file : testFiles) {
+			try {
+				new XMLTestCaseFinder().resolveTestCases(file);
+				allFiles.add(file);
+			} catch (Exception e) {
+			}
+		}
+		return allFiles;
 	}
 }

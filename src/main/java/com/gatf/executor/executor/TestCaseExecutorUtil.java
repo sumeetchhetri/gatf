@@ -347,7 +347,21 @@ public class TestCaseExecutorUtil {
 					else
 					{
 						if(turl.indexOf("?")!=-1) {
-							turl += "&" + authExtractAuthParams[2] + "=" + sessIdentifier;
+							String urlpart = turl.substring(0, turl.indexOf("?")+1);
+							String paramstr = turl.substring(turl.indexOf("?")+1);
+							String[] params = paramstr.split("&");
+							for (String param : params) {
+								String[] pair = param.split("=");
+								String key = pair[0];
+								String value = pair.length>1?pair[1]:"";
+								if(key.trim().equals(authExtractAuthParams[2])) {
+									urlpart += (key + "=" + sessIdentifier);
+								} else {
+									urlpart += (key + "=" + value);
+								}
+								urlpart += "&";
+							}
+							turl = urlpart;
 						} else {
 							turl += "?" + authExtractAuthParams[2] + "=" + sessIdentifier;
 						}
@@ -680,6 +694,8 @@ public class TestCaseExecutorUtil {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			if(testCaseReport.getError()==null)
 			{
+				testCaseReport.setResponseContent(response.getResponseBody());
+				testCaseReport.setResHeaders(response.getHeaders());
 				if(!testCase.isSoapBase()) {
 					if(MediaType.APPLICATION_JSON.equalsIgnoreCase(testCase.getExpectedResContentType()))
 					{
@@ -703,8 +719,6 @@ public class TestCaseExecutorUtil {
 				} else {
 					soapResponseValidator.validate(response, testCase, testCaseReport, context);
 				}
-				testCaseReport.setResponseContent(response.getResponseBody());
-				testCaseReport.setResHeaders(response.getHeaders());
 			}
 			
 			if(testCase.getPostWaitMs()!=null && testCase.getPostWaitMs()>0) {

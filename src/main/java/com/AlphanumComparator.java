@@ -38,7 +38,7 @@ import java.util.Comparator;
  *   Use the static "sort" method from the java.util.Collections class:
  *   Collections.sort(your list, new AlphanumComparator());
  */
-public class AlphanumComparator implements Comparator<String>
+public class AlphanumComparator<T> implements Comparator<T>
 {
     private final boolean isDigit(char ch)
     {
@@ -78,12 +78,12 @@ public class AlphanumComparator implements Comparator<String>
 
     public int compare(File o1, File o2)
     {
-    	return compare(o1.getName(), o2.getName());
+    	return compare(o1.getAbsolutePath(), o2.getAbsolutePath());
     }
     
     public int compare(String o1, String o2)
     {
-        int thisMarker = 0;
+    	int thisMarker = 0;
         int thatMarker = 0;
         int s1Length = o1.length();
         int s2Length = o2.length();
@@ -125,5 +125,18 @@ public class AlphanumComparator implements Comparator<String>
         }
 
         return s1Length - s2Length;
+    }
+    
+    public int compare(T o1, T o2)
+    {
+    	if(o1 instanceof String && o2 instanceof String)
+    	{
+    		return compare((String)o1, (String)o2);
+    	}
+    	else if(o1 instanceof File && o2 instanceof File)
+    	{
+    		return compare((File)o1, (File)o2);
+    	}
+        return 0;
     }
 }

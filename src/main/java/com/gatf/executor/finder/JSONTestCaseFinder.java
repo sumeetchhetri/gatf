@@ -37,12 +37,7 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 	@SuppressWarnings("unchecked")
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
 		ObjectMapper jsonMapper = new ObjectMapper();
-		try {
-			List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new TypeReference<List<TestCase>>(){});
-			return jsonTestCases;
-		} catch (Exception e) {
-			System.out.println("Invalid testcase format in file - " + testCaseFile.getPath() + ", Ignoring....");
-			return null;
-		}
+		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new TypeReference<List<TestCase>>(){});
+		return jsonTestCases;
 	}
 }

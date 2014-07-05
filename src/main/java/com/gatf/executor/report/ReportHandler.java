@@ -499,7 +499,7 @@ public class ReportHandler {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
-		AlphanumComparator comparator = new AlphanumComparator();
+		AlphanumComparator<String> comparator = new AlphanumComparator<String>();
 		
 		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
@@ -815,7 +815,7 @@ public class ReportHandler {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
-		AlphanumComparator comparator = new AlphanumComparator();
+		AlphanumComparator<String> comparator = new AlphanumComparator<String>();
 		
 		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);

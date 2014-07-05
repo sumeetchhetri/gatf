@@ -81,6 +81,9 @@ public class WorkflowContextHandler {
 			suiteWorkflowScenarioContext.put(i, new ConcurrentHashMap<String, List<Map<String, String>>>());
 			cookies.put(i, new ConcurrentHashMap<String, String>());
 		}
+		suiteWorkflowContext.put(-1, new ConcurrentHashMap<String, String>());
+		suiteWorkflowScenarioContext.put(-1, new ConcurrentHashMap<String, List<Map<String, String>>>());
+		cookies.put(-1, new ConcurrentHashMap<String, String>());
 	}
 	
 	public void initializeSuiteContextWithnum(int index) {
@@ -99,7 +102,7 @@ public class WorkflowContextHandler {
 	}
 	
 	public Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
-		if(testCase.isServerApiAuth()) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return suiteWorkflowContext.get(-1);
 		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowContext.get(0);
@@ -109,7 +112,9 @@ public class WorkflowContextHandler {
 	}
 	
 	public Map<String, List<Map<String, String>>> getSuiteWorkflowScnearioContext(TestCase testCase) {
-		if(testCase.getSimulationNumber()==null) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			return suiteWorkflowScenarioContext.get(-1);
+		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowScenarioContext.get(0);
 		} else {
 			return suiteWorkflowScenarioContext.get(testCase.getSimulationNumber());
@@ -117,7 +122,9 @@ public class WorkflowContextHandler {
 	}
 	
 	public List<Map<String, String>> getSuiteWorkflowScenarioContextValues(TestCase testCase, String varName) {
-		if(testCase.getSimulationNumber()==null) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			return suiteWorkflowScenarioContext.get(-1).get(varName);
+		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowScenarioContext.get(0).get(varName);
 		} else {
 			return suiteWorkflowScenarioContext.get(testCase.getSimulationNumber()).get(varName);
@@ -136,7 +143,9 @@ public class WorkflowContextHandler {
 	
 	private Map<String, String> getGlobalSuiteAndTestLevelParameters(TestCase testCase, Map<String, String> variableMap) {
 		Map<String, String> nmap = new HashMap<String, String>(globalworkflowContext);
-		if(testCase.getSimulationNumber()==null) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			nmap.putAll(suiteWorkflowContext.get(-1));
+		} else if(testCase.getSimulationNumber()==null) {
 			nmap.putAll(suiteWorkflowContext.get(0));
 		} else {
 			nmap.putAll(suiteWorkflowContext.get(testCase.getSimulationNumber()));

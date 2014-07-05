@@ -26,7 +26,6 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URL;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -220,17 +219,16 @@ public class AcceptanceTestContext {
 
 	public void setSessionIdentifier(String identifier, TestCase testCase) {
 		Integer simulationNumber = testCase.getSimulationNumber();
-		if(simulationNumber==null) {
-			simulationNumber = 0;
-		}
-		if(testCase.isServerApiAuth()) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			simulationNumber = -1;
+		} else if(simulationNumber==null) {
+			simulationNumber = 0;
 		}
 		sessionIdentifiers.put(simulationNumber, identifier);
 	}
 	
 	public String getSessionIdentifier(TestCase testCase) {
-		if(testCase.isServerApiAuth()) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return sessionIdentifiers.get(-1);
 		}
 		if(testCase.getSimulationNumber()!=null)
@@ -398,7 +396,7 @@ public class AcceptanceTestContext {
 		folder.delete();
 	}
 	
-	public void validateAndInit() throws Exception
+	public void validateAndInit(boolean flag) throws Exception
 	{
 		gatfExecutorConfig.validate();
 		
@@ -412,7 +410,7 @@ public class AcceptanceTestContext {
 				{
 					File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-					removeFolder(resource);
+					if(flag)removeFolder(resource);
 					File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 					nresource.mkdirs();
 				}
@@ -421,7 +419,7 @@ public class AcceptanceTestContext {
 					URL url = Thread.currentThread().getContextClassLoader().getResource(".");
 					File resource = new File(url.getPath());
 					File file = new File(resource, gatfExecutorConfig.getOutFilesDir());
-					removeFolder(file);
+					if(flag)removeFolder(file);
 					File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
 					nresource.mkdirs();
 				}
@@ -434,7 +432,7 @@ public class AcceptanceTestContext {
 		{
 			URL url = Thread.currentThread().getContextClassLoader().getResource("out");
 			File resource = new File(url.getPath());
-			removeFolder(resource);
+			if(flag)removeFolder(resource);
 			File nresource = new File(url.getPath());
 			nresource.mkdir();
 			gatfExecutorConfig.setOutFilesDir("out");
@@ -463,9 +461,6 @@ public class AcceptanceTestContext {
 					{
 						testCase.setSimulationNumber(0);
 					}
-				}
-				if(getServerLogApi(true)!=null) {
-					getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
 				}
 			}
 		}
