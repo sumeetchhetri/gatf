@@ -51,9 +51,21 @@ public abstract class TestCaseFinder {
 	protected abstract TestCaseFileType getFileType();
 	public abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
 	
-	private static final FileFilter dfilter = new FileFilter() {
+	public static final FileFilter DIR_FILTER = new FileFilter() {
 		public boolean accept(File file) {
 			return file.isDirectory();
+		}
+	};
+	
+	public static final FileFilter FILE_FILTER = new FileFilter() {
+		public boolean accept(File file) {
+			return !file.isDirectory();
+		}
+	};
+	
+	public static final FileFilter NOZIP_FILE_FILTER = new FileFilter() {
+		public boolean accept(File file) {
+			return !file.isDirectory() && !file.getName().endsWith(".zip");
 		}
 	};
 	
@@ -66,7 +78,7 @@ public abstract class TestCaseFinder {
 				getFiles(file, filter, fileLst);
 			}
 			
-			files = dir.listFiles(dfilter);
+			files = dir.listFiles(DIR_FILTER);
 			for (File file : files) {
 				getFiles(file, filter, fileLst);
 			}
@@ -115,6 +127,9 @@ public abstract class TestCaseFinder {
 							{
 								testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
 							}
+							testCase.setExternalApi(false);
+							testCase.setServerApiAuth(false);
+							testCase.setServerApiTarget(false);
 						}
 						
 						if(considerConfig)

@@ -342,6 +342,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		this.startTime = startTime;
 	}
 
+	public void setContext(AcceptanceTestContext context) {
+		this.context = context;
+	}
+
 	private void sortAndOrderTestCases(List<TestCase> allTestCases, GatfExecutorConfig configuration) {
 		List<TestCase> pretestcases = new ArrayList<TestCase>();
 		List<TestCase> posttestcases = new ArrayList<TestCase>();
@@ -455,7 +459,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		configuration.setIgnoreFiles(ignoreFiles);
 		configuration.setOrderedFiles(orderedFiles);
 		configuration.setFetchFailureLogs(isFetchFailureLogs);
-		configuration.setServerLogsApiFileName(serverLogsApiFileName);
 		configuration.setServerLogsApiAuthExtractAuth(serverLogsApiAuthExtractAuth);
 		configuration.setServerLogsApiAuthEnabled(isServerLogsApiAuthEnabled);
 		
@@ -922,7 +925,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	private void validateTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil) {
 		for (TestCase testCase : allTestCases) {
 			try {
-				testCase.validate(testCaseExecutorUtil.getContext().getHttpHeaders());
+				testCase.validate(testCaseExecutorUtil.getContext().getHttpHeaders(), 
+						testCaseExecutorUtil.getContext().getGatfExecutorConfig().getBaseUrl());
 				if(testCase.getRepeatScenarios()!=null) {
 					testCase.setRepeatScenariosOrig(testCase.getRepeatScenarios());
 				}
@@ -1040,54 +1044,62 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					getLog().info(testCaseReport.toString());
 				}
 				
-				List<Method> postHook = context.getPrePostHook(testCase, false);
-				if(postHook!=null) {
-					try {
-						TestCaseReport report = new TestCaseReport(testCaseReport);
-						for (Method method : postHook) {
-							method.invoke(null, new Object[]{report});
-						}
-						testCaseReport.setResponseContent(report.getResponseContent());
-					} catch (Throwable e) {
-						e.printStackTrace();
-					}
-				}
-				
-				if(testCase.getPostExecutionDataSourceHookName()!=null) {
-					try {
-						context.executeDataSourceHook(testCase.getPostExecutionDataSourceHookName());
-					} catch (Throwable e) {
-						e.printStackTrace();
-					}
-				}
-				
-				if(!success && isFetchFailureLogs) {
-					List<TestCase> serverLogsApis = context.getServerLogsApiLst();
-					if(serverLogsApis.size()>0) {
-						TestCase api = context.getServerLogApi(true);
-						if(api!=null && !api.isSkipTest() && context.getSessionIdentifier(api)==null) {
-							context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
-						}
-						api = context.getServerLogApi(false);
-						List<TestCaseReport> logData = context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
-						if(logData!=null && logData.size()>0) {
-							if(logData.get(0).getStatus().equals(TestStatus.Success.status))
-								testCaseReport.setServerLogs(logData.get(0).getResponseContent());
-							else
-							{
-								String content = logData.get(0).getError()!=null?logData.get(0).getError():"";
-								content += "\n";
-								content += logData.get(0).getErrorText()!=null?logData.get(0).getErrorText():"";
-								testCaseReport.setServerLogs(content);
+				if(!testCase.isExternalApi() && !testCase.isDisablePostHooks())
+				{
+					List<Method> postHook = context.getPrePostHook(testCase, false);
+					if(postHook!=null) {
+						try {
+							TestCaseReport report = new TestCaseReport(testCaseReport);
+							for (Method method : postHook) {
+								method.invoke(null, new Object[]{report});
 							}
+							testCaseReport.setResponseContent(report.getResponseContent());
+						} catch (Throwable e) {
+							e.printStackTrace();
+						}
+					}
+					
+					if(testCase.getPostExecutionDataSourceHookName()!=null) {
+						try {
+							context.executeDataSourceHook(testCase.getPostExecutionDataSourceHookName());
+						} catch (Throwable e) {
+							e.printStackTrace();
 						}
 					}
 				}
+				
+				invokeServerLogApi(success, testCaseReport, testCaseExecutorUtil, isFetchFailureLogs);
 			}
 		}
 		return success;
 	}
 	
+	public void invokeServerLogApi(boolean success, TestCaseReport testCaseReport,TestCaseExecutorUtil testCaseExecutorUtil,
+			boolean isFetchFailureLogs) {
+		if(!success && isFetchFailureLogs) {
+			List<TestCase> serverLogsApis = context.getServerLogsApiLst();
+			if(serverLogsApis.size()>0) {
+				TestCase api = context.getServerLogApi(true);
+				if(api!=null && !api.isSkipTest() && context.getSessionIdentifier(api)==null) {
+					context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
+				}
+				api = context.getServerLogApi(false);
+				List<TestCaseReport> logData = context.getSingleTestCaseExecutor().execute(api, testCaseExecutorUtil);
+				if(logData!=null && logData.size()>0) {
+					if(logData.get(0).getStatus().equals(TestStatus.Success.status))
+						testCaseReport.setServerLogs(logData.get(0).getResponseContent());
+					else
+					{
+						String content = logData.get(0).getError()!=null?logData.get(0).getError():"";
+						content += "\n";
+						content += logData.get(0).getErrorText()!=null?logData.get(0).getErrorText():"";
+						testCaseReport.setServerLogs(content);
+					}
+				}
+			}
+		}
+	}
+
 	private void addSkippedTestCase(TestCase testCase, String skipReason)
 	{
 		TestCaseReport testCaseReport = new TestCaseReport();

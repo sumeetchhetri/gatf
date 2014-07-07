@@ -20,6 +20,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.Writer;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -44,6 +45,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.validator.routines.UrlValidator;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
@@ -137,6 +139,8 @@ public class AcceptanceTestContext {
 	
 	private Map<String, Method> prePostTestCaseExecHooks = new HashMap<String, Method>();
 	
+	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
+	
 	public ClassLoader getProjectClassLoader() {
 		return projectClassLoader;
 	}
@@ -221,6 +225,8 @@ public class AcceptanceTestContext {
 		Integer simulationNumber = testCase.getSimulationNumber();
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			simulationNumber = -1;
+		} else if(testCase.isExternalApi()) {
+			simulationNumber = -2;
 		} else if(simulationNumber==null) {
 			simulationNumber = 0;
 		}
@@ -231,8 +237,12 @@ public class AcceptanceTestContext {
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return sessionIdentifiers.get(-1);
 		}
+		if(testCase.isExternalApi()) {
+			return sessionIdentifiers.get(-2);
+		}
 		if(testCase.getSimulationNumber()!=null)
 			return sessionIdentifiers.get(testCase.getSimulationNumber());
+		
 		return sessionIdentifiers.get(0);
 	}
 	
@@ -388,12 +398,10 @@ public class AcceptanceTestContext {
 	public static void removeFolder(File folder)
 	{
 		if(folder==null || !folder.exists())return;
-		String[] entries = folder.list();
-		for(String s: entries){
-		    File currentFile = new File(folder.getPath(), s);
-		    currentFile.delete();
+		try {
+			FileUtils.deleteDirectory(folder);
+		} catch (IOException e) {
 		}
-		folder.delete();
 	}
 	
 	public void validateAndInit(boolean flag) throws Exception
@@ -401,6 +409,11 @@ public class AcceptanceTestContext {
 		gatfExecutorConfig.validate();
 		
 		Assert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
+		
+		if(StringUtils.isNotBlank(gatfExecutorConfig.getBaseUrl()))
+		{
+			Assert.assertTrue("Base URL is not valid", URL_VALIDATOR.isValid(gatfExecutorConfig.getBaseUrl()));
+		}
 		
 		if(gatfExecutorConfig.getOutFilesDir()!=null && !gatfExecutorConfig.getOutFilesDir().trim().isEmpty())
 		{
@@ -410,18 +423,23 @@ public class AcceptanceTestContext {
 				{
 					File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-					if(flag)removeFolder(resource);
-					File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-					nresource.mkdirs();
+					if(flag)
+					{	removeFolder(resource);
+						File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+						nresource.mkdirs();
+					}
 				}
 				else
 				{
 					URL url = Thread.currentThread().getContextClassLoader().getResource(".");
 					File resource = new File(url.getPath());
 					File file = new File(resource, gatfExecutorConfig.getOutFilesDir());
-					if(flag)removeFolder(file);
-					File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
-					nresource.mkdirs();
+					if(flag)
+					{	
+						removeFolder(file);
+						File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
+						nresource.mkdirs();
+					}
 				}
 			} catch (Exception e) {
 				gatfExecutorConfig.setOutFilesDir(null);
@@ -432,36 +450,41 @@ public class AcceptanceTestContext {
 		{
 			URL url = Thread.currentThread().getContextClassLoader().getResource("out");
 			File resource = new File(url.getPath());
-			if(flag)removeFolder(resource);
-			File nresource = new File(url.getPath());
-			nresource.mkdir();
+			if(flag)
+			{
+				removeFolder(resource);
+				File nresource = new File(url.getPath());
+				nresource.mkdir();
+			}
 			gatfExecutorConfig.setOutFilesDir("out");
 			gatfExecutorConfig.setOutFilesBasePath(gatfExecutorConfig.getTestCasesBasePath());
 		}
 		
-		initSoapContextAndHttpHeaders();
-		
-		initTestDataProviderAndGlobalVariables();
+		if(flag)
+		{
+			initSoapContextAndHttpHeaders();
+			
+			initTestDataProviderAndGlobalVariables();
+		}
 		
 		initServerLogsApis();
 	}
 	
-	private void initServerLogsApis() throws Exception {
-		if(gatfExecutorConfig.getServerLogsApiFileName()!=null) {
-			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
-			String serverApiLogFileNm = gatfExecutorConfig.getServerLogsApiFileName();
-			serverApiLogFileNm = serverApiLogFileNm==null?GATF_SERVER_LOGS_API_FILE_NM:serverApiLogFileNm;
-			File resource = new File(basePath, serverApiLogFileNm);
-			if(resource.exists()) {
-				TestCaseFinder finder = new XMLTestCaseFinder();
-				serverLogsApiLst.addAll(finder.resolveTestCases(resource));
-				for (TestCase testCase : serverLogsApiLst) {
-					testCase.setSourcefileName(serverApiLogFileNm);
-					if(testCase.getSimulationNumber()==null)
-					{
-						testCase.setSimulationNumber(0);
-					}
+	public void initServerLogsApis() throws Exception {
+		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+		File resource = new File(basePath, GATF_SERVER_LOGS_API_FILE_NM);
+		if(resource.exists()) {
+			TestCaseFinder finder = new XMLTestCaseFinder();
+			serverLogsApiLst.clear();
+			serverLogsApiLst.addAll(finder.resolveTestCases(resource));
+			for (TestCase testCase : serverLogsApiLst) {
+				testCase.setSourcefileName(GATF_SERVER_LOGS_API_FILE_NM);
+				if(testCase.getSimulationNumber()==null)
+				{
+					testCase.setSimulationNumber(0);
 				}
+				testCase.setExternalApi(true);
+				testCase.validate(getHttpHeaders(), null);
 			}
 		}
 	}
@@ -924,12 +947,14 @@ public class AcceptanceTestContext {
 				if(isAuth && gatfExecutorConfig.isServerLogsApiAuthEnabled() && "authapi".equals(tc.getName()))
 				{
 					tc.setServerApiAuth(true);
+					tc.setExternalApi(true);
 					return tc;
 				}
 				else if(!isAuth && "targetapi".equals(tc.getName()))
 				{
 					tc.setServerApiTarget(true);
 					tc.setSecure(gatfExecutorConfig.isServerLogsApiAuthEnabled());
+					tc.setExternalApi(true);
 					return tc;
 				}
 			}
@@ -1045,7 +1070,7 @@ public class AcceptanceTestContext {
 		}
 	}
 	
-	public static void main(String[] args) throws Exception
+	public static void main6(String[] args) throws Exception
 	{
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File folder, String name) {
@@ -1061,8 +1086,13 @@ public class AcceptanceTestContext {
 			if(!file.isDirectory()) {
 				String data = FileUtils.readFileToString(file);
 				data = data.replace(" </url>", "</url>");
-				FileUtils.write(file, data);
+				//FileUtils.write(file, data);
 			}
 		}
+	}
+	
+	public static void main(String[] args) throws Exception
+	{
+		System.out.println(URL_VALIDATOR.isValid("http://localhost:8081/sampleApp"));
 	}
 }

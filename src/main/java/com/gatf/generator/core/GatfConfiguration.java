@@ -81,6 +81,8 @@ public class GatfConfiguration implements Serializable, GatfPluginConfig {
 	
 	private String testCaseFormat;
 	
+	private boolean debugEnabled;
+	
 	public String getTestCaseFormat() {
 		return testCaseFormat;
 	}
@@ -177,5 +179,13 @@ public class GatfConfiguration implements Serializable, GatfPluginConfig {
 
 	public void setUseSoapClient(boolean useSoapClient) {
 		this.useSoapClient = useSoapClient;
+	}
+
+	public boolean isDebugEnabled() {
+		return debugEnabled;
+	}
+
+	public void setDebugEnabled(boolean debugEnabled) {
+		this.debugEnabled = debugEnabled;
 	}
 }

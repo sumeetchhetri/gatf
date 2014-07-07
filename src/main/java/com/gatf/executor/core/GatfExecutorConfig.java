@@ -113,8 +113,6 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private boolean isServerLogsApiAuthEnabled;
 	
-	private String serverLogsApiFileName;
-	
 	private String serverLogsApiAuthExtractAuth;
 	
 	private boolean isFetchFailureLogs;
@@ -455,14 +453,6 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setServerLogsApiAuthEnabled(boolean isServerLogsApiAuthEnabled) {
 		this.isServerLogsApiAuthEnabled = isServerLogsApiAuthEnabled;
-	}
-
-	public String getServerLogsApiFileName() {
-		return serverLogsApiFileName;
-	}
-
-	public void setServerLogsApiFileName(String serverLogsApiFileName) {
-		this.serverLogsApiFileName = serverLogsApiFileName;
 	}
 
 	public String getServerLogsApiAuthExtractAuth() {

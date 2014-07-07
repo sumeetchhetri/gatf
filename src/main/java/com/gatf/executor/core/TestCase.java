@@ -201,6 +201,12 @@ public class TestCase implements Serializable {
 	
 	private List<String> logicalValidations;
 	
+	@XStreamAsAttribute
+	private boolean disablePreHooks = false;
+	
+	@XStreamAsAttribute
+	private boolean disablePostHooks = false;
+	
 	@XStreamOmitField
 	@JsonIgnore
 	private Map<String, String> currentScenarioVariables;
@@ -212,6 +218,10 @@ public class TestCase implements Serializable {
 	@XStreamOmitField
 	@JsonIgnore
 	private boolean isServerApiTarget = false;
+	
+	@XStreamOmitField
+	@JsonIgnore
+	private boolean isExternalApi = false;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -646,6 +656,30 @@ public class TestCase implements Serializable {
 		this.isServerApiTarget = isServerApiTarget;
 	}
 
+	public boolean isDisablePreHooks() {
+		return disablePreHooks;
+	}
+
+	public void setDisablePreHooks(boolean disablePreHooks) {
+		this.disablePreHooks = disablePreHooks;
+	}
+
+	public boolean isDisablePostHooks() {
+		return disablePostHooks;
+	}
+
+	public void setDisablePostHooks(boolean disablePostHooks) {
+		this.disablePostHooks = disablePostHooks;
+	}
+
+	public boolean isExternalApi() {
+		return isExternalApi;
+	}
+
+	public void setExternalApi(boolean isExternalApi) {
+		this.isExternalApi = isExternalApi;
+	}
+
 	@Override
 	public String toString() {
 		final int maxLen = 10;
@@ -950,13 +984,25 @@ public class TestCase implements Serializable {
 		}
 	}
 	
-	public void validate(Map<String, String> httpHeaders) {
+	public void validate(Map<String, String> httpHeaders, String baseUrl) {
 		
 		if(StringUtils.isBlank(getName()))
 			throw new RuntimeException("Blank Name specified for testcase");
 		
 		if(!isSoapBase())
 		{
+			if(StringUtils.isBlank(baseUrl) && StringUtils.isBlank(getBaseUrl()))
+				throw new RuntimeException("No Base URL specified");
+				
+			if(StringUtils.isNotBlank(getBaseUrl()))
+				Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.URL_VALIDATOR.isValid(getBaseUrl()));
+			
+			String fullUrl = StringUtils.isBlank(getBaseUrl())?baseUrl:getBaseUrl();
+			fullUrl = fullUrl.trim() + "/" + getUrl().trim();
+			String parturl = fullUrl.substring(fullUrl.indexOf("://")+3);
+			fullUrl = fullUrl.substring(0, fullUrl.indexOf("://")+3) + parturl.replace("//", "/");
+			Assert.assertTrue("Testcase URL is not valid " + fullUrl, AcceptanceTestContext.URL_VALIDATOR.isValid(fullUrl));
+			
 			if(StringUtils.isBlank(getUrl()))
 				throw new RuntimeException("Blank URL sepcified for testcase");
 			

@@ -68,22 +68,26 @@ public class WorkflowContextHandler {
 	
 	private final Map<Integer, Map<String, String>> cookies = new ConcurrentHashMap<Integer, Map<String, String>>();
 	
-	void initializeSuiteContext(int numberOfRuns) {
+	public void initializeSuiteContext(int numberOfRuns) {
 		
 		suiteWorkflowContext.clear();
 		suiteWorkflowScenarioContext.clear();
 		cookies.clear();
 		
-		int start = (numberOfRuns>1?1:0);
-		int end = (numberOfRuns>1?numberOfRuns+1:numberOfRuns);
-		for (int i = start; i < end; i++) {
+		//int start = (numberOfRuns>1?1:0);
+		//int end = (numberOfRuns>1?numberOfRuns+1:numberOfRuns);
+		for (int i = -2; i < numberOfRuns+1; i++) {
 			suiteWorkflowContext.put(i, new ConcurrentHashMap<String, String>());
 			suiteWorkflowScenarioContext.put(i, new ConcurrentHashMap<String, List<Map<String, String>>>());
 			cookies.put(i, new ConcurrentHashMap<String, String>());
 		}
-		suiteWorkflowContext.put(-1, new ConcurrentHashMap<String, String>());
+		/*suiteWorkflowContext.put(-1, new ConcurrentHashMap<String, String>());
 		suiteWorkflowScenarioContext.put(-1, new ConcurrentHashMap<String, List<Map<String, String>>>());
 		cookies.put(-1, new ConcurrentHashMap<String, String>());
+		
+		suiteWorkflowContext.put(-2, new ConcurrentHashMap<String, String>());
+		suiteWorkflowScenarioContext.put(-2, new ConcurrentHashMap<String, List<Map<String, String>>>());
+		cookies.put(-2, new ConcurrentHashMap<String, String>());*/
 	}
 	
 	public void initializeSuiteContextWithnum(int index) {
@@ -104,6 +108,8 @@ public class WorkflowContextHandler {
 	public Map<String, String> getSuiteWorkflowContext(TestCase testCase) {
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return suiteWorkflowContext.get(-1);
+		} else if(testCase.isExternalApi()) {
+			return suiteWorkflowContext.get(-2);
 		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowContext.get(0);
 		} else {
@@ -114,6 +120,8 @@ public class WorkflowContextHandler {
 	public Map<String, List<Map<String, String>>> getSuiteWorkflowScnearioContext(TestCase testCase) {
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return suiteWorkflowScenarioContext.get(-1);
+		} else if(testCase.isExternalApi()) {
+			return suiteWorkflowScenarioContext.get(-2);
 		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowScenarioContext.get(0);
 		} else {
@@ -124,6 +132,8 @@ public class WorkflowContextHandler {
 	public List<Map<String, String>> getSuiteWorkflowScenarioContextValues(TestCase testCase, String varName) {
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			return suiteWorkflowScenarioContext.get(-1).get(varName);
+		} else if(testCase.isExternalApi()) {
+			return suiteWorkflowScenarioContext.get(-2).get(varName);
 		} else if(testCase.getSimulationNumber()==null) {
 			return suiteWorkflowScenarioContext.get(0).get(varName);
 		} else {
@@ -131,8 +141,39 @@ public class WorkflowContextHandler {
 		}
 	}
 	
+	public String getCookie(TestCase testCase, String varName) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			return cookies.get(-1).get(varName);
+		} else if(testCase.isExternalApi()) {
+			return cookies.get(-2).get(varName);
+		} else if(testCase.getSimulationNumber()==null) {
+			return cookies.get(0).get(varName);
+		} else {
+			return cookies.get(testCase.getSimulationNumber()).get(varName);
+		}
+	}
+	
+	public Map<String, String> getCookies(TestCase testCase) {
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			return cookies.get(-1);
+		} else if(testCase.isExternalApi()) {
+			return cookies.get(-2);
+		} else if(testCase.getSimulationNumber()==null) {
+			return cookies.get(0);
+		} else {
+			return cookies.get(testCase.getSimulationNumber());
+		}
+	}
+	
 	public void storeCookies(TestCase testCase, List<Cookie> cookieLst) {
 		int simNumber = testCase.getSimulationNumber()==null?0:testCase.getSimulationNumber();
+		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+			simNumber = -1;
+		} else if(testCase.isExternalApi()) {
+			simNumber = -2;
+		} else if(testCase.getSimulationNumber()==null) {
+			simNumber = 0;
+		}
 		if(cookieLst!=null && cookies.get(simNumber)!=null)
 		{
 			for (Cookie cookie : cookieLst) {
@@ -145,6 +186,8 @@ public class WorkflowContextHandler {
 		Map<String, String> nmap = new HashMap<String, String>(globalworkflowContext);
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			nmap.putAll(suiteWorkflowContext.get(-1));
+		} else if(testCase.isExternalApi()) {
+			nmap.putAll(suiteWorkflowContext.get(-2));
 		} else if(testCase.getSimulationNumber()==null) {
 			nmap.putAll(suiteWorkflowContext.get(0));
 		} else {
@@ -181,8 +224,7 @@ public class WorkflowContextHandler {
 		
 		//initialize cookies
 		if(testCase != null) {
-			int simNumber = testCase.getSimulationNumber()==null?0:testCase.getSimulationNumber();
-			Map<String, String> cookieMap = cookies.get(simNumber);
+			Map<String, String> cookieMap = getCookies(testCase);
 			if(cookieMap!=null) {
 				for (Map.Entry<String, String> entry : cookieMap.entrySet()) {
 					if(testCase.getHeaders()==null)

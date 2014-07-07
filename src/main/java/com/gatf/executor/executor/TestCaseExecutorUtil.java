@@ -377,22 +377,9 @@ public class TestCaseExecutorUtil {
 				}
 			}
 
-			String baseUrl = testCase.getBaseUrl().trim();
-			if(baseUrl.charAt(baseUrl.length()-1)=='/')
-			{
-				if(turl.charAt(0)=='/')
-					turl = baseUrl + turl.substring(1);
-				else
-					turl = baseUrl + turl;
-			}
-			else
-			{
-				if(turl.charAt(0)=='/')
-					turl = baseUrl + turl;
-				else
-					turl = baseUrl + "/" + turl;
-			}
-			testCase.setAurl(turl);
+			String completeUrl = getUrl(testCase.getBaseUrl(), turl);
+			
+			testCase.setAurl(completeUrl);
 			builder = builder.setUrl(testCase.getAurl());
 			
 		} else {
@@ -465,18 +452,21 @@ public class TestCaseExecutorUtil {
 		RequestBuilder builder = new RequestBuilder(testCase.getMethod());
 		
 		try {
-			List<Method> preHook = context.getPrePostHook(testCase, true);
-			if(preHook!=null) {
-				for (Method method : preHook) {
-					method.invoke(null, new Object[]{testCase});
+			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks())
+			{
+				List<Method> preHook = context.getPrePostHook(testCase, true);
+				if(preHook!=null) {
+					for (Method method : preHook) {
+						method.invoke(null, new Object[]{testCase});
+					}
 				}
-			}
-			
-			if(testCase.getPreExecutionDataSourceHookName()!=null) {
-				try {
-					context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
-				} catch (Throwable e) {
-					e.printStackTrace();
+				
+				if(testCase.getPreExecutionDataSourceHookName()!=null) {
+					try {
+						context.executeDataSourceHook(testCase.getPreExecutionDataSourceHookName());
+					} catch (Throwable e) {
+						e.printStackTrace();
+					}
 				}
 			}
 			
@@ -492,7 +482,8 @@ public class TestCaseExecutorUtil {
 			testCaseReport.setTestCase(testCase);
 			Request request = builder.build();
 			
-			if(testCase.getPreWaitMs()!=null && testCase.getPreWaitMs()>0) {
+			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks() && testCase.getPreWaitMs()!=null 
+					&& testCase.getPreWaitMs()>0) {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
 			
@@ -680,6 +671,10 @@ public class TestCaseExecutorUtil {
 					}
 				}
 			}
+			else if(headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)!=null)
+			{
+				testCase.setExpectedResContentType(headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE));
+			}
 			builder.accumulate(headers);
 			return STATE.CONTINUE;
 		}
@@ -721,7 +716,8 @@ public class TestCaseExecutorUtil {
 				}
 			}
 			
-			if(testCase.getPostWaitMs()!=null && testCase.getPostWaitMs()>0) {
+			if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
+					&& testCase.getPostWaitMs()>0) {
 				try {
 					Thread.sleep(testCase.getPostWaitMs());
 				} catch (InterruptedException e1) {
@@ -730,6 +726,16 @@ public class TestCaseExecutorUtil {
 			
 			return testCaseReport;
 		}
+	}
+
+	private String getUrl(String baseUrl, String urlPart)
+	{
+		String fullUrl = baseUrl;
+		fullUrl = fullUrl.trim() + "/" + urlPart.trim();
+		String parturl = fullUrl.substring(fullUrl.indexOf("://")+3);
+		fullUrl = fullUrl.substring(0, fullUrl.indexOf("://")+3) + parturl.replace("//", "/");
+		Assert.assertTrue("Testcase URL is not valid " + fullUrl, AcceptanceTestContext.URL_VALIDATOR.isValid(fullUrl));
+		return fullUrl;
 	}
 	
 	public void shutdown()

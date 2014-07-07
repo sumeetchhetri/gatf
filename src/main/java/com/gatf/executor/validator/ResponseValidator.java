@@ -36,7 +36,6 @@ import org.w3c.dom.NodeList;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfFunctionHandler;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
@@ -58,7 +57,8 @@ public abstract class ResponseValidator {
 	
 	public boolean hasValidationFunction(String node) {
 		return node!=null && node.endsWith("]") && (node.startsWith("#providerValidation[") 
-				|| node.startsWith("#liveProviderValidation[") || node.startsWith("#responseHeaders["));
+				|| node.startsWith("#liveProviderValidation[") || node.startsWith("#responseHeader[")
+				|| node.startsWith("#responseCookie["));
 	}
 	
 	public void doNodeLevelValidation(String lhs, String lhsv, String oper, String rhsv, 
@@ -66,13 +66,21 @@ public abstract class ResponseValidator {
 		if(hasValidationFunction(lhs)) 
 		{
 			boolean isLiveProvider = lhs.startsWith("#liveProviderValidation[");
-			boolean isResponseHeader = lhs.startsWith("#responseHeaders[");
+			boolean isResponseHeader = lhs.startsWith("#responseHeader[");
+			boolean isResponseCookie = lhs.startsWith("#responseCookie[");
 			String path = lhs.substring(lhs.indexOf("[")+1, lhs.length()-1);
 			if(isResponseHeader)
 			{
 				Assert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
 						&& testCaseReport.getResHeaders().containsKey(path));
 				lhsv = testCaseReport.getResHeaders().get(path).get(0);
+			}
+			else if(isResponseCookie)
+			{
+				Map<String, String> cookieMap = context.getWorkflowContextHandler().getCookies(testCase);
+				Assert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null
+						&& cookieMap.containsKey(path));
+				lhsv = cookieMap.get(path);
 			}
 			else
 			{
@@ -117,7 +125,7 @@ public abstract class ResponseValidator {
 		} else if(oper.equals(">=")) {
 			Assert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==1 || lhsv.compareTo(rhsv)==0);
 		} else if(oper.equals("!=")) {
-			Assert.assertNotEquals("Node validation failed for " + lhs, lhsv, rhsv);
+			Assert.assertTrue("Node validation failed for " + lhs, !lhsv.equals(rhsv));
 		} else if(oper.equals("regex")) {
 			Assert.assertTrue("Regex validation failed for " + lhs, lhsv.matches(rhsv));
 		} else if(oper.equals("startswith")) {
@@ -168,7 +176,7 @@ public abstract class ResponseValidator {
 	
 	private boolean isValidOperator(String oper)
 	{
-		return oper.equals("<") || oper.equals(">") || oper.equals("<=") || oper.equals(">=") || oper.equals("=") ||
+		return oper.equals("<") || oper.equals(">") || oper.equals("<=") || oper.equals(">=") || oper.equals("==") ||
 				 oper.equals("!=") || oper.equals("regex") || oper.equals("startswith") || oper.equals("endswith") || 
 				 oper.equals("contains");
 	}
@@ -241,7 +249,7 @@ public abstract class ResponseValidator {
 				validateLogicalConditions(testCase, context, null);
 			}
 			
-			extractWorkflowVariables(testCase, intObj, context.getWorkflowContextHandler());
+			extractWorkflowVariables(testCase, testCaseReport, intObj, context);
 			
 			List<Cookie> cookies = response.getCookies();
 			context.getWorkflowContextHandler().storeCookies(testCase, cookies);
@@ -309,14 +317,36 @@ public abstract class ResponseValidator {
 		}
 	}
 	
-	public void extractWorkflowVariables(TestCase testCase, Object intObj, WorkflowContextHandler wfh) throws Exception
+	public boolean hasWorkflowFunction(String node) {
+		return node!=null && node.endsWith("]") && (node.startsWith("#responseMappedValue[") 
+				|| node.startsWith("#responseMappedCount[") || node.startsWith("#responseHeader[")
+				|| node.startsWith("#responseCookie["));
+	}
+	
+	public void extractWorkflowVariables(TestCase testCase, TestCaseReport testCaseReport, Object intObj, 
+			AcceptanceTestContext context) throws Exception
 	{
 		if(testCase.getWorkflowContextParameterMap()!=null && !testCase.getWorkflowContextParameterMap().isEmpty())
 		{
 			for (Map.Entry<String, String> entry : testCase.getWorkflowContextParameterMap().entrySet()) {
 				String nodeName = entry.getValue().trim();
-				if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
-					nodeName = nodeName.substring(21, nodeName.length()-1);
+				if(nodeName.startsWith("#responseHeader[") && nodeName.endsWith("]"))
+				{
+					String path = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
+					Assert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
+							&& testCaseReport.getResHeaders().containsKey(path));
+					String nodeValue = testCaseReport.getResHeaders().get(path).get(0);
+					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
+				} else if(nodeName.startsWith("#responseCookie[") && nodeName.endsWith("]")) {
+					String path = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
+					Map<String, String> cookieMap = context.getWorkflowContextHandler().getCookies(testCase);
+					Assert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null && cookieMap.containsKey(path));
+					String nodeValue = cookieMap.get(path);
+					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
+				} else if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
+					nodeName = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
 					
 					String propNames = nodeName.substring(nodeName.indexOf(" ")+1).trim();
 					String path = nodeName.substring(0, nodeName.indexOf(" ")).trim();
@@ -333,10 +363,10 @@ public abstract class ResponseValidator {
 							}
 						}
 					}
-					wfh.getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), nodeValues);
+					context.getWorkflowContextHandler().getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), nodeValues);
 					Assert.assertNotNull("Workflow json mapping variable " + nodeName +" is null", nodeValues);
 				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
-					nodeName = nodeName.substring(21, nodeName.length()-1);
+					nodeName = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
 
 					int responseCount = getResponseMappedCount(nodeName, intObj);
 					List<Map<String, String>> jsonValues = new ArrayList<Map<String,String>>();
@@ -345,14 +375,14 @@ public abstract class ResponseValidator {
 						row.put("index", (i+1)+"");
 						jsonValues.add(row);
 					}
-					wfh.getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
+					context.getWorkflowContextHandler().getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
 					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
 				} else if(nodeName.startsWith("#")) {
 					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
 					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean, float" +
 							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
-					wfh.getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
+					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
 				} else {
 					String nodeValue = null;
 					try {
@@ -361,7 +391,7 @@ public abstract class ResponseValidator {
 						throw new AssertionError("Workflow json variable " + nodeName + " not found");
 					}
 					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
-					wfh.getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
+					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
 				}
 			}
 		}

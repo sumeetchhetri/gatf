@@ -336,7 +336,17 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.testCaseFormat = testCaseFormat;
 	}
 
+	@Parameter(alias = "configFile")
+	private String configFile;
 	
+	public String getConfigFile() {
+		return configFile;
+	}
+
+	public void setConfigFile(String configFile) {
+		this.configFile = configFile;
+	}
+
 	private String getUrl(String url)
 	{
 		if(url==null || url.trim().isEmpty())return null;
@@ -1287,6 +1297,38 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     	{
     		getLog().info("Skipping gatf-plugin execution....");
     		return;
+    	}
+    	
+    	if(configFile!=null) {
+			try {
+				InputStream io = new FileInputStream(configFile);
+	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+	    		xstream.alias("testPaths", String[].class);
+	    		xstream.alias("testPath", String.class);
+	    		xstream.alias("soapWsdlKeyPairs", String[].class);
+	    		xstream.alias("soapWsdlKeyPair", String.class);
+	    		xstream.alias("string", String.class);
+	    		
+	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
+	    		
+	    		setDebugEnabled(config.isDebugEnabled());
+	    		setEnabled(config.isEnabled());
+	    		setInDataType(config.getRequestDataType());
+	    		setTestPaths(config.getTestPaths());
+	    		setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
+	    		setUrlPrefix(config.getUrlPrefix());
+	    		setResourcepath(config.getResourcepath());
+	    		setInDataType(config.getRequestDataType());
+	    		setOutDataType(config.getResponseDataType()); 
+	    		setOverrideSecure(config.isOverrideSecure());
+	    		setUrlSuffix(config.getUrlSuffix());
+	    		setUseSoapClient(config.isUseSoapClient());
+	    		setTestCaseFormat(config.getTestCaseFormat());
+	    		setPostmanCollectionVersion(config.getPostmanCollectionVersion());
+			} catch (Exception e) {
+				throw new AssertionError(e);
+			}
     	}
     	
     	if(getResourcepath()==null) {
