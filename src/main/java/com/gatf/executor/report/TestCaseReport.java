@@ -128,6 +128,10 @@ public class TestCaseReport implements Serializable {
 			setAexpectedNodes(testCase.getAexpectedNodes());
 		}
 	}
+	
+	public void setTestCaseExternalApi(TestCase testCase) {
+		this.testCase = testCase;
+	}
 
 	public String getStatus() {
 		return status;

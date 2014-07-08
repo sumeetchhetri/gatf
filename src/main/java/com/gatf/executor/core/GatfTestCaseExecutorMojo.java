@@ -49,15 +49,15 @@ import org.apache.maven.project.MavenProject;
 
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
-import com.gatf.distributed.DistributedAcceptanceContext;
-import com.gatf.distributed.DistributedGatfTester;
-import com.gatf.distributed.DistributedGatfTester.DistributedConnection;
-import com.gatf.distributed.DistributedTestContext;
-import com.gatf.distributed.DistributedTestStatus;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
 import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
+import com.gatf.executor.distributed.DistributedAcceptanceContext;
+import com.gatf.executor.distributed.DistributedGatfTester;
+import com.gatf.executor.distributed.DistributedTestContext;
+import com.gatf.executor.distributed.DistributedTestStatus;
+import com.gatf.executor.distributed.DistributedGatfTester.DistributedConnection;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
@@ -905,7 +905,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		context = new AcceptanceTestContext(configuration, getClassLoader());
 		try {
 			context.validateAndInit(flag);
-			setupTestCaseHooks(context);
+			if(flag)
+			{
+				setupTestCaseHooks(context);
+			}
 		} catch (Throwable e) {
 			getLog().error(e);
 			throw new MojoFailureException("Configuration is invalid", e);

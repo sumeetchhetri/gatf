@@ -54,11 +54,11 @@ import org.custommonkey.xmlunit.XMLAssert;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import com.AlphanumComparator;
-import com.gatf.distributed.DistributedTestStatus;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.distributed.DistributedTestStatus;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 /**

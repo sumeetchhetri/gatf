@@ -52,7 +52,6 @@ import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
-import com.gatf.distributed.DistributedAcceptanceContext;
 import com.gatf.executor.dataprovider.DatabaseTestDataSource;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
@@ -65,6 +64,7 @@ import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.dataprovider.TestDataHook;
 import com.gatf.executor.dataprovider.TestDataProvider;
 import com.gatf.executor.dataprovider.TestDataSource;
+import com.gatf.executor.distributed.DistributedAcceptanceContext;
 import com.gatf.executor.executor.PerformanceTestCaseExecutor;
 import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
