@@ -350,16 +350,21 @@ public class TestCaseExecutorUtil {
 							String urlpart = turl.substring(0, turl.indexOf("?")+1);
 							String paramstr = turl.substring(turl.indexOf("?")+1);
 							String[] params = paramstr.split("&");
+							boolean isAppendAuthToken = false;
 							for (String param : params) {
 								String[] pair = param.split("=");
 								String key = pair[0];
 								String value = pair.length>1?pair[1]:"";
 								if(key.trim().equals(authExtractAuthParams[2])) {
 									urlpart += (key + "=" + sessIdentifier);
+									isAppendAuthToken = true;
 								} else {
 									urlpart += (key + "=" + value);
 								}
 								urlpart += "&";
+							}
+							if(!isAppendAuthToken) {
+								urlpart += (authExtractAuthParams[2] + "=" + sessIdentifier);
 							}
 							turl = urlpart;
 						} else {

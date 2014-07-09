@@ -114,10 +114,4 @@ public class GatfFunctionHandler {
 		}
 		return null;
 	}
-	
-	public static void main(String[] args)
-	{
-		System.out.println(handleFunction("date(yyyy-MM-dd'T'HH:mm:ss - 1y)"));
-		System.out.println(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss").format(new Date()));
-	}
 }

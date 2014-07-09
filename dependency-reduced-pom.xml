@@ -36,7 +36,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>com.gatf.core.GatfTestGeneratorMojo</mainClass>
+                  <mainClass>com.gatf.generator.core.GatfTestGeneratorMojo</mainClass>
                 </transformer>
               </transformers>
             </configuration>

@@ -1251,7 +1251,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
 	    		
 	    		GatfTestGeneratorMojo testGenerator = new GatfTestGeneratorMojo();
-	    		testGenerator.setDebugEnabled(false);
+	    		testGenerator.setDebugEnabled(config.isDebugEnabled());
 	    		testGenerator.setEnabled(config.isEnabled());
 	    		testGenerator.setInDataType(config.getRequestDataType());
 	    		testGenerator.setTestPaths(config.getTestPaths());
@@ -1279,8 +1279,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     		else
     		{
     			System.out.println("Please specify proper arguments to the program - valid invocations are, \n" +
-    					"gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
-    					"gatf-plugin-{version}.jar -executor {executor-config-file}.xml");
+    					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
+    					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
+    					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n");
     		}
     	}
     }

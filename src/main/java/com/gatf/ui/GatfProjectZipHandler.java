@@ -17,11 +17,11 @@ import org.zeroturnaround.zip.ZipUtil;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.finder.TestCaseFinder;
 
-public class GatfConfigToolRootContextHandler extends HttpHandler {
+public class GatfProjectZipHandler extends HttpHandler {
 
 	private GatfConfigToolMojo mojo;
 	
-	protected GatfConfigToolRootContextHandler(GatfConfigToolMojo mojo) {
+	protected GatfProjectZipHandler(GatfConfigToolMojo mojo) {
 		super();
 		this.mojo = mojo;
 	}
@@ -89,8 +89,13 @@ public class GatfConfigToolRootContextHandler extends HttpHandler {
         	if(isPomProject)
         	{
         		FileUtils.copyFileToDirectory(new File(configDir, "pom.xml"), zfolder);
+        		FileUtils.copyFileToDirectory(new File(configDir, "README_MAVEN"), zfolder);
         		new File(zfolder, "src\\test\\resources").mkdirs();
         		zfolder = new File(zfolder, "src\\test\\resources");
+        	}
+        	else
+        	{
+        		FileUtils.copyFileToDirectory(new File(configDir, "README_BINARY"), zfolder);
         	}
         	
         	boolean isTestDirDone = false, isOutDirDone = false;

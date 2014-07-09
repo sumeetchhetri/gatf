@@ -96,7 +96,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			} else if(context==null) {
 	        				try {
         						executorMojo.setProject(project);
-        						executorMojo.initilaizeContext(gatfConfig, false);
+        						executorMojo.initilaizeContext(gatfConfig, true);
         						context = executorMojo.getContext();
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -165,22 +165,36 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 						TestCase authTestCaseT = authTestCase;
 						
+						boolean complete = false;
+						
 						if(isAuthExec)
 						{
 							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
 									testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+							{
+								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
+										gatfConfig.isServerLogsApiAuthEnabled());
+								complete = true;
+							}
 						}
 						
-						if(found.isSecure() && authTestCaseT==null)
+						if(reports!=null && authTestCaseT!=null && found.getName().equals(authTestCaseT.getName()))
 						{
-							throw new RuntimeException("No Authentication testcase found, please add one" +
-									"or change the testcase to unsecure mode");
+							complete = true;
 						}
-						reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
-								testCaseExecutorUtil);
-						if(reports.size()>0)
+						
+						if(!complete)
 						{
-							if(!reports.get(0).getStatus().equals(TestStatus.Success.status))
+							if(found.isSecure() && authTestCaseT==null)
+							{
+								throw new RuntimeException("No Authentication testcase found, please add one" +
+										"or change the testcase to unsecure mode");
+							}
+							reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
+									testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
 							{
 								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
 								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
@@ -212,23 +226,33 @@ public class GatfReportsHandler extends HttpHandler {
 						isAuthExec = gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT!=null;
 						context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
 						
+						boolean complete = false;
+						
 						if(isAuthExec)
 						{
 							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
 									testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+							{
+								complete = true;
+							}
 						}
-
-						TestCase found = context.getServerLogApi(false);
-						if(gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT==null)
+						
+						if(!complete)
 						{
-							throw new RuntimeException("No Authentication testcase found, please add one" +
-									"or change the testcase to unsecure mode");
+							TestCase found = context.getServerLogApi(false);
+							if(gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT==null)
+							{
+								throw new RuntimeException("No Authentication testcase found, please add one" +
+										"or change the testcase to unsecure mode");
+							}
+							if(testCaseName.equals(found.getName()))
+							{
+								reports = context.getSingleTestCaseExecutor().execute(found, 
+										testCaseExecutorUtil);
+							}
 						}
-						if(testCaseName.equals(found.getName()))
-						{
-							reports = context.getSingleTestCaseExecutor().execute(found, 
-									testCaseExecutorUtil);
-						}
+						
 	        			testCaseExecutorUtil.shutdown();
         			}
         			else if(isExternalLogsApi)
@@ -330,6 +354,8 @@ public class GatfReportsHandler extends HttpHandler {
 						isAuthExec = gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT!=null;
 						context.getWorkflowContextHandler().initializeSuiteContextWithnum(-2);
 						
+						boolean complete = false;
+						
 						if(isAuthExec)
 						{
 							authTestCaseT = new TestCase(authTestCaseT);
@@ -345,15 +371,23 @@ public class GatfReportsHandler extends HttpHandler {
 							authTestCaseT.validate(context.getHttpHeaders(), null);
 							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
 									testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+							{
+								complete = true;
+							}
 						}
 
-						if(found.isSecure() && authTestCaseT==null)
+						if(!complete)
 						{
-							throw new RuntimeException("No Authentication testcase found, please add one" +
-									"or change the testcase to unsecure mode");
+							if(found.isSecure() && authTestCaseT==null)
+							{
+								throw new RuntimeException("No Authentication testcase found, please add one" +
+										"or change the testcase to unsecure mode");
+							}
+							found.validate(context.getHttpHeaders(), null);
+							reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
 						}
-						found.validate(context.getHttpHeaders(), null);
-						reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
+						
 	        			testCaseExecutorUtil.shutdown();
         			}
         			else
@@ -385,7 +419,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			} else if(context==null) {
 	        				try {
         						executorMojo.setProject(project);
-        						executorMojo.initilaizeContext(gatfConfig, false);
+        						executorMojo.initilaizeContext(gatfConfig, true);
         						context = executorMojo.getContext();
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -418,22 +452,34 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 						TestCase authTestCaseT = authTestCase;
 						
+						boolean complete = false;
+						
 						if(isAuthExec)
 						{
-							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
-									testCaseExecutorUtil);
+							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+							{
+								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
+										gatfConfig.isServerLogsApiAuthEnabled());
+								complete = true;
+							}
 						}
-
-						if(found.isSecure() && authTestCaseT==null)
+						
+						if(reports!=null && authTestCaseT!=null && found.getName().equals(authTestCaseT.getName()))
 						{
-							throw new RuntimeException("No Authentication testcase found, please add one" +
-									"or change the testcase to unsecure mode");
+							complete = true;
 						}
-						reports = context.getSingleTestCaseExecutor().execute(found, 
-								testCaseExecutorUtil);
-						if(reports.size()>0)
+						
+						if(!complete)
 						{
-							if(!reports.get(0).getStatus().equals(TestStatus.Success.status))
+							if(found.isSecure() && authTestCaseT==null)
+							{
+								throw new RuntimeException("No Authentication testcase found, please add one" +
+										"or change the testcase to unsecure mode");
+							}
+							reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
+							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
 							{
 								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
 								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,

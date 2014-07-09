@@ -1001,7 +1001,6 @@ public class TestCase implements Serializable {
 			fullUrl = fullUrl.trim() + "/" + getUrl().trim();
 			String parturl = fullUrl.substring(fullUrl.indexOf("://")+3);
 			fullUrl = fullUrl.substring(0, fullUrl.indexOf("://")+3) + parturl.replace("//", "/");
-			Assert.assertTrue("Testcase URL is not valid " + fullUrl, AcceptanceTestContext.URL_VALIDATOR.isValid(fullUrl));
 			
 			if(StringUtils.isBlank(getUrl()))
 				throw new RuntimeException("Blank URL sepcified for testcase");

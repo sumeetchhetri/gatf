@@ -18,10 +18,7 @@ limitations under the License.
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.FilenameFilter;
 import java.io.IOException;
-import java.io.Writer;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -37,14 +34,12 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
 import javax.ws.rs.core.HttpHeaders;
-import javax.ws.rs.core.MediaType;
 import javax.xml.namespace.QName;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
@@ -71,11 +66,8 @@ import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
-import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.DomDriver;
-import com.thoughtworks.xstream.io.xml.XppDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -473,7 +465,7 @@ public class AcceptanceTestContext {
 	public void initServerLogsApis() throws Exception {
 		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
 		File resource = new File(basePath, GATF_SERVER_LOGS_API_FILE_NM);
-		if(resource.exists()) {
+		if(resource.exists() && gatfExecutorConfig.isFetchFailureLogs()) {
 			TestCaseFinder finder = new XMLTestCaseFinder();
 			serverLogsApiLst.clear();
 			serverLogsApiLst.addAll(finder.resolveTestCases(resource));
@@ -960,139 +952,5 @@ public class AcceptanceTestContext {
 			}
 		}
 		return null;
-	}
-	
-	public static void main1(String[] args) throws Exception
-	{
-		File ddir = new File("C:\\cygwin\\home\\sumeetc\\git\\sc_phoenix\\phoenix-services\\src\\test\\resources\\gatf-qa\\final");
-		File[] filres = ddir.listFiles();
-		List<String> existingFiles = new ArrayList<String>();
-		for (File file : filres) {
-			if(!file.isDirectory()) {
-				existingFiles.add(file.getName());
-			}
-		}
-		
-		
-		Map<Integer, Integer> mappings = new HashMap<Integer, Integer>();
-		mappings.put(0, 1);
-		mappings.put(1, 3);
-		mappings.put(4, 2);
-		mappings.put(5, 0);
-		mappings.put(6, 4);
-		mappings.put(7, 7);
-		mappings.put(8, 9);
-		mappings.put(9, 11);
-		
-		File dir = new File("C:\\cygwin\\home\\sumeetc\\qa");
-		//CSVTestCaseFinder finder = new CSVTestCaseFinder(mappings, true);
-		List<TestCase> testcases = null;
-		
-		FilenameFilter filter = new FilenameFilter() {
-			public boolean accept(File folder, String name) {
-				return name.toLowerCase().endsWith(".csv");
-			}
-		};
-		
-		
-		List<File> fileLst = new ArrayList<File>();
-		TestCaseFinder.getFiles(dir, filter, fileLst);
-		
-		if (dir.isDirectory()) {
-			for (File file : fileLst) {
-				Scanner s = new Scanner(file);
-				s.useDelimiter("\n");
-				List<String> list = new ArrayList<String>();
-				while (s.hasNext()) {
-					String csvLine = s.next().replace("\r", "");
-					if(!csvLine.trim().isEmpty() && !csvLine.trim().startsWith("testCaseName,testCaseDescription")) {
-						list.add(csvLine);
-					}
-				}
-				s.close();
-
-				testcases = new ArrayList<TestCase>();
-				if(!list.isEmpty())
-				{
-					for (String csvLine : list) {
-						TestCase testCase = new TestCase(csvLine, mappings);
-						if(StringUtils.isNotBlank(testCase.getExpectedResContent()))
-						{
-							testCase.setExpectedResContentType(MediaType.APPLICATION_JSON);
-						}
-						if(StringUtils.isNotBlank(testCase.getContent()))
-						{
-							if(testCase.getHeaders()==null)
-								testCase.setHeaders(new HashMap<String, String>());
-							testCase.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-						}
-						if(testCase.getContent()!=null && (testCase.getContent().startsWith("src/test/resources/qa")
-								|| testCase.getContent().startsWith("qa/phoenix/hie")))
-						{
-							String replText = testCase.getContent().startsWith("src/test/resources/qa")
-									?"src/test/resources/qa/":"qa/";
-							String inputfile = testCase.getContent();
-							inputfile = inputfile.replace(replText, "C:/cygwin/home/sumeetc/qa/");
-							String iofilenam = inputfile.substring(inputfile.lastIndexOf("/")+1);
-							if(new File(inputfile).exists()) {
-								FileUtils.copyFile(new File(inputfile), new File("C:/cygwin/home/sumeetc/qa/input/"+iofilenam));
-							}
-							testCase.setContent(null);
-							testCase.setContentFile("input/"+iofilenam);
-							if(testCase.getHeaders()==null)
-								testCase.setHeaders(new HashMap<String, String>());
-							testCase.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-						}
-						if(testCase.getUrl().indexOf("{")!=-1) {
-							System.out.println(file);
-							System.out.println(testCase.getUrl());
-							System.out.println();
-						}
-						testcases.add(testCase);
-					}
-					
-					String finalfilenm = file.getName().substring(0, file.getName().indexOf(".")+1) + "xml";
-					String nFileName = file.getParent() + SystemUtils.FILE_SEPARATOR + 
-							(existingFiles.contains(finalfilenm)?"":"skip-") + finalfilenm;
-					
-					XStream xstream = new XStream(
-            			new XppDriver() {
-            				public HierarchicalStreamWriter createWriter(Writer out) {
-            					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-            				}
-            			}
-            		);
-            		xstream.processAnnotations(new Class[]{TestCase.class});
-            		xstream.alias("TestCases", List.class);
-            		xstream.toXML(testcases, new FileOutputStream(nFileName));
-				}
-			}
-		}
-	}
-	
-	public static void main6(String[] args) throws Exception
-	{
-		FilenameFilter filter = new FilenameFilter() {
-			public boolean accept(File folder, String name) {
-				return name.toLowerCase().endsWith(".xml");
-			}
-		};
-		
-		File dir = new File("C:\\Users\\sumeetc\\Latest-MT\\workspace\\temp\\src\\test\\resources\\gatf-qa");
-		List<File> fileLst = new ArrayList<File>();
-		TestCaseFinder.getFiles(dir, filter, fileLst);
-		
-		for (File file : fileLst) {
-			if(!file.isDirectory()) {
-				String data = FileUtils.readFileToString(file);
-				data = data.replace(" </url>", "</url>");
-				//FileUtils.write(file, data);
-			}
-		}
-	}
-	
-	public static void main(String[] args) throws Exception
-	{
-		System.out.println(URL_VALIDATOR.isValid("http://localhost:8081/sampleApp"));
 	}
 }

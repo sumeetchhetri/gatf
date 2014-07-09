@@ -4,6 +4,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.Method;
@@ -55,7 +56,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					
 					String temp = status;
 					status = "";
-					if(temp!=null)
+					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("Execution failed with Error - " + temp);
 					
 					String text = "Execution completed, check Reports Section";
@@ -112,7 +113,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					
 					String temp = status;
 					status = "";
-					if(temp!=null)
+					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("Execution failed with Error - " + temp);
 					
 					String text = "Execution completed, check Reports Section";
@@ -137,7 +138,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					
 					String temp = status;
 					status = "";
-					if(temp!=null)
+					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("Execution failed with Error - " + temp);
 					
 					String text = "Execution completed, check Reports Section";

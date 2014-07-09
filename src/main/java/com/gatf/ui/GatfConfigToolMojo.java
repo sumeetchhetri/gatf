@@ -140,7 +140,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		        }
 		    }, "/");
 		
-		server.getServerConfiguration().addHttpHandler(new GatfConfigToolRootContextHandler(mojo));
+		server.getServerConfiguration().addHttpHandler(new GatfProjectZipHandler(mojo), "/projectZip");
 	}
 
 	private static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojo mojo, boolean isChanged) throws IOException
