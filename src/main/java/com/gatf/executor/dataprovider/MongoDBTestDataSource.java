@@ -21,17 +21,22 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.mongodb.BasicDBObject;
 import com.mongodb.DB;
 import com.mongodb.DBCollection;
 import com.mongodb.DBCursor;
 import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
+import com.mongodb.WriteResult;
 import com.mongodb.util.JSON;
 
 /**
@@ -253,11 +258,48 @@ public class MongoDBTestDataSource extends TestDataSource {
 		return result;
 	}
 
+	private static final Pattern DB_REMOVE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.remove\\((.*)\\)", Pattern.DOTALL);
+	private static final Pattern DB_SAVE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.save\\((.*)\\)", Pattern.DOTALL);
+	private static final Pattern DB_INSERT_REGEX = Pattern.compile("db\\.([^\\.]*)\\.insert\\((.*)\\)", Pattern.DOTALL);
+	private static final Pattern DB_UPDATE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.update\\((.*)\\)", Pattern.DOTALL);
+	
+	private static Pattern[] ALLOWED_REGEXES = new Pattern[]{DB_REMOVE_REGEX, DB_SAVE_REGEX, DB_INSERT_REGEX};
+	
 	public boolean execute(String queryStr) {
 		
 		boolean result = false;
 		
 		Assert.assertNotNull("queryString cannot be empty", queryStr);
+		
+		queryStr = queryStr.trim();
+		
+		int queryType = 0;
+		
+		String collectionName = null;
+		String paramData = null;
+		
+		boolean found = false;
+		for (Pattern pattern : ALLOWED_REGEXES) {
+			Matcher match = pattern.matcher(queryStr);
+			if(match.matches()) {
+				found = true;
+				collectionName = match.group(1);
+				paramData = match.group(2);
+				
+				if(DB_REMOVE_REGEX.equals(pattern)) {
+					queryType = 1;
+				} else if(DB_SAVE_REGEX.equals(pattern)) {
+					queryType = 2;
+				} else if(DB_INSERT_REGEX.equals(pattern)) {
+					queryType = 3;
+				}
+				
+				break;
+			}
+		}
+		
+		Assert.assertTrue("Only remove/insert/save queries allowed", found);
+		Assert.assertTrue("collectionName not found in query", StringUtils.isNotBlank(collectionName));
 		
 		String dbName = args[2].trim();
 		String queryString = queryStr.trim();
@@ -281,8 +323,25 @@ public class MongoDBTestDataSource extends TestDataSource {
 				db = mongoClient.getDB(dbName);
 
 				try {
-					Object resp = db.eval(queryStr, "");
-					result = resp!=null;
+					DBCollection coll = db.getCollection(collectionName);
+					Assert.assertNotNull("collection not found", coll);
+					
+					DBObject dbObj = new BasicDBObject();
+					if(StringUtils.isNotBlank(paramData))
+					{
+						dbObj = (DBObject)JSON.parse(paramData);
+					}
+					
+					if(queryType==1) {
+						WriteResult response = coll.remove(dbObj);
+						result = response!=null && response.getError()==null;
+					} else if(queryType==2) {
+						WriteResult response = coll.save(dbObj);
+						result = response!=null && response.getError()==null;
+					} else if(queryType==3) {
+						WriteResult response = coll.insert(dbObj);
+						result = response!=null && response.getError()==null;
+					}
 				} catch (Exception e) {
 					throw new AssertionError(e);
 				}
