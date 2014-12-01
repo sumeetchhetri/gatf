@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 
 import javax.ws.rs.core.HttpHeaders;
@@ -115,11 +114,6 @@ public class AcceptanceTestContext {
 	private final Map<String, String> soapStrMessages = new HashMap<String, String>();
 	
 	private final Map<String, String> soapActions = new HashMap<String, String>();
-	
-	private final Map<String, ConcurrentLinkedQueue<TestCaseReport>> finalTestResults = 
-			new ConcurrentHashMap<String, ConcurrentLinkedQueue<TestCaseReport>>();
-	
-	private final Map<String, Integer> finalTestReportsDups = new ConcurrentHashMap<String, Integer>();
 	
 	private final WorkflowContextHandler workflowContextHandler = new WorkflowContextHandler();
 	
@@ -252,10 +246,6 @@ public class AcceptanceTestContext {
 
 	public Map<String, String> getSoapActions() {
 		return soapActions;
-	}
-
-	public Map<String, ConcurrentLinkedQueue<TestCaseReport>> getFinalTestResults() {
-		return finalTestResults;
 	}
 
 	public WorkflowContextHandler getWorkflowContextHandler() {
@@ -593,27 +583,6 @@ public class AcceptanceTestContext {
 			}
 		}
 	}
-	
-	public void addTestCaseReport(TestCaseReport testCaseReport) {
-		String key = testCaseReport.getTestCase().getIdentifier() + testCaseReport.getTestCase().getName();
-		getFinalTestResults().get(testCaseReport.getTestCase().getIdentifier()).add(testCaseReport);
-		if(!finalTestReportsDups.containsKey(key)) {
-			finalTestReportsDups.put(key, 1);
-		} else {
-			Integer ncount = finalTestReportsDups.get(key) + 1;
-			String ext = "-" + ncount;
-			finalTestReportsDups.put(key, ncount);
-			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+ext);
-		}
-	}
-	
-	public void clearTestResults() {
-		
-		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  getFinalTestResults().entrySet()) {
-			entry.getValue().clear();
-		}
-		finalTestReportsDups.clear();
-	}
 
 	public void shutdown() {
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooksMap.values()) {
@@ -910,21 +879,6 @@ public class AcceptanceTestContext {
 	private Class loadCustomClass(String className) throws ClassNotFoundException
 	{
 		return getProjectClassLoader().loadClass(className);
-	}
-	
-	public void initializeResultsHolders(int runNums, String fileName)
-	{
-		if(runNums>1)
-		{
-			for (int i = 0; i < runNums; i++)
-			{
-				finalTestResults.put("Run-" + (i+1), new ConcurrentLinkedQueue<TestCaseReport>());
-			}
-		}
-		else
-		{
-			finalTestResults.put(fileName, new ConcurrentLinkedQueue<TestCaseReport>());
-		}
 	}
 	
 	public List<TestCase> getServerLogsApiLst() {

@@ -143,6 +143,19 @@ public class TestSuiteStats implements Serializable {
 			setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
 		setSkippedTestCount(getSkippedTestCount() + stats.getSkippedTestCount());
 	}
+	
+	public void copy(TestSuiteStats stats) {
+		totalTestCount = stats.getTotalTestCount();
+		failedTestCount = stats.getFailedTestCount();
+		skippedTestCount = stats.getSkippedTestCount();
+		executionTime = stats.getExecutionTime();
+		actualExecutionTime = stats.getActualExecutionTime();
+		totalRuns = stats.getTotalRuns();
+		failedRuns = stats.getFailedRuns();
+		totalSuiteRuns = stats.getTotalSuiteRuns();
+		totalUserSuiteRuns = stats.getTotalUserSuiteRuns();
+		groupStats = stats.getGroupStats();
+	}
 
 	@Override
 	public String toString() {

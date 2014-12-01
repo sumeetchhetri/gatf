@@ -93,7 +93,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
         
         handleRootContext(server, mainDir, mojo);
         
-        server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo), "/configure");
+        server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, project), "/configure");
         
         server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo), "/reports");
         

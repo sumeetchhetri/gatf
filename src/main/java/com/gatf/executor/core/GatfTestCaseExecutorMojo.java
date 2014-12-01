@@ -55,18 +55,20 @@ import com.gatf.executor.dataprovider.GatfTestDataSource;
 import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.distributed.DistributedAcceptanceContext;
 import com.gatf.executor.distributed.DistributedGatfTester;
+import com.gatf.executor.distributed.DistributedGatfTester.DistributedConnection;
 import com.gatf.executor.distributed.DistributedTestContext;
 import com.gatf.executor.distributed.DistributedTestStatus;
-import com.gatf.executor.distributed.DistributedGatfTester.DistributedConnection;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.CSVTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
+import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
+import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
 import com.thoughtworks.xstream.XStream;
@@ -388,19 +390,19 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 	
-	public List<TestCase> getAllTestCases(AcceptanceTestContext context)
+	public List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames)
 	{
 		List<TestCase> allTestCases = new ArrayList<TestCase>();
 		File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
 		
 		TestCaseFinder finder = new XMLTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		finder = new JSONTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		finder = new CSVTestCaseFinder();
-		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true));
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		sortAndOrderTestCases(allTestCases, context.getGatfExecutorConfig());
 		
@@ -573,7 +575,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			}
 		}
 		
-		List<TestCase> allTestCases = getAllTestCases(context);
+		Set<String> relativeFileNames = new HashSet<String>();
+		List<TestCase> allTestCases = getAllTestCases(context, relativeFileNames);
 		
 		List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
 		Map<String, Set<String>> relTsts = new HashMap<String, Set<String>>();
@@ -617,9 +620,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		int loadTstReportsCount = 0;
 		
-		ReportHandler reportHandler = new ReportHandler(null, null);
-		
-		TestSuiteStats loadStats = null;
+		TestSuiteStats loadStats = new TestSuiteStats();
 		
 		int loadTestRunNum = 1;
 		
@@ -718,7 +719,15 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			threadPool = Executors.newFixedThreadPool(threadNum);
 		}
 		
+		ExecutorService reportingThreadPool = Executors.newFixedThreadPool(30);
+		
 		startTime = System.currentTimeMillis();
+		
+		List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
+		
+		TestExecutionPercentile testPercentiles = new TestExecutionPercentile();
+		
+		TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
 		
 		while(true)
 		{
@@ -727,6 +736,18 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			boolean dorep = false;
 			
 			boolean done = false;
+			
+			ReportHandler reportHandler = new ReportHandler(null, null);
+			
+			Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
+			if(context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
+			{
+				runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+			}
+			
+			for (String relativeFileName : relativeFileNames) {
+				reportHandler.initializeResultsHolders(runNums, relativeFileName);
+			}
 			
 			if(isLoadTestingEnabled) {
 				long currentTime = System.currentTimeMillis();
@@ -750,29 +771,44 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			{
 				List<Future> userSimulations = doConcurrentRunExecution(compareEnabledOnlySingleTestCaseExec, 
 						numberOfRuns, allTestCases, baseUrlList, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
-						threadPool, dorep);
+						threadPool, dorep, reportHandler);
 				
 				concurrentUserRampUpTimeMs = 0;
 				
-				int runNumber = 1;
-				TestSuiteStats stats = null;
+				//int runNumber = 1;
+				
+				//TestSuiteStats stats = null;
+
 				long currentTime = System.currentTimeMillis();
 				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				for (Future future : userSimulations) {
 					try {
 						future.get();
-						if(dorep && !compareEnabledOnlySingleTestCaseExec) {
+						/*if(dorep && !compareEnabledOnlySingleTestCaseExec) {
 							if(!isLoadTestingEnabled) {
 								fileurl = null;
 							}
-							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, loadTestRunNum);
-						}
+							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, 
+									loadTestRunNum==1, testPercentiles, runPercentiles);
+						}*/
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
-				if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled);
+				
+				doAsyncConcReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime,
+						fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, 
+						loadTestRunNum, loadTestResources, numberOfRuns, loadStats, reportingThreadPool,
+						userSimulations.size());
+				
+				if(dorep && isLoadTestingEnabled) {
+					loadTestRunNum ++;
+					loadTstReportsCount ++;
+				}
+				
+				/*if(compareEnabledOnlySingleTestCaseExec) {
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
+							testPercentiles, runPercentiles);
 				}
 				else if(dorep) {
 					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns, null, isLoadTestingEnabled);
@@ -785,30 +821,42 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 							loadStats.updateStats(stats, false);
 						}
 						loadTstReportsCount ++;
-						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl, loadTestResources);
 						reportHandler.clearForLoadTests(context);
 					} else {
 						loadStats = stats;
 					}
 				} else {
-					stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, runPercentiles);
 					loadStats.updateStats(stats, false);
-				}
+				}*/
 			}
 			else
 			{
 				long currentTime = System.currentTimeMillis();
 				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, 
-						dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec);
-				if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled);
+						dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec, reportHandler);
+				
+				doAsyncReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime,
+						fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, 
+						loadTestRunNum, loadTestResources, numberOfRuns, loadStats, reportingThreadPool);
+				
+				if(dorep && isLoadTestingEnabled) {
+					loadTestRunNum ++;
+					loadTstReportsCount ++;
+				}
+				
+				/*if(compareEnabledOnlySingleTestCaseExec) {
+					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
+							testPercentiles, runPercentiles);
 				}
 				else if(dorep) {
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled);
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
+							testPercentiles, runPercentiles);
 					if(isLoadTestingEnabled) {
 						loadTstReportsCount ++;
-						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
+						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl, loadTestResources);
 						if(loadStats==null) {
 							loadStats = stats;
 							loadStats.setTotalUserSuiteRuns(numberOfRuns);
@@ -822,9 +870,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 						loadStats.setTotalUserSuiteRuns(numberOfRuns);
 					}
 				} else {
-					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, 
+							runPercentiles);
 					loadStats.updateStats(stats, false);
-				}
+				}*/
 			}
 			
 			if(isLoadTestingEnabled) {
@@ -837,6 +886,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			
 			if(done) {
 				break;
+			}
+		}
+		
+		reportingThreadPool.shutdown();
+		while(!reportingThreadPool.isTerminated()) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
 			}
 		}
 		
@@ -854,7 +911,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			}
 					
 			loadStats.setExecutionTime(System.currentTimeMillis() - startTime);
-			reportHandler.doFinalLoadTestReport(runPrefix, loadStats, context, null, null);
+			ReportHandler.doFinalLoadTestReport(runPrefix, loadStats, context, null, null, loadTestResources);
 		}
 		
 		getLog().info(loadStats.show());
@@ -877,18 +934,18 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 						nodesurls.add(stats.getIdentifier() + "-index.html");
 						finalDistStats.updateStats(stats.getSuiteStats(), false);
 						
-						reportHandler.mergeTestPercentileTimes(stats.getTestPercentileTimes());
-						reportHandler.mergeRunPercentileTimes(stats.getRunPercentileTimes());
+						testPercentiles.mergePercentileTimes(stats.getTestPercentileTimes());
+						runPercentiles.mergePercentileTimes(stats.getRunPercentileTimes());
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
-			reportHandler.doFinalLoadTestReport(null, finalDistStats, context, nodes, nodesurls);
+			ReportHandler.doFinalLoadTestReport(null, finalDistStats, context, nodes, nodesurls, loadTestResources);
 		}
 		
-		reportHandler.doTAReporting(null, context, isLoadTestingEnabled);
+		ReportHandler.doTAReporting(null, context, isLoadTestingEnabled, testPercentiles, runPercentiles);
 		
 		if(loadStats!=null) {
 			getLog().info(loadStats.show());
@@ -900,6 +957,97 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		testCaseExecutorUtil.shutdown();
 	}
 	
+	private void doAsyncConcReporting(final boolean compareEnabledOnlySingleTestCaseExec, final ReportHandler reportHandler, 
+			final long suiteStartTime,final String fileurl, final boolean isLoadTestingEnabled, 
+			final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, 
+			final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, 
+			final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool,
+			final int concrunNos)
+	{
+		reportingThreadPool.execute(new Runnable() {
+			public void run() {
+				for (int y=0;y<concrunNos;y++) {
+					try {
+						if(dorep && !compareEnabledOnlySingleTestCaseExec) {
+							String afileurl = fileurl;
+							if(!isLoadTestingEnabled) {
+								afileurl = null;
+							}
+							reportHandler.doConcurrentRunReporting(context, suiteStartTime, afileurl, (y+1), 
+									loadTestRunNum==1, testPercentiles, runPercentiles);
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				doAsyncReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime,
+						fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, 
+						loadTestRunNum, loadTestResources, numberOfRuns, loadStats, null);
+			}
+		});
+	}
+	
+	private void doAsyncReporting(final boolean compareEnabledOnlySingleTestCaseExec, final ReportHandler reportHandler, 
+			final long suiteStartTime,final String fileurl, final boolean isLoadTestingEnabled, 
+			final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, 
+			final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, 
+			final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool)
+	{
+		Runnable runnable = new Runnable() {
+			public void run() {
+				if(compareEnabledOnlySingleTestCaseExec) {
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
+							testPercentiles, runPercentiles);
+					synchronized (loadStats) {
+						loadStats.copy(stats);
+					}
+				}
+				else if(dorep) {
+					TestSuiteStats stats = null;
+					if(numberOfRuns>1) {
+						stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns, 
+								null, isLoadTestingEnabled);
+					} else {
+						stats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
+								testPercentiles, runPercentiles);
+					}
+					if(isLoadTestingEnabled) {
+						reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
+						synchronized (loadStats) {
+							if(loadStats.getExecutionTime()==0) {
+								loadStats.copy(stats);
+								loadStats.setTotalUserSuiteRuns(numberOfRuns);
+							} else {
+								stats.setGroupStats(null);
+								loadStats.updateStats(stats, false);
+							}
+						}
+						reportHandler.clearForLoadTests(context);
+					} else {
+						synchronized (loadStats) {
+							loadStats.copy(stats);
+							loadStats.setTotalUserSuiteRuns(numberOfRuns);
+						}
+					}
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, 
+							runPercentiles);
+					synchronized (loadStats) {
+						if(loadStats.getExecutionTime()==0) {
+							loadStats.copy(stats);
+						} else {
+							loadStats.updateStats(stats, false);
+						}
+					}
+				}
+			}
+		};
+		if(reportingThreadPool!=null)
+			reportingThreadPool.execute(runnable);
+		else
+			runnable.run();
+	}
 	
 	public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws MojoFailureException {
 		context = new AcceptanceTestContext(configuration, getClassLoader());
@@ -943,7 +1091,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	@SuppressWarnings("rawtypes")
 	private List<Future> doConcurrentRunExecution(boolean compareEnabledOnlySingleTestCaseExec, Integer numberOfRuns,
 			List<TestCase> allTestCases, List<String> baseUrlList, final TestCaseExecutorUtil testCaseExecutorUtil,
-			Long concurrentUserRampUpTimeMs, ExecutorService threadPool, boolean dorep)
+			Long concurrentUserRampUpTimeMs, ExecutorService threadPool, boolean dorep, final ReportHandler reportHandler)
 	{
 		final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
 		
@@ -965,7 +1113,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					threadPool.submit(new Callable<Void>() {
 						public Void call() throws Exception {
 							executeTestCases(simTestCasesCopy, testCaseExecutorUtil, 
-									onlySingleTestCaseExecl, doRep, false);
+									onlySingleTestCaseExecl, doRep, false, reportHandler);
 							return null;
 						}
 					})
@@ -980,7 +1128,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	}
 	
 	private boolean handleTestCaseExecution(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil, 
-			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) throws Exception
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs, ReportHandler reportHandler) throws Exception
 	{
 		boolean success = true;
 		
@@ -1040,7 +1188,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					}
 				}
 				
-				context.addTestCaseReport(testCaseReport);
+				reportHandler.addTestCaseReport(testCaseReport);
 				
 				if(context.getGatfExecutorConfig().isDebugEnabled() && testCase.isDetailedLog())
 				{
@@ -1103,7 +1251,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 
-	private void addSkippedTestCase(TestCase testCase, String skipReason)
+	private void addSkippedTestCase(TestCase testCase, String skipReason, ReportHandler reportHandler)
 	{
 		TestCaseReport testCaseReport = new TestCaseReport();
 		testCaseReport.setTestCase(testCase);
@@ -1114,11 +1262,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		testCaseReport.setNumberOfRuns(1);
 		testCaseReport.setExecutionTime(0L);
-		context.addTestCaseReport(testCaseReport);
+		reportHandler.addTestCaseReport(testCaseReport);
 	}
 	
 	private boolean executeSingleTestCase(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil,
-			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) {
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs, ReportHandler reportHandler) {
 		boolean success = false;
 		try {
 			
@@ -1127,7 +1275,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			{
 				getLog().info("Skipping acceptance test for " + testCase.getName()+"/"+testCase.getDescription());
 				getLog().info("============================================================\n\n\n");
-				addSkippedTestCase(testCase, null);
+				addSkippedTestCase(testCase, null, reportHandler);
 				return success;
 			}
 			
@@ -1137,7 +1285,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 				getLog().info("Execute Condition for Testcase " + testCase.getName() + " returned false."
 							+ " Condition was (" + testCase.getExecuteOnCondition() + ")");
 				getLog().info("============================================================\n\n\n");
-				addSkippedTestCase(testCase, testCase.getExecuteOnCondition());
+				addSkippedTestCase(testCase, testCase.getExecuteOnCondition(), reportHandler);
 				return success;
 			}
 			
@@ -1147,7 +1295,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 				getLog().info(testCase.toString());
 			}
 			
-			success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
+			success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, 
+					isFetchFailureLogs, reportHandler);
 			
 			if(success)
 			{
@@ -1170,14 +1319,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 									} else {
 										rTcCopy.setCarriedOverVariables(scenarioMap);
 									}
-									executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
+									executeSingleTestCase(rTcCopy, testCaseExecutorUtil, onlySingleTestCaseExec, 
+											dorep, isFetchFailureLogs, reportHandler);
 								}
 							}
 						} else {
 							for (TestCase rTc : relatedTests) {
 								rTc.setBaseUrl(testCase.getBaseUrl());
 								rTc.setSimulationNumber(testCase.getSimulationNumber());
-								executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
+								executeSingleTestCase(rTc, testCaseExecutorUtil, onlySingleTestCaseExec, 
+										dorep, isFetchFailureLogs, reportHandler);
 							}
 						}
 					}
@@ -1197,9 +1348,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	}
 	
 	private void executeTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil,
-			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs) {
+			boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs, ReportHandler reportHandler) {
 		for (TestCase testCase : allTestCases) {
-			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs);
+			boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, 
+					isFetchFailureLogs, reportHandler);
 			if(!success) continue;
 		}
 	}
@@ -1356,7 +1508,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		int loadTstReportsCount = 0;
 		
-		TestSuiteStats loadStats = null;
+		TestSuiteStats loadStats = new TestSuiteStats();
 		
 		int loadTestRunNum = 1;
 		
@@ -1373,8 +1525,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		String runPrefix = "DRun-"+tContext.getIndex();
 		
-		ReportHandler reportHandler = new ReportHandler(dContext.getNode(), runPrefix);
-		
 		boolean isLoadTestingEnabled = true;
 		
 		for (TestCase tc : tContext.getSimTestCases()) {
@@ -1387,18 +1537,38 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			}
 		}
 		
-		initSuiteContextForDistributedTests(context, numberOfRuns);
+		ExecutorService reportingThreadPool = Executors.newFixedThreadPool(30);
 		
-		for (int i = 0; i < numberOfRuns; i++)
-		{
-			context.getFinalTestResults().put(runPrefix + "-" + (i+1), 
-					new ConcurrentLinkedQueue<TestCaseReport>());
-		}
+		initSuiteContextForDistributedTests(context, numberOfRuns);
 		
 		startTime = System.currentTimeMillis();
 		
+		List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
+		
+		TestExecutionPercentile testPercentiles = new TestExecutionPercentile();
+		
+		TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
+		
 		while(true) 
 		{
+			ReportHandler reportHandler = new ReportHandler(dContext.getNode(), runPrefix);
+			
+			Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
+			if(context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
+			{
+				runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+			}
+			
+			for (String relativeFileName : tContext.getRelativeFileNames()) {
+				reportHandler.initializeResultsHolders(runNums, relativeFileName);
+			}
+			
+			for (int i = 0; i < numberOfRuns; i++)
+			{
+				reportHandler.getFinalTestResults().put(runPrefix + "-" + (i+1), 
+						new ConcurrentLinkedQueue<TestCaseReport>());
+			}
+			
 			long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
 			
 			boolean dorep = false;
@@ -1427,61 +1597,39 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			{
 				List<Future> userSimulations = doConcurrentRunExecution(false, 
 						numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
-						threadPool, dorep);
+						threadPool, dorep, reportHandler);
 				
 				concurrentUserRampUpTimeMs = 0;
 				
-				int runNumber = 1;
-				TestSuiteStats stats = null;
 				long currentTime = System.currentTimeMillis();
 				String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
 				for (Future future : userSimulations) {
 					try {
 						future.get();
-						if(dorep) {
-							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, loadTestRunNum);
-						}
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
 				}
+				
+				doAsyncDistributedConcReporting(reportHandler, suiteStartTime, fileurl, 
+						testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, 
+						numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), runPrefix);
+				
 				if(dorep) {
-					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns, runPrefix+"-", true);
-					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
-					if(loadStats==null) {
-						loadStats = stats;
-					} else {
-						stats.setGroupStats(null);
-						loadStats.updateStats(stats, false);
-					}
+					loadTestRunNum ++;
 					loadTstReportsCount ++;
-					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
-					reportHandler.clearForLoadTests(context);
-				} else {
-					stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
-					loadStats.updateStats(stats, false);
 				}
 			}
 			else
 			{
-				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false);
+				executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false, reportHandler);
+				
+				doAsyncDistributedReporting(reportHandler, suiteStartTime, testPercentiles, runPercentiles, dorep, 
+						loadTestRunNum, loadTestResources, loadStats, reportingThreadPool, tContext, runPrefix);
+				
 				if(dorep) {
-					long currentTime = System.currentTimeMillis();
-					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, runPrefix+"-", true);
-					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+					loadTestRunNum ++;
 					loadTstReportsCount ++;
-					reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl);
-					if(loadStats==null) {
-						loadStats = stats;
-					} else {
-						stats.setGroupStats(null);
-						loadStats.updateStats(stats, false);
-					}
-					reportHandler.clearForLoadTests(context);
-				} else {
-					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime);
-					loadStats.updateStats(stats, false);
 				}
 			}
 			
@@ -1496,20 +1644,117 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			threadPool.shutdown();
 		}
 		
+		reportingThreadPool.shutdown();
+		while(!reportingThreadPool.isTerminated()) {
+			try {
+				Thread.sleep(100);
+			} catch (InterruptedException e) {
+			}
+		}
+		
 		if(isLoadTestingEnabled) {
 			loadStats.setExecutionTime(System.currentTimeMillis() - startTime);
-			reportHandler.doFinalLoadTestReport(runPrefix+"-", loadStats, context, null, null);
+			ReportHandler.doFinalLoadTestReport(runPrefix+"-", loadStats, context, null, null, loadTestResources);
 		}
 		
 		if(loadStats!=null) {
 			getLog().info(loadStats.show());
 		}
 		
-		DistributedTestStatus finalStats = reportHandler.getDistributedTestStatus();
-		finalStats.setTestPercentileTimes(reportHandler.getTestPercentileTimes());
-		finalStats.setRunPercentileTimes(reportHandler.getRunPercentileTimes());
+		DistributedTestStatus finalStats = new DistributedTestStatus();
+		finalStats.setNode(dContext.getNode());
+		finalStats.setIdentifier(runPrefix);
+		finalStats.setTestPercentileTimes(testPercentiles.getPercentileTimes());
+		finalStats.setRunPercentileTimes(runPercentiles.getPercentileTimes());
 		finalStats.setSuiteStats(loadStats);
 		return finalStats;
+	}
+	
+	private void doAsyncDistributedConcReporting(final ReportHandler reportHandler, final long suiteStartTime, 
+			final String fileurl, final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, 
+			final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, 
+			final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool,
+			final int concrunNos, final String runPrefix)
+	{
+		reportingThreadPool.execute(new Runnable() {
+			public void run() {
+				for (int y=0;y<concrunNos;y++) {
+					try {
+						if(dorep) {
+							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, (y+1), loadTestRunNum==1,
+									testPercentiles, runPercentiles);
+						}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+				
+				if(dorep) {
+					TestSuiteStats stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns, 
+							runPrefix+"-", true);
+					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+					synchronized (loadStats) {
+						if(loadStats.getExecutionTime()==0) {
+							loadStats.copy(stats);
+						} else {
+							stats.setGroupStats(null);
+							loadStats.updateStats(stats, false);
+						}
+					}
+					reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
+					reportHandler.clearForLoadTests(context);
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, 
+							runPercentiles);
+					synchronized (loadStats) {
+						if(loadStats.getExecutionTime()==0) {
+							loadStats.copy(stats);
+						} else {
+							loadStats.updateStats(stats, false);
+						}
+					}
+				}
+			}
+		});
+	}
+	
+	private void doAsyncDistributedReporting(final ReportHandler reportHandler, final long suiteStartTime,
+			final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, 
+			final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, 
+			final TestSuiteStats loadStats, final ExecutorService reportingThreadPool,
+			final DistributedTestContext tContext, final String runPrefix)
+	{
+		reportingThreadPool.execute(new Runnable() {
+			public void run() {
+				if(dorep) {
+					long currentTime = System.currentTimeMillis();
+					String fileurl = "D"+tContext.getIndex()+ "-" + currentTime+".html";
+					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, runPrefix+"-", true,
+							testPercentiles, runPercentiles);
+					stats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
+					reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
+					synchronized (loadStats) {
+						if(loadStats.getExecutionTime()==0) {
+							loadStats.copy(stats);
+						} else {
+							stats.setGroupStats(null);
+							loadStats.updateStats(stats, false);
+						}
+					}
+					reportHandler.clearForLoadTests(context);
+				} else {
+					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, 
+							runPercentiles);
+					synchronized (loadStats) {
+						if(loadStats.getExecutionTime()==0) {
+							loadStats.copy(stats);
+						} else {
+							loadStats.updateStats(stats, false);
+						}
+					}
+				}
+			}
+		});
 	}
 	
 	private void initSuiteContextForDistributedTests(AcceptanceTestContext context, int numberOfRuns)

@@ -9,6 +9,8 @@ public class DistributedTestContext implements Serializable {
 
 	private List<TestCase> simTestCases;
 	
+	private List<String> relativeFileNames;
+	
 	private boolean doReporting;
 	
 	private int index;
@@ -45,5 +47,13 @@ public class DistributedTestContext implements Serializable {
 
 	public void setNumberOfRuns(int numberOfRuns) {
 		this.numberOfRuns = numberOfRuns;
+	}
+
+	public List<String> getRelativeFileNames() {
+		return relativeFileNames;
+	}
+
+	public void setRelativeFileNames(List<String> relativeFileNames) {
+		this.relativeFileNames = relativeFileNames;
 	}
 }

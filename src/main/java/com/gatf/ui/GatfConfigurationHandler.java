@@ -2,6 +2,8 @@ package com.gatf.ui;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.maven.project.MavenProject;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -9,16 +11,23 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.GatfPlugin;
+import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.generator.core.GatfConfiguration;
 
 public class GatfConfigurationHandler extends HttpHandler {
 
 	private GatfConfigToolMojo mojo;
 	
-	protected GatfConfigurationHandler(GatfConfigToolMojo mojo) {
+	private MavenProject project;
+	
+	protected GatfConfigurationHandler(GatfConfigToolMojo mojo,
+			MavenProject project) {
 		super();
 		this.mojo = mojo;
+		this.project = project;
 	}
 
 	@Override
@@ -49,15 +58,33 @@ public class GatfConfigurationHandler extends HttpHandler {
     				GatfExecutorConfig gatfConfig = new ObjectMapper().readValue(request.getInputStream(), 
         					GatfExecutorConfig.class);
     				GatfConfigToolMojo.getGatfExecutorConfig(mojo, gatfConfig);
+    				GatfPlugin executorMojo = GatfPluginExecutionHandler.getGatfPlugin(configType);
+        			if(executorMojo instanceof GatfTestCaseExecutorMojo) {
+    					executorMojo.setProject(project);
+    					try {
+    						((GatfTestCaseExecutorMojo)executorMojo).initilaizeContext(gatfConfig, true);
+    						initializeMojoProps(executorMojo, mojo);
+    					} catch (Throwable e) {
+    						e.printStackTrace();
+    						throw e;
+    					} finally { 
+    						executorMojo.shutdown();
+    					}
+        			}
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfiguration gatfConfig = new ObjectMapper().readValue(request.getInputStream(), 
         					GatfConfiguration.class);
     				GatfConfigToolMojo.getGatfConfiguration(mojo, gatfConfig);
     			}
     			response.setStatus(HttpStatus.OK_200);
-			} catch (Exception e) {
+			} catch (Throwable e) {
 				GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
     	}
     }
+
+	private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
+		mojo.setContext(((GatfTestCaseExecutorMojo)executorMojo).getContext());
+		mojo.setAuthTestCase(((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase());
+	}
 }

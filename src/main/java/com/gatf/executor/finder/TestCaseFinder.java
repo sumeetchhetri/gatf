@@ -21,6 +21,7 @@ import java.io.FileFilter;
 import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 import com.AlphanumComparator;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -85,7 +86,8 @@ public abstract class TestCaseFinder {
 		}
 	}
 	
-	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context, boolean considerConfig)
+	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context, boolean considerConfig,
+			Set<String> relativeFileNames)
 	{
 		if(context==null)
 			considerConfig = false;
@@ -132,17 +134,8 @@ public abstract class TestCaseFinder {
 							testCase.setServerApiTarget(false);
 						}
 						
-						if(considerConfig)
-						{
-							Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-							if(considerConfig && context.getGatfExecutorConfig().getCompareBaseUrlsNum()!=null)
-							{
-								runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-							}
-							
-							context.initializeResultsHolders(runNums, relativeFileName);
-						}
 						testcases.addAll(testcasesTemp);
+						if(relativeFileNames!=null)relativeFileNames.add(relativeFileName);
 					}
 				} catch (Exception e) {
 					System.out.println("Ignoring file due to invalid testcase format ... " + relativeFileName);

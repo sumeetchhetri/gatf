@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -58,7 +59,6 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.distributed.DistributedTestStatus;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 /**
@@ -69,52 +69,53 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 public class ReportHandler {
 	
 	public ReportHandler(String node, String identifier) {
-		if(node!=null && identifier!=null)
+		/*if(node!=null && identifier!=null)
 		{
 			distributedTestStatus = new DistributedTestStatus();
 			distributedTestStatus.setNode(node);
 			distributedTestStatus.setIdentifier(identifier);
-		}
+		}*/
 	}
 	
 	private static Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
 	
-	private List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
+	private final Map<String, ConcurrentLinkedQueue<TestCaseReport>> finalTestResults = 
+			new ConcurrentHashMap<String, ConcurrentLinkedQueue<TestCaseReport>>();
 	
-	private DistributedTestStatus distributedTestStatus = null;
+	private final Map<String, Integer> finalTestReportsDups = new ConcurrentHashMap<String, Integer>();
+	
+	//private DistributedTestStatus distributedTestStatus = null;
 	
 	private List<TestCaseStats> testCaseStats = new ArrayList<TestCaseStats>();
 	
 	private TestSuiteStats testSuiteStats = new TestSuiteStats();
 	
-	private TestExecutionPercentile testPercentiles = new TestExecutionPercentile();
-	
-	private TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
-	
-	public DistributedTestStatus getDistributedTestStatus() {
+	/*public DistributedTestStatus getDistributedTestStatus() {
 		return distributedTestStatus;
-	}
+	}*/
 
 	public void clearForLoadTests(AcceptanceTestContext context)
 	{
 		testCaseStats = new ArrayList<TestCaseStats>();
 		testSuiteStats = new TestSuiteStats();
-		context.clearTestResults();
+		clearTestResults();
 	}
 	
 	
 	
-	public void addToLoadTestResources(String prefix, int runNo, String url) {
+	public void addToLoadTestResources(String prefix, int runNo, String url, List<LoadTestResource> loadTestResources) {
 		LoadTestResource resource = new LoadTestResource();
 		if(prefix==null)
 			prefix = "Run";
 		resource.setTitle(prefix+"-"+runNo);
 		resource.setUrl(url);
-		loadTestResources.add(resource);
+		synchronized (loadTestResources) {
+			loadTestResources.add(resource);
+		}
 	}
 	
-	public void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
-			List<String> nodes, List<String> nodeurls)
+	public static void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
+			List<String> nodes, List<String> nodeurls, List<LoadTestResource> loadTestResources)
 	{
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		VelocityContext context = new VelocityContext();
@@ -167,7 +168,7 @@ public class ReportHandler {
             fwriter.write(writer.toString());
             fwriter.close();
             
-            if(distributedTestStatus!=null)
+            //if(distributedTestStatus!=null)
             {
             	//distributedTestStatus.getReportFileContent().put(prefix + "index.html", writer.toString());
             }
@@ -214,14 +215,15 @@ public class ReportHandler {
 		}
 	}
 	
-	public TestSuiteStats doLoadTestReporting(AcceptanceTestContext acontext, long startTime)
+	public TestSuiteStats doLoadTestReporting(AcceptanceTestContext acontext, long startTime, TestExecutionPercentile testPercentiles,
+			TestExecutionPercentile runPercentiles)
 	{
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
 		
 		int total = 0, failed = 0, skipped = 0, totruns = 0, failruns = 0;
 		long grpexecutionTime = 0L;
 		
-		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  acontext.getFinalTestResults().entrySet()) {
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  getFinalTestResults().entrySet()) {
 			try {
 				List<TestCaseReport> reports = Arrays.asList(entry.getValue().toArray(new TestCaseReport[entry.getValue().size()]));
 				
@@ -249,8 +251,12 @@ public class ReportHandler {
 					
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
-					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					synchronized (testPercentiles) {
+						testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					}
+					synchronized (runPercentiles) {
+						runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					}
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -267,7 +273,7 @@ public class ReportHandler {
 		testSuiteStats.setTotalSuiteRuns(1);
 		testSuiteStats.setActualExecutionTime(grpexecutionTime);
 		
-		acontext.clearTestResults();
+		clearTestResults();
 		
 		return testSuiteStats;
 	}
@@ -495,7 +501,7 @@ public class ReportHandler {
 	}
 
 	public void doConcurrentRunReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int runNumber,
-			int loadTestRunNum) {
+			boolean unzipFile, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
@@ -504,7 +510,7 @@ public class ReportHandler {
 		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
 		
-		tempMap.put("Run-"+ runNumber, acontext.getFinalTestResults().get("Run-"+ runNumber));
+		tempMap.put("Run-"+ runNumber, getFinalTestResults().get("Run-"+ runNumber));
 		
 		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
 		
@@ -598,8 +604,12 @@ public class ReportHandler {
 					populateRequestResponseHeaders(testCaseReport);
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
-					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					synchronized (testPercentiles) {
+						testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					}
+					synchronized (runPercentiles) {
+						runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					}
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -648,7 +658,7 @@ public class ReportHandler {
 			            		basePath = new File(url.getPath());
 			            	}
 			            	File resource = new File(basePath, config.getOutFilesDir());
-			                if(runNumber==1 && loadTestRunNum==1)
+			                if(runNumber==1 && unzipFile)
 			                	unzipZipFile(resourcesIS, resource.getAbsolutePath());
 			                
 			                VelocityEngine engine = new VelocityEngine();
@@ -712,7 +722,7 @@ public class ReportHandler {
 			testSuiteStats.updateStats(tempst, true);
 		}
 		
-		acontext.getFinalTestResults().get("Run-"+ runNumber).clear();
+		getFinalTestResults().get("Run-"+ runNumber).clear();
 	}
 
 	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, 
@@ -805,13 +815,13 @@ public class ReportHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		acontext.clearTestResults();
+		clearTestResults();
 		
 		return testSuiteStats;
 	}
 
 	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, String prefix,
-			boolean isLoadTestingEnabled) {
+			boolean isLoadTestingEnabled, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
@@ -819,7 +829,7 @@ public class ReportHandler {
 		
 		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
-		tempMap.putAll(acontext.getFinalTestResults());
+		tempMap.putAll(getFinalTestResults());
 		
 		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
 		
@@ -911,8 +921,12 @@ public class ReportHandler {
 					populateRequestResponseHeaders(testCaseReport);
 					grpexecutionTime += testCaseReport.getExecutionTime();
 					
-					testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
-					runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					synchronized (testPercentiles) {
+						testPercentiles.addExecutionTime(testCaseReport.getTestCase().getName(), testCaseReport.getExecutionTime());
+					}
+					synchronized (runPercentiles) {
+						runPercentiles.addExecutionTime(testCaseReport.getTestCase().getIdentifier(), testCaseReport.getExecutionTime());
+					}
 				}
 				
         		TestGroupStats testGroupStats = new TestGroupStats();
@@ -1049,12 +1063,13 @@ public class ReportHandler {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-		acontext.clearTestResults();
+		clearTestResults();
 		
 		return testSuiteStats;
 	}
 
-	public void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled) {
+	public static void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled,
+			TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
 		
 		Map<String, List<Long>> testPercentileValues = testPercentiles.getPercentileTimes();
 		Map<String, List<Long>> runPercentileValues = runPercentiles.getPercentileTimes();
@@ -1144,26 +1159,6 @@ public class ReportHandler {
 		}
 	}
 	
-	public void mergeTestPercentileTimes(Map<String, List<Long>> times)
-	{
-		testPercentiles.mergePercentileTimes(times);
-	}
-	
-	public void mergeRunPercentileTimes(Map<String, List<Long>> times)
-	{
-		runPercentiles.mergePercentileTimes(times);
-	}
-	
-	public Map<String, List<Long>> getTestPercentileTimes()
-	{
-		return testPercentiles.getPercentileTimes();
-	}
-	
-	public Map<String, List<Long>> getRunPercentileTimes()
-	{
-		return runPercentiles.getPercentileTimes();
-	}
-	
 	public static void populateRequestResponseHeaders(TestCaseReport testCaseReport)
 	{
 		StringBuilder build = new StringBuilder();
@@ -1201,6 +1196,46 @@ public class ReportHandler {
 	            build.append("\n");
 			}
 			testCaseReport.setResponseHeaders(build.toString());
+		}
+	}
+
+	public Map<String, ConcurrentLinkedQueue<TestCaseReport>> getFinalTestResults() {
+		return finalTestResults;
+	}
+	
+	public void addTestCaseReport(TestCaseReport testCaseReport) {
+		String key = testCaseReport.getTestCase().getIdentifier() + testCaseReport.getTestCase().getName();
+		getFinalTestResults().get(testCaseReport.getTestCase().getIdentifier()).add(testCaseReport);
+		if(!finalTestReportsDups.containsKey(key)) {
+			finalTestReportsDups.put(key, 1);
+		} else {
+			Integer ncount = finalTestReportsDups.get(key) + 1;
+			String ext = "-" + ncount;
+			finalTestReportsDups.put(key, ncount);
+			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+ext);
+		}
+	}
+	
+	public void clearTestResults() {
+		
+		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  getFinalTestResults().entrySet()) {
+			entry.getValue().clear();
+		}
+		finalTestReportsDups.clear();
+	}
+	
+	public void initializeResultsHolders(int runNums, String fileName)
+	{
+		if(runNums>1)
+		{
+			for (int i = 0; i < runNums; i++)
+			{
+				finalTestResults.put("Run-" + (i+1), new ConcurrentLinkedQueue<TestCaseReport>());
+			}
+		}
+		else
+		{
+			finalTestResults.put(fileName, new ConcurrentLinkedQueue<TestCaseReport>());
 		}
 	}
 }

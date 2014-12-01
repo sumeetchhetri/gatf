@@ -64,7 +64,7 @@ public class TestExecutionPercentile {
 		}
 	}
 	
-	protected Map<String, List<Long>> getPercentileTimes()
+	public Map<String, List<Long>> getPercentileTimes()
 	{
 		deducePercentileTimes();
 		return executionTimes90Percentile;

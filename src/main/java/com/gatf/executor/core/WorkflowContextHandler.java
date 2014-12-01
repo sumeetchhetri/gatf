@@ -177,7 +177,10 @@ public class WorkflowContextHandler {
 		if(cookieLst!=null && cookies.get(simNumber)!=null)
 		{
 			for (Cookie cookie : cookieLst) {
-				cookies.get(simNumber).put(cookie.getName(), cookie.getValue());
+				if(cookie.getValue()!=null)
+				{
+					cookies.get(simNumber).put(cookie.getName(), cookie.getValue());
+				}
 			}
 		}
 	}

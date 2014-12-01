@@ -106,7 +106,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 	        			context.setGatfExecutorConfig(gatfConfig);
 	        			executorMojo.setContext(context);
-	        			executorMojo.getAllTestCases(context);
+	        			executorMojo.getAllTestCases(context, null);
 						authTestCase = executorMojo.getAuthTestCase();
 	        			
 	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
@@ -429,7 +429,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 	        			context.setGatfExecutorConfig(gatfConfig);
 	        			executorMojo.setContext(context);
-	        			executorMojo.getAllTestCases(context);
+	        			executorMojo.getAllTestCases(context, null);
 						authTestCase = executorMojo.getAuthTestCase();
 	        			
 	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
