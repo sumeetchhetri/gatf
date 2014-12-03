@@ -93,6 +93,7 @@ import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.distributed.DistributedGatfListener;
 import com.gatf.generator.postman.PostmanCollection;
 import com.gatf.ui.GatfConfigToolMojo;
 import com.gatf.xstream.GatfPrettyPrintWriter;
@@ -1235,9 +1236,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 
     public static void main(String[] args) throws Exception
     {
-    	if(args.length>1) {
-    		
-    		if(args[0].equals("-generator") && !args[1].trim().isEmpty())
+    	if(args.length>=1) {
+    		if(args.length>1 && args[0].equals("-generator") && !args[1].trim().isEmpty())
     		{
 	    		InputStream io = new FileInputStream(args[1]);
 	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
@@ -1267,7 +1267,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	    		testGenerator.setPostmanCollectionVersion(config.getPostmanCollectionVersion());
 	    		testGenerator.execute();
     		}
-    		else if(args[0].equals("-executor") && !args[1].trim().isEmpty())
+    		else if(args.length>1 && args[0].equals("-executor") && !args[1].trim().isEmpty())
     		{
     			GatfTestCaseExecutorMojo.main(args);
     		}
@@ -1276,14 +1276,27 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     		{
     			GatfConfigToolMojo.main(args);
     		}
+    		else if(args[0].equals("-listener"))
+    		{
+    			DistributedGatfListener.main(args);
+    		}
     		else
     		{
-    			System.out.println("Please specify proper arguments to the program - valid invocations are, \n" +
+    			System.out.println("Please specify proper arguments to the program - valid invocation options are, \n" +
     					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
     					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
-    					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n");
+    					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
+    					"java -jar gatf-plugin-{version}.jar -listener\n");
     		}
     	}
+    	else
+    	{
+			System.out.println("Invalid invocation - valid invocation options are, \n" +
+					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
+					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
+					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
+					"java -jar gatf-plugin-{version}.jar -listener\n");
+		}
     }
 
     /*

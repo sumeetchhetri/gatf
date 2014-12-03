@@ -76,8 +76,18 @@ public class TestExecutionPercentile {
 			List<Long> times90 = executionTimes90Percentile.get(entry.getKey());
 			List<Long> times50 = executionTimes50Percentile.get(entry.getKey());
 			
-			times90.add(entry.getValue().get(0));
-			times50.add(entry.getValue().get(1));
+			if(times90!=null)
+			{
+				times90.add(entry.getValue().get(0));
+				times50.add(entry.getValue().get(1));
+			}
+			else
+			{
+				executionTimes90Percentile.put(entry.getKey(), new ArrayList<Long>());
+				executionTimes90Percentile.get(entry.getKey()).add(entry.getValue().get(0));
+				executionTimes50Percentile.put(entry.getKey(), new ArrayList<Long>());
+				executionTimes50Percentile.get(entry.getKey()).add(entry.getValue().get(1));
+			}
 		}
 	}
 }

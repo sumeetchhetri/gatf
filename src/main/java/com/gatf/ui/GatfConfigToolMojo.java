@@ -7,6 +7,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import javax.ws.rs.core.MediaType;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -239,6 +241,16 @@ public class GatfConfigToolMojo extends AbstractMojo {
 	protected static void handleError(Throwable e, Response response, HttpStatus status) throws IOException
 	{
 		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
+		response.setContentLength(configJson.length());
+        response.getWriter().write(configJson);
+		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);
+		if(status==null)e.printStackTrace();
+	}
+	
+	protected static void handleErrorJson(Throwable e, Response response, HttpStatus status) throws IOException
+	{
+		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
+		response.setContentType(MediaType.APPLICATION_XML);
 		response.setContentLength(configJson.length());
         response.getWriter().write(configJson);
 		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);

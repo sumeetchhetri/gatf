@@ -17,6 +17,7 @@ import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorMojo;
 
@@ -49,7 +50,14 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 			gatfConfig = getGatfPluginConfig(pluginType, mojo);
 			if(request.getMethod().equals(Method.GET) ) {
 				if(isStarted.get()) {
-					throw new RuntimeException("Execution already in progress..");
+					if(pluginType.equals("executor")) {
+						String status = RuntimeReportUtil.getEntry();
+						if(status==null)
+							throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
+						else
+							throw new RuntimeException(status);
+					}
+					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
 				} else if(isDone.get()) {
 					isDone.set(false);
 					isStarted.set(false);
@@ -57,22 +65,25 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					String temp = status;
 					status = "";
 					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("Execution failed with Error - " + temp);
+						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
-					String text = "Execution completed, check Reports Section";
-        			response.setContentType(MediaType.TEXT_PLAIN);
+					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
+        			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(!isStarted.get()) {
-					throw new RuntimeException("Please Start the Execution....");
+					throw new RuntimeException("{\"error\": \"Please Start the Execution....\"}");
 				} else {
-					throw new RuntimeException("Unknown Error...");
+					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
 				}
 			}
 			else if(request.getMethod().equals(Method.PUT) ) {
 				if(!isStarted.get() && !isDone.get()) {
 					isStarted.set(true);
+					if(pluginType.equals("executor")) {
+						RuntimeReportUtil.registerConfigUI();
+					}
 					final GatfPluginConfig config = gatfConfig;
 					_executorThread = new Thread(new Runnable() {
 						public void run() {
@@ -90,8 +101,16 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							} finally { 
 								executorMojo.shutdown();
 							}
+    						try {
+								Thread.sleep(2000);
+							} catch (InterruptedException e) {
+							}
     						isDone.set(true);
 							isStarted.set(false);
+
+							if(pluginType.equals("executor")) {
+								RuntimeReportUtil.unRegisterConfigUI();
+							}
 						}
 
 						private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
@@ -102,8 +121,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						}
 					});
 					_executorThread.start();
-					String text = "Execution Started";
-        			response.setContentType(MediaType.TEXT_PLAIN);
+					String text = "{\"error\": \"Execution Started\"}";
+        			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
@@ -114,24 +133,27 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					String temp = status;
 					status = "";
 					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("Execution failed with Error - " + temp);
+						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
-					String text = "Execution completed, check Reports Section";
-        			response.setContentType(MediaType.TEXT_PLAIN);
+					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
+        			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(isStarted.get()) {
-					throw new RuntimeException("Execution already in progress..");
+					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
 				} else {
-					throw new RuntimeException("Unknown Error...");
+					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
 				}
         	} else if(request.getMethod().equals(Method.DELETE) ) {
+        		if(pluginType.equals("executor")) {
+					RuntimeReportUtil.unRegisterConfigUI();
+				}
         		if(isStarted.get() && _executorThread!=null) {
         			_executorThread.interrupt();
         			_executorThread = null;
 				} else if(!isStarted.get()) {
-					throw new RuntimeException("Testcase execution is not in progress...");
+					throw new RuntimeException("{\"error\": \"Testcase execution is not in progress...\"}");
 				} else if(isDone.get()) {
 					isDone.set(false);
 					isStarted.set(false);
@@ -139,19 +161,19 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					String temp = status;
 					status = "";
 					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("Execution failed with Error - " + temp);
+						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
-					String text = "Execution completed, check Reports Section";
-        			response.setContentType(MediaType.TEXT_PLAIN);
+					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
+        			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else {
-					throw new RuntimeException("Unknown Error...");
+					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
 				}
         	}
 		} catch (Exception e) {
-			GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+			GatfConfigToolMojo.handleErrorJson(e, response, HttpStatus.BAD_REQUEST_400);
 			return;
 		}
     }

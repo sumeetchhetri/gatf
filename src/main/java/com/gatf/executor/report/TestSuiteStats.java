@@ -33,19 +33,19 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestSuiteStats implements Serializable {
 
-	private Integer totalTestCount;
+	private Integer totalTestCount = 0;
 	
-	private Integer failedTestCount;
+	private Integer failedTestCount = 0;
 	
-	private Integer skippedTestCount;
+	private Integer skippedTestCount = 0;
 	
 	private Long executionTime = 0L;
 	
 	private Long actualExecutionTime = 0L;
 	
-	private Integer totalRuns;
+	private Integer totalRuns = 0;
 	
-	private Integer failedRuns;
+	private Integer failedRuns = 0;
 	
 	private Integer totalSuiteRuns = 0;
 	
@@ -142,6 +142,7 @@ public class TestSuiteStats implements Serializable {
 		if(!isUserRuns)
 			setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
 		setSkippedTestCount(getSkippedTestCount() + stats.getSkippedTestCount());
+		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
 	}
 	
 	public void copy(TestSuiteStats stats) {

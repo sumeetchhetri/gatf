@@ -2,6 +2,7 @@ package com.gatf.executor.distributed;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Set;
 
 import com.gatf.executor.core.TestCase;
 
@@ -9,7 +10,7 @@ public class DistributedTestContext implements Serializable {
 
 	private List<TestCase> simTestCases;
 	
-	private List<String> relativeFileNames;
+	private Set<String> relativeFileNames;
 	
 	private boolean doReporting;
 	
@@ -49,11 +50,11 @@ public class DistributedTestContext implements Serializable {
 		this.numberOfRuns = numberOfRuns;
 	}
 
-	public List<String> getRelativeFileNames() {
+	public Set<String> getRelativeFileNames() {
 		return relativeFileNames;
 	}
 
-	public void setRelativeFileNames(List<String> relativeFileNames) {
+	public void setRelativeFileNames(Set<String> relativeFileNames) {
 		this.relativeFileNames = relativeFileNames;
 	}
 }

@@ -9,7 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
-import java.util.UUID;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
 import java.util.logging.Logger;
@@ -20,6 +20,8 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
+import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 
 public class DistributedGatfTester {
 
@@ -86,7 +88,7 @@ public class DistributedGatfTester {
 	
 	public FutureTask<DistributedTestStatus> distributeTests(List<TestCase> simTestCases, 
 			final DistributedConnection connection, boolean dorep, int index, int numberOfRuns,
-			final AcceptanceTestContext context)
+			final AcceptanceTestContext context, Set<String> relativeFileNames)
 	{
 		if(connection==null)return null;
 		
@@ -97,6 +99,7 @@ public class DistributedGatfTester {
 			testContext.setDoReporting(dorep);
 			testContext.setIndex(index);
 			testContext.setNumberOfRuns(numberOfRuns);
+			testContext.setRelativeFileNames(relativeFileNames);
 			
 			logger.info("Sending GATF tests to node " + connection.node);
 			connection.oos.writeObject(Command.TESTS_SHARE_REQ);
@@ -113,6 +116,15 @@ public class DistributedGatfTester {
 						Socket fClient = connection.sock;
 						try {
 							logger.info("Waiting for GATF tests Results from node " + connection.node);
+							
+							Command command = (Command)connection.ois.readObject();
+							while(command==Command.LOAD_TESTS_RES)
+							{
+								LoadTestEntry lentry = (LoadTestEntry)connection.ois.readObject();
+								RuntimeReportUtil.addEntry(lentry);
+								command = (Command)connection.ois.readObject();
+							}
+							
 							res = (DistributedTestStatus)connection.ois.readObject();
 							logger.info("Received GATF tests Results from node " + connection.node);
 							
@@ -135,7 +147,7 @@ public class DistributedGatfTester {
 				        	
 				        	ReportHandler.unzipZipFile(new FileInputStream(zipFile), resource.getAbsolutePath());
 							
-							logger.info("Received GATF tests Result files from node " + connection.node);
+							logger.info("Done Receiving GATF tests Result files from node " + connection.node);
 						} catch (Exception e) {
 							e.printStackTrace();
 							logger.info("Failure occurred while waiting for GATF tests Results from node " + connection.node);

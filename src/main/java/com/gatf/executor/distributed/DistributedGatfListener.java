@@ -18,6 +18,8 @@ import org.apache.commons.io.IOUtils;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
+import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 
 public class DistributedGatfListener {
 
@@ -56,7 +58,7 @@ public class DistributedGatfListener {
 		}
 	}
 	
-	private static void handleCommand(ObjectInputStream ois, ObjectOutputStream oos) throws Exception {
+	private static void handleCommand(ObjectInputStream ois, final ObjectOutputStream oos) throws Exception {
 		
 		logger.info("Got a new distributed GATF request...");
 		
@@ -105,7 +107,44 @@ public class DistributedGatfListener {
 			if(context!=null && tContext!=null) {
 				logger.info("Started executing GATF tests...");
 				GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+				
+				Thread dlreporter = new Thread(new Runnable() {
+					public void run() {
+						try {
+							while(true) {
+								LoadTestEntry entry = RuntimeReportUtil.getDLEntry();
+								if(entry!=null) {
+									oos.writeObject(Command.LOAD_TESTS_RES);
+									oos.writeObject(entry);
+									oos.flush();
+								}
+								Thread.sleep(500);
+							}
+						} catch (Exception e) {
+							LoadTestEntry entry = null;
+							while((entry=RuntimeReportUtil.getDLEntry())!=null)
+							{
+								try {
+									if(entry!=null) {
+										oos.writeObject(Command.LOAD_TESTS_RES);
+										oos.writeObject(entry);
+										oos.flush();
+									}
+								} catch (IOException e1) {
+								}
+							}
+						}
+					}
+				});
+				dlreporter.start();
 				DistributedTestStatus report = mojo.handleDistributedTests(context, tContext);
+				Thread.sleep(2000);
+				
+				dlreporter.interrupt();
+				Thread.sleep(3000);
+				
+				oos.writeObject(Command.TESTS_SHARE_RES);
+				oos.flush();
 				
 				String fileName = UUID.randomUUID().toString()+".zip";
 				report.setZipFileName(fileName);
@@ -129,7 +168,7 @@ public class DistributedGatfListener {
 				File zipFile = new File(resource, fileName);
 				IOUtils.copy(new FileInputStream(zipFile), oos);
 				oos.flush();
-				logger.info("Writing GATF results...");
+				logger.info("Done Writing GATF results...");
 			}
 		} catch (Exception e) {
 			oos.write(0);
