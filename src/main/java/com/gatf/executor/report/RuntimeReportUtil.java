@@ -82,6 +82,7 @@ public class RuntimeReportUtil {
 			if(lentry.prefix==null)
 				lentry.prefix = "Run";
 			parts.put("title", lentry.prefix+"-"+lentry.runNo);
+			parts.put("runNo", lentry.runNo+"");
 			parts.put("url", lentry.url);
 			parts.put("node", lentry.node);
 			parts.put("stats", lentry.currStats);
@@ -113,6 +114,7 @@ public class RuntimeReportUtil {
 			if(prefix==null)
 				prefix = "Run";
 			parts.put("title", prefix+"-"+runNo);
+			parts.put("runNo", runNo+"");
 			parts.put("url", url);
 			parts.put("node", node);
 			parts.put("stats", currStats);

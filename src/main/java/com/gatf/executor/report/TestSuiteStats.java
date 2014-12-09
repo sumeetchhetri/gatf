@@ -172,6 +172,8 @@ public class TestSuiteStats implements Serializable {
 		builder.append(skippedTestCount);
 		builder.append(", executionTime=");
 		builder.append(executionTime);
+		builder.append(", actualExecutionTime=");
+		builder.append(actualExecutionTime);
 		builder.append(", totalRuns=");
 		builder.append(totalRuns);
 		builder.append(", failedRuns=");
@@ -197,6 +199,8 @@ public class TestSuiteStats implements Serializable {
 		builder.append(skippedTestCount);
 		builder.append(", ExecutionTime=");
 		builder.append(executionTime);
+		builder.append(", ActualExecutionTime=");
+		builder.append(actualExecutionTime);
 		builder.append(", TotalRuns=");
 		builder.append(totalRuns);
 		builder.append(", FailedRuns=");
