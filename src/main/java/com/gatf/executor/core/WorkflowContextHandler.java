@@ -205,13 +205,15 @@ public class WorkflowContextHandler {
 		return nmap;
 	}
 	
-	public String evaluateTemplate(TestCase testCase, String template) {
+	public String evaluateTemplate(TestCase testCase, String template, AcceptanceTestContext acontext) {
 		StringWriter writer = new StringWriter();
 		try {
 			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
 			if(testCase!=null && !nmap.isEmpty()) {
-				VelocityContext context = new VelocityContext(nmap);
 				if(template!=null) {
+					VelocityContext context = new VelocityContext(nmap);
+					DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
+					context.put("_DPA_", dpa);
 					engine.evaluate(context, writer, "ERROR", template);
 				}
 			}
@@ -221,7 +223,8 @@ public class WorkflowContextHandler {
 		return writer.toString();
 	}
 	
-	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap) throws Exception {
+	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap, AcceptanceTestContext acontext) 
+			throws Exception {
 		
 		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap);
 		
@@ -240,8 +243,9 @@ public class WorkflowContextHandler {
 		}
 		
 		if(testCase!=null && !nmap.isEmpty()) {
-			
 			VelocityContext context = new VelocityContext(nmap);
+			DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
+			context.put("_DPA_", dpa);
 			if(testCase.getUrl()!=null) {
 				StringWriter writer = new StringWriter();
 				engine.evaluate(context, writer, "ERROR", testCase.getUrl());
@@ -274,7 +278,8 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	public boolean velocityValidate(TestCase testCase, String template, Map<String, String> smap) {
+	public boolean velocityValidate(TestCase testCase, String template, Map<String, String> smap, 
+			AcceptanceTestContext acontext) {
 		if(testCase!=null && template!=null) {
 			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
 			if(smap!=null) {
@@ -283,7 +288,10 @@ public class WorkflowContextHandler {
 			StringWriter writer = new StringWriter();
 			String condition = "#if(" +  template + ")true#end";
 			try {
-				engine.evaluate(new VelocityContext(nmap), writer, "ERROR", condition);
+				VelocityContext context = new VelocityContext(nmap);
+				DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
+				context.put("_DPA_", dpa);
+				engine.evaluate(context, writer, "ERROR", condition);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}

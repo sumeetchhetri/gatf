@@ -60,7 +60,8 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			testCaseCopy.setCurrentScenarioVariables(scenarioMap);
 
 			try {
-				workflowContextHandler.handleContextVariables(testCaseCopy, scenarioMap);
+				workflowContextHandler.handleContextVariables(testCaseCopy, scenarioMap, 
+						testCaseExecutorUtil.getContext());
 			} catch (Exception e) {
 				testCaseReport.setExecutionTime(0L);
 				testCaseReport.setStatus(TestStatus.Failed.status);

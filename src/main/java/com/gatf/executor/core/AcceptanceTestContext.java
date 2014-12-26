@@ -809,6 +809,19 @@ public class AcceptanceTestContext {
 		return getProviderData(provider, testCase);
 	}
 	
+	public List<Map<String, String>> getAnyProviderData(String provName, TestCase testCase)
+	{
+		if(liveProviders.containsKey(provName))
+		{
+			GatfTestDataProvider provider = liveProviders.get(provName);
+			return getProviderData(provider, testCase);
+		}
+		else
+		{
+			return getProviderTestDataMap().get(provName);
+		}
+	}
+	
 	@SuppressWarnings("rawtypes")
 	private List<Map<String, String>> getProviderData(GatfTestDataProvider provider, TestCase testCase) {
 		
@@ -852,9 +865,12 @@ public class AcceptanceTestContext {
 		{
 			String oQs = provider.getQueryStr();
 			provider = new GatfTestDataProvider(provider);
-			provider.setQueryStr(getWorkflowContextHandler().evaluateTemplate(testCase, provider.getQueryStr()));
-			if(provider.getQueryStr()==null || provider.getQueryStr().isEmpty()) {
-				provider.setQueryStr(oQs);
+			if(testCase!=null)
+			{
+				provider.setQueryStr(getWorkflowContextHandler().evaluateTemplate(testCase, provider.getQueryStr(), this));
+				if(provider.getQueryStr()==null || provider.getQueryStr().isEmpty()) {
+					provider.setQueryStr(oQs);
+				}
 			}
 		}
 		

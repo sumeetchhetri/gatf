@@ -44,7 +44,8 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		testCaseReport.setNumberOfRuns(1);
 		
 		try {
-			workflowContextHandler.handleContextVariables(testCase, new HashMap<String, String>());
+			workflowContextHandler.handleContextVariables(testCase, new HashMap<String, String>(), 
+					testCaseExecutorUtil.getContext());
 		} catch (Exception e) {
 			testCaseReport.setExecutionTime(0L);
 			testCaseReport.setStatus(TestStatus.Failed.status);

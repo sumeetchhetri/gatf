@@ -137,6 +137,9 @@ public class DistributedGatfListener {
 					}
 				});
 				dlreporter.start();
+				context.getConfig().setTestCasesBasePath(System.getProperty("user.dir"));
+				context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
+				logger.info("Current working directory is: " + System.getProperty("user.dir"));
 				DistributedTestStatus report = mojo.handleDistributedTests(context, tContext);
 				Thread.sleep(2000);
 				

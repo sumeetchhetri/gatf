@@ -48,9 +48,11 @@ public class GatfFunctionHandler {
 	private static final String BOOLEAN = "boolean";
 	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*) ([-+]) (\\d+)([y|M|d|h|m|s|S|])\\)$";
 	static final String DT_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*)\\)";
+	public static final String RANDOM_RANGE_REGEX = "^number\\(([0-9]*)[\t ]*,[\t ]*([0-9]*)\\)$";
 	
 	static Pattern specialDatePattern = Pattern.compile(DT_FUNC_FMT_REGEX);
 	static Pattern datePattern = Pattern.compile(DT_FMT_REGEX);
+	static Pattern randRangeNum = Pattern.compile(RANDOM_RANGE_REGEX);
 
 	public static String handleFunction(String function) {
 		if(function.equals(BOOLEAN)) {
@@ -111,6 +113,18 @@ public class GatfFunctionHandler {
 			Random rand = new Random();
 			boolean bool = rand.nextBoolean();
 			return bool?String.valueOf(rand.nextInt(1234567)):String.valueOf(-rand.nextInt(1234567));
+		} else if(function.matches(RANDOM_RANGE_REGEX)) {
+			Matcher match = randRangeNum.matcher(function);
+			match.matches();
+			String min = match.group(1);
+			String max = match.group(2);
+			try {
+				int nmin = Integer.parseInt(min);
+				int nmax = Integer.parseInt(max);
+				return String.valueOf(nmin + (int)(Math.random() * ((nmax - nmin) + 1)));
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 		return null;
 	}

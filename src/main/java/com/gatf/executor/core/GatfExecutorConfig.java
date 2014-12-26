@@ -117,6 +117,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private boolean isFetchFailureLogs;
 	
+	private Integer repeatSuiteExecutionNum;
+	
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -461,6 +463,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setServerLogsApiAuthExtractAuth(String serverLogsApiAuthExtractAuth) {
 		this.serverLogsApiAuthExtractAuth = serverLogsApiAuthExtractAuth;
+	}
+
+	public Integer getRepeatSuiteExecutionNum() {
+		return repeatSuiteExecutionNum;
+	}
+
+	public void setRepeatSuiteExecutionNum(Integer repeatSuiteExecutionNum) {
+		this.repeatSuiteExecutionNum = repeatSuiteExecutionNum;
 	}
 
 	public void validate()

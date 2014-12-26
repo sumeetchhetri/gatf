@@ -214,6 +214,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	@Parameter(alias = "serverLogsApiAuthExtractAuth")
 	private String serverLogsApiAuthExtractAuth;
 	
+	@Parameter(alias = "repeatSuiteExecutionNum")
+	private Integer repeatSuiteExecutionNum;
+	
 	private Long startTime = 0L;
 	
 	private AcceptanceTestContext context;
@@ -982,7 +985,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 								afileurl = null;
 							}
 							reportHandler.doConcurrentRunReporting(context, suiteStartTime, afileurl, (y+1), 
-									loadTestRunNum==1, testPercentiles, runPercentiles);
+									loadTestRunNum==1, testPercentiles, runPercentiles, null);
 						}
 					} catch (Exception e) {
 						e.printStackTrace();
@@ -1296,7 +1299,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			}
 			
 			if(testCase.getExecuteOnCondition()!=null && !testCaseExecutorUtil.getContext().getWorkflowContextHandler()
-					.velocityValidate(testCase, testCase.getExecuteOnCondition(), null))
+					.velocityValidate(testCase, testCase.getExecuteOnCondition(), null, context))
 			{
 				getLog().info("Execute Condition for Testcase " + testCase.getName() + " returned false."
 							+ " Condition was (" + testCase.getExecuteOnCondition() + ")");
@@ -1495,6 +1498,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			mojo.setLoadTestingReportSamples(3);
 			mojo.setConcurrentUserRampUpTime(0L);
 			mojo.setEnabled(true);
+			mojo.setTestCasesBasePath(System.getProperty("user.dir"));
+			mojo.setOutFilesBasePath(System.getProperty("user.dir"));
 			mojo.execute();
 		}
 	}
@@ -1704,7 +1709,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					try {
 						if(dorep) {
 							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, (y+1), loadTestRunNum==1,
-									testPercentiles, runPercentiles);
+									testPercentiles, runPercentiles, runPrefix);
 						}
 					} catch (Exception e) {
 						e.printStackTrace();

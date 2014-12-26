@@ -64,7 +64,8 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 				TestCaseReport testCaseReportCopy = new TestCaseReport(testCaseReport);
 			
 			try {
-				workflowContextHandler.handleContextVariables(testCaseCopy, new HashMap<String, String>());
+				workflowContextHandler.handleContextVariables(testCaseCopy, new HashMap<String, String>(), 
+						testCaseExecutorUtil.getContext());
 			} catch (Throwable e) {
 				testCaseReportCopy.setExecutionTime(0L);
 				testCaseReportCopy.setStatus(TestStatus.Failed.status);

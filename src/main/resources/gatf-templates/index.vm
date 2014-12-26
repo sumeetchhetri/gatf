@@ -9,6 +9,7 @@
 
 		<!-- Page-Level Plugin CSS - Tables -->
 		<link href="css/plugins/dataTables/dataTables.bootstrap.css" rel="stylesheet">
+		<link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet">
 		
 		<style>
 			.flot-x-axis div.flot-tick-label { 
@@ -117,7 +118,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default">
 								<div class="panel-heading">
-									Overall Test Success/Failures
+									Overall Test Success/Failures<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechart.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -128,7 +129,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default" id="secondpie" style="display:none;">
 								<div class="panel-heading">
-									Overall Success/Failures - Multiple Test Runs
+									Overall Success/Failures - Multiple Test Runs<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechart2.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -157,15 +158,11 @@
 												
 						<div class="panel panel-default">
 							<div class="panel-heading">
-								Testcase Execution Time Graph
+								Testcase Execution Time Graph<span style="float:right"><button onclick="saveSingleMultiLineGraphs()">Save</button>
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body" style="height:auto;overflow:scroll;overflow-y:hidden">  
-								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" onclick="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" onclick="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" onclick="showHide('legend-cont')">Legend</span>&nbsp;&nbsp;90%<input id="ninetyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>&nbsp;&nbsp;50%<input id="fiftyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>&nbsp;&nbsp;
-								#if($isMultipleRuns)
-								Testcase Graphs<input id="tcgrphchk" type="checkbox" onclick="if(this.checked)$('#showTCSelect').show();else $('#showTCSelect').hide();showOnlyLineMultiGraph();"/>&nbsp;&nbsp;<span id="showTCSelect" style="display:none"><select id="testcasesSelect" onchange="showTestcaseReportMultiLineGraph()"><option value="All">All</option></select></span>
-								#end
-								</div><br/>
+								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" onclick="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" onclick="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;(Values<input id="valuelcheck" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(Labels<input id="labelcheck" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" onclick="showHide('legend-cont')">Legend</span>&nbsp;&nbsp;(90%<input id="ninetyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(50%<input id="fiftyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp</div><br/>
 								<div class="flot-chart-content" id="flot-line-chart" style="width:auto;height:500px"></div>
 							 </div>
 						</div>
@@ -182,7 +179,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default">
 								<div class="panel-heading">
-									Comparison Success/Failures
+									Comparison Success/Failures<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechartcomp.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -232,6 +229,7 @@
 
 		<script src="js/plugins/dataTables/jquery.dataTables.js"></script>
 		<script src="js/plugins/dataTables/dataTables.bootstrap.js"></script>
+		<script type="text/javascript" src="js/plugins/dataTables/dataTables.tableTools.js"></script>
 
 		<script type="text/javascript" src="js/prettify.js"></script>
 		<script type="text/javascript" src="js/vkbeautify.js"></script>
@@ -239,6 +237,8 @@
 		<script type="text/javascript" src="js/gatf.js"></script>
 		<script type="text/javascript" src="js/diff_match_patch.js"></script>
 		<script type="text/javascript" src="js/jquery.blockUI.js"></script>
+		<script type="text/javascript" src="js/canvas2image.js"></script>
+		<script type="text/javascript" src="js/jquery.flot.text.js"></script>
 		<script>
 			
 			var testcaseReports = $testcaseReports;

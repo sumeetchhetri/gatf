@@ -311,7 +311,7 @@ public abstract class ResponseValidator {
 		if(testCase.getLogicalValidations()!=null && !testCase.getLogicalValidations().isEmpty())
 		{
 			for (String node : testCase.getLogicalValidations()) {
-				boolean validationResult = context.getWorkflowContextHandler().velocityValidate(testCase, node, smap);
+				boolean validationResult = context.getWorkflowContextHandler().velocityValidate(testCase, node, smap, context);
 				Assert.assertTrue("Logical Validation failed for (" + node + ")", validationResult);
 			}
 		}

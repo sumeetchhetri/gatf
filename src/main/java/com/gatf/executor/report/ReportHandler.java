@@ -501,7 +501,8 @@ public class ReportHandler {
 	}
 
 	public void doConcurrentRunReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int runNumber,
-			boolean unzipFile, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
+			boolean unzipFile, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles, 
+			String distRunPrefix) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
 		
@@ -510,7 +511,10 @@ public class ReportHandler {
 		Map<String, List<TestCaseReport>> allTestCases = new TreeMap<String, List<TestCaseReport>>(comparator);
 		Map<String, ConcurrentLinkedQueue<TestCaseReport>> tempMap = new TreeMap<String, ConcurrentLinkedQueue<TestCaseReport>>(comparator);
 		
-		tempMap.put("Run-"+ runNumber, getFinalTestResults().get("Run-"+ runNumber));
+		if(distRunPrefix==null)
+			tempMap.put("Run-"+ runNumber, getFinalTestResults().get("Run-"+ runNumber));
+		else
+			tempMap.put("Run-"+ runNumber, getFinalTestResults().get(distRunPrefix + "-" + runNumber));
 		
 		Map<String, List<TestCaseCompareStatus>> compareStatuses = new TreeMap<String, List<TestCaseCompareStatus>>(comparator);
 		
@@ -722,7 +726,10 @@ public class ReportHandler {
 			testSuiteStats.updateStats(tempst, true);
 		}
 		
-		getFinalTestResults().get("Run-"+ runNumber).clear();
+		if(distRunPrefix==null)
+			getFinalTestResults().get("Run-"+ runNumber).clear();
+		else
+			getFinalTestResults().get(distRunPrefix + "-" + runNumber).clear();
 	}
 
 	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, 
