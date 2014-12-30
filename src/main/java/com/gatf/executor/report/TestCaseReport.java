@@ -436,4 +436,52 @@ public class TestCaseReport implements Serializable {
 			this.status = status;
 		}
 	}
+	
+	private String sanitizeString(String inp)
+	{
+		return inp.replace("\"", "\\\"").replace("\n", "\\\n");
+	}
+	
+	public String toStatisticsCsv()
+	{
+		StringBuilder builder = new StringBuilder();
+		builder.append("\"");
+		if(testCase.getSourcefileName().equals(testCase.getIdentifier()))
+		{
+			builder.append(sanitizeString(testCase.getSourcefileName()));
+		}
+		else
+		{
+			builder.append(sanitizeString(testCase.getSourcefileName()));
+			builder.append("(");
+			builder.append(testCase.getIdentifier());
+			builder.append(")");
+		}
+		builder.append("\"");
+		builder.append(",");
+		builder.append("\"");
+		builder.append(sanitizeString(testCase.getName()));
+		builder.append("\"");
+		builder.append(",");
+		builder.append("\"");
+		builder.append(method);
+		builder.append("\"");
+		builder.append(",");
+		builder.append("\"");
+		builder.append(actualUrl);
+		builder.append("\"");
+		builder.append(",");
+		builder.append("\"");
+		builder.append(sanitizeString(testCase.getDescription()));
+		builder.append("\"");
+		builder.append(",");
+		builder.append(executionTime);
+		builder.append(",");
+		builder.append(responseStatusCode);
+		builder.append(",");
+		builder.append("\"");
+		builder.append(status);
+		builder.append("\"\n");
+		return builder.toString();
+	}
 }

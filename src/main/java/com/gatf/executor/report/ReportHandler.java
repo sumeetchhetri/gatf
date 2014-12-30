@@ -409,7 +409,7 @@ public class ReportHandler {
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public static void zipDirectory(File directory, final String fileFilter, String zipFileName)
+    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName)
     {
         try
         {
@@ -425,7 +425,10 @@ public class ReportHandler {
         	
         	File[] files = directory.listFiles(new FilenameFilter() {
 				public boolean accept(File folder, String name) {
-					return name.toLowerCase().endsWith(fileFilter);
+					for (String fileFilter : fileFilters) {
+						return name.toLowerCase().endsWith(fileFilter);
+					}
+					return false;
 				}
 			});
         	

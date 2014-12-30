@@ -141,6 +141,7 @@ public class DistributedGatfListener {
 				context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
 				logger.info("Current working directory is: " + System.getProperty("user.dir"));
 				DistributedTestStatus report = mojo.handleDistributedTests(context, tContext);
+				mojo.shutdown();
 				Thread.sleep(2000);
 				
 				dlreporter.interrupt();
@@ -166,7 +167,7 @@ public class DistributedGatfListener {
 	        	}
 	        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
 	        	
-				ReportHandler.zipDirectory(resource, ".html", fileName);
+				ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName);
 				
 				File zipFile = new File(resource, fileName);
 				IOUtils.copy(new FileInputStream(zipFile), oos);

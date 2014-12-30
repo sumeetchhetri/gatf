@@ -46,7 +46,7 @@ import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
-import com.gatf.executor.dataprovider.DatabaseTestDataSource;
+import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
@@ -138,6 +138,8 @@ public class AcceptanceTestContext {
 	}
 	
 	private final Map<String, TestDataSource> dataSourceMap = new HashMap<String, TestDataSource>();
+	
+	private final Map<String, TestDataSource> dataSourceMapForProfiling = new HashMap<String, TestDataSource>();
 	
 	private final Map<String, GatfTestDataSourceHook> dataSourceHooksMap = new HashMap<String, GatfTestDataSourceHook>();
 
@@ -499,7 +501,12 @@ public class AcceptanceTestContext {
 			
 			if(gatfTestDataConfig.getDataSourceList()!=null)
 			{
-				handleDataSources(gatfTestDataConfig.getDataSourceList());
+				handleDataSources(gatfTestDataConfig.getDataSourceList(), false);
+			}
+			
+			if(gatfTestDataConfig.getDataSourceListForProfiling()!=null)
+			{
+				handleDataSources(gatfTestDataConfig.getDataSourceListForProfiling(), true);
 			}
 			
 			if(gatfTestDataConfig.getDataSourceHooks()!=null)
@@ -631,7 +638,7 @@ public class AcceptanceTestContext {
 	}
 	
 	@SuppressWarnings("rawtypes")
-	private void handleDataSources(List<GatfTestDataSource> dataSourceList)
+	private void handleDataSources(List<GatfTestDataSource> dataSourceList, boolean forProfiling)
 	{
 		for (GatfTestDataSource dataSource : dataSourceList) {
 			Assert.assertNotNull("DataSource name is not defined", dataSource.getDataSourceName());
@@ -641,8 +648,8 @@ public class AcceptanceTestContext {
 			Assert.assertNull("Duplicate DataSource name found", dataSourceMap.get(dataSource.getDataSourceName()));
 			
 			TestDataSource testDataSource = null;
-			if(DatabaseTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
-				testDataSource = new DatabaseTestDataSource();
+			if(SQLDatabaseTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
+				testDataSource = new SQLDatabaseTestDataSource();
 			} else if(MongoDBTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
 				testDataSource = new MongoDBTestDataSource();
 			} else {
@@ -666,6 +673,7 @@ public class AcceptanceTestContext {
 				}
 			}
 			
+			testDataSource.setClassName(dataSource.getDataSourceClass());
 			testDataSource.setArgs(dataSource.getArgs());
 			testDataSource.setContext(this);
 			testDataSource.setDataSourceName(dataSource.getDataSourceName());
@@ -674,10 +682,23 @@ public class AcceptanceTestContext {
 				testDataSource.setPoolSize(dataSource.getPoolSize());
 			}
 			
-			testDataSource.init();
-			
-			dataSourceMap.put(dataSource.getDataSourceName(), testDataSource);
+			if(forProfiling)
+			{
+				testDataSource.setPoolSize(1);
+				testDataSource.init();
+				dataSourceMapForProfiling.put(dataSource.getDataSourceName(), testDataSource);
+			}
+			else
+			{
+				testDataSource.init();
+				dataSourceMap.put(dataSource.getDataSourceName(), testDataSource);
+			}
 		}
+	}
+	
+	public Map<String, TestDataSource> getDataSourceMapForProfiling()
+	{
+		return dataSourceMapForProfiling;
 	}
 	
 	@SuppressWarnings("rawtypes")
@@ -768,7 +789,7 @@ public class AcceptanceTestContext {
 					Assert.assertNotNull("Provider source properties not defined", provider.getSourceProperties());
 				}
 				
-				if(dataSource instanceof DatabaseTestDataSource)
+				if(dataSource instanceof SQLDatabaseTestDataSource)
 				{
 					Assert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
 				}

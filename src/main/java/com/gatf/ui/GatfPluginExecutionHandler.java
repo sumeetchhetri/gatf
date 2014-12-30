@@ -1,5 +1,6 @@
 package com.gatf.ui;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.ws.rs.core.MediaType;
@@ -7,6 +8,8 @@ import javax.ws.rs.core.MediaType;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.jackson.map.ObjectMapper;
+import org.codehaus.jackson.map.type.TypeFactory;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -79,6 +82,9 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				}
 			}
 			else if(request.getMethod().equals(Method.PUT) ) {
+				final List<String> files = new ObjectMapper().readValue(request.getInputStream(), 
+						TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
+				
 				if(!isStarted.get() && !isDone.get()) {
 					isStarted.set(true);
 					if(pluginType.equals("executor")) {
@@ -90,7 +96,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							GatfPlugin executorMojo = getGatfPlugin(pluginType);
     						executorMojo.setProject(project);
     						try {
-								executorMojo.doExecute(config);
+								executorMojo.doExecute(config, files);
 								initializeMojoProps(executorMojo, mojo);
 							} catch (Throwable e) {
 								e.printStackTrace();

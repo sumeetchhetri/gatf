@@ -43,6 +43,7 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 		List<TestCaseReport> reports = singleTestCaseExecutor.execute(testCase, testCaseExecutorUtil);
 		
 		TestCaseReport testCaseReport = reports==null || reports.isEmpty() ? null : reports.get(0);
+		reports.add(new TestCaseReport(testCaseReport));
 		
 		testCaseReport.setNumberOfRuns(1);
 		testCaseReport.getExecutionTimes().add(testCaseReport.getExecutionTime());
@@ -62,6 +63,7 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 				testCaseReport.setNumberOfRuns(testCaseReport.getNumberOfRuns()+1);
 				TestCase testCaseCopy = new TestCase(testCase);
 				TestCaseReport testCaseReportCopy = new TestCaseReport(testCaseReport);
+				reports.add(testCaseReportCopy);
 			
 			try {
 				workflowContextHandler.handleContextVariables(testCaseCopy, new HashMap<String, String>(), 

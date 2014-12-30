@@ -1536,7 +1536,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		return xstream.toXML(configuration);
 	}
 
-	public void doExecute(GatfPluginConfig configuration) throws MojoFailureException {
+	public void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException {
 		GatfConfiguration config = (GatfConfiguration)configuration;
 		
 		setDebugEnabled(false);

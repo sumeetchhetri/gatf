@@ -48,6 +48,8 @@ public class GatfTestDataConfig implements Serializable {
 	private List<GatfTestDataProvider> providerTestDataList;
 	
 	private List<GatfTestDataSourceHook> dataSourceHooks;
+	
+	private List<GatfTestDataSource> dataSourceListForProfiling;
 
 	public Map<String, String> getGlobalVariables() {
 		return globalVariables;
@@ -88,5 +90,13 @@ public class GatfTestDataConfig implements Serializable {
 
 	public void setDataSourceHooks(List<GatfTestDataSourceHook> dataSourceHooks) {
 		this.dataSourceHooks = dataSourceHooks;
+	}
+
+	public List<GatfTestDataSource> getDataSourceListForProfiling() {
+		return dataSourceListForProfiling;
+	}
+
+	public void setDataSourceListForProfiling(List<GatfTestDataSource> dataSourceListForProfiling) {
+		this.dataSourceListForProfiling = dataSourceListForProfiling;
 	}
 }

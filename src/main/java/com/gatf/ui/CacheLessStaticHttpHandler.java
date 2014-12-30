@@ -16,7 +16,7 @@ import org.glassfish.grizzly.utils.ArraySet;
 /**
  * Static HTTP Handler which does not cache files.
  * 
- * @author sumeetc
+ * @author Sumeet Chhetri
  *
  */
 public class CacheLessStaticHttpHandler extends StaticHttpHandler {

@@ -38,7 +38,7 @@ import com.gatf.generator.core.GatfTestGeneratorMojo;
 
 
 /**
- * @author sumeetc
+ * @author Sumeet Chhetri
  *
  */
 @Mojo(
@@ -97,7 +97,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
         
         server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, project), "/configure");
         
-        server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo), "/reports");
+        server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo, project), "/reports");
         
         server.getServerConfiguration().addHttpHandler(new GatfMiscHandler(mojo), "/misc");
         
@@ -106,6 +106,8 @@ public class GatfConfigToolMojo extends AbstractMojo {
         server.getServerConfiguration().addHttpHandler(new GatfTestCaseHandler(mojo), "/testcases");
 		
         server.getServerConfiguration().addHttpHandler(new GatfPluginExecutionHandler(mojo, project), "/execute");
+        
+        server.getServerConfiguration().addHttpHandler(new GatfProfileHandler(mojo, project), "/profile");
 		
 		try {
 		    server.start();
@@ -190,6 +192,10 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		if(gatfConfig.getNumConcurrentExecutions()==null) {
 			isChanged = true;
 			gatfConfig.setNumConcurrentExecutions(1);
+		}
+		if(gatfConfig.getRepeatSuiteExecutionNum()==null) {
+			isChanged = true;
+			gatfConfig.setRepeatSuiteExecutionNum(0);
 		}
 		
 		if(isChanged)

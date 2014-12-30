@@ -232,9 +232,12 @@ public class MongoDBTestDataSource extends TestDataSource {
 						DBObject object = cursor.next();
 						Map<String, String> row = new HashMap<String, String>();
 						for (int i = 0; i < variableNamesArr.size(); i++) {
-							Assert.assertTrue(String.format("Could not find %s field in the result document returned",
-									propertyNamesArr.get(i)), object.containsField(propertyNamesArr.get(i)));
-							row.put(variableNamesArr.get(i), object.get(propertyNamesArr.get(i)).toString());
+							//Assert.assertTrue(String.format("Could not find %s field in the result document returned",
+							//		propertyNamesArr.get(i)), object.containsField(propertyNamesArr.get(i)));
+							if(object.containsField(propertyNamesArr.get(i)))
+							{
+								row.put(variableNamesArr.get(i), object.get(propertyNamesArr.get(i)).toString());
+							}
 						}
 						result.add(row);
 					}

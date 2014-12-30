@@ -44,7 +44,7 @@ import com.jayway.jsonpath.JsonPath;
  */
 public class FileTestDataProvider implements TestDataProvider {
 
-	private Logger logger = Logger.getLogger(DatabaseTestDataSource.class.getSimpleName());
+	private Logger logger = Logger.getLogger(FileTestDataProvider.class.getSimpleName());
 	
 	public List<Map<String, String>> provide(GatfTestDataProvider provider, AcceptanceTestContext context) {
 		

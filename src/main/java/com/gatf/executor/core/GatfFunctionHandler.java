@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.RandomStringUtils;
 
 /**
- * @author sumeetc
+ * @author Sumeet Chhetri
  *
  */
 public class GatfFunctionHandler {

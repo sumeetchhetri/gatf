@@ -39,9 +39,10 @@ public class GatfReportsHandler extends HttpHandler {
 	
 	private ReentrantLock lock = new ReentrantLock();
 	
-	protected GatfReportsHandler(GatfConfigToolMojo mojo) {
+	protected GatfReportsHandler(GatfConfigToolMojo mojo, MavenProject project) {
 		super();
 		this.mojo = mojo;
+		this.project = project;
 	}
 
 	@Override
@@ -106,7 +107,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 	        			context.setGatfExecutorConfig(gatfConfig);
 	        			executorMojo.setContext(context);
-	        			executorMojo.getAllTestCases(context, null);
+	        			executorMojo.getAllTestCases(context, null, null);
 						authTestCase = executorMojo.getAuthTestCase();
 	        			
 	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
@@ -429,7 +430,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			
 	        			context.setGatfExecutorConfig(gatfConfig);
 	        			executorMojo.setContext(context);
-	        			executorMojo.getAllTestCases(context, null);
+	        			executorMojo.getAllTestCases(context, null, null);
 						authTestCase = executorMojo.getAuthTestCase();
 	        			
 	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);

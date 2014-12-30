@@ -52,6 +52,8 @@ public abstract class TestCaseFinder {
 	protected abstract TestCaseFileType getFileType();
 	public abstract List<TestCase> resolveTestCases(File testCaseFile) throws Exception;
 	
+	private List<String> targetFileNames;
+	
 	public static final FileFilter DIR_FILTER = new FileFilter() {
 		public boolean accept(File file) {
 			return file.isDirectory();
@@ -86,6 +88,15 @@ public abstract class TestCaseFinder {
 		}
 	}
 	
+	public List<String> getTargetFileNames() {
+		if(targetFileNames==null) {
+			targetFileNames = new ArrayList<String>();
+		}
+		return targetFileNames;
+	}
+	public void setTargetFileNames(List<String> targetFileNames) {
+		this.targetFileNames = targetFileNames;
+	}
 	public List<TestCase> findTestCases(File dir, AcceptanceTestContext context, boolean considerConfig,
 			Set<String> relativeFileNames)
 	{
@@ -98,7 +109,17 @@ public abstract class TestCaseFinder {
 		
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File folder, String name) {
-				return name.toLowerCase().endsWith(getFileType().ext);
+				if(targetFileNames!=null && targetFileNames.size()>0)
+				{
+					for (String tfileName : targetFileNames) {
+						return name.equalsIgnoreCase(tfileName);
+					}
+					return false;
+				}
+				else
+				{
+					return name.toLowerCase().endsWith(getFileType().ext);
+				}
 			}
 		};
 		

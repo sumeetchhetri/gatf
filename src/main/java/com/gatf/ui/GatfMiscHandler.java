@@ -15,7 +15,7 @@ import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.dataprovider.DatabaseTestDataSource;
+import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -70,7 +70,7 @@ public class GatfMiscHandler extends HttpHandler {
 				List<String> dataLst = new ArrayList<String>();
 				dataLst.add("");
 				dataLst.add(MongoDBTestDataSource.class.getName());
-				dataLst.add(DatabaseTestDataSource.class.getName());
+				dataLst.add(SQLDatabaseTestDataSource.class.getName());
 				miscMap.put("datasourcecls", dataLst);
     			
 				dataLst = new ArrayList<String>();

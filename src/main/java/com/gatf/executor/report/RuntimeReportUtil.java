@@ -7,7 +7,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import org.codehaus.jackson.map.ObjectMapper;
 
 /**
- * @author sumeetc
+ * @author Sumeet Chhetri
  *
  */
 public class RuntimeReportUtil {

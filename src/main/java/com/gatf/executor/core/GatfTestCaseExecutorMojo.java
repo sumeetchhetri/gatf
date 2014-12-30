@@ -66,6 +66,7 @@ import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.executor.report.TestCaseExecutionLogGenerator;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
@@ -215,13 +216,19 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	private String serverLogsApiAuthExtractAuth;
 	
 	@Parameter(alias = "repeatSuiteExecutionNum")
-	private Integer repeatSuiteExecutionNum;
+	private Integer repeatSuiteExecutionNum = 0;
+	
+	@Parameter(alias = "isGenerateExecutionLogs")
+	private boolean isGenerateExecutionLogs = false;
 	
 	private Long startTime = 0L;
 	
 	private AcceptanceTestContext context;
 	
 	private DistributedGatfTester distributedGatfTester;
+	
+	//Test case execution log generator
+	private Thread tclgenerator = null;
 	
 	private TestCase authTestCase;
 	
@@ -395,18 +402,21 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 	
-	public List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames)
+	public List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames, List<String> targetFileNames)
 	{
 		List<TestCase> allTestCases = new ArrayList<TestCase>();
 		File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
 		
 		TestCaseFinder finder = new XMLTestCaseFinder();
+		finder.setTargetFileNames(targetFileNames);
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		finder = new JSONTestCaseFinder();
+		finder.setTargetFileNames(targetFileNames);
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		finder = new CSVTestCaseFinder();
+		finder.setTargetFileNames(targetFileNames);
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
 		sortAndOrderTestCases(allTestCases, context.getGatfExecutorConfig());
@@ -468,6 +478,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		configuration.setFetchFailureLogs(isFetchFailureLogs);
 		configuration.setServerLogsApiAuthExtractAuth(serverLogsApiAuthExtractAuth);
 		configuration.setServerLogsApiAuthEnabled(isServerLogsApiAuthEnabled);
+		configuration.setRepeatSuiteExecutionNum(repeatSuiteExecutionNum);
+		configuration.setGenerateExecutionLogs(isGenerateExecutionLogs);
 		
 		if(configFile!=null) {
 			try {
@@ -528,27 +540,33 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					
 					if(configuration.isEnabled()==null)
 						configuration.setEnabled(true);
+					
+					if(configuration.getRepeatSuiteExecutionNum()==null)
+						configuration.setRepeatSuiteExecutionNum(repeatSuiteExecutionNum);
 				}
 			} catch (Exception e) {
 				throw new AssertionError(e);
 			}
 		}
 		try {
-			doExecute(configuration);
+			doExecute(configuration, null);
 		} finally {
-			//Fire all data source shutdown hooks
-			if(context!=null) {
-				context.shutdown();
-			}
+			shutdown();
 		}
 	}
 	
-	public void doExecute(GatfPluginConfig configuration) throws MojoFailureException {
-		doExecute((GatfExecutorConfig)configuration);
+	public void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException {
+		doExecute((GatfExecutorConfig)configuration, files);
 	}
 	
 	@SuppressWarnings({ "rawtypes" })
-	public void doExecute(GatfExecutorConfig configuration) throws MojoFailureException {
+	public void doExecute(GatfExecutorConfig configuration, List<String> files) throws MojoFailureException {
+		
+		if(configuration.isGenerateExecutionLogs())
+		{
+			tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
+			tclgenerator.start();
+		}
 		
 		initilaizeContext(configuration, true);
 		
@@ -581,7 +599,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		
 		Set<String> relativeFileNames = new HashSet<String>();
-		List<TestCase> allTestCases = getAllTestCases(context, relativeFileNames);
+		List<TestCase> allTestCases = getAllTestCases(context, relativeFileNames, files);
 		
 		List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
 		Map<String, Set<String>> relTsts = new HashMap<String, Set<String>>();
@@ -734,7 +752,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
 		
-		while(true)
+		if(!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum()>1)
+			isLoadTestingEnabled = true;
+		
+		while(allTestCases.size()>0)
 		{
 			long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
 			
@@ -757,19 +778,26 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			if(isLoadTestingEnabled) {
 				long currentTime = System.currentTimeMillis();
 				
-				done = (currentTime - startTime) > configuration.getLoadTestingTime();
-				
+				if(context.getGatfExecutorConfig().getRepeatSuiteExecutionNum()>1)
+				{
+					done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum-1;
+					dorep = true;
+				}
+				else
+				{
+					done = (currentTime - startTime) > configuration.getLoadTestingTime();
+					
+					long elapsedFraction = (currentTime - startTime);
+					
+					dorep = done || loadTstReportsCount==0;
+
+					if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
+					{
+						dorep = true;
+					}
+				}
 				if(done) {
 					break;
-				}
-				
-				long elapsedFraction = (currentTime - startTime);
-				
-				dorep = done || loadTstReportsCount==0;
-
-				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
-				{
-					dorep = true;
 				}
 			} else {
 				dorep = true;
@@ -783,23 +811,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 						threadPool, dorep, reportHandler);
 				
 				concurrentUserRampUpTimeMs = 0;
-				
-				//int runNumber = 1;
-				
-				//TestSuiteStats stats = null;
 
 				long currentTime = System.currentTimeMillis();
 				String fileurl = isLoadTestingEnabled?currentTime+".html":"index.html";
 				for (Future future : userSimulations) {
 					try {
 						future.get();
-						/*if(dorep && !compareEnabledOnlySingleTestCaseExec) {
-							if(!isLoadTestingEnabled) {
-								fileurl = null;
-							}
-							reportHandler.doConcurrentRunReporting(context, suiteStartTime, fileurl, runNumber++, 
-									loadTestRunNum==1, testPercentiles, runPercentiles);
-						}*/
 					} catch (Exception e) {
 						e.printStackTrace();
 					}
@@ -814,31 +831,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					loadTestRunNum ++;
 					loadTstReportsCount ++;
 				}
-				
-				/*if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
-							testPercentiles, runPercentiles);
-				}
-				else if(dorep) {
-					stats = reportHandler.doReportingIndex(context, suiteStartTime, fileurl, numberOfRuns, null, isLoadTestingEnabled);
-					if(isLoadTestingEnabled) {
-						if(loadStats==null) {
-							loadStats = stats;
-							loadStats.setTotalUserSuiteRuns(numberOfRuns);
-						} else {
-							stats.setGroupStats(null);
-							loadStats.updateStats(stats, false);
-						}
-						loadTstReportsCount ++;
-						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl, loadTestResources);
-						reportHandler.clearForLoadTests(context);
-					} else {
-						loadStats = stats;
-					}
-				} else {
-					stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, runPercentiles);
-					loadStats.updateStats(stats, false);
-				}*/
 			}
 			else
 			{
@@ -856,34 +848,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					loadTestRunNum ++;
 					loadTstReportsCount ++;
 				}
-				
-				/*if(compareEnabledOnlySingleTestCaseExec) {
-					loadStats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
-							testPercentiles, runPercentiles);
-				}
-				else if(dorep) {
-					TestSuiteStats stats = reportHandler.doReporting(context, suiteStartTime, fileurl, null, isLoadTestingEnabled,
-							testPercentiles, runPercentiles);
-					if(isLoadTestingEnabled) {
-						loadTstReportsCount ++;
-						reportHandler.addToLoadTestResources(null, loadTestRunNum++, fileurl, loadTestResources);
-						if(loadStats==null) {
-							loadStats = stats;
-							loadStats.setTotalUserSuiteRuns(numberOfRuns);
-						} else {
-							stats.setGroupStats(null);
-							loadStats.updateStats(stats, false);
-						}
-						reportHandler.clearForLoadTests(context);
-					} else {
-						loadStats = stats;
-						loadStats.setTotalUserSuiteRuns(numberOfRuns);
-					}
-				} else {
-					TestSuiteStats stats = reportHandler.doLoadTestReporting(context, suiteStartTime, testPercentiles, 
-							runPercentiles);
-					loadStats.updateStats(stats, false);
-				}*/
 			}
 			
 			if(isLoadTestingEnabled) {
@@ -1184,8 +1148,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		
 		List<TestCaseReport> reports = null;
+		boolean isPerfTest = false;
 		if(testCase.getNumberOfExecutions()!=null && testCase.getNumberOfExecutions()>1)
 		{
+			isPerfTest = true;
 			reports = context.getPerformanceTestCaseExecutor().execute(testCase, testCaseExecutorUtil);
 		}
 		else if(sceanrios==null || sceanrios.isEmpty())
@@ -1198,7 +1164,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		
 		if(reports!=null) {
-			for (TestCaseReport testCaseReport : reports) {
+			for (int index=0;index<reports.size();index++) {
+				TestCaseReport testCaseReport = reports.get(index);
 				
 				if(!testCaseReport.getStatus().equals(TestStatus.Success.status)) {
 					success = false;
@@ -1207,7 +1174,15 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					}
 				}
 				
-				reportHandler.addTestCaseReport(testCaseReport);
+				if((isPerfTest && index==0) || !isPerfTest)
+				{
+					reportHandler.addTestCaseReport(testCaseReport);
+				}
+				
+				if(context.getGatfExecutorConfig().isGenerateExecutionLogs() && ((isPerfTest && index>0) || !isPerfTest))
+				{
+					TestCaseExecutionLogGenerator.log(testCaseReport);
+				}
 				
 				if(context.getGatfExecutorConfig().isDebugEnabled() && testCase.isDetailedLog())
 				{
@@ -1513,6 +1488,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		GatfExecutorConfig configuration = context.getGatfExecutorConfig();
 		
+		if(configuration.isGenerateExecutionLogs())
+		{
+			tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
+			tclgenerator.start();
+		}
+		
 		final TestCaseExecutorUtil testCaseExecutorUtil = new TestCaseExecutorUtil(context);
 		
 		long concurrentUserRampUpTimeMs = 0;
@@ -1570,7 +1551,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
 		
-		while(true) 
+		if(!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum()>1)
+			isLoadTestingEnabled = true;
+		
+		while(tContext.getSimTestCases().size()>0) 
 		{
 			ReportHandler reportHandler = new ReportHandler(dContext.getNode(), runPrefix);
 			
@@ -1599,19 +1583,26 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			if(isLoadTestingEnabled) {
 				long currentTime = System.currentTimeMillis();
 				
-				done = (currentTime - startTime) > configuration.getLoadTestingTime();
-				
+				if(context.getGatfExecutorConfig().getRepeatSuiteExecutionNum()>1)
+				{
+					done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum-1;
+					dorep = true;
+				}
+				else
+				{
+					done = (currentTime - startTime) > configuration.getLoadTestingTime();
+					
+					long elapsedFraction = (currentTime - startTime);
+					
+					dorep = done || loadTstReportsCount==0;
+	
+					if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
+					{
+						dorep = true;
+					}
+				}
 				if(done) {
 					break;
-				}
-				
-				long elapsedFraction = (currentTime - startTime);
-				
-				dorep = done || loadTstReportsCount==0;
-
-				if(!dorep && elapsedFraction>=reportSampleTimeMs*loadTstReportsCount) 
-				{
-					dorep = true;
 				}
 			} else {
 				dorep = true;
@@ -1860,6 +1851,15 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	}
 
 	public void shutdown() {
-		context.shutdown();
+		if(context!=null) {
+			context.shutdown();
+		}
+		if(tclgenerator!=null) {
+			tclgenerator.interrupt();
+			try {
+				Thread.sleep(2000);
+			} catch (InterruptedException e) {
+			}
+		}
 	}
 }

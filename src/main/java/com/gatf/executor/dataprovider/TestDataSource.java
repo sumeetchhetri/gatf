@@ -30,6 +30,8 @@ import com.gatf.executor.core.AcceptanceTestContext;
  */
 public abstract class TestDataSource implements TestDataProvider, TestDataHook {
 
+	protected String className;
+	
 	protected String[] args;
 	
 	protected String dataSourceName;
@@ -46,6 +48,14 @@ public abstract class TestDataSource implements TestDataProvider, TestDataHook {
 	
 	public void setContext(AcceptanceTestContext context) {
 		this.context = context;
+	}
+
+	public String getClassName() {
+		return className;
+	}
+
+	public void setClassName(String className) {
+		this.className = className;
 	}
 
 	public String[] getArgs() {

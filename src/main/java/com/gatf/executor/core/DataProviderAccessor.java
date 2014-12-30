@@ -5,7 +5,7 @@ import java.util.Map;
 import org.junit.Assert;
 
 /**
- * @author sumeetc
+ * @author Sumeet Chhetri
  *
  */
 public class DataProviderAccessor {
@@ -74,5 +74,9 @@ public class DataProviderAccessor {
 		}
 		Assert.assertNotNull("Index out of range for Provider - " + name, provData.size()<=index);
 		return provData.get(index).get(propertyName);
+	}
+	
+	public String fx(String func) {
+		return GatfFunctionHandler.handleFunction(func);
 	}
 }
