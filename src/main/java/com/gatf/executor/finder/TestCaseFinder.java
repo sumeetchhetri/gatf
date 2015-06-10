@@ -39,7 +39,9 @@ public abstract class TestCaseFinder {
 	{
 		XML(".xml"),
 		JSON(".json"),
-		CSV(".csv");
+		CSV(".csv"),
+		XLS(".xls"),
+		XLSX(".xlsx");
 		
 		public String ext;
 		

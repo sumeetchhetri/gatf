@@ -46,6 +46,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
+import edu.emory.mathcs.backport.java.util.Arrays;
+
 
 /**
  * @author Sumeet Chhetri
@@ -804,10 +806,11 @@ public class TestCase implements Serializable {
 	public TestCase() {
 	}
 	
-	public TestCase(String csvLine) {
+	@SuppressWarnings("unchecked")
+	public TestCase(String[] csvP) {
 		boolean valid = false;
-		if(csvLine!=null) {
-			List<String> csvParts = getAndSanitizeParts(csvLine);
+		if(csvP!=null) {
+			List<String> csvParts = Arrays.asList(csvP);
 			for (int i = 0; i < csvParts.size(); i++) {
 				setProperties(csvParts, i);
 			}
@@ -821,10 +824,11 @@ public class TestCase implements Serializable {
 		}
 	}
 	
-	public TestCase(String csvLine, Map<Integer, Integer> mappings) {
+	@SuppressWarnings("unchecked")
+	public TestCase(String[] csvP, Map<Integer, Integer> mappings) {
 		boolean valid = false;
-		if(csvLine!=null) {
-			List<String> csvParts = getAndSanitizeParts(csvLine);
+		if(csvP!=null) {
+			List<String> csvParts = Arrays.asList(csvP);
 			List<String> csvPartsN = new ArrayList<String>(40);
 			for (int i = 0; i < 40; i++) {
 				csvPartsN.add(null);

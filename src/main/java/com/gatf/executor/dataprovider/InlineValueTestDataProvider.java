@@ -51,9 +51,24 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 		Assert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
 		
-		for (int j = 0; j < provider.getArgs().length; j++) {
+		boolean quoted = false;
+		int start = 0;
+		String splitStr = ",";
+		if(provider.getArgs()[0].trim().equalsIgnoreCase("quoted=true")) {
+			quoted = true;
+			start = 1;
+			splitStr = "\"[\t ]*,[\t ]*\"";
+		}
+		
+		for (int j = start; j < provider.getArgs().length; j++) {
 			Assert.assertNotNull("variable value cannot be empty", provider.getArgs()[j]);
-			String[] values = provider.getArgs()[j].split(",");
+			String[] values = null;
+			if(quoted) {
+				values = provider.getArgs()[j].trim().substring(1, provider.getArgs()[j].length()-1).split(splitStr);
+			} else {
+				values = provider.getArgs()[j].trim().split(splitStr);
+			}
+			
 			Assert.assertNotNull(String.format("need %d values for variables defined", variableNamesArr.size()), 
 					provider.getArgs()[j]);
 			

@@ -59,13 +59,16 @@ import com.gatf.executor.distributed.DistributedGatfTester.DistributedConnection
 import com.gatf.executor.distributed.DistributedTestContext;
 import com.gatf.executor.distributed.DistributedTestStatus;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
-import com.gatf.executor.finder.CSVTestCaseFinder;
+import com.gatf.executor.finder.CSVFamilyTestCaseFinder.CSVTestCaseFinder;
+import com.gatf.executor.finder.CSVFamilyTestCaseFinder.XLSTestCaseFinder;
+import com.gatf.executor.finder.CSVFamilyTestCaseFinder.XLSXTestCaseFinder;
 import com.gatf.executor.finder.JSONTestCaseFinder;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 import com.gatf.executor.report.TestCaseExecutionLogGenerator;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
@@ -75,7 +78,6 @@ import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
-import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 
 /**
  * @author Sumeet Chhetri
@@ -419,6 +421,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		finder.setTargetFileNames(targetFileNames);
 		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
 		
+		finder = new XLSTestCaseFinder();
+		finder.setTargetFileNames(targetFileNames);
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
+		
+		finder = new XLSXTestCaseFinder();
+		finder.setTargetFileNames(targetFileNames);
+		allTestCases.addAll(finder.findTestCases(testCaseDirectory, context, true, relativeFileNames));
+		
 		sortAndOrderTestCases(allTestCases, context.getGatfExecutorConfig());
 		
 		return allTestCases;
@@ -550,6 +560,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 		try {
 			doExecute(configuration, null);
+		} catch(Exception e) {
+			throw new AssertionError(e);
 		} finally {
 			shutdown();
 		}

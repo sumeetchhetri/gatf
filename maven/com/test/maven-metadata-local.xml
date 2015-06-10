@@ -2,7 +2,7 @@
 <metadata>
   <plugins>
     <plugin>
-      <name>gatf-plugin-plugin</name>
+      <name>gatf-plugin</name>
       <prefix>gatf</prefix>
       <artifactId>gatf-plugin</artifactId>
     </plugin>

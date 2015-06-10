@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+		<title>GATF - Distributed Load Test Reports</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet">		
+		<style>
+			#wrapper {
+				width: 100%;
+			}
+
+			#page-wrapper {
+				padding: 0 15px;
+				min-height: 568px;
+				background-color: #fff;
+			}
+			pre {
+				background-color: white;
+				width;auto;
+			}
+
+			handcursor {
+				cursor: pointer;cursor: hand;
+			}
+		</style>
+
+	</head>
+
+	<body>
+		<div id="wrapper">		 
+			<div id="page-wrapper">
+				<!-- /.row -->
+				<div class="row">
+					<!-- /.col-lg-12 -->
+					<div class="col-lg-12">
+						<br/>
+						<div class="panel panel-default" style="width:500px">
+							<div class="panel-heading">
+								Final Distributed Load Test Reports
+							</div>
+							<!-- /.panel-heading -->
+							<div class="panel-body" id="dist-load-ui">
+								
+							</div>
+						</div>
+					</div>
+				</div>
+				<!-- /.row -->
+			</div>
+			<!-- /#page-wrapper -->
+		</div>
+		<!-- /#wrapper -->
+
+		<!-- Core Scripts - Include with every page -->
+		<script src="js/jquery-2.1.0.min.js"></script>
+		<script src="js/bootstrap.min.js"></script>
+		<script>
+			
+			function DateFmt() {
+			  this.dateMarkers = { 
+				 d:['getDate',function(v) { return ("0"+v).substr(-2,2)}], 
+				 m:['getMonth',function(v) { return ("0"+v).substr(-2,2)}],
+				 n:['getMonth',function(v) {
+					 var mthNames = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+					 return mthNames[v];
+					 }],
+				 w:['getDay',function(v) {
+					 var dayNames = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+					 return dayNames[v];
+					 }],
+				 y:['getFullYear'],
+				 H:['getHours',function(v) { return ("0"+v).substr(-2,2)}],
+				 M:['getMinutes',function(v) { return ("0"+v).substr(-2,2)}],
+				 S:['getSeconds',function(v) { return ("0"+v).substr(-2,2)}],
+				 i:['toISOString',null]
+			  };
+			 
+			  this.format = function(date, fmt) {
+				var dateMarkers = this.dateMarkers
+				var dateTxt = fmt.replace(/%(.)/g, function(m, p){
+				var rv = date[(dateMarkers[p])[0]]()
+			  
+				if ( dateMarkers[p][1] != null ) rv = dateMarkers[p][1](rv)
+
+				return rv
+			  });
+				
+			  return dateTxt
+			  }
+			}
+
+			$(document).ready(function() {
+			
+				#set($index = 0)
+				#foreach($suiteStat in $suiteStats)
+				
+					$('#dist-load-ui').append('<br/><h3><u>Node `$nodes.get($index)`</u></h3> \
+						<b><u>Load Test Statistics</u></b> \
+						<ul style="margin-left:50px" id="stats-pre-ele$index"></ul><br/> \
+						<b><u>Load Test Sample Runs</u></b> \
+						<ul style="margin-left:50px" id="stats-pre-ele1$index"></ul><br/>');
+					
+					#set($succtests = $suiteStat.getTotalTestCount() - $suiteStat.getFailedTestCount())
+					#set($succmulttests = $suiteStat.getTotalRuns() - $suiteStat.getFailedRuns())
+					$('#stats-pre-ele$index').html('<li>Total Suite Runs : $suiteStat.getTotalSuiteRuns()</li> \
+						<li>Total Testcases : $suiteStat.getTotalTestCount()</li> \
+						<li>Successful TestCases : $succtests</li> \
+						<li>Failed TestCases : $suiteStat.getFailedTestCount()</li> \
+						<li>Total ExecutionTime : $suiteStat.getExecutionTime()ms</li> \
+						<li>Total Multiple Test Runs : $suiteStat.getTotalRuns()</li> \
+						<li>Successful Multiple Test Runs : $succmulttests</li> \
+						<li>Failed Multiple Test Runs : $suiteStat.getFailedRuns()</li>');
+					
+					 var fmt = new DateFmt();
+					 var html = '';
+					 #foreach($loadTestResource in $loadTestResources.get($index))
+						{
+							var timems = '$loadTestResource.getUrl()';
+							if(timems.indexOf("-")==-1)
+								timems = timems.substring(0, timems.indexOf("."));
+							else
+								timems = timems.substring(timems.lastIndexOf("-")+1, timems.indexOf("."));
+							var date = new Date(parseInt(timems));
+							var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
+							html += '<li><a href="$loadTestResource.getUrl()">$loadTestResource.getTitle() ('+dtstr+')</a></li>';
+					 	}
+					 #end
+					 $('#stats-pre-ele1$index').html(html);
+					 
+					 #set($index = $index+1)
+				 #end
+
+			});
+			
+		</script>
+	</body>
+</html>
