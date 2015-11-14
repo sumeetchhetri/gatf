@@ -34,6 +34,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfTestDataProvider implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String dataSourceName;
 	
 	private String providerName;

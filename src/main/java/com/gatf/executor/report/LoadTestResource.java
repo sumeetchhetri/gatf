@@ -31,6 +31,8 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class LoadTestResource implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String title;
 	
 	private String url;

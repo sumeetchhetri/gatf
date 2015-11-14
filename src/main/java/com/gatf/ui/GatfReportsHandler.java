@@ -10,7 +10,6 @@ import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.maven.project.MavenProject;
 import org.apache.velocity.VelocityContext;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -134,7 +133,7 @@ public class GatfReportsHandler extends HttpHandler {
 							found.setHeaders(new HashMap<String, String>());
 						}
 						
-						TestCaseReport tcReport = new ObjectMapper().readValue(request.getInputStream(), 
+						TestCaseReport tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
 	        					TestCaseReport.class);
 	        			if(tcReport == null) {
 	        				throw new RuntimeException("Invalid testcase report details provided");
@@ -305,7 +304,7 @@ public class GatfReportsHandler extends HttpHandler {
 						TestCaseReport tcReport = null;
 						if(!action.equals("playTest"))
 						{
-							tcReport = new ObjectMapper().readValue(request.getInputStream(), 
+							tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
 	        					TestCaseReport.class);
 							tcReport.setTestCaseExternalApi(found);
 						}
@@ -335,7 +334,7 @@ public class GatfReportsHandler extends HttpHandler {
 		        				nrep.setUrl(url);
 		        				nrep.setRequestContent(content);
 		        				
-	        					String configJson = new ObjectMapper().writeValueAsString(nrep);
+	        					String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(nrep);
 	        					response.setContentLength(configJson.length());
 	        		            response.getWriter().write(configJson);
 	        					response.setStatus(HttpStatus.OK_200);
@@ -500,7 +499,7 @@ public class GatfReportsHandler extends HttpHandler {
         			
         			TestCaseReport report = reports.get(0);
         			ReportHandler.populateRequestResponseHeaders(report);
-        			String configJson = new ObjectMapper().writeValueAsString(report);
+        			String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(report);
 					response.setContentLength(configJson.length());
 		            response.getWriter().write(configJson);
 					response.setStatus(HttpStatus.OK_200);

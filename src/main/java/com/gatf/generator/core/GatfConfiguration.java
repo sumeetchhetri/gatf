@@ -57,6 +57,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfConfiguration implements Serializable, GatfPluginConfig {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String[] testPaths;
 	
 	private String[] soapWsdlKeyPairs;

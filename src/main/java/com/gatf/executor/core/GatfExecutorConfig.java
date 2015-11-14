@@ -38,6 +38,8 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String baseUrl;
 	
 	private String testCasesBasePath;
@@ -120,6 +122,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private Integer repeatSuiteExecutionNum = 0;
 	
 	private boolean isGenerateExecutionLogs = false;
+	
+	private boolean isSeleniumExecutor = false;
+	
+	private String[] seleniumScripts;
+	
+	private String seleniumDriverName;
+	
+	private String seleniumDriverPath;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -481,6 +491,38 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setGenerateExecutionLogs(boolean isGenerateExecutionLogs) {
 		this.isGenerateExecutionLogs = isGenerateExecutionLogs;
+	}
+
+	public boolean isSeleniumExecutor() {
+		return isSeleniumExecutor;
+	}
+
+	public void setSeleniumExecutor(boolean isSeleniumExecutor) {
+		this.isSeleniumExecutor = isSeleniumExecutor;
+	}
+
+	public String[] getSeleniumScripts() {
+		return seleniumScripts;
+	}
+
+	public void setSeleniumScripts(String[] seleniumScripts) {
+		this.seleniumScripts = seleniumScripts;
+	}
+
+	public String getSeleniumDriverName() {
+		return seleniumDriverName;
+	}
+
+	public void setSeleniumDriverName(String seleniumDriverName) {
+		this.seleniumDriverName = seleniumDriverName;
+	}
+
+	public String getSeleniumDriverPath() {
+		return seleniumDriverPath;
+	}
+
+	public void setSeleniumDriverPath(String seleniumDriverPath) {
+		this.seleniumDriverPath = seleniumDriverPath;
 	}
 
 	public void validate()

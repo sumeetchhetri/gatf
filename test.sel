@@ -1,0 +1,7 @@
+open firefox
+goto http://213.136.74.220:8080
+??10 id@"inputUsername"
+type "admin" id@"inputUsername" 
+type "admin" id@"inputPassword"
+click text@"Sign In"
+??10 class@"logoutLink"

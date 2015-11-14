@@ -6,13 +6,13 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.apache.commons.collections.MultiHashMap;
 import org.apache.commons.collections.MultiMap;
+import org.apache.commons.collections.map.MultiValueMap;
 
 import com.gatf.executor.core.AcceptanceTestContext;
-import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
+import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.TestDataSource;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
@@ -41,7 +41,7 @@ public class DataSourceProfiler {
 			xstream.alias("args", String[].class);
 			xstream.alias("arg", String.class);
 			
-			dsprofileMap = new MultiHashMap();
+			dsprofileMap = new MultiValueMap();
 			
 			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)xstream.fromXML(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml"));
 			for (GatfTestDataProvider gatfTestDataProvider : provs) {

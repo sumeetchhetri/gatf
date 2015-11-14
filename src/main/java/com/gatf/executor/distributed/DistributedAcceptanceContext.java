@@ -8,6 +8,8 @@ import com.gatf.executor.core.GatfExecutorConfig;
 
 public class DistributedAcceptanceContext implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+
 	public static enum Command
 	{
 		CONFIG_SHARE_REQ,

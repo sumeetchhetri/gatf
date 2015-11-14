@@ -8,6 +8,8 @@ import com.gatf.executor.report.TestSuiteStats;
 
 public class DistributedTestStatus implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String node;
 	
 	private String identifier;

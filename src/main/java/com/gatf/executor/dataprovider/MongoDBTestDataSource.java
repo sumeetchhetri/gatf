@@ -264,7 +264,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 	private static final Pattern DB_REMOVE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.remove\\((.*)\\)", Pattern.DOTALL);
 	private static final Pattern DB_SAVE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.save\\((.*)\\)", Pattern.DOTALL);
 	private static final Pattern DB_INSERT_REGEX = Pattern.compile("db\\.([^\\.]*)\\.insert\\((.*)\\)", Pattern.DOTALL);
-	private static final Pattern DB_UPDATE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.update\\((.*)\\)", Pattern.DOTALL);
+	//private static final Pattern DB_UPDATE_REGEX = Pattern.compile("db\\.([^\\.]*)\\.update\\((.*)\\)", Pattern.DOTALL);
 	
 	private static Pattern[] ALLOWED_REGEXES = new Pattern[]{DB_REMOVE_REGEX, DB_SAVE_REGEX, DB_INSERT_REGEX};
 	

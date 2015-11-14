@@ -38,6 +38,8 @@ import com.thoughtworks.xstream.annotations.XStreamConverter;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfTestDataConfig implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	@XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
 	private Map<String, String> globalVariables;
 	

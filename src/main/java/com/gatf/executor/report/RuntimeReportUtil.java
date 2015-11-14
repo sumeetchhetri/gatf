@@ -4,16 +4,16 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import org.codehaus.jackson.map.ObjectMapper;
 
 /**
  * @author Sumeet Chhetri
  *
  */
 public class RuntimeReportUtil {
-	
 	public static class LoadTestEntry implements Serializable
 	{
+		private static final long serialVersionUID = 1L;
+		
 		String node;
 		String prefix;
 		int runNo;
@@ -91,7 +91,7 @@ public class RuntimeReportUtil {
 				parts.put("tstats", gloadStats);
 				parts.put("error", "Execution already in progress..");
 				try {
-					Q.add(new ObjectMapper().writeValueAsString(parts));
+					Q.add(new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(parts));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -123,7 +123,7 @@ public class RuntimeReportUtil {
 				parts.put("tstats", gloadStats);
 				parts.put("error", "Execution already in progress..");
 				try {
-					Q.add(new ObjectMapper().writeValueAsString(parts));
+					Q.add(new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(parts));
 				} catch (Exception e) {
 					e.printStackTrace();
 				}

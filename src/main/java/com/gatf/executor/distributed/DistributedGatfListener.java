@@ -29,32 +29,36 @@ public class DistributedGatfListener {
 		
 		ServerSocket server = new ServerSocket(4567);
 		logger.info("Distributed GATF node listening on port 4567");
-		while(true) {
-			final Socket client = server.accept();
-			InputStream in = client.getInputStream();
-			OutputStream out = client.getOutputStream();
-			
-			final ObjectInputStream ois = new ObjectInputStream(in);
-			final ObjectOutputStream oos = new ObjectOutputStream(out);
-			
-			new Thread(new Runnable() {
-				public void run() {
-					try {
-						handleCommand(ois, oos);
-					} catch (Exception e) {
-						e.printStackTrace();
-					} finally {
-						if(client!=null)
-						{
-							try {
-								client.close();
-							} catch (IOException e) {
-								e.printStackTrace();
+		try {
+			while(true) {
+				final Socket client = server.accept();
+				InputStream in = client.getInputStream();
+				OutputStream out = client.getOutputStream();
+				
+				final ObjectInputStream ois = new ObjectInputStream(in);
+				final ObjectOutputStream oos = new ObjectOutputStream(out);
+				
+				new Thread(new Runnable() {
+					public void run() {
+						try {
+							handleCommand(ois, oos);
+						} catch (Exception e) {
+							e.printStackTrace();
+						} finally {
+							if(client!=null)
+							{
+								try {
+									client.close();
+								} catch (IOException e) {
+									e.printStackTrace();
+								}
 							}
 						}
 					}
-				}
-			}).start();
+				}).start();
+			}
+		} finally {
+			server.close();
 		}
 	}
 	

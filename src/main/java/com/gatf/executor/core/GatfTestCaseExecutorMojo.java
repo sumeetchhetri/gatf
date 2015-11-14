@@ -76,6 +76,8 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
+import com.gatf.selenium.CodeGenerator;
+import com.gatf.selenium.SeleniumTest;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -222,6 +224,18 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	
 	@Parameter(alias = "isGenerateExecutionLogs")
 	private boolean isGenerateExecutionLogs = false;
+	
+	@Parameter(alias = "isSeleniumExecutor")
+	private boolean isSeleniumExecutor = false;
+	
+	@Parameter(alias = "seleniumScripts")
+    private String[] seleniumScripts;
+	
+	@Parameter(alias = "seleniumDriverName")
+	private String seleniumDriverName;
+	
+	@Parameter(alias = "seleniumDriverPath")
+	private String seleniumDriverPath;
 	
 	private Long startTime = 0L;
 	
@@ -490,6 +504,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		configuration.setServerLogsApiAuthEnabled(isServerLogsApiAuthEnabled);
 		configuration.setRepeatSuiteExecutionNum(repeatSuiteExecutionNum);
 		configuration.setGenerateExecutionLogs(isGenerateExecutionLogs);
+		configuration.setSeleniumExecutor(isSeleniumExecutor);
+		configuration.setSeleniumScripts(seleniumScripts);
+		configuration.setSeleniumDriverName(seleniumDriverName);
+		configuration.setSeleniumDriverPath(seleniumDriverPath);
 		
 		if(configFile!=null) {
 			try {
@@ -515,6 +533,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					xstream.alias("ignoreFiles", String[].class);
 					xstream.alias("orderedFiles", String[].class);
 					xstream.alias("string", String.class);
+					xstream.alias("seleniumScripts", String[].class);
+					xstream.alias("seleniumScript", String.class);
 					
 					configuration = (GatfExecutorConfig)xstream.fromXML(resource);
 					
@@ -574,13 +594,31 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	@SuppressWarnings({ "rawtypes" })
 	public void doExecute(GatfExecutorConfig configuration, List<String> files) throws MojoFailureException {
 		
-		if(configuration.isGenerateExecutionLogs())
+		if(configuration.isSeleniumExecutor() && (configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0)) {
+			return;
+		}
+		
+		if(configuration.isGenerateExecutionLogs() && !configuration.isSeleniumExecutor())
 		{
 			tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
 			tclgenerator.start();
 		}
 		
 		initilaizeContext(configuration, true);
+		
+		if(configuration.isSeleniumExecutor()) {
+			System.setProperty(configuration.getSeleniumDriverName(), configuration.getSeleniumDriverPath());
+			for (String selscript : configuration.getSeleniumScripts()) {
+				try {
+					SeleniumTest dyn = CodeGenerator.getSeleniumTest(selscript, getClassLoader(), context);
+					dyn.execute(context);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			context.shutdown();
+			return;
+		}
 		
 		distributedGatfTester = new DistributedGatfTester();
 		
@@ -1370,6 +1408,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	        try
 	        {
 	            List classpathElements = project.getCompileClasspathElements();
+	            classpathElements.addAll(project.getTestClasspathElements());
 	            classpathElements.add(project.getBuild().getOutputDirectory());
 	            classpathElements.add(project.getBuild().getTestOutputDirectory());
 	            URL[] urls = new URL[classpathElements.size()];
@@ -1472,6 +1511,23 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	public static void main(String[] args) throws MojoFailureException {
 		
 		if(args.length>1 && args[0].equals("-executor") && !args[1].trim().isEmpty()) {
+			GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+			mojo.setConfigFile(args[1]);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setHttpConnectionTimeout(10000);
+			mojo.setHttpRequestTimeout(10000);
+			mojo.setHttpCompressionEnabled(true);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setConcurrentUserSimulationNum(0);
+			mojo.setTestCaseDir("data");
+			mojo.setOutFilesDir("out");
+			mojo.setLoadTestingReportSamples(3);
+			mojo.setConcurrentUserRampUpTime(0L);
+			mojo.setEnabled(true);
+			mojo.setTestCasesBasePath(System.getProperty("user.dir"));
+			mojo.setOutFilesBasePath(System.getProperty("user.dir"));
+			mojo.execute();
+		} else if(args.length>1 && args[0].equals("-selenium") && !args[1].trim().isEmpty()) {
 			GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
 			mojo.setConfigFile(args[1]);
 			mojo.setNumConcurrentExecutions(1);

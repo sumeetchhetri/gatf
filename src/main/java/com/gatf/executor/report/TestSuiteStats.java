@@ -33,6 +33,8 @@ import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestSuiteStats implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private Integer totalTestCount = 0;
 	
 	private Integer failedTestCount = 0;

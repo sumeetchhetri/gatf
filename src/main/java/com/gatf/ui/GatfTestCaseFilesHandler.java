@@ -11,7 +11,6 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -179,7 +178,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     				fileNames.add(TestCaseFinder.getRelativePath(file, dirFPath));
 				}
     			
-    			String json = new ObjectMapper().writeValueAsString(fileNames);
+    			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(fileNames);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(json.length());
 	            response.getWriter().write(json);

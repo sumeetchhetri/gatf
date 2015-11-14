@@ -500,7 +500,8 @@ public class CustomDriverManager {
         // ServiceLoader.load() replaces the sun.misc.Providers()
 
         AccessController.doPrivileged(new PrivilegedAction<Void>() {
-            public Void run() {
+            @SuppressWarnings("rawtypes")
+			public Void run() {
 
                 ServiceLoader<Driver> loadedDrivers = ServiceLoader.load(Driver.class);
                 Iterator driversIterator = loadedDrivers.iterator();

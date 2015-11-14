@@ -20,9 +20,7 @@ import com.thoughtworks.xstream.core.util.QuickWriter;
 import com.thoughtworks.xstream.io.AbstractWriter;
 import com.thoughtworks.xstream.io.StreamException;
 import com.thoughtworks.xstream.io.naming.NameCoder;
-import com.thoughtworks.xstream.io.xml.PrettyPrintWriter;
 import com.thoughtworks.xstream.io.xml.XmlFriendlyNameCoder;
-import com.thoughtworks.xstream.io.xml.XmlFriendlyReplacer;
 
 
 /**
@@ -94,10 +92,9 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
 
     /**
      * @since 1.2
-     * @deprecated As of 1.3
      */
     public GatfPrettyPrintWriter(
-        Writer writer, char[] lineIndenter, String newLine, XmlFriendlyReplacer replacer) {
+        Writer writer, char[] lineIndenter, String newLine, XmlFriendlyNameCoder replacer) {
         this(writer, XML_QUIRKS, lineIndenter, replacer, newLine, null);
     }
 
@@ -111,18 +108,16 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
 
     /**
      * @since 1.3
-     * @deprecated As of 1.4 use {@link PrettyPrintWriter#PrettyPrintWriter(Writer, int, char[], NameCoder)} instead
      */
     public GatfPrettyPrintWriter(
-        Writer writer, int mode, char[] lineIndenter, XmlFriendlyReplacer replacer) {
+        Writer writer, int mode, char[] lineIndenter, XmlFriendlyNameCoder replacer) {
         this(writer, mode, lineIndenter, replacer, "\n", null);
     }
 
     /**
-     * @deprecated As of 1.3
      */
     public GatfPrettyPrintWriter(Writer writer, char[] lineIndenter, String newLine) {
-        this(writer, lineIndenter, newLine, new XmlFriendlyReplacer());
+        this(writer, lineIndenter, newLine, new XmlFriendlyNameCoder());
     }
 
     /**
@@ -163,9 +158,8 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
 
     /**
      * @since 1.3
-     * @deprecated As of 1.4 use {@link PrettyPrintWriter#PrettyPrintWriter(Writer, int, NameCoder)} instead
      */
-    public GatfPrettyPrintWriter(Writer writer, int mode, XmlFriendlyReplacer replacer) {
+    public GatfPrettyPrintWriter(Writer writer, int mode, XmlFriendlyNameCoder replacer) {
         this(writer, mode, new char[]{' ', ' '}, replacer);
     }
 
@@ -177,9 +171,8 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
     }
 
     /**
-     * @deprecated As of 1.4 use {@link PrettyPrintWriter#PrettyPrintWriter(Writer, NameCoder)} instead.
      */
-    public GatfPrettyPrintWriter(Writer writer, XmlFriendlyReplacer replacer) {
+    public GatfPrettyPrintWriter(Writer writer, XmlFriendlyNameCoder replacer) {
         this(writer, new char[]{' ', ' '}, "\n", replacer);
     }
 
@@ -207,7 +200,8 @@ public class GatfPrettyPrintWriter extends AbstractWriter {
         tagIsEmpty = true;
     }
 
-    public void startNode(String name, Class clazz) {
+    @SuppressWarnings("rawtypes")
+	public void startNode(String name, Class clazz) {
         startNode(name);
         if(cdataNodes!=null)
         {

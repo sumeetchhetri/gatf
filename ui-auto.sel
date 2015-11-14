@@ -1,0 +1,73 @@
+require
+[
+	org.openqa.selenium.WebDriver
+]
+open chrome
+goto http://213.136.74.220:8080
+??10 id@"inputUsername"
+type "admin" id@"inputUsername" 
+type "admin" id@"inputPassword"
+click text@"Sign In"
+??10 class@"logoutLink"
+?? css@"div#left-panel>div#loginInfo"
+?? css@"div#left-panel>nav>div>ul>li" text
+[
+	DashBoard
+]
+?? css@"div#left-panel>nav>div>ul>li" text ="DashBoard"
+?? css@"div#left-panel>nav>div>ul>li" tagname ="li"
+?? css@"div#left-panel>nav>div>ul>li" attr@data-value ="li"
+?? css@"div#left-panel>nav>div>ul>li" cssvalue@width ="li"
+?? css@"div#left-panel>nav>div>ul>li" selected
+?? css@"div#left-panel>nav>div>ul>li" enabled
+?? css@"div#left-panel>nav>div>ul>li" visible
+? css@"a[href=#myCustomers]"
+? css@"a[href=#allCustomers]"
+? css@"a[href=#myVendors]"
+? css@"a[href=#allVendors]"
+? css@"a[href=#customerConnection]"
+? css@"a[href=#vendorConnection]"
+? name@"asdasd"
+{
+	click id@"1"
+	??10 class@"22"
+}
+:? name@"12345"
+{
+	click id@"2"
+	??10 class@"33"
+}
+:
+{
+	click id@"3"
+	??10 class@"44"
+}
+# css@"div[class=ssdfdsf]>nav>div>ul>li"
+{
+	click
+	??10 class@"55"
+}
+click class@"logoutLink"
+type 'admin' id@'adsdsd"ds"'
+back
+forward
+refresh
+maximize
+clear class@"logoutLink"
+submit class@"logoutLink"
+set width 100
+set height 100
+set posx 100
+set posy 100
+window main
+window 1
+window "asdsa"
+window main
+var t css@"div[class=ssdfdsf]>nav>div>ul>li"
+exec Test.test(@driver)
+exec Test.test(@window, t)
+import test.sel
+jsvar u "return window;"
+execjs "arguments[0].style.border='3px solid red'"
+screenshot "test.png"
+ele-screenshot "teste.png" css@"div[class=ssdfdsf]>nav>div>ul>li"
