@@ -40,19 +40,19 @@ public class Command {
     }
     
     static String varname() {
-    	return "w_" + NUMBER++;
+    	return "___w___" + NUMBER++;
     }
     
     static String currvarname() {
-    	return "w_" + (NUMBER-1);
+    	return "___w___" + (NUMBER-1);
     }
     
     static String varnamesr() {
-    	return "sr_" + NUMBER_SR++;
+    	return "___sr___" + NUMBER_SR++;
     }
     
     static String currvarnamesr() {
-    	return "sr_" + (NUMBER_SR-1);
+    	return "___sr___" + (NUMBER_SR-1);
     }
     
     static String currvarnamesc() {
@@ -67,16 +67,16 @@ public class Command {
     
     static void pushSc() {
     	psc = sc;
-    	sc = "sc_" + NUMBER_SC++;
+    	sc = "___sc___" + NUMBER_SC++;
     	stck.push(sc);
     }
     
     static String condvarname() {
-    	return "c_" + NUMBER_COND++;
+    	return "___c___" + NUMBER_COND++;
     }
     
     static String currcondvarname() {
-    	return "c_" + (NUMBER_COND-1);
+    	return "___c___" + (NUMBER_COND-1);
     }
     
     static String unsanitize(String val) {
@@ -326,6 +326,11 @@ public class Command {
 			}
 		}
 		b.append("package com.gatf.selenium;\n");
+		b.append("import com.gatf.selenium.SeleniumException;\n");
+		b.append("import org.openqa.selenium.remote.DesiredCapabilities;\n");
+		b.append("import org.openqa.selenium.logging.LoggingPreferences;\n");
+		b.append("import org.openqa.selenium.remote.CapabilityType;\n");
+		b.append("import org.openqa.selenium.logging.Logs;\n");
 		b.append("import java.util.List;\n");
 		b.append("import org.openqa.selenium.SearchContext;\n");
 		b.append("import org.openqa.selenium.WebDriver;\n");
@@ -345,7 +350,9 @@ public class Command {
 		b.append("import org.apache.commons.io.FileUtils;\n");
 		b.append("import java.io.File;\n");
 		b.append("import org.junit.Assert;\n\n");
-		b.append("public class "+className+" implements SeleniumTest {\npublic void execute(AcceptanceTestContext ___c___) throws Exception {\n");
+		b.append("public class "+className+" implements SeleniumTest {\nprivate WebDriver ___d___ = null;\n");
+		b.append("public void quit() {\nif(___d___!=null)___d___.quit();\n}\n");
+		b.append("public Logs execute(AcceptanceTestContext ___cxt___, LoggingPreferences ___lp___) throws Exception {\n");
 		for (Command c : children) {
 			if(c instanceof RequireCommand) {
 			} else if(c instanceof BrowserCommand) {
@@ -359,6 +366,7 @@ public class Command {
 				break;
 			}
 		}
+		b.append("try\n{\n");
 		for (Command c : children) {
 			if((c instanceof RequireCommand) || (c instanceof BrowserCommand)) {
 				continue;
@@ -369,6 +377,8 @@ public class Command {
 				b.append("\n");
 			}
 		}
+		b.append("Logs ___logs___ = ___d___.manage().logs();\nreturn ___logs___;\n");
+		b.append("}\ncatch(Throwable c)\n{\nthrow new SeleniumException(___d___, c);\n}");
 		b.append("}\n}");
 		return b.toString();
 	}
@@ -383,8 +393,8 @@ public class Command {
 			return "exec " + code;
 		}
 		String javacode() {
-			code = code.replace("@driver", "cw");
-			code = code.replace("@window", "ocw");
+			code = code.replace("@driver", "___cw___");
+			code = code.replace("@window", "___ocw___");
 			return code + ";";
 		}
 	}
@@ -404,7 +414,7 @@ public class Command {
 			return "execjs \"" + code + "\"";
 		}
 		String javacode() {
-			return "if (ocw instanceof JavascriptExecutor) {\n((JavascriptExecutor)ocw).executeScript(\""+esc(code)+"\");\n}";
+			return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(\""+esc(code)+"\");\n}";
 		}
 	}
 	
@@ -448,8 +458,8 @@ public class Command {
 			return "jsvar " + name + " \"" + script + "\"";
 		}
 		String javacode() {
-			return "Object " + name + " = null;\nif (ocw instanceof JavascriptExecutor) {\n" + 
-					name + " = ((JavascriptExecutor)ocw).executeScript(\""+esc(script)+"\");\n}";
+			return "Object " + name + " = null;\nif (___ocw___ instanceof JavascriptExecutor) {\n" + 
+					name + " = ((JavascriptExecutor)___ocw___).executeScript(\""+esc(script)+"\");\n}";
 		}
 	}
 	
@@ -469,7 +479,7 @@ public class Command {
 		}
 		String javacode() {
 			String sc = varnamesr();
-			return "File "+sc+" = ((TakesScreenshot)ocw).getScreenshotAs(OutputType.FILE);\nFileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));";
+			return "File "+sc+" = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);\nFileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));";
 		}
 	}
 	
@@ -495,7 +505,7 @@ public class Command {
 			b.append("\nif("+cond.condition()+")");
 			b.append("\n{");
 			b.append("\nWebElement ele = " +currvarname() + ".get(0);");
-			b.append("\nFile sc = ((TakesScreenshot)ocw).getScreenshotAs(OutputType.FILE);");
+			b.append("\nFile sc = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);");
 			b.append("\nBufferedImage fi = ImageIO.read(sc);");
 			b.append("\nPoint point = ele.getLocation();");
 			b.append("\nint ew = ele.getSize().getWidth();");
@@ -787,10 +797,20 @@ public class Command {
 		}
 		String javacode() {
 			pushSc();
-			return "WebDriver d = new org.openqa.selenium.chrome.ChromeDriver();\n" +
-					"SearchContext "+currvarnamesc()+" = d;\n" +
-					"WebDriver cw = d;\n" +
-					"WebDriver ocw = cw;";
+			StringBuilder b = new StringBuilder();
+			if(name.equalsIgnoreCase("chrome")) {
+				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+name.toLowerCase()+"();\n");
+				b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+				b.append("___d___ = new org.openqa.selenium.chrome.ChromeDriver(___dc___);\n");
+			} else if(name.equalsIgnoreCase("firefox")) {
+				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+name.toLowerCase()+"();\n");
+				b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+				b.append("___d___ = new org.openqa.selenium.chrome.FirefoxDriver(___dc___);\n");
+			}
+			b.append("SearchContext "+currvarnamesc()+" = ___d___;\n");
+			b.append("WebDriver ___cw___ = ___d___;\n");
+			b.append("WebDriver ___ocw___ = ___cw___;");
+			return b.toString();
 		}
 		int weigth() {
 	    	return 2;
@@ -810,13 +830,13 @@ public class Command {
 		}
 		String javacode() {
 			if(name.equals("") || name.equalsIgnoreCase("main")) {
-				return "cw = ocw;\nsc_1 = cw;";
+				return "___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
 			} else if(name.equalsIgnoreCase("parent")) {
-				return "cw = cw.parentFrame();\nsc_1 = cw;";
+				return "___cw___ = ___cw___.parentFrame();\n___sc___1 = ___cw___;";
 			} else {
 				try {
 					int index = Integer.parseInt(name);
-					return "cw = ocw.switchTo().frame("+index+")!=null?ocw.switchTo().frame("+index+"):ocw.switchTo().frame(\""+esc(name)+"\");\nsc_1 = cw;";
+					return "___cw___ = ___ocw___.switchTo().frame("+index+")!=null?___ocw___.switchTo().frame("+index+"):___ocw___.switchTo().frame(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
 				} catch (Exception e) {
 					name = unsanitize(name);
 					if(name.charAt(0)==name.charAt(name.length()-1)) {
@@ -824,7 +844,7 @@ public class Command {
 		        			name = name.substring(1, name.length()-1);
 		        		}
 		        	}
-					return "cw = ocw.switchTo().frame(\""+esc(name)+"\");\nsc_1 = cw;";
+					return "___cw___ = ___ocw___.switchTo().frame(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
 				}
 			}
 		}
@@ -835,7 +855,7 @@ public class Command {
 			return "back";
 		}
 		String javacode() {
-			return "cw.navigate().back();";
+			return "___cw___.navigate().back();";
 		}
 	}
 	
@@ -844,7 +864,7 @@ public class Command {
 			return "forward";
 		}
 		String javacode() {
-			return "cw.navigate().forward();";
+			return "___cw___.navigate().forward();";
 		}
 	}
 	
@@ -853,7 +873,7 @@ public class Command {
 			return "refresh";
 		}
 		String javacode() {
-			return "cw.navigate().refresh();";
+			return "___cw___.navigate().refresh();";
 		}
 	}
 	
@@ -862,7 +882,7 @@ public class Command {
 			return "maximize";
 		}
 		String javacode() {
-			return "cw.manage().window().maximize();";
+			return "___cw___.manage().window().maximize();";
 		}
 	}
 	
@@ -875,7 +895,7 @@ public class Command {
 			return "goto " + url;
 		}
 		String javacode() {
-			return "cw.navigate().to(\""+esc(url)+"\");";
+			return "___cw___.navigate().to(\""+esc(url)+"\");";
 		}
 	}
 	
@@ -901,13 +921,13 @@ public class Command {
 		String javacode() {
 			String cvn = varname();
 			if(type.equalsIgnoreCase("width")) {
-				return "Dimension "+cvn+" = cw.manage().window().getSize();\ncw.manage().window().setSize(new Dimension("+value+", "+cvn+".getHeight()));";
+				return "Dimension "+cvn+" = ___cw___.manage().window().getSize();\n___cw___.manage().window().setSize(new Dimension("+value+", "+cvn+".getHeight()));";
 			} else if(type.equalsIgnoreCase("height")) {
-				return "Dimension "+cvn+" = cw.manage().window().getSize();\ncw.manage().window().setSize(new Dimension("+cvn+".getWidth(), "+value+"));";
+				return "Dimension "+cvn+" = ___cw___.manage().window().getSize();\n___cw___.manage().window().setSize(new Dimension("+cvn+".getWidth(), "+value+"));";
 			} else if(type.equalsIgnoreCase("posx")) {
-				return "Point "+cvn+" = cw.manage().window().getPosition();\ncw.manage().window().setPosition(new Point("+value+", "+cvn+".getY()));";
+				return "Point "+cvn+" = ___cw___.manage().window().getPosition();\n___cw___.manage().window().setPosition(new Point("+value+", "+cvn+".getY()));";
 			} else if(type.equalsIgnoreCase("posy")) {
-				return "Point "+cvn+" = cw.manage().window().getPosition();\ncw.manage().window().setPosition(new Point("+cvn+".getX(), "+value+"));";
+				return "Point "+cvn+" = ___cw___.manage().window().getPosition();\n___cw___.manage().window().setPosition(new Point("+cvn+".getX(), "+value+"));";
 			}
 			return "";
 		}
@@ -1004,7 +1024,7 @@ public class Command {
 				b.append("List<WebElement>  " + varname() + " = By.partialLinkText(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("active")) {
 				b.append("\n@SuppressWarnings(\"serial\")");
-				b.append("List<WebElement>  " + varname() + " = new ArrayList<WebElement>(){{add(cw.activeElement());}};");
+				b.append("List<WebElement>  " + varname() + " = new ArrayList<WebElement>(){{add(___cw___.activeElement());}};");
 			}
 			
 			if(this.children!=null && this.children.size()>0) {
@@ -1020,28 +1040,28 @@ public class Command {
 					if(by.equalsIgnoreCase(subselector))
 					{
 						if(subselector.equalsIgnoreCase("title")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(cw.getTitle());");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getTitle());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("currentUrl")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(cw.getCurrentUrl());");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getCurrentUrl());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("pageSource")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(cw.getPageSource());");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getPageSource());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("width")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(cw.manage().window().getSize().getWidth()));");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getSize().getWidth()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("height")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(cw.manage().window().getSize().getHeight()));");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getSize().getHeight()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("xpos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(cw.manage().window().getPosition().getX()));");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getPosition().getX()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("ypos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(cw.manage().window().getPosition().getY()));");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getPosition().getY()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("alerttext")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(cw.switchTo().alert().getText());");
+							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.switchTo().alert().getText());");
 							return b.toString();
 						}
 					}
@@ -1156,7 +1176,7 @@ public class Command {
 		String javacodeonly(List<Command> children) {
 			String tsc = currvarnamesc();
 			pushSc();
-			String v = "final WebDriver "+currvarnamesc()+" = (WebDriver)"+tsc+";\n(new WebDriverWait(cw, "+waitfor+")).until(" +
+			String v = "final WebDriver "+currvarnamesc()+" = (WebDriver)"+tsc+";\n(new WebDriverWait(___cw___, "+waitfor+")).until(" +
 				"\nnew Function<WebDriver, Boolean>(){"+
 					"\npublic Boolean apply(WebDriver input) {\n"+
 						super.javacodeonly(children) +

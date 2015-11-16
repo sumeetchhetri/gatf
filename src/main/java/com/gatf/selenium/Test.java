@@ -1,6 +1,8 @@
 package com.gatf.selenium;
 
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -9,6 +11,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -20,6 +23,13 @@ public class Test {
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		
+		String t = "browser(ALL),client(ALL),driver(ALL),performance(ALL),profiler(ALL),server(ALL)";
+		if(t.toLowerCase().matches(".*browser\\(([a-z]+)\\).*")) {
+			Matcher m = Pattern.compile(".*browser\\(([a-z]+)\\).*").matcher(t.toLowerCase());
+			m.find();
+			System.out.println(m.group(1));
+		}
 		
 		Integer.parseInt("001");
 		

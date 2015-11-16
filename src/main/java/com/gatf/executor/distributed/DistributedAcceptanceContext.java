@@ -17,6 +17,8 @@ public class DistributedAcceptanceContext implements Serializable {
 		TESTS_SHARE_REQ,
 		TESTS_SHARE_RES,
 		LOAD_TESTS_RES,
+		SELENIUM_REQ,
+		SELENIUM_RES,
 		INVALID
 	}
 	

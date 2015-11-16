@@ -19,6 +19,8 @@ import com.gatf.executor.core.AcceptanceTestContext;
 
 public class CodeGenerator {
 	
+	static URLClassLoader classLoader = null;
+	
 	@SuppressWarnings("unchecked")
 	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context) throws Exception
 	{
@@ -63,9 +65,10 @@ public class CodeGenerator {
         if (task.call()) {
         	URL[] urls = new URL[1];
             urls[0] = gcdir.toURI().toURL();
-            URLClassLoader classLoader = new URLClassLoader(urls, loader);
+            if(classLoader==null) {
+            	classLoader = new URLClassLoader(urls, loader);
+            }
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-            classLoader.close();
             return loadedClass.newInstance();
         } else {
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {

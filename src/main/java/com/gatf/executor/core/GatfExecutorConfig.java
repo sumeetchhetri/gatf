@@ -18,6 +18,7 @@ limitations under the License.
 
 import java.io.Serializable;
 
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -130,6 +131,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private String seleniumDriverName;
 	
 	private String seleniumDriverPath;
+	
+	private String seleniumLoggerPreferences;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -523,6 +526,19 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setSeleniumDriverPath(String seleniumDriverPath) {
 		this.seleniumDriverPath = seleniumDriverPath;
+	}
+	
+	public boolean isValidSeleniumRequest() {
+		return isSeleniumExecutor && seleniumScripts!=null && seleniumScripts.length>0 && 
+				StringUtils.isNotEmpty(seleniumDriverName) && StringUtils.isNotEmpty(seleniumDriverPath);
+	}
+
+	public String getSeleniumLoggerPreferences() {
+		return seleniumLoggerPreferences;
+	}
+
+	public void setSeleniumLoggerPreferences(String seleniumLoggerPreferences) {
+		this.seleniumLoggerPreferences = seleniumLoggerPreferences;
 	}
 
 	public void validate()
