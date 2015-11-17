@@ -7,7 +7,6 @@ import java.util.List;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
@@ -46,14 +45,14 @@ public class GatfProjectZipHandler extends HttpHandler {
     	else err.add(resStr);
     	if(res.size()>0)
     	{
-    		String configJson = new ObjectMapper().writeValueAsString(res);
+    		String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(res);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.OK_200);
     	}
     	else
     	{
-    		String configJson = new ObjectMapper().writeValueAsString(err);
+    		String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(err);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);

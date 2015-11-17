@@ -18,6 +18,7 @@ limitations under the License.
 
 import java.io.Serializable;
 
+import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
@@ -38,6 +39,8 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String baseUrl;
 	
 	private String testCasesBasePath;
@@ -120,6 +123,16 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private Integer repeatSuiteExecutionNum = 0;
 	
 	private boolean isGenerateExecutionLogs = false;
+	
+	private boolean isSeleniumExecutor = false;
+	
+	private String[] seleniumScripts;
+	
+	private String seleniumDriverName;
+	
+	private String seleniumDriverPath;
+	
+	private String seleniumLoggerPreferences;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -481,6 +494,51 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setGenerateExecutionLogs(boolean isGenerateExecutionLogs) {
 		this.isGenerateExecutionLogs = isGenerateExecutionLogs;
+	}
+
+	public boolean isSeleniumExecutor() {
+		return isSeleniumExecutor;
+	}
+
+	public void setSeleniumExecutor(boolean isSeleniumExecutor) {
+		this.isSeleniumExecutor = isSeleniumExecutor;
+	}
+
+	public String[] getSeleniumScripts() {
+		return seleniumScripts;
+	}
+
+	public void setSeleniumScripts(String[] seleniumScripts) {
+		this.seleniumScripts = seleniumScripts;
+	}
+
+	public String getSeleniumDriverName() {
+		return seleniumDriverName;
+	}
+
+	public void setSeleniumDriverName(String seleniumDriverName) {
+		this.seleniumDriverName = seleniumDriverName;
+	}
+
+	public String getSeleniumDriverPath() {
+		return seleniumDriverPath;
+	}
+
+	public void setSeleniumDriverPath(String seleniumDriverPath) {
+		this.seleniumDriverPath = seleniumDriverPath;
+	}
+	
+	public boolean isValidSeleniumRequest() {
+		return isSeleniumExecutor && seleniumScripts!=null && seleniumScripts.length>0 && 
+				StringUtils.isNotEmpty(seleniumDriverName) && StringUtils.isNotEmpty(seleniumDriverPath);
+	}
+
+	public String getSeleniumLoggerPreferences() {
+		return seleniumLoggerPreferences;
+	}
+
+	public void setSeleniumLoggerPreferences(String seleniumLoggerPreferences) {
+		this.seleniumLoggerPreferences = seleniumLoggerPreferences;
 	}
 
 	public void validate()

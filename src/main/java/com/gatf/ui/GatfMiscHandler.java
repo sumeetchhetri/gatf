@@ -7,7 +7,6 @@ import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
-import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -80,7 +79,7 @@ public class GatfMiscHandler extends HttpHandler {
 				dataLst.add(RandomValueTestDataProvider.class.getName());
 				miscMap.put("providercls", dataLst);
     			
-    			String configJson = new ObjectMapper().writeValueAsString(miscMap);
+    			String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(miscMap);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(configJson.length());
 	            response.getWriter().write(configJson);

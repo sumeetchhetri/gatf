@@ -14,6 +14,8 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class GatfTestDataSourceHook implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private String hookName;
 	
 	private String hookClass;

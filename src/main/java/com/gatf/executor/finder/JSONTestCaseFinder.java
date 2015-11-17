@@ -18,10 +18,6 @@ limitations under the License.
 
 import java.io.File;
 import java.util.List;
-
-import org.codehaus.jackson.map.ObjectMapper;
-import org.codehaus.jackson.type.TypeReference;
-
 import com.gatf.executor.core.TestCase;
 
 /**
@@ -36,8 +32,8 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 
 	@SuppressWarnings("unchecked")
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		ObjectMapper jsonMapper = new ObjectMapper();
-		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new TypeReference<List<TestCase>>(){});
+		org.codehaus.jackson.map.ObjectMapper jsonMapper = new org.codehaus.jackson.map.ObjectMapper();
+		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new org.codehaus.jackson.type.TypeReference<List<TestCase>>(){});
 		return jsonTestCases;
 	}
 }

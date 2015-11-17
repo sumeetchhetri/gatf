@@ -12,7 +12,6 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -107,7 +106,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || isUpdate) {
     		try {
-    			TestCase testCase = new ObjectMapper().readValue(request.getInputStream(), 
+    			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
     					TestCase.class);
     			if(testCase.getName()==null) {
     				throw new RuntimeException("Testcase does not specify name");
@@ -232,7 +231,7 @@ public class GatfTestCaseHandler extends HttpHandler {
                 		xstream.toXML(tcsn, new FileOutputStream(filePath));
     				}
     			}
-    			String json = new ObjectMapper().writeValueAsString(tcsn);
+    			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcsn);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(json.length());
 	            response.getWriter().write(json);

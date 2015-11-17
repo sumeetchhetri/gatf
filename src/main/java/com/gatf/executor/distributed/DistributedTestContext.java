@@ -8,6 +8,8 @@ import com.gatf.executor.core.TestCase;
 
 public class DistributedTestContext implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+
 	private List<TestCase> simTestCases;
 	
 	private Set<String> relativeFileNames;

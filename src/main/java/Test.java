@@ -31,6 +31,8 @@ public class Test {
 		Response resp = respf.get();
 		System.out.println(resp.toString());
 		
+		client.close();
+		
 	}
 	
 	public static void main(String[] args) throws Exception

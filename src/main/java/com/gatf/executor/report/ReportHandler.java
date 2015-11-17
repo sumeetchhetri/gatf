@@ -21,13 +21,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -44,13 +44,15 @@ import java.util.zip.ZipOutputStream;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.custommonkey.xmlunit.XMLAssert;
 import org.skyscreamer.jsonassert.JSONAssert;
 
@@ -122,12 +124,12 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 			
 			if(nodes==null)
 			{
-				reportingJson = new ObjectMapper().writeValueAsString(loadTestResources);
+				reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(loadTestResources);
 				context.put("loadTestResources", reportingJson);
 			}
 			else
@@ -158,7 +160,7 @@ public class ReportHandler {
             engine.init();
             
             StringWriter writer = new StringWriter();
-            engine.mergeTemplate("/gatf-templates/index-load.vm", context, writer);
+            engine.mergeTemplate("/gatf-templates/index-load.vm", "UTF-8", context, writer);
 
             if(prefix==null)
             	prefix = "";
@@ -204,7 +206,7 @@ public class ReportHandler {
             engine.init();
             
             StringWriter writer = new StringWriter();
-            engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", context, writer);
+            engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", "UTF-8", context, writer);
             
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                     + SystemUtils.FILE_SEPARATOR + "index.html")));
@@ -409,7 +411,7 @@ public class ReportHandler {
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName)
+    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName, boolean addFolders)
     {
         try
         {
@@ -423,28 +425,46 @@ public class ReportHandler {
             FileOutputStream fos = new FileOutputStream(zipFile);
         	ZipOutputStream zos = new ZipOutputStream (fos);
         	
-        	File[] files = directory.listFiles(new FilenameFilter() {
-				public boolean accept(File folder, String name) {
-					for (String fileFilter : fileFilters) {
-						return name.toLowerCase().endsWith(fileFilter);
-					}
-					return false;
-				}
-			});
+        	Collection<File> files = null;
+        	if(addFolders) {
+        		files = FileUtils.listFilesAndDirs(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), FileFilterUtils.trueFileFilter());
+        	} else {
+        		files = FileUtils.listFiles(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), null);
+        	}
         	
         	for (File file : files) {
-        		FileInputStream fis = new FileInputStream(file);
-        		ZipEntry zipEntry = new ZipEntry(file.getName());
-        		zos.putNextEntry(zipEntry);
+        		if(file.isDirectory()) {
+        			String dp = file.getAbsolutePath();
+        			dp = dp.replace(directory.getAbsolutePath(), "");
+        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			if(dp.isEmpty())continue;
+        			if(dp.startsWith("/")) {
+        				dp = dp.substring(1);
+        			}
+        			ZipEntry zipEntry = new ZipEntry(dp + "/");
+        			zos.putNextEntry(zipEntry);
+        			zos.closeEntry();
+        		} else {
+        			String dp = file.getAbsolutePath();
+        			dp = dp.replace(directory.getAbsolutePath(), "");
+        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			if(dp.isEmpty())continue;
+        			if(dp.startsWith("/")) {
+        				dp = dp.substring(1);
+        			}
+        			FileInputStream fis = new FileInputStream(file);
+            		ZipEntry zipEntry = new ZipEntry(dp);
+            		zos.putNextEntry(zipEntry);
 
-        		byte[] bytes = new byte[1024];
-        		int length;
-        		while ((length = fis.read(bytes)) >= 0) {
-        			zos.write(bytes, 0, length);
+            		byte[] bytes = new byte[1024];
+            		int length;
+            		while ((length = fis.read(bytes)) >= 0) {
+            			zos.write(bytes, 0, length);
+            		}
+
+            		zos.closeEntry();
+            		fis.close();
         		}
-
-        		zos.closeEntry();
-        		fis.close();
 			}
         	
             zos.close();
@@ -531,7 +551,7 @@ public class ReportHandler {
 		VelocityContext context = new VelocityContext();
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(allTestCases);
 			context.put("testcaseReports", reportingJson);
 			
 			context.put("userSimulation", false);
@@ -648,7 +668,7 @@ public class ReportHandler {
 				if(firstCompareCopy==null) {
 					try
 					{
-						String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+						String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(allTestCases);
 						context.put("testcaseReports", reportingJson);
 						allTestCases.clear();
 						context.put("compareStats", "{}");
@@ -674,7 +694,7 @@ public class ReportHandler {
 			                engine.init();
 			                
 			                StringWriter writer = new StringWriter();
-			                engine.mergeTemplate("/gatf-templates/index-run.vm", context, writer);
+			                engine.mergeTemplate("/gatf-templates/index-run.vm", "UTF-8", context, writer);
 
 			                if(reportFileName==null)
 			                	reportFileName = "index.html";
@@ -757,7 +777,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testCaseStats);
 			context.put("testcaseStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -767,7 +787,7 @@ public class ReportHandler {
 		{
 			testSuiteStats.setTotalUserSuiteRuns(numberOfRuns);
 			testSuiteStats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
-			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -810,7 +830,7 @@ public class ReportHandler {
                 context.put("isLoadTestingEnabled", isLoadTestingEnabled);
                 
                 StringWriter writer = new StringWriter();
-                engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
+                engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                         + SystemUtils.FILE_SEPARATOR + reportFileName)));
@@ -993,7 +1013,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(allTestCases);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(allTestCases);
 			context.put("testcaseReports", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1003,7 +1023,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testCaseStats);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testCaseStats);
 			context.put("testcaseStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1012,7 +1032,7 @@ public class ReportHandler {
 		try
 		{
 			testSuiteStats.setExecutionTime(endTime - startTime);
-			String reportingJson = new ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1020,7 +1040,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(compareStatuses);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(compareStatuses);
 			context.put("compareStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1058,7 +1078,7 @@ public class ReportHandler {
                 context.put("isLoadTestingEnabled", isLoadTestingEnabled);
                 
                 StringWriter writer = new StringWriter();
-                engine.mergeTemplate("/gatf-templates/index.vm", context, writer);
+                engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                         + SystemUtils.FILE_SEPARATOR + orf)));
@@ -1090,7 +1110,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new ObjectMapper().writeValueAsString(testPercentileValues);
+			String reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(testPercentileValues);
 			context.put("testcaseTAReports", reportingJson);
 			
 			if(testPercentileValues.size()>0)
@@ -1121,7 +1141,7 @@ public class ReportHandler {
 				times90.add(time);
 			}
 			
-			reportingJson = new ObjectMapper().writeValueAsString(runPercentileValues);
+			reportingJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(runPercentileValues);
 			context.put("runTAReports", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1151,7 +1171,7 @@ public class ReportHandler {
                 context.put("isLoadTestingEnabled", isLoadTestingEnabled);
                 
                 StringWriter writer = new StringWriter();
-                engine.mergeTemplate("/gatf-templates/index-ta.vm", context, writer);
+                engine.mergeTemplate("/gatf-templates/index-ta.vm", "UTF-8", context, writer);
 
                 prefix = prefix==null?"":prefix;
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()

@@ -24,6 +24,7 @@ import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -36,7 +37,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.logging.Level;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.Component;
@@ -46,6 +50,11 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.logging.Logs;
 
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
@@ -76,6 +85,11 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
+import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
+import com.gatf.selenium.SeleniumException;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SerializableLogEntries;
+import com.gatf.selenium.SerializableLogEntry;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -222,6 +236,21 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	
 	@Parameter(alias = "isGenerateExecutionLogs")
 	private boolean isGenerateExecutionLogs = false;
+	
+	@Parameter(alias = "isSeleniumExecutor")
+	private boolean isSeleniumExecutor = false;
+	
+	@Parameter(alias = "seleniumScripts")
+    private String[] seleniumScripts;
+	
+	@Parameter(alias = "seleniumDriverName")
+	private String seleniumDriverName;
+	
+	@Parameter(alias = "seleniumDriverPath")
+	private String seleniumDriverPath;
+	
+	@Parameter(alias = "seleniumLoggerPreferences")
+	private String seleniumLoggerPreferences;
 	
 	private Long startTime = 0L;
 	
@@ -490,6 +519,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		configuration.setServerLogsApiAuthEnabled(isServerLogsApiAuthEnabled);
 		configuration.setRepeatSuiteExecutionNum(repeatSuiteExecutionNum);
 		configuration.setGenerateExecutionLogs(isGenerateExecutionLogs);
+		configuration.setSeleniumExecutor(isSeleniumExecutor);
+		configuration.setSeleniumScripts(seleniumScripts);
+		configuration.setSeleniumDriverName(seleniumDriverName);
+		configuration.setSeleniumDriverPath(seleniumDriverPath);
+		configuration.setSeleniumLoggerPreferences(seleniumLoggerPreferences);
 		
 		if(configFile!=null) {
 			try {
@@ -515,6 +549,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					xstream.alias("ignoreFiles", String[].class);
 					xstream.alias("orderedFiles", String[].class);
 					xstream.alias("string", String.class);
+					xstream.alias("seleniumScripts", String[].class);
+					xstream.alias("seleniumScript", String.class);
 					
 					configuration = (GatfExecutorConfig)xstream.fromXML(resource);
 					
@@ -574,7 +610,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	@SuppressWarnings({ "rawtypes" })
 	public void doExecute(GatfExecutorConfig configuration, List<String> files) throws MojoFailureException {
 		
-		if(configuration.isGenerateExecutionLogs())
+		if(configuration.isSeleniumExecutor() && (configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0
+				|| StringUtils.isEmpty(configuration.getSeleniumDriverName()) || StringUtils.isEmpty(configuration.getSeleniumDriverPath()))) {
+			return;
+		}
+		
+		if(configuration.isGenerateExecutionLogs() && !configuration.isSeleniumExecutor())
 		{
 			tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
 			tclgenerator.start();
@@ -583,6 +624,94 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		initilaizeContext(configuration, true);
 		
 		distributedGatfTester = new DistributedGatfTester();
+		
+		List<DistributedConnection> distConnections = null;
+		
+		if(configuration.isSeleniumExecutor()) {
+			System.setProperty(configuration.getSeleniumDriverName(), configuration.getSeleniumDriverPath());
+			LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
+			
+			List<Class> testClasses = new ArrayList<Class>();
+			List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
+			List<String> testClassNames = new ArrayList<String>();
+			for (String selscript : configuration.getSeleniumScripts()) {
+				try {
+					SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context);
+					testClasses.add(dyn.getClass());
+					tests.add(dyn);
+					testClassNames.add(dyn.getClass().getName());
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			List<FutureTask<List<Map<String, SerializableLogEntries>>>> tasks = new ArrayList<FutureTask<List<Map<String, SerializableLogEntries>>>>();
+			if(configuration.isDistributedLoadTests() && configuration.getDistributedNodes()!=null && configuration.getDistributedNodes().length>0)
+			{
+				distConnections = new ArrayList<DistributedConnection>();
+				
+				for (String node : configuration.getDistributedNodes()) {
+					DistributedConnection conn = distributedGatfTester.distributeContext(node, context);
+					if(conn!=null) {
+						distConnections.add(conn);
+					}
+				}
+				
+				if(distConnections.size()>0)
+				{
+					File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests();
+					for (int i=0;i<distConnections.size();i++) {
+						DistributedConnection conn = distConnections.get(i);
+						if(conn!=null) {
+							FutureTask<List<Map<String, SerializableLogEntries>>> task = distributedGatfTester.distributeSeleniumTests(conn, selClsFilesZip, testClassNames);
+							tasks.add(task);
+						}
+					}
+				}
+			}
+			
+			for (int i=0;i<tests.size();i++) {
+				SeleniumTest dyn = tests.get(i);
+				if(dyn==null)continue;
+				try {
+					Logs logs = dyn.execute(context, lp);
+					for (String lg : logs.getAvailableLogTypes()) {
+						LogEntries logEntries = logs.get(lg);
+						getLog().info("/*********************************************Start script "+configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n");
+						for (LogEntry logEntry : logEntries) {
+							getLog().info(logEntry.getMessage());
+						}
+						getLog().info("/*********************************************End script "+configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n\n\n");
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+				dyn.quit();
+			}
+			
+			for (int j=0;j<tasks.size();j++) {
+				try {
+					List<Map<String, SerializableLogEntries>> llg = tasks.get(j).get();
+					for (int i=0;i<llg.size();i++) {
+						for (String lg : llg.get(i).keySet()) {
+							SerializableLogEntries logEntries = llg.get(i).get(lg);
+							getLog().info("/*********************************************Start script ["+distConnections.get(j).toString()+"]"+
+									configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n");
+							for (SerializableLogEntry logEntry : logEntries) {
+								getLog().info(logEntry.getMessage());
+							}
+							getLog().info("/*********************************************End script ["+distConnections.get(j).toString()+"]"+
+									configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n\n\n");
+						}
+					}
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+			
+			context.shutdown();
+			return;
+		}
 		
 		final TestCaseExecutorUtil testCaseExecutorUtil = new TestCaseExecutorUtil(context);
 		
@@ -670,9 +799,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		validateTestCases(allTestCases, testCaseExecutorUtil);
 		
-		List<DistributedConnection> distConnections = null;
 		List<FutureTask<DistributedTestStatus>> distTasks = null;
-		
 		long reportSampleTimeMs = 0;
 		if(isLoadTestingEnabled)
 		{
@@ -684,7 +811,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 				distConnections = new ArrayList<DistributedConnection>();
 				
 				for (String node : configuration.getDistributedNodes()) {
-					DistributedConnection conn = distributedGatfTester.distributeContext(node, context, allTestCases);
+					DistributedConnection conn = distributedGatfTester.distributeContext(node, context);
 					if(conn!=null) {
 						distConnections.add(conn);
 					}
@@ -1370,6 +1497,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	        try
 	        {
 	            List classpathElements = project.getCompileClasspathElements();
+	            classpathElements.addAll(project.getTestClasspathElements());
 	            classpathElements.add(project.getBuild().getOutputDirectory());
 	            classpathElements.add(project.getBuild().getTestOutputDirectory());
 	            URL[] urls = new URL[classpathElements.size()];
@@ -1488,12 +1616,28 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			mojo.setTestCasesBasePath(System.getProperty("user.dir"));
 			mojo.setOutFilesBasePath(System.getProperty("user.dir"));
 			mojo.execute();
+		} else if(args.length>1 && args[0].equals("-selenium") && !args[1].trim().isEmpty()) {
+			GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+			mojo.setConfigFile(args[1]);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setHttpConnectionTimeout(10000);
+			mojo.setHttpRequestTimeout(10000);
+			mojo.setHttpCompressionEnabled(true);
+			mojo.setNumConcurrentExecutions(1);
+			mojo.setConcurrentUserSimulationNum(0);
+			mojo.setTestCaseDir("data");
+			mojo.setOutFilesDir("out");
+			mojo.setLoadTestingReportSamples(3);
+			mojo.setConcurrentUserRampUpTime(0L);
+			mojo.setEnabled(true);
+			mojo.setTestCasesBasePath(System.getProperty("user.dir"));
+			mojo.setOutFilesBasePath(System.getProperty("user.dir"));
+			mojo.execute();
 		}
 	}
 	
 	@SuppressWarnings("rawtypes")
-	public DistributedTestStatus handleDistributedTests(DistributedAcceptanceContext dContext,
-			DistributedTestContext tContext)
+	public DistributedTestStatus handleDistributedTests(DistributedAcceptanceContext dContext, DistributedTestContext tContext)
 	{
 		context = new AcceptanceTestContext(dContext);
 		context.handleTestDataSourcesAndHooks(context.getGatfExecutorConfig().getGatfTestDataConfig());
@@ -1698,6 +1842,47 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		finalStats.setRunPercentileTimes(runPercentiles.getPercentileTimes());
 		finalStats.setSuiteStats(loadStats);
 		return finalStats;
+	}
+	
+	public List<Map<String, SerializableLogEntries>> handleDistributedSeleniumTests(DistributedAcceptanceContext dContext, List<SeleniumTest> tests) 
+			throws MojoFailureException {
+		List<Map<String, SerializableLogEntries>> lglist = new ArrayList<Map<String, SerializableLogEntries>>();
+		
+		context = new AcceptanceTestContext(dContext);
+		context.handleTestDataSourcesAndHooks(dContext.getConfig().getGatfTestDataConfig());
+		
+		if(dContext.getConfig().isSeleniumExecutor()) {
+			final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(dContext.getConfig());
+			
+			for (SeleniumTest dyn : tests) {
+				try {
+					Logs logs = dyn.execute(context, lp);
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
+					for (String s : logs.getAvailableLogTypes()) {
+						LogEntries logEntries = logs.get(s);
+						lg.put(s, new SerializableLogEntries(logEntries.getAll()));
+					}
+					lglist.add(lg);
+				} catch (SeleniumException e) {
+					Logs logs = e.getD().manage().logs();
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
+					for (String s : lp.getEnabledLogTypes()) {
+						LogEntries logEntries = logs.get(s);
+						lg.put(s, new SerializableLogEntries(logEntries.getAll()));
+					}
+					lglist.add(lg);
+				} catch (final Throwable e) {
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
+					List<LogEntry> entries = new ArrayList<LogEntry>();
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(e)));
+					lg.put(LogType.DRIVER, new SerializableLogEntries(entries));
+					lglist.add(lg);
+				}
+				dyn.quit();
+			}
+			context.shutdown();
+		}
+		return lglist;
 	}
 	
 	private void doAsyncDistributedConcReporting(final ReportHandler reportHandler, final long suiteStartTime, 

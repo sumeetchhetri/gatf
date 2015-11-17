@@ -67,6 +67,8 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.MultivaluedHashMap;
+import javax.ws.rs.core.MultivaluedMap;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
@@ -82,7 +84,6 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
@@ -599,7 +600,15 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
-	                            	content = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+	                            	if(contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.map.annotate.JsonSerialize.class)
+                            				|| contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.annotate.JsonAutoDetect.class))
+                            		{
+	                            		content = new org.codehaus.jackson.map.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+                            		}
+                                	else
+                                	{
+                                		content = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+                                	}
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
 	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))
@@ -669,7 +678,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                     	
                     	if("json".equalsIgnoreCase(getTestCaseFormat()))
                     	{
-                    		String postManJson = new ObjectMapper().writeValueAsString(tcases);
+                    		String postManJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcases);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -712,7 +721,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                 				postmanCollection.addTestCase(testCase, getPostmanCollectionVersion());
 							}
                 			
-                			String postManJson = new ObjectMapper().writeValueAsString(postmanCollection);
+                			String postManJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(postmanCollection);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_postman.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -828,6 +837,20 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	            viewField = new ViewField();
 	            viewField.setClaz(clas);
 	            viewField.setValue(getPrimitiveValue(claz));
+	        }
+	        else if (clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.Attachment")
+	        		|| clas.getName().equals("org.apache.cxf.message.Attachment")
+	        		|| clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.MultipartBody")
+	        		|| clas.equals(MultivaluedMap.class)
+	        		|| clas.equals(MultivaluedHashMap.class)
+	        		|| 
+	        		(isCollection(clas) && clas.getTypeParameters().length>0 
+	        				&& clas.getTypeParameters()[0].toString().equals("class org.apache.cxf.jaxrs.ext.multipart.Attachment"))
+	        		||
+	        		(isCollection(clas) && clas.getTypeParameters().length>0 
+	        				&& clas.getTypeParameters()[0].toString().equals("class org.apache.cxf.message.Attachment")))
+	        {
+	            return null;
 	        }
 	        else if (isMap(clas))
 	        {
@@ -957,14 +980,14 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     	
     	ParameterizedType type = null;
 		Class clas = null;
-		if(claz instanceof ParameterizedType)
+		if(claz instanceof Class)
 		{
-			type = (ParameterizedType)claz;
-			clas = (Class)type.getRawType();
+			clas = (Class)claz;
 		}
 		else
 		{
-			clas = (Class)claz;
+			type = (ParameterizedType)claz;
+			clas = (Class)type.getRawType();
 		}
 		if (isPrimitive(clas))
         {
@@ -1267,7 +1290,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	    		testGenerator.setPostmanCollectionVersion(config.getPostmanCollectionVersion());
 	    		testGenerator.execute();
     		}
-    		else if(args.length>1 && args[0].equals("-executor") && !args[1].trim().isEmpty())
+    		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
     		{
     			GatfTestCaseExecutorMojo.main(args);
     		}

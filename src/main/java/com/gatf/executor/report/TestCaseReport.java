@@ -43,6 +43,8 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCaseReport implements Serializable {
 	
+	private static final long serialVersionUID = 1L;
+	
 	private String actualUrl;
 	
 	private String url;

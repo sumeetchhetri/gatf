@@ -60,6 +60,8 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class TestCase implements Serializable {
 
+	private static final long serialVersionUID = 1L;
+	
 	private static final Logger logger = Logger.getLogger(TestCase.class);
 	
 	private static final String PRE = UUID.randomUUID().toString() + "__";
@@ -1499,7 +1501,7 @@ public class TestCase implements Serializable {
 		return true;
 	}
 	
-	private static List<String> getAndSanitizeParts(String csvLine) {
+	protected static List<String> getAndSanitizeParts(String csvLine) {
 		
 		Matcher match = quotedString.matcher(csvLine);
 		int i = 0;

@@ -9,6 +9,7 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
@@ -22,6 +23,7 @@ import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
+import com.gatf.selenium.SerializableLogEntries;
 
 public class DistributedGatfTester {
 
@@ -39,8 +41,7 @@ public class DistributedGatfTester {
 		}
 	}
 	
-	public DistributedConnection distributeContext(String node, AcceptanceTestContext context, 
-			List<TestCase> simTestCases)
+	public DistributedConnection distributeContext(String node, AcceptanceTestContext context)
 	{
 		Socket client = null;
 		DistributedConnection conn = null;
@@ -180,6 +181,90 @@ public class DistributedGatfTester {
 		} catch (Exception e) {
 			e.printStackTrace();
 			logger.info("Sending GATF tests Failed to node " + connection.node);
+			if(connection!=null && connection.sock!=null)
+			{
+				try {
+					connection.sock.close();
+				} catch (IOException e1) {
+					e1.printStackTrace();
+				}
+			}
+		}
+		return task;
+	}
+	
+	public FutureTask<List<Map<String, SerializableLogEntries>>> distributeSeleniumTests(final DistributedConnection connection, File testClassesZip, 
+			final List<String> testClassNames)
+	{
+		if(connection==null)return null;
+		
+		FutureTask<List<Map<String, SerializableLogEntries>>> task = null;
+		try {
+			logger.info("Sending GATF Selenium tests to node " + connection.node);
+			connection.oos.writeObject(Command.SELENIUM_REQ);
+			connection.oos.flush();
+			IOUtils.copy(new FileInputStream(testClassesZip), connection.oos);
+			connection.oos.flush();
+			connection.oos.writeObject(testClassNames);
+			connection.oos.flush();
+			
+			Command command = (Command)connection.ois.readObject();
+			if(command==Command.SELENIUM_RES) {
+				int code = connection.ois.readInt();
+				if(code==0) {
+					task = new FutureTask<List<Map<String, SerializableLogEntries>>>(new Callable<List<Map<String, SerializableLogEntries>>>() {
+						@SuppressWarnings("unchecked")
+						public List<Map<String, SerializableLogEntries>> call() throws Exception {
+							List<Map<String, SerializableLogEntries>> res = null;
+							Socket fClient = connection.sock;
+							try {
+								logger.info("Waiting for GATF Selenium tests Results from node " + connection.node);
+								
+								res = (List<Map<String, SerializableLogEntries>>)connection.ois.readObject();
+								logger.info("Done Receiving GATF Selenium tests Results from node " + connection.node);
+							} catch (Exception e) {
+								e.printStackTrace();
+								logger.info("Failure occurred while waiting for GATF Selenium tests Results from node " + connection.node);
+							} finally {
+								if(fClient!=null)
+								{
+									try {
+										fClient.close();
+									} catch (IOException e) {
+										e.printStackTrace();
+									}
+								}
+							}
+							return res;
+						}
+					});
+					new Thread(task).start();
+					logger.info("Sending GATF Selenium tests Successful to node " + connection.node);
+				} else {
+					logger.info("Sending GATF Selenium tests Failed to node " + connection.node);
+					if(connection!=null && connection.sock!=null)
+					{
+						try {
+							connection.sock.close();
+						} catch (IOException e1) {
+							e1.printStackTrace();
+						}
+					}
+				}
+			} else {
+				logger.info("Sending GATF Selenium tests Failed to node " + connection.node);
+				if(connection!=null && connection.sock!=null)
+				{
+					try {
+						connection.sock.close();
+					} catch (IOException e1) {
+						e1.printStackTrace();
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+			logger.info("Sending GATF Selenium tests Failed to node " + connection.node);
 			if(connection!=null && connection.sock!=null)
 			{
 				try {
