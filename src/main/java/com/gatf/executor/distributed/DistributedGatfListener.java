@@ -2,6 +2,7 @@ package com.gatf.executor.distributed;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
@@ -10,23 +11,25 @@ import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.openqa.selenium.logging.LogEntries;
 
-import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SerializableLogEntries;
 
 public class DistributedGatfListener {
 
@@ -167,7 +170,7 @@ public class DistributedGatfListener {
 		        	}
 		        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
 		        	
-					ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName);
+					ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName, false);
 					
 					File zipFile = new File(resource, fileName);
 					IOUtils.copy(new FileInputStream(zipFile), oos);
@@ -179,8 +182,36 @@ public class DistributedGatfListener {
 					logger.info("Invalid GATF tests received...");
 				}
 			} else if(command==Command.SELENIUM_REQ) {
+				
+				File gcdir = new File(FileUtils.getTempDirectory(), "dist-gatf-code");
+		        if(gcdir.exists()) {
+		        	FileUtils.deleteDirectory(gcdir);
+		        }
+				
+				gcdir.mkdir();
+				String fileName = UUID.randomUUID().toString()+".zip";
+				File zipFile = new File(gcdir, fileName);
+	        	FileOutputStream fos = new FileOutputStream(zipFile);
+				IOUtils.copy(ois, fos);
+				fos.flush();
+				fos.close();
+				
+				ReportHandler.unzipZipFile(new FileInputStream(zipFile), gcdir.getAbsolutePath());
+				zipFile.delete();
+				
+				URL[] urls = new URL[1];
+	            urls[0] = gcdir.toURI().toURL();
+				URLClassLoader classLoader = new URLClassLoader(urls, DistributedGatfListener.class.getClassLoader());
+				Thread.currentThread().setContextClassLoader(classLoader);
+				
+				List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
 				@SuppressWarnings("unchecked")
-				List<SeleniumTest> tests = (List<SeleniumTest>)ois.readObject();
+				List<String> testClassNames = (List<String>)ois.readObject();
+				for (String clsname : testClassNames) {
+					@SuppressWarnings("unchecked")
+					Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass(clsname);
+					tests.add(loadedClass.newInstance());
+				}
 				
 				oos.writeObject(Command.SELENIUM_RES);
 				oos.flush();
@@ -204,12 +235,8 @@ public class DistributedGatfListener {
 						oos.flush();
 						logger.info("Selenium Test Request");
 						
-						AcceptanceTestContext acontext = new AcceptanceTestContext(context);
-						acontext.handleTestDataSourcesAndHooks(acontext.getGatfExecutorConfig().getGatfTestDataConfig());
 						GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
-						mojo.setContext(acontext);
-						
-						List<Map<String, LogEntries>> logs = mojo.handleDistributedSeleniumTests(context.getConfig(), tests);
+						List<Map<String, SerializableLogEntries>> logs = mojo.handleDistributedSeleniumTests(context, tests);
 						oos.writeObject(logs);
 						oos.flush();
 						logger.info("Done Writing Selenium results...");

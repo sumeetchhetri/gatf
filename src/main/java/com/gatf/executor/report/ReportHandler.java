@@ -21,13 +21,13 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileWriter;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -44,6 +44,9 @@ import java.util.zip.ZipOutputStream;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
@@ -408,7 +411,7 @@ public class ReportHandler {
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName)
+    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName, boolean addFolders)
     {
         try
         {
@@ -422,28 +425,46 @@ public class ReportHandler {
             FileOutputStream fos = new FileOutputStream(zipFile);
         	ZipOutputStream zos = new ZipOutputStream (fos);
         	
-        	File[] files = directory.listFiles(new FilenameFilter() {
-				public boolean accept(File folder, String name) {
-					for (String fileFilter : fileFilters) {
-						return name.toLowerCase().endsWith(fileFilter);
-					}
-					return false;
-				}
-			});
+        	Collection<File> files = null;
+        	if(addFolders) {
+        		files = FileUtils.listFilesAndDirs(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), FileFilterUtils.trueFileFilter());
+        	} else {
+        		files = FileUtils.listFiles(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), null);
+        	}
         	
         	for (File file : files) {
-        		FileInputStream fis = new FileInputStream(file);
-        		ZipEntry zipEntry = new ZipEntry(file.getName());
-        		zos.putNextEntry(zipEntry);
+        		if(file.isDirectory()) {
+        			String dp = file.getAbsolutePath();
+        			dp = dp.replace(directory.getAbsolutePath(), "");
+        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			if(dp.isEmpty())continue;
+        			if(dp.startsWith("/")) {
+        				dp = dp.substring(1);
+        			}
+        			ZipEntry zipEntry = new ZipEntry(dp + "/");
+        			zos.putNextEntry(zipEntry);
+        			zos.closeEntry();
+        		} else {
+        			String dp = file.getAbsolutePath();
+        			dp = dp.replace(directory.getAbsolutePath(), "");
+        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			if(dp.isEmpty())continue;
+        			if(dp.startsWith("/")) {
+        				dp = dp.substring(1);
+        			}
+        			FileInputStream fis = new FileInputStream(file);
+            		ZipEntry zipEntry = new ZipEntry(dp);
+            		zos.putNextEntry(zipEntry);
 
-        		byte[] bytes = new byte[1024];
-        		int length;
-        		while ((length = fis.read(bytes)) >= 0) {
-        			zos.write(bytes, 0, length);
+            		byte[] bytes = new byte[1024];
+            		int length;
+            		while ((length = fis.read(bytes)) >= 0) {
+            			zos.write(bytes, 0, length);
+            		}
+
+            		zos.closeEntry();
+            		fis.close();
         		}
-
-        		zos.closeEntry();
-        		fis.close();
 			}
         	
             zos.close();

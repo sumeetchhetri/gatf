@@ -326,6 +326,7 @@ public class Command {
 			}
 		}
 		b.append("package com.gatf.selenium;\n");
+		b.append("import java.io.Serializable;\n");
 		b.append("import com.gatf.selenium.SeleniumException;\n");
 		b.append("import org.openqa.selenium.remote.DesiredCapabilities;\n");
 		b.append("import org.openqa.selenium.logging.LoggingPreferences;\n");
@@ -350,7 +351,7 @@ public class Command {
 		b.append("import org.apache.commons.io.FileUtils;\n");
 		b.append("import java.io.File;\n");
 		b.append("import org.junit.Assert;\n\n");
-		b.append("public class "+className+" implements SeleniumTest {\nprivate WebDriver ___d___ = null;\n");
+		b.append("public class "+className+" implements SeleniumTest, Serializable {\nprivate WebDriver ___d___ = null;\n");
 		b.append("public void quit() {\nif(___d___!=null)___d___.quit();\n}\n");
 		b.append("public Logs execute(AcceptanceTestContext ___cxt___, LoggingPreferences ___lp___) throws Exception {\n");
 		for (Command c : children) {

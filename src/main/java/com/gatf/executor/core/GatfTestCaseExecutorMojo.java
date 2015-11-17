@@ -38,8 +38,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
 import java.util.logging.Level;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -87,9 +85,11 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
-import com.gatf.selenium.CodeGenerator;
+import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumException;
 import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SerializableLogEntries;
+import com.gatf.selenium.SerializableLogEntry;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -629,77 +629,23 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		if(configuration.isSeleniumExecutor()) {
 			System.setProperty(configuration.getSeleniumDriverName(), configuration.getSeleniumDriverPath());
+			LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
 			
-			Map<String, Level> llmap = new HashMap<String, Level>();
-			llmap.put("ALL".toLowerCase(), Level.ALL);
-			llmap.put("CONFIG".toLowerCase(), Level.CONFIG);
-			llmap.put("FINE".toLowerCase(), Level.FINE);
-			llmap.put("FINER".toLowerCase(), Level.FINER);
-			llmap.put("FINEST".toLowerCase(), Level.FINEST);
-			llmap.put("INFO".toLowerCase(), Level.INFO);
-			llmap.put("OFF".toLowerCase(), Level.OFF);
-			llmap.put("SEVERE".toLowerCase(), Level.SEVERE);
-			llmap.put("WARNING".toLowerCase(), Level.WARNING);
-			
-			LoggingPreferences lp = new LoggingPreferences();
-			if(StringUtils.isNotEmpty(configuration.getSeleniumLoggerPreferences()))
-			{
-				String slp = configuration.getSeleniumLoggerPreferences().toLowerCase();
-				if(slp.matches(".*browser\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*browser\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.BROWSER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*client\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*client\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.CLIENT, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*driver\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*driver\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.DRIVER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*performance\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*performance\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.PERFORMANCE, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*profiler\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*profiler\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.PROFILER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*server\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*server\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.SERVER, llmap.get(m.group(1)));
-					}
-				}
-			}
-			
+			List<Class> testClasses = new ArrayList<Class>();
 			List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
+			List<String> testClassNames = new ArrayList<String>();
 			for (String selscript : configuration.getSeleniumScripts()) {
 				try {
-					SeleniumTest dyn = CodeGenerator.getSeleniumTest(selscript, getClassLoader(), context);
+					SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context);
+					testClasses.add(dyn.getClass());
 					tests.add(dyn);
+					testClassNames.add(dyn.getClass().getName());
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
 			}
 			
-			List<FutureTask<List<Map<String, LogEntries>>>> tasks = new ArrayList<FutureTask<List<Map<String, LogEntries>>>>();
+			List<FutureTask<List<Map<String, SerializableLogEntries>>>> tasks = new ArrayList<FutureTask<List<Map<String, SerializableLogEntries>>>>();
 			if(configuration.isDistributedLoadTests() && configuration.getDistributedNodes()!=null && configuration.getDistributedNodes().length>0)
 			{
 				distConnections = new ArrayList<DistributedConnection>();
@@ -713,10 +659,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 				
 				if(distConnections.size()>0)
 				{
+					File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests();
 					for (int i=0;i<distConnections.size();i++) {
 						DistributedConnection conn = distConnections.get(i);
 						if(conn!=null) {
-							FutureTask<List<Map<String, LogEntries>>> task = distributedGatfTester.distributeSeleniumTests(conn, tests);
+							FutureTask<List<Map<String, SerializableLogEntries>>> task = distributedGatfTester.distributeSeleniumTests(conn, selClsFilesZip, testClassNames);
 							tasks.add(task);
 						}
 					}
@@ -728,7 +675,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 				if(dyn==null)continue;
 				try {
 					Logs logs = dyn.execute(context, lp);
-					for (String lg : lp.getEnabledLogTypes()) {
+					for (String lg : logs.getAvailableLogTypes()) {
 						LogEntries logEntries = logs.get(lg);
 						getLog().info("/*********************************************Start script "+configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n");
 						for (LogEntry logEntry : logEntries) {
@@ -744,13 +691,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 			
 			for (int j=0;j<tasks.size();j++) {
 				try {
-					List<Map<String, LogEntries>> llg = tasks.get(j).get();
+					List<Map<String, SerializableLogEntries>> llg = tasks.get(j).get();
 					for (int i=0;i<llg.size();i++) {
-						for (String lg : lp.getEnabledLogTypes()) {
-							LogEntries logEntries = llg.get(i).get(lg);
+						for (String lg : llg.get(i).keySet()) {
+							SerializableLogEntries logEntries = llg.get(i).get(lg);
 							getLog().info("/*********************************************Start script ["+distConnections.get(j).toString()+"]"+
 									configuration.getSeleniumScripts()[i]+" ("+lg+")*********************************************************/\n");
-							for (LogEntry logEntry : logEntries) {
+							for (SerializableLogEntry logEntry : logEntries) {
 								getLog().info(logEntry.getMessage());
 							}
 							getLog().info("/*********************************************End script ["+distConnections.get(j).toString()+"]"+
@@ -1897,94 +1844,38 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		return finalStats;
 	}
 	
-	public List<Map<String, LogEntries>> handleDistributedSeleniumTests(GatfExecutorConfig configuration, List<SeleniumTest> tests) throws MojoFailureException {
-		List<Map<String, LogEntries>> lglist = new ArrayList<Map<String, LogEntries>>();
-		initilaizeContext(configuration, true);
+	public List<Map<String, SerializableLogEntries>> handleDistributedSeleniumTests(DistributedAcceptanceContext dContext, List<SeleniumTest> tests) 
+			throws MojoFailureException {
+		List<Map<String, SerializableLogEntries>> lglist = new ArrayList<Map<String, SerializableLogEntries>>();
 		
-		if(configuration.isSeleniumExecutor()) {
-			System.setProperty(configuration.getSeleniumDriverName(), configuration.getSeleniumDriverPath());
-			
-			Map<String, Level> llmap = new HashMap<String, Level>();
-			llmap.put("ALL", Level.ALL);
-			llmap.put("CONFIG", Level.CONFIG);
-			llmap.put("FINE", Level.FINE);
-			llmap.put("FINER", Level.FINER);
-			llmap.put("FINEST", Level.FINEST);
-			llmap.put("INFO", Level.INFO);
-			llmap.put("OFF", Level.OFF);
-			llmap.put("SEVERE", Level.SEVERE);
-			llmap.put("WARNING", Level.WARNING);
-			
-			final LoggingPreferences lp = new LoggingPreferences();
-			if(StringUtils.isNotEmpty(configuration.getSeleniumLoggerPreferences()))
-			{
-				String slp = configuration.getSeleniumLoggerPreferences().toLowerCase();
-				if(slp.matches(".*browser\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*browser\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.BROWSER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*client\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*client\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.CLIENT, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*driver\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*driver\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.DRIVER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*performance\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*performance\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.PERFORMANCE, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*profiler\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*profiler\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.PROFILER, llmap.get(m.group(1)));
-					}
-				}
-				if(slp.matches(".*server\\(([a-zA-Z]+)\\).*")) {
-					Matcher m = Pattern.compile(".*server\\(([a-zA-Z]+)\\).*").matcher(slp);
-					m.find();
-					if(llmap.containsKey(m.group(1))) {
-						lp.enable(LogType.SERVER, llmap.get(m.group(1)));
-					}
-				}
-			}
+		context = new AcceptanceTestContext(dContext);
+		context.handleTestDataSourcesAndHooks(dContext.getConfig().getGatfTestDataConfig());
+		
+		if(dContext.getConfig().isSeleniumExecutor()) {
+			final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(dContext.getConfig());
 			
 			for (SeleniumTest dyn : tests) {
 				try {
 					Logs logs = dyn.execute(context, lp);
-					Map<String, LogEntries> lg = new HashMap<String, LogEntries>();
-					for (String s : lp.getEnabledLogTypes()) {
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
+					for (String s : logs.getAvailableLogTypes()) {
 						LogEntries logEntries = logs.get(s);
-						lg.put(s, logEntries);
+						lg.put(s, new SerializableLogEntries(logEntries.getAll()));
 					}
 					lglist.add(lg);
 				} catch (SeleniumException e) {
 					Logs logs = e.getD().manage().logs();
-					Map<String, LogEntries> lg = new HashMap<String, LogEntries>();
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
 					for (String s : lp.getEnabledLogTypes()) {
 						LogEntries logEntries = logs.get(s);
-						lg.put(s, logEntries);
+						lg.put(s, new SerializableLogEntries(logEntries.getAll()));
 					}
 					lglist.add(lg);
 				} catch (final Throwable e) {
-					Map<String, LogEntries> lg = new HashMap<String, LogEntries>();
+					Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
 					List<LogEntry> entries = new ArrayList<LogEntry>();
 					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(e)));
-					lg.put(LogType.DRIVER, new LogEntries(entries));
+					lg.put(LogType.DRIVER, new SerializableLogEntries(entries));
 					lglist.add(lg);
 				}
 				dyn.quit();
