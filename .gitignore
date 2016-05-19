@@ -8,3 +8,5 @@ target/*
 *.war
 *.ear
 velocity.log*
+alldep-jar/*
+plugin/*
