@@ -925,6 +925,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     	try {
     		cons = claz.getConstructor(new Class[]{});
 		} catch (Exception e) {
+			if(isPrimitive(claz)) {
+				return getPrimitiveValue(claz);
+			}
 			getLog().error("No public no-args constructor found for class " + claz.getName());
 			return null;
 		}
@@ -1016,6 +1019,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     			 return rand.nextBoolean();
     		 } else if(claz.equals(Date.class)) {
     			 return new Date();
+    		 } else if(claz.equals(java.sql.Date.class)) {
+    			 return new java.sql.Date(new Date().getTime());
+    		 } else if(claz.equals(java.sql.Time.class)) {
+    			 return new java.sql.Time(new Date().getTime());
+    		 } else if(claz.equals(java.sql.Timestamp.class)) {
+    			 return new java.sql.Timestamp(new Date().getTime());
     		 } else if(claz.equals(Double.class) || claz.equals(double.class)) {
     			 Random rand = new Random(12345678L);
     			 return rand.nextDouble();
@@ -1050,7 +1059,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                 || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
                 || claz.equals(long.class) || claz.equals(double.class) || claz.equals(float.class)
                 || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class)
-                || claz.equals(BigInteger.class) || claz.equals(BigDecimal.class));
+                || claz.equals(BigInteger.class) || claz.equals(BigDecimal.class)
+                || claz.equals(java.sql.Date.class) || claz.equals(java.sql.Timestamp.class)
+                || claz.equals(java.sql.Time.class));
     }
     
     private boolean isCollection(Type claz) {
