@@ -60,6 +60,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 /**
@@ -501,7 +502,7 @@ public class ReportHandler {
 	
 	private boolean compareText(String type, String lhs, String rhs)
 	{
-		if(MediaType.APPLICATION_JSON.equalsIgnoreCase(type))
+		if(TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, type))
 		{
 			try {
 				JSONAssert.assertEquals(lhs, rhs,false);
@@ -510,7 +511,8 @@ public class ReportHandler {
 			} catch (AssertionError e) {
 			}
 		}
-		else if(MediaType.APPLICATION_XML.equalsIgnoreCase(type) || MediaType.TEXT_XML.equalsIgnoreCase(type))
+		else if(TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_XML_TYPE, type) 
+		        || TestCaseResponseHandler.isMatchesContentType(MediaType.TEXT_XML_TYPE, type))
 		{
 			try {
 				XMLAssert.assertXMLEqual(lhs, rhs);

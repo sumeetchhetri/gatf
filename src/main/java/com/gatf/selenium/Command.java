@@ -50,7 +50,7 @@ public class Command {
     	return className;
     }
     
-    int weigth() {
+    int weight() {
     	return 100;
     }
     
@@ -176,9 +176,10 @@ public class Command {
 			((EndCommand)comd).type = "}";
 		} else if (cmd.toLowerCase().startsWith("open ")) {
 			String name = cmd.substring(5).trim();
-			comd = new BrowserCommand();
-			((BrowserCommand)comd).name = unsanitize(name);
-		} else if (cmd.toLowerCase().startsWith("goto ")) {
+			comd = new BrowserCommand(name);
+		} else if (cmd.toLowerCase().startsWith("capability_set ")) {
+            comd = new CapabilitySetPropertyCommand(cmd.substring(15));
+        } else if (cmd.toLowerCase().startsWith("goto ")) {
 			String url = cmd.substring(5).trim();
 			comd = new GotoCommand();
 			((GotoCommand)comd).url = unsanitize(url);
@@ -190,8 +191,8 @@ public class Command {
 			comd = new RefreshCommand();
 		} else if (cmd.toLowerCase().startsWith("maximize")) {
 			comd = new MaximizeCommand();
-		} else if (cmd.toLowerCase().startsWith("set ")) {
-			comd = new SetPropertyCommand(cmd.substring(4));
+		} else if (cmd.toLowerCase().startsWith("window_set ")) {
+			comd = new WindowSetPropertyCommand(cmd.substring(11));
 		} else if (cmd.toLowerCase().startsWith("window ")) {
 			comd = new WindowCommand(cmd.substring(7));
 		} else if (cmd.toLowerCase().startsWith("type ")) {
@@ -299,7 +300,7 @@ public class Command {
 		
 		Collections.sort(tcmd.children, new Comparator<Command>() {
 			public int compare(Command o1, Command o2) {
-				return Integer.valueOf(o1.weigth()).compareTo(o2.weigth());
+				return Integer.valueOf(o1.weight()).compareTo(o2.weight());
 			}
 		});
 		
@@ -592,7 +593,7 @@ public class Command {
 			}
 			return "";
 		}
-		int weigth() {
+		int weight() {
 	    	return 1;
 	    }
 	}
@@ -805,11 +806,36 @@ public class Command {
 	
 	static class BrowserCommand extends Command {
 		String name;
+		String platform;
+		String version;
+		BrowserCommand(String val) {
+		    String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>1) {
+                name = unsanitize(parts[0].trim());
+                if(parts.length>2) {
+                    platform = unsanitize(parts[1].trim());
+                }
+                if(parts.length>3) {
+                    version = unsanitize(parts[2].trim());
+                }
+            } else {
+                //excep
+            }
+        }
 		String name() {
 			return name;
 		}
-		String toCmd() {
-			return "open " + name;
+		String getPlatform()
+        {
+            return platform;
+        }
+        String getVersion()
+        {
+            return version;
+        }
+
+        String toCmd() {
+			return "open " + name + (StringUtils.isNotBlank(platform)?(" "+platform):"") + (StringUtils.isNotBlank(version)?(" "+version):"");
 		}
 		String javacode() {
 			pushSc();
@@ -821,14 +847,14 @@ public class Command {
 			} else if(name.equalsIgnoreCase("firefox")) {
 				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+name.toLowerCase()+"();\n");
 				b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
-				b.append("___d___ = new org.openqa.selenium.chrome.FirefoxDriver(___dc___);\n");
+				b.append("___d___ = new org.openqa.selenium.firefox.FirefoxDriver(___dc___);\n");
 			}
 			b.append("SearchContext "+currvarnamesc()+" = ___d___;\n");
 			b.append("WebDriver ___cw___ = ___d___;\n");
 			b.append("WebDriver ___ocw___ = ___cw___;");
 			return b.toString();
 		}
-		int weigth() {
+		int weight() {
 	    	return 2;
 	    }
 	}
@@ -915,10 +941,10 @@ public class Command {
 		}
 	}
 	
-	static class SetPropertyCommand extends Command {
+	static class WindowSetPropertyCommand extends Command {
 		String type;
 		int value;
-		SetPropertyCommand(String val) {
+		WindowSetPropertyCommand(String val) {
 			String[] parts = val.trim().split("[\t ]+");
 			if(parts.length>1) {
 				parts[0] = parts[0].trim();
@@ -932,7 +958,7 @@ public class Command {
 			return String.valueOf(value);
 		}
 		String toCmd() {
-			return "set "+type+" " + value;
+			return "window_set "+type+" " + value;
 		}
 		String javacode() {
 			String cvn = varname();
@@ -948,6 +974,33 @@ public class Command {
 			return "";
 		}
 	}
+    
+    static class CapabilitySetPropertyCommand extends Command {
+        String type;
+        String value;
+        CapabilitySetPropertyCommand(String val) {
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>1) {
+                parts[0] = parts[0].trim();
+                type = parts[0];
+                value = unsanitize(parts[1].trim());
+            } else {
+                //excep
+            }
+        }
+        String value() {
+            return value;
+        }
+        String toCmd() {
+            return "capability_set "+type+" " + value;
+        }
+        String javacode() {
+            if(StringUtils.isNotBlank(type)) {
+                return "___dc___.setCapability(\""+esc(type)+"\", \""+esc(value)+"\");\n";
+            }
+            return "";
+        }
+    }
 	
 	static String esc(String cmd) {
 		return cmd.replace("\"", "\\\"");

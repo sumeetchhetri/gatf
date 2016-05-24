@@ -95,6 +95,7 @@ import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.distributed.DistributedGatfListener;
+import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.generator.postman.PostmanCollection;
 import com.gatf.ui.GatfConfigToolMojo;
 import com.gatf.xstream.GatfPrettyPrintWriter;
@@ -586,7 +587,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             String content = "";
                             try
                             {
-	                            if (!params.isEmpty() || consumes.equals(MediaType.APPLICATION_FORM_URLENCODED))
+	                            if (!params.isEmpty() || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_FORM_URLENCODED_TYPE, consumes))
 	                            {
 	                            	for (Map.Entry<String, String> entry: params.entrySet()) {
 	                            		content += entry.getKey() + "=" + entry.getValue() + "&";
@@ -597,7 +598,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	                            {
 	                            	content = (String)contentvf.getValue();
 	                            }
-	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_JSON))
+	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, consumes))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
 	                            	if(contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.map.annotate.JsonSerialize.class)
@@ -611,7 +612,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                                 	}
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
-	                            else if (("XML".equalsIgnoreCase(getInDataType()) || consumes.equals(MediaType.APPLICATION_XML))
+	                            else if (("XML".equalsIgnoreCase(getInDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_XML_TYPE, consumes))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
 	                            	JAXBContext context = JAXBContext.newInstance(contentvf.getValue().getClass());

@@ -610,12 +610,16 @@ public class TestCaseExecutorUtil {
 			t.printStackTrace();
 		}
 	
+		public static boolean isMatchesContentType(MediaType md, String contType) {
+		    return md.getType().equalsIgnoreCase(contType) || contType.toLowerCase().startsWith(md.getType().toLowerCase());
+		}
+		
 		public com.ning.http.client.AsyncHandler.STATE onBodyPartReceived(
 				HttpResponseBodyPart bodyPart) throws Exception {
 			String contType = testCase.getExpectedResContentType();
-			if(MediaType.APPLICATION_JSON.equalsIgnoreCase(contType) || MediaType.APPLICATION_XML.equalsIgnoreCase(contType)
-					|| MediaType.TEXT_PLAIN.equalsIgnoreCase(contType) || MediaType.TEXT_HTML.equalsIgnoreCase(contType)
-					|| MediaType.TEXT_XML.equalsIgnoreCase(contType))
+			if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
+					|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
+					|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
 			{
 				builder.accumulate(bodyPart);
 			}
@@ -696,17 +700,17 @@ public class TestCaseExecutorUtil {
 				testCaseReport.setResponseContent(response.getResponseBody());
 				testCaseReport.setResHeaders(response.getHeaders());
 				if(!testCase.isSoapBase()) {
-					if(MediaType.APPLICATION_JSON.equalsIgnoreCase(testCase.getExpectedResContentType()))
+					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
 					{
 						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
-					else if(MediaType.APPLICATION_XML.equalsIgnoreCase(testCase.getExpectedResContentType())
-							|| MediaType.TEXT_XML.equalsIgnoreCase(testCase.getExpectedResContentType()))
+					else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
+							|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
 					{
 						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
-					else if(MediaType.TEXT_PLAIN.equalsIgnoreCase(testCase.getExpectedResContentType())
-							|| MediaType.TEXT_HTML.equalsIgnoreCase(testCase.getExpectedResContentType()))
+					else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
+							|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
 					{
 						textResponseValidator.validate(response, testCase, testCaseReport, context);
 					}
