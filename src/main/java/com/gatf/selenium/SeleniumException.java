@@ -15,18 +15,44 @@
 */
 package com.gatf.selenium;
 
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Level;
+
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.Logs;
+
+import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 
 public class SeleniumException extends RuntimeException {
 	
-	private WebDriver d;
+    private static final long serialVersionUID = 1L;
+    
+    private SeleniumTestResult res;
 	
-	public WebDriver getD() {
-		return d;
+	public SeleniumTestResult getResult() {
+		return res;
 	}
-
-	public SeleniumException(WebDriver d, Throwable cause) {
+	public SeleniumException(){}
+	public SeleniumException(WebDriver d, Throwable cause, SeleniumTest test) {
 		super(cause);
-		this.d = d;
+		Map<String, SerializableLogEntries> lg = new HashMap<String, SerializableLogEntries>();
+        Logs logs = d.manage().logs();
+        for (String s : d.manage().logs().getAvailableLogTypes()) {
+            LogEntries logEntries = logs.get(s);
+            if(!logEntries.getAll().isEmpty()) {
+                lg.put(s, new SerializableLogEntries(logEntries.getAll())); 
+            }
+        }
+        List<LogEntry> entries = new ArrayList<LogEntry>();
+        entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+        entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+        lg.put("gatf", new SerializableLogEntries(entries));
 	}
 }

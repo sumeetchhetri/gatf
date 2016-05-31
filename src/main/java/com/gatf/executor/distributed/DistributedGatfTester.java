@@ -24,7 +24,6 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.net.URL;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
@@ -38,7 +37,6 @@ import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
-import com.gatf.selenium.SerializableLogEntries;
 
 public class DistributedGatfTester {
 
@@ -208,12 +206,12 @@ public class DistributedGatfTester {
 		return task;
 	}
 	
-	public FutureTask<List<Map<String, SerializableLogEntries>>> distributeSeleniumTests(final DistributedConnection connection, File testClassesZip, 
+	public FutureTask<Object> distributeSeleniumTests(final DistributedConnection connection, File testClassesZip, 
 			final List<String> testClassNames)
 	{
 		if(connection==null)return null;
 		
-		FutureTask<List<Map<String, SerializableLogEntries>>> task = null;
+		FutureTask<Object> task = null;
 		try {
 			logger.info("Sending GATF Selenium tests to node " + connection.node);
 			connection.oos.writeObject(Command.SELENIUM_REQ);
@@ -227,15 +225,14 @@ public class DistributedGatfTester {
 			if(command==Command.SELENIUM_RES) {
 				int code = connection.ois.readInt();
 				if(code==0) {
-					task = new FutureTask<List<Map<String, SerializableLogEntries>>>(new Callable<List<Map<String, SerializableLogEntries>>>() {
-						@SuppressWarnings("unchecked")
-						public List<Map<String, SerializableLogEntries>> call() throws Exception {
-							List<Map<String, SerializableLogEntries>> res = null;
+					task = new FutureTask<Object>(new Callable<Object>() {
+						public Object call() throws Exception {
+						    Object res = null;
 							Socket fClient = connection.sock;
 							try {
 								logger.info("Waiting for GATF Selenium tests Results from node " + connection.node);
 								
-								res = (List<Map<String, SerializableLogEntries>>)connection.ois.readObject();
+								res = connection.ois.readObject();
 								logger.info("Done Receiving GATF Selenium tests Results from node " + connection.node);
 							} catch (Exception e) {
 								e.printStackTrace();
@@ -256,6 +253,19 @@ public class DistributedGatfTester {
 					new Thread(task).start();
 					logger.info("Sending GATF Selenium tests Successful to node " + connection.node);
 				} else {
+				    if(code == 1) {
+				        task = new FutureTask<Object>(new Callable<Object>() {
+	                        public Object call() throws Exception {
+	                            return new RuntimeException("No Driver found for specified browser");
+	                        }
+				        });
+				    } else {
+				        task = new FutureTask<Object>(new Callable<Object>() {
+                            public Object call() throws Exception {
+                                return new RuntimeException("Invalid configuration specified for selenium");
+                            }
+                        }); 
+				    }
 					logger.info("Sending GATF Selenium tests Failed to node " + connection.node);
 					if(connection!=null && connection.sock!=null)
 					{
@@ -276,6 +286,11 @@ public class DistributedGatfTester {
 						e1.printStackTrace();
 					}
 				}
+				task = new FutureTask<Object>(new Callable<Object>() {
+                    public Object call() throws Exception {
+                        return new RuntimeException("Invalid configuration specified for selenium");
+                        }
+                });
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -288,6 +303,11 @@ public class DistributedGatfTester {
 					e1.printStackTrace();
 				}
 			}
+            task = new FutureTask<Object>(new Callable<Object>() {
+                public Object call() throws Exception {
+                    return new RuntimeException("Invalid configuration specified for selenium");
+                    }
+            });
 		}
 		return task;
 	}

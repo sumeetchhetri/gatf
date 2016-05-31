@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<title>GATF - Test Reports</title>
+		<link href="css/bootstrap.min.css" rel="stylesheet">
+
+		<!-- Page-Level Plugin CSS - Tables -->
+		<link href="css/plugins/dataTables/dataTables.bootstrap.css" rel="stylesheet">
+		<link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet">
+		
+		<!-- Core Scripts - Include with every page -->
+		<script src="js/jquery-2.1.0.min.js"></script>
+		<script src="js/bootstrap.min.js"></script>
+
+		<script type="text/javascript" src="js/prettify.js"></script>
+		<script type="text/javascript" src="js/vkbeautify.js"></script>
+		<link href="css/prettify.css" rel="stylesheet">
+		
+		<style>
+			.flot-x-axis div.flot-tick-label { 
+				/* Rotate Axis Labels */
+				transform: translateX(50%) rotate(20deg); /* CSS3 */
+				transform-origin: 0 0;
+				
+				-ms-transform: translateX(50%) rotate(20deg); /* IE */
+				-ms-transform-origin: 0 0;
+
+				-moz-transform: translateX(50%) rotate(20deg); /* Firefox */
+				-moz-transform-origin: 0 0;
+
+				-webkit-transform: translateX(50%) rotate(20deg); /* Safari and Chrome */
+				-webkit-transform-origin: 0 0;
+
+				-o-transform: translateX(50%) rotate(20deg); /* Opera */
+				-o-transform-origin: 0 0;
+			}
+
+			#wrapper {
+				width: 100%;
+			}
+
+			#page-wrapper {
+				padding: 0 15px;
+				min-height: 568px;
+				background-color: #fff;
+			}
+			.string { color: green; }
+			.number { color: darkorange; }
+			.boolean { color: blue; }
+			.null { color: magenta; }
+			.key { color: red; }
+
+			pre {
+				background-color: white;
+				width;auto;
+			}
+
+			handcursor {
+				cursor: pointer;cursor: hand;
+			}
+			.test
+			{
+				margin:10px 0;
+				zoom:1;
+			}
+			.test:after
+			{
+				height:0;
+				clear:both;
+				content:"";
+				visibility:hidden;
+				display:block;
+			}
+			.text
+			{
+				width:300px;
+				float:left;
+				margin-right:10px;
+				border:1px solid #F60;
+				padding:10px;
+				min-height:80px;
+			}
+			.text-del
+			{
+				text-decoration: line-through;
+				color: #A82400;
+				background-color: #E5BDB2;
+			}
+			.text-add
+			{
+				background: #D1E1AD;
+				color: #405A04;
+			}
+		</style>
+
+	</head>
+
+	<body>
+		<div id="wrapper">		 
+			<div id="page-wrapper">
+				<div class="row">
+					<h2>$succFail</h2>
+					<div class="col-lg-12">
+						<div class="col-lg-6">
+							<h3>$selFileName</h3>
+							<pre id="selcode_htm">$selCode</pre>
+						</div>
+						<div class="col-lg-6">
+							<h3>$javaFileName</h3>
+							<pre id="javacode_htm">$javaCode</pre>
+						</div>
+					</div>
+					<hr/>
+					<div class="col-lg-12">
+						<h3>Selenium Logs</h3>
+						<br/>
+						#foreach ($selLogE in $selLogs.entrySet())
+						<h4>$selLogE.key<h4>
+						<pre>
+#foreach ($selLogL in ${selLogE.value})
+$StringEscapeUtils.escapeHtml(${selLogL.getMessage()})
+#end
+						</pre>
+						#end
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<script>
+			
+			$(document).ready(function() {
+				$('#selcode_htm').html(prettyPrintOne($('#selcode_htm').html()));
+				$('#javacode_htm').html(prettyPrintOne($('#javacode_htm').html()));
+			});
+			
+		</script>
+	</body>
+</html>

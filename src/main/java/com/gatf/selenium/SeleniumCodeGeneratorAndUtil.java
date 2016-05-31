@@ -46,10 +46,15 @@ public class SeleniumCodeGeneratorAndUtil {
 	static URLClassLoader classLoader = null;
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals) throws Exception
 	{
-		Command cmd = Command.read(context.getResourceFile(fileName));
+	    List<String> commands = new ArrayList<String>();
+		Command cmd = Command.read(context.getResourceFile(fileName), commands);
 		String sourceCode =  cmd.javacode();
+		
+		retvals[0] = fileName;
+		retvals[1] = StringUtils.join(commands, '\n');
+		retvals[3] = sourceCode;
 	    
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
@@ -76,6 +81,7 @@ public class SeleniumCodeGeneratorAndUtil {
         dir.mkdirs();
         
         File srcfile = new File(dir, cmd.getClassName()+".java");
+        retvals[2] = srcfile.getAbsolutePath();
         FileUtils.writeStringToFile(srcfile, sourceCode);
         Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
         JavaCompiler.CompilationTask task = compiler.getTask(

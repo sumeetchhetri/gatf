@@ -31,7 +31,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -44,7 +43,7 @@ import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 import com.gatf.selenium.SeleniumTest;
-import com.gatf.selenium.SerializableLogEntries;
+import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 
 public class DistributedGatfListener {
 
@@ -251,8 +250,8 @@ public class DistributedGatfListener {
 						logger.info("Selenium Test Request");
 						
 						GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
-						List<Map<String, SerializableLogEntries>> logs = mojo.handleDistributedSeleniumTests(context, tests);
-						oos.writeObject(logs);
+						List<SeleniumTestResult> results = mojo.handleDistributedSeleniumTests(context, tests);
+						oos.writeObject(results);
 						oos.flush();
 						logger.info("Done Writing Selenium results...");
 					} else {
@@ -261,7 +260,7 @@ public class DistributedGatfListener {
 						logger.info("Selenium Test Request");
 					}
 				} else {
-					oos.writeInt(1);
+					oos.writeInt(2);
 					oos.flush();
 					logger.info("Selenium Test Request");
 				}

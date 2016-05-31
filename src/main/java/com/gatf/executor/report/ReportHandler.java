@@ -46,6 +46,7 @@ import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
+import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
@@ -62,6 +63,7 @@ import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
+import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 
 /**
  * @author Sumeet Chhetri
@@ -1189,6 +1191,90 @@ public class ReportHandler {
 			e.printStackTrace();
 		}
 	}
+	
+	public static void doSeleniumSummaryTestReport(Map<String, List<Object[]>> summLstMap, AcceptanceTestContext acontext)
+    {
+        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+        VelocityContext context = new VelocityContext();
+        
+        try
+        {
+            context.put("testsMap", summLstMap);
+            
+            File basePath = null;
+            if(config.getOutFilesBasePath()!=null)
+                basePath = new File(config.getOutFilesBasePath());
+            else
+            {
+                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+                basePath = new File(url.getPath());
+            }
+            File resource = new File(basePath, config.getOutFilesDir());
+            
+            InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            if (resourcesIS != null)
+            {
+                unzipZipFile(resourcesIS, resource.getAbsolutePath());
+            }
+            
+            VelocityEngine engine = new VelocityEngine();
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.init();
+            
+            StringWriter writer = new StringWriter();
+            engine.mergeTemplate("/gatf-templates/index-selenium-summ.vm", "UTF-8", context, writer);
+            
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                    + SystemUtils.FILE_SEPARATOR + "selenium-index.html")));
+            fwriter.write(writer.toString());
+            fwriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+    
+    public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
+    {
+        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+        VelocityContext context = new VelocityContext();
+        
+        try
+        {
+            context.put("selFileName", StringEscapeUtils.escapeHtml((String)retvals[0]));
+            context.put("selCode", StringEscapeUtils.escapeHtml((String)retvals[1]));
+            context.put("javaFileName", StringEscapeUtils.escapeHtml((String)retvals[2]));
+            context.put("javaCode", StringEscapeUtils.escapeHtml((String)retvals[3]));
+            context.put("selLogs", result.getLogs());
+            context.put("succFail", result.isStatus()?"SUCCESS":"FAILED");
+            context.put("StringEscapeUtils", StringEscapeUtils.class);
+            
+            File basePath = null;
+            if(config.getOutFilesBasePath()!=null)
+                basePath = new File(config.getOutFilesBasePath());
+            else
+            {
+                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+                basePath = new File(url.getPath());
+            }
+            File resource = new File(basePath, config.getOutFilesDir());
+            
+            VelocityEngine engine = new VelocityEngine();
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.init();
+            
+            StringWriter writer = new StringWriter();
+            engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
+            
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
+                    + SystemUtils.FILE_SEPARATOR + prefix + "-selenium-index.html")));
+            fwriter.write(writer.toString());
+            fwriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 	
 	public static void populateRequestResponseHeaders(TestCaseReport testCaseReport)
 	{
