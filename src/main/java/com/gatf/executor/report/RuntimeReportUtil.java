@@ -16,7 +16,9 @@
 package com.gatf.executor.report;
 
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -65,7 +67,7 @@ public class RuntimeReportUtil {
 	
 	private static TestSuiteStats gloadStats = new TestSuiteStats();
 	
-	private static ConcurrentLinkedQueue<String> Q = new ConcurrentLinkedQueue<String>();
+	private static ConcurrentLinkedQueue<Map<String, Object>> Q = new ConcurrentLinkedQueue<Map<String, Object>>();
 	
 	private static ConcurrentLinkedQueue<LoadTestEntry> Qdl = new ConcurrentLinkedQueue<LoadTestEntry>();
 	
@@ -106,7 +108,7 @@ public class RuntimeReportUtil {
 				parts.put("tstats", gloadStats);
 				parts.put("error", "Execution already in progress..");
 				try {
-					Q.add(new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(parts));
+					Q.add(parts);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -138,7 +140,7 @@ public class RuntimeReportUtil {
 				parts.put("tstats", gloadStats);
 				parts.put("error", "Execution already in progress..");
 				try {
-					Q.add(new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(parts));
+					Q.add(parts);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -153,9 +155,26 @@ public class RuntimeReportUtil {
 		}
 	}
 	
+	public static boolean isDone() {
+	    return Q.isEmpty();
+	}
+	
 	public static String getEntry()
 	{
-		return Q.poll();
+	    try {
+    	    List<Map<String, Object>> st = new ArrayList<Map<String, Object>>();
+    	    Map<String, Object> parts = null;
+    	    while((parts = Q.poll())!=null) {
+    	       st.add(parts);
+    	       if(st.size()>100)break;
+    	    }
+            String arr = "{\"error\": \"Execution already in progress..\", \"lstats\": " + 
+                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(st) + "}";
+            return arr;
+	    } catch (Exception e) {
+            e.printStackTrace();
+        }
+	    return "";
 	}
 	
 	public static LoadTestEntry getDLEntry()

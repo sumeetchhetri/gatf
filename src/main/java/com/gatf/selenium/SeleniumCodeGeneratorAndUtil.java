@@ -49,7 +49,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
-		Command cmd = Command.read(context.getResourceFile(fileName), commands);
+		Command cmd = Command.read(context.getResourceFile(fileName), commands, context.getGatfExecutorConfig().getSelDriverConfigMap());
 		String sourceCode =  cmd.javacode();
 		
 		retvals[0] = fileName;
@@ -99,7 +99,7 @@ public class SeleniumCodeGeneratorAndUtil {
             	classLoader = new URLClassLoader(urls, loader);
             }
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-            return loadedClass.newInstance();
+            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class}).newInstance(new Object[]{context});
         } else {
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
                 System.out.format("Error on line %d in %s%n",
@@ -127,42 +127,48 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*browser\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*browser\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.BROWSER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*client\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*client\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+                        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.CLIENT, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*driver\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*driver\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+                        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.DRIVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*performance\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*performance\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+                        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.PERFORMANCE, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*profiler\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*profiler\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+                        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.PROFILER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*server\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*server\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1))) {
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+                        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.SERVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}

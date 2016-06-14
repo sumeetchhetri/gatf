@@ -222,6 +222,20 @@ public class WorkflowContextHandler {
 		return writer.toString();
 	}
 	
+	public String templatize(Map<String, String> variableMap, String template) throws Exception {
+	    VelocityContext context = new VelocityContext(variableMap);
+	    StringWriter writer = new StringWriter();
+        engine.evaluate(context, writer, "ERROR", template);
+        return writer.toString();
+	}
+    
+    public String templatize(String template) throws Exception {
+        VelocityContext context = new VelocityContext(globalworkflowContext);
+        StringWriter writer = new StringWriter();
+        engine.evaluate(context, writer, "ERROR", template);
+        return writer.toString();
+    }
+	
 	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap, AcceptanceTestContext acontext) 
 			throws Exception {
 		

@@ -60,6 +60,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+	    response.setHeader("Cache-Control", "no-cache, no-store");
     	GatfPluginConfig gatfConfig = null;
     	final String pluginType = request.getParameter("pluginType");
 		try {
@@ -120,10 +121,15 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							} finally { 
 								executorMojo.shutdown();
 							}
-    						try {
-								Thread.sleep(2000);
-							} catch (InterruptedException e) {
-							}
+    						
+    						//This while loop makes the UI wait to finish loading all sample summary
+    						//while(!RuntimeReportUtil.isDone()) {
+    						    try {
+                                    Thread.sleep(2000);
+                                } catch (InterruptedException e) {
+                                } 
+    						//}
+    						
     						isDone.set(true);
 							isStarted.set(false);
 

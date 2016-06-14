@@ -113,7 +113,7 @@ public abstract class TestCaseFinder {
 				if(targetFileNames!=null && targetFileNames.size()>0)
 				{
 					for (String tfileName : targetFileNames) {
-						return name.equalsIgnoreCase(tfileName);
+						return name.equalsIgnoreCase(tfileName) && name.toLowerCase().endsWith(getFileType().ext);
 					}
 					return false;
 				}

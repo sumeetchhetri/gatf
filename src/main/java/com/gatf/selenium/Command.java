@@ -30,7 +30,8 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
-import org.openqa.selenium.WebDriver;
+
+import com.google.googlejavaformat.java.Formatter;
 
 public class Command {
 	static int NUMBER = 1;
@@ -42,6 +43,7 @@ public class Command {
 	static String sc = null, psc = null;
 	
 	String name;
+	private Map<String, SeleniumDriverConfig> mp;
 	String className = "STC_" + System.nanoTime() + "";
 	List<Command> children = new ArrayList<Command>();
 	static Map<String, String> qss = new HashMap<String, String>();
@@ -159,7 +161,13 @@ public class Command {
 		} else if (cmd.startsWith(":")) {
 			cmd = cmd.substring(1);
 			comd = new ElseCommand();
-		} else if (cmd.startsWith("#")) {
+		} else if (cmd.startsWith("#provider")) {
+            cmd = cmd.substring(9).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new ProviderLoopCommand(cmd.trim());
+        } else if (cmd.startsWith("#")) {
 			cmd = cmd.substring(1);
 			comd = new LoopCommand();
 			((LoopCommand)comd).cond = new FindCommand(cmd);
@@ -178,9 +186,9 @@ public class Command {
 		} else if (cmd.toLowerCase().startsWith("open ")) {
 			String name = cmd.substring(5).trim();
 			comd = new BrowserCommand(name);
-		} else if (cmd.toLowerCase().startsWith("capability_set ")) {
+		} /*else if (cmd.toLowerCase().startsWith("capability_set ")) {
             comd = new CapabilitySetPropertyCommand(cmd.substring(15));
-        } else if (cmd.toLowerCase().startsWith("goto ")) {
+        }*/ else if (cmd.toLowerCase().startsWith("goto ")) {
 			String url = cmd.substring(5).trim();
 			comd = new GotoCommand();
 			((GotoCommand)comd).url = unsanitize(url);
@@ -204,7 +212,7 @@ public class Command {
                 || cmd.toLowerCase().startsWith("hoverclick ") 
                 || cmd.toLowerCase().startsWith("clear ") || cmd.toLowerCase().equals("clear")
                 || cmd.toLowerCase().startsWith("submit ") || cmd.toLowerCase().equals("submit")) {
-			comd = handleActions(cmd);
+			comd = handleActions(cmd, null);
 		} else if (cmd.toLowerCase().startsWith("var ")) {
 			comd = new VarCommand(cmd.substring(4));
 		} else if (cmd.toLowerCase().startsWith("jsvar ")) {
@@ -213,7 +221,9 @@ public class Command {
 			comd = new ExecCommand(cmd.substring(5));
 		} else if (cmd.toLowerCase().startsWith("execjs ")) {
 			comd = new ExecJsCommand(cmd.substring(7));
-		} else if (cmd.toLowerCase().startsWith("require")) {
+		} else if (cmd.toLowerCase().startsWith("subtest ")) {
+            comd = new SubTestCommand(cmd.substring(8));
+        } else if (cmd.toLowerCase().startsWith("require")) {
 			comd = new RequireCommand();
 		} else if (cmd.toLowerCase().startsWith("import ")) {
 			comd = new ImportCommand(cmd.substring(7));
@@ -233,7 +243,7 @@ public class Command {
 		return comd;
 	}
 	
-	static Command handleActions(String cmd) {
+	static Command handleActions(String cmd, FindCommand fcmd) {
 	    Command comd = null;
 	    if (cmd.toLowerCase().startsWith("type ")) {
             comd = new TypeCommand(cmd.substring(5));
@@ -261,6 +271,8 @@ public class Command {
             if(!cmd.toLowerCase().equals("submit")) {
                 ((SubmitCommand)comd).cond = new FindCommand(cmd.substring(7));
             }
+        } else if (cmd.toLowerCase().startsWith("actions ")) {
+            comd = new ActionsCommand(cmd.substring(7), fcmd);
         }
 	    return comd;
 	}
@@ -339,7 +351,7 @@ public class Command {
 		return cmd;
 	}
 	
-	static Command read(File file, List<String> commands) throws Exception {
+	static Command read(File file, List<String> commands, Map<String, SeleniumDriverConfig> mp) throws Exception {
 	    if(commands==null) {
 	        commands = new ArrayList<String>();
 	    } else {
@@ -348,7 +360,12 @@ public class Command {
 		commands.addAll(FileUtils.readLines(file, "UTF-8"));
 		Command cmd = Command.getAll(commands);
 		cmd.name = file.getName();
+		cmd.mp = mp;
 		return cmd;
+	}
+	
+	public String toSampleSelCmd() {
+	    return "";
 	}
 	
 	String toCmd() {
@@ -362,6 +379,10 @@ public class Command {
 	
 	String selcode(String varnm) {
 	    return "";
+	}
+	
+	String fjavacode() throws Exception {
+	    return new Formatter().formatSource(javacode());
 	}
 	
 	String javacode() {
@@ -405,25 +426,59 @@ public class Command {
 		b.append("import java.awt.image.BufferedImage;\n");
 		b.append("import org.apache.commons.io.FileUtils;\n");
 		b.append("import java.io.File;\n");
-		b.append("import org.junit.Assert;\n\n");
-		b.append("public class "+className+" extends SeleniumTest implements Serializable {\nprivate WebDriver ___d___ = null;\n");
-		b.append("public "+className+"() {\nsuper(\""+esc(name)+"\");\n}\n");
-		b.append("public void quit() {\nif(___d___!=null)___d___.quit();\n}\n");
-		b.append("@SuppressWarnings(\"unchecked\")\npublic SeleniumTestResult execute(AcceptanceTestContext ___cxt___, LoggingPreferences ___lp___) throws Exception {\n");
+		b.append("import java.util.Map;\n");
+		b.append("import org.junit.Assert;\n");
+		b.append("import org.openqa.selenium.Keys;\n\n");
+		b.append("public class "+className+" extends SeleniumTest implements Serializable {\n");
+		b.append("public "+className+"(AcceptanceTestContext ___cxt___) {\nsuper(\""+esc(name)+"\", ___cxt___);\n}\n");
+		b.append("public void quit() {\nif(get___d___()!=null)get___d___().quit();\n}\n");
+		for (SeleniumDriverConfig driverConfig : mp.values())
+        {
+            b.append("public void setupDriver"+driverConfig.getName().toLowerCase()+"(LoggingPreferences ___lp___) throws Exception {\n");
+            DriverCommand cmd = new DriverCommand(driverConfig);
+            String cc = cmd.javacode();
+            b.append(cc);
+            if(!cc.isEmpty()) {
+                b.append("\n");
+            }
+            b.append("}\n"); 
+        }
+		List<String> bn = new ArrayList<String>();
+		List<String> stn = new ArrayList<String>();
 		for (Command c : children) {
 			if(c instanceof RequireCommand) {
+			    //TODO
 			} else if(c instanceof BrowserCommand) {
-				String cc = c.javacode();
-				b.append(cc);
-				if(!cc.isEmpty()) {
-					b.append("\n");
-				}
-				break;
-			} else {
-				break;
+			    if(mp.containsKey(c.name)) {
+			        bn.add(c.name.toLowerCase());
+			    } else {
+			        throw new RuntimeException("Driver configuration not found for " + c.name);
+			    }
+			} else if(c instanceof SubTestCommand) {
+			    stn.add(c.name);
 			}
 		}
-		b.append("try\n{\n");
+		b.append("@SuppressWarnings(\"unchecked\")\npublic Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {\n");
+		for (String brn : bn)
+        {
+            b.append("addTest(\""+esc(brn)+"\");\n");
+            for (String st : stn)
+            {
+                b.append("addSubTest(\""+esc(brn)+"\", \""+esc(st)+"\");\n");
+            }
+        }
+		for (String brn : bn)
+		{
+		    b.append("quit();\n");
+		    b.append("setupDriver"+brn+"(___lp___);\n");
+		    b.append("_execute(___lp___);\n");
+        }
+		b.append("return get__result__();\n}\n");
+		b.append("@SuppressWarnings(\"unchecked\")\npublic void _execute(LoggingPreferences ___lp___) throws Exception {\n");
+		b.append("try {\n");
+		b.append("SearchContext "+currvarnamesc()+" = get___d___();\n");
+        b.append("WebDriver ___cw___ = get___d___();\n");
+        b.append("WebDriver ___ocw___ = ___cw___;");
 		for (Command c : children) {
 			if((c instanceof RequireCommand) || (c instanceof BrowserCommand)) {
 				continue;
@@ -434,14 +489,16 @@ public class Command {
 				b.append("\n");
 			}
 		}
-		b.append("return new SeleniumTestResult(___d___, this);\n");
-		b.append("}\ncatch(Throwable c)\n{\nreturn new SeleniumTestResult(___d___, this, c);\n}");
+		b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
+		b.append("}\ncatch(Throwable c)\n{\npushResult(new SeleniumTestResult(get___d___(), this, c, ___lp___));\n}");
 		b.append("}\n}");
 		return b.toString();
 	}
 
-	static class ExecCommand extends Command {
+	public static class ExecCommand extends Command {
 		String code;
+        public ExecCommand() {
+        }
 		ExecCommand(String code) {
 			this.code = code;
 			this.code = unsanitize(code);
@@ -454,10 +511,15 @@ public class Command {
 			code = code.replace("@window", "___ocw___");
 			return code + ";";
 		}
+		public String toSampleSelCmd() {
+		    return "exec {statement}";
+		}
 	}
 	
-	static class ExecJsCommand extends Command {
+	public static class ExecJsCommand extends Command {
 		String code;
+        public ExecJsCommand() {
+        }
 		ExecJsCommand(String code) {
 			code = unsanitize(code);
 			if(code.charAt(0)==code.charAt(code.length()-1)) {
@@ -471,13 +533,65 @@ public class Command {
 			return "execjs \"" + code + "\"";
 		}
 		String javacode() {
-			return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(\""+esc(code)+"\");\n}";
+			return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(code)+"\"));\n}";
 		}
+        public String toSampleSelCmd() {
+            return "execjs {jsstatement}";
+        }
 	}
+    
+    public static class SubTestCommand extends Command {
+        public SubTestCommand() {
+        }
+        SubTestCommand(String name) {
+            name = unsanitize(name);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
+            this.name = name;
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("subtest");
+            if(!children.isEmpty())
+            {
+                b.append("\n{\n");
+                for (Command c : children) {
+                    b.append(c.toCmd());
+                    b.append("\n");
+                }
+                b.append("}");
+            }
+            return b.toString();
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            if(!children.isEmpty())
+            {
+                b.append("\nset__subtestname__(\""+esc(name)+"\");");
+                b.append("\ntry {\n");
+                for (Command c : children) {
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+                b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
+                b.append("\n}\ncatch(Throwable c)\n{\npushResult(new SeleniumTestResult(get___d___(), this, c, ___lp___));");
+                b.append("\n}\nfinally {\nset__subtestname__(null);\n}");
+            }
+            return b.toString();
+        }
+        public String toSampleSelCmd() {
+            return "";
+        }
+    }
 	
-	static class VarCommand extends Command {
+	public static class VarCommand extends Command {
 		String name;
 		FindCommand cond;
+        public VarCommand() {
+        }
 		VarCommand(String val) {
 			if(val.indexOf(" ")!=-1) {
 				name = val.substring(0, val.indexOf(" ")).trim();
@@ -492,11 +606,16 @@ public class Command {
 		String javacode() {
 			return cond.javacodeonly(null) + "\nList<WebElement> " + name + " = " + currvarname() + ";";
 		}
+        public String toSampleSelCmd() {
+            return "var {name} {vale-expr}";
+        }
 	}
 	
-	static class JsVarCommand extends Command {
+	public static class JsVarCommand extends Command {
 		String name;
 		String script;
+        public JsVarCommand() {
+        }
 		JsVarCommand(String val) {
 			if(val.indexOf(" ")!=-1) {
 				name = val.substring(0, val.indexOf(" ")).trim();
@@ -516,12 +635,17 @@ public class Command {
 		}
 		String javacode() {
 			return "Object " + name + " = null;\nif (___ocw___ instanceof JavascriptExecutor) {\n" + 
-					name + " = ((JavascriptExecutor)___ocw___).executeScript(\""+esc(script)+"\");\n}";
+					name + " = ((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(script)+"\"));\n}";
 		}
+        public String toSampleSelCmd() {
+            return "jsvar {name} {script-expr}";
+        }
 	}
 	
-	static class ScreenshotCommand extends Command {
+	public static class ScreenshotCommand extends Command {
 		String fpath;
+        public ScreenshotCommand() {
+        }
 		ScreenshotCommand(String code) {
 			code = unsanitize(code);
 			if(code.charAt(0)==code.charAt(code.length()-1)) {
@@ -538,11 +662,16 @@ public class Command {
 			String sc = varnamesr();
 			return "File "+sc+" = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);\nFileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));";
 		}
+        public String toSampleSelCmd() {
+            return "screenshot {target-path}";
+        }
 	}
 	
-	static class EleScreenshotCommand extends Command {
+	public static class EleScreenshotCommand extends Command {
 		String fpath;
 		FindCommand cond;
+        public EleScreenshotCommand() {
+        }
 		EleScreenshotCommand(String val) {
 			val = unsanitize(val);
 			fpath = val.substring(0, val.indexOf(" ")).trim();
@@ -573,9 +702,12 @@ public class Command {
 			b.append("\n}");
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return "ele-screenshot {target-path}";
+        }
 	}
 	
-	static class ValueCommand extends Command {
+	public static class ValueCommand extends Command {
 		String value;
 		String value() {
 			return value;
@@ -586,9 +718,12 @@ public class Command {
 		String javacode() {
 			return value;
 		}
+        public String toSampleSelCmd() {
+            return "{value}";
+        }
 	}
 	
-	static class ValueListCommand extends StartCommand {
+	public static class ValueListCommand extends StartCommand {
 		String toCmd() {
 			StringBuilder b = new StringBuilder();
 			b.append("[\n");
@@ -609,9 +744,12 @@ public class Command {
 			}
 			return s;
 		}
+        public String toSampleSelCmd() {
+            return "[{value1},...,{valueN}]";
+        }
 	}
 	
-	static class RequireCommand extends Command {
+	public static class RequireCommand extends Command {
 		String toCmd() {
 			StringBuilder b = new StringBuilder();
 			b.append("[\n");
@@ -636,10 +774,15 @@ public class Command {
 		int weight() {
 	    	return 1;
 	    }
+        public String toSampleSelCmd() {
+            return "require [{classname1},..{classnameN}]";
+        }
 	}
 	
-	static class ImportCommand extends Command {
+	public static class ImportCommand extends Command {
 		String name;
+        public ImportCommand() {
+        }
 		ImportCommand(String cmd) {
 			name = cmd;
 		}
@@ -649,10 +792,15 @@ public class Command {
 		String javacode() {
 			return "";
 		}
+        public String toSampleSelCmd() {
+            return "import {classname}";
+        }
 	}
 	
-	static class ValidateCommand extends Command {
+	public static class ValidateCommand extends Command {
 		FindCommand cond;
+        public ValidateCommand() {
+        }
 		ValidateCommand(String time, String val) {
 		    String[] parts = val.trim().split("[\t ]+");
 		    cond = time.equals("0")?new FindCommand(parts[0]):new WaitAndFindCommand(parts[0], Long.valueOf(time));
@@ -667,9 +815,9 @@ public class Command {
     		        if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
     		                || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
     		                || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
-    		                || cmd.toLowerCase().equals("submit")) {
-    		            cmd = unsanitize(cmd);
-    		            Command comd = handleActions(cmd);
+    		                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions ")) {
+    		            //cmd = unsanitize(cmd);
+    		            Command comd = handleActions(cmd, cond);
     		            children.add(comd);
     		        }
 		        }
@@ -691,13 +839,16 @@ public class Command {
 		String javacode() {
 			StringBuilder b = new StringBuilder();
 			b.append(cond.javacodeonly(children));
-			if(!(cond instanceof WaitAndFindCommand))
-			b.append("\nAssert.assertTrue("+cond.condition()+");");
+			//if(!(cond instanceof WaitAndFindCommand))
+			//b.append("\nAssert.assertTrue("+cond.condition()+");");
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return "??[:time-in-sec] {find-expr} {optional action(type|hover|hoverclick|click|clear|submit)}";
+        }
 	}
 	
-	static class IfCommand extends Command {
+	public static class IfCommand extends Command {
 		FindCommand cond;
 		List<ElseIfCommand> elseifs = new ArrayList<ElseIfCommand>();
 		ElseCommand elsecmd;
@@ -750,9 +901,12 @@ public class Command {
 			}
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return "? {find-expr}\n\t{\n\t}";
+        }
 	}
 	
-	static class ElseIfCommand extends Command {
+	public static class ElseIfCommand extends Command {
 		FindCommand cond;
 		String toCmd() {
 			StringBuilder b = new StringBuilder();
@@ -788,9 +942,12 @@ public class Command {
 			}
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return ":? {find-expr}\n\t{\n\t}";
+        }
 	}
 	
-	static class ElseCommand extends Command {
+	public static class ElseCommand extends Command {
 		String toCmd() {
 			StringBuilder b = new StringBuilder();
 			b.append(":");
@@ -824,9 +981,12 @@ public class Command {
 			}
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return ": {find-expr}\n\t{\n\t}";
+        }
 	}
 	
-	static class LoopCommand extends Command {
+	public static class LoopCommand extends Command {
 		FindCommand cond;
 		String toCmd() {
 			StringBuilder b = new StringBuilder();
@@ -864,65 +1024,236 @@ public class Command {
 			}
 			return b.toString();
 		}
+        public String toSampleSelCmd() {
+            return "# {find-expr}\n\t{\n\t}";
+        }
 	}
-	
-	static class BrowserCommand extends Command {
-		String name;
-		String platform;
-		String version;
-		BrowserCommand(String val) {
-		    String[] parts = val.trim().split("[\t ]+");
-            if(parts.length>=1) {
-                name = unsanitize(parts[0].trim());
-                if(parts.length>1) {
-                    platform = unsanitize(parts[1].trim());
+    
+    public static class ProviderLoopCommand extends Command {
+        String name;
+        public ProviderLoopCommand() {}
+        ProviderLoopCommand(String name)
+        {
+            name = unsanitize(name);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
                 }
-                if(parts.length>2) {
-                    version = unsanitize(parts[2].trim());
-                }
-            } else {
-                //excep
             }
+            this.name = name;
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("#provider ");
+            b.append(name);
+            if(!children.isEmpty())
+            {
+                b.append("\n{\n");
+                for (Command c : children) {
+                    b.append(c.toCmd());
+                    b.append("\n");
+                }
+                b.append("}");
+            }
+            return b.toString();
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            if(!children.isEmpty())
+            {
+                b.append("int "+varname()+" = get___cxt___().getProviderTestDataMap().get(\""+name+"\").size();\n");
+                b.append("set__provname__(\"" + name + "\");\n");
+                String provname = currvarname();
+                String loopname = varname();
+                b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                b.append("set__provpos__(" + loopname + ");\n");
+                for (Command c : children) {
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+                b.append("}");
+            }
+            return b.toString();
+        }
+        public String toSampleSelCmd() {
+            return "#provider {find-expr}\n\t{\n\t}";
+        }
+    }
+	
+	public static class DriverCommand extends Command {
+		SeleniumDriverConfig config;
+        public DriverCommand() {
+        }
+        DriverCommand(SeleniumDriverConfig config) {
+		    this.config = config;
         }
 		String name() {
 			return name;
 		}
-		String getPlatform()
-        {
-            return platform;
-        }
-        String getVersion()
-        {
-            return version;
-        }
 
         String toCmd() {
-			return "open " + name + (StringUtils.isNotBlank(platform)?(" "+platform):"") + (StringUtils.isNotBlank(version)?(" "+version):"");
+			return "";
 		}
 		String javacode() {
 			pushSc();
 			StringBuilder b = new StringBuilder();
-			if(name.equalsIgnoreCase("chrome")) {
-				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+name.toLowerCase()+"();\n");
+			if(config.getName().equalsIgnoreCase("chrome")) {
+				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
 				b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
-				b.append("___d___ = new org.openqa.selenium.chrome.ChromeDriver(___dc___);\n");
-			} else if(name.equalsIgnoreCase("firefox")) {
-				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+name.toLowerCase()+"();\n");
+				if(config.getCapabilities()!=null)
+				{
+    				for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+    				    b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+				}
+				b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
+			} else if(config.getName().equalsIgnoreCase("firefox")) {
+				b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
 				b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
-				b.append("___d___ = new org.openqa.selenium.firefox.FirefoxDriver(___dc___);\n");
-			}
-			b.append("SearchContext "+currvarnamesc()+" = ___d___;\n");
-			b.append("WebDriver ___cw___ = ___d___;\n");
-			b.append("WebDriver ___ocw___ = ___cw___;");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                if(config.getVersion()!=null) {
+                    try
+                    {
+                        double ver = Double.valueOf(config.getVersion());
+                        if(ver<=46) {
+                            b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+                        } else {
+                            b.append("set___d___(new org.openqa.selenium.firefox.MarionetteDriver(___dc___));\n");
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+                    }
+                } else {
+                    b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+                }
+			} else if(config.getName().equalsIgnoreCase("ie")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("safari")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.internetExplorer();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("edge")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("appium-android")) {
+                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(BrowserType.ANDROID, \""+config.getVersion()+"\", Platform.ANDROID);\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\"http://127.0.0.1:4723/wd/hub\"), ___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("appium-ios")) {
+                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(\"ios\", \""+config.getVersion()+"\", \"MAC\");\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\"http://{0}:{1}@127.0.0.1:4444/wd/hub\"), ___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("selendroid")) {
+                b.append("SelendroidCapabilities  ___dc___ = new SelendroidCapabilities(\"\");\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new io.selendroid.client.SelendroidDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("ios-driver")) {
+                //b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(BrowserType.ANDROID, \""+version+"\", Platform.ANDROID);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //if(config.getCapabilities()!=null)
+                //{
+                //    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                //    {
+                //        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                //    }
+                //}
+                //b.append("get___d___() = new org.openqa.selenium.remote.RemoteWebDriver(\"http://127.0.0.1:4723/wd/hub\", ___dc___);\n");
+            }
+			b.append("setBrowserName(\""+config.getName()+"\");\n");
 			return b.toString();
 		}
 		int weight() {
 	    	return 2;
 	    }
+        public String toSampleSelCmd() {
+            return "";
+        }
 	}
 	
-	static class WindowCommand extends Command {
+	public static class BrowserCommand extends Command {
+        public BrowserCommand() {
+        }
+        BrowserCommand(String val) {
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>=1) {
+                name = unsanitize(parts[0].trim());
+            } else {
+                //excep
+            }
+        }
+        String name() {
+            return name;
+        }
+
+        String toCmd() {
+            return "open " + name;
+        }
+        int weight() {
+            return 2;
+        }
+        public String toSampleSelCmd() {
+            return "open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..}";
+        }
+    }
+	
+	public static class WindowCommand extends Command {
 		String name;
+        public WindowCommand() {
+        }
 		WindowCommand(String cmd) {
 			name = cmd;
 		}
@@ -952,45 +1283,60 @@ public class Command {
 				}
 			}
 		}
+        public String toSampleSelCmd() {
+            return "window {name(main|1..N)}";
+        }
 	}
 	
-	static class BackCommand extends Command {
+	public static class BackCommand extends Command {
 		String toCmd() {
 			return "back";
 		}
 		String javacode() {
 			return "___cw___.navigate().back();";
 		}
+        public String toSampleSelCmd() {
+            return "back";
+        }
 	}
 	
-	static class ForwardCommand extends Command {
+	public static class ForwardCommand extends Command {
 		String toCmd() {
 			return "forward";
 		}
 		String javacode() {
 			return "___cw___.navigate().forward();";
 		}
+        public String toSampleSelCmd() {
+            return "forward";
+        }
 	}
 	
-	static class RefreshCommand extends Command {
+	public static class RefreshCommand extends Command {
 		String toCmd() {
 			return "refresh";
 		}
 		String javacode() {
 			return "___cw___.navigate().refresh();";
 		}
+        public String toSampleSelCmd() {
+            return "refresh";
+        }
 	}
 	
-	static class MaximizeCommand extends Command {
+	public static class MaximizeCommand extends Command {
 		String toCmd() {
 			return "maximize";
 		}
 		String javacode() {
 			return "___cw___.manage().window().maximize();";
 		}
+        public String toSampleSelCmd() {
+            return "maximize";
+        }
 	}
 	
-	static class GotoCommand extends Command {
+	public static class GotoCommand extends Command {
 		String url;
 		String url() {
 			return url;
@@ -999,13 +1345,18 @@ public class Command {
 			return "goto " + url;
 		}
 		String javacode() {
-			return "___cw___.navigate().to(\""+esc(url)+"\");";
+			return "___cw___.navigate().to(evaluate(\""+esc(url)+"\"));";
 		}
+        public String toSampleSelCmd() {
+            return "goto {url}";
+        }
 	}
 	
-	static class WindowSetPropertyCommand extends Command {
+	public static class WindowSetPropertyCommand extends Command {
 		String type;
 		int value;
+        public WindowSetPropertyCommand() {
+        }
 		WindowSetPropertyCommand(String val) {
 			String[] parts = val.trim().split("[\t ]+");
 			if(parts.length>1) {
@@ -1035,11 +1386,16 @@ public class Command {
 			}
 			return "";
 		}
+        public String toSampleSelCmd() {
+            return "window_set {width|height|posx|posy} {value}";
+        }
 	}
     
-    static class CapabilitySetPropertyCommand extends Command {
+    public static class CapabilitySetPropertyCommand extends Command {
         String type;
         String value;
+        public CapabilitySetPropertyCommand() {
+        }
         CapabilitySetPropertyCommand(String val) {
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>1) {
@@ -1062,14 +1418,17 @@ public class Command {
             }
             return "";
         }
+        public String toSampleSelCmd() {
+            return "capability_set {name} {value}";
+        }
     }
 	
 	static String esc(String cmd) {
 		return cmd.replace("\"", "\\\"");
 	}
 	
-	static class FindCommand extends Command {
-		String by, classifier, subselector, condvar, topele;
+	public static class FindCommand extends Command {
+		String by, classifier, subselector, condvar = "true", topele;
 		String by() {
 			return by;
 		}
@@ -1081,6 +1440,12 @@ public class Command {
 		}
         String topele() {
             return topele;
+        }
+        public String toSampleSelCmd() {
+            return "{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {value|value-list}";
+        }
+        public FindCommand() {
+            
         }
 		FindCommand(String val) {
 			String[] parts = val.trim().split("[\t ]+");
@@ -1140,26 +1505,31 @@ public class Command {
 			StringBuilder b = new StringBuilder();
 			topele = varname();
 			if(by.equalsIgnoreCase("id")) {
-				b.append("List<WebElement>  " + topele + " = By.id(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.id(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("name")) {
-				b.append("List<WebElement>  " + topele + " = By.name(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.name(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("class") || by.equalsIgnoreCase("className")) {
-				b.append("List<WebElement>  " + topele + " = By.className(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.className(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("tag") || by.equalsIgnoreCase("tagname")) {
-				b.append("List<WebElement>  " + topele + " = By.tagName(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.tagName(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("xpath")) {
-				b.append("List<WebElement>  " + topele + " = By.xpath(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.xpath(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
-				b.append("List<WebElement>  " + topele + " = By.cssSelector(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.cssSelector(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("text")) {
 				b.append("List<WebElement>  " + topele + " = By.xpath(\"//*[contains(text(), '"+esc(classifier)+"')]\").findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("linkText")) {
-				b.append("List<WebElement>  " + topele + " = By.linkText(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.linkText(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("partialLinkText")) {
-				b.append("List<WebElement>  " + topele + " = By.partialLinkText(\""+esc(classifier)+"\").findElements("+currvarnamesc()+");");
+				b.append("List<WebElement>  " + topele + " = By.partialLinkText(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
 			} else if(by.equalsIgnoreCase("active")) {
 				b.append("\n@SuppressWarnings(\"serial\")");
 				b.append("List<WebElement>  " + topele + " = new ArrayList<WebElement>(){{add(___cw___.activeElement());}};");
+			}
+			if(this instanceof WaitAndFindCommand) {
+			    b.append("\nif("+topele+"==null || "+topele+".isEmpty())return false;");
+			} else {
+			    b.append("\nAssert.assertTrue("+topele+"!=null && !"+topele+".isEmpty());");
 			}
 			
 			if(this.children!=null && this.children.size()>0) {
@@ -1175,51 +1545,51 @@ public class Command {
 					if(by.equalsIgnoreCase(subselector))
 					{
 						if(subselector.equalsIgnoreCase("title")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getTitle());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(___cw___.getTitle());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("currentUrl")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getCurrentUrl());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(___cw___.getCurrentUrl());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("pageSource")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.getPageSource());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(___cw___.getPageSource());");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("width")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getSize().getWidth()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf(___cw___.manage().window().getSize().getWidth()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("height")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getSize().getHeight()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf(___cw___.manage().window().getSize().getHeight()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("xpos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getPosition().getX()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf(___cw___.manage().window().getPosition().getX()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("ypos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf(___cw___.manage().window().getPosition().getY()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf(___cw___.manage().window().getPosition().getY()));");
 							return b.toString();
 						} else if(subselector.equalsIgnoreCase("alerttext")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(___cw___.switchTo().alert().getText());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(___cw___.switchTo().alert().getText());");
 							return b.toString();
 						}
 					}
 					
 					b.append("\nfor(final WebElement " + varname() + " : " + cvarname + ")\n{");
 					if(subselector.equalsIgnoreCase("text")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getText());");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getText());");
 					} else if(subselector.equalsIgnoreCase("tagname")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equalsIgnoreCase(" + currvarname() + ".getTagName());");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equalsIgnoreCase(" + currvarname() + ".getTagName());");
 					} else if(subselector.toLowerCase().startsWith("attr@")) {
 						String atname = subselector.substring(5);
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
 					} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 						String atname = subselector.substring(9);
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
 					} else if(subselector.equalsIgnoreCase("width")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
 					} else if(subselector.equalsIgnoreCase("height")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getSize().getHeight()));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getHeight()));");
 					} else if(subselector.equalsIgnoreCase("xpos")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getPosition().getX()));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getPosition().getX()));");
 					} else if(subselector.equalsIgnoreCase("ypos")) {
-						b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getPosition().getY()));");
+						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getPosition().getY()));");
 					}
 					b.append("\n}");
 				} else if(c instanceof ValueListCommand) {
@@ -1232,23 +1602,23 @@ public class Command {
 						String value = values.get(i);
 						b.append("\nfinal WebElement " + varname() + " = "+cvarname+".get("+i+");");
 						if(subselector.equalsIgnoreCase("text")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getText());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getText());");
 						} else if(subselector.equalsIgnoreCase("tagname")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equalsIgnoreCase(" + currvarname() + ".getTagName());");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equalsIgnoreCase(" + currvarname() + ".getTagName());");
 						} else if(subselector.toLowerCase().startsWith("attr@")) {
 							String atname = subselector.substring(5);
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
 						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 							String atname = subselector.substring(9);
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
 						} else if(subselector.equalsIgnoreCase("width")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
 						} else if(subselector.equalsIgnoreCase("height")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getSize().getHeight()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getHeight()));");
 						} else if(subselector.equalsIgnoreCase("xpos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getPosition().getX()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getPosition().getX()));");
 						} else if(subselector.equalsIgnoreCase("ypos")) {
-							b.append("\n" + condvar + " &= \""+esc(value)+"\".equals(String.valueOf("+currvarname()+".getPosition().getY()));");
+							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getPosition().getY()));");
 						}
 					}
 					b.append("\n}");
@@ -1259,6 +1629,8 @@ public class Command {
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
                         || c instanceof SelectCommand) {
                     b.append(c.selcode(topele));
+                } else if(c instanceof ActionsCommand) {
+                    b.append(c.javacode());
                 }
 			}
 			if(condvar==null) {
@@ -1279,7 +1651,7 @@ public class Command {
 				}
 				else
 				{
-					b.append("\nboolean " + condvar + " = "+ cvarname+"!=null && !"+cvarname+".isEmpty();");
+					//b.append("\nboolean " + condvar + " = "+ cvarname+"!=null && !"+cvarname+".isEmpty();");
 				}
 			}
 			return b.toString();
@@ -1292,11 +1664,14 @@ public class Command {
 		}
 	}
 	
-	static class WaitAndFindCommand extends FindCommand {
+	public static class WaitAndFindCommand extends FindCommand {
 		long waitfor = 0;
 		long waitfor() {
 			return waitfor;
 		}
+        public WaitAndFindCommand() {
+            
+        }
 		WaitAndFindCommand(String val, long wf) {
 			super(val);
 			waitfor = wf;
@@ -1329,22 +1704,24 @@ public class Command {
 		}
 	}
 	
-	static class StartCommand extends Command {
+	public static class StartCommand extends Command {
 		String type;
 		String toCmd() {
 			return type;
 		}
 	}
 	
-	static class EndCommand extends Command {
+	public static class EndCommand extends Command {
 		String type;
 		String toCmd() {
 			return type;
 		}
 	}
 	
-	static class TypeCommand extends ValueCommand {
+	public static class TypeCommand extends ValueCommand {
 		FindCommand cond;
+        public TypeCommand() {
+        }
 		TypeCommand(String val) {
 			String[] parts = val.trim().split("[\t ]+");
 			if(parts.length>0) {
@@ -1368,22 +1745,27 @@ public class Command {
 			StringBuilder b = new StringBuilder();
 			if(cond!=null) {
 				b.append(cond.javacodeonly(children));
-				b.append("\nAssert.assertTrue("+cond.condition()+");");
+				//b.append("\nAssert.assertTrue("+cond.condition()+");");
 			}
-			b.append("\n"+currvarname()+".get(0).sendKeys(\""+esc(value)+"\");");
+			b.append("\n"+currvarname()+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
 			return b.toString();
 		}
 		String selcode(String varnm) {
 		    if(varnm==null) {
 		        varnm = currvarname();
 		    }
-		    return "\n"+varnm+".get(0).sendKeys(\""+esc(value)+"\");";
+		    return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));";
 		}
+        public String toSampleSelCmd() {
+            return "type {text}";
+        }
 	}
     
-    static class SelectCommand extends ValueCommand {
+    public static class SelectCommand extends ValueCommand {
         FindCommand cond;
         String by;
+        public SelectCommand() {
+        }
         SelectCommand(String val) {
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>0) {
@@ -1406,17 +1788,17 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
-                b.append("\nAssert.assertTrue("+cond.condition()+");");
+                //b.append("\nAssert.assertTrue("+cond.condition()+");");
             }
             String cvarnm = currvarname();
             String selvrnm = varname();
             b.append("\nSelect "+selvrnm+" = new Select("+cvarnm+".get(0));");
             if(by.equalsIgnoreCase("text")) {
-                b.append("\n"+selvrnm+".selectByVisibleText(\""+value+"\");");
+                b.append("\n"+selvrnm+".selectByVisibleText(evaluate(\""+value+"\"));");
             } else if(by.equalsIgnoreCase("index")) {
                 b.append("\n"+selvrnm+".selectByIndex("+value+");"); 
             } else if(by.equalsIgnoreCase("value")) {
-                b.append("\n"+selvrnm+".selectByValue(\""+value+"\");"); 
+                b.append("\n"+selvrnm+".selectByValue(evaluate(\""+value+"\"));"); 
             } else if(by.equalsIgnoreCase("first")) {
                 b.append("\n"+selvrnm+".selectByIndex(0);"); 
             } else if(by.equalsIgnoreCase("last")) {
@@ -1429,11 +1811,11 @@ public class Command {
                 varnm = currvarname();
             }
             if(by.equalsIgnoreCase("text")) {
-                return ("\n"+varnm+".selectByVisibleText(\""+value+"\");");
+                return ("\n"+varnm+".selectByVisibleText(evaluate(\""+value+"\"));");
             } else if(by.equalsIgnoreCase("index")) {
                 return ("\n"+varnm+".selectByIndex("+value+");"); 
             } else if(by.equalsIgnoreCase("value")) {
-                return ("\n"+varnm+".selectByValue(\""+value+"\");"); 
+                return ("\n"+varnm+".selectByValue(evaluate(\""+value+"\"));"); 
             } else if(by.equalsIgnoreCase("first")) {
                 return ("\n"+varnm+".selectByIndex(0);"); 
             } else if(by.equalsIgnoreCase("last")) {
@@ -1441,9 +1823,12 @@ public class Command {
             }
             return "";
         }
+        public String toSampleSelCmd() {
+            return "select {find-expr} {text|index|value|first|last}@{value}";
+        }
     }
     
-    static class HoverCommand extends Command {
+    public static class HoverCommand extends Command {
         FindCommand cond;
         String toCmd() {
             return "hover" + (cond!=null?cond.toCmd():"");
@@ -1452,11 +1837,11 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
-                b.append("\nAssert.assertTrue("+cond.condition()+");");
+                //b.append("\nAssert.assertTrue("+cond.condition()+");");
             }
             String cvarnm = currvarname();
             String hvvrnm = varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(___d___);");
+            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+cvarnm+".get(0)).perform();");
             return b.toString();
         }
@@ -1466,15 +1851,20 @@ public class Command {
             }
             String hvvrnm = varname();
             StringBuilder b = new StringBuilder();
-            b.append("\nActions "+hvvrnm+" = new Actions(___d___);");
+            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+varnm+".get(0)).perform();");
             return b.toString();
         }
+        public String toSampleSelCmd() {
+            return "hover {find-expr}";
+        }
     }
     
-    static class HoverAndClickCommand extends Command {
+    public static class HoverAndClickCommand extends Command {
         FindCommand condHe;
         WaitAndFindCommand condCe;
+        public HoverAndClickCommand() {
+        }
         HoverAndClickCommand(String val) {
             String[] t = val.trim().split("[\t ]+");
             if(t.length>0) {
@@ -1491,7 +1881,7 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(condHe!=null) {
                 b.append(condHe.javacodeonly(children));
-                b.append("\nAssert.assertTrue("+condHe.condition()+");");
+                //b.append("\nAssert.assertTrue("+condHe.condition()+");");
             }
             String hevarnm = currvarname();
             if(condCe!=null) {
@@ -1499,7 +1889,7 @@ public class Command {
             }
             String cevarnm = condCe.topele();
             String hvvrnm = varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(___d___);");
+            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).click(((List<WebElement>)"+cevarnm+"[0]).get(0)).perform();");
             return b.toString();
         }
@@ -1509,46 +1899,154 @@ public class Command {
             }
             String hvvrnm = varname();
             StringBuilder b = new StringBuilder();
-            b.append("\nActions "+hvvrnm+" = new Actions(___d___);");
+            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+varnm+".get(0)).click().perform();");
             return b.toString();
         }
+        public String toSampleSelCmd() {
+            return "hoverclick {find-expr}";
+        }
     }
     
-    static class ActionsCommand extends Command {
-        FindCommand condHe;
-        FindCommand condCe;
-        ActionsCommand(String val) {
+    public static class ActionsCommand extends Command {
+        String action;
+        String expr1;
+        String expr2;
+        FindCommand fcmd;
+        
+        public ActionsCommand() {
+        }
+        ActionsCommand(String val, FindCommand fcmd) {
             String[] t = val.trim().split("[\t ]+");
-            condHe = new FindCommand(t[0]);
-            if(t.length>1) {
-                condCe = new FindCommand(t[1]);
+            int tl = t.length, counter = 0;
+            ActionsCommand cmd = this;
+            this.fcmd = fcmd;
+            while(counter<tl) {
+                if(t[counter].matches("click|clickAndHold|release|doubleClick|contextClick|clickhold|rightclick")) {
+                    cmd.action = t[counter];
+                    if(cmd.action.equals("clickhold")) {
+                        cmd.action = "clickAndHold";
+                    } else if(cmd.action.equals("rightclick")) {
+                        cmd.action = "contextClick";
+                    }
+                } else if(t[counter].matches("keyDown|keyUp|sendKeys|type|moveToElement|moveto")) {
+                    cmd.action = t[counter];
+                    if(cmd.action.equals("type")) {
+                        cmd.action = "sendKeys";
+                    } else if(cmd.action.equals("moveto")) {
+                        cmd.action = "moveToElement";
+                    }
+                    if(tl>counter+1) {
+                        cmd.expr1 = unsanitize(t[++counter]);
+                        if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
+                            if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
+                                cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
+                            }
+                        }
+                    } else {
+                        throw new RuntimeException("Expression expected after actions (keyDown|keyUp|sendKeys|moveToElement)");
+                    }
+                } else if(t[counter].matches("dragAndDrop|moveByOffset|moveby|dragdrop")) {
+                    cmd.action = t[counter];
+                    if(cmd.action.equals("moveby")) {
+                        cmd.action = "moveByOffset";
+                    } else if(cmd.action.equals("dragdrop")) {
+                        cmd.action = "dragAndDrop";
+                    }
+                    if(tl>counter+2) {
+                        cmd.expr1 = unsanitize(t[++counter]);
+                        if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
+                            if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
+                                cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
+                            }
+                        }
+                        cmd.expr2 = unsanitize(t[++counter]);
+                        if(cmd.expr2.charAt(0)==cmd.expr2.charAt(cmd.expr2.length()-1)) {
+                            if(cmd.expr2.charAt(0)=='"' || cmd.expr2.charAt(0)=='\'') {
+                                cmd.expr2 = cmd.expr2.substring(1, cmd.expr2.length()-1);
+                            }
+                        }
+                    } else {
+                        throw new RuntimeException("Expressions(2) expected after actions (dragAndDrop|moveByOffset)");
+                    }
+                } else {
+                    throw new RuntimeException("Invalid action specified, should be one of (click|clickAndHold|release|doubleClick|contextClick|keyDown|keyUp|sendKeys|moveToElement|dragAndDrop|moveByOffset)");
+                }
+                ++counter;
+                cmd.children.add(new ActionsCommand());
+                cmd = (ActionsCommand)cmd.children.get(0);
+            }
+            cmd = this;
+            while(!cmd.children.isEmpty()) {
+                ActionsCommand tcmd = (ActionsCommand)cmd.children.get(0);
+                if(tcmd.action==null) {
+                    cmd.children.clear();
+                }
+                cmd = tcmd;
             }
         }
         String toCmd() {
-            return "hoverclick " + (condHe!=null?condHe.toCmd():"") +  (condCe!=null?(" "+condCe.toCmd()):"");
+            return "action ";
+        }
+        String _javacode(String acnm) {
+            StringBuilder b = new StringBuilder();
+            if(action.matches("click|clickAndHold|release|doubleClick|contextClick")) {
+                b.append("\n"+acnm+"."+action+"();");
+            } else if(action.matches("keyDown|keyUp")) {
+                String ck = unsanitize(expr1);
+                char key = ck.charAt(0);
+                b.append("\n"+acnm+"."+action+"(Keys.getKeyFromUnicode('"+key+"'));");
+            } else if(action.matches("sendKeys")) {
+                String ck = unsanitize(expr1);
+                b.append("\n"+acnm+"."+action+"(evaluate(\""+ck+"\"));");
+            } else if(action.matches("moveToElement")) {
+                String ck = unsanitize(expr1);
+                FindCommand fc = new FindCommand(ck);
+                b.append("\n"+fc.javacodeonly(null));
+                //b.append("\nAssert.assertTrue("+fc.condition()+");");
+                String cvarnm = currvarname();
+                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0));");
+            } else if(action.matches("dragAndDrop")) {
+                String ck = unsanitize(expr1);
+                FindCommand fc = new FindCommand(ck);
+                b.append("\n"+fc.javacodeonly(null));
+                //b.append("\nAssert.assertTrue("+fc.condition()+");");
+                String cvarnm = currvarname();
+                String ck1 = unsanitize(expr1);
+                FindCommand fc1 = new FindCommand(ck1);
+                b.append("\n"+fc1.javacodeonly(null));
+                //b.append("\nAssert.assertTrue("+fc1.condition()+");");
+                String cvarnm1 = currvarname();
+                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), "+cvarnm1+".get(0));");
+            } else if(action.matches("moveByOffset")) {
+                try {
+                    int ck = Integer.parseInt(unsanitize(expr1));
+                    int ck1 = Integer.parseInt(unsanitize(expr2));
+                    b.append("\n"+acnm+"."+action+"("+ck+", "+ck1+");");
+                } catch (Exception e) {
+                    throw new RuntimeException("xOffset and yOffset need to be integer values for moveByOffset");
+                }
+            }
+            if(!children.isEmpty()) {
+                ActionsCommand tcmd = (ActionsCommand)children.get(0);
+                b.append(tcmd._javacode(acnm));
+            }
+            return b.toString();
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            if(condHe!=null) {
-                b.append(condHe.javacodeonly(children));
-                b.append("\nAssert.assertTrue("+condHe.condition()+");");
-            }
-            String hevarnm = currvarname();
-            if(condCe!=null) {
-                b.append(condCe.javacodeonly(children));
-                b.append("\nAssert.assertTrue("+condCe.condition()+");");
-            }
-            String cevarnm = currvarname();
-            String hvvrnm = varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(___d___);");
-            b.append("\n"+hvvrnm+".moveToElement("+hevarnm+").click("+cevarnm+").build().perform();");
+            String acnm = varname();
+            b.append("\nActions "+acnm+" = new Actions(get___d___());\n"+acnm+".moveToElement("+fcmd.topele+".get(0));");
+            b.append(_javacode(acnm));
+            b.append("\n"+acnm+".build().perform();");
             return b.toString();
         }
     }
     
-    static class SleepCommand extends Command {
+    public static class SleepCommand extends Command {
         long ms;
+        public SleepCommand() {
+        }
         SleepCommand(String val) {
             try
             {
@@ -1564,9 +2062,12 @@ public class Command {
         String javacode() {
             return "\nThread.sleep("+ms+");";
         }
+        public String toSampleSelCmd() {
+            return "sleep {time-in-ms}";
+        }
     }
 	
-	static class ClickCommand extends Command {
+	public static class ClickCommand extends Command {
 		FindCommand cond;
 		String toCmd() {
 			return "click" + (cond!=null?cond.toCmd():"");
@@ -1575,7 +2076,7 @@ public class Command {
 			StringBuilder b = new StringBuilder();
 			if(cond!=null) {
 				b.append(cond.javacodeonly(children));
-				b.append("\nAssert.assertTrue("+cond.condition()+");");
+				//b.append("\nAssert.assertTrue("+cond.condition()+");");
 			}
 			b.append("\n"+currvarname()+".get(0).click();");
 			return b.toString();
@@ -1586,9 +2087,12 @@ public class Command {
             }
             return "\n"+varnm+".get(0).click();";
         }
+        public String toSampleSelCmd() {
+            return "click {find-expr}";
+        }
 	}
 	
-	static class ClearCommand extends Command {
+	public static class ClearCommand extends Command {
 		FindCommand cond;
 		String toCmd() {
 			return "clear" + (cond!=null?cond.toCmd():"");
@@ -1597,7 +2101,7 @@ public class Command {
 			StringBuilder b = new StringBuilder();
 			if(cond!=null) {
 				b.append(cond.javacodeonly(children));
-				b.append("\nAssert.assertTrue("+cond.condition()+");");
+				//b.append("\nAssert.assertTrue("+cond.condition()+");");
 			}
 			b.append("\n"+currvarname()+".get(0).clear();");
 			return b.toString();
@@ -1608,9 +2112,12 @@ public class Command {
             }
             return "\n"+varnm+".get(0).clear();";
         }
+        public String toSampleSelCmd() {
+            return "clear {find-expr}";
+        }
 	}
 	
-	static class SubmitCommand extends Command {
+	public static class SubmitCommand extends Command {
 		FindCommand cond;
 		String toCmd() {
 			return "submit" + (cond!=null?cond.toCmd():"");
@@ -1619,7 +2126,7 @@ public class Command {
 			StringBuilder b = new StringBuilder();
 			if(cond!=null) {
 				b.append(cond.javacodeonly(children));
-				b.append("\nAssert.assertTrue("+cond.condition()+");");
+				//b.append("\nAssert.assertTrue("+cond.condition()+");");
 			}
 			b.append("\n"+currvarname()+".get(0).submit();");
 			return b.toString();
@@ -1630,5 +2137,31 @@ public class Command {
             }
             return "\n"+varnm+".get(0).submit();";
         }
+        public String toSampleSelCmd() {
+            return "submit {find-expr}";
+        }
 	}
+	
+	public static void main(String[] args) throws Exception {
+        /*Reflections reflections = new Reflections("com.gatf.selenium");
+        Set<Class<? extends Command>> cmds = reflections.getSubTypesOf(Command.class);
+        for (Class<? extends Command> cls : cmds)
+        {
+            Object o = cls.newInstance();
+            Method m = cls.getMethod("toSampleSelCmd", new Class[]{});
+            m.setAccessible(true);
+            System.out.println(cls.getSimpleName().substring(0, cls.getSimpleName().length()-7)+ ":\n\t" + m.invoke(o, new Object[]{}));
+        }*/
+	    Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
+	    SeleniumDriverConfig dc = new SeleniumDriverConfig();
+	    dc.setName("chrome");
+	    dc.setDriverName("webdriver.chrome.driver");
+	    dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+	    mp.put("chrome", dc);
+	    List<String> commands = new ArrayList<String>();
+	    Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\Documents\\GitHub\\gatf\\test1.sel"), commands, mp);
+	    //System.out.println(cmd.javacode());
+	    String sourceCode =  cmd.fjavacode();
+        System.out.println(sourceCode);
+    }
 }

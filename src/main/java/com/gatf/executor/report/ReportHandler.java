@@ -1192,7 +1192,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doSeleniumSummaryTestReport(Map<String, List<Object[]>> summLstMap, AcceptanceTestContext acontext)
+	public static void doSeleniumSummaryTestReport(Map<String, Map<String, Map<String, List<Object[]>>>> summLstMap, AcceptanceTestContext acontext)
     {
         GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();

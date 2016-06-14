@@ -61,6 +61,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
     		final GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
 			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.rootDir:gatfConfig.getOutFilesBasePath();

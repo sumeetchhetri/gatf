@@ -1,7 +1,18 @@
-open firefox
-goto http://213.136.74.220:8080
-??10 id@"inputUsername"
-type "admin" id@"inputUsername" 
-type "admin" id@"inputPassword"
-click text@"Sign In"
-??10 class@"logoutLink"
+open chrome
+goto https://abc.com
+select index@4 id@"Location"
+??30 id@"UserName" type "test"
+type "test" id@"Password"
+click css@"input[type='submit']"
+click xpath@"//*[@id="wrapper"]/div[1]/nav/div[1]/div[1]/div[2]/ul/div/a/li"
+??60 class@"welcome_text" hover
+??10 id@"signOut"
+screenshot "test.png"
+hoverclick class@"welcome_text" id@"signOut"
+??30 id@"UserName" actions sendKeys "test" moveto id@"sdsadsa" click clickhold release keyUp "a" keyDown "b" moveby 1 2
+#provider "abc"
+{
+	??30 id@"$user" type "$userval"
+	type "$passval" id@"$pass"
+	click css@"input[type='$sub']"
+}

@@ -53,6 +53,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+	    response.setHeader("Cache-Control", "no-cache, no-store");
     	String configType = request.getParameter("configType");
     	String testcaseFileName = request.getParameter("testcaseFileName");
     	boolean isApiIntType = configType!=null && (configType.equals("loggingapi") || configType.equals("issuetrackerapi"));
@@ -121,6 +122,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || isUpdate) {
     		try {
+    		    String testCaseName = request.getParameter("tcName");
     			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
     					TestCase.class);
     			if(testCase.getName()==null) {
@@ -143,23 +145,29 @@ public class GatfTestCaseHandler extends HttpHandler {
 					}
         			tcs.add(testCase);
     			}
-    			else
+    			else if(testCaseName!=null)
     			{
-    				boolean found = false;
+    				boolean found = false, found2 = false;
     				for (TestCase tc : tcs) {
-						if(tc.getName().equals(testCase.getName())) {
+						if(tc.getName().equals(testCaseName)) {
 							found = true;
-							break;
 						}
+						if(!testCase.getName().equals(testCaseName) && tc.getName().equals(testCase.getName())) {
+                            found2 = true;
+                        }
 					}
     				
     				if(!found) {
     					throw new RuntimeException("Testcase with name does not exist");
     				}
     				
+                    if(found && found2) {
+                        throw new RuntimeException("Testcase with same name already exists");
+                    }
+    				
     				List<TestCase> ttcs = new ArrayList<TestCase>();
     				for (TestCase tc : tcs) {
-						if(tc.getName().equals(testCase.getName())) {
+						if(tc.getName().equals(testCaseName)) {
 							ttcs.add(testCase);
 						} else {
 							ttcs.add(tc);

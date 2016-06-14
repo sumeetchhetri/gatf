@@ -31,6 +31,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
@@ -42,8 +43,9 @@ import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
+import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
-import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
+import com.gatf.selenium.SeleniumTest.SeleniumResult;
 
 public class DistributedGatfListener {
 
@@ -231,34 +233,38 @@ public class DistributedGatfListener {
 				oos.flush();
 				
 				if(tests==null || tests.size()==0 || context.getConfig().isValidSeleniumRequest()) {
-					boolean driverfound = false;
-					if(!new File(context.getConfig().getSeleniumDriverPath()).exists()) {
-						Path p = Paths.get(context.getConfig().getSeleniumDriverPath());
-						File df = new File(System.getProperty("user.dir"), p.getFileName().toString());
-						if(df!=null && df.exists()) {
-							driverfound = true;
-							System.setProperty(context.getConfig().getSeleniumDriverName(), df.getAbsolutePath());
-						}
-					} else {
-						driverfound = true;
-						System.setProperty(context.getConfig().getSeleniumDriverName(), context.getConfig().getSeleniumDriverPath());
-					}
+					boolean driverfound = true;
+					for (SeleniumDriverConfig selConf : context.getConfig().getSeleniumDriverConfigs())
+		            {
+					    if(!new File(selConf.getPath()).exists()) {
+	                        Path p = Paths.get(selConf.getPath());
+	                        File df = new File(System.getProperty("user.dir"), p.getFileName().toString());
+	                        if(df!=null && df.exists()) {
+	                            driverfound &= true;
+	                            System.setProperty(selConf.getName(), df.getAbsolutePath());
+	                        }
+	                    } else {
+	                        driverfound &= true;
+	                        System.setProperty(selConf.getName(), selConf.getPath());
+	                    }
+		            }
+	                    
+                    if(driverfound) {
+                        oos.writeInt(0);
+                        oos.flush();
+                        logger.info("Selenium Test Request");
+                        
+                        GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+                        List<Map<String, SeleniumResult>> results = mojo.handleDistributedSeleniumTests(context, tests);
+                        oos.writeObject(results);
+                        oos.flush();
+                        logger.info("Done Writing Selenium results...");
+                    } else {
+                        oos.writeInt(1);
+                        oos.flush();
+                        logger.info("Selenium Test Request");
+		            }
 					
-					if(driverfound) {
-						oos.writeInt(0);
-						oos.flush();
-						logger.info("Selenium Test Request");
-						
-						GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
-						List<SeleniumTestResult> results = mojo.handleDistributedSeleniumTests(context, tests);
-						oos.writeObject(results);
-						oos.flush();
-						logger.info("Done Writing Selenium results...");
-					} else {
-						oos.writeInt(1);
-						oos.flush();
-						logger.info("Selenium Test Request");
-					}
 				} else {
 					oos.writeInt(2);
 					oos.flush();

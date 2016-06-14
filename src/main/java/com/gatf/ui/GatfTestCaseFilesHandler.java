@@ -24,6 +24,7 @@ import java.util.List;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.glassfish.grizzly.http.Method;
@@ -47,6 +48,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+	    response.setHeader("Cache-Control", "no-cache, no-store");
     	if(request.getMethod().equals(Method.POST)) {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
@@ -126,9 +128,14 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
         			String tofilePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileNameTo;
         			if(new File(filePath).exists()) {
-        				if(!new File(filePath).renameTo(new File(tofilePath))) {
-        					throw new RuntimeException("File rename operation failed");
-        				}
+        			    try
+                        {
+        			        FileUtils.moveFile(new File(filePath), new File(tofilePath));
+                        }
+                        catch (Exception e)
+                        {
+                            throw new RuntimeException("File rename operation failed");
+                        }
         			} else {
         				throw new RuntimeException("Source Testcase file does not exist");
         			}

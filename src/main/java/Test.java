@@ -1,148 +1,207 @@
-/*
-    Copyright 2013-2016, Sumeet Chhetri
-    
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    
-    http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-*/
-
-import java.io.File;
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
 import java.util.List;
+import java.util.Map;
 
-import org.apache.commons.io.FileUtils;
-import org.junit.Assert;
-import org.openqa.selenium.By;
-import org.openqa.selenium.OutputType;
 import org.openqa.selenium.SearchContext;
-import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
-import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.logging.Logs;
-import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.SeleniumResult;
+import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.WebDriverWait;
-
-import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
 import com.google.common.base.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import org.junit.Assert;
+import org.openqa.selenium.Keys;
 
-public class Test {
+public class Test extends SeleniumTest implements Serializable {
+public Test(AcceptanceTestContext ___cxt___) {
+super("test.sel", ___cxt___);
+}
+public void quit() {
+if(get___d___()!=null)get___d___().quit();
+}
+public void setupDriverfirefox(LoggingPreferences ___lp___) throws Exception {
+DesiredCapabilities ___dc___ = DesiredCapabilities.firefox();
+___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
+set___d___(new org.openqa.selenium.firefox.MarionetteDriver(___dc___));
+setBrowserName("firefox");
 
-    private WebDriver ___d___ = null;
-    public void quit() {
-    if(___d___!=null)___d___.quit();
-    }
-    public static void main(String[] args) throws Exception {
-        new Test().main1(args);
-    }
-    public void main1(String[] args) throws Exception {
-        System.setProperty("webdriver.chrome.driver", "F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-    //public Logs execute(AcceptanceTestContext ___cxt___, LoggingPreferences ___lp___) throws Exception {
-    DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();
-    //___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
-    ___d___ = new org.openqa.selenium.chrome.ChromeDriver(___dc___);
-    SearchContext ___sc___1 = ___d___;
-    WebDriver ___cw___ = ___d___;
-    WebDriver ___ocw___ = ___cw___;
-    try
-    {
-    ___cw___.navigate().to("https://portaldev.symplast.com");
-    final WebDriver ___sc___2 = (WebDriver)___sc___1;
-    (new WebDriverWait(___cw___, 30)).until(
-    new Function<WebDriver, Boolean>(){
-    public Boolean apply(WebDriver input) {
-    List<WebElement>  ___w___1 = By.id("UserName").findElements(___sc___2);
-    boolean ___c___1 = ___w___1!=null && !___w___1.isEmpty();
-    return ___c___1;
-    }
-    public String toString() {
-    return "";
-    }
-    });
-    List<WebElement>  ___w___2 = By.id("UserName").findElements(___sc___1);
-    boolean ___c___2 = ___w___2!=null && !___w___2.isEmpty();
-    Assert.assertTrue(___c___2);
-    ___w___2.get(0).sendKeys("rahulb");
-    List<WebElement>  ___w___3 = By.id("Password").findElements(___sc___1);
-    boolean ___c___3 = ___w___3!=null && !___w___3.isEmpty();
-    Assert.assertTrue(___c___3);
-    ___w___3.get(0).sendKeys("Ohum@123");
-    List<WebElement>  ___w___4 = By.id("Location").findElements(___sc___1);
-    boolean ___c___4 = ___w___4!=null && !___w___4.isEmpty();
-    Assert.assertTrue(___c___4);
-    Select ___w___5 = new Select(___w___4.get(0));
-    ___w___5.selectByIndex(4);
-    List<WebElement>  ___w___6 = By.cssSelector("input[type='submit']").findElements(___sc___1);
-    boolean ___c___5 = ___w___6!=null && !___w___6.isEmpty();
-    Assert.assertTrue(___c___5);
-    ___w___6.get(0).click();
-    final WebDriver ___sc___3 = (WebDriver)___sc___1;
-    (new WebDriverWait(___cw___, 20)).until(
-    new Function<WebDriver, Boolean>(){
-    public Boolean apply(WebDriver input) {
-    List<WebElement>  ___w___7 = By.className("welcome_text").findElements(___sc___3);
-    boolean ___c___6 = ___w___7!=null && !___w___7.isEmpty();
-    return ___c___6;
-    }
-    public String toString() {
-    return "";
-    }
-    });
-    List<WebElement>  ___w___8 = By.className("welcome_text").findElements(___sc___1);
-    boolean ___c___7 = ___w___8!=null && !___w___8.isEmpty();
-    Assert.assertTrue(___c___7);
-    Actions ___w___9 = new Actions(___d___);
-    ___w___9.moveToElement(___w___8.get(0)).perform();
-    final WebDriver ___sc___4 = (WebDriver)___sc___1;
-    (new WebDriverWait(___cw___, 10)).until(
-    new Function<WebDriver, Boolean>(){
-    public Boolean apply(WebDriver input) {
-    List<WebElement>  ___w___10 = By.xpath("//*[contains(text(), 'Sign Out')]").findElements(___sc___4);
-    boolean ___c___8 = ___w___10!=null && !___w___10.isEmpty();
-    return ___c___8;
-    }
-    public String toString() {
-    return "";
-    }
-    });
-    ___cw___.navigate().refresh();
-    File ___sr___1 = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);
-    FileUtils.copyFile(___sr___1, new File("test.png"));
-    final WebDriver ___sc___5 = (WebDriver)___sc___1;
-    (new WebDriverWait(___cw___, 20)).until(
-    new Function<WebDriver, Boolean>(){
-    public Boolean apply(WebDriver input) {
-    List<WebElement>  ___w___11 = By.className("welcome_text").findElements(___sc___5);
-    boolean ___c___9 = ___w___11!=null && !___w___11.isEmpty();
-    return ___c___9;
-    }
-    public String toString() {
-    return "";
-    }
-    });
-    List<WebElement>  ___w___12 = By.className("welcome_text").findElements(___sc___1);
-    boolean ___c___10 = ___w___12!=null && !___w___12.isEmpty();
-    Assert.assertTrue(___c___10);
-    Actions ___w___14 = new Actions(___d___);
-    ___w___14.moveToElement(___w___12.get(0)).perform();
-    
-    List<WebElement>  ___w___13 = By.xpath("//*[contains(text(), 'Sign Out')]").findElements(___sc___1);
-    boolean ___c___11 = ___w___13!=null && !___w___13.isEmpty();
-    Assert.assertTrue(___c___11);
-    //___w___13.get(0).click();
-    Logs ___logs___ = ___d___.manage().logs();
-    }
-    catch(Throwable c)
-    {
-    throw new SeleniumException();
-    }}
+}
+public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();
+___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
+set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+setBrowserName("chrome");
+
+}
+@SuppressWarnings("unchecked")
+public Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {
+quit();
+setupDriverchrome(___lp___);
+_execute(___lp___);
+return null;
+}
+@SuppressWarnings("unchecked")
+public void _execute(LoggingPreferences ___lp___) throws Exception {
+try {
+SearchContext ___sc___2 = get___d___();
+WebDriver ___cw___ = get___d___();
+WebDriver ___ocw___ = ___cw___;___cw___.navigate().to(evaluate("https://portaldev.symplast.com"));
+List<WebElement>  ___w___1 = By.id(evaluate("Location")).findElements(___sc___2);Assert.assertTrue(___w___1!=null && !___w___1.isEmpty());
+
+Select ___w___2 = new Select(___w___1.get(0));
+___w___2.selectByIndex(4);
+final Object[]  ___w___3 = new Object[1];
+final WebDriver ___sc___3 = (WebDriver)___sc___2;
+(new WebDriverWait(___cw___, 30)).until(
+new Function<WebDriver, Boolean>(){
+public Boolean apply(WebDriver input) {
+List<WebElement>  ___w___4 = By.id(evaluate("UserName")).findElements(___sc___3);if(___w___4==null || ___w___4.isEmpty())return false;
+
+___w___4.get(0).sendKeys(evaluate("rahulb"));
+___w___3[0] = ___w___4;
+
+return true;
+}
+public String toString() {
+return "";
+}
+});
+List<WebElement>  ___w___5 = By.id(evaluate("Password")).findElements(___sc___2);Assert.assertTrue(___w___5!=null && !___w___5.isEmpty());
+
+___w___5.get(0).sendKeys(evaluate("Ohum@123"));
+List<WebElement>  ___w___6 = By.cssSelector(evaluate("input[type='submit']")).findElements(___sc___2);Assert.assertTrue(___w___6!=null && !___w___6.isEmpty());
+
+___w___6.get(0).click();
+List<WebElement>  ___w___7 = By.xpath(evaluate("//*[@id=\"wrapper\"]/div[1]/nav/div[1]/div[1]/div[2]/ul/div/a/li")).findElements(___sc___2);Assert.assertTrue(___w___7!=null && !___w___7.isEmpty());
+
+___w___7.get(0).click();
+final Object[]  ___w___8 = new Object[1];
+final WebDriver ___sc___4 = (WebDriver)___sc___2;
+(new WebDriverWait(___cw___, 30)).until(
+new Function<WebDriver, Boolean>(){
+public Boolean apply(WebDriver input) {
+List<WebElement>  ___w___9 = By.id(evaluate("ddlRefSource")).findElements(___sc___4);if(___w___9==null || ___w___9.isEmpty())return false;
+
+___w___8[0] = ___w___9;
+
+return true;
+}
+public String toString() {
+return "";
+}
+});
+List<WebElement>  ___w___10 = By.id(evaluate("ddlRefSource")).findElements(___sc___2);Assert.assertTrue(___w___10!=null && !___w___10.isEmpty());
+
+Select ___w___11 = new Select(___w___10.get(0));
+___w___11.selectByIndex(2);
+List<WebElement>  ___w___12 = By.id(evaluate("ddlReferralByPatient")).findElements(___sc___2);Assert.assertTrue(___w___12!=null && !___w___12.isEmpty());
+
+Select ___w___13 = new Select(___w___12.get(0));
+___w___13.selectByIndex(7);
+List<WebElement>  ___w___14 = By.id(evaluate("txtFName")).findElements(___sc___2);Assert.assertTrue(___w___14!=null && !___w___14.isEmpty());
+
+___w___14.get(0).sendKeys(evaluate("Test"));
+List<WebElement>  ___w___15 = By.id(evaluate("txtLName")).findElements(___sc___2);Assert.assertTrue(___w___15!=null && !___w___15.isEmpty());
+
+___w___15.get(0).sendKeys(evaluate("Second"));
+List<WebElement>  ___w___16 = By.id(evaluate("idPatientBasicDOB")).findElements(___sc___2);Assert.assertTrue(___w___16!=null && !___w___16.isEmpty());
+
+___w___16.get(0).sendKeys(evaluate("06/06/2015"));
+List<WebElement>  ___w___17 = By.id(evaluate("txtMName")).findElements(___sc___2);Assert.assertTrue(___w___17!=null && !___w___17.isEmpty());
+
+___w___17.get(0).click();
+List<WebElement>  ___w___18 = By.id(evaluate("ddlGender")).findElements(___sc___2);Assert.assertTrue(___w___18!=null && !___w___18.isEmpty());
+
+Select ___w___19 = new Select(___w___18.get(0));
+___w___19.selectByIndex(2);
+List<WebElement>  ___w___20 = By.id(evaluate("txtCellPhoneNo")).findElements(___sc___2);Assert.assertTrue(___w___20!=null && !___w___20.isEmpty());
+
+___w___20.get(0).sendKeys(evaluate("34567"));
+List<WebElement>  ___w___21 = By.id(evaluate("btnSavePatientBasicInfo")).findElements(___sc___2);Assert.assertTrue(___w___21!=null && !___w___21.isEmpty());
+
+___w___21.get(0).click();
+List<WebElement>  ___w___22 = By.id(evaluate("popup_message")).findElements(___sc___2);Assert.assertTrue(___w___22!=null && !___w___22.isEmpty());
+
+List<WebElement>  ___w___23 = By.id(evaluate("popup_ok")).findElements(___sc___2);Assert.assertTrue(___w___23!=null && !___w___23.isEmpty());
+
+___w___23.get(0).click();
+List<WebElement>  ___w___24 = By.id(evaluate("txtCellPhoneNo")).findElements(___sc___2);Assert.assertTrue(___w___24!=null && !___w___24.isEmpty());
+
+___w___24.get(0).click();
+List<WebElement>  ___w___25 = By.id(evaluate("txtCellPhoneNo")).findElements(___sc___2);Assert.assertTrue(___w___25!=null && !___w___25.isEmpty());
+
+___w___25.get(0).sendKeys(evaluate("121211122"));
+List<WebElement>  ___w___26 = By.id(evaluate("btnSavePatientBasicInfo")).findElements(___sc___2);Assert.assertTrue(___w___26!=null && !___w___26.isEmpty());
+
+___w___26.get(0).click();
+List<WebElement>  ___w___27 = By.id(evaluate("popup_ok")).findElements(___sc___2);Assert.assertTrue(___w___27!=null && !___w___27.isEmpty());
+
+___w___27.get(0).click();
+final Object[]  ___w___28 = new Object[1];
+final WebDriver ___sc___5 = (WebDriver)___sc___2;
+(new WebDriverWait(___cw___, 10)).until(
+new Function<WebDriver, Boolean>(){
+public Boolean apply(WebDriver input) {
+List<WebElement>  ___w___29 = By.id(evaluate("signOut")).findElements(___sc___5);if(___w___29==null || ___w___29.isEmpty())return false;
+
+___w___28[0] = ___w___29;
+
+return true;
+}
+public String toString() {
+return "";
+}
+});
+File ___sr___1 = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);
+FileUtils.copyFile(___sr___1, new File("test.png"));
+List<WebElement>  ___w___30 = By.className(evaluate("welcome_text")).findElements(___sc___2);Assert.assertTrue(___w___30!=null && !___w___30.isEmpty());
+final Object[]  ___w___31 = new Object[1];
+final WebDriver ___sc___6 = (WebDriver)___sc___2;
+(new WebDriverWait(___cw___, 10000)).until(
+new Function<WebDriver, Boolean>(){
+public Boolean apply(WebDriver input) {
+List<WebElement>  ___w___32 = By.id(evaluate("signOut")).findElements(___sc___6);if(___w___32==null || ___w___32.isEmpty())return false;
+
+___w___31[0] = ___w___32;
+
+return true;
+}
+public String toString() {
+return "";
+}
+});
+Actions ___w___33 = new Actions(get___d___());
+___w___33.moveToElement(___w___30.get(0)).click(((List<WebElement>)___w___31[0]).get(0)).perform();
+pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+}
+catch(Throwable c)
+{
+    pushResult(new SeleniumTestResult(get___d___(), this, c, ___lp___));
+}}
+
+public static void main(String[] args) throws Exception {
+    System.setProperty("webdriver.gecko.driver", "F:\\Laptop_Backup\\Development\\selenium-drivers\\geckodriver.exe");
+    System.setProperty("webdriver.chrome.driver", "F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+    new Test(null).execute(new LoggingPreferences());
+    new Test(null).quit();
+}
 }

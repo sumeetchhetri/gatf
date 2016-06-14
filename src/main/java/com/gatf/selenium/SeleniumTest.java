@@ -19,6 +19,8 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -27,10 +29,15 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.logging.Logs;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+
+import io.appium.java_client.android.AndroidDriver;
+import io.appium.java_client.ios.IOSDriver;
+import io.selendroid.client.SelendroidDriver;
 
 public abstract class SeleniumTest {
 	@SuppressWarnings("serial")
@@ -45,25 +52,188 @@ public abstract class SeleniumTest {
 		put(Level.SEVERE.getName().toLowerCase(), Level.SEVERE);
 		put(Level.WARNING.getName().toLowerCase(), Level.WARNING);
 	}};
+	@SuppressWarnings("serial")
+    protected final static HashSet<String> LOG_TYPES_SET = new HashSet<String>() {{
+	   add(LogType.BROWSER);
+	   add(LogType.CLIENT);
+	   add(LogType.DRIVER);
+	   add(LogType.PERFORMANCE);
+	   add(LogType.PROFILER);
+	   add(LogType.SERVER);
+	}};
 	
-	public SeleniumTest(String name) {
+	private transient WebDriver ___d___ = null;
+	private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
+	
+	public void addTest(String name) {
+        if(!__result__.containsKey(name)) {
+            SeleniumResult s = new SeleniumResult();
+            s.name = name;
+            __result__.put(name, s);
+        } else {
+            throw new RuntimeException("Duplicate browser defined");
+        }
+    }
+	
+	public void addSubTest(String name, String stname) {
+	    if(__result__.containsKey(name)) {
+	        if(!__result__.get(name).__cresult__.containsKey(stname)) {
+	            __result__.get(name).__cresult__.put(stname, null);
+	        } else {
+	            throw new RuntimeException("Duplicate subtest defined");
+	        }
+	    } else {
+	        throw new RuntimeException("Invalid browser specified");
+	    }
+	}
+	
+	public void pushResult(SeleniumTestResult result)
+	{
+	    if(__subtestname__==null) {
+	        __result__.get(browserName).result = result;
+	    } else {
+	        __result__.get(browserName).__cresult__.put(__subtestname__, result);
+	    }
+	}
+	
+	private transient String __provname__ = null;
+	private transient String __subtestname__ = null;
+	private transient int __provpos__ = -1;
+	
+	private transient AcceptanceTestContext ___cxt___ = null;
+    
+	public static class SeleniumResult implements Serializable {
+        private static final long serialVersionUID = 1L;
+	    
+        private String name;
+        
+        private SeleniumTestResult result;
+        
+        private Map<String, SeleniumTestResult>  __cresult__ = new LinkedHashMap<String, SeleniumTestResult>();
+
+        public SeleniumTestResult getResult()
+        {
+            return result;
+        }
+
+        public Map<String,SeleniumTestResult> getSubTestResults()
+        {
+            return __cresult__;
+        }
+
+        public String getName()
+        {
+            return name;
+        }
+	}
+	
+	public String evaluate(String tmpl) {
+	    if(tmpl.indexOf("$")==-1)return tmpl;
+	    try
+        {
+	        if(__provname__!=null && __provpos__>=0) {
+	            List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(__provname__);
+	            tmpl = ___cxt___.getWorkflowContextHandler().templatize(_t.get(__provpos__), tmpl);
+	        } else {
+	            tmpl = ___cxt___.getWorkflowContextHandler().templatize(tmpl);
+	        }
+        }
+        catch (Exception e)
+        {
+            e.printStackTrace();
+        }
+	    return tmpl;
+    }
+	
+    public WebDriver get___d___()
+    {
+        return ___d___;
+    }
+
+    public void set___d___(WebDriver ___d___)
+    {
+        this.___d___ = ___d___;
+    }
+
+    public AcceptanceTestContext get___cxt___()
+    {
+        return ___cxt___;
+    }
+
+    public void set___cxt___(AcceptanceTestContext ___cxt___)
+    {
+        this.___cxt___ = ___cxt___;
+    }
+
+    public Map<String, SeleniumResult> get__result__()
+    {
+        return __result__;
+    }
+
+    public void set__provname__(String __provname__)
+    {
+        this.__provname__ = __provname__;
+    }
+
+    public void set__provpos__(int __provpos__)
+    {
+        this.__provpos__ = __provpos__;
+    }
+
+    public void set__subtestname__(String __subtestname__)
+    {
+        this.__subtestname__ = __subtestname__;
+    }
+
+    public void setBrowserName(String browserName)
+    {
+        this.browserName = browserName;
+    }
+
+    protected WebDriver getWebDriver() {
+        return ___d___;
+    }
+	
+	protected AndroidDriver getAndroidDriver() {
+	    if(___d___ instanceof AndroidDriver) {
+	        return (AndroidDriver)___d___;
+	    }
+	    return null;
+	}
+    
+    protected IOSDriver getIOSDriver() {
+        if(___d___ instanceof IOSDriver) {
+            return (IOSDriver)___d___;
+        }
+        return null;
+    }
+    
+    protected SelendroidDriver getSelendroidDriver() {
+        if(___d___ instanceof SelendroidDriver) {
+            return (SelendroidDriver)___d___;
+        }
+        return null;
+    }
+	
+	public SeleniumTest(String name, AcceptanceTestContext ___cxt___) {
 	    this.name = name;
+	    this.___cxt___ = ___cxt___;
 	}
 	
 	protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
 	
 	protected String name;
 	
+	protected String browserName;
+	
 	public abstract void quit();
 	
-	public abstract SeleniumTestResult execute(AcceptanceTestContext ___c___, LoggingPreferences ___lp___) throws Exception;
+	public abstract Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception;
 	
 	public static class SeleniumTestResult implements Serializable {
         private static final long serialVersionUID = 1L;
         
         private Map<String, SerializableLogEntries> logs = new HashMap<String, SerializableLogEntries>();;
-        
-        private String name;
         
         private boolean status;
 
@@ -73,10 +243,6 @@ public abstract class SeleniumTest {
         {
             return logs;
         }
-        public String getName()
-        {
-            return name;
-        }
         public boolean isStatus()
         {
             return status;
@@ -85,27 +251,27 @@ public abstract class SeleniumTest {
         {
             return internalTestRes;
         }
-        public SeleniumTestResult(WebDriver d, SeleniumTest test)
+        public SeleniumTestResult(WebDriver d, SeleniumTest test, LoggingPreferences ___lp___)
         {
-            this.name = test.name;
             this.status = true;
             this.internalTestRes = test.internalTestRs;
             Logs logs = d.manage().logs();
-            for (String s : d.manage().logs().getAvailableLogTypes()) {
+            for (String s : LOG_TYPES_SET) {
+                if(!logs.getAvailableLogTypes().contains(s))continue;
                 LogEntries logEntries = logs.get(s);
-                if(!logEntries.getAll().isEmpty()) {
+                if(logEntries!=null && !logEntries.getAll().isEmpty()) {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }
         }
-        public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause) {
-            this.name = test.name;
+        public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, LoggingPreferences ___lp___) {
             this.status = false;
             this.internalTestRes = test.internalTestRs;
             Logs logs = d.manage().logs();
-            for (String s : d.manage().logs().getAvailableLogTypes()) {
+            for (String s : LOG_TYPES_SET) {
+                if(!logs.getAvailableLogTypes().contains(s))continue;
                 LogEntries logEntries = logs.get(s);
-                if(!logEntries.getAll().isEmpty()) {
+                if(logEntries!=null && !logEntries.getAll().isEmpty()) {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }
@@ -115,7 +281,6 @@ public abstract class SeleniumTest {
             this.logs.put("gatf", new SerializableLogEntries(entries));
         }
         public SeleniumTestResult(SeleniumTest test, Throwable cause) {
-            this.name = test.name;
             this.status = false;
             this.internalTestRes = test.internalTestRs;
             List<LogEntry> entries = new ArrayList<LogEntry>();

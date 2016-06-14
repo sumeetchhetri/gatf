@@ -44,6 +44,7 @@ public class GatfConfigurationHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+	    response.setHeader("Cache-Control", "no-cache, no-store");
     	String configType = request.getParameter("configType");
     	if(request.getMethod().equals(Method.GET) ) {
     		try {

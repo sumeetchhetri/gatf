@@ -16,6 +16,8 @@
 package com.gatf.executor.core;
 
 import java.io.Serializable;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
@@ -26,6 +28,7 @@ import org.junit.Assert;
 
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
+import com.gatf.selenium.SeleniumDriverConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
@@ -127,11 +130,11 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private String[] seleniumScripts;
 	
-	private String seleniumDriverName;
-	
-	private String seleniumDriverPath;
+	private SeleniumDriverConfig[] seleniumDriverConfigs;
 	
 	private String seleniumLoggerPreferences;
+	
+    private String javaHome;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -511,36 +514,53 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.seleniumScripts = seleniumScripts;
 	}
 
-	public String getSeleniumDriverName() {
-		return seleniumDriverName;
+	public SeleniumDriverConfig[] getSeleniumDriverConfigs() {
+		return seleniumDriverConfigs;
 	}
 
-	public void setSeleniumDriverName(String seleniumDriverName) {
-		this.seleniumDriverName = seleniumDriverName;
-	}
-
-	public String getSeleniumDriverPath() {
-		return seleniumDriverPath;
-	}
-
-	public void setSeleniumDriverPath(String seleniumDriverPath) {
-		this.seleniumDriverPath = seleniumDriverPath;
+	public void setSeleniumDriverConfigs(SeleniumDriverConfig[] seleniumDriverConfigs) {
+		this.seleniumDriverConfigs = seleniumDriverConfigs;
 	}
 	
-	public boolean isValidSeleniumRequest() {
+	public Map<String, SeleniumDriverConfig> getSelDriverConfigMap() {
+	    Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
+	    for (SeleniumDriverConfig sc : seleniumDriverConfigs)
+        {
+            if(!mp.containsKey(sc.getDriverName()) && sc.getName().matches("chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver"))
+            {
+                mp.put(sc.getName(), sc);
+            }
+        }
+	    return mp;
+	}
+	
+	public String getSeleniumLoggerPreferences()
+    {
+        return seleniumLoggerPreferences;
+    }
+
+    public void setSeleniumLoggerPreferences(String seleniumLoggerPreferences)
+    {
+        this.seleniumLoggerPreferences = seleniumLoggerPreferences;
+    }
+
+    public boolean isValidSeleniumRequest() {
 		return isSeleniumExecutor && seleniumScripts!=null && seleniumScripts.length>0 && 
-				StringUtils.isNotEmpty(seleniumDriverName) && StringUtils.isNotEmpty(seleniumDriverPath);
+		        seleniumDriverConfigs!=null && seleniumDriverConfigs.length>0 &&
+		        StringUtils.isNotEmpty(seleniumDriverConfigs[0].getName()) && StringUtils.isNotEmpty(seleniumDriverConfigs[0].getPath());
 	}
 
-	public String getSeleniumLoggerPreferences() {
-		return seleniumLoggerPreferences;
-	}
+	public String getJavaHome()
+    {
+        return javaHome;
+    }
 
-	public void setSeleniumLoggerPreferences(String seleniumLoggerPreferences) {
-		this.seleniumLoggerPreferences = seleniumLoggerPreferences;
-	}
+    public void setJavaHome(String javaHome)
+    {
+        this.javaHome = javaHome;
+    }
 
-	public void validate()
+    public void validate()
 	{
 		Assert.assertTrue("Testcase directory name is blank...", 
 				getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
