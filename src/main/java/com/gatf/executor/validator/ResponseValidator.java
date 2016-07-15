@@ -166,10 +166,13 @@ public abstract class ResponseValidator {
 		Assert.assertTrue("Invalid node properties specified", nodeProps.size()<=3);
 		if(nodeProps.size()==3)
 		{
-			Assert.assertTrue("Invalid comparison operator specified, only one of (<, >, <=, >= , =, !=, " +
+			Assert.assertTrue("Invalid comparison operator specified, only one of (<, >, <=, >= , ==, !=, " +
 					"regex, startswith, endswith, contains) allowed", isValidOperator(nodeProps.get(1)));
 		}
-		
+		if(nodeProps.size()==2)
+        {
+            Assert.assertTrue("Invalid comparison operator specified isnull, isnotnull isblank or isnotblank allowed", isValidOperator(nodeProps.get(1)));
+        }
 		return nodeProps;
 	}
 	
@@ -177,44 +180,45 @@ public abstract class ResponseValidator {
 	{
 		return oper.equals("<") || oper.equals(">") || oper.equals("<=") || oper.equals(">=") || oper.equals("==") ||
 				 oper.equals("!=") || oper.equals("regex") || oper.equals("startswith") || oper.equals("endswith") || 
-				 oper.equals("contains");
+				 oper.equals("contains") || oper.equals("isnull") || oper.equals("isblank") || 
+				 oper.equals("isnotnull") || oper.equals("isnotblank");
 	}
 	
 	public static String getXMLNodeValue(Node node)
 	{
-		String xmlValue = null;
-		if(node.getNodeType()==Node.TEXT_NODE 
-				|| node.getNodeType()==Node.CDATA_SECTION_NODE)
-		{
-			xmlValue = node.getNodeValue();
-		}
-		else if(node.getNodeType()==Node.ATTRIBUTE_NODE)
-		{
-			xmlValue = ((Attr)node).getValue();
-		}
-		else if(node.getNodeType()==Node.ELEMENT_NODE
-				&& node.getChildNodes().getLength()>=1
-				&& (node.getFirstChild().getNodeType()==Node.TEXT_NODE
-				|| node.getFirstChild().getNodeType()==Node.CDATA_SECTION_NODE))
-		{
-			xmlValue = node.getFirstChild().getNodeValue();
-		}
-		return xmlValue;
+	    String xmlValue = null;
+	    try
+        {
+	        if(node.getNodeType()==Node.TEXT_NODE 
+	                || node.getNodeType()==Node.CDATA_SECTION_NODE)
+	        {
+	            xmlValue = node.getNodeValue();
+	        }
+	        else if(node.getNodeType()==Node.ATTRIBUTE_NODE)
+	        {
+	            xmlValue = ((Attr)node).getValue();
+	        }
+	        else if(node.getNodeType()==Node.ELEMENT_NODE
+	                && node.getChildNodes().getLength()>=1
+	                && (node.getFirstChild().getNodeType()==Node.TEXT_NODE
+	                || node.getFirstChild().getNodeType()==Node.CDATA_SECTION_NODE))
+	        {
+	            xmlValue = node.getFirstChild().getNodeValue();
+	        }
+        }
+        catch (Exception e)
+        {
+        }
+	    return xmlValue;
 	}
 	
-	public NodeList getNodeByXpath(String xpathStr, Document xmlDocument, String messagePrefix) throws XPathExpressionException
+	protected NodeList getNodeByXpath(String xpathStr, Document xmlDocument) throws XPathExpressionException
 	{
-		if(messagePrefix==null)
-		{
-			messagePrefix = "Expected Node ";
-		}
-		String oxpathStr = xpathStr;
 		xpathStr = xpathStr.replaceAll("\\.", "\\/");
 		if(xpathStr.charAt(0)!='/')
 			xpathStr = "/" + xpathStr;
 		XPath xPath =  XPathFactory.newInstance().newXPath();
 		NodeList xmlNodeList = (NodeList) xPath.compile(xpathStr).evaluate(xmlDocument, XPathConstants.NODESET);
-		Assert.assertTrue(messagePrefix + oxpathStr + " is null", xmlNodeList!=null && xmlNodeList.getLength()>0);
 		return xmlNodeList;
 	}
 	
@@ -229,11 +233,18 @@ public abstract class ResponseValidator {
 					List<String> nodeProps = getNodeProperties(node);
 					
 					String nodeVal = null;
-					if(nodeProps.size()==1 || !hasValidationFunction(nodeProps.get(0))) {
+					if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnull")) {
+                        Assert.assertNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal); 
+                    } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isblank")) {
+                        Assert.assertTrue("Expected Node value for " + nodeProps.get(0) + " is blank", nodeVal!=null && nodeVal.trim().isEmpty());
+                    } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnotnull")) {
+                        Assert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is not null", nodeVal); 
+                    } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnotblank")) {
+                        Assert.assertFalse("Expected Node value for " + nodeProps.get(0) + " is not blank", nodeVal!=null && nodeVal.trim().isEmpty());
+                    } else if(nodeProps.size()==1 || !hasValidationFunction(nodeProps.get(0))) {
 						nodeVal = getNodeValue(intObj, nodeProps.get(0));
 						Assert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal);
-					}
-					if(nodeProps.size()>1) {
+					}  else if(nodeProps.size()>1) {
 						String lhs = nodeProps.get(0);
 						String lhsv = nodeVal;
 						String oper = nodeProps.size()>2?nodeProps.get(1):"==";

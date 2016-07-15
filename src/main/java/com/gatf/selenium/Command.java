@@ -30,8 +30,11 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
+import org.openqa.selenium.Keys;
 
 import com.google.googlejavaformat.java.Formatter;
+
+import edu.emory.mathcs.backport.java.util.Arrays;
 
 public class Command {
 	static int NUMBER = 1;
@@ -167,6 +170,12 @@ public class Command {
                 //exception
             }
             comd = new ProviderLoopCommand(cmd.trim());
+        } else if (cmd.startsWith("#transient-provider")) {
+            cmd = cmd.substring(19).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new TransientProviderLoopCommand(cmd.trim());
         } else if (cmd.startsWith("#")) {
 			cmd = cmd.substring(1);
 			comd = new LoopCommand();
@@ -198,18 +207,22 @@ public class Command {
 			comd = new ForwardCommand();
 		} else if (cmd.toLowerCase().startsWith("refresh")) {
 			comd = new RefreshCommand();
-		} else if (cmd.toLowerCase().startsWith("maximize")) {
+		} else if (cmd.toLowerCase().startsWith("close")) {
+            comd = new CloseCommand();
+        } else if (cmd.toLowerCase().startsWith("maximize")) {
 			comd = new MaximizeCommand();
 		} else if (cmd.toLowerCase().startsWith("window_set ")) {
 			comd = new WindowSetPropertyCommand(cmd.substring(11));
-		} else if (cmd.toLowerCase().startsWith("window ")) {
+		} else if (cmd.toLowerCase().startsWith("frame ")) {
+            comd = new FrameCommand(cmd.substring(6));
+        } else if (cmd.toLowerCase().startsWith("window ")) {
 			comd = new WindowCommand(cmd.substring(7));
 		} else if (cmd.toLowerCase().startsWith("sleep ")) {
 			comd = new SleepCommand(cmd.substring(6));
 		} else if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
                 || cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")
                 || cmd.toLowerCase().startsWith("hover ") || cmd.toLowerCase().equals("hover")
-                || cmd.toLowerCase().startsWith("hoverclick ") 
+                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("hoverclick ") 
                 || cmd.toLowerCase().startsWith("clear ") || cmd.toLowerCase().equals("clear")
                 || cmd.toLowerCase().startsWith("submit ") || cmd.toLowerCase().equals("submit")) {
 			comd = handleActions(cmd, null);
@@ -247,6 +260,8 @@ public class Command {
 	    Command comd = null;
 	    if (cmd.toLowerCase().startsWith("type ")) {
             comd = new TypeCommand(cmd.substring(5));
+        } else if (cmd.toLowerCase().startsWith("chord ")) {
+            comd = new ChordCommand(cmd.substring(6));
         } else if (cmd.toLowerCase().startsWith("select ")) {
             comd = new SelectCommand(cmd.substring(7));
         } else if (cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")) {
@@ -509,6 +524,10 @@ public class Command {
 		String javacode() {
 			code = code.replace("@driver", "___cw___");
 			code = code.replace("@window", "___ocw___");
+			code = code.replace("@element", currvarname());
+			code = code.replace("@sc", currvarnamesc());
+			code = code.replace("@index", "index");
+			code = code.replace("@print", "System.out.println");
 			return code + ";";
 		}
 		public String toSampleSelCmd() {
@@ -815,7 +834,8 @@ public class Command {
     		        if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
     		                || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
     		                || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
-    		                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions ")) {
+    		                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions ")
+    		                || cmd.toLowerCase().equals("chord ")) {
     		            //cmd = unsanitize(cmd);
     		            Command comd = handleActions(cmd, cond);
     		            children.add(comd);
@@ -867,34 +887,28 @@ public class Command {
 			}
 			return b.toString();
 		}
+		static String getFp(FindCommand cond, List<Command> children) {
+		    StringBuilder b = new StringBuilder();
+		    b.append("new Functor<SearchContext, Boolean>() {@Override\n");
+		    b.append("public Boolean f(SearchContext "+currvarnamesc()+")\n{\ntry{\n");
+            b.append(cond.javacodeonly(children));
+            if(!children.isEmpty())
+            {
+                b.append("\n");
+                for (Command c : children) {
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+            }
+            b.append("\nreturn "+cond.condition()+";\n}\ncatch(AssertionError e){\nSystem.out.println(e.getMessage());}\ncatch(Exception e){\nSystem.out.println(e.getMessage());}\n");
+		    b.append("\nreturn false;}\n}.f("+currvarnamesc()+")");
+		    return b.toString();
+		}
 		String javacode() {
 			StringBuilder b = new StringBuilder();
-			StringBuilder ifb = new StringBuilder();
-			List<String> ifels = new ArrayList<String>();
-			b.append(cond.javacodeonly(children));
-			
-			ifb.append("\nif("+cond.condition()+")");
-			ifb.append("\n{");
-			if(!children.isEmpty())
-			{
-				ifb.append("\n");
-				for (Command c : children) {
-					ifb.append(c.javacode());
-					ifb.append("\n");
-				}
-				ifb.append("}");
-			}
-			else
-			{
-				ifb.append("\n}");
-			}
+			b.append("\nif("+getFp(cond, children)+"){}");
 			for (ElseIfCommand elif : elseifs) {
-				b.append("\n"+elif.cond.javacodeonly(children));
-				ifels.add(elif.javacode());
-			}
-			b.append(ifb.toString());
-			for (String elif : ifels) {
-				b.append(elif+"\n");
+				b.append(elif.javacode());
 			}
 			if(elsecmd!=null) {
 				b.append(elsecmd.javacode()+"\n");
@@ -925,21 +939,7 @@ public class Command {
 		}
 		String javacode() {
 			StringBuilder b = new StringBuilder();
-			b.append("\nelse if("+cond.condition()+")");
-			b.append("\n{");
-			if(!children.isEmpty())
-			{
-				b.append("\n");
-				for (Command c : children) {
-					b.append(c.javacode());
-					b.append("\n");
-				}
-				b.append("}");
-			}
-			else
-			{
-				b.append("\n}");
-			}
+			b.append("\nelse if("+IfCommand.getFp(cond, children)+"){}");
 			return b.toString();
 		}
         public String toSampleSelCmd() {
@@ -1009,18 +1009,18 @@ public class Command {
 			{
 				b.append(cond.javacodeonly(null));
 				String cvarname = currvarname();
-				pushSc();
-				b.append("\nif("+cond.condition()+")");
-				b.append("\nfor(final WebElement " + varname() + " : " + cvarname + ") {\n");
-				b.append("final SearchContext "+currvarnamesc()+" = "+currvarname()+";");
+				//pushSc();
+				b.append("\nif("+cond.condition()+") {\n");
+				b.append("\nfor(final WebElement " + varname() + " : " + cvarname + ") {\nint index = 0;\n");
+				//b.append("final SearchContext "+currvarnamesc()+" = "+currvarname()+";");
 				String vr = currvarname();
-				b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ varname()+" = new ArrayList<WebElement>(){{add("+vr+");}};");
+				b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ varname()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
 				for (Command c : children) {
 					b.append(c.javacode());
 					b.append("\n");
 				}
-				b.append("}");
-				prevvarnamesc();
+				b.append("index++;\n}\n}");
+				//prevvarnamesc();
 			}
 			return b.toString();
 		}
@@ -1031,16 +1031,27 @@ public class Command {
     
     public static class ProviderLoopCommand extends Command {
         String name;
+        int index = -1;
         public ProviderLoopCommand() {}
-        ProviderLoopCommand(String name)
+        ProviderLoopCommand(String val)
         {
-            name = unsanitize(name);
+            String[] parts = val.trim().split("[\t ]+");
+            name = unsanitize(parts[0].trim());
             if(name.charAt(0)==name.charAt(name.length()-1)) {
                 if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
                     name = name.substring(1, name.length()-1);
                 }
             }
-            this.name = name;
+            if(parts.length>1 && !parts[1].trim().isEmpty()) {
+                try
+                {
+                    index = Integer.valueOf(parts[1].trim());
+                }
+                catch (Exception e)
+                {
+                    throw new AssertionError("Provider index should be a number");
+                }
+            }
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
@@ -1059,7 +1070,16 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            if(!children.isEmpty())
+            if(index>=0)
+            {
+                b.append("set__provname__(\"" + name + "\");\n");
+                b.append("set__provpos__(" + index + ");\n");
+                for (Command c : children) {
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+            }
+            else if(!children.isEmpty())
             {
                 b.append("int "+varname()+" = get___cxt___().getProviderTestDataMap().get(\""+name+"\").size();\n");
                 b.append("set__provname__(\"" + name + "\");\n");
@@ -1080,6 +1100,62 @@ public class Command {
         }
     }
 	
+    public static class TransientProviderLoopCommand extends ValueCommand {
+        FindCommand cond;
+        String varname;
+        public TransientProviderLoopCommand() {}
+        TransientProviderLoopCommand(String val)
+        {
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>=4) {
+                parts[0] = parts[0].trim();
+                value = parts[0];
+                value = unsanitize(value);
+                if(value.charAt(0)==value.charAt(value.length()-1)) {
+                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+                        value = value.substring(1, value.length()-1);
+                    }
+                }
+                varname = parts[1];
+                varname = unsanitize(varname);
+                if(varname.charAt(0)==varname.charAt(varname.length()-1)) {
+                    if(varname.charAt(0)=='"' || varname.charAt(0)=='\'') {
+                        varname = varname.substring(1, varname.length()-1);
+                    }
+                }
+                cond = new FindCommand(parts[2].trim() + " " + parts[3].trim());
+            } else {
+                //excep
+            }
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("#transient-provider ");
+            b.append(name);
+            b.append(cond.toCmd());
+            return b.toString();
+        }
+        @SuppressWarnings("unchecked")
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            b.append("get___cxt___().newProvider(\""+value+"\");\n");
+            b.append(cond.javacodeonly(children));
+            String provname = cond.rtl;
+            String loopname = varname();
+            List<String> ssl = Arrays.asList(varname.split(","));
+            b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ".size();"+loopname+"++) {\n");
+            for (int i=0;i<ssl.size();i++)
+            {
+                b.append("get___cxt___().getProviderTestDataMap().get(\""+value+"\").put(\""+ssl.get(i)+"\", " + provname + ".get(" + loopname + ")["+i+"]);\n");
+            }
+            b.append("}");
+            return b.toString();
+        }
+        public String toSampleSelCmd() {
+            return "#transient-provider {find-expr} {sub-selector}";
+        }
+    }
+    
 	public static class DriverCommand extends Command {
 		SeleniumDriverConfig config;
         public DriverCommand() {
@@ -1250,18 +1326,18 @@ public class Command {
         }
     }
 	
-	public static class WindowCommand extends Command {
+	public static class FrameCommand extends Command {
 		String name;
-        public WindowCommand() {
+        public FrameCommand() {
         }
-		WindowCommand(String cmd) {
+        FrameCommand(String cmd) {
 			name = cmd;
 		}
 		String name() {
 			return name;
 		}
 		String toCmd() {
-			return "window " + name;
+			return "frame " + name;
 		}
 		String javacode() {
 			if(name.equals("") || name.equalsIgnoreCase("main")) {
@@ -1284,9 +1360,47 @@ public class Command {
 			}
 		}
         public String toSampleSelCmd() {
-            return "window {name(main|1..N)}";
+            return "frame {name(main|1..N)}";
         }
 	}
+	
+	public static class WindowCommand extends Command {
+        String name;
+        public WindowCommand() {
+        }
+        WindowCommand(String cmd) {
+            name = cmd;
+        }
+        String name() {
+            return name;
+        }
+        String toCmd() {
+            return "window " + name;
+        }
+        String javacode() {
+            if(name.equals("") || name.equalsIgnoreCase("main")) {
+                return "___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
+            } else {
+                try {
+                    int index = Integer.parseInt(name);
+                    String whl = "ArrayList<String> "+varname()+" = new ArrayList<String> (___ocw___.getWindowHandles());\n"
+                            + "if("+varname()+"!=null && "+index+">=0 && "+varname()+".size()>"+index+")\n{\n";
+                    return whl + "___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n}\n___sc___1 = ___cw___;";
+                } catch (Exception e) {
+                    name = unsanitize(name);
+                    if(name.charAt(0)==name.charAt(name.length()-1)) {
+                        if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                            name = name.substring(1, name.length()-1);
+                        }
+                    }
+                    return "___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
+                }
+            }
+        }
+        public String toSampleSelCmd() {
+            return "window {name(main|1..N)}";
+        }
+    }
 	
 	public static class BackCommand extends Command {
 		String toCmd() {
@@ -1323,6 +1437,18 @@ public class Command {
             return "refresh";
         }
 	}
+    
+    public static class CloseCommand extends Command {
+        String toCmd() {
+            return "close";
+        }
+        String javacode() {
+            return "___cw___.close();";
+        }
+        public String toSampleSelCmd() {
+            return "close";
+        }
+    }
 	
 	public static class MaximizeCommand extends Command {
 		String toCmd() {
@@ -1428,7 +1554,7 @@ public class Command {
 	}
 	
 	public static class FindCommand extends Command {
-		String by, classifier, subselector, condvar = "true", topele;
+		String by, classifier, subselector, condvar = "true", topele, rtl;
 		String by() {
 			return by;
 		}
@@ -1529,7 +1655,7 @@ public class Command {
 			if(this instanceof WaitAndFindCommand) {
 			    b.append("\nif("+topele+"==null || "+topele+".isEmpty())return false;");
 			} else {
-			    b.append("\nAssert.assertTrue("+topele+"!=null && !"+topele+".isEmpty());");
+			    b.append("\nAssert.assertTrue(\"Element not found\", "+topele+"!=null && !"+topele+".isEmpty());");
 			}
 			
 			if(this.children!=null && this.children.size()>0) {
@@ -1578,9 +1704,15 @@ public class Command {
 						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equalsIgnoreCase(" + currvarname() + ".getTagName());");
 					} else if(subselector.toLowerCase().startsWith("attr@")) {
 						String atname = subselector.substring(5);
+						if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+						    atname = atname.substring(1, atname.length()-1);
+                        }
 						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
 					} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 						String atname = subselector.substring(9);
+						if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+                            atname = atname.substring(1, atname.length()-1);
+                        }
 						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
 					} else if(subselector.equalsIgnoreCase("width")) {
 						b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
@@ -1607,9 +1739,15 @@ public class Command {
 							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equalsIgnoreCase(" + currvarname() + ".getTagName());");
 						} else if(subselector.toLowerCase().startsWith("attr@")) {
 							String atname = subselector.substring(5);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+	                            atname = atname.substring(1, atname.length()-1);
+	                        }
 							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getAttribute(\""+esc(atname)+"\"));");
 						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 							String atname = subselector.substring(9);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+	                            atname = atname.substring(1, atname.length()-1);
+	                        }
 							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(" + currvarname() + ".getCssValue(\""+esc(atname)+"\"));");
 						} else if(subselector.equalsIgnoreCase("width")) {
 							b.append("\n" + condvar + " &= evaluate(\""+esc(value)+"\").equals(String.valueOf("+currvarname()+".getSize().getWidth()));");
@@ -1627,12 +1765,50 @@ public class Command {
 			    Command c = children.get(0);
 			    if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                        || c instanceof SelectCommand) {
+                        || c instanceof SelectCommand || c instanceof ChordCommand) {
                     b.append(c.selcode(topele));
                 } else if(c instanceof ActionsCommand) {
                     b.append(c.javacode());
                 }
-			}
+			} else if(subselector!=null) {
+                @SuppressWarnings("unchecked")
+                List<String> ssl = Arrays.asList(subselector.split(","));
+                rtl = varname();
+                b.append("\nList<String[]> "+rtl+" = new java.util.ArrayList<String[]>();");
+                b.append("\nfor(final WebElement " + varname() + " : " + topele + ")\n{");
+                b.append("\nString[] __t = new String["+ssl.size()+"];");
+                for (int i=0;i<ssl.size();i++)
+                {
+                    if(ssl.get(i).equalsIgnoreCase("text")) {
+                        b.append("\n__t["+i+"] = " + currvarname() + ".getText();");
+                    } else if(ssl.get(i).equalsIgnoreCase("tagname")) {
+                        b.append("\n__t["+i+"] = " + currvarname() + ".getTagName();");
+                    } else if(ssl.get(i).toLowerCase().startsWith("attr@")) {
+                        String atname = ssl.get(i).substring(5);
+                        if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+                            atname = atname.substring(1, atname.length()-1);
+                        }
+                        b.append("\n__t["+i+"] = " + currvarname() + ".getAttribute(\""+esc(atname)+"\");");
+                    } else if(ssl.get(i).toLowerCase().startsWith("cssvalue@")) {
+                        String atname = ssl.get(i).substring(9);
+                        if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+                            atname = atname.substring(1, atname.length()-1);
+                        }
+                        b.append("\n__t["+i+"] = " + currvarname() + ".getCssValue(\""+esc(atname)+"\");");
+                    } else if(ssl.get(i).equalsIgnoreCase("width")) {
+                        b.append("\n__t["+i+"] = String.valueOf("+currvarname()+".getSize().getWidth());");
+                    } else if(ssl.get(i).equalsIgnoreCase("height")) {
+                        b.append("\n__t["+i+"] = String.valueOf("+currvarname()+".getSize().getHeight());");
+                    } else if(ssl.get(i).equalsIgnoreCase("xpos")) {
+                        b.append("\n__t["+i+"] = String.valueOf("+currvarname()+".getPosition().getX());");
+                    } else if(ssl.get(i).equalsIgnoreCase("ypos")) {
+                        b.append("\n__t["+i+"] = String.valueOf("+currvarname()+".getPosition().getY());");
+                    }
+                }
+                b.append("\n" + rtl + ".add(__t);");
+                b.append("\n}");
+            }
+			
 			if(condvar==null) {
 				String cvarname = topele;
 				condvar = condvarname();
@@ -1760,6 +1936,76 @@ public class Command {
             return "type {text}";
         }
 	}
+    
+    public static class ChordCommand extends ValueCommand {
+        FindCommand cond;
+        List<String> values = new ArrayList<String>();
+        public ChordCommand() {
+        }
+        ChordCommand(String val) {
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>0) {
+                parts[0] = parts[0].trim();
+                value = parts[0];
+                String temp = org.apache.commons.lang.StringEscapeUtils.unescapeJava(parts[0]);
+                try
+                {
+                    if(parts.length>1)cond = new FindCommand(parts[1].trim());
+                    for (char c : temp.toCharArray())
+                    {
+                        Keys kys = Keys.getKeyFromUnicode(c);
+                        if(kys!=null) {
+                            values.add("Keys." + kys.name());
+                        } else {
+                            values.add("\""+c+"\"");
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    // TODO: handle exception
+                }
+            } else {
+                //excep
+            }
+        }
+        String toCmd() {
+            return "chord \"" + value + "\"" + (cond!=null?cond.toCmd():"");
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            if(cond!=null) {
+                b.append(cond.javacodeonly(children));
+                //b.append("\nAssert.assertTrue("+cond.condition()+");");
+            }
+            if(values!=null && !values.isEmpty()) {
+                String chs = "";
+                for (int i=0;i<values.size();i++) {
+                    chs += values.get(i);
+                    chs += (i!=values.size()-1)?", ":"";
+                }
+                b.append("\n"+currvarname()+".get(0).sendKeys(Keys.chord("+chs+"));");
+            }
+            return b.toString();
+        }
+        String selcode(String varnm) {
+            if(varnm==null) {
+                varnm = currvarname();
+            }
+            if(values!=null && !values.isEmpty()) {
+                String chs = "";
+                for (int i=0;i<values.size();i++) {
+                    chs += values.get(i);
+                    chs += (i!=values.size()-1)?", ":"";
+                }
+                return "\n"+varnm+".get(0).sendKeys(Keys.chord("+chs+"));";
+            }
+            return "";
+        }
+        public String toSampleSelCmd() {
+            return "chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN}";
+        }
+    }
     
     public static class SelectCommand extends ValueCommand {
         FindCommand cond;
@@ -2141,27 +2387,4 @@ public class Command {
             return "submit {find-expr}";
         }
 	}
-	
-	public static void main(String[] args) throws Exception {
-        /*Reflections reflections = new Reflections("com.gatf.selenium");
-        Set<Class<? extends Command>> cmds = reflections.getSubTypesOf(Command.class);
-        for (Class<? extends Command> cls : cmds)
-        {
-            Object o = cls.newInstance();
-            Method m = cls.getMethod("toSampleSelCmd", new Class[]{});
-            m.setAccessible(true);
-            System.out.println(cls.getSimpleName().substring(0, cls.getSimpleName().length()-7)+ ":\n\t" + m.invoke(o, new Object[]{}));
-        }*/
-	    Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
-	    SeleniumDriverConfig dc = new SeleniumDriverConfig();
-	    dc.setName("chrome");
-	    dc.setDriverName("webdriver.chrome.driver");
-	    dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-	    mp.put("chrome", dc);
-	    List<String> commands = new ArrayList<String>();
-	    Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\Documents\\GitHub\\gatf\\test1.sel"), commands, mp);
-	    //System.out.println(cmd.javacode());
-	    String sourceCode =  cmd.fjavacode();
-        System.out.println(sourceCode);
-    }
 }

@@ -136,6 +136,12 @@ public class AcceptanceTestContext {
 		return providerTestDataMap;
 	}
 	
+	public void newProvider(String name) {
+	    if(!providerTestDataMap.containsKey(name)) {
+	        providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
+	    }
+	}
+	
 	private final Map<String, TestDataSource> dataSourceMap = new HashMap<String, TestDataSource>();
 	
 	private final Map<String, TestDataSource> dataSourceMapForProfiling = new HashMap<String, TestDataSource>();

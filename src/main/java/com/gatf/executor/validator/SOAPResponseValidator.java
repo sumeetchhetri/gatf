@@ -108,16 +108,25 @@ public class SOAPResponseValidator extends ResponseValidator {
 	}
 
 	protected String getNodeValue(Object intObj, String node) throws Exception {
-		Document xmlDocument = (Document)intObj;
-		Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
-		Node body = getNodeByNameCaseInsensitive(envelope, "body");
-		Node requestBody = getNextElement(body);
-		Node returnBody = getNextElement(requestBody);
-		String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
-		if(expression.indexOf("/[")!=-1)
-			expression = expression.replaceAll("/[", "[");
-		NodeList xmlNodeList = getNodeByXpath(expression, (Document)intObj, null);
-		String xmlValue = getXMLNodeValue(xmlNodeList.item(0));
+	    NodeList xmlNodeList = null;
+	    String xmlValue = null;
+        try
+        {
+            Document xmlDocument = (Document)intObj;
+            Node envelope = getNodeByNameCaseInsensitive(xmlDocument.getFirstChild(), "envelope");
+            Node body = getNodeByNameCaseInsensitive(envelope, "body");
+            Node requestBody = getNextElement(body);
+            Node returnBody = getNextElement(requestBody);
+            String expression = createXPathExpression(node, envelope, body, requestBody, returnBody);
+            if(expression.indexOf("/[")!=-1)
+                expression = expression.replaceAll("/[", "[");
+            xmlNodeList = getNodeByXpath(node, (Document)intObj);
+            //Assert.assertTrue("Expected Node " + node + " is null", xmlNodeList!=null && xmlNodeList.getLength()>0);
+            xmlValue = getXMLNodeValue(xmlNodeList.item(0));
+        }
+        catch (Exception e)
+        {
+        }
 		return xmlValue;
 	}
 

@@ -48,9 +48,18 @@ public class XMLResponseValidator extends ResponseValidator {
 	}
 
 	protected String getNodeValue(Object intObj, String node) throws Exception {
-		NodeList xmlNodeList = getNodeByXpath(node, (Document)intObj, null);
-		String xmlValue = getXMLNodeValue(xmlNodeList.item(0));
-		return xmlValue;
+	    NodeList xmlNodeList = null;
+	    String xmlValue = null;
+	    try
+        {
+	        xmlNodeList = getNodeByXpath(node, (Document)intObj);
+	        xmlValue = getXMLNodeValue(xmlNodeList.item(0));
+        }
+        catch (Exception e)
+        {
+        }
+	    //Assert.assertTrue("Expected Node " + node + " is null", xmlNodeList!=null && xmlNodeList.getLength()>0);
+	    return xmlValue;
 	}
 
 	protected ResponseType getType() {

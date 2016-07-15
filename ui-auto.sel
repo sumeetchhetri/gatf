@@ -3,7 +3,7 @@ require
 	org.openqa.selenium.WebDriver
 ]
 open chrome
-goto http://213.136.74.220:8080
+goto http://abc.com
 ??10 id@"inputUsername"
 type "admin" id@"inputUsername" 
 type "admin" id@"inputPassword"
@@ -53,6 +53,7 @@ back
 forward
 refresh
 maximize
+close
 clear class@"logoutLink"
 submit class@"logoutLink"
 set width 100
@@ -71,3 +72,31 @@ jsvar u "return window;"
 execjs "arguments[0].style.border='3px solid red'"
 screenshot "test.png"
 ele-screenshot "teste.png" css@"div[class=ssdfdsf]>nav>div>ul>li"
+??60 class@"welcome_text" hover
+hoverclick class@"welcome_text" id@"signOut"
+? id@"Location1"
+{
+exec @print("if")
+}
+:? id@"Location2"
+{
+exec System.out.println("else if")
+}
+:
+{
+exec @print("else")
+chord \uE009\u0061 id@"Location"
+}
+# id@"Location"
+{
+	exec @print("loop")
+}
+#transient-provider "prov1" "temp,temp1" id@"Location" attr@"abc",cssvalue@"bcd"
+#provider "prov1"
+{
+	click css@"input[type='submit']"
+}
+#provider "prov1" 1
+{
+	click css@"input[type='submit']"
+}

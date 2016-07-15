@@ -45,6 +45,16 @@ public class SeleniumCodeGeneratorAndUtil {
 	
 	static URLClassLoader classLoader = null;
 	
+	public static void clean() throws Exception {
+	    File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
+        if(gcdir.exists()) {
+            FileUtils.deleteDirectory(gcdir);
+        }
+        
+        File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
+        dir.mkdirs();
+	}
+	
 	@SuppressWarnings("unchecked")
 	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals) throws Exception
 	{
@@ -73,12 +83,7 @@ public class SeleniumCodeGeneratorAndUtil {
         }
         
         File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
-        if(gcdir.exists()) {
-        	FileUtils.deleteDirectory(gcdir);
-        }
-        
         File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
-        dir.mkdirs();
         
         File srcfile = new File(dir, cmd.getClassName()+".java");
         retvals[2] = srcfile.getAbsolutePath();

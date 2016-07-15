@@ -220,6 +220,10 @@ public abstract class SeleniumTest {
 	    this.___cxt___ = ___cxt___;
 	}
 	
+	public static interface Functor<I, O> {
+	    O f(I i);
+	}
+	
 	protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
 	
 	protected String name;

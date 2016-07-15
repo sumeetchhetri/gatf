@@ -625,6 +625,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             }
 		    System.setProperty("java.home", configuration.getJavaHome());
 		    
+		    try {
+		        SeleniumCodeGeneratorAndUtil.clean();
+		    } catch (Exception e) {
+                e.printStackTrace();
+            }
+		    
 		    LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
             List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
             List<Object[]> testdata = new ArrayList<Object[]>();
@@ -720,7 +726,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 try {
                     List<Map<String, SeleniumResult>> results = null;
                     Object o = tasks.get(j).get();
-                    if(o instanceof RuntimeException) {
+                    if(o==null) {
+                        
+                    } else if(o instanceof RuntimeException) {
                         //TODO handle exception
                         //summLst.add(new Object[]{"NA", "", "FAILED", ((RuntimeException)o).getMessage()});
                     } else {
