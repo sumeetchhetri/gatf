@@ -701,9 +701,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                     if(res.getResult()==null) {
                         summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN",""});
                     } else {
-                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey()+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
+                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
                                 !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():""});
-                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey(), retvals, res.getResult(), context);
+                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, res.getResult(), context);
                     }
                     
                     for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
@@ -711,10 +711,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                         if(e1.getValue()==null) {
                             summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN",""});
                         } else {
-                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey()+"-"+e1.getKey()+"-selenium-index.html", 
+                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
                                 e1.getValue().isStatus()?"SUCCESS":"FAILED", 
                                 !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():""});
-                            ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey()+"-"+e1.getKey(), retvals, e1.getValue(), context);
+                            ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, e1.getValue(), context);
                         }
                     }
                 }
@@ -757,9 +757,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                                 if(res.getResult()==null) {
                                     summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN",""});
                                 } else {
-                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey()+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
+                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
                                             !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():""});
-                                    ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey(), testdataMap.get(res.getName()), res.getResult(), context);
+                                    ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), res.getResult(), context);
                                 }
                                 
                                 for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
@@ -767,10 +767,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                                     if(e1.getValue()==null) {
                                         summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN",""});
                                     } else {
-                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey()+"-"+e1.getKey()+"-selenium-index.html", 
+                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
                                             e1.getValue().isStatus()?"SUCCESS":"FAILED", 
                                             !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():""});
-                                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey()+"-"+e1.getKey(), testdataMap.get(res.getName()), e1.getValue(), context);
+                                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), e1.getValue(), context);
                                     }
                                 }
                             }

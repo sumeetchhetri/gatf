@@ -56,17 +56,15 @@ maximize
 close
 clear class@"logoutLink"
 submit class@"logoutLink"
-set width 100
-set height 100
-set posx 100
-set posy 100
+window_set width 100
+window_set height 100
+window_set posx 100
+window_set posy 100
 window main
 window 1
 window "asdsa"
 window main
 var t css@"div[class=ssdfdsf]>nav>div>ul>li"
-exec Test.test(@driver)
-exec Test.test(@window, t)
 import test.sel
 jsvar u "return window;"
 execjs "arguments[0].style.border='3px solid red'"

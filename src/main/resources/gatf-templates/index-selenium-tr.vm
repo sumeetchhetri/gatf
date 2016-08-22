@@ -133,8 +133,8 @@ $StringEscapeUtils.escapeHtml(${selLogL.getMessage()})
 		<script>
 			
 			$(document).ready(function() {
-				$('#selcode_htm').html(prettyPrintOne($('#selcode_htm').html()));
-				$('#javacode_htm').html(prettyPrintOne($('#javacode_htm').html()));
+				$('#selcode_htm').html(prettyPrintOne($('#selcode_htm').html(),null,true));
+				$('#javacode_htm').html(prettyPrintOne($('#javacode_htm').html(),null,true));
 			});
 			
 		</script>

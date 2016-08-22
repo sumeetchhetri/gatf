@@ -167,8 +167,8 @@ public class ReportHandler {
             if(prefix==null)
             	prefix = "";
             
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + prefix + "index.html")));
+            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index.html";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
             
@@ -210,8 +210,8 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", "UTF-8", context, writer);
             
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + "index.html")));
+            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + "index.html";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
 		} catch (Exception e) {
@@ -493,8 +493,8 @@ public class ReportHandler {
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + fileName)));
+        	String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + fileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(contents);
             fwriter.close();
 		} catch (Exception e) {
@@ -713,8 +713,8 @@ public class ReportHandler {
 			                	reportFileName = "index1.html";
 			                }
 			                
-			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-			                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
+			                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
 			                fwriter.write(writer.toString());
 			                fwriter.close();
 			                
@@ -835,8 +835,8 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                        + SystemUtils.FILE_SEPARATOR + reportFileName)));
+                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
                 
@@ -1083,8 +1083,8 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                        + SystemUtils.FILE_SEPARATOR + orf)));
+                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + orf.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
                 
@@ -1177,8 +1177,9 @@ public class ReportHandler {
                 engine.mergeTemplate("/gatf-templates/index-ta.vm", "UTF-8", context, writer);
 
                 prefix = prefix==null?"":prefix;
-                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                        + SystemUtils.FILE_SEPARATOR + prefix + "index-ta.html")));
+                
+                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index-ta.html";
+                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
                 
@@ -1225,8 +1226,8 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-summ.vm", "UTF-8", context, writer);
             
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + "selenium-index.html")));
+            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + "selenium-index.html";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
         } catch (Exception e) {
@@ -1267,8 +1268,8 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
             
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + prefix + "-selenium-index.html")));
+            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "-selenium-index.html";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
         } catch (Exception e) {

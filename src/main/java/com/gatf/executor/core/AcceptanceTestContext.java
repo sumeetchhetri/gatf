@@ -168,6 +168,8 @@ public class AcceptanceTestContext {
 		return performanceTestCaseExecutor;
 	}
 
+	public AcceptanceTestContext(){}
+	
 	public AcceptanceTestContext(GatfExecutorConfig gatfExecutorConfig, ClassLoader projectClassLoader)
 	{
 		this.gatfExecutorConfig = gatfExecutorConfig;

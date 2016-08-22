@@ -1,0 +1,12 @@
+#NOTE: This is an Aether internal implementation file, its format can be changed without prior notice.
+#Wed May 25 15:26:34 IST 2016
+https\://raw.githubusercontent.com/sumeetchhetri/gatf/master/maven/.lastUpdated=1464170193188
+https\://oss.sonatype.org/content/repositories/releases/.lastUpdated=1464170190715
+http\://mvn.riptano.com/content/repositories/public/.error=Could not transfer artifact com.test\:gatf-alldep-jar\:jar\:sources\:1.4 from/to riptano (http\://mvn.riptano.com/content/repositories/public)\: Failed to transfer http\://mvn.riptano.com/content/repositories/public/com/test/gatf-alldep-jar/1.4/gatf-alldep-jar-1.4-sources.jar. Error code 503, Service Temporarily Unavailable
+http\://www.springsource.com/repository/.error=
+https\://repo.maven.apache.org/maven2/.lastUpdated=1464170194633
+https\://repo.maven.apache.org/maven2/.error=
+https\://oss.sonatype.org/content/repositories/releases/.error=
+https\://raw.githubusercontent.com/sumeetchhetri/gatf/master/maven/.error=
+@default-riptano-http\://mvn.riptano.com/content/repositories/public/.lastUpdated=1464170191236
+http\://www.springsource.com/repository/.lastUpdated=1464170192530

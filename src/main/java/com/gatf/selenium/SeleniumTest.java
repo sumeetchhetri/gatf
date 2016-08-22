@@ -20,12 +20,15 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.codehaus.jackson.map.ObjectMapper;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
@@ -153,6 +156,47 @@ public abstract class SeleniumTest {
     public void set___d___(WebDriver ___d___)
     {
         this.___d___ = ___d___;
+    }
+    
+    public class PrettyPrintingMap<K, V> {
+        private Map<K, V> map;
+
+        public PrettyPrintingMap(Map<K, V> map) {
+            this.map = map;
+        }
+
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            Iterator<Entry<K, V>> iter = map.entrySet().iterator();
+            while (iter.hasNext()) {
+                Entry<K, V> entry = iter.next();
+                sb.append(entry.getKey());
+                sb.append('=').append('"');
+                sb.append(entry.getValue());
+                sb.append('"');
+                if (iter.hasNext()) {
+                    sb.append(',').append(' ');
+                }
+            }
+            return sb.toString();
+
+        }
+    }
+
+    public void ___cxt___print_provider__(String name)
+    {
+        System.out.println(___cxt___.getProviderTestDataMap().get(name));
+    }
+
+    public void ___cxt___print_provider__json(String name)
+    {
+        try
+        {
+            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getProviderTestDataMap().get(name)));
+        }
+        catch (Exception e)
+        {
+        }
     }
 
     public AcceptanceTestContext get___cxt___()
