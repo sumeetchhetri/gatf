@@ -471,7 +471,7 @@ public class Command {
 		b.append("public void quit() {\nif(get___d___()!=null)get___d___().quit();\n}\n");
 		for (SeleniumDriverConfig driverConfig : mp.values())
         {
-            b.append("public void setupDriver"+driverConfig.getName().toLowerCase()+"(LoggingPreferences ___lp___) throws Exception {\n");
+            b.append("public void setupDriver"+driverConfig.getName().toLowerCase().replaceAll("[^0-9A-Za-z]+", "")+"(LoggingPreferences ___lp___) throws Exception {\n");
             DriverCommand cmd = new DriverCommand(driverConfig, -1);
             String cc = cmd.javacode();
             b.append(cc);
@@ -504,10 +504,11 @@ public class Command {
                 b.append("addSubTest(\""+esc(brn)+"\", \""+esc(st)+"\");\n");
             }
         }
+		b.append("startTest();\n");
 		for (String brn : bn)
 		{
 		    b.append("quit();\n");
-		    b.append("setupDriver"+brn+"(___lp___);\n");
+		    b.append("setupDriver"+brn.replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
 		    b.append("_execute(___lp___);\n");
         }
 		b.append("return get__result__();\n}\n");
@@ -1334,7 +1335,7 @@ public class Command {
                 }
                 b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("safari")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.internetExplorer();\n");
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.safari();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -1344,6 +1345,17 @@ public class Command {
                     }
                 }
                 b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("opera")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.operaBlink();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("edge")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -1356,7 +1368,7 @@ public class Command {
                 }
                 b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-android")) {
-                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(BrowserType.ANDROID, \""+config.getVersion()+"\", Platform.ANDROID);\n");
+                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+config.getVersion()+"\", org.openqa.selenium.Platform.ANDROID);\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -1389,7 +1401,7 @@ public class Command {
                 }
                 b.append("set___d___(new io.selendroid.client.SelendroidDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("ios-driver")) {
-                //b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(BrowserType.ANDROID, \""+version+"\", Platform.ANDROID);\n");
+                //b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+version+"\", org.openqa.selenium.Platform.ANDROID);\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 //if(config.getCapabilities()!=null)
                 //{

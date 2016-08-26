@@ -95,6 +95,17 @@
 		<div id="wrapper">		 
 			<div id="page-wrapper">
 				<br/><br/>
+				<div class="row">
+					<div class="col-lg-1 text-center">Time <span class="badge" id="t_time"></span></div>
+					<div class="col-lg-2 text-center">TOTAL <span class="badge progress-bar-info filter" data-filter="total" id="t_count"></span></div>
+					<div class="col-lg-2 text-center">SUCCESS <span class="badge progress-bar-success filter" data-filter="success" id="s_count"></span></div>
+					<div class="col-lg-2 text-center">FAILED <span class="badge progress-bar-danger filter" data-filter="failed" id="e_count"></span></div>
+					<div class="col-lg-2 text-center">UNKNOWN <span class="badge progress-bar-warning filter" data-filter="unknown" id="u_count"></span></div>
+					<div class="col-lg-3 text-center">
+						<select id="e_filter"></select>
+					</div>
+				<div>
+				<br/><br/>
 				#foreach ($nodeData in $testsMap.entrySet())
 				<div class="row">
 					<div class="col-lg-12">
@@ -118,11 +129,11 @@
 														<div class="table-responsive">
 															<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
 															<thead>
-															<tr><th>Subtest</th><th>Status</th><th>Error</th></tr>
+															<tr><th>Subtest</th><th>Status</th><th>Time</th><th>Error</th></tr>
 															</thead>
 															<tbody>
 															#foreach ($tc in ${brwsData.value})
-															<tr><td><a href="$tc[1]">$tc[0]</a></td><td>$tc[2]</td><td>$tc[3]</td></tr>
+															<tr class="testresult $tc[2]"><td><a href="$tc[1]">$tc[0]</a></td><td>$tc[2]</td><td>$tc[4]</td><td>$tc[3]</td></tr>
 															#end
 															</tbody>
 															</table>
@@ -166,7 +177,72 @@
 		<script type="text/javascript" src="js/prettify.js"></script>
 		<script type="text/javascript" src="js/vkbeautify.js"></script>
 		<link href="css/prettify.css" rel="stylesheet">
-		<script type="text/javascript" src="js/gatf.js"></script>
 		<script type="text/javascript" src="js/diff_match_patch.js"></script>
+		
+		<script>
+			
+			$(document).ready(function() {
+				var errmap = {};
+				var counter = 1;
+				$('.testresult').each(function(){
+					var err = $($(this).find('td')[3]).html();
+					if(!err) {
+						err = "";
+					}
+					if(err.length>100) {
+						err = err.substring(0, 100);
+					}
+					if(!errmap[err]) {
+						errmap[err] = counter++;
+					}
+					$(this).addClass("error_"+errmap[err]);
+					if($(this).find('td>a').html()=="-") {
+						var tim = $($(this).find('td')[2]).html();
+						tim = tim.substring(0, tim.length-1);
+						tottime += tim*1;
+					}
+				});
+				
+				$('#t_time').html(tottime);
+				
+				for(var k in errmap) {
+					if(errmap.hasOwnProperty(k)) {
+						$('#e_filter').append('<option value="error_'+errmap[k]+'">'+k+'</option>');
+					}
+				}
+				
+				$('#e_filter').on('change', function(){
+					var cls = $(this).val();
+					$('.testresult').hide();
+					$('.'+cls).show();
+				});
+			
+				var s = $('.SUCCESS').length;
+				var e = $('.FAILED').length;
+				var u = $('.UNKNOWN').length;
+				var t = s + e + u;
+				$('#s_count').html(s);
+				$('#e_count').html(e);
+				$('#u_count').html(u);
+				$('#t_count').html(t);
+				
+				$('.filter').on('click', function() {
+					var filt = $(this).attr('data-filter');
+					if(filt=="total") {
+						$('.testresult').show();
+					} else if(filt=="success") {
+						$('.testresult').hide();
+						$('.SUCCESS').show();
+					} else if(filt=="failed") {
+						$('.testresult').hide();
+						$('.FAILED').show();
+					} else if(filt=="unknown") {
+						$('.testresult').hide();
+						$('.UNKNOWN').show();
+					}
+				});
+			});
+			
+		</script>
 	</body>
 </html>

@@ -699,21 +699,33 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                     
                     SeleniumResult res = e.getValue();
                     if(res.getResult()==null) {
-                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN",""});
+                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
                     } else {
+                        String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
+                        if(tim.indexOf(".")!=-1) {
+                            String[] parts = tim.split("\\.");
+                            tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                        }
+                        tim += "s";
                         summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
-                                !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():""});
+                                !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
                         ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, res.getResult(), context);
                     }
                     
                     for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
                     {
                         if(e1.getValue()==null) {
-                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN",""});
+                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
                         } else {
+                            String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
+                            if(tim.indexOf(".")!=-1) {
+                                String[] parts = tim.split("\\.");
+                                tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                            }
+                            tim += "s";
                             summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
                                 e1.getValue().isStatus()?"SUCCESS":"FAILED", 
-                                !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():""});
+                                !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
                             ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, e1.getValue(), context);
                         }
                     }
@@ -755,21 +767,33 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                                 }
                                 
                                 if(res.getResult()==null) {
-                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN",""});
+                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
                                 } else {
+                                    String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
+                                    if(tim.indexOf(".")!=-1) {
+                                        String[] parts = tim.split("\\.");
+                                        tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                                    }
+                                    tim += "s";
                                     summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
-                                            !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():""});
+                                            !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
                                     ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), res.getResult(), context);
                                 }
                                 
                                 for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
                                 {
                                     if(e1.getValue()==null) {
-                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN",""});
+                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
                                     } else {
+                                        String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
+                                        if(tim.indexOf(".")!=-1) {
+                                            String[] parts = tim.split("\\.");
+                                            tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                                        }
+                                        tim += "s";
                                         summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
                                             e1.getValue().isStatus()?"SUCCESS":"FAILED", 
-                                            !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():""});
+                                            !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
                                         ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), e1.getValue(), context);
                                     }
                                 }

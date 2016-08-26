@@ -93,14 +93,21 @@ public abstract class SeleniumTest {
 	public void pushResult(SeleniumTestResult result)
 	{
 	    if(__subtestname__==null) {
+	        result.executionTime = System.nanoTime() - __teststarttime__;
 	        __result__.get(browserName).result = result;
 	    } else {
 	        __result__.get(browserName).__cresult__.put(__subtestname__, result);
 	    }
 	}
 	
+	public void startTest() {
+	    __teststarttime__ = System.nanoTime();
+	}
+	
 	private transient String __provname__ = null;
 	private transient String __subtestname__ = null;
+    private transient long __subtestexecutiontime__ = 0L;
+    private transient long __teststarttime__ = 0L;
 	private transient int __provpos__ = -1;
 	
 	private transient AcceptanceTestContext ___cxt___ = null;
@@ -226,6 +233,14 @@ public abstract class SeleniumTest {
 
     public void set__subtestname__(String __subtestname__)
     {
+        if(__subtestname__!=null) {
+            __subtestexecutiontime__ = System.nanoTime();
+        } else {
+            __subtestexecutiontime__ = System.nanoTime() - __subtestexecutiontime__;
+            if(this.__subtestname__!=null) {
+                __result__.get(browserName).__cresult__.get(this.__subtestname__).executionTime = __subtestexecutiontime__;
+            }
+        }
         this.__subtestname__ = __subtestname__;
     }
 
@@ -284,6 +299,8 @@ public abstract class SeleniumTest {
         private Map<String, SerializableLogEntries> logs = new HashMap<String, SerializableLogEntries>();;
         
         private boolean status;
+        
+        private long executionTime;
 
         private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
         
@@ -294,6 +311,10 @@ public abstract class SeleniumTest {
         public boolean isStatus()
         {
             return status;
+        }
+        public long getExecutionTime()
+        {
+            return executionTime;
         }
         public Map<String,Object[]> getInternalTestRes()
         {
