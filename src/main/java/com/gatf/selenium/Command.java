@@ -41,6 +41,7 @@ public class Command {
 	static int NUMBER_COND = 1;
 	static int NUMBER_SR = 1;
     static int NUMBER_DR = 1;
+    static int NUMBER_LIV = 1;
 	
 	static int NUMBER_SC = 1;
 	static Stack<String> stck = new Stack<String>();
@@ -61,6 +62,14 @@ public class Command {
     
     int weight() {
     	return 100;
+    }
+    
+    static String lvarname() {
+        return "___w___" + NUMBER++;
+    }
+    
+    static String lcurrvarname() {
+        return "___w___" + (NUMBER-1);
     }
     
     static String varname() {
@@ -150,10 +159,17 @@ public class Command {
         return cmd;
     }
     
+    static boolean commentStart = false, codeStart = false;
 	static Command parse(String cmd, int cmdLineNumber) {
 		Command comd = null;
 		cmd = sanitize(cmd);
-		if(cmd.startsWith("??")) {
+		if(commentStart && !cmd.contains("*/")) {
+		    comd = new ValueCommand();
+		    ((ValueCommand)comd).value = cmd;
+		} else if(codeStart && !cmd.equals(">>>")) {
+            comd = new ValueCommand();
+            ((ValueCommand)comd).value = cmd;
+        } else if(cmd.startsWith("??")) {
 			String time = "0";
 			Matcher m = WAIT.matcher(cmd);
 			int start = 2;
@@ -163,14 +179,40 @@ public class Command {
 			}
 			cmd = cmd.substring(start).trim();
 			comd = new ValidateCommand(time, cmd, cmdLineNumber);
-		} else if (cmd.startsWith("?")) {
+		} else if (cmd.startsWith("//")) {
+            cmd = cmd.substring(2);
+            comd = new CommentCommand();
+            ValueCommand vc = new ValueCommand();
+            vc.value = cmd;
+            comd.children.add(vc);
+        } else if (cmd.startsWith("/*")) {
+            cmd = cmd.substring(2);
+            comd = new CommentCommand();
+            ValueCommand vc = new ValueCommand();
+            vc.value = cmd;
+            comd.children.add(vc);
+            commentStart = true;
+        } else if (cmd.contains("*/")) {
+            commentStart = false;
+            if(!cmd.endsWith("*/")) {
+                //exception
+            }
+            cmd = cmd.substring(0, cmd.length()-2);
+            comd = new EndCommentCommand(cmd, cmdLineNumber);
+        } else if (cmd.equals("<<<")) {
+            comd = new CodeCommand(cmdLineNumber);
+            codeStart = true;
+        } else if (cmd.equals(">>>")) {
+            codeStart = false;
+            comd = new EndCommand(cmdLineNumber);
+        } else if (cmd.startsWith("?") || cmd.startsWith("?!")) {
 			cmd = cmd.substring(1);
-			comd = new IfCommand(cmdLineNumber);
+			comd = new IfCommand(cmd.startsWith("?!"), cmdLineNumber);
 			((IfCommand)comd).cond = new FindCommand(cmd, cmdLineNumber);
 			((IfCommand)comd).cond.suppressErr = true;
-		} else if (cmd.startsWith(":?")) {
+		} else if (cmd.startsWith(":?") || cmd.startsWith(":?!")) {
 			cmd = cmd.substring(2);
-			comd = new ElseIfCommand(cmdLineNumber);
+			comd = new ElseIfCommand(cmd.startsWith(":?!"), cmdLineNumber);
 			((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdLineNumber);
 			((ElseIfCommand)comd).cond.suppressErr = true;
 		} else if (cmd.startsWith(":")) {
@@ -254,8 +296,8 @@ public class Command {
 			comd = new ExecJsCommand(cmd.substring(7), cmdLineNumber);
 		} else if (cmd.toLowerCase().startsWith("subtest ")) {
             comd = new SubTestCommand(cmd.substring(8), cmdLineNumber);
-        } else if (cmd.toLowerCase().startsWith("require")) {
-			comd = new RequireCommand(cmdLineNumber);
+        } else if (cmd.toLowerCase().startsWith("require ")) {
+			comd = new RequireCommand(cmd.substring(8), cmdLineNumber);
 		} else if (cmd.toLowerCase().startsWith("import ")) {
 			comd = new ImportCommand(cmd.substring(7), cmdLineNumber);
 		} else if (cmd.toLowerCase().startsWith("screenshot ")) {
@@ -321,12 +363,20 @@ public class Command {
 			
 			if(tmp instanceof ValueListCommand) {
 				get(tmp, iter);
-				prev.children.add(tmp);
+				if(prev!=null)prev.children.add(tmp);
 			} else if(tmp instanceof StartCommand) {
 				get(prev, iter);
-			} else if(tmp instanceof EndCommand) {
+			} else if((tmp instanceof CommentCommand && commentStart) || tmp instanceof CodeCommand) {
+                get(tmp, iter);
+                parent.children.add(tmp);
+            } else if(tmp instanceof EndCommentCommand) {
+			    ValueCommand vc = new ValueCommand();
+			    vc.value = ((EndCommentCommand)tmp).value;
+			    parent.children.add(vc);
 				return;
-			} else if(tmp instanceof ImportCommand) {
+			} else if(tmp instanceof EndCommand) {
+                return;
+            } else if(tmp instanceof ImportCommand) {
 				List<String> commands = FileUtils.readLines(new File(((ImportCommand)tmp).name), "UTF-8");
 				for (String c : commands) {
 					iter.add(c);
@@ -335,7 +385,11 @@ public class Command {
 					iter.previous();
 				}
 			} else {
-				parent.children.add(tmp);
+			    if(parent instanceof CodeCommand) {
+			        ((CodeCommand)parent).b.append(((ValueCommand)tmp).value+"\n");
+			    } else {
+			        parent.children.add(tmp);
+			    }
 			}
 			prev = tmp;
 		}
@@ -367,6 +421,7 @@ public class Command {
 	}
 	
 	static Command getAll(List<String> scmds) throws Exception {
+	    commentStart = false;
 		Command tcmd = new Command();
 		
 		get(tcmd, scmds.listIterator());
@@ -424,18 +479,16 @@ public class Command {
 	
 	String javacode() {
 		StringBuilder b = new StringBuilder();
-		for (Command c : children) {
-			if(c instanceof RequireCommand) {
-				String cc = c.javacode();
-				b.append(cc);
-				if(!cc.isEmpty()) {
-					b.append("\n");
-				}
-			} else {
-				break;
-			}
-		}
 		b.append("package com.gatf.selenium;\n");
+		for (Command c : children) {
+            if(c instanceof RequireCommand) {
+                String cc = c.javacode();
+                b.append(cc);
+                if(!cc.isEmpty()) {
+                    b.append("\n");
+                }
+            }
+        }
 		b.append("import java.io.Serializable;\n");
 		b.append("import com.gatf.selenium.SeleniumException;\n");
 		b.append("import org.openqa.selenium.remote.DesiredCapabilities;\n");
@@ -560,6 +613,35 @@ public class Command {
 		    return "exec {statement}";
 		}
 	}
+	
+	public static class CommentCommand extends Command {
+	    String javacode() {
+	        return "";
+	    }
+	}
+    
+    public static class CodeCommand extends Command {
+        StringBuilder b = new StringBuilder();
+        CodeCommand(int cmdLineNumber) {
+            lineNumber = cmdLineNumber;
+            b.append("\n");
+        }
+        String toCmd() {
+            return "<<< \n" + b.toString() + "\n>>>\n";
+        }
+        String javacode() {
+            String code = b.toString();
+            code = code.replace("@driver", "___cw___");
+            code = code.replace("@window", "___ocw___");
+            code = code.replace("@element", currvarname());
+            code = code.replace("@sc", currvarnamesc());
+            code = code.replace("@index", "index");
+            code = code.replace("@printProvJson", "___cxt___print_provider__json");
+            code = code.replace("@printProv", "___cxt___print_provider__");
+            code = code.replace("@print", "System.out.println");
+            return unsanitize(code);
+        }
+    }
 	
 	public static class ExecJsCommand extends Command {
 		String code;
@@ -806,28 +888,23 @@ public class Command {
 	}
 	
 	public static class RequireCommand extends Command {
+	    String value;
 		String toCmd() {
-			StringBuilder b = new StringBuilder();
-			b.append("[\n");
-			for (Command c : children) {
-				b.append(c.toCmd());
-				b.append("\n");
-			}
-			b.append("]");
-			return b.toString();
+			return "require " + value;
 		}
 		String javacode() {
 			StringBuilder b = new StringBuilder();
-			if(children!=null && children.size()>0 && children.get(0) instanceof ValueListCommand) {
-				for (Command c : ((ValueListCommand)children.get(0)).children) {
-					b.append("import " + ((ValueCommand)c).value);
-					b.append(";\n");
+			String[] parts = value.split(",");
+			if(parts.length>0) {
+				for (String c : parts) {
+					b.append("import " + c + ";\n");
 				}
-				//return b.toString();
+				return b.toString();
 			}
 			return "";
 		}
-		public RequireCommand(int cmdLineNumber) {
+		public RequireCommand(String value, int cmdLineNumber) {
+		    this.value = value;
             lineNumber = cmdLineNumber;
         }
 		int weight() {
@@ -916,8 +993,10 @@ public class Command {
 	public static class IfCommand extends FindCommandImpl {
 		List<ElseIfCommand> elseifs = new ArrayList<ElseIfCommand>();
 		ElseCommand elsecmd;
+		boolean negation;
 		IfCommand() {}
-		IfCommand(int cmdLineNumber) {
+		IfCommand(boolean negation, int cmdLineNumber) {
+		    this.negation = negation;
 		    lineNumber = cmdLineNumber;
 		}
 		String toCmd() {
@@ -954,7 +1033,7 @@ public class Command {
 		}
 		String javacode() {
 			StringBuilder b = new StringBuilder();
-			b.append("\nif("+getFp(cond, children)+"){}");
+			b.append("\nif("+(negation?"!":"")+getFp(cond, children)+"){}");
 			for (ElseIfCommand elif : elseifs) {
 				b.append(elif.javacode());
 			}
@@ -970,8 +1049,10 @@ public class Command {
 	
 	public static class ElseIfCommand extends Command {
 		FindCommand cond;
+		boolean negation;
 		ElseIfCommand() {}
-		ElseIfCommand(int cmdLineNumber) {
+		ElseIfCommand(boolean negation, int cmdLineNumber) {
+		    this.negation = negation;
             lineNumber = cmdLineNumber;
         }
 		String toCmd() {
@@ -991,7 +1072,7 @@ public class Command {
 		}
 		String javacode() {
 			StringBuilder b = new StringBuilder();
-			b.append("\nelse if("+IfCommand.getFp(cond, children)+"){}");
+			b.append("\nelse if("+(negation?"!":"")+IfCommand.getFp(cond, children)+"){}");
 			return b.toString();
 		}
         public String toSampleSelCmd() {
@@ -1116,10 +1197,10 @@ public class Command {
             {
                 b.append(cond.javacodeonly(null));
                 String cvarname = currvarname();
-                pushSc();
+                //pushSc();
                 b.append("\nif("+cond.condition()+") {\n");
                 b.append("\nfor(final WebElement " + varname() + " : " + cvarname + ") {\nint index = 0;\n");
-                b.append("final SearchContext "+currvarnamesc()+" = "+currvarname()+";");
+                //b.append("final SearchContext "+currvarnamesc()+" = "+currvarname()+";");
                 String vr = currvarname();
                 b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ varname()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
                 for (Command c : children) {
@@ -1127,7 +1208,7 @@ public class Command {
                     b.append("\n");
                 }
                 b.append("index++;\n}\n}");
-                prevvarnamesc();
+                //prevvarnamesc();
             }
             return b.toString();
         }
@@ -2064,15 +2145,30 @@ public class Command {
 		}
 	}
 	
-	public static class EndCommand extends Command {
+	public static class EndCommentCommand extends Command {
 		String type;
-		EndCommand(int cmdLineNumber) {
+		String value;
+		EndCommentCommand(String value, int cmdLineNumber) {
             lineNumber = cmdLineNumber;
+            this.value = value;
         }
 		String toCmd() {
 			return type;
 		}
+		String javacode() {
+            return "";
+        }
 	}
+
+	public static class EndCommand extends Command {
+        String type;
+        EndCommand(int cmdLineNumber) {
+            lineNumber = cmdLineNumber;
+        }
+        String toCmd() {
+            return type;
+        }
+    }
     
     public static class NoopCommand extends Command {
         String type;
@@ -2617,7 +2713,7 @@ public class Command {
         dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
         mp.put("chrome", dc);
         List<String> commands = new ArrayList<String>();
-        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\Documents\\GitHub\\gatf\\test.sel"), commands, mp);
+        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\data\\test.sel"), commands, mp);
         System.out.println(cmd.javacode());
         String sourceCode =  cmd.fjavacode(); 
         System.out.println(sourceCode);

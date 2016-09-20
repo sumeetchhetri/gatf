@@ -184,6 +184,7 @@
 			$(document).ready(function() {
 				var errmap = {};
 				var counter = 1;
+				var tottime = 0;
 				$('.testresult').each(function(){
 					var err = $($(this).find('td')[3]).html();
 					if(!err) {
