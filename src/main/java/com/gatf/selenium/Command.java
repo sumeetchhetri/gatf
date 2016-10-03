@@ -199,20 +199,30 @@ public class Command {
             }
             cmd = cmd.substring(0, cmd.length()-2);
             comd = new EndCommentCommand(cmd, cmdLineNumber);
-        } else if (cmd.equals("<<<")) {
-            comd = new CodeCommand(cmdLineNumber);
+        } else if (cmd.equals("<<<") || cmd.startsWith("<<<(")) {
+            String lang = "java";
+            String argnames = "";
+            if(cmd.startsWith("<<<(") && cmd.endsWith(")")) {
+                lang = cmd.substring(4, cmd.length()-1);
+                if(cmd.length()>cmd.indexOf(")")+1) {
+                    argnames = cmd.substring(cmd.indexOf(")")+1).trim();
+                }
+            }
+            comd = new CodeCommand(lang, argnames, cmdLineNumber);
             codeStart = true;
         } else if (cmd.equals(">>>")) {
             codeStart = false;
             comd = new EndCommand(cmdLineNumber);
         } else if (cmd.startsWith("?") || cmd.startsWith("?!")) {
-			cmd = cmd.substring(1);
-			comd = new IfCommand(cmd.startsWith("?!"), cmdLineNumber);
+            boolean isIfNot = cmd.startsWith("?!");
+			cmd = cmd.substring((isIfNot?2:1));
+			comd = new IfCommand(isIfNot, cmdLineNumber);
 			((IfCommand)comd).cond = new FindCommand(cmd, cmdLineNumber);
 			((IfCommand)comd).cond.suppressErr = true;
 		} else if (cmd.startsWith(":?") || cmd.startsWith(":?!")) {
-			cmd = cmd.substring(2);
-			comd = new ElseIfCommand(cmd.startsWith(":?!"), cmdLineNumber);
+		    boolean isIfNot = cmd.startsWith(":?!");
+			cmd = cmd.substring((isIfNot?3:2));
+			comd = new ElseIfCommand(isIfNot, cmdLineNumber);
 			((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdLineNumber);
 			((ElseIfCommand)comd).cond.suppressErr = true;
 		} else if (cmd.startsWith(":")) {
@@ -516,6 +526,10 @@ public class Command {
 		b.append("import java.awt.image.BufferedImage;\n");
 		b.append("import org.apache.commons.io.FileUtils;\n");
 		b.append("import java.io.File;\n");
+		b.append("import groovy.lang.Binding;\n");
+        b.append("import groovy.lang.GroovyShell;\n");
+        b.append("import org.jruby.embed.LocalVariableBehavior;\n");
+        b.append("import org.jruby.embed.ScriptingContainer;\n");
 		b.append("import java.util.Map;\n");
 		b.append("import org.junit.Assert;\n");
 		b.append("import org.openqa.selenium.Keys;\n\n");
@@ -622,8 +636,20 @@ public class Command {
     
     public static class CodeCommand extends Command {
         StringBuilder b = new StringBuilder();
-        CodeCommand(int cmdLineNumber) {
+        String lang = "java";
+        String[] arglist = new String[]{};
+        CodeCommand(String lang, String argnames, int cmdLineNumber) {
             lineNumber = cmdLineNumber;
+            if(lang!=null && !lang.trim().isEmpty()) {
+                if(lang.equalsIgnoreCase("java") || lang.equalsIgnoreCase("groovy") || lang.equalsIgnoreCase("js") || lang.equalsIgnoreCase("ruby")) {
+                    this.lang = lang.toLowerCase();
+                } else {
+                    throw new RuntimeException("Invalid code language specified");
+                }
+            }
+            if(argnames!=null && !argnames.isEmpty()) {
+                arglist = argnames.split(",");
+            }
             b.append("\n");
         }
         String toCmd() {
@@ -631,15 +657,56 @@ public class Command {
         }
         String javacode() {
             String code = b.toString();
-            code = code.replace("@driver", "___cw___");
-            code = code.replace("@window", "___ocw___");
-            code = code.replace("@element", currvarname());
-            code = code.replace("@sc", currvarnamesc());
-            code = code.replace("@index", "index");
-            code = code.replace("@printProvJson", "___cxt___print_provider__json");
-            code = code.replace("@printProv", "___cxt___print_provider__");
-            code = code.replace("@print", "System.out.println");
-            return unsanitize(code);
+            if(lang.equals("java")) {
+                code = code.replace("@driver", "___cw___");
+                code = code.replace("@window", "___ocw___");
+                code = code.replace("@element", currvarname());
+                code = code.replace("@sc", currvarnamesc());
+                code = code.replace("@index", "index");
+                code = code.replace("@printProvJson", "___cxt___print_provider__json");
+                code = code.replace("@printProv", "___cxt___print_provider__");
+                code = code.replace("@print", "System.out.println");
+                return unsanitize(code);
+            } else if(lang.equals("groovy")) {
+                String gcode = "";
+                gcode += "Binding __b = new Binding();\n";
+                for (String arg : arglist)
+                {
+                    gcode += "__b.setVariable(\""+arg+"\", "+arg+");\n";
+                }
+                gcode += "GroovyShell __gs = new GroovyShell(__b);\n";
+                gcode += "__gs.evaluate(\""+esc(unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n";
+                return gcode;
+            } else if(lang.equals("js")) {
+                String jscode = "";
+                String args = "";
+                for (String arg : arglist)
+                {
+                    arg = arg.replace("@element", currvarname());
+                    arg = arg.replace("@index", "index");
+                    if(!arg.trim().isEmpty()) {
+                        args += arg +",";
+                    }
+                }
+                jscode += "if (___ocw___ instanceof JavascriptExecutor) {\n";
+                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+esc(unsanitize(code.replaceAll("\n", "\\\\n")))+"\"";
+                if(!args.isEmpty()) {
+                    args = args.substring(0, args.length()-1);
+                    jscode += ", "+args;
+                }
+                jscode += ");\n}\n";
+                return jscode;
+            } else if(lang.equals("ruby")) {
+                String rcode = "";
+                rcode += "ScriptingContainer __rs = new ScriptingContainer(LocalVariableBehavior.PERSISTENT);\n";
+                for (String arg : arglist)
+                {
+                    rcode += "__rs.put(\""+arg+"\", "+arg+");\n";
+                }
+                rcode += "__rs.runScriptlet(\""+esc(unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n";
+                return rcode;
+            }
+            return "";
         }
     }
 	
@@ -1723,6 +1790,27 @@ public class Command {
             return "fail {error string}";
         }
     }
+    
+    public static class PassCommand extends ValueCommand {
+        String toCmd() {
+            return "pass \"" + value + "\"";
+        }
+        String javacode() {
+            return "if(true)\n{\nthrow new RuntimeException(\""+esc(value)+"\");\n}";
+        }
+        PassCommand(String cmd, int cmdLineNumber) {
+            lineNumber = cmdLineNumber;
+            value = unsanitize(cmd);
+            if(value.charAt(0)==value.charAt(value.length()-1)) {
+                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+                    value = value.substring(1, value.length()-1);
+                }
+            }
+        }
+        public String toSampleSelCmd() {
+            return "pass {msg string}";
+        }
+    }
 	
 	public static class WindowSetPropertyCommand extends Command {
 		String type;
@@ -2713,7 +2801,7 @@ public class Command {
         dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
         mp.put("chrome", dc);
         List<String> commands = new ArrayList<String>();
-        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\data\\test.sel"), commands, mp);
+        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\test.sel"), commands, mp);
         System.out.println(cmd.javacode());
         String sourceCode =  cmd.fjavacode(); 
         System.out.println(sourceCode);

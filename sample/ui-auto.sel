@@ -1,7 +1,4 @@
-require
-[
-	org.openqa.selenium.WebDriver
-]
+require "org.openqa.selenium.WebDriver"
 open chrome
 goto http://abc.com
 ??10 id@"inputUsername"

@@ -73,7 +73,7 @@
 		<queryStr><![CDATA[
 			select procpid,datname,current_query,now() - pg_stat_activity.query_start as duration 
 				from pg_stat_activity where pg_stat_activity.current_query <> ''::text 
-				and now() - pg_stat_activity.query_start > interval '5 minutes'
+				and now() - pg_stat_activity.query_start > interval '1 minutes'
 		]]></queryStr>
 		<providerProperties>query,procpid,datname,duration</providerProperties>
 	</gatf-testdata-provider>

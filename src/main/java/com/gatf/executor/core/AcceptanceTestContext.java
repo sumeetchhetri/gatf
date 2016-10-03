@@ -633,7 +633,7 @@ public class AcceptanceTestContext {
 		Assert.assertNotNull("No DataSourceHook found", dataSourceHook);
 		
 		TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
-		Assert.assertNull("No DataSource found", dataSource);
+		Assert.assertNotNull("No DataSource found", dataSource);
 		
 		for (String query : dataSourceHook.getQueryStrs()) {
 			boolean flag = dataSource.execute(query);
