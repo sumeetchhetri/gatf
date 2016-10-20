@@ -281,6 +281,10 @@ public abstract class TestCaseFinder {
 	{
 		List<File> allFiles = new ArrayList<File>();
 		for (File file : testFiles) {
+		    if(file.getName().toLowerCase().endsWith(".sel")) {
+		        allFiles.add(file);
+		        continue;
+		    }
 			try {
 				new XMLTestCaseFinder().resolveTestCases(file);
 				allFiles.add(file);

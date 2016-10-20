@@ -340,6 +340,7 @@ public class AcceptanceTestContext {
 	
 	public File getResourceFile(String filename) {
 		try {
+		    if(new File(filename).exists())return new File(filename); 
 			if(gatfExecutorConfig.getTestCasesBasePath()!=null)
 			{
 				File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());

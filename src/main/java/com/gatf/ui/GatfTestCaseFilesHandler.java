@@ -54,9 +54,9 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			if(StringUtils.isNotBlank(testcaseFileName)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-        			if(!testcaseFileName.endsWith(".xml"))
+        			if(!testcaseFileName.toLowerCase().endsWith(".xml") && !testcaseFileName.toLowerCase().endsWith(".sel"))
         			{
-        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+        				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
         			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
@@ -69,7 +69,11 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			}
         			new File(filePath).createNewFile();
         			BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
-        			bos.write("<TestCases></TestCases>".getBytes());
+        			if(testcaseFileName.toLowerCase().endsWith(".xml")) {
+        			    bos.write("<TestCases></TestCases>".getBytes());
+        			} else {
+        			    bos.write("open chrome".getBytes());
+        			}
         			bos.close();
         			response.setStatus(HttpStatus.OK_200);
     			} else {
@@ -84,9 +88,10 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileNameTo = request.getParameter("testcaseFileNameTo");
     			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(testcaseFileNameTo)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-        			if(!testcaseFileName.endsWith(".xml") || !testcaseFileNameTo.endsWith(".xml"))
+        			if(!(testcaseFileName.toLowerCase().endsWith(".xml") && testcaseFileNameTo.toLowerCase().endsWith(".xml")) || 
+        			        !(testcaseFileName.toLowerCase().endsWith(".sel") && testcaseFileNameTo.toLowerCase().endsWith(".sel")))
         			{
-        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+        			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
         			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
@@ -151,9 +156,9 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			if(StringUtils.isNotBlank(testcaseFileName)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-        			if(!testcaseFileName.endsWith(".xml"))
+        			if(!testcaseFileName.toLowerCase().endsWith(".xml") && !testcaseFileName.toLowerCase().endsWith(".sel"))
         			{
-        				throw new RuntimeException("Testcase File should be an xml file, extension should be (.xml)");
+        				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
         			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
@@ -175,7 +180,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 			}
     	} else if(request.getMethod().equals(Method.GET) ) {
     		try {
-    			GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+    			final GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
     			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 				if(!new File(dirPath).exists()) {
@@ -184,7 +189,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			
     			FilenameFilter filter = new FilenameFilter() {
     				public boolean accept(File folder, String name) {
-    					return name.toLowerCase().endsWith(".xml");
+    					return (!gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".xml")) || (gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".sel"));
     				}
     			};
     			

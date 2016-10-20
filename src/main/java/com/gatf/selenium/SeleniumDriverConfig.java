@@ -18,7 +18,7 @@ import com.thoughtworks.xstream.annotations.XStreamConverter;
  * The Selenium Driver configuration properties
  */
 
-@XStreamAlias("selenium-driver-config")
+@XStreamAlias("seleniumDriverConfig")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonSerialize(include=Inclusion.NON_NULL)
 public class SeleniumDriverConfig implements Serializable {

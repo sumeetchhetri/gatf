@@ -44,8 +44,13 @@ public class Command {
     static int NUMBER_LIV = 1;
 	
 	static int NUMBER_SC = 1;
-	static Stack<String> stck = new Stack<String>();
-	static String sc = null, psc = null;
+    static Stack<String> stck = new Stack<String>();
+    static String sc = null, psc = null;
+    
+    static int NUMBER_PARC = 1;
+	static Stack<String> stckPar = new Stack<String>();
+	static String parc = null, pparc = null;
+	
 	
 	String name;
 	Object[] fileLineDetails;
@@ -146,6 +151,22 @@ public class Command {
     	stck.push(sc);
     }
     
+    static String currvarnameparc() {
+        return parc;
+    }
+    
+    static String prevvarnameparc() {
+        stckPar.pop();
+        parc = stckPar.size()==1?stckPar.peek():pparc;
+        return pparc;
+    }
+    
+    static void pushParc() {
+        pparc = parc;
+        parc = "___pc___" + NUMBER_PARC++;
+        stckPar.push(parc);
+    }
+    
     static String condvarname() {
     	return "___c___" + NUMBER_COND++;
     }
@@ -195,7 +216,7 @@ public class Command {
     
     static boolean commentStart = false, codeStart = false;
 	static Command parse(Object[] cmdDetails) {
-	    String cmd = cmdDetails[0].toString();
+	    String cmd = cmdDetails[0].toString().trim();
 		Command comd = null;
 		cmd = sanitize(cmd);
 		if(commentStart && !cmd.contains("*/")) {
@@ -281,8 +302,8 @@ public class Command {
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails);
         } else if (cmd.startsWith("#")) {
 			cmd = cmd.substring(1);
-			comd = new LoopCommand(cmdDetails);
-			((LoopCommand)comd).cond = new FindCommand(cmd, cmdDetails);
+			comd = new ScopedLoopCommand(cmdDetails);
+			((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails);
 		} else if (cmd.startsWith("[")) {
 			comd = new ValueListCommand(cmdDetails);
 			((ValueListCommand)comd).type = "[";
@@ -304,9 +325,19 @@ public class Command {
             comd = new CapabilitySetPropertyCommand(cmd.substring(15));
         }*/ else if (cmd.toLowerCase().startsWith("goto ")) {
 			String url = cmd.substring(5).trim();
+			url = unsanitize(url);
+            if(url.charAt(0)==url.charAt(url.length()-1)) {
+                if(url.charAt(0)=='"' || url.charAt(0)=='\'') {
+                    url = url.substring(1, url.length()-1);
+                }
+            }
 			comd = new GotoCommand(cmdDetails);
-			((GotoCommand)comd).url = unsanitize(url);
-		} else if (cmd.toLowerCase().startsWith("back")) {
+			((GotoCommand)comd).url = url;
+		} else if (cmd.toLowerCase().startsWith("break")) {
+            comd = new BreakCommand(cmdDetails);
+        } else if (cmd.toLowerCase().startsWith("continue")) {
+            comd = new ContinueCommand(cmdDetails);
+        } else if (cmd.toLowerCase().startsWith("back")) {
 			comd = new BackCommand(cmdDetails);
 		} else if (cmd.toLowerCase().startsWith("forward")) {
 			comd = new ForwardCommand(cmdDetails);
@@ -913,7 +944,7 @@ public class Command {
 	    			code = code.substring(1, code.length()-1);
 	    		}
 	    	}
-			this.fpath = code;
+			this.fpath = code.trim().isEmpty()?System.nanoTime()+".jpg":code;
 		}
 		String toCmd() {
 			return "screenshot \"" + fpath + "\"";
@@ -933,14 +964,19 @@ public class Command {
         }
 		EleScreenshotCommand(String val, Object[] cmdDetails) {
             fileLineDetails = cmdDetails;
-			val = unsanitize(val);
-			fpath = val.substring(0, val.indexOf(" ")).trim();
-			if(fpath.charAt(0)==fpath.charAt(fpath.length()-1)) {
-	    		if(fpath.charAt(0)=='"' || fpath.charAt(0)=='\'') {
-	    			fpath = fpath.substring(1, fpath.length()-1);
-	    		}
-	    	}
-			cond = new FindCommand(val.substring(val.indexOf(" ")+1).trim(), fileLineDetails);
+			String[] parts = val.split("[\t ]+");
+			if(parts.length==1) {
+			    fpath = System.nanoTime()+".jpg";
+			    cond = new FindCommand(parts[0].trim(), fileLineDetails);
+			} else {
+			    cond = new FindCommand(parts[1].trim(), fileLineDetails);
+			    fpath = unsanitize(parts[0].trim());
+			    if(fpath.charAt(0)==fpath.charAt(fpath.length()-1)) {
+	                if(fpath.charAt(0)=='"' || fpath.charAt(0)=='\'') {
+	                    fpath = fpath.substring(1, fpath.length()-1);
+	                }
+	            }
+			}
 		}
 		String toCmd() {
 			return "ele-screenshot \"" + fpath + "\"";
@@ -1146,7 +1182,8 @@ public class Command {
 		static String getFp(FindCommand cond, List<Command> children, boolean negation) {
 		    StringBuilder b = new StringBuilder();
 		    b.append("new Functor<SearchContext, Boolean>() {@Override\n");
-		    b.append("public Boolean f(SearchContext "+currvarnamesc()+")\n{\ntry{\n");
+		    String cparc = currvarnameparc()!=null?currvarnameparc():"__1__";
+		    b.append("public Boolean f(SearchContext "+currvarnamesc()+", SearchContext "+cparc+")\n{\ntry{\n");
             b.append(cond.javacodeonly(children));
             if(!negation)
             {
@@ -1173,7 +1210,7 @@ public class Command {
                 }
                 b.append("}\ncatch(Exception e){\nSystem.out.println(e.getMessage());}\n");
             }
-		    b.append("\nreturn false;}\n}.f("+currvarnamesc()+")");
+		    b.append("\nreturn false;}\n}.f("+currvarnamesc()+", "+currvarnameparc()+")");
 		    return b.toString();
 		}
 		String javacode() {
@@ -1268,7 +1305,7 @@ public class Command {
         }
 	}
 	
-	public static class LoopCommand extends Command {
+	/*public static class LoopCommand extends Command {
 		FindCommand cond;
 		LoopCommand() {}
 		LoopCommand(Object[] cmdDetails) {
@@ -1313,7 +1350,7 @@ public class Command {
         public String toSampleSelCmd() {
             return "# {find-expr}\n\t{\n\t}";
         }
-	}
+	}*/
     
     public static class ScopedLoopCommand extends Command {
         FindCommand cond;
@@ -1343,9 +1380,11 @@ public class Command {
                 b.append(cond.javacodeonly(null));
                 String cvarname = currvarname();
                 //pushSc();
+                pushParc();
                 b.append("\nif("+cond.condition()+") {\n");
                 b.append("\nfor(final WebElement " + varname() + " : " + cvarname + ") {\nint index = 0;\n");
                 //b.append("final SearchContext "+currvarnamesc()+" = "+currvarname()+";");
+                b.append("final SearchContext "+currvarnameparc()+" = "+currvarname()+";");
                 String vr = currvarname();
                 b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ varname()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
                 for (Command c : children) {
@@ -1354,6 +1393,7 @@ public class Command {
                 }
                 b.append("index++;\n}\n}");
                 //prevvarnamesc();
+                prevvarnameparc();
             }
             return b.toString();
         }
@@ -1685,6 +1725,12 @@ public class Command {
         }
         FrameCommand(String cmd, Object[] cmdDetails) {
 			name = cmd;
+			name = unsanitize(name);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
 			fileLineDetails = cmdDetails;
 		}
 		String name() {
@@ -1725,6 +1771,12 @@ public class Command {
         WindowCommand(String cmd, Object[] cmdDetails) {
             fileLineDetails = cmdDetails;
             name = cmd;
+            name = unsanitize(name);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
         }
         String name() {
             return name;
@@ -2059,7 +2111,15 @@ public class Command {
     			} else if(by.equalsIgnoreCase("tag") || by.equalsIgnoreCase("tagname")) {
     				b.append("List<WebElement>  " + topele + " = By.tagName(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
     			} else if(by.equalsIgnoreCase("xpath")) {
-    				b.append("List<WebElement>  " + topele + " = By.xpath(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
+    			    String ec = esc(classifier);
+    			    String sc = currvarnamesc();
+    			    if(ec.startsWith(".")) {
+    			        if(currvarnameparc()==null) {
+    			            throwParseError(null, new RuntimeException("Relative xpath allowed only within a loop block"));
+    			        }
+    			        sc = currvarnameparc();
+    			    }
+    				b.append("List<WebElement>  " + topele + " = By.xpath(evaluate(\""+ec+"\")).findElements("+sc+");");
     			} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
     				b.append("List<WebElement>  " + topele + " = By.cssSelector(evaluate(\""+esc(classifier)+"\")).findElements("+currvarnamesc()+");");
     			} else if(by.equalsIgnoreCase("text")) {
@@ -2795,10 +2855,50 @@ public class Command {
             return "sleep " + ms;
         }
         String javacode() {
-            return "\nThread.sleep("+ms+");";
+            return "\ntry{Thread.sleep("+ms+");}catch(Exception e){}";
         }
         public String toSampleSelCmd() {
             return "sleep {time-in-ms}";
+        }
+    }
+    
+    public static class BreakCommand extends Command {
+        public BreakCommand() {
+        }
+        BreakCommand(Object[] cmdDetails) {
+            fileLineDetails = cmdDetails;
+        }
+        String toCmd() {
+            return "break";
+        }
+        String javacode() {
+            if(currvarnameparc()==null) {
+                throwParseError(null, new RuntimeException("Break is allowed only within a loop block"));
+            }
+            return "\nbreak;";
+        }
+        public String toSampleSelCmd() {
+            return "break";
+        }
+    }
+    
+    public static class ContinueCommand extends Command {
+        public ContinueCommand() {
+        }
+        ContinueCommand(Object[] cmdDetails) {
+            fileLineDetails = cmdDetails;
+        }
+        String toCmd() {
+            return "continue";
+        }
+        String javacode() {
+            if(currvarnameparc()==null) {
+                throwParseError(null, new RuntimeException("Break is allowed only within a loop block"));
+            }
+            return "\ncontinue;";
+        }
+        public String toSampleSelCmd() {
+            return "continue";
         }
     }
 	

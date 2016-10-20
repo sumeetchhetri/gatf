@@ -530,6 +530,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 					xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
 					xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+					xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+					xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
+                    xstream.alias("testCaseHooksPaths", String[].class);
+                    xstream.alias("testCaseHooksPath", String.class);
 					xstream.alias("args", String[].class);
 					xstream.alias("arg", String.class);
 					xstream.alias("testCaseHooksPaths", String[].class);
@@ -543,8 +547,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 					xstream.alias("string", String.class);
 					xstream.alias("seleniumScripts", String[].class);
 					xstream.alias("seleniumScript", String.class);
-                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
 					
 					configuration = (GatfExecutorConfig)xstream.fromXML(resource);
 					
@@ -597,11 +599,217 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 	
+	public Map<String, Map<String, Map<String, List<Object[]>>>> doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+
+	    List<DistributedConnection> distConnections = null;
+	    
+	    distributedGatfTester = new DistributedGatfTester();
+	    
+        for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs())
+        {
+            if(selConf.getDriverName()!=null) {
+                System.setProperty(selConf.getDriverName(), selConf.getPath());
+            }
+        }
+        System.setProperty("java.home", configuration.getJavaHome());
+        
+        try {
+            SeleniumCodeGeneratorAndUtil.clean();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        
+        if(files!=null && files.size()>0) {
+            configuration.setSeleniumScripts(files.toArray(new String[files.size()]));
+        }
+        
+        LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
+        List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
+        List<Object[]> testdata = new ArrayList<Object[]>();
+        Map<String, Object[]> testdataMap = new HashMap<String,Object[]>();
+        List<String> testClassNames = new ArrayList<String>();
+        for (String selscript : configuration.getSeleniumScripts()) {
+            try {
+                Object[] retvals = new Object[4];
+                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context, retvals);
+                tests.add(dyn);
+                testdata.add(retvals);
+                testdataMap.put((String)retvals[0], retvals);
+                testClassNames.add(dyn.getClass().getName());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        
+        List<FutureTask<Object>> tasks = new ArrayList<FutureTask<Object>>();
+        List<String> taskNodes = new ArrayList<String>();
+        if(configuration.isDistributedLoadTests() && configuration.getDistributedNodes()!=null && configuration.getDistributedNodes().length>0)
+        {
+            distConnections = new ArrayList<DistributedConnection>();
+            
+            for (String node : configuration.getDistributedNodes()) {
+                DistributedConnection conn = distributedGatfTester.distributeContext(node, context);
+                if(conn!=null) {
+                    distConnections.add(conn);
+                }
+            }
+            
+            if(distConnections.size()>0)
+            {
+                File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests();
+                for (int i=0;i<distConnections.size();i++) {
+                    DistributedConnection conn = distConnections.get(i);
+                    if(conn!=null) {
+                        FutureTask<Object> task = distributedGatfTester.distributeSeleniumTests(conn, selClsFilesZip, testClassNames);
+                        tasks.add(task);
+                        taskNodes.add(conn.toString());
+                    }
+                }
+            }
+        }
+        Map<String, Map<String, Map<String, List<Object[]>>>> summLstMap = new LinkedHashMap<String, Map<String, Map<String, List<Object[]>>>>();
+        
+        Map<String, Map<String, List<Object[]>>> summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
+        for (int i=0;i<tests.size();i++) {
+            SeleniumTest dyn = tests.get(i);
+            Object[] retvals = testdata.get(i);
+            if(dyn==null)continue;
+            Map<String, SeleniumResult> result = null;
+            try {
+                summLst.put((String)retvals[0], new LinkedHashMap<String, List<Object[]>>());
+                result = dyn.execute(lp);
+            } catch (Throwable e) {
+                dyn.pushResult(new SeleniumTestResult(dyn, e));
+                result = dyn.get__result__();
+            }
+            dyn.quit();
+            for (Map.Entry<String, SeleniumResult> e : result.entrySet())
+            {
+                if(!summLst.get((String)retvals[0]).containsKey(e.getKey())) {
+                    summLst.get((String)retvals[0]).put(e.getKey(), new ArrayList<Object[]>());
+                }
+                
+                SeleniumResult res = e.getValue();
+                if(res.getResult()==null) {
+                    summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
+                } else {
+                    String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
+                    if(tim.indexOf(".")!=-1) {
+                        String[] parts = tim.split("\\.");
+                        tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                    }
+                    tim += "s";
+                    summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
+                            !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
+                    ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, res.getResult(), context);
+                }
+                
+                for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
+                {
+                    if(e1.getValue()==null) {
+                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
+                    } else {
+                        String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
+                        if(tim.indexOf(".")!=-1) {
+                            String[] parts = tim.split("\\.");
+                            tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                        }
+                        tim += "s";
+                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
+                            e1.getValue().isStatus()?"SUCCESS":"FAILED", 
+                            !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
+                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, e1.getValue(), context);
+                    }
+                }
+            }
+        }
+        summLstMap.put("local", summLst);
+        
+        for (int j=0;j<tasks.size();j++) {
+            summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
+            try {
+                List<Map<String, SeleniumResult>> results = null;
+                Object o = tasks.get(j).get();
+                if(o==null) {
+                    
+                } else if(o instanceof RuntimeException) {
+                    //TODO handle exception
+                    //summLst.add(new Object[]{"NA", "", "FAILED", ((RuntimeException)o).getMessage()});
+                } else {
+                    results = (List<Map<String, SeleniumResult>>)o;
+                    for (int i=0;i<results.size();i++)
+                    {
+                        Map<String, SeleniumResult> result = results.get(i);
+                        for (Map.Entry<String, SeleniumResult> e : result.entrySet())
+                        {
+                            SeleniumResult res = e.getValue();
+                            summLst.put(res.getName(), new LinkedHashMap<String, List<Object[]>>());
+                            break;
+                        }
+                    }
+                    for (int i=0;i<results.size();i++)
+                    {
+                        Map<String, SeleniumResult> result = results.get(i);
+                        for (Map.Entry<String, SeleniumResult> e : result.entrySet())
+                        {
+                            SeleniumResult res = e.getValue();
+                         
+                            if(!summLst.get(res.getName()).containsKey(e.getKey())) {
+                                summLst.get(res.getName()).put(e.getKey(), new ArrayList<Object[]>());
+                            }
+                            
+                            if(res.getResult()==null) {
+                                summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
+                            } else {
+                                String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
+                                if(tim.indexOf(".")!=-1) {
+                                    String[] parts = tim.split("\\.");
+                                    tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                                }
+                                tim += "s";
+                                summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
+                                        !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
+                                ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), res.getResult(), context);
+                            }
+                            
+                            for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
+                            {
+                                if(e1.getValue()==null) {
+                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
+                                } else {
+                                    String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
+                                    if(tim.indexOf(".")!=-1) {
+                                        String[] parts = tim.split("\\.");
+                                        tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
+                                    }
+                                    tim += "s";
+                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
+                                        e1.getValue().isStatus()?"SUCCESS":"FAILED", 
+                                        !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
+                                    ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), e1.getValue(), context);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            summLstMap.put(taskNodes.get(j), summLst);
+        }
+        
+        ReportHandler.doSeleniumSummaryTestReport(summLstMap, context);
+        
+        context.shutdown();
+        return summLstMap;
+    
+	}
+	
 	public void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException {
 		doExecute((GatfExecutorConfig)configuration, files);
 	}
 	
-	@SuppressWarnings({ "rawtypes", "unchecked" })
+	@SuppressWarnings({ "rawtypes" })
 	public void doExecute(GatfExecutorConfig configuration, List<String> files) throws MojoFailureException {
 		
 		if(configuration.isGenerateExecutionLogs() && !configuration.isSeleniumExecutor())
@@ -612,205 +820,14 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		
 		initilaizeContext(configuration, true);
 		
-		distributedGatfTester = new DistributedGatfTester();
-		
 		List<DistributedConnection> distConnections = null;
 		
 		if(configuration.isSeleniumExecutor() && configuration.isValidSeleniumRequest()) {
-		    for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs())
-            {
-		        if(selConf.getDriverName()!=null) {
-		            System.setProperty(selConf.getDriverName(), selConf.getPath());
-		        }
-            }
-		    System.setProperty("java.home", configuration.getJavaHome());
-		    
-		    try {
-		        SeleniumCodeGeneratorAndUtil.clean();
-		    } catch (Exception e) {
-                e.printStackTrace();
-            }
-		    
-		    LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
-            List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
-            List<Object[]> testdata = new ArrayList<Object[]>();
-            Map<String, Object[]> testdataMap = new HashMap<String,Object[]>();
-            List<String> testClassNames = new ArrayList<String>();
-            for (String selscript : configuration.getSeleniumScripts()) {
-                try {
-                    Object[] retvals = new Object[4];
-                    SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context, retvals);
-                    tests.add(dyn);
-                    testdata.add(retvals);
-                    testdataMap.put((String)retvals[0], retvals);
-                    testClassNames.add(dyn.getClass().getName());
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-            
-            List<FutureTask<Object>> tasks = new ArrayList<FutureTask<Object>>();
-            List<String> taskNodes = new ArrayList<String>();
-            if(configuration.isDistributedLoadTests() && configuration.getDistributedNodes()!=null && configuration.getDistributedNodes().length>0)
-            {
-                distConnections = new ArrayList<DistributedConnection>();
-                
-                for (String node : configuration.getDistributedNodes()) {
-                    DistributedConnection conn = distributedGatfTester.distributeContext(node, context);
-                    if(conn!=null) {
-                        distConnections.add(conn);
-                    }
-                }
-                
-                if(distConnections.size()>0)
-                {
-                    File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests();
-                    for (int i=0;i<distConnections.size();i++) {
-                        DistributedConnection conn = distConnections.get(i);
-                        if(conn!=null) {
-                            FutureTask<Object> task = distributedGatfTester.distributeSeleniumTests(conn, selClsFilesZip, testClassNames);
-                            tasks.add(task);
-                            taskNodes.add(conn.toString());
-                        }
-                    }
-                }
-            }
-            Map<String, Map<String, Map<String, List<Object[]>>>> summLstMap = new LinkedHashMap<String, Map<String, Map<String, List<Object[]>>>>();
-            
-            Map<String, Map<String, List<Object[]>>> summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
-            for (int i=0;i<tests.size();i++) {
-                SeleniumTest dyn = tests.get(i);
-                Object[] retvals = testdata.get(i);
-                if(dyn==null)continue;
-                Map<String, SeleniumResult> result = null;
-                try {
-                    summLst.put((String)retvals[0], new LinkedHashMap<String, List<Object[]>>());
-                    result = dyn.execute(lp);
-                } catch (Throwable e) {
-                    dyn.pushResult(new SeleniumTestResult(dyn, e));
-                    result = dyn.get__result__();
-                }
-                dyn.quit();
-                for (Map.Entry<String, SeleniumResult> e : result.entrySet())
-                {
-                    if(!summLst.get((String)retvals[0]).containsKey(e.getKey())) {
-                        summLst.get((String)retvals[0]).put(e.getKey(), new ArrayList<Object[]>());
-                    }
-                    
-                    SeleniumResult res = e.getValue();
-                    if(res.getResult()==null) {
-                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
-                    } else {
-                        String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
-                        if(tim.indexOf(".")!=-1) {
-                            String[] parts = tim.split("\\.");
-                            tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
-                        }
-                        tim += "s";
-                        summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
-                                !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
-                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, res.getResult(), context);
-                    }
-                    
-                    for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
-                    {
-                        if(e1.getValue()==null) {
-                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
-                        } else {
-                            String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
-                            if(tim.indexOf(".")!=-1) {
-                                String[] parts = tim.split("\\.");
-                                tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
-                            }
-                            tim += "s";
-                            summLst.get((String)retvals[0]).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
-                                e1.getValue().isStatus()?"SUCCESS":"FAILED", 
-                                !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
-                            ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), retvals, e1.getValue(), context);
-                        }
-                    }
-                }
-            }
-            summLstMap.put("local", summLst);
-            
-            for (int j=0;j<tasks.size();j++) {
-                summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
-                try {
-                    List<Map<String, SeleniumResult>> results = null;
-                    Object o = tasks.get(j).get();
-                    if(o==null) {
-                        
-                    } else if(o instanceof RuntimeException) {
-                        //TODO handle exception
-                        //summLst.add(new Object[]{"NA", "", "FAILED", ((RuntimeException)o).getMessage()});
-                    } else {
-                        results = (List<Map<String, SeleniumResult>>)o;
-                        for (int i=0;i<results.size();i++)
-                        {
-                            Map<String, SeleniumResult> result = results.get(i);
-                            for (Map.Entry<String, SeleniumResult> e : result.entrySet())
-                            {
-                                SeleniumResult res = e.getValue();
-                                summLst.put(res.getName(), new LinkedHashMap<String, List<Object[]>>());
-                                break;
-                            }
-                        }
-                        for (int i=0;i<results.size();i++)
-                        {
-                            Map<String, SeleniumResult> result = results.get(i);
-                            for (Map.Entry<String, SeleniumResult> e : result.entrySet())
-                            {
-                                SeleniumResult res = e.getValue();
-                             
-                                if(!summLst.get(res.getName()).containsKey(e.getKey())) {
-                                    summLst.get(res.getName()).put(e.getKey(), new ArrayList<Object[]>());
-                                }
-                                
-                                if(res.getResult()==null) {
-                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", "#", "UNKOWN","", "0s"});
-                                } else {
-                                    String tim = res.getResult().getExecutionTime()/Math.pow(10, 9) + "";
-                                    if(tim.indexOf(".")!=-1) {
-                                        String[] parts = tim.split("\\.");
-                                        tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
-                                    }
-                                    tim += "s";
-                                    summLst.get(res.getName()).get(e.getKey()).add(new Object[]{"-", (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", res.getResult().isStatus()?"SUCCESS":"FAILED", 
-                                            !res.getResult().isStatus()?res.getResult().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
-                                    ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), res.getResult(), context);
-                                }
-                                
-                                for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet())
-                                {
-                                    if(e1.getValue()==null) {
-                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), "#", "UNKOWN","", "0s"});
-                                    } else {
-                                        String tim = e1.getValue().getExecutionTime()/Math.pow(10, 9) + "";
-                                        if(tim.indexOf(".")!=-1) {
-                                            String[] parts = tim.split("\\.");
-                                            tim = parts[0] + "." + (parts[1].length()>3?parts[1].substring(0, 3):parts[1]);
-                                        }
-                                        tim += "s";
-                                        summLst.get(res.getName()).get(e.getKey()).add(new Object[]{e1.getKey(), (i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-selenium-index.html", 
-                                            e1.getValue().isStatus()?"SUCCESS":"FAILED", 
-                                            !e1.getValue().isStatus()?e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage():"", tim});
-                                        ReportHandler.doSeleniumTestReport((i+1)+"-"+e.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_")+"-"+e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_"), testdataMap.get(res.getName()), e1.getValue(), context);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                summLstMap.put(taskNodes.get(j), summLst);
-            }
-            
-            ReportHandler.doSeleniumSummaryTestReport(summLstMap, context);
-            
-            context.shutdown();
-			return;
+		    doSeleniumTest(configuration, files);
+		    return;
 		}
+		
+		distributedGatfTester = new DistributedGatfTester();
 		
 		final TestCaseExecutorUtil testCaseExecutorUtil = new TestCaseExecutorUtil(context);
 		
@@ -2081,6 +2098,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 		xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
 		xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+        xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+        xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
 		xstream.alias("args", String[].class);
 		xstream.alias("arg", String.class);
 		xstream.alias("testCaseHooksPaths", String[].class);
@@ -2094,6 +2113,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		xstream.alias("orderedFiles", String[].class);
 		xstream.alias("orderedFile", String.class);
 		xstream.alias("string", String.class);
+        xstream.alias("seleniumScripts", String[].class);
+        xstream.alias("seleniumScript", String.class);
 		
 		GatfExecutorConfig configuration = (GatfExecutorConfig)xstream.fromXML(resource);
 		return configuration;
@@ -2108,6 +2129,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 		xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
 		xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+        xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+        xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
 		xstream.alias("args", String[].class);
 		xstream.alias("arg", String.class);
 		xstream.alias("testCaseHooksPaths", String[].class);
@@ -2119,6 +2142,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		xstream.alias("ignoreFiles", String[].class);
 		xstream.alias("orderedFiles", String[].class);
 		xstream.alias("string", String.class);
+        xstream.alias("seleniumScripts", String[].class);
+        xstream.alias("seleniumScript", String.class);
 		
 		return xstream.toXML(configuration);
 	}

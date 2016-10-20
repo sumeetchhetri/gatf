@@ -280,7 +280,7 @@ public abstract class SeleniumTest {
 	}
 	
 	public static interface Functor<I, O> {
-	    O f(I i);
+	    O f(I i, I j);
 	}
 	
 	protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();

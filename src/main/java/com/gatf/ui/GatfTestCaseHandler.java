@@ -25,6 +25,8 @@ import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.glassfish.grizzly.http.Method;
@@ -88,8 +90,11 @@ public class GatfTestCaseHandler extends HttpHandler {
 			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
 			filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 		}
+		
+		boolean isSelTc = testcaseFileName.toLowerCase().endsWith(".sel");
+		
 		boolean isUpdate = request.getMethod().equals(Method.PUT);
-		if(!isApiIntType && request.getMethod().equals(Method.DELETE)) {
+		if(!isApiIntType && !isSelTc && request.getMethod().equals(Method.DELETE)) {
     		try {
     			String testCaseName = request.getHeader("testcasename");
     			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
@@ -120,145 +125,156 @@ public class GatfTestCaseHandler extends HttpHandler {
     		} catch (Exception e) {
     			GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
-		} else if(request.getMethod().equals(Method.POST) || isUpdate) {
+		} else if(request.getMethod().equals(Method.POST) || (isUpdate && !isSelTc)) {
     		try {
-    		    String testCaseName = request.getParameter("tcName");
-    			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
-    					TestCase.class);
-    			if(testCase.getName()==null) {
-    				throw new RuntimeException("Testcase does not specify name");
-    			}
-    			
-    			if(isApiIntType && !testCase.getName().equals("authapi") && !testCase.getName().equals("targetapi"))
-    			{
-    				throw new RuntimeException("Only authapi or targetapi allowed for name");
-    			}
-    			
-    			testCase.validate(AcceptanceTestContext.getHttpHeadersMap(), gatfConfig.getBaseUrl());
-    			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-    			if(!isUpdate)
-    			{
-        			for (TestCase tc : tcs) {
-						if(tc.getName().equals(testCase.getName())) {
-							throw new RuntimeException("Testcase with same name already exists");
-						}
-					}
-        			tcs.add(testCase);
-    			}
-    			else if(testCaseName!=null)
-    			{
-    				boolean found = false, found2 = false;
-    				for (TestCase tc : tcs) {
-						if(tc.getName().equals(testCaseName)) {
-							found = true;
-						}
-						if(!testCase.getName().equals(testCaseName) && tc.getName().equals(testCase.getName())) {
-                            found2 = true;
-                        }
-					}
-    				
-    				if(!found) {
-    					throw new RuntimeException("Testcase with name does not exist");
-    				}
-    				
-                    if(found && found2) {
-                        throw new RuntimeException("Testcase with same name already exists");
-                    }
-    				
-    				List<TestCase> ttcs = new ArrayList<TestCase>();
-    				for (TestCase tc : tcs) {
-						if(tc.getName().equals(testCaseName)) {
-							ttcs.add(testCase);
-						} else {
-							ttcs.add(tc);
-						}
-					}
-    				tcs = ttcs;
-    			}
-    			
-    			XStream xstream = new XStream(
-        			new XppDriver() {
-        				public HierarchicalStreamWriter createWriter(Writer out) {
-        					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-        				}
+    		    if(isSelTc) {
+    		        IOUtils.copy(request.getInputStream(), new FileOutputStream(filePath));
+    		    } else {
+        		    String testCaseName = request.getParameter("tcName");
+        			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
+        					TestCase.class);
+        			if(testCase.getName()==null) {
+        				throw new RuntimeException("Testcase does not specify name");
         			}
-        		);
-        		xstream.processAnnotations(new Class[]{TestCase.class});
-        		xstream.alias("TestCases", List.class);
-        		xstream.toXML(tcs, new FileOutputStream(filePath));
+        			
+        			if(isApiIntType && !testCase.getName().equals("authapi") && !testCase.getName().equals("targetapi"))
+        			{
+        				throw new RuntimeException("Only authapi or targetapi allowed for name");
+        			}
+        			
+        			testCase.validate(AcceptanceTestContext.getHttpHeadersMap(), gatfConfig.getBaseUrl());
+        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+        			if(!isUpdate)
+        			{
+            			for (TestCase tc : tcs) {
+    						if(tc.getName().equals(testCase.getName())) {
+    							throw new RuntimeException("Testcase with same name already exists");
+    						}
+    					}
+            			tcs.add(testCase);
+        			}
+        			else if(testCaseName!=null)
+        			{
+        				boolean found = false, found2 = false;
+        				for (TestCase tc : tcs) {
+    						if(tc.getName().equals(testCaseName)) {
+    							found = true;
+    						}
+    						if(!testCase.getName().equals(testCaseName) && tc.getName().equals(testCase.getName())) {
+                                found2 = true;
+                            }
+    					}
+        				
+        				if(!found) {
+        					throw new RuntimeException("Testcase with name does not exist");
+        				}
+        				
+                        if(found && found2) {
+                            throw new RuntimeException("Testcase with same name already exists");
+                        }
+        				
+        				List<TestCase> ttcs = new ArrayList<TestCase>();
+        				for (TestCase tc : tcs) {
+    						if(tc.getName().equals(testCaseName)) {
+    							ttcs.add(testCase);
+    						} else {
+    							ttcs.add(tc);
+    						}
+    					}
+        				tcs = ttcs;
+        			}
+        			
+        			XStream xstream = new XStream(
+            			new XppDriver() {
+            				public HierarchicalStreamWriter createWriter(Writer out) {
+            					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+            				}
+            			}
+            		);
+            		xstream.processAnnotations(new Class[]{TestCase.class});
+            		xstream.alias("TestCases", List.class);
+            		xstream.toXML(tcs, new FileOutputStream(filePath));
+    		    }
     			
     			response.setStatus(HttpStatus.OK_200);
 			} catch (Throwable e) {
 				GatfConfigToolMojo.handleError(e, response, null);
 			}
-    	} else if(request.getMethod().equals(Method.GET) ) {
+    	} else if(request.getMethod().equals(Method.GET)) {
     		try {
-    			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-    			List<TestCase> tcsn = new ArrayList<TestCase>();
-    			boolean isAuthApi = false;
-    			boolean isTargetApi = false;
-    			if(tcs==null)
-    				throw new RuntimeException("No Testcases found...");
-    			for (TestCase testCase : tcs) {
-    				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
-    						|| testCase.getName().equals("targetapi"))))
+    		    if(isSelTc) {
+    		        String data = FileUtils.readFileToString(new File(filePath));
+                    response.setContentType(MediaType.TEXT_PLAIN);
+                    response.setContentLength(data.length());
+                    response.getWriter().write(data);
+    		    } else {
+        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+        			List<TestCase> tcsn = new ArrayList<TestCase>();
+        			boolean isAuthApi = false;
+        			boolean isTargetApi = false;
+        			if(tcs==null)
+        				throw new RuntimeException("No Testcases found...");
+        			for (TestCase testCase : tcs) {
+        				if(!isApiIntType || (isApiIntType && (testCase.getName().equals("authapi") 
+        						|| testCase.getName().equals("targetapi"))))
+            			{
+        					if(!isAuthApi)isAuthApi = testCase.getName().equals("authapi");
+        					if(!isTargetApi)isTargetApi = testCase.getName().equals("targetapi");
+        					tcsn.add(testCase);
+            			}
+    				}
+        			if(isApiIntType)
         			{
-    					if(!isAuthApi)isAuthApi = testCase.getName().equals("authapi");
-    					if(!isTargetApi)isTargetApi = testCase.getName().equals("targetapi");
-    					tcsn.add(testCase);
+        				boolean changed = false;
+        				if(!isAuthApi)
+        				{
+        					TestCase tc = new TestCase();
+        					tc.setMethod(HttpMethod.POST);
+        					tc.setUrl("auth");
+        					tc.setName("authapi");
+        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+        					tc.setRepeatScenarioProviderName("");
+        					tc.setPreExecutionDataSourceHookName("");
+        					tc.setPostExecutionDataSourceHookName("");
+        					tc.setServerApiAuth(true);
+        					tcsn.add(tc);
+        					changed = true;
+        				}
+        				if(!isTargetApi)
+        				{
+        					TestCase tc = new TestCase();
+        					tc.setMethod(HttpMethod.POST);
+        					tc.setUrl("target");
+        					tc.setName("targetapi");
+        					tc.setSecure(isAuthApi);
+        					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
+        					tc.setRepeatScenarioProviderName("");
+        					tc.setPreExecutionDataSourceHookName("");
+        					tc.setPostExecutionDataSourceHookName("");
+        					tc.setServerApiTarget(true);
+        					tcsn.add(tc);
+        					changed = true;
+        				}
+        				if(changed)
+        				{
+        					XStream xstream = new XStream(
+                    			new XppDriver() {
+                    				public HierarchicalStreamWriter createWriter(Writer out) {
+                    					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
+                    				}
+                    			}
+                    		);
+                    		xstream.processAnnotations(new Class[]{TestCase.class});
+                    		xstream.alias("TestCases", List.class);
+                    		xstream.toXML(tcsn, new FileOutputStream(filePath));
+        				}
         			}
-				}
-    			if(isApiIntType)
-    			{
-    				boolean changed = false;
-    				if(!isAuthApi)
-    				{
-    					TestCase tc = new TestCase();
-    					tc.setMethod(HttpMethod.POST);
-    					tc.setUrl("auth");
-    					tc.setName("authapi");
-    					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
-    					tc.setRepeatScenarioProviderName("");
-    					tc.setPreExecutionDataSourceHookName("");
-    					tc.setPostExecutionDataSourceHookName("");
-    					tc.setServerApiAuth(true);
-    					tcsn.add(tc);
-    					changed = true;
-    				}
-    				if(!isTargetApi)
-    				{
-    					TestCase tc = new TestCase();
-    					tc.setMethod(HttpMethod.POST);
-    					tc.setUrl("target");
-    					tc.setName("targetapi");
-    					tc.setSecure(isAuthApi);
-    					tc.getHeaders().put(HttpHeaders.CONTENT_TYPE, MediaType.TEXT_PLAIN);
-    					tc.setRepeatScenarioProviderName("");
-    					tc.setPreExecutionDataSourceHookName("");
-    					tc.setPostExecutionDataSourceHookName("");
-    					tc.setServerApiTarget(true);
-    					tcsn.add(tc);
-    					changed = true;
-    				}
-    				if(changed)
-    				{
-    					XStream xstream = new XStream(
-                			new XppDriver() {
-                				public HierarchicalStreamWriter createWriter(Writer out) {
-                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-                				}
-                			}
-                		);
-                		xstream.processAnnotations(new Class[]{TestCase.class});
-                		xstream.alias("TestCases", List.class);
-                		xstream.toXML(tcsn, new FileOutputStream(filePath));
-    				}
-    			}
-    			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcsn);
-    			response.setContentType(MediaType.APPLICATION_JSON);
-	            response.setContentLength(json.length());
-	            response.getWriter().write(json);
-    			response.setStatus(HttpStatus.OK_200);
+        			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcsn);
+        			response.setContentType(MediaType.APPLICATION_JSON);
+    	            response.setContentLength(json.length());
+    	            response.getWriter().write(json);
+    		    }
+        		response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {
 				GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}

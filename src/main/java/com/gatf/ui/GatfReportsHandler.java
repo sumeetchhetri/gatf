@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.apache.commons.lang.StringUtils;
@@ -35,6 +36,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.distributed.DistributedGatfTester;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
@@ -415,114 +417,136 @@ public class GatfReportsHandler extends HttpHandler {
 	        				throw new RuntimeException("Test case file does not exist");
 	        			}
 	        			
-	        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
-	        			for (TestCase tc : tcs) {
-							if(tc.getName().equals(testCaseName)) {
-								origfound = tc;
-								break;
-							}
-						}
-	        			if(origfound==null) {
-	        				throw new RuntimeException("Testcase does not exist");
+	        			if(!testcaseFileName.toLowerCase().endsWith(".sel")) {
+    	        			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
+    	        			for (TestCase tc : tcs) {
+    							if(tc.getName().equals(testCaseName)) {
+    								origfound = tc;
+    								break;
+    							}
+    						}
+    	        			if(origfound==null) {
+    	        				throw new RuntimeException("Testcase does not exist");
+    	        			}
 	        			}
 
 	        			GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
 	        			
 	        			lock.lock();
 	        			
-	        			if(mojo.getContext()!=null) {
-	        				context = mojo.getContext();
-	        			} else if(context==null) {
-	        				try {
-        						executorMojo.setProject(project);
-        						executorMojo.initilaizeContext(gatfConfig, true);
-        						context = executorMojo.getContext();
-							} catch (Exception e) {
-								e.printStackTrace();
-								throw new RuntimeException("Please Execute the GATF Suite first..");
-							}
+	        			if(testcaseFileName.toLowerCase().endsWith(".sel")) {
+	        			    executorMojo.setProject(project);
+	        			    executorMojo.initilaizeContext(gatfConfig, true);
+	        			    gatfConfig.setSeleniumScripts(new String[]{filePath});
+	        			    Map<String, Map<String, Map<String, List<Object[]>>>> selReports = executorMojo.doSeleniumTest(gatfConfig, null);
+	        			    String cont = "Please check Reports section for the selenium test results";
+	                        response.setContentLength(cont.length());
+	                        response.getWriter().write(cont);
 	        			}
 	        			
-	        			context.setGatfExecutorConfig(gatfConfig);
-	        			executorMojo.setContext(context);
-	        			executorMojo.getAllTestCases(context, null, null);
-						authTestCase = executorMojo.getAuthTestCase();
+	        			if(!testcaseFileName.toLowerCase().endsWith(".sel")) {
+	        			    
+	        			    if(mojo.getContext()!=null) {
+	                            context = mojo.getContext();
+	                        } else if(context==null) {
+	                            try {
+	                                executorMojo.setProject(project);
+	                                executorMojo.initilaizeContext(gatfConfig, true);
+	                                context = executorMojo.getContext();
+	                            } catch (Exception e) {
+	                                e.printStackTrace();
+	                                throw new RuntimeException("Please Execute the GATF Suite first..");
+	                            }
+	                        }
+	                        
+	                        context.setGatfExecutorConfig(gatfConfig);
+	                        executorMojo.setContext(context);
+    	        			executorMojo.getAllTestCases(context, null, null);
+    						authTestCase = executorMojo.getAuthTestCase();
+    	        			
+    	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
+    	        			
+    	        			boolean isAuthExec = false;
+    	        			TestCase found = new TestCase(origfound);
+    	        			found.setSimulationNumber(0);
+    	        			found.setSourcefileName(testcaseFileName);
+    						found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+    						found.setLogicalValidations(null);
+    						found.setExecuteOnCondition(null);
+    						
+    						if(found.getHeaders()==null)
+    						{
+    							found.setHeaders(new HashMap<String, String>());
+    						}
+    						
+    						isAuthExec = found.isSecure() && gatfConfig.isAuthEnabled() && authTestCase!=null;
+    						context.getWorkflowContextHandler().initializeSuiteContextWithnum(0);
+    	        			
+    						TestCase authTestCaseT = authTestCase;
+    						
+    						boolean complete = false;
+    						
+    						if(isAuthExec)
+    						{
+    							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
+    							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+    							{
+    								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+    								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
+    										gatfConfig.isServerLogsApiAuthEnabled());
+    								complete = true;
+    							}
+    						}
+    						
+    						if(reports!=null && authTestCaseT!=null && found.getName().equals(authTestCaseT.getName()))
+    						{
+    							complete = true;
+    						}
+    						
+    						if(!complete)
+    						{
+    							if(found.isSecure() && authTestCaseT==null)
+    							{
+    								throw new RuntimeException("No Authentication testcase found, please add one" +
+    										"or change the testcase to unsecure mode");
+    							}
+    							reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
+    							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
+    							{
+    								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
+    								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
+    										gatfConfig.isServerLogsApiAuthEnabled());
+    							}
+    						}
+    						
+    	        			testCaseExecutorUtil.shutdown();
+	        			}
 	        			
-	        			TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
-	        			
-	        			boolean isAuthExec = false;
-	        			TestCase found = new TestCase(origfound);
-	        			found.setSimulationNumber(0);
-	        			found.setSourcefileName(testcaseFileName);
-						found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
-						found.setLogicalValidations(null);
-						found.setExecuteOnCondition(null);
-						
-						if(found.getHeaders()==null)
-						{
-							found.setHeaders(new HashMap<String, String>());
-						}
-						
-						isAuthExec = found.isSecure() && gatfConfig.isAuthEnabled() && authTestCase!=null;
-						context.getWorkflowContextHandler().initializeSuiteContextWithnum(0);
-	        			
-						TestCase authTestCaseT = authTestCase;
-						
-						boolean complete = false;
-						
-						if(isAuthExec)
-						{
-							reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
-							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
-							{
-								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-										gatfConfig.isServerLogsApiAuthEnabled());
-								complete = true;
-							}
-						}
-						
-						if(reports!=null && authTestCaseT!=null && found.getName().equals(authTestCaseT.getName()))
-						{
-							complete = true;
-						}
-						
-						if(!complete)
-						{
-							if(found.isSecure() && authTestCaseT==null)
-							{
-								throw new RuntimeException("No Authentication testcase found, please add one" +
-										"or change the testcase to unsecure mode");
-							}
-							reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
-							if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
-							{
-								context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-								executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-										gatfConfig.isServerLogsApiAuthEnabled());
-							}
-						}
-						
-						lock.unlock();
-						
-	        			testCaseExecutorUtil.shutdown();
+	        			lock.unlock();
         			}
         			
-        			if(reports==null || reports.size()==0)
-        			{
-        				throw new RuntimeException("Could not execute Testcase");
+        			if(!testcaseFileName.toLowerCase().endsWith(".sel")) {
+            			if(reports==null || reports.size()==0)
+            			{
+            				throw new RuntimeException("Could not execute Testcase");
+            			}
+            			
+            			TestCaseReport report = reports.get(0);
+            			ReportHandler.populateRequestResponseHeaders(report);
+            			String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(report);
+    					response.setContentLength(configJson.length());
+    		            response.getWriter().write(configJson);
         			}
         			
-        			TestCaseReport report = reports.get(0);
-        			ReportHandler.populateRequestResponseHeaders(report);
-        			String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(report);
-					response.setContentLength(configJson.length());
-		            response.getWriter().write(configJson);
-					response.setStatus(HttpStatus.OK_200);
+        			response.setStatus(HttpStatus.OK_200);
         		}
         	}
     	} catch (Exception e) {
     		GatfConfigToolMojo.handleError(e, response, null);
+		} finally {
+		    if(lock.isLocked()) {
+		        lock.unlock();
+		    }
 		}
     }
 
