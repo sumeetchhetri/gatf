@@ -53,8 +53,17 @@ public class DistributedGatfListener {
 	
 	public static void main(String[] args) throws Exception {
 		
-		ServerSocket server = new ServerSocket(4567);
-		logger.info("Distributed GATF node listening on port 4567");
+	    int port = 4567;
+	    if(args.length>0) {
+	        try {
+                port = Integer.parseInt(args[0]);
+            } catch (Exception e) {
+                logger.info("Invalid port number specified for listener, defaulting to 4567");
+            }
+	    }
+	    
+		ServerSocket server = new ServerSocket(port);
+		logger.info("Distributed GATF node listening on port "+port);
 		try {
 			while(true) {
 				final Socket client = server.accept();
@@ -220,13 +229,13 @@ public class DistributedGatfListener {
 				URLClassLoader classLoader = new URLClassLoader(urls, DistributedGatfListener.class.getClassLoader());
 				Thread.currentThread().setContextClassLoader(classLoader);
 				
-				List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
+				List<Class<SeleniumTest>> tests = new ArrayList<Class<SeleniumTest>>();
 				@SuppressWarnings("unchecked")
 				List<String> testClassNames = (List<String>)ois.readObject();
 				for (String clsname : testClassNames) {
 					@SuppressWarnings("unchecked")
 					Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass(clsname);
-					tests.add(loadedClass.newInstance());
+					tests.add(loadedClass);
 				}
 				
 				oos.writeObject(Command.SELENIUM_RES);
@@ -255,7 +264,7 @@ public class DistributedGatfListener {
                         logger.info("Selenium Test Request");
                         
                         GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
-                        List<Map<String, SeleniumResult>> results = mojo.handleDistributedSeleniumTests(context, tests);
+                        List<List<Map<String, SeleniumResult>>> results = mojo.handleDistributedSeleniumTests(context, tests);
                         oos.writeObject(results);
                         oos.flush();
                         logger.info("Done Writing Selenium results...");

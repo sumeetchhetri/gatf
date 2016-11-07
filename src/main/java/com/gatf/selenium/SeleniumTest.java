@@ -27,14 +27,17 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.logging.Logs;
+import org.openqa.selenium.support.ui.Select;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 
@@ -104,11 +107,19 @@ public abstract class SeleniumTest {
 	    __teststarttime__ = System.nanoTime();
 	}
 	
-	private transient String __provname__ = null;
+	public void newProvider(String name) {
+	    ___cxt___.newProvider(getPn(name));
+	}
+    
+    public List<Map<String, String>> getProviderTestDataMap(String name) {
+        return ___cxt___.getProviderTestDataMap().get(getPn(name));
+    }
+	
+	//private transient String __provname__ = null;
 	private transient String __subtestname__ = null;
     private transient long __subtestexecutiontime__ = 0L;
     private transient long __teststarttime__ = 0L;
-	private transient int __provpos__ = -1;
+	private transient Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
 	
 	private transient AcceptanceTestContext ___cxt___ = null;
     
@@ -141,9 +152,15 @@ public abstract class SeleniumTest {
 	    if(tmpl.indexOf("$")==-1)return tmpl;
 	    try
         {
-	        if(__provname__!=null && __provpos__>=0) {
-	            List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(__provname__);
-	            tmpl = ___cxt___.getWorkflowContextHandler().templatize(_t.get(__provpos__), tmpl);
+	        if(__provdetails__.size()>0) {
+	            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+	            for (int i=keys.size()-1;i>=0;i--)
+                {
+	                String pn = keys.get(i);
+	                Integer pp = __provdetails__.get(pn);
+	                List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(pn);
+	                tmpl = ___cxt___.getWorkflowContextHandler().templatize(_t.get(pp), tmpl);
+                }
 	        } else {
 	            tmpl = ___cxt___.getWorkflowContextHandler().templatize(tmpl);
 	        }
@@ -189,17 +206,25 @@ public abstract class SeleniumTest {
 
         }
     }
+    
+    private String getPn(String name) {
+        String pn = name;
+        if(index>0) {
+            pn += index;
+        }
+        return pn;
+    }
 
     public void ___cxt___print_provider__(String name)
     {
-        System.out.println(___cxt___.getProviderTestDataMap().get(name));
+        System.out.println(___cxt___.getProviderTestDataMap().get(getPn(name)));
     }
 
     public void ___cxt___print_provider__json(String name)
     {
         try
         {
-            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getProviderTestDataMap().get(name)));
+            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getProviderTestDataMap().get(getPn(name))));
         }
         catch (Exception e)
         {
@@ -223,18 +248,34 @@ public abstract class SeleniumTest {
 
     public void set__provname__(String __provname__)
     {
-        this.__provname__ = __provname__;
+        this.__provdetails__.put(getPn(__provname__), -1);
     }
 
-    public void set__provpos__(int __provpos__)
+    public void set__provpos__(String __provname__, int __provpos__)
     {
-        this.__provpos__ = __provpos__;
+        this.__provdetails__.put(getPn(__provname__), __provpos__);
+    }
+
+    public void rem__provname__(String __provname__)
+    {
+        this.__provdetails__.remove(getPn(__provname__));
     }
 
     public void set__subtestname__(String __subtestname__)
     {
         if(__subtestname__!=null) {
             __subtestexecutiontime__ = System.nanoTime();
+            if(__provdetails__.size()>0) {
+                String fstn = "";
+                ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+                for (int i=keys.size()-1;i>=0;i--)
+                {
+                    String pn = keys.get(i);
+                    Integer pp = __provdetails__.get(pn);
+                    fstn += pn + "(" + pp + ") ";
+                }
+                __subtestname__ = fstn + __subtestname__;
+            }
         } else {
             __subtestexecutiontime__ = System.nanoTime() - __subtestexecutiontime__;
             if(this.__subtestname__!=null) {
@@ -274,9 +315,10 @@ public abstract class SeleniumTest {
         return null;
     }
 	
-	public SeleniumTest(String name, AcceptanceTestContext ___cxt___) {
+	public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
 	    this.name = name;
 	    this.___cxt___ = ___cxt___;
+	    this.index = index;
 	}
 	
 	public static interface Functor<I, O> {
@@ -287,9 +329,15 @@ public abstract class SeleniumTest {
 	
 	protected String name;
 	
+	protected int index;
+	
 	protected String browserName;
 	
 	public abstract void quit();
+    
+    public abstract void close();
+    
+    public abstract SeleniumTest copy(AcceptanceTestContext ctx, int index);
 	
 	public abstract Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception;
 	
@@ -356,6 +404,90 @@ public abstract class SeleniumTest {
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
             this.logs.put("gatf", new SerializableLogEntries(entries));
+        }
+	}
+	
+	public static void randomize(List<WebElement> le, String v1, String v2, String v3) {
+	    if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
+	            || (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
+	        int count = 10;
+	        if(v3!=null) {
+	            try {
+	                count = Integer.parseInt(v3);
+	            } catch (Exception e) {
+	            }
+	        }
+	        if(v1==null || v1.toLowerCase().equals("alpha")) {
+	            le.get(0).sendKeys(RandomStringUtils.randomAlphabetic(count));
+	        } else if(v1.toLowerCase().equals("alphanumeric")) {
+	            le.get(0).sendKeys(RandomStringUtils.randomAlphanumeric(count));
+	        } else if(v1.toLowerCase().equals("numeric")) {
+	            le.get(0).sendKeys(RandomStringUtils.randomNumeric(count));
+	        } else if(v1.toLowerCase().equals("value") && v2!=null) {
+	            le.get(0).sendKeys(v2);
+	        }
+	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
+	        int min = 1;
+	        int max = 99999;
+	        if(v1!=null) {
+	            try {
+	                min = Integer.parseInt(v1);
+	            } catch (Exception e) {
+	            }
+	        }
+	        if(v2!=null) {
+	            try {
+	                max = Integer.parseInt(v2);
+	            } catch (Exception e) {
+	            }
+	        }
+	        int num = (int)(min + (Math.random() * (max - min)));
+	        le.get(0).sendKeys(num+"");
+	    } else if (le.get(0).getTagName().toLowerCase().matches("select")) {
+	        randomizeSelect(le);
+	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("checkbox")) {
+	        le.get(0).click();
+	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("radio")) {
+	        le.get(0).click();
+	    }
+	}
+	
+	public static void randomizeSelect(List<WebElement> le) {
+	    try
+        {
+            Select s = new Select(le.get(0));
+            if(s.getOptions().size()>0) {
+                List<Integer> li = new ArrayList<Integer>();
+                for (WebElement o : s.getOptions())
+                {
+                    li.add(Integer.parseInt(o.getAttribute("index")));
+                }
+                for (WebElement o : s.getAllSelectedOptions())
+                {
+                    li.remove(Integer.parseInt(o.getAttribute("index")));
+                }
+                if(s.isMultiple()) {
+                    s.deselectAll();
+                    if(li.size()==0) {
+                        s.selectByIndex(0);
+                    } else {
+                        int ri = (int)(Math.random()*(li.size()-1));
+                        s.selectByIndex(li.get(ri));
+                    }
+                } else {
+                    int i = Integer.parseInt(s.getFirstSelectedOption().getAttribute("index"));
+                    s.deselectByIndex(i);
+                    if(li.size()==0) {
+                        s.selectByIndex(0);
+                    } else {
+                        int ri = (int)(Math.random()*(li.size()-1));
+                        s.selectByIndex(li.get(ri));
+                    }
+                }
+            }
+        }
+        catch (Exception e)
+        {
         }
 	}
 }

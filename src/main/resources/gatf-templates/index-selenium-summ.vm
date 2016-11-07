@@ -100,50 +100,73 @@
 					<div class="col-lg-2 text-center">TOTAL <span class="badge progress-bar-info filter" data-filter="total" id="t_count"></span></div>
 					<div class="col-lg-2 text-center">SUCCESS <span class="badge progress-bar-success filter" data-filter="success" id="s_count"></span></div>
 					<div class="col-lg-2 text-center">FAILED <span class="badge progress-bar-danger filter" data-filter="failed" id="e_count"></span></div>
-					<div class="col-lg-2 text-center">UNKNOWN <span class="badge progress-bar-warning filter" data-filter="unknown" id="u_count"></span></div>
+					<div class="col-lg-2 text-center">UNKNOWN <span class="badge progress-bar-warning filter" data-filter="unknown" id="u_count"></span></div>					
+				</div>
+				<div class="row">&nbsp;</div>
+				<div class="row">
+					<div class="col-lg-2 text-center">
+						<select id="n_filter" style="width:90%"></select>
+					</div>
 					<div class="col-lg-2 text-center">
 						<select id="e_filter" style="width:90%"></select>
 					</div>
-				<div>
+				</div>
 				<br/><br/>
 				#foreach ($nodeData in $testsMap.entrySet())
 				<div class="col-lg-12">
 					<div class="panel panel-default">
-						<div class="panel-heading">
+						<div class="panel-heading node" data-node="local">
 							Selenium Test Summary - (Node: $nodeData.key)
+							<span class="badge"></span>
+							<span class="badge progress-bar-success"></span>
+							<span class="badge progress-bar-danger"></span>
+							<span class="badge progress-bar-warning"></span>
 						</div>
 						<div class="panel-body">
-							#foreach ($tstData in $nodeData.value.entrySet())
-								<div class="table-responsive">
-									<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
-									<thead><tr><th>$tstData.key</th></thead>
-									</tbody>
-									<tr><td>
-										#foreach ($brwsData in $tstData.value.entrySet())
-											<div class="table-responsive">
-												<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
-												<thead><tr><th>$brwsData.key</th></thead>
-												</tbody>
-												<tr><td>
-													<div class="table-responsive">
-														<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
-														<thead>
-														<tr><th>Subtest</th><th>Status</th><th>Time</th><th>Error</th></tr>
-														</thead>
-														<tbody>
-														#foreach ($tc in ${brwsData.value})
-														<tr class="testresult $tc[2]"><td><a href="$tc[1]">$tc[0]</a></td><td>$tc[2]</td><td>$tc[4]</td><td>$tc[3]</td></tr>
-														#end
-														</tbody>
-														</table>
-													</div>
-												</td></tr>
-												</table>
-											</div>
-										#end
-									</td></tr>
-									</table>
+							#foreach($node in $nodeData.value)
+							<div class="panel panel-default">
+								<div class="panel-heading nodehdr">
+									Run - $velocityCount
+									<span class="badge"></span>
+									<span class="badge progress-bar-success"></span>
+									<span class="badge progress-bar-danger"></span>
+									<span class="badge progress-bar-warning"></span>
 								</div>
+								<div class="panel-body hidden">
+								#foreach ($tstData in $node.entrySet())
+									<div class="table-responsive">
+										<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
+										<thead><tr><th>$tstData.key</th></thead>
+										</tbody>
+										<tr><td>
+											#foreach ($brwsData in $tstData.value.entrySet())
+												<div class="table-responsive">
+													<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
+													<thead><tr><th>$brwsData.key</th></thead>
+													</tbody>
+													<tr><td>
+														<div class="table-responsive">
+															<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
+															<thead>
+															<tr><th>Subtest</th><th>Status</th><th>Time</th><th>Error</th></tr>
+															</thead>
+															<tbody>
+															#foreach ($tc in ${brwsData.value})
+															<tr class="testresult $tc[2]"><td><a href="$tc[1]">$tc[0]</a></td><td>$tc[2]</td><td>$tc[4]</td><td>$tc[3]</td></tr>
+															#end
+															</tbody>
+															</table>
+														</div>
+													</td></tr>
+													</table>
+												</div>
+											#end
+										</td></tr>
+										</table>
+									</div>
+								#end
+								</div>
+							</div>
 							#end
 						</div>
 					</div>
@@ -178,12 +201,43 @@
 		<script type="text/javascript" src="js/diff_match_patch.js"></script>
 		
 		<script>
-			
 			$(document).ready(function() {
+				initialize();
+				$('#n_filter').append('<option value="">ALL</option>');
+				$('.node').each(function() {
+					$('#n_filter').append('<option value="'+$(this).attr('data-node')+'">'+$(this).attr('data-node')+'</option>');
+				});								
+				$('.nodehdr').on('click', function(){
+					if($(this).next().is(':visible')) {
+						$(this).next().addClass('hidden');
+					} else {
+						$(this).next().removeClass('hidden');
+					}
+				});
+				$('#n_filter').on('change', function(){
+					var v = $('#n_filter').val();
+					var pnode;
+					$('.node').each(function() {
+						if(v=="") {
+							$(this).parent().show();
+						} else if($(this).attr('data-node')!=v) {
+							$(this).parent().hide();
+						} else {
+							pnode = $(this).parent();
+							$(this).parent().show();
+						}
+					});
+					initialize(pnode);
+				});
+				initCounts("total");
+			});
+			
+			function initialize(pnode) {
+				if(!pnode)pnode = $('body');
 				var errmap = {};
 				var counter = 1;
 				var tottime = 0;
-				$('.testresult').each(function(){
+				pnode.find('.testresult').each(function(){
 					var err = $($(this).find('td')[3]).html();
 					if(!err) {
 						err = "";
@@ -195,52 +249,90 @@
 						errmap[err] = counter++;
 					}
 					$(this).addClass("error_"+errmap[err]);
+				});
+				var stats = getStats(pnode, "total");
+				
+				$('#t_time').html(stats[4]+"s");
+				
+				$('#e_filter').html('');
+				for(var k in errmap) {
+					if(errmap.hasOwnProperty(k) && k && k.trim()!="") {
+						$('#e_filter').append('<option value="error_'+errmap[k]+'">'+k+'</option>');
+					}
+				}				
+				
+				$('#e_filter').on('change', function(){
+					var cls = $(this).val();
+					pnode.find('.testresult').hide();
+					pnode.find('.'+cls).show();
+				});
+			
+				var s = stats[0];
+				var e = stats[1];
+				var u = stats[2];
+				var t = stats[3];
+				$('#s_count').html(s);
+				$('#e_count').html(e);
+				$('#u_count').html(u);
+				$('#t_count').html(t);
+				
+				pnode.find('.filter').on('click', function() {
+					var filt = $(this).attr('data-filter');
+					if(filt=="total") {
+						pnode.find('.testresult').show();
+					} else if(filt=="success") {
+						pnode.find('.testresult').hide();
+						pnode.find('.SUCCESS').show();
+					} else if(filt=="failed") {
+						pnode.find('.testresult').hide();
+						pnode.find('.FAILED').show();
+					} else if(filt=="unknown") {
+						pnode.find('.testresult').hide();
+						pnode.find('.UNKNOWN').show();
+					}
+					initCounts(filt);
+				});
+				
+			}
+			
+			function initCounts(filt) {
+				$('.node').each(function() {
+					var pnode = $(this).parent();
+					var stats = getStats(pnode, filt);
+					pnode.find('span')[1].innerHTML = stats[0];
+					pnode.find('span')[2].innerHTML = stats[1];
+					pnode.find('span')[3].innerHTML = stats[2];
+					pnode.find('span')[0].innerHTML = stats[4];
+				});
+				$('.nodehdr').each(function(){
+					var pnode = $(this).parent();
+					var stats = getStats(pnode, filt);
+					pnode.find('span')[1].innerHTML = stats[0];
+					pnode.find('span')[2].innerHTML = stats[1];
+					pnode.find('span')[3].innerHTML = stats[2];
+					pnode.find('span')[0].innerHTML = stats[4];
+				});
+			}
+			
+			function getStats(pnode, filt) {
+				var s = pnode.find('.SUCCESS').length;
+				var e = pnode.find('.FAILED').length;
+				var u = pnode.find('.UNKNOWN').length;
+				var tottime = 0;
+				pnode.find('.testresult').each(function(){
 					if($(this).find('td>a').html()=="-") {
 						var tim = $($(this).find('td')[2]).html();
 						tim = tim.substring(0, tim.length-1);
 						tottime += tim*1;
 					}
 				});
-				
-				$('#t_time').html(tottime+"s");
-				
-				for(var k in errmap) {
-					if(errmap.hasOwnProperty(k)) {
-						$('#e_filter').append('<option value="error_'+errmap[k]+'">'+k+'</option>');
-					}
-				}
-				
-				$('#e_filter').on('change', function(){
-					var cls = $(this).val();
-					$('.testresult').hide();
-					$('.'+cls).show();
-				});
-			
-				var s = $('.SUCCESS').length;
-				var e = $('.FAILED').length;
-				var u = $('.UNKNOWN').length;
 				var t = s + e + u;
-				$('#s_count').html(s);
-				$('#e_count').html(e);
-				$('#u_count').html(u);
-				$('#t_count').html(t);
-				
-				$('.filter').on('click', function() {
-					var filt = $(this).attr('data-filter');
-					if(filt=="total") {
-						$('.testresult').show();
-					} else if(filt=="success") {
-						$('.testresult').hide();
-						$('.SUCCESS').show();
-					} else if(filt=="failed") {
-						$('.testresult').hide();
-						$('.FAILED').show();
-					} else if(filt=="unknown") {
-						$('.testresult').hide();
-						$('.UNKNOWN').show();
-					}
-				});
-			});
+				return [(filt=="total" || filt=="success")?s:0,
+						(filt=="total" || filt=="failed")?e:0,
+						(filt=="total" || filt=="unknown")?u:0,
+						t,
+						tottime.toFixed(3)];
+			}
 			
 		</script>
 	</body>

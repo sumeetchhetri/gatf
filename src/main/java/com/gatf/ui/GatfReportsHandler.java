@@ -438,7 +438,7 @@ public class GatfReportsHandler extends HttpHandler {
 	        			    executorMojo.setProject(project);
 	        			    executorMojo.initilaizeContext(gatfConfig, true);
 	        			    gatfConfig.setSeleniumScripts(new String[]{filePath});
-	        			    Map<String, Map<String, Map<String, List<Object[]>>>> selReports = executorMojo.doSeleniumTest(gatfConfig, null);
+	        			    Map<String, List<Map<String, Map<String, List<Object[]>>>>> selReports = executorMojo.doSeleniumTest(gatfConfig, null);
 	        			    String cont = "Please check Reports section for the selenium test results";
 	                        response.setContentLength(cont.length());
 	                        response.getWriter().write(cont);

@@ -1,131 +1,188 @@
-/*
-    Copyright 2013-2016, Sumeet Chhetri
-    
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-    
-    http://www.apache.org/licenses/LICENSE-2.0
-    
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
-*/
 package com.gatf.selenium;
 
+import java.io.Serializable;
 import java.util.List;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.Map;
 
-import org.apache.commons.codec.digest.DigestUtils;
-import org.apache.commons.lang.RandomStringUtils;
-import org.junit.Assert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
 import com.google.common.base.Function;
 
-public class Test {
-	
-	/**
-	 * @param args
-	 */
-	public static void main(String[] args) throws Exception {
-		
-		String t = "browser(ALL),client(ALL),driver(ALL),performance(ALL),profiler(ALL),server(ALL)";
-		if(t.toLowerCase().matches(".*browser\\(([a-z]+)\\).*")) {
-			Matcher m = Pattern.compile(".*browser\\(([a-z]+)\\).*").matcher(t.toLowerCase());
-			m.find();
-			System.out.println(m.group(1));
-		}
-		
-		Integer.parseInt("001");
-		
-		String a = RandomStringUtils.randomAlphabetic(10000);
-		
-		DigestUtils.sha1Hex(a);
-		
-		long st = System.nanoTime();
-		String sha1hsh = DigestUtils.sha1Hex(a);
-		System.out.println("SHA1 = " + (System.nanoTime() - st));
-		
-		st = System.nanoTime();
-		long v = 0;
-		for (int i=0;i<a.toCharArray().length;i++) {
-			char c = a.toCharArray()[i];
-			v += (int)c * (a.toCharArray().length - i);
-		}
-		System.out.println("MINE = " + (System.nanoTime() - st));
-		
-		System.out.println(v);
-		
-		/*String browser = commands.remove(0);
-		String location = commands.remove(0);
-		
-		String tu = "seconds";
-		if(commands.get(0).toLowerCase().startsWith("timeunit ")) {
-			tu = commands.get(0).toLowerCase().substring(9);
-		}
-		
-		StringBuilder build= new StringBuilder();
-		if(browser!=null && location!=null) {
-			build.append("public static class T_" + System.nanoTime() + "{\n");
-			build.append("\tpublic static void main(String[] args) throws Exception {\n");
-			build.append("\t\torg.openqa.selenium.WebDriver d = new org.openqa.selenium.chrome.ChromeDriver();\n");
-			build.append("d.navigate().to(\""+location+"\");\n");
-			for (String cmd : commands) {
-				
-			}
-			build.append("\t}\n}");
-		}*/
-		Command cmd = Command.read("ui-auto.sel");
-		//System.out.println(cmd.toCmd());
-		System.out.println(cmd.javacode());
-		
-		// Create a new instance of the Firefox driver
-        // Notice that the remainder of the code relies on the interface, 
-        // not the implementation.
-		//System.setProperty("webdriver.chrome.driver", "D:\\Development\\selenium-drivers\\chromedriver.exe");
-		//WebDriver driver = new ChromeDriver();
+import junit.framework.Assert;
 
-        // And now use this to visit Google
-        //driver.get("http://localhost:8080/");
-        // Alternatively the same thing can be done like this
-        // driver.navigate().to("http://www.google.com");
+public class Test extends SeleniumTest implements Serializable {
+    public Test(AcceptanceTestContext ___cxt___, int index) {
+        super("test1.sel", ___cxt___, index);
+    }
 
-        // Google's search is rendered dynamically with JavaScript.
-        // Wait for the page to load, timeout after 10 seconds
-        //(new WebDriverWait(driver, 10)).until(ExpectedConditions.presenceOfElementLocated(By.id("Login_Form")));
-        
-        //WebElement un = driver.findElement(By.name("username"));
-        //WebElement pw = driver.findElement(By.name("password"));
-        //WebElement su = driver.findElement(By.cssSelector("input[onclick^=doLogin]"));
-        
-        //un.sendKeys("admin");
-        //pw.sendKeys("admin");
-        
-        //su.click();
-        
-        // Google's search is rendered dynamically with JavaScript.
-        // Wait for the page to load, timeout after 10 seconds
-        //(new WebDriverWait(driver, 10)).until(ExpectedConditions.presenceOfElementLocated(By.id("System_Viewer")));
+    public void close() {
+        if (get___d___() != null) get___d___().close();
+      }
 
-        //Close the browser
-        //driver.quit();
-	}
-	
-	public static void test(org.openqa.selenium.WebDriver t) throws Exception {
-		
-	}
-	
-	public static void test(org.openqa.selenium.WebDriver w, List<org.openqa.selenium.WebElement> el) throws Exception {
-		
-	}
-	}
+      public void quit() {
+        if (get___d___() != null) get___d___().quit();
+      }
+
+      public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+        return new Test(ctx, index);
+      }
+
+      public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+        DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();
+        ___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
+        set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+        setBrowserName("chrome");
+      }
+
+      @SuppressWarnings("unchecked")
+      public Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {
+        addTest("chrome");
+        startTest();
+        quit();
+        setupDriverchrome(___lp___);
+        _execute(___lp___);
+        return get__result__();
+      }
+
+      public int concurrentExecutionNum() {
+        return 0;
+      }
+
+      @SuppressWarnings("unchecked")
+      public void _execute(LoggingPreferences ___lp___) throws Exception {
+        try {
+          SearchContext ___sc___1 = get___d___();
+          WebDriver ___cw___ = get___d___();
+          WebDriver ___ocw___ = ___cw___;
+          ___cw___.navigate().to(evaluate("https://abc.com/"));
+          List<WebElement> ___w___1 = By.id(evaluate("Location")).findElements(___sc___1);
+          Assert.assertTrue(
+              "Element not found by selector id@'Location' at line number 3 ",
+              ___w___1 != null && !___w___1.isEmpty());
+          Select ___w___2 = new Select(___w___1.get(0));
+          ___w___2.selectByIndex(Integer.parseInt(evaluate("4")));
+          int ___w___3 = getProviderTestDataMap("auth").size();
+          set__provname__("auth");
+
+          for (int ___w___4 = 0; ___w___4 < ___w___3; ___w___4++) {
+            set__provpos__("auth", ___w___4);
+            __st__1(___sc___1, ___lp___);
+          }
+          rem__provname__("auth");
+
+          List<WebElement> ___w___5 = By.id(evaluate("ddasda")).findElements(___sc___1);
+          Assert.assertTrue(
+              "Element not found by selector id@'ddasda' at line number 14 ",
+              ___w___5 != null && !___w___5.isEmpty());
+          if (true) {
+
+            int ___itr___1 = 0;
+            ___flp___1:
+            for (final WebElement ___w___6 : ___w___5) {
+              final SearchContext ___pc___1 = ___w___6;
+              @SuppressWarnings("serial")
+              List<WebElement> ___w___7 =
+                  new java.util.ArrayList<WebElement>() {
+                    {
+                      add(___w___6);
+                    }
+                  };
+              Integer ___i___1 =
+                  new Functor<SearchContext, Integer>() {
+                    @Override
+                    public Integer f(SearchContext ___sc___1, SearchContext ___pc___1) {
+                      try {
+                        List<WebElement> ___w___8 = By.id(evaluate("dd")).findElements(___sc___1);
+                        Assert.assertTrue(
+                            "Element not found by selector id@'dd' at line number 16 ",
+                            ___w___8 != null && !___w___8.isEmpty());
+
+                        if (true) return 3;
+
+                        return true ? 1 : 2;
+                      } catch (AssertionError ___e___2) {
+                      } catch (Exception ___e___1) {
+                        System.out.println(___e___1.getMessage());
+                      }
+
+                      return 2;
+                    }
+                  }.f(___sc___1, ___pc___1);
+              if (___i___1 != 2) {
+                if (___i___1 == 3) break;
+                if (___i___1 == 4) continue;
+              }
+              ___itr___1++;
+            }
+          }
+          pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+        } catch (Throwable ___e___3) {
+          pushResult(new SeleniumTestResult(get___d___(), this, ___e___3, ___lp___));
+        }
+      }
+
+      void __st__1(SearchContext ___sc___1, LoggingPreferences ___lp___) {
+
+        set__subtestname__("Subtest 1");
+        try {
+          final Object[] ___w___9 = new Object[1];
+          final WebDriver ___sc___2 = (WebDriver) ___sc___1;
+          try {
+            (new WebDriverWait(___sc___2, 30))
+                .until(
+                    new Function<WebDriver, Boolean>() {
+                      public Boolean apply(WebDriver input) {
+                        List<WebElement> ___w___10 =
+                            By.id(evaluate("UserName")).findElements(___sc___2);
+                        if (___w___10 == null || ___w___10.isEmpty()) return false;
+                        ___w___10.get(0).sendKeys(evaluate("$user"));
+                        ___w___9[0] = ___w___10;
+
+                        return true;
+                      }
+
+                      public String toString() {
+                        return "";
+                      }
+                    });
+          } catch (org.openqa.selenium.TimeoutException ___e___4) {
+            throw new RuntimeException(
+                "Element not found by selector id@'UserName' at line number 8 ", ___e___4);
+          }
+          List<WebElement> ___w___11 = By.id(evaluate("Password")).findElements(___sc___1);
+          Assert.assertTrue(
+              "Element not found by selector id@'Password' at line number 9 ",
+              ___w___11 != null && !___w___11.isEmpty());
+          ___w___11.get(0).sendKeys(evaluate("$pwd"));
+          List<WebElement> ___w___12 =
+              By.cssSelector(evaluate("input[type='submit']")).findElements(___sc___1);
+          Assert.assertTrue(
+              "Element not found by selector css@'input[type='submit']' at line number 10 ",
+              ___w___12 != null && !___w___12.isEmpty());
+          ___w___12.get(0).click();
+
+          try {
+            Thread.sleep(100);
+          } catch (Exception ___e___5) {
+          }
+
+          pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+        } catch (Throwable ___e___6) {
+          pushResult(new SeleniumTestResult(get___d___(), this, ___e___6, ___lp___));
+        } finally {
+          set__subtestname__(null);
+        }
+      }
+    }
+

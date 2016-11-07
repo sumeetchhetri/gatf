@@ -104,7 +104,7 @@ public class SeleniumCodeGeneratorAndUtil {
             	classLoader = new URLClassLoader(urls, loader);
             }
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class}).newInstance(new Object[]{context});
+            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         } else {
             for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
                 System.out.format("Error on line %d in %s%n",

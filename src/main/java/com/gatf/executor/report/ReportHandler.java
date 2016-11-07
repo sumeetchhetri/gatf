@@ -1193,7 +1193,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doSeleniumSummaryTestReport(Map<String, Map<String, Map<String, List<Object[]>>>> summLstMap, AcceptanceTestContext acontext)
+	public static void doSeleniumSummaryTestReport(Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext)
     {
         GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();
@@ -1268,7 +1268,7 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "-selenium-index.html";
+            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix + ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();

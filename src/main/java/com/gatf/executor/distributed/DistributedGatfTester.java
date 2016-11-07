@@ -61,7 +61,18 @@ public class DistributedGatfTester {
 		try {
 			logger.info("Connecting to node " + node);
 			
-			client = new Socket(node, 4567);
+			int port = 4567;
+	        if(node.indexOf("@")!=-1) {
+	            try {
+	                String sp = node.substring(node.indexOf("@")+1);
+	                node = node.substring(0, node.indexOf("@"));
+	                port = Integer.parseInt(sp);
+	            } catch (Exception e) {
+	                logger.info("Invalid port number specified for distributed listener, defaulting to 4567");
+	            }
+	        }
+			
+			client = new Socket(node, port);
 			DistributedAcceptanceContext disContext = context.getDistributedContext(node);
 			
 			ObjectOutputStream oos = new ObjectOutputStream(client.getOutputStream());
@@ -289,7 +300,7 @@ public class DistributedGatfTester {
 				task = new FutureTask<Object>(new Callable<Object>() {
                     public Object call() throws Exception {
                         return new RuntimeException("Invalid configuration specified for selenium");
-                        }
+                    }
                 });
 			}
 		} catch (Exception e) {

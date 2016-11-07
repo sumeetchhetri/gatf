@@ -16,12 +16,12 @@
 package com.gatf.executor.dataprovider;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
 /**
@@ -140,7 +140,7 @@ public class GatfTestDataProvider implements Serializable {
 		this.providerProperties = other.providerProperties;
 		this.queryStr = other.queryStr;
 		this.enabled = other.enabled;
-		this.args = other.args;
+		this.args = (String[])Arrays.asList(other.args).toArray(new String[other.args.length]);
 		this.live = other.live;
 	}
 }
