@@ -95,3 +95,14 @@ chord \uE009\u0061 id@"Location"
 {
 	click css@"input[type='submit']"
 }
+zoom xpath@"sds"
+zoom 1 2
+pinch xpath@"sds"
+pinch 1 2
+tap 1 2 3 4
+tap 1 xpath@"sds" 2
+swipe 1 2 3 4 5
+rotate
+hidekeypad
+touch press xpath@"Sd" 1 2 press 1 2 press xpath@"Sd" tap xpath@"Sd" 1 2 tap 1 2 tap xpath@"Sd" moveto xpath@"Sd" 1 2 moveto 1 2 moveto xpath@"Sd" longpress xpath@"Sd" 1 2 3 longpress xpath@"Sd" 1 2 longpress 1 2 3 wait wait 1 release
+shake

@@ -1,0 +1,58 @@
+package com.gatf.selenium;
+
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
+import java.util.List;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
+import com.google.common.base.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.jruby.embed.LocalVariableBehavior;
+import org.jruby.embed.ScriptingContainer;
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import java.util.Map;
+import org.junit.Assert;
+import org.openqa.selenium.Keys;
+
+public class ${testClassName} extends SeleniumTest implements Serializable {
+  public ${testClassName}(AcceptanceTestContext ___cxt___, int index) {
+    super("${testFileName}", ___cxt___, index);
+  }
+
+  public void close() {
+    if (get___d___() != null) get___d___().close();
+  }
+
+  public void quit() {
+    if (get___d___() != null) get___d___().quit();
+  }
+
+  public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+    return new ${testClassName}(ctx, index);
+  }
+
+  
+}

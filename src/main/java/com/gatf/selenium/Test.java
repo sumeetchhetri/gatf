@@ -8,17 +8,13 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.remote.CapabilityType;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.openqa.selenium.support.ui.Select;
-import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gatf.executor.core.AcceptanceTestContext;
-import com.gatf.selenium.SeleniumTest;
-import com.google.common.base.Function;
 
+import io.appium.java_client.MobileDriver;
 import junit.framework.Assert;
 
 public class Test extends SeleniumTest implements Serializable {
@@ -30,7 +26,7 @@ public class Test extends SeleniumTest implements Serializable {
         if (get___d___() != null) get___d___().close();
       }
 
-      public void quit() {
+    public void quit() {
         if (get___d___() != null) get___d___().quit();
       }
 
@@ -61,128 +57,98 @@ public class Test extends SeleniumTest implements Serializable {
 
       @SuppressWarnings("unchecked")
       public void _execute(LoggingPreferences ___lp___) throws Exception {
-        try {
-          SearchContext ___sc___1 = get___d___();
-          WebDriver ___cw___ = get___d___();
-          WebDriver ___ocw___ = ___cw___;
-          ___cw___.navigate().to(evaluate("https://abc.com/"));
-          List<WebElement> ___w___1 = By.id(evaluate("Location")).findElements(___sc___1);
-          Assert.assertTrue(
-              "Element not found by selector id@'Location' at line number 3 ",
-              ___w___1 != null && !___w___1.isEmpty());
-          Select ___w___2 = new Select(___w___1.get(0));
-          ___w___2.selectByIndex(Integer.parseInt(evaluate("4")));
-          int ___w___3 = getProviderTestDataMap("auth").size();
-          set__provname__("auth");
+          try {
+              SearchContext ___sc___1 = get___d___();
+              WebDriver ___cw___ = get___d___();
+              WebDriver ___ocw___ = ___cw___;
+              List<WebElement> ___w___1 = By.xpath(evaluate("sds")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'sds' at line number 2 ",
+                  ___w___1 != null && !___w___1.isEmpty());
+              ((io.appium.java_client.TouchShortcuts) get___d___()).zoom(___w___1.get(0));
 
-          for (int ___w___4 = 0; ___w___4 < ___w___3; ___w___4++) {
-            set__provpos__("auth", ___w___4);
-            __st__1(___sc___1, ___lp___);
-          }
-          rem__provname__("auth");
+              ((io.appium.java_client.TouchShortcuts) get___d___()).zoom(1, 2);
+              List<WebElement> ___w___2 = By.xpath(evaluate("sds")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'sds' at line number 4 ",
+                  ___w___2 != null && !___w___2.isEmpty());
+              ((io.appium.java_client.TouchShortcuts) get___d___()).pinch(___w___2.get(0));
 
-          List<WebElement> ___w___5 = By.id(evaluate("ddasda")).findElements(___sc___1);
-          Assert.assertTrue(
-              "Element not found by selector id@'ddasda' at line number 14 ",
-              ___w___5 != null && !___w___5.isEmpty());
-          if (true) {
+              ((io.appium.java_client.TouchShortcuts) get___d___()).pinch(1, 2);
 
-            int ___itr___1 = 0;
-            ___flp___1:
-            for (final WebElement ___w___6 : ___w___5) {
-              final SearchContext ___pc___1 = ___w___6;
-              @SuppressWarnings("serial")
-              List<WebElement> ___w___7 =
-                  new java.util.ArrayList<WebElement>() {
-                    {
-                      add(___w___6);
-                    }
-                  };
-              Integer ___i___1 =
-                  new Functor<SearchContext, Integer>() {
-                    @Override
-                    public Integer f(SearchContext ___sc___1, SearchContext ___pc___1) {
-                      try {
-                        List<WebElement> ___w___8 = By.id(evaluate("dd")).findElements(___sc___1);
-                        Assert.assertTrue(
-                            "Element not found by selector id@'dd' at line number 16 ",
-                            ___w___8 != null && !___w___8.isEmpty());
+              ((io.appium.java_client.TouchShortcuts) get___d___()).tap(1, 2, 3, 4);
+              List<WebElement> ___w___3 = By.xpath(evaluate("sds")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'sds' at line number 7 ",
+                  ___w___3 != null && !___w___3.isEmpty());
+              ((io.appium.java_client.TouchShortcuts) get___d___()).tap(1, ___w___3.get(0), 2);
 
-                        if (true) return 3;
-
-                        return true ? 1 : 2;
-                      } catch (AssertionError ___e___2) {
-                      } catch (Exception ___e___1) {
-                        System.out.println(___e___1.getMessage());
-                      }
-
-                      return 2;
-                    }
-                  }.f(___sc___1, ___pc___1);
-              if (___i___1 != 2) {
-                if (___i___1 == 3) break;
-                if (___i___1 == 4) continue;
+              ((io.appium.java_client.TouchShortcuts) get___d___()).swipe(1, 2, 3, 4, 5);
+              org.openqa.selenium.ScreenOrientation ___w___4 =
+                  ((org.openqa.selenium.Rotatable) get___d___()).getOrientation();
+              if (___w___4.value().equals(org.openqa.selenium.ScreenOrientation.LANDSCAPE.value())) {
+                ((org.openqa.selenium.Rotatable) get___d___())
+                    .rotate(org.openqa.selenium.ScreenOrientation.PORTRAIT);
+              } else {
+                ((org.openqa.selenium.Rotatable) get___d___())
+                    .rotate(org.openqa.selenium.ScreenOrientation.LANDSCAPE);
               }
-              ___itr___1++;
+              ((io.appium.java_client.DeviceActionShortcuts) get___d___()).hideKeyboard();
+
+              io.appium.java_client.TouchAction ___w___5 =
+                  new io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___());
+              List<WebElement> ___w___6 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___6 != null && !___w___6.isEmpty());
+              ___w___5.press(___w___6.get(0), 1, 2);
+              ___w___5.press(1, 2);
+              List<WebElement> ___w___7 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___7 != null && !___w___7.isEmpty());
+              ___w___5.press(___w___7.get(0));
+              List<WebElement> ___w___8 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___8 != null && !___w___8.isEmpty());
+              ___w___5.tap(___w___8.get(0), 1, 2);
+              ___w___5.tap(1, 2);
+              List<WebElement> ___w___9 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___9 != null && !___w___9.isEmpty());
+              ___w___5.tap(___w___9.get(0));
+              List<WebElement> ___w___10 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___10 != null && !___w___10.isEmpty());
+              ___w___5.moveTo(___w___10.get(0), 1, 2);
+              ___w___5.moveTo(1, 2);
+              List<WebElement> ___w___11 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___11 != null && !___w___11.isEmpty());
+              ___w___5.moveTo(___w___11.get(0));
+              List<WebElement> ___w___12 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___12 != null && !___w___12.isEmpty());
+              ___w___5.longPress(___w___12.get(0), 1, 2, 3);
+              List<WebElement> ___w___13 = By.xpath(evaluate("Sd")).findElements(___sc___1);
+              Assert.assertTrue(
+                  "Element not found by selector xpath@'Sd' at line number 11 ",
+                  ___w___13 != null && !___w___13.isEmpty());
+              ___w___5.longPress(___w___13.get(0), 1, 2);
+              ___w___5.longPress(1, 2, 3);
+              ___w___5.wait();
+              ___w___5.wait(1);
+              ___w___5.release();
+              ___w___5.perform();
+              pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+            } catch (Throwable ___e___1) {
+              pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, ___lp___));
             }
           }
-          pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
-        } catch (Throwable ___e___3) {
-          pushResult(new SeleniumTestResult(get___d___(), this, ___e___3, ___lp___));
         }
-      }
-
-      void __st__1(SearchContext ___sc___1, LoggingPreferences ___lp___) {
-
-        set__subtestname__("Subtest 1");
-        try {
-          final Object[] ___w___9 = new Object[1];
-          final WebDriver ___sc___2 = (WebDriver) ___sc___1;
-          try {
-            (new WebDriverWait(___sc___2, 30))
-                .until(
-                    new Function<WebDriver, Boolean>() {
-                      public Boolean apply(WebDriver input) {
-                        List<WebElement> ___w___10 =
-                            By.id(evaluate("UserName")).findElements(___sc___2);
-                        if (___w___10 == null || ___w___10.isEmpty()) return false;
-                        ___w___10.get(0).sendKeys(evaluate("$user"));
-                        ___w___9[0] = ___w___10;
-
-                        return true;
-                      }
-
-                      public String toString() {
-                        return "";
-                      }
-                    });
-          } catch (org.openqa.selenium.TimeoutException ___e___4) {
-            throw new RuntimeException(
-                "Element not found by selector id@'UserName' at line number 8 ", ___e___4);
-          }
-          List<WebElement> ___w___11 = By.id(evaluate("Password")).findElements(___sc___1);
-          Assert.assertTrue(
-              "Element not found by selector id@'Password' at line number 9 ",
-              ___w___11 != null && !___w___11.isEmpty());
-          ___w___11.get(0).sendKeys(evaluate("$pwd"));
-          List<WebElement> ___w___12 =
-              By.cssSelector(evaluate("input[type='submit']")).findElements(___sc___1);
-          Assert.assertTrue(
-              "Element not found by selector css@'input[type='submit']' at line number 10 ",
-              ___w___12 != null && !___w___12.isEmpty());
-          ___w___12.get(0).click();
-
-          try {
-            Thread.sleep(100);
-          } catch (Exception ___e___5) {
-          }
-
-          pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
-        } catch (Throwable ___e___6) {
-          pushResult(new SeleniumTestResult(get___d___(), this, ___e___6, ___lp___));
-        } finally {
-          set__subtestname__(null);
-        }
-      }
-    }
 

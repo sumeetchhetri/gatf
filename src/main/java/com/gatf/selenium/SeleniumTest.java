@@ -16,6 +16,7 @@
 package com.gatf.selenium;
 
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -68,8 +69,10 @@ public abstract class SeleniumTest {
 	   add(LogType.SERVER);
 	}};
 	
-	private transient WebDriver ___d___ = null;
+	private transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
+	private transient int __wpos__ = 0;
 	private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
+	private transient Map<String, String> properties = null;
 	
 	public void addTest(String name) {
         if(!__result__.containsKey(name)) {
@@ -172,14 +175,31 @@ public abstract class SeleniumTest {
 	    return tmpl;
     }
 	
+	public String getProviderDataValue(String key) {
+	    if(__provdetails__.size()>0) {
+            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+            for (int i=keys.size()-1;i>=0;i--)
+            {
+                String pn = keys.get(i);
+                Integer pp = __provdetails__.get(pn);
+                List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(pn);
+                if(_t!=null && _t.get(pp)!=null && _t.get(pp).containsKey(key)) {
+                    return _t.get(pp).get(key);
+                }
+            }
+        }
+	    return null;
+	}
+	
     public WebDriver get___d___()
     {
-        return ___d___;
+        if(___d___.size()==0)return null;
+        return ___d___.get(__wpos__);
     }
 
     public void set___d___(WebDriver ___d___)
     {
-        this.___d___ = ___d___;
+        this.___d___.add(___d___);
     }
     
     public class PrettyPrintingMap<K, V> {
@@ -291,7 +311,7 @@ public abstract class SeleniumTest {
     }
 
     protected WebDriver getWebDriver() {
-        return ___d___;
+        return ___d___.get(__wpos__);
     }
 	
 	protected AndroidDriver getAndroidDriver() {
@@ -319,6 +339,7 @@ public abstract class SeleniumTest {
 	    this.name = name;
 	    this.___cxt___ = ___cxt___;
 	    this.index = index;
+	    //this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
 	}
 	
 	public static interface Functor<I, O> {
@@ -333,7 +354,14 @@ public abstract class SeleniumTest {
 	
 	protected String browserName;
 	
-	public abstract void quit();
+	public void quit() {
+	    if(___d___.size()>0) {
+	        for (WebDriver d : ___d___)
+            {
+                d.quit();
+            }
+	    }
+	}
     
     public abstract void close();
     
@@ -450,6 +478,29 @@ public abstract class SeleniumTest {
 	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("radio")) {
 	        le.get(0).click();
 	    }
+	}
+	
+	public void window(int pos) {
+	    if(pos>=0 && pos<___d___.size()) {
+	        __wpos__ = pos;
+	    } else {
+	        throw new RuntimeException("Invalid window number specified");
+	    }
+	}
+	
+	public void newWindow(LoggingPreferences lp) {
+	    try
+        {
+            Method m = getClass().getMethod("setupDriver"+browserName, new Class[]{LoggingPreferences.class});
+            if(m!=null) {
+                m.invoke(this, new Object[]{lp});
+            }
+            __wpos__++;
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Invalid browser name specified");
+        }
 	}
 	
 	public static void randomizeSelect(List<WebElement> le) {
