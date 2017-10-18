@@ -106,3 +106,68 @@ rotate
 hidekeypad
 touch press xpath@"Sd" 1 2 press 1 2 press xpath@"Sd" tap xpath@"Sd" 1 2 tap 1 2 tap xpath@"Sd" moveto xpath@"Sd" 1 2 moveto 1 2 moveto xpath@"Sd" longpress xpath@"Sd" 1 2 3 longpress xpath@"Sd" 1 2 longpress 1 2 3 wait wait 1 release
 shake
+exec @print($v{abt})
+#provider "abc"
+{
+click id@"$abt"
+}
+sleep 2000
+confirm ok
+sleep 5000
+alert
+sleep 2000
+var pat plugin api createPatient
+var @mrno plugin jsonread $v{pat} mrno
+var o plugin jsonread '{"a": {"b": 1}}'
+jsonwrite $v{o} file.json
+var op plugin jsonpath $v{o} a.b
+var ox plugin xmlread '<a><b>1</b></a>'
+xmlwrite $v{ox} file.xml
+var oxp plugin xmlpath $v{ox} a/b
+var myvar plugin curl get http://abc.com
+{
+[
+header1=a
+header2=k
+header3=a
+]
+content
+}
+var myvarvar plugin jsonpath $v{myvar} out.x.y.z
+api yourapitestcase
+? xpath@"ddd"
+{
+	exec @print("if")
+}
+:
+{
+	exec @print("else")
+}
+#provider "aa"
+{
+	? xpath@"ddd"
+	{
+		exec @print("aaif")
+	}
+	:
+	{
+		exec @print("aaelse")
+	}
+}
+?? css@"div#left-panel>nav>div>ul>li" text 
+[
+	DashBoard
+	DashBoard1
+]
+?? css@"div#left-panel>nav>div>ul>li" type ghjg
+[
+	dfdf
+]
+? ${abc}=="1"
+{
+	exec @print("if")
+	var mydate new java.text.SimpleDateFormat("MM/DD/YYYY").format(new java.util.Date())
+	var @mydate1 new java.text.SimpleDateFormat("MM/DD/YYYY").format(new java.util.Date())
+	click text@"//sdsd" text >${mydate1}
+	click xpath@"//sdsd"
+}

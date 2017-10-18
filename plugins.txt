@@ -1,0 +1,8 @@
+jsonread=com.gatf.selenium.plugins.JsonPlugin@read
+jsonwrite=com.gatf.selenium.plugins.JsonPlugin@write
+jsonpath=com.gatf.selenium.plugins.JsonPlugin@path
+xmlread=com.gatf.selenium.plugins.XmlPlugin@read
+xmlwrite=com.gatf.selenium.plugins.XmlPlugin@write
+xmlpath=com.gatf.selenium.plugins.XmlPlugin@path
+api=com.gatf.selenium.plugins.ApiPlugin@api
+curl=com.gatf.selenium.plugins.CurlPlugin@execute

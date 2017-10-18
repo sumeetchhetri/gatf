@@ -4,11 +4,13 @@
 	<parent>
         <groupId>com.test</groupId>
         <artifactId>gatf-parent</artifactId>
-        <version>1.5</version>
+        <version>1.6</version>
     </parent>
+    
 	<artifactId>gatf-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
 	<name>gatf-plugin</name>
+	<version>1.6</version>
 
 	<build>
 		<sourceDirectory>../src</sourceDirectory>

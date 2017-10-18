@@ -22,6 +22,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.apache.commons.collections.MapUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.w3c.dom.Attr;
@@ -184,30 +185,43 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	private Map<String, String> getGlobalSuiteAndTestLevelParameters(TestCase testCase, Map<String, String> variableMap) {
-		Map<String, String> nmap = new HashMap<String, String>(globalworkflowContext);
-		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
-			nmap.putAll(suiteWorkflowContext.get(-1));
-		} else if(testCase.isExternalApi()) {
-			nmap.putAll(suiteWorkflowContext.get(-2));
-		} else if(testCase.getSimulationNumber()==null) {
-			nmap.putAll(suiteWorkflowContext.get(0));
-		} else {
-			nmap.putAll(suiteWorkflowContext.get(testCase.getSimulationNumber()));
-		}
-		if(variableMap!=null && !variableMap.isEmpty()) {
-			nmap.putAll(variableMap);
-		}
-		if(testCase.getCarriedOverVariables()!=null && !testCase.getCarriedOverVariables().isEmpty()) {
-			nmap.putAll(testCase.getCarriedOverVariables());
-		}
+	public Map<String, String> getGlobalSuiteAndTestLevelParameters(TestCase testCase, Map<String, String> variableMap, int index) {
+	    Map<String, String> nmap = new HashMap<String, String>(globalworkflowContext);
+	    if(testCase!=null) {
+	        index = testCase.getSimulationNumber();
+	        if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
+	            index = -1;
+	        } else if(testCase.isExternalApi()) {
+	            index = -2;
+	        } else if(testCase.getSimulationNumber()==null) {
+	            index = 0;
+	        }
+	        nmap.putAll(suiteWorkflowContext.get(index));
+	        if(variableMap!=null && !variableMap.isEmpty()) {
+	            nmap.putAll(variableMap);
+	        }
+	        if(testCase.getCarriedOverVariables()!=null && !testCase.getCarriedOverVariables().isEmpty()) {
+	            nmap.putAll(testCase.getCarriedOverVariables());
+	        }
+	    } else {
+	        nmap.putAll(suiteWorkflowContext.get(index));
+	        if(variableMap!=null && !variableMap.isEmpty()) {
+                nmap.putAll(variableMap);
+            }
+	    }
 		return nmap;
+	}
+	
+	public void addSuiteLevelParameter(int index, String name, String value) {
+	    if(suiteWorkflowContext.containsKey(index) && value!=null) {
+	        suiteWorkflowContext.get(index).put(name, value);
+	    }
 	}
 	
 	public String evaluateTemplate(TestCase testCase, String template, AcceptanceTestContext acontext) {
 		StringWriter writer = new StringWriter();
 		try {
-			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
+			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);
 			if(testCase!=null && !nmap.isEmpty()) {
 				if(template!=null) {
 					VelocityContext context = new VelocityContext(nmap);
@@ -222,7 +236,7 @@ public class WorkflowContextHandler {
 		return writer.toString();
 	}
 	
-	public String templatize(Map<String, String> variableMap, String template) throws Exception {
+	public String templatize(Map<String, Object> variableMap, String template) throws Exception {
 	    VelocityContext context = new VelocityContext(variableMap);
 	    StringWriter writer = new StringWriter();
         engine.evaluate(context, writer, "ERROR", template);
@@ -239,9 +253,13 @@ public class WorkflowContextHandler {
 	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap, AcceptanceTestContext acontext) 
 			throws Exception {
 		
-		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap);
+		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap, -3);
 		
-		//initialize cookies
+		VelocityContext context = new VelocityContext(nmap);
+		DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
+		context.put("_DPA_", dpa);
+		
+		//initialize cookies and headers
 		if(testCase != null) {
 			Map<String, String> cookieMap = getCookies(testCase);
 			if(cookieMap!=null) {
@@ -253,12 +271,16 @@ public class WorkflowContextHandler {
 					testCase.getHeaders().put("Cookie", entry.getKey() + "=" + entry.getValue());
 				}
 			}
+			if(MapUtils.isNotEmpty(testCase.getHeaders())) {
+			    for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
+			        StringWriter writer = new StringWriter();
+			        engine.evaluate(context, writer, "ERROR", entry.getValue());
+			        testCase.getHeaders().put(entry.getKey(), writer.toString());
+			    }
+			}
 		}
 		
 		if(testCase!=null && !nmap.isEmpty()) {
-			VelocityContext context = new VelocityContext(nmap);
-			DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
-			context.put("_DPA_", dpa);
 			if(testCase.getUrl()!=null) {
 				StringWriter writer = new StringWriter();
 				engine.evaluate(context, writer, "ERROR", testCase.getUrl());
@@ -294,7 +316,7 @@ public class WorkflowContextHandler {
 	public boolean velocityValidate(TestCase testCase, String template, Map<String, String> smap, 
 			AcceptanceTestContext acontext) {
 		if(testCase!=null && template!=null) {
-			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null);
+			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);
 			if(smap!=null) {
 				nmap.putAll(smap);
 			}

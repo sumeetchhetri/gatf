@@ -14,7 +14,6 @@ import org.openqa.selenium.remote.DesiredCapabilities;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 
-import io.appium.java_client.MobileDriver;
 import junit.framework.Assert;
 
 public class Test extends SeleniumTest implements Serializable {

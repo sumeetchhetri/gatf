@@ -189,7 +189,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			
     			FilenameFilter filter = new FilenameFilter() {
     				public boolean accept(File folder, String name) {
-    					return (!gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".xml")) || (gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".sel"));
+    					return (!gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".xml")) 
+    					        || (gatfConfig.isSeleniumExecutor() && (name.toLowerCase().endsWith(".sel") || name.toLowerCase().equalsIgnoreCase("selenium-apis.xml")));
     				}
     			};
     			

@@ -379,7 +379,7 @@ public abstract class ResponseValidator {
 					nodeName = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
 
 					int responseCount = getResponseMappedCount(nodeName, intObj);
-					List<Map<String, String>> jsonValues = new ArrayList<Map<String,String>>();
+					List<Map<String, String>> jsonValues = new ArrayList<Map<String, String>>();
 					for (int i = 0; i < responseCount; i++) {
 						Map<String, String> row = new HashMap<String, String>();
 						row.put("index", (i+1)+"");

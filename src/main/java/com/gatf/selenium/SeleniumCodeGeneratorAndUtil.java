@@ -33,6 +33,7 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
@@ -59,7 +60,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
-		Command cmd = Command.read(context.getResourceFile(fileName), commands, context.getGatfExecutorConfig().getSelDriverConfigMap());
+		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
 		String sourceCode =  cmd.javacode();
 		
 		retvals[0] = fileName;
@@ -77,7 +78,7 @@ public class SeleniumCodeGeneratorAndUtil {
         	URL[] urls = ((URLClassLoader)loader).getURLs();
         	String cp = "";
         	for (URL url : urls) {
-        		cp += url.getPath() + ";";
+        		cp += url.getPath() + SystemUtils.PATH_SEPARATOR;
 			}
         	optionList.add(cp);
         }

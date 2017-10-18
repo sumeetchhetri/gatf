@@ -46,10 +46,10 @@ import org.junit.Assert;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
-import au.com.bytecode.opencsv.CSVReader;
-
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.jayway.jsonpath.JsonPath;
+
+import au.com.bytecode.opencsv.CSVReader;
 
 /**
  * @author Sumeet Chhetri

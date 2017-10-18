@@ -22,6 +22,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.AlphanumComparator;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
@@ -149,7 +151,9 @@ public abstract class TestCaseFinder {
 							}
 							if(considerConfig)
 							{
-								testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+							    if(StringUtils.isBlank(testCase.getBaseUrl())) {
+							        testCase.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+							    }
 							}
 							testCase.setExternalApi(false);
 							testCase.setServerApiAuth(false);

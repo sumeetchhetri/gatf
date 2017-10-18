@@ -132,8 +132,8 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		    System.err.println(e);
 		}
 	}
-	
-	private void createServerApiAndIssueTrackingApiFilesIfNotExists() {
+
+    private void createServerApiAndIssueTrackingApiFilesIfNotExists() {
 		String[] configFiles = {AcceptanceTestContext.GATF_SERVER_LOGS_API_FILE_NM, "gatf-issuetracking-api-int.xml"};
 		for (String fileNm : configFiles) {
 			if(!new File(rootDir, fileNm).exists())
@@ -278,7 +278,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		if(status==null)e.printStackTrace();
 	}
 	
-	protected static GatfExecutorConfig getGatfExecutorConfig(GatfConfigToolMojo mojo, GatfExecutorConfig config) throws Exception
+	public static GatfExecutorConfig getGatfExecutorConfig(GatfConfigToolMojo mojo, GatfExecutorConfig config) throws Exception
 	{
 		createConfigFileIfNotExists(mojo, true, config);
 		GatfExecutorConfig gatfConfig = config;
@@ -313,11 +313,11 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		return gatfConfig;
 	}
 	
-	protected AcceptanceTestContext getContext() {
+	public AcceptanceTestContext getContext() {
 		return context;
 	}
 
-	protected void setContext(AcceptanceTestContext context) {
+	public void setContext(AcceptanceTestContext context) {
 		this.context = context;
 	}
 
@@ -327,5 +327,13 @@ public class GatfConfigToolMojo extends AbstractMojo {
 
 	protected void setAuthTestCase(TestCase authTestCase) {
 		this.authTestCase = authTestCase;
+	}
+    
+	public String getRootDir() {
+	    return rootDir;
+	}
+
+	public void setRootDir(String rootDir) {
+	    this.rootDir = rootDir;
 	}
 }

@@ -15,8 +15,11 @@
 */
 package com.gatf.selenium;
 
+import java.io.File;
 import java.io.Serializable;
 import java.lang.reflect.Method;
+import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,6 +29,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
 import org.apache.commons.lang.RandomStringUtils;
@@ -41,6 +45,7 @@ import org.openqa.selenium.logging.Logs;
 import org.openqa.selenium.support.ui.Select;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.google.common.io.Resources;
 
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
@@ -72,7 +77,6 @@ public abstract class SeleniumTest {
 	private transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
 	private transient int __wpos__ = 0;
 	private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
-	private transient Map<String, String> properties = null;
 	
 	public void addTest(String name) {
         if(!__result__.containsKey(name)) {
@@ -115,7 +119,7 @@ public abstract class SeleniumTest {
 	}
     
     public List<Map<String, String>> getProviderTestDataMap(String name) {
-        return ___cxt___.getProviderTestDataMap().get(getPn(name));
+        return ___cxt___.getAnyProviderData(getPn(name), null);
     }
 	
 	//private transient String __provname__ = null;
@@ -125,6 +129,21 @@ public abstract class SeleniumTest {
 	private transient Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
 	
 	private transient AcceptanceTestContext ___cxt___ = null;
+    private transient Map<String, Object> __vars__ = new LinkedHashMap<String, Object>();
+    
+    public void ___add_var__(String name, Object val) {
+        if(__vars__.containsKey(name)) {
+            throw new RuntimeException("Variable " + name + " redefined");
+        }
+        __vars__.put(name, val);
+    }
+    
+    protected Object ___get_var__(String name) {
+        if(!__vars__.containsKey(name)) {
+            throw new RuntimeException("Variable " + name + " not defined");
+        }
+        return __vars__.get(name);
+    }
     
 	public static class SeleniumResult implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -161,11 +180,22 @@ public abstract class SeleniumTest {
                 {
 	                String pn = keys.get(i);
 	                Integer pp = __provdetails__.get(pn);
-	                List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(pn);
-	                tmpl = ___cxt___.getWorkflowContextHandler().templatize(_t.get(pp), tmpl);
+	                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+	                Map<String, Object> _mt = new HashMap<String, Object>();
+	                _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index));
+	                if(tmpl.indexOf("$v{")!=-1) {
+	                    tmpl = tmpl.replace("$v", "$");
+	                    _mt.putAll(__vars__);
+	                }
+	                tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
                 }
 	        } else {
-	            tmpl = ___cxt___.getWorkflowContextHandler().templatize(tmpl);
+	            Map<String, Object> _mt = new HashMap<String, Object>();
+	            _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index));
+	            if(tmpl.indexOf("$v{")!=-1) {
+	                tmpl = tmpl.replace("$v", "$");
+	            }
+                tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
 	        }
         }
         catch (Exception e)
@@ -175,21 +205,59 @@ public abstract class SeleniumTest {
 	    return tmpl;
     }
 	
-	public String getProviderDataValue(String key) {
+	public String getProviderDataValue(String key, boolean isVar) {
+	    if(isVar) {
+	        Object o = ___get_var__(key);
+	        if(o!=null && o instanceof String) {
+	            return o.toString();
+	        }
+	        return null;
+	    }
 	    if(__provdetails__.size()>0) {
             ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
             for (int i=keys.size()-1;i>=0;i--)
             {
                 String pn = keys.get(i);
                 Integer pp = __provdetails__.get(pn);
-                List<Map<String, String>> _t = ___cxt___.getProviderTestDataMap().get(pn);
-                if(_t!=null && _t.get(pp)!=null && _t.get(pp).containsKey(key)) {
-                    return _t.get(pp).get(key);
+                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+                if(_t!=null && _t.get(pp)!=null) {
+                    Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index);
+                    if(_mt.containsKey(key)) {
+                        return _mt.get(key);
+                    }
                 }
             }
+            return null;
+        } else {
+            Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index);
+            return _mt.get(key);
         }
-	    return null;
 	}
+	
+	public Object getProviderDataValueO(String key, boolean isVar) {
+        if(isVar) {
+            return ___get_var__(key);
+        }
+        if(__provdetails__.size()>0) {
+            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+            for (int i=keys.size()-1;i>=0;i--)
+            {
+                String pn = keys.get(i);
+                Integer pp = __provdetails__.get(pn);
+                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+                if(_t!=null && _t.get(pp)!=null) {
+                    Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index);
+                    if(_mt.containsKey(key)) {
+                        return _mt.get(key);
+                    }
+                }
+            }
+            return null;
+        } else {
+            Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index);
+            return _mt.get(key);
+        }
+    }
 	
     public WebDriver get___d___()
     {
@@ -199,6 +267,7 @@ public abstract class SeleniumTest {
 
     public void set___d___(WebDriver ___d___)
     {
+        ___d___.manage().timeouts().pageLoadTimeout(100, TimeUnit.SECONDS);
         this.___d___.add(___d___);
     }
     
@@ -235,16 +304,21 @@ public abstract class SeleniumTest {
         return pn;
     }
 
+    public void ___cxt___add_param__(String name, Object value)
+    {
+        ___cxt___.getWorkflowContextHandler().addSuiteLevelParameter(index, name, value==null?null:value.toString());
+    }
+    
     public void ___cxt___print_provider__(String name)
     {
-        System.out.println(___cxt___.getProviderTestDataMap().get(getPn(name)));
+        System.out.println(___cxt___.getAnyProviderData(getPn(name), null));
     }
 
     public void ___cxt___print_provider__json(String name)
     {
         try
         {
-            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getProviderTestDataMap().get(getPn(name))));
+            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getAnyProviderData(getPn(name), null)));
         }
         catch (Exception e)
         {
@@ -314,13 +388,15 @@ public abstract class SeleniumTest {
         return ___d___.get(__wpos__);
     }
 	
-	protected AndroidDriver getAndroidDriver() {
+	@SuppressWarnings("rawtypes")
+    protected AndroidDriver getAndroidDriver() {
 	    if(___d___ instanceof AndroidDriver) {
 	        return (AndroidDriver)___d___;
 	    }
 	    return null;
 	}
     
+	@SuppressWarnings("rawtypes")
     protected IOSDriver getIOSDriver() {
         if(___d___ instanceof IOSDriver) {
             return (IOSDriver)___d___;
@@ -345,6 +421,10 @@ public abstract class SeleniumTest {
 	public static interface Functor<I, O> {
 	    O f(I i, I j);
 	}
+	
+	public static interface CondFunc {
+        Integer f(Object[] args);
+    }
 	
 	protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
 	
@@ -541,4 +621,152 @@ public abstract class SeleniumTest {
         {
         }
 	}
+    
+    public Object pluginize(String name, String signature, List<String> args, List<List<String>> args1) {
+        try
+        {
+            String[] parts = signature.split("@");
+            String clsname = parts[0].trim();
+            String method = parts[1].trim();
+            
+            Class<?> cls = Class.forName(clsname);
+            Method meth = null, meth1 = null;
+            boolean twoargs = true;
+            
+            try {
+                meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
+            } catch (Exception e) {
+            }
+            
+            if(meth==null) {
+                meth = cls.getMethod(method, new Class[]{Object[].class});
+                twoargs = false;
+            }
+            
+            try {
+                Method meth2 = cls.getMethod("isValidParams", new Class[]{List.class, List.class});
+                Boolean isValid = (Boolean)meth2.invoke(null, new Object[]{args, args1});
+                if(isValid!=null && !isValid) {
+                    throw new RuntimeException("Problem executing plugin, invalid parameters provided " + name);
+                }
+            } catch (Exception e) {
+            }
+            
+            Object[] nargs =  new Object[args.size()+3];
+            int c = 0;
+            int indx = -1;
+            for (String arg : args) {
+                indx++;
+                
+                boolean parameterize = true;
+                try {
+                    meth1 = cls.getMethod("isParameterizeFirstSetParam", new Class[]{String.class, int.class});
+                    Boolean temp = (Boolean)meth1.invoke(null, new Object[]{arg, indx});
+                    if(temp!=null && !temp) {
+                        parameterize = temp;
+                    }
+                } catch (Exception e) {
+                }
+                
+                if(!parameterize) {
+                    nargs[c++] = arg.trim();
+                    continue;
+                }
+                
+                if(arg.trim().startsWith("${") && arg.trim().endsWith("}")) {
+                    String vn = arg.trim().substring(2, arg.length()-1);
+                    nargs[c++] = evaluate(vn);
+                } else if(arg.trim().startsWith("$v{") && arg.trim().endsWith("}")) {
+                    String vn = arg.trim().substring(3, arg.length()-1);
+                    nargs[c++] = ___get_var__(vn);
+                } else if((arg.toLowerCase().trim().startsWith("file://") || arg.toLowerCase().trim().startsWith("http://") 
+                        || arg.toLowerCase().trim().startsWith("https://"))) {
+                    if(arg.toLowerCase().trim().startsWith("file://")) {
+                        File _f = ___cxt___.getResourceFile(arg.trim().substring(7));
+                        arg = _f.toURI().toURL().toString();
+                    }
+                    nargs[c++] = Resources.toString(new URL(arg), Charset.forName("UTF-8"));
+                } else if(arg.toLowerCase().trim().startsWith("$file://") || arg.toLowerCase().trim().startsWith("$http://") 
+                        || arg.toLowerCase().trim().startsWith("$https://")) {
+                    if(arg.toLowerCase().trim().startsWith("file://")) {
+                        File _f = ___cxt___.getResourceFile(arg.trim().substring(7));
+                        arg = _f.toURI().toURL().toString();
+                    }
+                    String tmpl = Resources.toString(new URL(arg), Charset.forName("UTF-8"));
+                    tmpl = evaluate(tmpl);
+                    nargs[c++] = tmpl;
+                } else {
+                    nargs[c++] = arg;
+                }
+            }
+            
+            List<List<Object>> nargs1 = new ArrayList<List<Object>>();
+            if(args1!=null) {
+                int indx1 = 0;
+                int indx2 = -1;
+                for (List<String> narg : args1) {
+                    List<Object> nargs2 = new ArrayList<Object>();
+                    for (String arg : narg) {
+                        indx2++;
+                        
+                        boolean parameterize = true;
+                        try {
+                            meth1 = cls.getMethod("isParameterizeSecondSetParam", new Class[]{String.class, int.class, int.class});
+                            Boolean temp = (Boolean)meth1.invoke(null, new Object[]{arg, indx1, indx2});
+                            if(temp!=null && !temp) {
+                                parameterize = temp;
+                            }
+                        } catch (Exception e) {
+                        }
+                        
+                        if(!parameterize) {
+                            nargs2.add(arg.trim());
+                            continue;
+                        }
+                        
+                        if(arg.trim().startsWith("${") && arg.trim().endsWith("}")) {
+                            String vn = arg.trim().substring(2, arg.length()-1);
+                            nargs2.add(evaluate(vn));
+                        } else if(arg.trim().startsWith("$v{") && arg.trim().endsWith("}")) {
+                            String vn = arg.trim().substring(3, arg.length()-1);
+                            nargs2.add(___get_var__(vn));
+                        } else if(arg.toLowerCase().trim().startsWith("file://") || arg.toLowerCase().trim().startsWith("http://") 
+                                || arg.toLowerCase().trim().startsWith("https://")) {
+                            if(arg.toLowerCase().trim().startsWith("file://")) {
+                                File _f = ___cxt___.getResourceFile(arg.trim().substring(7));
+                                arg = _f.toURI().toURL().toString();
+                            }
+                            nargs2.add(Resources.toString(new URL(arg), Charset.forName("UTF-8")));
+                        } else if(arg.toLowerCase().trim().startsWith("$file://") || arg.toLowerCase().trim().startsWith("$http://") 
+                                || arg.toLowerCase().trim().startsWith("$https://")) {
+                            if(arg.toLowerCase().trim().startsWith("file://")) {
+                                File _f = ___cxt___.getResourceFile(arg.trim().substring(7));
+                                arg = _f.toURI().toURL().toString();
+                            }
+                            String tmpl = Resources.toString(new URL(arg), Charset.forName("UTF-8"));
+                            tmpl = evaluate(tmpl);
+                            nargs2.add(tmpl);
+                        } else {
+                            nargs2.add(arg);
+                        }
+                        
+                        indx1++;
+                    }
+                    nargs1.add(nargs2);
+                }
+                
+                indx1++;
+            }
+            
+            nargs[c++] = nargs1;
+            nargs[c++] = index==-1?0:index;
+            nargs[c++] = ___cxt___;
+            
+            return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
+        }
+        catch (Exception e)
+        {
+            throw new RuntimeException("Problem executing plugin " + name, e);
+        }
+    }
 }

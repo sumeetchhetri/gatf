@@ -599,7 +599,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 		}
 	}
 	
-	public Map<String, List<Map<String, Map<String, List<Object[]>>>>> doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+	@SuppressWarnings("unchecked")
+    public Map<String, List<Map<String, Map<String, List<Object[]>>>>> doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
 
 	    List<DistributedConnection> distConnections = null;
 	    
@@ -607,7 +608,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	    
         for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs())
         {
-            if(selConf.getDriverName()!=null) {
+            if(selConf!=null && selConf.getDriverName()!=null) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
@@ -677,6 +678,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             threadPool = Executors.newFixedThreadPool(numberOfRuns);
         }
         
+        context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+        
         summLstMap.put("local", new ArrayList<Map<String, Map<String, List<Object[]>>>>());
         if(threadPool!=null) {
             List<FutureTask<Map<String, Map<String, List<Object[]>>>>> ltasks = new ArrayList<FutureTask<Map<String, Map<String, List<Object[]>>>>>();
@@ -696,7 +699,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             }
         } else {
             try {
-                summLstMap.get("local").add(new ConcSeleniumTest(-2, context, tests, testdata, lp).call());
+                summLstMap.get("local").add(new ConcSeleniumTest(-1, context, tests, testdata, lp).call());
             } catch(Exception e) {
                 e.printStackTrace();
             }
@@ -2059,6 +2062,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	            
 	            threadPool = Executors.newFixedThreadPool(numberOfRuns);
 	        }
+	        context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 			
 	        if(threadPool!=null) {
 	            List<FutureTask<List<Map<String, SeleniumResult>>>> ltasks = new ArrayList<FutureTask<List<Map<String, SeleniumResult>>>>();

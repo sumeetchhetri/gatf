@@ -664,7 +664,7 @@ public class TestCaseExecutorUtil {
 				HttpResponseHeaders headers) throws Exception {
 			if(testCase.getExpectedResContentType()!=null)
 			{
-				if(testCase.getExpectedResContentType()!=null && testCase.getExpectedResContentType().trim().isEmpty()
+				if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty()
 						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)!=null 
 						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)
 							.indexOf(testCase.getExpectedResContentType())!=0)

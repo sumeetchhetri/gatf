@@ -29,7 +29,6 @@ import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -37,6 +36,7 @@ import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.dataprovider.InlineValueTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
+import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 
 public class GatfMiscHandler extends HttpHandler {
 
