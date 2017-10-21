@@ -1,18 +1,18 @@
 /*
     Copyright 2013-2016, Sumeet Chhetri
-    
+
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
     See the License for the specific language governing permissions and
     limitations under the License.
-*/
+ */
 package com.gatf.selenium;
 
 import java.io.File;
@@ -47,38 +47,41 @@ import org.openqa.selenium.support.ui.Select;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.google.common.io.Resources;
 
+import io.appium.java_client.MobileDriver;
+import io.appium.java_client.MultiTouchAction;
+import io.appium.java_client.TouchAction;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
 import io.selendroid.client.SelendroidDriver;
 
 public abstract class SeleniumTest {
-	@SuppressWarnings("serial")
-	protected final static Map<String, Level> LOG_LEVEL_BY_NAME_MAP = new HashMap<String, Level>(){{
-		put(Level.ALL.getName().toLowerCase(), Level.ALL);
-		put(Level.CONFIG.getName().toLowerCase(), Level.CONFIG);
-		put(Level.FINE.getName().toLowerCase(), Level.FINE);
-		put(Level.FINER.getName().toLowerCase(), Level.FINER);
-		put(Level.FINEST.getName().toLowerCase(), Level.FINEST);
-		put(Level.INFO.getName().toLowerCase(), Level.INFO);
-		put(Level.OFF.getName().toLowerCase(), Level.OFF);
-		put(Level.SEVERE.getName().toLowerCase(), Level.SEVERE);
-		put(Level.WARNING.getName().toLowerCase(), Level.WARNING);
-	}};
-	@SuppressWarnings("serial")
+    @SuppressWarnings("serial")
+    protected final static Map<String, Level> LOG_LEVEL_BY_NAME_MAP = new HashMap<String, Level>(){{
+        put(Level.ALL.getName().toLowerCase(), Level.ALL);
+        put(Level.CONFIG.getName().toLowerCase(), Level.CONFIG);
+        put(Level.FINE.getName().toLowerCase(), Level.FINE);
+        put(Level.FINER.getName().toLowerCase(), Level.FINER);
+        put(Level.FINEST.getName().toLowerCase(), Level.FINEST);
+        put(Level.INFO.getName().toLowerCase(), Level.INFO);
+        put(Level.OFF.getName().toLowerCase(), Level.OFF);
+        put(Level.SEVERE.getName().toLowerCase(), Level.SEVERE);
+        put(Level.WARNING.getName().toLowerCase(), Level.WARNING);
+    }};
+    @SuppressWarnings("serial")
     protected final static HashSet<String> LOG_TYPES_SET = new HashSet<String>() {{
-	   add(LogType.BROWSER);
-	   add(LogType.CLIENT);
-	   add(LogType.DRIVER);
-	   add(LogType.PERFORMANCE);
-	   add(LogType.PROFILER);
-	   add(LogType.SERVER);
-	}};
-	
-	private transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
-	private transient int __wpos__ = 0;
-	private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
-	
-	public void addTest(String name) {
+        add(LogType.BROWSER);
+        add(LogType.CLIENT);
+        add(LogType.DRIVER);
+        add(LogType.PERFORMANCE);
+        add(LogType.PROFILER);
+        add(LogType.SERVER);
+    }};
+
+    private transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
+    private transient int __wpos__ = 0;
+    private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
+
+    public void addTest(String name) {
         if(!__result__.containsKey(name)) {
             SeleniumResult s = new SeleniumResult();
             s.name = name;
@@ -87,71 +90,71 @@ public abstract class SeleniumTest {
             throw new RuntimeException("Duplicate browser defined");
         }
     }
-	
-	public void addSubTest(String name, String stname) {
-	    if(__result__.containsKey(name)) {
-	        if(!__result__.get(name).__cresult__.containsKey(stname)) {
-	            __result__.get(name).__cresult__.put(stname, null);
-	        } else {
-	            throw new RuntimeException("Duplicate subtest defined");
-	        }
-	    } else {
-	        throw new RuntimeException("Invalid browser specified");
-	    }
-	}
-	
-	public void pushResult(SeleniumTestResult result)
-	{
-	    if(__subtestname__==null) {
-	        result.executionTime = System.nanoTime() - __teststarttime__;
-	        __result__.get(browserName).result = result;
-	    } else {
-	        __result__.get(browserName).__cresult__.put(__subtestname__, result);
-	    }
-	}
-	
-	public void startTest() {
-	    __teststarttime__ = System.nanoTime();
-	}
-	
-	public void newProvider(String name) {
-	    ___cxt___.newProvider(getPn(name));
-	}
-    
+
+    public void addSubTest(String name, String stname) {
+        if(__result__.containsKey(name)) {
+            if(!__result__.get(name).__cresult__.containsKey(stname)) {
+                __result__.get(name).__cresult__.put(stname, null);
+            } else {
+                throw new RuntimeException("Duplicate subtest defined");
+            }
+        } else {
+            throw new RuntimeException("Invalid browser specified");
+        }
+    }
+
+    public void pushResult(SeleniumTestResult result)
+    {
+        if(__subtestname__==null) {
+            result.executionTime = System.nanoTime() - __teststarttime__;
+            __result__.get(browserName).result = result;
+        } else {
+            __result__.get(browserName).__cresult__.put(__subtestname__, result);
+        }
+    }
+
+    public void startTest() {
+        __teststarttime__ = System.nanoTime();
+    }
+
+    public void newProvider(String name) {
+        ___cxt___.newProvider(getPn(name));
+    }
+
     public List<Map<String, String>> getProviderTestDataMap(String name) {
         return ___cxt___.getAnyProviderData(getPn(name), null);
     }
-	
-	//private transient String __provname__ = null;
-	private transient String __subtestname__ = null;
+
+    //private transient String __provname__ = null;
+    private transient String __subtestname__ = null;
     private transient long __subtestexecutiontime__ = 0L;
     private transient long __teststarttime__ = 0L;
-	private transient Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
-	
-	private transient AcceptanceTestContext ___cxt___ = null;
+    private transient Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
+
+    private transient AcceptanceTestContext ___cxt___ = null;
     private transient Map<String, Object> __vars__ = new LinkedHashMap<String, Object>();
-    
+
     public void ___add_var__(String name, Object val) {
         if(__vars__.containsKey(name)) {
             throw new RuntimeException("Variable " + name + " redefined");
         }
         __vars__.put(name, val);
     }
-    
+
     protected Object ___get_var__(String name) {
         if(!__vars__.containsKey(name)) {
             throw new RuntimeException("Variable " + name + " not defined");
         }
         return __vars__.get(name);
     }
-    
-	public static class SeleniumResult implements Serializable {
+
+    public static class SeleniumResult implements Serializable {
         private static final long serialVersionUID = 1L;
-	    
+
         private String name;
-        
+
         private SeleniumTestResult result;
-        
+
         private Map<String, SeleniumTestResult>  __cresult__ = new LinkedHashMap<String, SeleniumTestResult>();
 
         public SeleniumTestResult getResult()
@@ -168,52 +171,52 @@ public abstract class SeleniumTest {
         {
             return name;
         }
-	}
-	
-	public String evaluate(String tmpl) {
-	    if(tmpl.indexOf("$")==-1)return tmpl;
-	    try
+    }
+
+    public String evaluate(String tmpl) {
+        if(tmpl.indexOf("$")==-1)return tmpl;
+        try
         {
-	        if(__provdetails__.size()>0) {
-	            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
-	            for (int i=keys.size()-1;i>=0;i--)
+            if(__provdetails__.size()>0) {
+                ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+                for (int i=keys.size()-1;i>=0;i--)
                 {
-	                String pn = keys.get(i);
-	                Integer pp = __provdetails__.get(pn);
-	                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
-	                Map<String, Object> _mt = new HashMap<String, Object>();
-	                _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index));
-	                if(tmpl.indexOf("$v{")!=-1) {
-	                    tmpl = tmpl.replace("$v", "$");
-	                    _mt.putAll(__vars__);
-	                }
-	                tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
+                    String pn = keys.get(i);
+                    Integer pp = __provdetails__.get(pn);
+                    List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+                    Map<String, Object> _mt = new HashMap<String, Object>();
+                    _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index));
+                    if(tmpl.indexOf("$v{")!=-1) {
+                        tmpl = tmpl.replace("$v", "$");
+                        _mt.putAll(__vars__);
+                    }
+                    tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
                 }
-	        } else {
-	            Map<String, Object> _mt = new HashMap<String, Object>();
-	            _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index));
-	            if(tmpl.indexOf("$v{")!=-1) {
-	                tmpl = tmpl.replace("$v", "$");
-	            }
+            } else {
+                Map<String, Object> _mt = new HashMap<String, Object>();
+                _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index));
+                if(tmpl.indexOf("$v{")!=-1) {
+                    tmpl = tmpl.replace("$v", "$");
+                }
                 tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
-	        }
+            }
         }
         catch (Exception e)
         {
             e.printStackTrace();
         }
-	    return tmpl;
+        return tmpl;
     }
-	
-	public String getProviderDataValue(String key, boolean isVar) {
-	    if(isVar) {
-	        Object o = ___get_var__(key);
-	        if(o!=null && o instanceof String) {
-	            return o.toString();
-	        }
-	        return null;
-	    }
-	    if(__provdetails__.size()>0) {
+
+    public String getProviderDataValue(String key, boolean isVar) {
+        if(isVar) {
+            Object o = ___get_var__(key);
+            if(o!=null && o instanceof String) {
+                return o.toString();
+            }
+            return null;
+        }
+        if(__provdetails__.size()>0) {
             ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
             for (int i=keys.size()-1;i>=0;i--)
             {
@@ -232,9 +235,9 @@ public abstract class SeleniumTest {
             Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index);
             return _mt.get(key);
         }
-	}
-	
-	public Object getProviderDataValueO(String key, boolean isVar) {
+    }
+
+    public Object getProviderDataValueO(String key, boolean isVar) {
         if(isVar) {
             return ___get_var__(key);
         }
@@ -258,7 +261,7 @@ public abstract class SeleniumTest {
             return _mt.get(key);
         }
     }
-	
+
     public WebDriver get___d___()
     {
         if(___d___.size()==0)return null;
@@ -270,7 +273,7 @@ public abstract class SeleniumTest {
         ___d___.manage().timeouts().pageLoadTimeout(100, TimeUnit.SECONDS);
         this.___d___.add(___d___);
     }
-    
+
     public class PrettyPrintingMap<K, V> {
         private Map<K, V> map;
 
@@ -295,7 +298,7 @@ public abstract class SeleniumTest {
 
         }
     }
-    
+
     private String getPn(String name) {
         String pn = name;
         if(index>0) {
@@ -308,7 +311,7 @@ public abstract class SeleniumTest {
     {
         ___cxt___.getWorkflowContextHandler().addSuiteLevelParameter(index, name, value==null?null:value.toString());
     }
-    
+
     public void ___cxt___print_provider__(String name)
     {
         System.out.println(___cxt___.getAnyProviderData(getPn(name), null));
@@ -387,79 +390,79 @@ public abstract class SeleniumTest {
     protected WebDriver getWebDriver() {
         return ___d___.get(__wpos__);
     }
-	
-	@SuppressWarnings("rawtypes")
+
+    @SuppressWarnings("rawtypes")
     protected AndroidDriver getAndroidDriver() {
-	    if(___d___ instanceof AndroidDriver) {
-	        return (AndroidDriver)___d___;
-	    }
-	    return null;
-	}
-    
-	@SuppressWarnings("rawtypes")
+        if(___d___ instanceof AndroidDriver) {
+            return (AndroidDriver)___d___;
+        }
+        return null;
+    }
+
+    @SuppressWarnings("rawtypes")
     protected IOSDriver getIOSDriver() {
         if(___d___ instanceof IOSDriver) {
             return (IOSDriver)___d___;
         }
         return null;
     }
-    
+
     protected SelendroidDriver getSelendroidDriver() {
         if(___d___ instanceof SelendroidDriver) {
             return (SelendroidDriver)___d___;
         }
         return null;
     }
-	
-	public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
-	    this.name = name;
-	    this.___cxt___ = ___cxt___;
-	    this.index = index;
-	    //this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
-	}
-	
-	public static interface Functor<I, O> {
-	    O f(I i, I j);
-	}
-	
-	public static interface CondFunc {
+
+    public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
+        this.name = name;
+        this.___cxt___ = ___cxt___;
+        this.index = index;
+        //this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
+    }
+
+    public static interface Functor<I, O> {
+        O f(I i, I j);
+    }
+
+    public static interface CondFunc {
         Integer f(Object[] args);
     }
-	
-	protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
-	
-	protected String name;
-	
-	protected int index;
-	
-	protected String browserName;
-	
-	public void quit() {
-	    if(___d___.size()>0) {
-	        for (WebDriver d : ___d___)
+
+    protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
+
+    protected String name;
+
+    protected int index;
+
+    protected String browserName;
+
+    public void quit() {
+        if(___d___.size()>0) {
+            for (WebDriver d : ___d___)
             {
                 d.quit();
             }
-	    }
-	}
-    
+        }
+    }
+
     public abstract void close();
-    
+
     public abstract SeleniumTest copy(AcceptanceTestContext ctx, int index);
-	
-	public abstract Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception;
-	
-	public static class SeleniumTestResult implements Serializable {
+
+    public abstract Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception;
+
+    public static class SeleniumTestResult implements Serializable {
         private static final long serialVersionUID = 1L;
-        
+
         private Map<String, SerializableLogEntries> logs = new HashMap<String, SerializableLogEntries>();;
-        
+
         private boolean status;
-        
+
         private long executionTime;
 
         private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
-        
+
         public Map<String,SerializableLogEntries> getLogs()
         {
             return logs;
@@ -513,63 +516,63 @@ public abstract class SeleniumTest {
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
             this.logs.put("gatf", new SerializableLogEntries(entries));
         }
-	}
-	
-	public static void randomize(List<WebElement> le, String v1, String v2, String v3) {
-	    if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
-	            || (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
-	        int count = 10;
-	        if(v3!=null) {
-	            try {
-	                count = Integer.parseInt(v3);
-	            } catch (Exception e) {
-	            }
-	        }
-	        if(v1==null || v1.toLowerCase().equals("alpha")) {
-	            le.get(0).sendKeys(RandomStringUtils.randomAlphabetic(count));
-	        } else if(v1.toLowerCase().equals("alphanumeric")) {
-	            le.get(0).sendKeys(RandomStringUtils.randomAlphanumeric(count));
-	        } else if(v1.toLowerCase().equals("numeric")) {
-	            le.get(0).sendKeys(RandomStringUtils.randomNumeric(count));
-	        } else if(v1.toLowerCase().equals("value") && v2!=null) {
-	            le.get(0).sendKeys(v2);
-	        }
-	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
-	        int min = 1;
-	        int max = 99999;
-	        if(v1!=null) {
-	            try {
-	                min = Integer.parseInt(v1);
-	            } catch (Exception e) {
-	            }
-	        }
-	        if(v2!=null) {
-	            try {
-	                max = Integer.parseInt(v2);
-	            } catch (Exception e) {
-	            }
-	        }
-	        int num = (int)(min + (Math.random() * (max - min)));
-	        le.get(0).sendKeys(num+"");
-	    } else if (le.get(0).getTagName().toLowerCase().matches("select")) {
-	        randomizeSelect(le);
-	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("checkbox")) {
-	        le.get(0).click();
-	    } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("radio")) {
-	        le.get(0).click();
-	    }
-	}
-	
-	public void window(int pos) {
-	    if(pos>=0 && pos<___d___.size()) {
-	        __wpos__ = pos;
-	    } else {
-	        throw new RuntimeException("Invalid window number specified");
-	    }
-	}
-	
-	public void newWindow(LoggingPreferences lp) {
-	    try
+    }
+
+    public static void randomize(List<WebElement> le, String v1, String v2, String v3) {
+        if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
+                || (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
+            int count = 10;
+            if(v3!=null) {
+                try {
+                    count = Integer.parseInt(v3);
+                } catch (Exception e) {
+                }
+            }
+            if(v1==null || v1.toLowerCase().equals("alpha")) {
+                le.get(0).sendKeys(RandomStringUtils.randomAlphabetic(count));
+            } else if(v1.toLowerCase().equals("alphanumeric")) {
+                le.get(0).sendKeys(RandomStringUtils.randomAlphanumeric(count));
+            } else if(v1.toLowerCase().equals("numeric")) {
+                le.get(0).sendKeys(RandomStringUtils.randomNumeric(count));
+            } else if(v1.toLowerCase().equals("value") && v2!=null) {
+                le.get(0).sendKeys(v2);
+            }
+        } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
+            int min = 1;
+            int max = 99999;
+            if(v1!=null) {
+                try {
+                    min = Integer.parseInt(v1);
+                } catch (Exception e) {
+                }
+            }
+            if(v2!=null) {
+                try {
+                    max = Integer.parseInt(v2);
+                } catch (Exception e) {
+                }
+            }
+            int num = (int)(min + (Math.random() * (max - min)));
+            le.get(0).sendKeys(num+"");
+        } else if (le.get(0).getTagName().toLowerCase().matches("select")) {
+            randomizeSelect(le);
+        } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("checkbox")) {
+            le.get(0).click();
+        } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("radio")) {
+            le.get(0).click();
+        }
+    }
+
+    public void window(int pos) {
+        if(pos>=0 && pos<___d___.size()) {
+            __wpos__ = pos;
+        } else {
+            throw new RuntimeException("Invalid window number specified");
+        }
+    }
+
+    public void newWindow(LoggingPreferences lp) {
+        try
         {
             Method m = getClass().getMethod("setupDriver"+browserName, new Class[]{LoggingPreferences.class});
             if(m!=null) {
@@ -581,10 +584,84 @@ public abstract class SeleniumTest {
         {
             throw new RuntimeException("Invalid browser name specified");
         }
-	}
-	
-	public static void randomizeSelect(List<WebElement> le) {
-	    try
+    }
+
+    public void mzoompinch(Object ele, int x, int y, boolean isZoom) {
+        try
+        {
+            if(ele==null) {
+                int leftX = x;
+                int rightX = get___d___().manage().window().getSize().getWidth() + leftX;
+                int midX = (leftX + rightX) / 2;
+
+                int upperY = y;
+                int lowerY = get___d___().manage().window().getSize().getHeight() + upperY;
+                int midY = (upperY + lowerY) / 2;
+
+                int aX = (int) (midX * 0.3);
+                int aY = (int) (midY * 1.7);
+                int bX = (int) (midX * 0.8);
+                int bY = (int) (midY * 1.2);
+
+                int cX = (int) (midX * 1.7);
+                int cY = (int) (midY * 0.3);
+                int dX = (int) (midX * 1.2);
+                int dY = (int) (midY * 0.8);
+
+                TouchAction action0 = new TouchAction((MobileDriver)get___d___());
+                TouchAction action1 = new TouchAction((MobileDriver)get___d___());
+
+                if(isZoom) {
+                    action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
+                    action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
+                } else {
+                    action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
+                    action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
+                }
+
+                MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
+                mAction.add(action0).add(action1).perform();
+            } else if(ele instanceof WebElement) {
+                int leftX = ((WebElement)ele).getLocation().getX();
+                int rightX = ((WebElement)ele).getSize().getWidth() + leftX;
+                int midX = (leftX + rightX) / 2;
+
+                int upperY = ((WebElement)ele).getLocation().getY();
+                int lowerY = ((WebElement)ele).getSize().getHeight() + upperY;
+                int midY = (upperY + lowerY) / 2;
+
+                int aX = (int) (midX * 0.3);
+                int aY = (int) (midY * 1.7);
+                int bX = (int) (midX * 0.8);
+                int bY = (int) (midY * 1.2);
+
+                int cX = (int) (midX * 1.7);
+                int cY = (int) (midY * 0.3);
+                int dX = (int) (midX * 1.2);
+                int dY = (int) (midY * 0.8);
+
+                TouchAction action0 = new TouchAction((MobileDriver)get___d___());
+                TouchAction action1 = new TouchAction((MobileDriver)get___d___());
+
+                if(isZoom) {
+                    action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
+                    action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
+                } else {
+                    action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
+                    action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
+                }
+
+                MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
+                mAction.add(action0).add(action1).perform();
+            }
+        }
+        catch (Exception e)
+        {
+        }
+    }
+
+    public static void randomizeSelect(List<WebElement> le) {
+        try
         {
             Select s = new Select(le.get(0));
             if(s.getOptions().size()>0) {
@@ -620,29 +697,29 @@ public abstract class SeleniumTest {
         catch (Exception e)
         {
         }
-	}
-    
+    }
+
     public Object pluginize(String name, String signature, List<String> args, List<List<String>> args1) {
         try
         {
             String[] parts = signature.split("@");
             String clsname = parts[0].trim();
             String method = parts[1].trim();
-            
+
             Class<?> cls = Class.forName(clsname);
             Method meth = null, meth1 = null;
             boolean twoargs = true;
-            
+
             try {
                 meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
             } catch (Exception e) {
             }
-            
+
             if(meth==null) {
                 meth = cls.getMethod(method, new Class[]{Object[].class});
                 twoargs = false;
             }
-            
+
             try {
                 Method meth2 = cls.getMethod("isValidParams", new Class[]{List.class, List.class});
                 Boolean isValid = (Boolean)meth2.invoke(null, new Object[]{args, args1});
@@ -651,13 +728,13 @@ public abstract class SeleniumTest {
                 }
             } catch (Exception e) {
             }
-            
+
             Object[] nargs =  new Object[args.size()+3];
             int c = 0;
             int indx = -1;
             for (String arg : args) {
                 indx++;
-                
+
                 boolean parameterize = true;
                 try {
                     meth1 = cls.getMethod("isParameterizeFirstSetParam", new Class[]{String.class, int.class});
@@ -667,12 +744,12 @@ public abstract class SeleniumTest {
                     }
                 } catch (Exception e) {
                 }
-                
+
                 if(!parameterize) {
                     nargs[c++] = arg.trim();
                     continue;
                 }
-                
+
                 if(arg.trim().startsWith("${") && arg.trim().endsWith("}")) {
                     String vn = arg.trim().substring(2, arg.length()-1);
                     nargs[c++] = evaluate(vn);
@@ -699,7 +776,7 @@ public abstract class SeleniumTest {
                     nargs[c++] = arg;
                 }
             }
-            
+
             List<List<Object>> nargs1 = new ArrayList<List<Object>>();
             if(args1!=null) {
                 int indx1 = 0;
@@ -708,7 +785,7 @@ public abstract class SeleniumTest {
                     List<Object> nargs2 = new ArrayList<Object>();
                     for (String arg : narg) {
                         indx2++;
-                        
+
                         boolean parameterize = true;
                         try {
                             meth1 = cls.getMethod("isParameterizeSecondSetParam", new Class[]{String.class, int.class, int.class});
@@ -718,12 +795,12 @@ public abstract class SeleniumTest {
                             }
                         } catch (Exception e) {
                         }
-                        
+
                         if(!parameterize) {
                             nargs2.add(arg.trim());
                             continue;
                         }
-                        
+
                         if(arg.trim().startsWith("${") && arg.trim().endsWith("}")) {
                             String vn = arg.trim().substring(2, arg.length()-1);
                             nargs2.add(evaluate(vn));
@@ -749,19 +826,19 @@ public abstract class SeleniumTest {
                         } else {
                             nargs2.add(arg);
                         }
-                        
+
                         indx1++;
                     }
                     nargs1.add(nargs2);
                 }
-                
+
                 indx1++;
             }
-            
+
             nargs[c++] = nargs1;
             nargs[c++] = index==-1?0:index;
             nargs[c++] = ___cxt___;
-            
+
             return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
         }
         catch (Exception e)

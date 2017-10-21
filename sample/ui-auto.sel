@@ -1,5 +1,5 @@
-require "org.openqa.selenium.WebDriver"
 open chrome
+require "org.openqa.selenium.WebDriver"
 goto http://abc.com
 ??10 id@"inputUsername"
 type "admin" id@"inputUsername" 
@@ -59,7 +59,7 @@ window_set posx 100
 window_set posy 100
 window main
 window 1
-window "asdsa"
+window "2"
 window main
 var t css@"div[class=ssdfdsf]>nav>div>ul>li"
 import test.sel
@@ -99,8 +99,8 @@ zoom xpath@"sds"
 zoom 1 2
 pinch xpath@"sds"
 pinch 1 2
-tap 1 2 3 4
-tap 1 xpath@"sds" 2
+tap 1 2 3
+tap xpath@"sds" 2
 swipe 1 2 3 4 5
 rotate
 hidekeypad
@@ -171,3 +171,12 @@ api yourapitestcase
 	click text@"//sdsd" text >${mydate1}
 	click xpath@"//sdsd"
 }
+hoverclick class@"welcome_text" id@"signOut"
+??30 id@"UserName" actions sendKeys "test" moveto id@"sdsadsa" click clickhold release keyUp "a" keyDown "b" moveby 1 2
+?? id@"ptag" actions doubleclick
+?? id@"demo" text ="Hello World"
+?? id@"ptag" actions click
+doubleclick id@"ptag"
+?? id@"demo" text ="Hello World"
+dblclick id@"ptag"
+?? id@"demo" text ="Hello World"

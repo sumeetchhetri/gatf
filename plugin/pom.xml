@@ -4,13 +4,13 @@
 	<parent>
         <groupId>com.test</groupId>
         <artifactId>gatf-parent</artifactId>
-        <version>1.6</version>
+        <version>1.7</version>
     </parent>
     
 	<artifactId>gatf-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
 	<name>gatf-plugin</name>
-	<version>1.6</version>
+	<version>1.7</version>
 
 	<build>
 		<sourceDirectory>../src</sourceDirectory>
@@ -23,7 +23,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-plugin-plugin</artifactId>
-				<version>3.2</version>
+				<version>3.5</version>
 				<configuration>
 					<skipErrorNoDescriptorsFound>true</skipErrorNoDescriptorsFound>
 				</configuration>
