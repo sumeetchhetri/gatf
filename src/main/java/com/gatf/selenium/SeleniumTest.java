@@ -21,30 +21,45 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 import java.util.logging.Level;
 
+import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.codehaus.jackson.map.ObjectMapper;
+import org.openqa.selenium.By;
+import org.openqa.selenium.Keys;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.Rectangle;
+import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebDriver.TargetLocator;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.logging.Logs;
+import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.google.common.io.Resources;
 
 import io.appium.java_client.MobileDriver;
@@ -77,124 +92,142 @@ public abstract class SeleniumTest {
         add(LogType.SERVER);
     }};
 
-    private transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
-    private transient int __wpos__ = 0;
-    private transient Map<String, SeleniumResult> __result__ = new LinkedHashMap<String, SeleniumResult>();
-
-    public void addTest(String name) {
-        if(!__result__.containsKey(name)) {
-            SeleniumResult s = new SeleniumResult();
-            s.name = name;
-            __result__.put(name, s);
-        } else {
-            throw new RuntimeException("Duplicate browser defined");
+    private transient AcceptanceTestContext ___cxt___ = null;
+    
+    List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
+    
+    protected String name;
+    
+    protected transient int sessionNum = -1;
+    
+    protected int index;
+    
+    protected void nextSession() {
+        if(sessions.size()>sessionNum+1) {
+            sessionNum++;
         }
     }
-
-    public void addSubTest(String name, String stname) {
-        if(__result__.containsKey(name)) {
-            if(!__result__.get(name).__cresult__.containsKey(stname)) {
-                __result__.get(name).__cresult__.put(stname, null);
-            } else {
-                throw new RuntimeException("Duplicate subtest defined");
+    
+    protected void setSession(String sns, int sn, boolean startFlag) {
+        if(sn>=0 && sessions.size()>sn) {
+            sessionNum = sn;
+        } else if(sns!=null) {
+            sn = 0;
+            for (SeleniumTestSession s : sessions) {
+                if(s.sessionName.equalsIgnoreCase(sns)) {
+                    sessionNum = sn; 
+                }
+                sn++;
             }
-        } else {
-            throw new RuntimeException("Invalid browser specified");
+        } else if(sn==-1 && sns==null) {
+            sessionNum = 0;
+        }
+        if(startFlag) {
+            startTest();
         }
     }
-
+    
+    @SuppressWarnings("serial")
+    protected Set<String> addTest(String sessionName, String browserName) {
+        final SeleniumTestSession s = new SeleniumTestSession();
+        s.sessionName = sessionName;
+        s.browserName = browserName;
+        sessions.add(s);
+        if(!s.__result__.containsKey(browserName)) {
+            SeleniumResult r = new SeleniumResult();
+            r.browserName = browserName;
+            s.__result__.put(browserName, r);
+        } else {
+            //throw new RuntimeException("Duplicate browser defined");
+        }
+        return new HashSet<String>(){{add(s.sessionName); add((sessions.size()-1)+"");}};
+    }
+    
+    protected void startTest() {
+        if(getSession().__teststarttime__==0) {
+            getSession().__teststarttime__ = System.nanoTime();
+        }
+    }
+    
     public void pushResult(SeleniumTestResult result)
     {
-        if(__subtestname__==null) {
-            result.executionTime = System.nanoTime() - __teststarttime__;
-            __result__.get(browserName).result = result;
+        if(getSession().__subtestname__==null) {
+            result.executionTime = System.nanoTime() - getSession().__teststarttime__;
+            getSession().__result__.get(getSession().browserName).result = result;
         } else {
-            __result__.get(browserName).__cresult__.put(__subtestname__, result);
+            getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
+            RuntimeReportUtil.addEntry(index, result.status);
+        }
+    }
+    
+    protected void newProvider(String name) {
+        if(!getSession().providerTestDataMap.containsKey(name)) {
+            getSession().providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
         }
     }
 
-    public void startTest() {
-        __teststarttime__ = System.nanoTime();
+    protected List<Map<String, String>> getProviderTestDataMap(String name) {
+        return getAllProviderData(getPn(name));
     }
 
-    public void newProvider(String name) {
-        ___cxt___.newProvider(getPn(name));
+    private SeleniumTestSession getSession() {
+        return sessions.get(sessionNum);
     }
-
-    public List<Map<String, String>> getProviderTestDataMap(String name) {
-        return ___cxt___.getAnyProviderData(getPn(name), null);
-    }
-
-    //private transient String __provname__ = null;
-    private transient String __subtestname__ = null;
-    private transient long __subtestexecutiontime__ = 0L;
-    private transient long __teststarttime__ = 0L;
-    private transient Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
-
-    private transient AcceptanceTestContext ___cxt___ = null;
-    private transient Map<String, Object> __vars__ = new LinkedHashMap<String, Object>();
-
-    public void ___add_var__(String name, Object val) {
-        if(__vars__.containsKey(name)) {
-            throw new RuntimeException("Variable " + name + " redefined");
+    
+    protected boolean matchesSessionId(String sname, int sessionId) {
+        if(sname==null && sessionId==-1)return true;
+        if(StringUtils.isBlank(sname)) {
+            return sessionNum==sessionId;
+        } else {
+            int sn = 0;
+            for (SeleniumTestSession s : sessions) {
+                if(s.sessionName.equalsIgnoreCase(sname)) {
+                    return sessionNum==sn; 
+                }
+                sn++;
+            }
         }
-        __vars__.put(name, val);
+        return false;
+    }
+    
+    private List<Map<String, String>> getAllProviderData(String pn) {
+        List<Map<String, String>> ep = pn!=null?___cxt___.getAnyProviderData(pn, null):null;
+        List<Map<String, String>> tp = pn!=null?getSession().providerTestDataMap.get(pn):null;
+        List<Map<String, String>> fp = null;
+        if((ep!=null && tp!=null) || tp!=null) {
+            fp = tp;
+        } else if(ep!=null) {
+            fp = ep;
+        }
+        return fp;
+    }
+    
+    private Map<String, Object> getFinalDataMap(String pn, Integer pp) {
+        Map<String, Object> _mt = new HashMap<String, Object>();
+        List<Map<String, String>> fp = getAllProviderData(pn);
+        _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, CollectionUtils.isEmpty(fp)?null:fp.get(pp), index));
+        return _mt;
     }
 
-    protected Object ___get_var__(String name) {
-        if(!__vars__.containsKey(name)) {
-            throw new RuntimeException("Variable " + name + " not defined");
-        }
-        return __vars__.get(name);
-    }
-
-    public static class SeleniumResult implements Serializable {
-        private static final long serialVersionUID = 1L;
-
-        private String name;
-
-        private SeleniumTestResult result;
-
-        private Map<String, SeleniumTestResult>  __cresult__ = new LinkedHashMap<String, SeleniumTestResult>();
-
-        public SeleniumTestResult getResult()
-        {
-            return result;
-        }
-
-        public Map<String,SeleniumTestResult> getSubTestResults()
-        {
-            return __cresult__;
-        }
-
-        public String getName()
-        {
-            return name;
-        }
-    }
-
-    public String evaluate(String tmpl) {
+    protected String evaluate(String tmpl) {
         if(tmpl.indexOf("$")==-1)return tmpl;
         try
         {
-            if(__provdetails__.size()>0) {
-                ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+            if(getSession().__provdetails__.size()>0) {
+                ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
                 for (int i=keys.size()-1;i>=0;i--)
                 {
                     String pn = keys.get(i);
-                    Integer pp = __provdetails__.get(pn);
-                    List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
-                    Map<String, Object> _mt = new HashMap<String, Object>();
-                    _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index));
+                    Integer pp = getSession().__provdetails__.get(pn);
+                    Map<String, Object> _mt = getFinalDataMap(pn, pp);
                     if(tmpl.indexOf("$v{")!=-1) {
                         tmpl = tmpl.replace("$v", "$");
-                        _mt.putAll(__vars__);
+                        _mt.putAll(getSession().__vars__);
                     }
                     tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
                 }
             } else {
-                Map<String, Object> _mt = new HashMap<String, Object>();
-                _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, null, index));
+                Map<String, Object> _mt = getFinalDataMap(null, null);
                 if(tmpl.indexOf("$v{")!=-1) {
                     tmpl = tmpl.replace("$v", "$");
                 }
@@ -208,7 +241,7 @@ public abstract class SeleniumTest {
         return tmpl;
     }
 
-    public String getProviderDataValue(String key, boolean isVar) {
+    protected String getProviderDataValue(String key, boolean isVar) {
         if(isVar) {
             Object o = ___get_var__(key);
             if(o!=null && o instanceof String) {
@@ -216,13 +249,13 @@ public abstract class SeleniumTest {
             }
             return null;
         }
-        if(__provdetails__.size()>0) {
-            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+        if(getSession().__provdetails__.size()>0) {
+            ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
             for (int i=keys.size()-1;i>=0;i--)
             {
                 String pn = keys.get(i);
-                Integer pp = __provdetails__.get(pn);
-                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+                Integer pp = getSession().__provdetails__.get(pn);
+                List<Map<String, String>> _t = getAllProviderData(pn);
                 if(_t!=null && _t.get(pp)!=null) {
                     Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index);
                     if(_mt.containsKey(key)) {
@@ -237,17 +270,17 @@ public abstract class SeleniumTest {
         }
     }
 
-    public Object getProviderDataValueO(String key, boolean isVar) {
+    protected Object getProviderDataValueO(String key, boolean isVar) {
         if(isVar) {
             return ___get_var__(key);
         }
-        if(__provdetails__.size()>0) {
-            ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+        if(getSession().__provdetails__.size()>0) {
+            ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
             for (int i=keys.size()-1;i>=0;i--)
             {
                 String pn = keys.get(i);
-                Integer pp = __provdetails__.get(pn);
-                List<Map<String, String>> _t = ___cxt___.getAnyProviderData(pn, null);
+                Integer pp = getSession().__provdetails__.get(pn);
+                List<Map<String, String>> _t = getAllProviderData(pn);
                 if(_t!=null && _t.get(pp)!=null) {
                     Map<String, String> _mt = ___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, _t.get(pp), index);
                     if(_mt.containsKey(key)) {
@@ -261,20 +294,46 @@ public abstract class SeleniumTest {
             return _mt.get(key);
         }
     }
-
-    public WebDriver get___d___()
-    {
-        if(___d___.size()==0)return null;
-        return ___d___.get(__wpos__);
+    
+    protected void ___add_var__(String name, Object val) {
+        if(getSession().__vars__.containsKey(name)) {
+            throw new RuntimeException("Variable " + name + " redefined");
+        }
+        getSession().__vars__.put(name, val);
     }
 
-    public void set___d___(WebDriver ___d___)
+    protected Object ___get_var__(String name) {
+        if(!getSession().__vars__.containsKey(name)) {
+            throw new RuntimeException("Variable " + name + " not defined");
+        }
+        return getSession().__vars__.get(name);
+    }
+    
+    protected void addSubTest(String browserName, String stname) {
+        if(getSession().__result__.containsKey(browserName)) {
+            if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
+                getSession().__result__.get(browserName).__cresult__.put(stname, null);
+            } else {
+                throw new RuntimeException("Duplicate subtest defined");
+            }
+        } else {
+            throw new RuntimeException("Invalid browser specified");
+        }
+    }
+
+    protected WebDriver get___d___()
+    {
+        if(getSession().___d___.size()==0)return null;
+        return getSession().___d___.get(getSession().__wpos__);
+    }
+
+    protected void set___d___(WebDriver ___d___)
     {
         ___d___.manage().timeouts().pageLoadTimeout(100, TimeUnit.SECONDS);
-        this.___d___.add(___d___);
+        getSession().___d___.add(___d___);
     }
 
-    public class PrettyPrintingMap<K, V> {
+    protected class PrettyPrintingMap<K, V> {
         private Map<K, V> map;
 
         public PrettyPrintingMap(Map<K, V> map) {
@@ -307,109 +366,104 @@ public abstract class SeleniumTest {
         return pn;
     }
 
-    public void ___cxt___add_param__(String name, Object value)
+    protected void ___cxt___add_param__(String name, Object value)
     {
         ___cxt___.getWorkflowContextHandler().addSuiteLevelParameter(index, name, value==null?null:value.toString());
     }
 
-    public void ___cxt___print_provider__(String name)
+    protected void ___cxt___print_provider__(String name)
     {
-        System.out.println(___cxt___.getAnyProviderData(getPn(name), null));
+        System.out.println(getAllProviderData(getPn(name)));
     }
 
-    public void ___cxt___print_provider__json(String name)
+    protected void ___cxt___print_provider__json(String name)
     {
         try
         {
-            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(___cxt___.getAnyProviderData(getPn(name), null)));
+            System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(getAllProviderData(getPn(name))));
         }
         catch (Exception e)
         {
         }
     }
 
-    public AcceptanceTestContext get___cxt___()
+    protected AcceptanceTestContext get___cxt___()
     {
         return ___cxt___;
     }
 
-    public void set___cxt___(AcceptanceTestContext ___cxt___)
+    protected void set___cxt___(AcceptanceTestContext ___cxt___)
     {
         this.___cxt___ = ___cxt___;
     }
 
-    public Map<String, SeleniumResult> get__result__()
+    public List<SeleniumTestSession> get__sessions__()
     {
-        return __result__;
+        return sessions;
     }
 
-    public void set__provname__(String __provname__)
+    protected void set__provname__(String __provname__)
     {
-        this.__provdetails__.put(getPn(__provname__), -1);
+        getSession().__provdetails__.put(getPn(__provname__), -1);
     }
 
-    public void set__provpos__(String __provname__, int __provpos__)
+    protected void set__provpos__(String __provname__, int __provpos__)
     {
-        this.__provdetails__.put(getPn(__provname__), __provpos__);
+        getSession().__provdetails__.put(getPn(__provname__), __provpos__);
     }
 
-    public void rem__provname__(String __provname__)
+    protected void rem__provname__(String __provname__)
     {
-        this.__provdetails__.remove(getPn(__provname__));
+        getSession().__provdetails__.remove(getPn(__provname__));
     }
 
-    public void set__subtestname__(String __subtestname__)
+    protected void set__subtestname__(String __subtestname__)
     {
         if(__subtestname__!=null) {
-            __subtestexecutiontime__ = System.nanoTime();
-            if(__provdetails__.size()>0) {
+            getSession().__subtestexecutiontime__ = System.nanoTime();
+            if(getSession().__provdetails__.size()>0) {
                 String fstn = "";
-                ArrayList<String> keys = new ArrayList<String>(__provdetails__.keySet());
+                ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
                 for (int i=keys.size()-1;i>=0;i--)
                 {
                     String pn = keys.get(i);
-                    Integer pp = __provdetails__.get(pn);
+                    Integer pp = getSession().__provdetails__.get(pn);
                     fstn += pn + "(" + pp + ") ";
                 }
                 __subtestname__ = fstn + __subtestname__;
             }
         } else {
-            __subtestexecutiontime__ = System.nanoTime() - __subtestexecutiontime__;
-            if(this.__subtestname__!=null) {
-                __result__.get(browserName).__cresult__.get(this.__subtestname__).executionTime = __subtestexecutiontime__;
+            getSession().__subtestexecutiontime__ = System.nanoTime() - getSession().__subtestexecutiontime__;
+            if(getSession().__subtestname__!=null) {
+                getSession().__result__.get(getSession().browserName).__cresult__.get(getSession().__subtestname__).executionTime = getSession().__subtestexecutiontime__;
             }
         }
-        this.__subtestname__ = __subtestname__;
-    }
-
-    public void setBrowserName(String browserName)
-    {
-        this.browserName = browserName;
+        getSession().__subtestname__ = __subtestname__;
     }
 
     protected WebDriver getWebDriver() {
-        return ___d___.get(__wpos__);
+        return getSession().___d___.get(getSession().__wpos__);
     }
 
     @SuppressWarnings("rawtypes")
     protected AndroidDriver getAndroidDriver() {
-        if(___d___ instanceof AndroidDriver) {
-            return (AndroidDriver)___d___;
+        if(getSession().___d___ instanceof AndroidDriver) {
+            return (AndroidDriver)getSession().___d___;
         }
         return null;
     }
 
     @SuppressWarnings("rawtypes")
     protected IOSDriver getIOSDriver() {
-        if(___d___ instanceof IOSDriver) {
-            return (IOSDriver)___d___;
+        if(getSession().___d___ instanceof IOSDriver) {
+            return (IOSDriver)getSession().___d___;
         }
         return null;
     }
 
     protected SelendroidDriver getSelendroidDriver() {
-        if(___d___ instanceof SelendroidDriver) {
-            return (SelendroidDriver)___d___;
+        if(getSession().___d___ instanceof SelendroidDriver) {
+            return (SelendroidDriver)getSession().___d___;
         }
         return null;
     }
@@ -421,6 +475,10 @@ public abstract class SeleniumTest {
         //this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
     }
 
+    public String getName() {
+        return name;
+    }
+
     public static interface Functor<I, O> {
         O f(I i, I j);
     }
@@ -429,19 +487,22 @@ public abstract class SeleniumTest {
         Integer f(Object[] args);
     }
 
-    protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
-
-    protected String name;
-
-    protected int index;
-
-    protected String browserName;
-
     public void quit() {
-        if(___d___.size()>0) {
-            for (WebDriver d : ___d___)
+        if(getSession().___d___.size()>0) {
+            for (WebDriver d : getSession().___d___)
             {
                 d.quit();
+            }
+        }
+    }
+    
+    public void quitAll() {
+        for (SeleniumTestSession s : sessions) {
+            if(s.___d___.size()>0) {
+                for (WebDriver d : s.___d___)
+                {
+                    d.quit();
+                }
             }
         }
     }
@@ -450,7 +511,14 @@ public abstract class SeleniumTest {
 
     public abstract SeleniumTest copy(AcceptanceTestContext ctx, int index);
 
-    public abstract Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception;
+    public abstract List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception;
+    
+    protected boolean checkifSessionIdExistsInSet(Set<String> st, String sname, String sid) {
+        if(sname==null && sid==null)return true;
+        if(sname!=null && st.contains(sname))return true;
+        if(sid!=null && st.contains(sid))return true;
+        return false;
+    }
 
     public static class SeleniumTestResult implements Serializable {
         private static final long serialVersionUID = 1L;
@@ -459,7 +527,7 @@ public abstract class SeleniumTest {
 
         private boolean status;
 
-        private long executionTime;
+        long executionTime;
 
         private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
 
@@ -482,7 +550,7 @@ public abstract class SeleniumTest {
         public SeleniumTestResult(WebDriver d, SeleniumTest test, LoggingPreferences ___lp___)
         {
             this.status = true;
-            this.internalTestRes = test.internalTestRs;
+            this.internalTestRes = test.getSession().internalTestRs;
             Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
@@ -494,7 +562,7 @@ public abstract class SeleniumTest {
         }
         public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, LoggingPreferences ___lp___) {
             this.status = false;
-            this.internalTestRes = test.internalTestRs;
+            this.internalTestRes = test.getSession().internalTestRs;
             Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
@@ -510,7 +578,7 @@ public abstract class SeleniumTest {
         }
         public SeleniumTestResult(SeleniumTest test, Throwable cause) {
             this.status = false;
-            this.internalTestRes = test.internalTestRs;
+            this.internalTestRes = test.getSession().internalTestRs;
             List<LogEntry> entries = new ArrayList<LogEntry>();
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
@@ -518,41 +586,54 @@ public abstract class SeleniumTest {
         }
     }
 
-    public static void randomize(List<WebElement> le, String v1, String v2, String v3) {
+    protected static void randomize(List<WebElement> le, String v1, String v2, String v3) {
         if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
                 || (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
             int count = 10;
-            if(v3!=null) {
+            if(StringUtils.isNotBlank(v3)) {
                 try {
                     count = Integer.parseInt(v3);
                 } catch (Exception e) {
                 }
             }
-            if(v1==null || v1.toLowerCase().equals("alpha")) {
+            if(v1.toLowerCase().equals("alpha") || v1.toLowerCase().equals("alphanumeric") || v1.toLowerCase().equals("numeric")) {
+                if(StringUtils.isNotBlank(v2)) {
+                    try {
+                        count = Integer.parseInt(v2);
+                    } catch (Exception e) {
+                    }
+                }
+            }
+            if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
                 le.get(0).sendKeys(RandomStringUtils.randomAlphabetic(count));
             } else if(v1.toLowerCase().equals("alphanumeric")) {
                 le.get(0).sendKeys(RandomStringUtils.randomAlphanumeric(count));
             } else if(v1.toLowerCase().equals("numeric")) {
-                le.get(0).sendKeys(RandomStringUtils.randomNumeric(count));
+                String fv = RandomStringUtils.randomNumeric(count);
+                long v = Long.parseLong(fv);
+                if(v==0) {
+                    fv = "1";
+                }
+                le.get(0).sendKeys(fv);
             } else if(v1.toLowerCase().equals("value") && v2!=null) {
                 le.get(0).sendKeys(v2);
             }
         } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
-            int min = 1;
-            int max = 99999;
-            if(v1!=null) {
+            long min = 0;
+            long max = 99999;
+            if(StringUtils.isNotBlank(v1)) {
                 try {
-                    min = Integer.parseInt(v1);
+                    min = Long.parseLong(v1);
                 } catch (Exception e) {
                 }
             }
-            if(v2!=null) {
+            if(StringUtils.isNotBlank(v2)) {
                 try {
-                    max = Integer.parseInt(v2);
+                    max = Long.parseLong(v2);
                 } catch (Exception e) {
                 }
             }
-            int num = (int)(min + (Math.random() * (max - min)));
+            long num = (long)(min + (Math.random() * (max - min)));
             le.get(0).sendKeys(num+"");
         } else if (le.get(0).getTagName().toLowerCase().matches("select")) {
             randomizeSelect(le);
@@ -563,22 +644,22 @@ public abstract class SeleniumTest {
         }
     }
 
-    public void window(int pos) {
-        if(pos>=0 && pos<___d___.size()) {
-            __wpos__ = pos;
+    protected void window(int pos) {
+        if(pos>=0 && pos<getSession().___d___.size()) {
+            getSession().__wpos__ = pos;
         } else {
             throw new RuntimeException("Invalid window number specified");
         }
     }
 
-    public void newWindow(LoggingPreferences lp) {
+    protected void newWindow(LoggingPreferences lp) {
         try
         {
-            Method m = getClass().getMethod("setupDriver"+browserName, new Class[]{LoggingPreferences.class});
+            Method m = getClass().getMethod("setupDriver"+getSession().browserName, new Class[]{LoggingPreferences.class});
             if(m!=null) {
                 m.invoke(this, new Object[]{lp});
             }
-            __wpos__++;
+            getSession().__wpos__++;
         }
         catch (Exception e)
         {
@@ -586,7 +667,8 @@ public abstract class SeleniumTest {
         }
     }
 
-    public void mzoompinch(Object ele, int x, int y, boolean isZoom) {
+    @SuppressWarnings("rawtypes")
+    protected void mzoompinch(Object ele, int x, int y, boolean isZoom) {
         try
         {
             if(ele==null) {
@@ -660,7 +742,7 @@ public abstract class SeleniumTest {
         }
     }
 
-    public static void randomizeSelect(List<WebElement> le) {
+    protected static void randomizeSelect(List<WebElement> le) {
         try
         {
             Select s = new Select(le.get(0));
@@ -699,7 +781,7 @@ public abstract class SeleniumTest {
         }
     }
 
-    public Object pluginize(String name, String signature, List<String> args, List<List<String>> args1) {
+    protected Object pluginize(String name, String signature, List<String> args, List<List<String>> args1) {
         try
         {
             String[] parts = signature.split("@");
@@ -845,5 +927,473 @@ public abstract class SeleniumTest {
         {
             throw new RuntimeException("Problem executing plugin " + name, e);
         }
+    }
+    
+    public class SelFunc<T, R> implements Function<T, R> {
+        Object[] ____wi = new Object[2];
+
+        @Override
+        public R apply(T t) {
+            return null;
+        }
+    }
+    
+    @SuppressWarnings("serial")
+    private static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder) {
+        String by = finder.substring(0, finder.indexOf("@")).trim();
+        if(by.charAt(0)==by.charAt(by.length()-1)) {
+            if(by.charAt(0)=='"' || by.charAt(0)=='\'') {
+                by = by.substring(1, by.length()-1);
+            }
+        }
+        String classifier = finder.substring(finder.indexOf("@")+1).trim();
+        if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
+            if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
+                classifier = classifier.substring(1, classifier.length()-1);
+            }
+        }
+        List< WebElement> el = null;
+        if(by.equalsIgnoreCase("id")) {
+            el = By.id(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("name")) {
+            el = By.name(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("class") || by.equalsIgnoreCase("className")) {
+            el = By.className(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("tag") || by.equalsIgnoreCase("tagname")) {
+            el = By.tagName(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("xpath")) {
+            el = By.xpath(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
+            el = By.cssSelector(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("text")) {
+            el = By.xpath("//*[contains(text(), '" + classifier+"']").findElements(sc);
+        } else if(by.equalsIgnoreCase("linkText")) {
+            el = By.linkText(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("partialLinkText")) {
+            el = By.partialLinkText(classifier).findElements(sc);
+        } else if(by.equalsIgnoreCase("active")) {
+            el = new ArrayList<WebElement>(){{add(((TargetLocator)d).activeElement());}};
+        }
+        return el;
+    }
+    
+    private void elementAction(List<WebElement> ret, String action, String tvalue) {
+        if(action.equalsIgnoreCase("click")) {
+            for(final WebElement we: ret) {
+                we.click();
+                break;
+            }
+        } else if(action.equalsIgnoreCase("hover")) {
+            for(final WebElement we: ret) {
+                Actions ac = new Actions(get___d___());
+                ac.moveToElement(we).perform();
+                break;
+            }
+        } else if(action.equalsIgnoreCase("hoverandclick")) {
+            for(final WebElement we: ret) {
+                Actions ac = new Actions(get___d___());
+                ac.moveToElement(we).click().perform();
+                break;
+            }
+        } else if(action.equalsIgnoreCase("clear")) {
+            for(final WebElement we: ret) {
+                we.clear();
+                break;
+            }
+        } else if(action.equalsIgnoreCase("submit")) {
+            for(final WebElement we: ret) {
+                we.submit();
+                break;
+            }
+        } else if(action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys")) {
+            for(final WebElement we: ret) {
+                we.sendKeys(tvalue);
+                break;
+            }
+        } else if(action.equalsIgnoreCase("select")) {
+            
+        } else if(action.equalsIgnoreCase("chord")) {
+            for(final WebElement we: ret) {
+                we.sendKeys(Keys.chord(tvalue));
+                break;
+            }
+        } else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("dobleclick")) {
+            for(final WebElement we: ret) {
+                Actions ac = new Actions(get___d___());
+                ac.moveToElement(we).doubleClick().perform();
+                break;
+            }
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+    protected List<WebElement> handleWaitFunc(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+            boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+        return (List<WebElement>)handleWaitOrTransientProv(sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+    }
+    
+    @SuppressWarnings("unchecked")
+    protected List<String[]> transientProviderData(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+            boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+        return (List<String[]>)handleWaitOrTransientProv(sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+    }
+    
+    @SuppressWarnings({"unchecked", "unused"})
+    private Object handleWaitOrTransientProv(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+            boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+        final WebDriver wsc = (WebDriver) sc;
+        final Object[] o = new Object[2];
+        final SeleniumTest test = this;
+        long timeoutRemaining = 0;
+        if(timeOutInSeconds<=0) {
+            List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
+            if (el == null || el.isEmpty())  {
+            } else {
+                boolean enabledCheck = false;
+                if(action!=null && (action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
+                    enabledCheck = true;
+                }
+                
+                WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
+                if(elo!=null) {
+                    o[0] = el;
+                    o[1] = ce;
+                }
+            }
+        } else {
+            long start = System.currentTimeMillis();
+            try {
+                (new WebDriverWait(wsc, timeOutInSeconds)).until(new Function<WebDriver, Boolean>() {
+                    public Boolean apply(WebDriver input) {
+                        List<WebElement> ___ce___ = ce;
+                        List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
+                        if (el == null || el.isEmpty()) return false;
+                        
+                        boolean enabledCheck = false;
+                        if(action!=null && (action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
+                            enabledCheck = true;
+                        }
+                        
+                        WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
+                        if(elo!=null) {
+                            o[0] = el;
+                            o[1] = ___ce___;
+                            return true;
+                        }
+                        return false;
+                      }
+                    });
+            } catch (org.openqa.selenium.TimeoutException e) {
+                throw new RuntimeException(exmsg, e);
+            }
+            timeoutRemaining = timeOutInSeconds - (System.currentTimeMillis() - start)/1000;
+        }
+        List<WebElement> ret = (List<WebElement>)o[0];
+        Object resp = ret;
+        boolean flag = true;
+        if(ret!=null) {
+            if((StringUtils.isNotBlank(value) || (values!=null && values.length>0)) && subselector!=null && !subselector.isEmpty()) {
+                if(value!=null)
+                {
+                    if(byselsame)
+                    {
+                        String rhs = null;
+                        if(subselector.equalsIgnoreCase("title")) {
+                            rhs = ((WebDriver)sc).getTitle();
+                        } else if(subselector.equalsIgnoreCase("currentUrl")) {
+                            rhs = ((WebDriver)sc).getCurrentUrl();
+                        } else if(subselector.equalsIgnoreCase("pageSource")) {
+                            rhs = ((WebDriver)sc).getPageSource();
+                        } else if(subselector.equalsIgnoreCase("width")) {
+                            rhs = String.valueOf(get___d___().manage().window().getSize().getWidth());
+                        } else if(subselector.equalsIgnoreCase("height")) {
+                            rhs = String.valueOf(get___d___().manage().window().getSize().getHeight());
+                        } else if(subselector.equalsIgnoreCase("xpos")) {
+                            rhs = String.valueOf(get___d___().manage().window().getPosition().getX());
+                        } else if(subselector.equalsIgnoreCase("ypos")) {
+                            rhs = String.valueOf(get___d___().manage().window().getPosition().getY());
+                        } else if(subselector.equalsIgnoreCase("alerttext")) {
+                            rhs = String.valueOf(get___d___().switchTo().alert().getText());
+                        }
+                        
+                        if(rhs!=null) {
+                            if(oper.startsWith("<=")) {
+                                flag &= value.compareTo(rhs)<=0;
+                            } else if(oper.startsWith(">=")) {
+                                flag &= value.compareTo(rhs)>=0;
+                            } else if(oper.startsWith("=")) {
+                                flag &= value.compareTo(rhs)==0;
+                            } else if(oper.startsWith("<")) {
+                                flag &= value.compareTo(rhs)<0;
+                            } else if(oper.startsWith(">")) {
+                                flag &= value.compareTo(rhs)>0;
+                            } else if(oper.startsWith("!=")) {
+                                flag &= value.compareTo(rhs)!=0;
+                            } else if(oper.startsWith("%") && oper.endsWith("%")) {
+                                flag &= value.contains(rhs);
+                            } else if(oper.startsWith("%")) {
+                                flag &= value.startsWith(rhs);
+                            } else if(oper.endsWith("%")) {
+                                flag &= value.endsWith(rhs);
+                            }
+                        }
+                    }
+    
+                    for(final WebElement we: ret) {
+                        String rhs = null;
+                        if(subselector.equalsIgnoreCase("text")) {
+                            rhs = we.getText();
+                        } else if(subselector.equalsIgnoreCase("tagname")) {
+                            rhs = we.getTagName();
+                        } else if(subselector.toLowerCase().startsWith("attr@")) {
+                            rhs = we.getAttribute(value);
+                        } else if(subselector.toLowerCase().startsWith("cssvalue@")) {
+                            rhs = we.getCssValue(value);
+                        } else if(subselector.equalsIgnoreCase("width")) {
+                            rhs = String.valueOf(we.getSize().getWidth());
+                        } else if(subselector.equalsIgnoreCase("height")) {
+                            rhs = String.valueOf(we.getSize().getHeight());
+                        } else if(subselector.equalsIgnoreCase("xpos")) {
+                            rhs = String.valueOf(we.getLocation().getX());
+                        } else if(subselector.equalsIgnoreCase("ypos")) {
+                            rhs = String.valueOf(we.getLocation().getY());
+                        }
+                        
+                        if(rhs!=null) {
+                            if(oper.startsWith("<=")) {
+                                flag &= value.compareTo(rhs)<=0;
+                            } else if(oper.startsWith(">=")) {
+                                flag &= value.compareTo(rhs)>=0;
+                            } else if(oper.startsWith("=")) {
+                                flag &= value.compareTo(rhs)==0;
+                            } else if(oper.startsWith("<")) {
+                                flag &= value.compareTo(rhs)<0;
+                            } else if(oper.startsWith(">")) {
+                                flag &= value.compareTo(rhs)>0;
+                            } else if(oper.startsWith("!=")) {
+                                flag &= value.compareTo(rhs)!=0;
+                            } else if(oper.startsWith("%") && oper.endsWith("%")) {
+                                flag &= value.contains(rhs);
+                            } else if(oper.startsWith("%")) {
+                                flag &= value.startsWith(rhs);
+                            } else if(oper.endsWith("%")) {
+                                flag &= value.endsWith(rhs);
+                            }
+                        }
+
+                        break;
+                    }
+                } else if(values!=null && values.length>0) {
+                    for(final WebElement we: ret) {
+                        String rhs = null;
+                        if(subselector.equalsIgnoreCase("text")) {
+                            rhs = we.getText();
+                        } else if(subselector.equalsIgnoreCase("tagname")) {
+                            rhs = we.getTagName();
+                        } else if(subselector.toLowerCase().startsWith("attr@")) {
+                            rhs = we.getAttribute(value);
+                        } else if(subselector.toLowerCase().startsWith("cssvalue@")) {
+                            rhs = we.getCssValue(value);
+                        } else if(subselector.equalsIgnoreCase("width")) {
+                            rhs = String.valueOf(we.getSize().getWidth());
+                        } else if(subselector.equalsIgnoreCase("height")) {
+                            rhs = String.valueOf(we.getSize().getHeight());
+                        } else if(subselector.equalsIgnoreCase("xpos")) {
+                            rhs = String.valueOf(we.getLocation().getX());
+                        } else if(subselector.equalsIgnoreCase("ypos")) {
+                            rhs = String.valueOf(we.getLocation().getY());
+                        }
+                        
+                        if(rhs!=null) {
+                            if(oper.startsWith("<=")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag |= nvalue.compareTo(rhs)<=0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith(">=")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.compareTo(rhs)>=0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith("=")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.compareTo(rhs)==0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith("<")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.compareTo(rhs)<0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith(">")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.compareTo(rhs)>0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith("!=")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.compareTo(rhs)!=0;
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith("%") && oper.endsWith("%")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.contains(rhs);
+                                }
+                                flag &= tflag;
+                            } else if(oper.startsWith("%")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.startsWith(rhs);
+                                }
+                                flag &= tflag;
+                            } else if(oper.endsWith("%")) {
+                                boolean tflag = true;
+                                for (int i=0;i<values.length;i++) {
+                                    String nvalue = values[i];
+                                    tflag &= nvalue.endsWith(rhs);
+                                }
+                                flag &= tflag;
+                            }
+                        }
+                        
+                        break;
+                    }
+                }
+            } else if(action!=null) {
+                try {
+                    elementAction(ret, action, tvalue);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            } else if("selected".equalsIgnoreCase(subselector) || "enabled".equalsIgnoreCase(subselector) || "visible".equalsIgnoreCase(subselector)) {
+                for(final WebElement we: ret) {
+                    if(subselector.equalsIgnoreCase("selected")) {
+                        flag &= we.isSelected();
+                    } else if(subselector.equalsIgnoreCase("enabled")) {
+                        flag &= we.isEnabled();
+                    } else if(subselector.equalsIgnoreCase("visible")) {
+                        flag &= we.isDisplayed();
+                    }
+                    break;
+                }
+            } else if(subselector!=null) {
+                List<String> ssl = Arrays.asList(subselector.split("[\t ]*,[\t ]*"));
+                List<String[]> rtl = new java.util.ArrayList<String[]>();
+                for(final WebElement we: ret) {
+                    String[] t = new String[ssl.size()];
+                    for (int i=0;i<ssl.size();i++)
+                    {
+                        if(ssl.get(i).equalsIgnoreCase("text")) {
+                            t[i] = we.getText();
+                        } else if(ssl.get(i).equalsIgnoreCase("tagname")) {
+                            t[i] = we.getTagName();
+                        } else if(ssl.get(i).toLowerCase().startsWith("attr@")) {
+                            String atname = ssl.get(i).substring(5);
+                            if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+                                atname = atname.substring(1, atname.length()-1);
+                            }
+                            t[i] = we.getAttribute(atname);
+                        } else if(ssl.get(i).toLowerCase().startsWith("cssvalue@")) {
+                            String atname = ssl.get(i).substring(9);
+                            if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+                                atname = atname.substring(1, atname.length()-1);
+                            }
+                            t[i] = we.getCssValue(atname);
+                        } else if(ssl.get(i).equalsIgnoreCase("width")) {
+                            t[i] = String.valueOf(we.getSize().getWidth());
+                        } else if(ssl.get(i).equalsIgnoreCase("height")) {
+                            t[i] = String.valueOf(we.getSize().getHeight());
+                        } else if(ssl.get(i).equalsIgnoreCase("xpos")) {
+                            t[i] = String.valueOf(we.getLocation().getX());
+                        } else if(ssl.get(i).equalsIgnoreCase("ypos")) {
+                            t[i] = String.valueOf(we.getLocation().getY());
+                        }
+                    }
+                    rtl.add(t);
+                }
+                resp = rtl;
+            }
+        }
+        if(!noExcep && !flag) {
+            throw new RuntimeException(exmsg);
+        } else if(noExcep) {
+            resp = null;
+        }
+        return resp;
+    }
+    
+    protected void sleep(long wait) {
+        try {
+            Thread.sleep(wait);
+        } catch (Exception ___e___15) {
+        }
+    }
+    
+    private static int getZIndex(WebElement el) {
+        String zindex = el.getCssValue("z-index");
+        if(zindex!=null) {
+            try {
+                return Integer.parseInt(el.getCssValue("z-index"));
+            } catch (Exception e) {
+            }
+        }
+        return 0;
+    }
+    
+    private static boolean checkRectangleOnTop(Rectangle trec, Rectangle orec) {
+        Point tmid = new Point(trec.getX() + trec.getWidth()/2, trec.getY() + trec.getHeight()/2);
+        return tmid.getX()>orec.getX() && tmid.getX()<(orec.getX()+orec.getWidth()) && tmid.getY()>orec.getY() && tmid.getY()<(orec.getY()+orec.getHeight());
+    }
+    
+    private static Rectangle getRect(WebElement e) {
+        return new Rectangle(e.getLocation().getX(), e.getLocation().getY(), e.getSize().getWidth(), e.getSize().getHeight());
+    }
+    
+    public static ExpectedCondition<WebElement> elementInteractable(SeleniumTest test, WebElement element, boolean enabledCheck, String ... layers) {
+        return new ExpectedCondition<WebElement>() {
+            @Override
+            public WebElement apply(WebDriver driver) {
+                try {
+                    boolean flag = element.isDisplayed() && (!enabledCheck || (enabledCheck && element.isEnabled()));
+                    if(flag && layers!=null && layers.length>0) {
+                        int tzl = getZIndex(element);
+                        Rectangle trec = getRect(element);
+                        for (String layer : layers) {
+                            try {
+                                List<WebElement> el = getElements(test.get___d___(), test.get___d___(), layer);
+                                if(el!=null && el.size()>0 && /*el.get(0).isEnabled() &&*/ el.get(0).isDisplayed()) {
+                                    int ozl = getZIndex(el.get(0));
+                                    Rectangle orec = getRect(el.get(0));
+                                    boolean temp = ozl>tzl && checkRectangleOnTop(trec, orec);
+                                    if(!temp) {
+                                        flag = false;
+                                        break;
+                                    }
+                                }
+                            } catch (Exception e) {
+                            }
+                        }
+                    }
+                    return flag ? element : null;
+                } catch (Exception e) {
+                    return null;
+                }
+            }
+        };
     }
 }

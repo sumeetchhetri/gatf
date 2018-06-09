@@ -50,6 +50,8 @@ public class DataSourceProfiler {
 			this.context = context;
 			
 			XStream xstream = new XStream(new DomDriver("UTF-8"));
+            XStream.setupDefaultSecurity(xstream);
+            xstream.allowTypes(new Class[]{GatfTestDataProvider.class});
 			xstream.processAnnotations(new Class[]{GatfTestDataProvider.class});
 			xstream.alias("profile-providers", List.class);
 			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
@@ -67,6 +69,8 @@ public class DataSourceProfiler {
 		if(context.getResourceFile("profile-providers.xml")!=null && context.getResourceFile("profile-providers.xml").exists())
 		{
 			XStream xstream = new XStream(new DomDriver("UTF-8"));
+            XStream.setupDefaultSecurity(xstream);
+            xstream.allowTypes(new Class[]{GatfTestDataProvider.class});
 			xstream.processAnnotations(new Class[]{GatfTestDataProvider.class});
 			xstream.alias("profile-providers", List.class);
 			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);

@@ -15,8 +15,11 @@
 */
 package com.gatf.executor.distributed;
 
+import java.io.File;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.gatf.executor.core.GatfExecutorConfig;
@@ -48,6 +51,10 @@ public class DistributedAcceptanceContext implements Serializable {
 	private Map<String, String> soapMessages = null;
 	
 	private Map<String, String> soapActions = new HashMap<String, String>();
+	
+	List<Object[]> selTestdata = new ArrayList<Object[]>();
+    
+    private int index;
 	
 	public String getNode() {
 		return node;
@@ -96,4 +103,41 @@ public class DistributedAcceptanceContext implements Serializable {
 	public void setSoapActions(Map<String, String> soapActions) {
 		this.soapActions = soapActions;
 	}
+	
+	public File getResourceFile(String filename) {
+        try {
+            if(new File(filename).exists())return new File(filename); 
+            if(config.getTestCasesBasePath()!=null)
+            {
+                File basePath = new File(config.getTestCasesBasePath());
+                File resource = null;
+                if(config.getTestCaseDir()!=null) {
+                    File testPath = new File(basePath, config.getTestCaseDir());
+                    resource = new File(testPath, filename);
+                    if(!resource.exists()) {
+                        resource = new File(basePath, filename);
+                    }
+                }
+                return resource;
+            }
+        } catch (Exception e) {
+        }
+        return null;
+    }
+
+    public List<Object[]> getSelTestdata() {
+        return selTestdata;
+    }
+
+    public void setSelTestdata(List<Object[]> selTestdata) {
+        this.selTestdata = selTestdata;
+    }
+
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
+    }
 }

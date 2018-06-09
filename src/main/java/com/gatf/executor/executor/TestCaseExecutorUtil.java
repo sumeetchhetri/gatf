@@ -19,6 +19,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
@@ -64,12 +69,12 @@ import com.ning.http.client.HttpResponseBodyPart;
 import com.ning.http.client.HttpResponseHeaders;
 import com.ning.http.client.HttpResponseStatus;
 import com.ning.http.client.ListenableFuture;
-import com.ning.http.client.Part;
 import com.ning.http.client.Request;
 import com.ning.http.client.RequestBuilder;
 import com.ning.http.client.Response;
-import com.ning.http.multipart.FilePart;
-import com.ning.http.multipart.StringPart;
+import com.ning.http.client.multipart.FilePart;
+import com.ning.http.client.multipart.Part;
+import com.ning.http.client.multipart.StringPart;
 import com.ning.http.util.Base64;
 
 /**
@@ -95,6 +100,23 @@ public class TestCaseExecutorUtil {
 	
 	private AcceptanceTestContext context = null;
 	
+    private SSLContext createSslContext() {
+        X509TrustManager tm = new X509TrustManager() {
+            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+            public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+            public X509Certificate[] getAcceptedIssuers() {
+                return null;
+            }
+        };
+        try {
+            SSLContext ctx = SSLContext.getInstance("TLS");
+            ctx.init(null, new TrustManager[] {tm}, null);
+            return ctx;
+        } catch (Exception e) {
+        }
+        return null;
+    }
+	
 	public TestCaseExecutorUtil(AcceptanceTestContext context)
 	{
 		int numConcurrentConns = context.getGatfExecutorConfig().getNumConcurrentExecutions();
@@ -105,14 +127,18 @@ public class TestCaseExecutorUtil {
 		int maxConns = numConcurrentConns>100?numConcurrentConns:100;
 		
 		Builder builder = new AsyncHttpClientConfig.Builder();
-		builder.setConnectionTimeoutInMs(context.getGatfExecutorConfig().getHttpConnectionTimeout())
-				.setMaximumConnectionsPerHost(numConcurrentConns)
-				.setMaximumConnectionsTotal(maxConns)
-				.setRequestTimeoutInMs(context.getGatfExecutorConfig().getHttpRequestTimeout())
-				.setAllowPoolingConnection(true)
-				.setCompressionEnabled(context.getGatfExecutorConfig().isHttpCompressionEnabled())
-				.setIOThreadMultiplier(2)
-				.build();
+		builder.setConnectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout())
+				.setMaxConnectionsPerHost(numConcurrentConns)
+				.setMaxConnections(maxConns)
+				.setRequestTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout())
+				.setAllowPoolingConnections(true)
+				.setCompressionEnforced(context.getGatfExecutorConfig().isHttpCompressionEnabled())
+				.setIOThreadMultiplier(2).setAcceptAnyCertificate(true);
+		
+		SSLContext cntxt = createSslContext();
+		if(cntxt!=null) {
+		    builder.setSSLContext(cntxt).setAllowPoolingSslConnections(true);
+		}
 		
 		client = new AsyncHttpClient(builder.build());
 		this.context = context;
@@ -125,12 +151,12 @@ public class TestCaseExecutorUtil {
 		int maxConns = 1;
 		
 		Builder builder = new AsyncHttpClientConfig.Builder();
-		builder.setConnectionTimeoutInMs(10000)
-				.setMaximumConnectionsPerHost(1)
-				.setMaximumConnectionsTotal(maxConns)
-				.setRequestTimeoutInMs(100000)
-				.setAllowPoolingConnection(true)
-				.setCompressionEnabled(false)
+		builder.setConnectTimeout(10000)
+				.setMaxConnectionsPerHost(1)
+				.setMaxConnections(maxConns)
+				.setRequestTimeout(100000)
+				.setAllowPoolingConnections(true)
+				.setCompressionEnforced(false)
 				.setIOThreadMultiplier(2)
 				.build();
 		
@@ -199,7 +225,9 @@ public class TestCaseExecutorUtil {
 							}
 							else
 							{
-								byte[] fileData = IOUtils.toByteArray(new FileInputStream(file));
+							    FileInputStream fis = new FileInputStream(file);
+								byte[] fileData = IOUtils.toByteArray(fis);
+								fis.close();
 								String fileContents = Base64.encode(fileData);
 								if(testCase.getSoapParameterValues()==null)
 								{
@@ -235,12 +263,14 @@ public class TestCaseExecutorUtil {
 			File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), testCase.getContentFile());
 			if(testCase.isSoapBase())
 			{
-				byte[] fileData = IOUtils.toByteArray(new FileInputStream(file));
+			    FileInputStream fis = new FileInputStream(file);
+                byte[] fileData = IOUtils.toByteArray(fis);
+                fis.close();
 				content = Base64.encode(fileData);
 			}
 			else
 			{
-				content = FileUtils.readFileToString(file);
+				content = FileUtils.readFileToString(file, "UTF-8");
 			}
 			builder.setBody(content);
 		}
@@ -254,16 +284,12 @@ public class TestCaseExecutorUtil {
 				url = url.substring(0, url.indexOf("?"));
 			}
 			
-			if(testCase.getSimulationNumber()>=0 && context.getProviderTestDataMap()!=null 
-					&& !context.getProviderTestDataMap().isEmpty() 
-					&& context.getProviderTestDataMap()
-						.get(context.getGatfExecutorConfig().getAuthDataProvider())!=null
+			if(testCase.getSimulationNumber()>=0 && context.getProviderTestDataMap(context.getGatfExecutorConfig().getAuthDataProvider())!=null
 					&& context.getGatfExecutorConfig().isAuthEnabled()
 					&& context.getGatfExecutorConfig().getAuthUrl().equals(testCase.getUrl())) 
 			{
 				String[] authParams = context.getGatfExecutorConfig().getAuthParamDetails();
-				List<Map<String, String>> testDataLst = context.getProviderTestDataMap()
-						.get(context.getGatfExecutorConfig().getAuthDataProvider());
+				List<Map<String, String>> testDataLst = context.getProviderTestDataMap(context.getGatfExecutorConfig().getAuthDataProvider());
 				String userVal = null, passwordVal = null;
 				if(testDataLst.size()>=testCase.getSimulationNumber()) {
 					int index = testCase.getSimulationNumber();
@@ -384,7 +410,11 @@ public class TestCaseExecutorUtil {
 			String completeUrl = getUrl(testCase.getBaseUrl(), turl);
 			
 			testCase.setAurl(completeUrl);
-			builder = builder.setUrl(testCase.getAurl());
+			try {
+			    builder = builder.setUrl(testCase.getAurl());
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue("Invalid URL, please check the url provided ("+ completeUrl + ")", false);
+            }
 			
 		} else {
 			
@@ -398,7 +428,7 @@ public class TestCaseExecutorUtil {
                 soapAction = soapAction != null ? "\"" + soapAction + "\"" : "";
                 builder.addHeader(AcceptanceTestContext.PROP_SOAP_ACTION_11, soapAction);
                 builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
-                builder.addParameter(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
+                //TODO recheck this later builder.addParameter(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
                 testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
             } else if (request.contains(AcceptanceTestContext.SOAP_1_2_NAMESPACE)) {
                 String contentType = AcceptanceTestContext.MIMETYPE_APPLICATION_XML;
@@ -445,7 +475,11 @@ public class TestCaseExecutorUtil {
 				request = sw.toString();
 			}
 			
-			builder = builder.setUrl(testCase.getAurl()).setBody(request);
+			try {
+			    builder = builder.setUrl(testCase.getAurl()).setBody(request);
+            } catch (IllegalArgumentException e) {
+                Assert.assertTrue("Invalid URL, please check the url provided ("+ testCase.getAurl() + ")", false);
+            }
 		}
 	}
 	
@@ -534,16 +568,19 @@ public class TestCaseExecutorUtil {
 				public void abort(Throwable t) {
 				}
 
-				public void content(TestCaseReport v) {
+				@SuppressWarnings("unused")
+                public void content(TestCaseReport v) {
 				}
 
 				public void touch() {
 				}
 
+				@SuppressWarnings("unused")
 				public boolean getAndSetWriteHeaders(boolean writeHeader) {
 					return false;
 				}
 
+				@SuppressWarnings("unused")
 				public boolean getAndSetWriteBody(boolean writeBody) {
 					return false;
 				}

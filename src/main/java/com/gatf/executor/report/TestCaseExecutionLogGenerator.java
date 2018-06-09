@@ -24,8 +24,6 @@ import java.net.URL;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import org.apache.commons.lang3.SystemUtils;
-
 import com.gatf.executor.core.GatfExecutorConfig;
 
 /**
@@ -62,7 +60,7 @@ public class TestCaseExecutionLogGenerator implements Runnable {
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			writer = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
-                    + SystemUtils.FILE_SEPARATOR + UUID.randomUUID().toString() + ".csv")));
+                    + File.separator + UUID.randomUUID().toString() + ".csv")));
 		} catch (IOException e) {
 			e.printStackTrace();
 			return;

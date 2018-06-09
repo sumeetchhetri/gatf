@@ -45,8 +45,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 		
 		WorkflowContextHandler workflowContextHandler = testCaseExecutorUtil.getContext().getWorkflowContextHandler();
 		
-		int numParallel = Runtime.getRuntime().availableProcessors()*2;
-		
 		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
 		for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
 			
@@ -81,6 +79,9 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			if(!testCaseReport.getTestCase().isRepeatScenariosConcurrentExecution())
 			{
 				try {
+	                while(!listenableFuture.isDone()) {
+	                    Thread.sleep(1);
+	                }
 					testCaseReport = listenableFuture.get();
 					ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
 							testCaseExecutorUtil.getContext(), scenarioMap);
@@ -104,41 +105,19 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			{
 				futures.add(listenableFuture);
 			}
-			
-			if(futures.size()==numParallel) {
-				for (ListenableFuture<TestCaseReport> listenableFutureT : futures) {
-					
-					TestCaseReport testCaseReportT = null;
-					
-					try {
-						testCaseReportT = listenableFutureT.get();
-						ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
-								testCaseExecutorUtil.getContext(), scenarioMap);
-						testCaseReport.getTestCase().setCurrentScenarioVariables(null);
-					} catch (Exception e) {
-						testCaseReportT.setStatus(TestStatus.Failed.status);
-						testCaseReport.setFailureReason(TestFailureReason.Exception.status);
-						testCaseReportT.setError(e.getMessage());
-						testCaseReportT.setErrorText(ExceptionUtils.getStackTrace(e));
-						e.printStackTrace();
-					} catch (AssertionError e) {
-						testCaseReport.setStatus(TestStatus.Failed.status);
-						testCaseReport.setFailureReason(TestFailureReason.NodeValidationFailed.status);
-						testCaseReport.setError(e.getMessage());
-						testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
-						e.printStackTrace();
-					}
-					
-					lst.add(testCaseReportT);
-				}
-				futures.clear();
-			}
 		}
 		
 		for (ListenableFuture<TestCaseReport> listenableFuture : futures) {
-			
+		    while(!listenableFuture.isDone()) {
+                try {
+                    Thread.sleep(1);
+                } catch (InterruptedException e) {
+                }
+            }
+        }
+		
+		for (ListenableFuture<TestCaseReport> listenableFuture : futures) {
 			TestCaseReport testCaseReport = null;
-			
 			try {
 				testCaseReport = listenableFuture.get();
 				ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
@@ -157,7 +136,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 				e.printStackTrace();
 			}
-			
 			lst.add(testCaseReport);
 		}
 		

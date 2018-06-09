@@ -35,7 +35,9 @@ public class DistributedTestStatus implements Serializable {
 	
 	private Map<String, List<Long>> runPercentileTimes;
 	
-	private TestSuiteStats suiteStats; 
+	private TestSuiteStats suiteStats;
+	
+	Map<String, Map<Integer, String>> indexes;
 	
 	public String getNode() {
 		return node;
@@ -84,4 +86,12 @@ public class DistributedTestStatus implements Serializable {
 	public void setRunPercentileTimes(Map<String, List<Long>> runPercentileTimes) {
 		this.runPercentileTimes = runPercentileTimes;
 	}
+
+    public Map<String, Map<Integer, String>> getIndexes() {
+        return indexes;
+    }
+
+    public void setIndexes(Map<String, Map<Integer, String>> indexes) {
+        this.indexes = indexes;
+    }
 }

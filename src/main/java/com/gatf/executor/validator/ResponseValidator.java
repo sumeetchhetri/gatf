@@ -92,7 +92,7 @@ public abstract class ResponseValidator {
 				if(isLiveProvider)
 					provData = context.getLiveProviderData(pathelements[0], testCase);
 				else
-					provData = context.getProviderTestDataMap().get(pathelements[0]);
+					provData = context.getProviderTestDataMap(pathelements[0]);
 				Assert.assertNotNull("Provider not found - " + pathelements[0], provData);
 				int index = -1;
 				try {

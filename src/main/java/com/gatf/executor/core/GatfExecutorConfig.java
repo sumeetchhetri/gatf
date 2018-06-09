@@ -95,7 +95,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private boolean loadTestingEnabled;
 	
-	private Long loadTestingTime;
+	private Long loadTestingTime = 0L;
 	
 	private boolean distributedLoadTests;
 	
@@ -135,6 +135,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private String seleniumLoggerPreferences;
 	
     private String javaHome;
+    
+    private String javaVersion;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -558,6 +560,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     public void setJavaHome(String javaHome)
     {
         this.javaHome = javaHome;
+    }
+
+    public String getJavaVersion() {
+        return javaVersion;
+    }
+
+    public void setJavaVersion(String javaVersion) {
+        this.javaVersion = javaVersion;
     }
 
     public void validate()

@@ -37,6 +37,7 @@ import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
@@ -73,11 +74,9 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
 
-import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -103,8 +102,6 @@ import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import com.thoughtworks.xstream.io.xml.XppDriver;
-
-import edu.emory.mathcs.backport.java.util.Arrays;
 
 
 
@@ -165,7 +162,7 @@ import edu.emory.mathcs.backport.java.util.Arrays;
 public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 {
 
-    @Component
+    @Parameter( defaultValue = "${project}", readonly = true )
     private MavenProject project;
 
     @Parameter(alias = "testPaths")
@@ -690,7 +687,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                     		StringBuilder build = new StringBuilder();
                     		for (TestCase testCase : tcases) {
                     			build.append(testCase.toCSV());
-                    			build.append(SystemUtils.LINE_SEPARATOR);
+                    			build.append(System.lineSeparator());
 							}
                     		String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.csv";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
@@ -706,6 +703,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		                			}
 	                			}
 	                		);
+	                        XStream.setupDefaultSecurity(xstream);
+	                        xstream.allowTypes(new Class[]{TestCase.class});
 	                		xstream.processAnnotations(new Class[]{TestCase.class});
 	                		xstream.alias("TestCases", List.class);
 	                		
@@ -878,7 +877,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         return viewField;
     }
     
-    @SuppressWarnings({ "rawtypes", "unchecked" })
+    @SuppressWarnings("rawtypes")
     private List<Field> getAllFields(Class claz) {
     	List<Field> allFields = new ArrayList<Field>();
     	allFields.addAll(Arrays.asList(claz.getFields()));
@@ -934,6 +933,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		}
     	
     	Object object = cons.newInstance(new Object[]{});
+    	if(claz.equals(Object.class)) return null;
     	List<Field> allFields = getAllFields(claz);
     	
     	for (Field field : allFields) {
@@ -955,12 +955,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
             {
                 field.set(object, getPrimitiveValue(field.getType()));
             }
-            else if (isMap(field.getType()))
+            else if (isMap(field.getType()) && field.getGenericType() instanceof ParameterizedType)
             {
             	ParameterizedType type = (ParameterizedType)field.getGenericType();
             	field.set(object, getMapValue(field.getType(), type.getActualTypeArguments(), fheirlst));
             }
-            else if (isCollection(field.getType()))
+            else if (isCollection(field.getType()) && field.getGenericType() instanceof ParameterizedType)
             {
             	ParameterizedType type = (ParameterizedType)field.getGenericType();
             	field.set(object, getListSetValue(field.getType(), type.getActualTypeArguments(), fheirlst));
@@ -988,11 +988,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		{
 			clas = (Class)claz;
 		}
-		else
+		else if(claz instanceof ParameterizedType)
 		{
 			type = (ParameterizedType)claz;
 			clas = (Class)type.getRawType();
 		}
+		else return null;
 		if (isPrimitive(clas))
         {
             return getPrimitiveValue(clas);
@@ -1124,7 +1125,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	    		getLog().info(types[1].toString());
 	    		getLog().error("Null key " + types[0]);
 	    	}
-    		((Map)object).put(k, v);
+	    	if(k!=null) {
+	    	    ((Map)object).put(k, v);
+	    	}
     	}
     	if(!isPrimitive(types[0]))
     	{
@@ -1276,6 +1279,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     		{
 	    		InputStream io = new FileInputStream(args[1]);
 	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+	            XStream.setupDefaultSecurity(xstream);
+	            xstream.allowTypes(new Class[]{GatfConfiguration.class});
 	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 	    		xstream.alias("testPaths", String[].class);
 	    		xstream.alias("testPath", String.class);
@@ -1352,6 +1357,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 			try {
 				InputStream io = new FileInputStream(configFile);
 	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+	            XStream.setupDefaultSecurity(xstream);
+	            xstream.allowTypes(new Class[]{GatfConfiguration.class});
 	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 	    		xstream.alias("testPaths", String[].class);
 	    		xstream.alias("testPath", String.class);
@@ -1521,6 +1528,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 			                			}
                         			}
                         		);
+                                XStream.setupDefaultSecurity(xstream);
+                                xstream.allowTypes(new Class[]{TestCase.class});
                         		xstream.processAnnotations(new Class[]{TestCase.class});
                         		xstream.alias("TestCases", List.class);
                         		
@@ -1547,6 +1556,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	public static GatfConfiguration getConfig(InputStream resource)
 	{
 		XStream xstream = new XStream(new DomDriver("UTF-8"));
+        XStream.setupDefaultSecurity(xstream);
+        xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		xstream.alias("testPaths", String[].class);
 		xstream.alias("testPath", String.class);
@@ -1561,6 +1572,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	public static String getConfigStr(GatfConfiguration configuration)
 	{
 		XStream xstream = new XStream(new DomDriver("UTF-8"));
+        XStream.setupDefaultSecurity(xstream);
+        xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		xstream.alias("testPaths", String[].class);
 		xstream.alias("testPath", String.class);

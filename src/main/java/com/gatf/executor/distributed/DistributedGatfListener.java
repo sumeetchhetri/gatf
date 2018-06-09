@@ -31,21 +31,25 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
+import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.dataprovider.GatfTestDataConfig;
+import com.gatf.executor.dataprovider.GatfTestDataProvider;
+import com.gatf.executor.dataprovider.GatfTestDataSource;
+import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
-import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
-import com.gatf.selenium.SeleniumTest.SeleniumResult;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 
 public class DistributedGatfListener {
 
@@ -53,12 +57,12 @@ public class DistributedGatfListener {
 	
 	public static void main(String[] args) throws Exception {
 		
-	    int port = 4567;
-	    if(args.length>0) {
+	    int port = 9567;
+	    if(args.length>1) {
 	        try {
-                port = Integer.parseInt(args[0]);
+                port = Integer.parseInt(args[1]);
             } catch (Exception e) {
-                logger.info("Invalid port number specified for listener, defaulting to 4567");
+                logger.info("Invalid port number specified for listener, defaulting to 9567");
             }
 	    }
 	    
@@ -136,11 +140,13 @@ public class DistributedGatfListener {
 					logger.info("Started executing GATF tests...");
 					GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
 					
+					boolean isLoadTestingEnabled = context.getConfig().isLoadTestingEnabled() && context.getConfig().getLoadTestingTime()>10000;
+					
 					Thread dlreporter = new Thread(new Runnable() {
 						public void run() {
 							try {
 								while(true) {
-									LoadTestEntry entry = RuntimeReportUtil.getDLEntry();
+									Object entry = RuntimeReportUtil.getDLEntry();
 									if(entry!=null) {
 										oos.writeObject(Command.LOAD_TESTS_RES);
 										oos.writeObject(entry);
@@ -149,7 +155,7 @@ public class DistributedGatfListener {
 									Thread.sleep(500);
 								}
 							} catch (Exception e) {
-								LoadTestEntry entry = null;
+							    Object entry = null;
 								while((entry=RuntimeReportUtil.getDLEntry())!=null)
 								{
 									try {
@@ -164,16 +170,46 @@ public class DistributedGatfListener {
 							}
 						}
 					});
-					dlreporter.start();
+					if(isLoadTestingEnabled) {
+					    dlreporter.start();  
+					}
+					
 					context.getConfig().setTestCasesBasePath(System.getProperty("user.dir"));
 					context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
 					logger.info("Current working directory is: " + System.getProperty("user.dir"));
+					
+					GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
+					if(localConfig!=null) {
+					    if(localConfig.getJavaHome()!=null) {
+					        context.getConfig().setJavaHome(localConfig.getJavaHome());
+					    }
+                        if(localConfig.getTestCasesBasePath()!=null) {
+                            if(new File(localConfig.getTestCasesBasePath()).exists()) {
+                                context.getConfig().setTestCasesBasePath(localConfig.getTestCasesBasePath());
+                            }
+                        }
+					}
+					
+					String[] remoteJavaVersion = context.getConfig().getJavaVersion().split("\\.");
+					String[] localJavaVersion = System.getProperty("java.version").split("\\.");
+					if(remoteJavaVersion[0].equals(localJavaVersion[0])) {
+					    if(remoteJavaVersion[1].compareTo(localJavaVersion[1])>0) {
+					        logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+					        throw new RuntimeException("Invalid java version found");
+					    }
+					} else if(remoteJavaVersion[0].compareTo(localJavaVersion[0])>0) {
+					    logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+					    throw new RuntimeException("Invalid java version found");
+					}
+					
 					DistributedTestStatus report = mojo.handleDistributedTests(context, tContext);
 					mojo.shutdown();
 					Thread.sleep(2000);
 					
-					dlreporter.interrupt();
-					Thread.sleep(3000);
+					if(isLoadTestingEnabled) {
+                        dlreporter.interrupt();
+                        Thread.sleep(3000);
+                    }
 					
 					oos.writeObject(Command.TESTS_SHARE_RES);
 					oos.flush();
@@ -195,10 +231,12 @@ public class DistributedGatfListener {
 		        	}
 		        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
 		        	
-					ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName, false);
+					ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName, false, true);
 					
 					File zipFile = new File(resource, fileName);
-					IOUtils.copy(new FileInputStream(zipFile), oos);
+					FileInputStream fis = new FileInputStream(zipFile);
+					IOUtils.copy(fis, oos);
+					fis.close();
 					oos.flush();
 					logger.info("Done Writing GATF results...");
 				} else {
@@ -224,6 +262,92 @@ public class DistributedGatfListener {
 				ReportHandler.unzipZipFile(new FileInputStream(zipFile), gcdir.getAbsolutePath());
 				zipFile.delete();
 				
+				boolean isLoadTestingEnabled = context.getConfig().isLoadTestingEnabled() && context.getConfig().getLoadTestingTime()>10000;
+				
+				final DistributedAcceptanceContext context1 = context;
+				Thread dlreporter = new Thread(new Runnable() {
+                    public void run() {
+                        try {
+                            while(true) {
+                                Object entry = RuntimeReportUtil.getDLEntry();
+                                if(entry!=null) {
+                                    if(entry instanceof String) {
+                                        String sentry = context1.getNode() + "|" + entry;
+                                        entry = sentry;
+                                    }
+                                    oos.writeObject(Command.LOAD_TESTS_RES);
+                                    oos.writeObject(entry);
+                                    oos.flush();
+                                }
+                                Thread.sleep(500);
+                            }
+                        } catch (Exception e) {
+                            Object entry = null;
+                            while((entry=RuntimeReportUtil.getDLEntry())!=null)
+                            {
+                                try {
+                                    if(entry!=null) {
+                                        if(entry instanceof String) {
+                                            String sentry = context1.getNode() + "|" + entry;
+                                            entry = sentry;
+                                        }
+                                        oos.writeObject(Command.LOAD_TESTS_RES);
+                                        oos.writeObject(entry);
+                                        oos.flush();
+                                    }
+                                } catch (IOException e1) {
+                                }
+                            }
+                        }
+                    }
+                });
+				if(isLoadTestingEnabled) {
+				    dlreporter.start();
+				}
+				
+				context.getConfig().setTestCasesBasePath(System.getProperty("user.dir"));
+                context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
+                logger.info("Current working directory is: " + System.getProperty("user.dir"));
+                
+                GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
+                if(localConfig!=null) {
+                    if(localConfig.getJavaHome()!=null) {
+                        context.getConfig().setJavaHome(localConfig.getJavaHome());
+                    }
+                    if(localConfig.getSeleniumDriverConfigs()!=null && localConfig.getSeleniumDriverConfigs().length>0) {
+                        SeleniumDriverConfig[] lconfigs = localConfig.getSeleniumDriverConfigs();
+                        SeleniumDriverConfig[] rconfigs = context.getConfig().getSeleniumDriverConfigs();
+                        for (int i=0;i<rconfigs.length;i++) {
+                            SeleniumDriverConfig rseleniumDriverConfig = rconfigs[i];
+                            for (SeleniumDriverConfig lseleniumDriverConfig : lconfigs) {
+                                if(rseleniumDriverConfig.getDriverName().equals(lseleniumDriverConfig.getDriverName()) && lseleniumDriverConfig.getPath()!=null) {
+                                    rconfigs[i] = lseleniumDriverConfig;
+                                    break;
+                                }
+                            }
+                        }
+                        context.getConfig().setSeleniumDriverConfigs(rconfigs);
+                        context.getConfig().setJavaHome(localConfig.getJavaHome());
+                        if(localConfig.getTestCasesBasePath()!=null) {
+                            if(new File(localConfig.getTestCasesBasePath()).exists()) {
+                                context.getConfig().setTestCasesBasePath(localConfig.getTestCasesBasePath());
+                            }
+                        }
+                    }
+                }
+                
+                String[] remoteJavaVersion = context.getConfig().getJavaVersion().split("\\.");
+                String[] localJavaVersion = System.getProperty("java.version").split("\\.");
+                if(remoteJavaVersion[0].equals(localJavaVersion[0])) {
+                    if(remoteJavaVersion[1].compareTo(localJavaVersion[1])>0) {
+                        logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+                        throw new RuntimeException("Invalid java version found");
+                    }
+                } else if(remoteJavaVersion[0].compareTo(localJavaVersion[0])>0) {
+                    logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+                    throw new RuntimeException("Invalid java version found");
+                }
+				
 				URL[] urls = new URL[1];
 	            urls[0] = gcdir.toURI().toURL();
 				URLClassLoader classLoader = new URLClassLoader(urls, DistributedGatfListener.class.getClassLoader());
@@ -238,6 +362,8 @@ public class DistributedGatfListener {
 					tests.add(loadedClass);
 				}
 				
+				tContext = (DistributedTestContext)ois.readObject();
+				
 				oos.writeObject(Command.SELENIUM_RES);
 				oos.flush();
 				
@@ -247,9 +373,10 @@ public class DistributedGatfListener {
 		            {
 					    if(!new File(selConf.getPath()).exists()) {
 	                        Path p = Paths.get(selConf.getPath());
-	                        File df = new File(System.getProperty("user.dir"), p.getFileName().toString());
-	                        if(df!=null && df.exists()) {
-	                            driverfound &= true;
+	                        File df = context.getResourceFile(p.getFileName().toString());
+	                        driverfound &= df.exists();
+	                        if(df.exists()) {
+	                            selConf.setPath(df.getAbsolutePath());
 	                            System.setProperty(selConf.getName(), df.getAbsolutePath());
 	                        }
 	                    } else {
@@ -264,8 +391,43 @@ public class DistributedGatfListener {
                         logger.info("Selenium Test Request");
                         
                         GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
-                        List<List<Map<String, SeleniumResult>>> results = mojo.handleDistributedSeleniumTests(context, tests);
-                        oos.writeObject(results);
+                        DistributedTestStatus report = mojo.handleDistributedSeleniumTests(context, tests, tContext);
+                        mojo.shutdown();
+                        Thread.sleep(2000);
+                        
+                        if(isLoadTestingEnabled) {
+                            dlreporter.interrupt();
+                            Thread.sleep(3000);
+                        }
+                        
+                        oos.writeObject(Command.TESTS_SHARE_RES);
+                        oos.flush();
+                        
+                        fileName = UUID.randomUUID().toString()+".zip";
+                        report.setZipFileName(fileName);
+                        
+                        oos.writeObject(report);
+                        oos.flush();
+                        logger.info("Writing Selenium results...");
+                        
+                        File basePath = null;
+                        if(context.getConfig().getOutFilesBasePath()!=null)
+                            basePath = new File(context.getConfig().getOutFilesBasePath());
+                        else
+                        {
+                            URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+                            basePath = new File(url.getPath());
+                        }
+                        File resource = new File(basePath, context.getConfig().getOutFilesDir());
+                        
+                        String runPrefix = "DRun-" + tContext.getIndex();
+                        
+                        ReportHandler.zipDirectory(resource, new String[]{runPrefix}, fileName, false, false);
+                        
+                        zipFile = new File(resource, fileName);
+                        FileInputStream fis = new FileInputStream(zipFile);
+                        IOUtils.copy(fis, oos);
+                        fis.close();
                         oos.flush();
                         logger.info("Done Writing Selenium results...");
                     } else {
@@ -287,8 +449,90 @@ public class DistributedGatfListener {
 			
 		} catch (Exception e) {
 			oos.write(0);
+			oos.flush();
 			logger.info("Error occurred during distributed GATF execution...");
 			throw e;
 		}
 	}
+	
+	private static GatfExecutorConfig getConfig(String configFile, String testCasesBasePath) {
+        GatfExecutorConfig configuration = null;
+        if(configFile!=null) {
+            try {
+                File resource = null;
+                File basePath = new File(testCasesBasePath);
+                resource = new File(basePath, configFile);
+                if(resource.exists()) {
+                    XStream xstream = new XStream(new DomDriver("UTF-8"));
+                    XStream.setupDefaultSecurity(xstream);
+                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class,
+                            GatfTestDataConfig.class, GatfTestDataProvider.class});
+                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+                             GatfTestDataConfig.class, GatfTestDataProvider.class});
+                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
+                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
+                    xstream.alias("testCaseHooksPaths", String[].class);
+                    xstream.alias("testCaseHooksPath", String.class);
+                    xstream.alias("args", String[].class);
+                    xstream.alias("arg", String.class);
+                    xstream.alias("testCaseHooksPaths", String[].class);
+                    xstream.alias("testCaseHooksPath", String.class);
+                    xstream.alias("queryStrs", String[].class);
+                    xstream.alias("queryStr", String.class);
+                    xstream.alias("distributedNodes", String[].class);
+                    xstream.alias("distributedNode", String.class);
+                    xstream.alias("ignoreFiles", String[].class);
+                    xstream.alias("orderedFiles", String[].class);
+                    xstream.alias("string", String.class);
+                    xstream.alias("seleniumScripts", String[].class);
+                    xstream.alias("seleniumScript", String.class);
+                    
+                    configuration = (GatfExecutorConfig)xstream.fromXML(resource);
+                    
+                    if(configuration.getTestCasesBasePath()==null)
+                        configuration.setTestCasesBasePath(testCasesBasePath);
+                    
+                    if(configuration.getOutFilesBasePath()==null)
+                        configuration.setOutFilesBasePath(testCasesBasePath);
+                    
+                    if(configuration.getTestCaseDir()==null)
+                        configuration.setTestCaseDir("");
+                    
+                    if(configuration.getNumConcurrentExecutions()==null)
+                        configuration.setNumConcurrentExecutions(1);
+                    
+                    if(configuration.getHttpConnectionTimeout()==null)
+                        configuration.setHttpConnectionTimeout(10000);
+                    
+                    if(configuration.getHttpRequestTimeout()==null)
+                        configuration.setHttpRequestTimeout(10000);
+                    
+                    if(!configuration.isHttpCompressionEnabled())
+                        configuration.setHttpCompressionEnabled(true);
+                    
+                    if(configuration.getConcurrentUserSimulationNum()==null)
+                        configuration.setConcurrentUserSimulationNum(1);
+                    
+                    if(configuration.getLoadTestingReportSamples()==null)
+                        configuration.setLoadTestingReportSamples(1);
+                    
+                    if(configuration.getConcurrentUserRampUpTime()==null)
+                        configuration.setConcurrentUserRampUpTime(10000L);
+                    
+                    if(configuration.isEnabled()==null)
+                        configuration.setEnabled(true);
+                    
+                    if(configuration.getRepeatSuiteExecutionNum()==null)
+                        configuration.setRepeatSuiteExecutionNum(0);
+                }
+            } catch (Exception e) {
+                throw new AssertionError(e);
+            }
+        }
+        return configuration;
+    }
 }

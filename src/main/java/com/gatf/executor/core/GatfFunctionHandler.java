@@ -22,7 +22,7 @@ import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang.RandomStringUtils;
 
 /**
  * @author Sumeet Chhetri
@@ -45,8 +45,8 @@ public class GatfFunctionHandler {
 	private static final String ALPHA = "alpha";
 	private static final String FLOAT = "float";
 	private static final String BOOLEAN = "boolean";
-	static final String DT_FUNC_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*) ([-+]) (\\d+)([y|M|d|h|m|s|S|])\\)$";
-	static final String DT_FMT_REGEX = "^date\\(([a-zA-Z\\-:/\\s']*)\\)";
+	static final String DT_FUNC_FMT_REGEX = "^date\\(([0-9a-zA-Z\\-:/\\s'\\.]*) ([-+]) (\\d+)([y|M|d|h|m|s|S|T|Z])\\)$";
+	static final String DT_FMT_REGEX = "^date\\(([0-9a-zA-Z\\-:/\\s'\\.]*)\\)";
 	public static final String RANDOM_RANGE_REGEX = "^number\\(([0-9]*)[\t ]*,[\t ]*([0-9]*)\\)$";
 	
 	static Pattern specialDatePattern = Pattern.compile(DT_FUNC_FMT_REGEX);

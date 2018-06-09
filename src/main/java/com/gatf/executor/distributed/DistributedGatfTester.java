@@ -36,7 +36,6 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
-import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 
 public class DistributedGatfTester {
 
@@ -54,26 +53,26 @@ public class DistributedGatfTester {
 		}
 	}
 	
-	public DistributedConnection distributeContext(String node, AcceptanceTestContext context)
+	public DistributedConnection distributeContext(String node, AcceptanceTestContext context, List<Object[]> testdata)
 	{
 		Socket client = null;
 		DistributedConnection conn = null;
 		try {
 			logger.info("Connecting to node " + node);
 			
-			int port = 4567;
+			int port = 9567;
 	        if(node.indexOf("@")!=-1) {
 	            try {
 	                String sp = node.substring(node.indexOf("@")+1);
 	                node = node.substring(0, node.indexOf("@"));
 	                port = Integer.parseInt(sp);
 	            } catch (Exception e) {
-	                logger.info("Invalid port number specified for distributed listener, defaulting to 4567");
+	                logger.info("Invalid port number specified for distributed listener, defaulting to 9567");
 	            }
 	        }
 			
 			client = new Socket(node, port);
-			DistributedAcceptanceContext disContext = context.getDistributedContext(node);
+			DistributedAcceptanceContext disContext = context.getDistributedContext(node, testdata);
 			
 			ObjectOutputStream oos = new ObjectOutputStream(client.getOutputStream());
 			ObjectInputStream ois = new ObjectInputStream(client.getInputStream());
@@ -121,7 +120,6 @@ public class DistributedGatfTester {
 		try {
 			DistributedTestContext testContext = new DistributedTestContext();
 			testContext.setSimTestCases(simTestCases);
-			testContext.setDoReporting(dorep);
 			testContext.setIndex(index);
 			testContext.setNumberOfRuns(numberOfRuns);
 			testContext.setRelativeFileNames(relativeFileNames);
@@ -145,7 +143,7 @@ public class DistributedGatfTester {
 							Command command = (Command)connection.ois.readObject();
 							while(command==Command.LOAD_TESTS_RES)
 							{
-								LoadTestEntry lentry = (LoadTestEntry)connection.ois.readObject();
+								Object lentry = (Object)connection.ois.readObject();
 								RuntimeReportUtil.addEntry(lentry);
 								command = (Command)connection.ois.readObject();
 							}
@@ -217,20 +215,28 @@ public class DistributedGatfTester {
 		return task;
 	}
 	
-	public FutureTask<Object> distributeSeleniumTests(final DistributedConnection connection, File testClassesZip, 
-			final List<String> testClassNames)
+	public FutureTask<Object> distributeSeleniumTests(final DistributedConnection connection, int index, int numberOfRuns, File testClassesZip, 
+			final List<String> testClassNames, final AcceptanceTestContext context)
 	{
 		if(connection==null)return null;
 		
 		FutureTask<Object> task = null;
 		try {
+            DistributedTestContext testContext = new DistributedTestContext();
+            testContext.setIndex(index);
+            testContext.setNumberOfRuns(numberOfRuns);
+            
 			logger.info("Sending GATF Selenium tests to node " + connection.node);
 			connection.oos.writeObject(Command.SELENIUM_REQ);
 			connection.oos.flush();
-			IOUtils.copy(new FileInputStream(testClassesZip), connection.oos);
+			FileInputStream fis = new FileInputStream(testClassesZip);
+			IOUtils.copy(fis, connection.oos);
+			fis.close();
 			connection.oos.flush();
 			connection.oos.writeObject(testClassNames);
 			connection.oos.flush();
+            connection.oos.writeObject(testContext);
+            connection.oos.flush();
 			
 			Command command = (Command)connection.ois.readObject();
 			if(command==Command.SELENIUM_RES) {
@@ -238,12 +244,41 @@ public class DistributedGatfTester {
 				if(code==0) {
 					task = new FutureTask<Object>(new Callable<Object>() {
 						public Object call() throws Exception {
-						    Object res = null;
+						    DistributedTestStatus res = null;
 							Socket fClient = connection.sock;
 							try {
 								logger.info("Waiting for GATF Selenium tests Results from node " + connection.node);
 								
-								res = connection.ois.readObject();
+								Command command = (Command)connection.ois.readObject();
+	                            while(command==Command.LOAD_TESTS_RES)
+	                            {
+	                                Object lentry = (Object)connection.ois.readObject();
+	                                RuntimeReportUtil.addEntry(lentry);
+	                                command = (Command)connection.ois.readObject();
+	                            }
+	                            
+	                            res = (DistributedTestStatus)connection.ois.readObject();
+	                            logger.info("Received GATF Selenium tests Results from node " + connection.node);
+	                            
+	                            String fileName = "dist-" + res.getZipFileName();
+	                            File basePath = null;
+	                            if(context.getGatfExecutorConfig().getOutFilesBasePath()!=null)
+	                                basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
+	                            else
+	                            {
+	                                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+	                                basePath = new File(url.getPath());
+	                            }
+	                            File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
+	                            
+	                            File zipFile = new File(resource, fileName);
+	                            FileOutputStream fos = new FileOutputStream(zipFile);
+	                            IOUtils.copy(connection.ois, fos);
+	                            fos.flush();
+	                            fos.close();
+	                            
+	                            ReportHandler.unzipZipFile(new FileInputStream(zipFile), resource.getAbsolutePath());
+								
 								logger.info("Done Receiving GATF Selenium tests Results from node " + connection.node);
 							} catch (Exception e) {
 								e.printStackTrace();

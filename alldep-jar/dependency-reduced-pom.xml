@@ -3,12 +3,11 @@
   <parent>
     <artifactId>gatf-parent</artifactId>
     <groupId>com.test</groupId>
-    <version>1.6</version>
+    <version>1.8</version>
   </parent>
   <modelVersion>4.0.0</modelVersion>
   <artifactId>gatf-alldep-jar</artifactId>
   <name>gatf-alldep-jar</name>
-  <version>1.6</version>
   <build>
     <sourceDirectory>../src</sourceDirectory>
     <resources>
@@ -19,7 +18,7 @@
     <plugins>
       <plugin>
         <artifactId>maven-shade-plugin</artifactId>
-        <version>2.2</version>
+        <version>3.1.0</version>
         <executions>
           <execution>
             <phase>package</phase>

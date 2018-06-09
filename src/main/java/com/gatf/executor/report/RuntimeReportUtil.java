@@ -27,6 +27,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
  *
  */
 public class RuntimeReportUtil {
+    
 	public static class LoadTestEntry implements Serializable
 	{
 		private static final long serialVersionUID = 1L;
@@ -36,6 +37,7 @@ public class RuntimeReportUtil {
 		int runNo;
 		String url;
 		TestSuiteStats currStats;
+		Map<String, Map<String, List<Object[]>>> currSelStats;
 		
 		public LoadTestEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats) {
 			super();
@@ -45,6 +47,15 @@ public class RuntimeReportUtil {
 			this.url = url;
 			this.currStats = currStats;
 		}
+        
+        public LoadTestEntry(String node, String prefix, int runNo, String url, Map<String, Map<String, List<Object[]>>> currSelStats) {
+            super();
+            this.node = node;
+            this.prefix = prefix;
+            this.runNo = runNo;
+            this.url = url;
+            this.currSelStats = currSelStats;
+        }
 		
 		public String getNode() {
 			return node;
@@ -61,15 +72,18 @@ public class RuntimeReportUtil {
 		public TestSuiteStats getCurrStats() {
 			return currStats;
 		}
+        public Map<String, Map<String, List<Object[]>>> getCurrSelStats() {
+            return currSelStats;
+        }
 	}
 	
 	private static volatile boolean registered = false;
 	
 	private static TestSuiteStats gloadStats = new TestSuiteStats();
 	
-	private static ConcurrentLinkedQueue<Map<String, Object>> Q = new ConcurrentLinkedQueue<Map<String, Object>>();
+	private static ConcurrentLinkedQueue<Object> Q = new ConcurrentLinkedQueue<Object>();
 	
-	private static ConcurrentLinkedQueue<LoadTestEntry> Qdl = new ConcurrentLinkedQueue<LoadTestEntry>();
+	private static ConcurrentLinkedQueue<Object> Qdl = new ConcurrentLinkedQueue<Object>();
 	
 	public static void registerConfigUI()
 	{
@@ -91,35 +105,72 @@ public class RuntimeReportUtil {
 		Qdl.add(lentry);
 	}
 	
-	public static void addEntry(LoadTestEntry lentry)
+	public static void addEntry(int runNo, boolean subtestPassed)
+    {
+	    if(registered)
+        {
+	        try {
+                Q.add("local|"+runNo+"|"+(subtestPassed?1:0));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+	    else
+	    {
+	        try {
+	            Qdl.add(runNo+"|"+(subtestPassed?1:0));
+	        } catch (Exception e) {
+	            e.printStackTrace();
+	        }
+	    }
+    }
+	
+	public static void addEntry(Object entry)
 	{
 		if(registered)
 		{
-			Map<String, Object> parts = new HashMap<String, Object>();
-			if(lentry.prefix==null)
-				lentry.prefix = "Run";
-			parts.put("title", lentry.prefix+"-"+lentry.runNo);
-			parts.put("runNo", lentry.runNo+"");
-			parts.put("url", lentry.url);
-			parts.put("node", lentry.node);
-			parts.put("stats", lentry.currStats);
-			synchronized (gloadStats) {
-				gloadStats.updateStats(lentry.currStats, false);
-				parts.put("tstats", gloadStats);
-				parts.put("error", "Execution already in progress..");
-				try {
-					Q.add(parts);
-				} catch (Exception e) {
-					e.printStackTrace();
-				}
-			}
+		    if(entry instanceof LoadTestEntry) {
+		        LoadTestEntry lentry = (LoadTestEntry)entry;
+		        Map<String, Object> parts = new HashMap<String, Object>();
+	            if(lentry.prefix==null)
+	                lentry.prefix = "Run";
+	            parts.put("title", lentry.prefix+"-"+lentry.runNo);
+	            parts.put("runNo", lentry.runNo+"");
+	            parts.put("url", lentry.url);
+	            parts.put("node", lentry.node);
+	            parts.put("stats", lentry.currStats);
+	            parts.put("selStats", lentry.currSelStats);
+	            if(lentry.currStats!=null) {
+	                synchronized (gloadStats) {
+	                    gloadStats.updateStats(lentry.currStats, false);
+	                    parts.put("tstats", gloadStats);
+	                    parts.put("error", "Execution already in progress..");
+	                    try {
+	                        Q.add(parts);
+	                    } catch (Exception e) {
+	                        e.printStackTrace();
+	                    }
+	                }
+	            }
+		    } else {
+		        try {
+                    Q.add(entry);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+		    }
 		}
 		else
 		{
-			synchronized (gloadStats) {
-				gloadStats.updateStats(lentry.currStats, false);
-				System.out.println(gloadStats);
-			}
+		    if(entry instanceof LoadTestEntry) {
+                LoadTestEntry lentry = (LoadTestEntry)entry;
+    		    if(lentry.currStats!=null) {
+                    synchronized (gloadStats) {
+        				gloadStats.updateStats(lentry.currStats, false);
+        				System.out.println(gloadStats);
+        			}
+    		    }
+		    }
 		}
 	}
 	
@@ -159,17 +210,24 @@ public class RuntimeReportUtil {
 	    return Q.isEmpty();
 	}
 	
-	public static String getEntry()
+	@SuppressWarnings("unchecked")
+    public static String getEntry()
 	{
 	    try {
     	    List<Map<String, Object>> st = new ArrayList<Map<String, Object>>();
-    	    Map<String, Object> parts = null;
+    	    List<String> sst = new ArrayList<String>();
+    	    Object parts = null;
     	    while((parts = Q.poll())!=null) {
-    	       st.add(parts);
-    	       if(st.size()>100)break;
+    	        if(parts instanceof String) {
+    	            sst.add((String)parts);
+    	        } else {
+    	            st.add((Map<String, Object>)parts);
+    	        }
+    	        if(st.size()>100 || sst.size()>100)break;
     	    }
             String arr = "{\"error\": \"Execution already in progress..\", \"lstats\": " + 
-                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(st) + "}";
+                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(st) + ", \"sstats\": " + 
+                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(sst) + "}";
             return arr;
 	    } catch (Exception e) {
             e.printStackTrace();
@@ -177,7 +235,7 @@ public class RuntimeReportUtil {
 	    return "";
 	}
 	
-	public static LoadTestEntry getDLEntry()
+	public static Object getDLEntry()
 	{
 		return Qdl.poll();
 	}

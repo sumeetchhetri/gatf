@@ -64,6 +64,9 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		
 		ListenableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
 		try {
+		    while(!report.isDone()) {
+		        Thread.sleep(1);
+		    }
 			testCaseReport = report.get();
 		} catch (Exception e) {
 			testCaseReport.setStatus(TestStatus.Failed.status);
@@ -85,6 +88,9 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		
 		ListenableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
 		try {
+            while(!report.isDone()) {
+                Thread.sleep(1);
+            }
 			testCaseReport = report.get();
 		} catch (Exception e) {
 			testCaseReport.setStatus(TestStatus.Failed.status);

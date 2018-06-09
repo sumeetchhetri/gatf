@@ -4,13 +4,12 @@
 	<parent>
 		<groupId>com.test</groupId>
 		<artifactId>gatf-parent</artifactId>
-		<version>1.7</version>
+		<version>1.8</version>
 	</parent>
 	
 	<artifactId>gatf-alldep-jar</artifactId>
 	<packaging>jar</packaging>
 	<name>gatf-alldep-jar</name>
-	<version>1.7</version>
 
 	<build>
 		<sourceDirectory>../src</sourceDirectory>

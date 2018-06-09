@@ -18,6 +18,8 @@ package com.gatf.selenium;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Method;
+import java.security.Provider;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -33,6 +35,8 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import javax.crypto.Cipher;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
@@ -41,14 +45,23 @@ import org.openqa.selenium.Keys;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.dataprovider.GatfTestDataConfig;
+import com.gatf.executor.dataprovider.GatfTestDataProvider;
+import com.gatf.executor.dataprovider.GatfTestDataSource;
+import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.google.googlejavaformat.java.Formatter;
+import com.thoughtworks.xstream.XStream;
+import com.thoughtworks.xstream.io.xml.DomDriver;
 
 public class Command {
 
     protected static class CommandState {
         boolean commentStart = false, codeStart = false, started = false, pluginstart = false;
         String basePath = "";
+        String testcaseDir = "";
         int concExec = 0;
+        
+        int modeSet = 0;
 
         int NUMBER = 1;
         int NUMBER_COND = 1;
@@ -60,6 +73,7 @@ public class Command {
         int NUMBER_IF = 1;
         int NUMBER_AL = 1;
         int NUMBER_RD = 1;
+        int NUMBER_AT = 1;//addtest
         int loopCounter = 0;
 
         int NUMBER_SC = 1;
@@ -78,7 +92,38 @@ public class Command {
         Stack<String> stckifcnt = new Stack<String>();
         String ifcnt = null, pifcnt = null;
 
+        List<String[]> subtestDetails = new ArrayList<String[]>();
+        Set<String> subtestDups = new HashSet<String>();
         List<Command> allSubTests = new ArrayList<Command>();
+        Set<String> layers = new HashSet<String>();
+        
+        String layerStr = null;
+        
+        String getLayers() {
+            if(layerStr==null) {
+                StringBuilder b = new StringBuilder();
+                for (String s : layers) {
+                    b.append("evaluate(\"" + esc(s) + "\")");
+                    b.append(",");
+                }
+                if(b.length()>0 && b.charAt(b.length()-1)==',') {
+                   b.deleteCharAt(b.length()-1);
+                } else {
+                    b.append("\"\"");
+                }
+                layerStr = b.toString();
+            }
+            return layerStr;
+        }
+        
+        void addSubtest(SubTestCommand st) {
+            if(subtestDups.contains(st.name)) {
+                throwError(st.fileLineDetails, new RuntimeException("Duplicate subtest defined"));
+            }
+            subtestDups.add(st.name);
+            allSubTests.add(st);
+            subtestDetails.add(new String[]{st.name, st.sessionName, st.sessionId+""});
+        }
         Map<String, String> qss = new HashMap<String, String>();
         Map<String, String> plugins = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
@@ -133,6 +178,14 @@ public class Command {
 
         String currvarnamesc() {
             return sc;
+        }
+
+        String varnameat() {
+            return "___at___" + NUMBER_AT++;
+        }
+
+        String currvarnameat() {
+            return "___at___" + (NUMBER_AT-1);
         }
 
         String prevvarnamesc() {
@@ -318,6 +371,12 @@ public class Command {
         } else if(state.codeStart && !cmd.equals(">>>")) {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
+        } else if(cmd.startsWith("??+")) {
+            cmd = cmd.substring(3).trim();
+            comd = new WaitTillElementVisibleOrInvisibleCommand(new FindCommand(cmd, cmdDetails, state), cmdDetails, state, true);
+        } else if(cmd.startsWith("??-")) {
+            cmd = cmd.substring(3).trim();
+            comd = new WaitTillElementVisibleOrInvisibleCommand(new FindCommand(cmd, cmdDetails, state), cmdDetails, state, false);
         } else if(cmd.startsWith("??")) {
             String time = "0";
             Matcher m = WAIT.matcher(cmd);
@@ -394,7 +453,13 @@ public class Command {
             if(cmd.isEmpty()) {
                 //exception
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
+        } else if (cmd.startsWith("#counter")) {
+            cmd = cmd.substring(8).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
         } else if (cmd.startsWith("#transient-provider")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
@@ -432,6 +497,9 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("open ")) {
             String name = cmd.substring(5).trim();
             comd = new BrowserCommand(name, cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("mode ")) {
+            String name = cmd.substring(5).trim();
+            comd = new ModeCommand(name, cmdDetails, state);
         } /*else if (cmd.toLowerCase().startsWith("capability_set ")) {
             comd = new CapabilitySetPropertyCommand(cmd.substring(15));
         }*/ else if (cmd.toLowerCase().startsWith("goto ")) {
@@ -444,6 +512,8 @@ public class Command {
             }
             comd = new GotoCommand(cmdDetails, state);
             ((GotoCommand)comd).url = url;
+        } else if (cmd.toLowerCase().startsWith("layer ")) {
+            comd = new LayerCommand(cmd.substring(6), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("break")) {
             comd = new BreakCommand(cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("continue")) {
@@ -547,7 +617,7 @@ public class Command {
         if (cmd.toLowerCase().startsWith("type ")) {
             comd = new TypeCommand(cmd.substring(5), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("randomize ")) {
-            comd = new RandomizeCommand(cmd.substring(10), cmdDetails, state);
+            comd = new RandomizeCommand(cmd.substring(10), cmdDetails, state, fcmd);
         } else if (cmd.toLowerCase().startsWith("chord ")) {
             comd = new ChordCommand(cmd.substring(6), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("select ")) {
@@ -603,6 +673,10 @@ public class Command {
             try
             {
                 tmp = parse(o, state);
+            }
+            catch (GatfSelCodeParseError e)
+            {
+                throw e;
             }
             catch (Throwable e)
             {
@@ -660,7 +734,20 @@ public class Command {
                 }
                 return;
             } else if(tmp instanceof ImportCommand) {
-                File f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + o[3].toString()+((ImportCommand)tmp).name);
+                String parentPath = state.basePath;
+                if(StringUtils.isNotBlank(o[3].toString())) {
+                    parentPath = o[3].toString();
+                }
+                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                if(!f.exists()) {
+                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                    }
+                    if(!f.exists()) {
+                        throwParseErrorS(o, new RuntimeException("Import script not found in any of the search paths"));
+                    }
+                }
                 if(state.visitedFiles.contains(f.getAbsolutePath())) {
                     throwParseErrorS(o, new RuntimeException("Possible import script recursion observed"));
                 }
@@ -675,7 +762,7 @@ public class Command {
                     fnm = ""; 
                 }
                 for (String c : commands) {
-                    iter.add(new Object[]{c, cnt++, ((ImportCommand)tmp).name, fnm, state});
+                    iter.add(new Object[]{c, cnt++, f.getParentFile().getAbsolutePath(), fnm, state});
                 }
                 for (@SuppressWarnings("unused") String c : commands) {
                     iter.previous();
@@ -695,6 +782,21 @@ public class Command {
                 } else if(tmp instanceof BrowserCommand) {
                     state.started = true;
                     isValid = true;
+                    if(state.modeSet==0) {
+                        state.modeSet = 1;
+                    }
+                    parent.children.add(tmp);
+                } else if(tmp instanceof ModeCommand) {
+                    isValid = true;
+                    if(state.modeSet!=0) {
+                        throwParseErrorS(o, new RuntimeException("mode if provided should be the first execution command in a test script"));
+                    } else {
+                        if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
+                            throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
+                        }
+                        state.modeSet = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
+                        state.modeSet = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeSet;
+                    }
                     parent.children.add(tmp);
                 } else if(tmp instanceof SleepCommand) {
                     isValid = true;
@@ -739,16 +841,16 @@ public class Command {
         cmd.children = ncl;
     }
 
-    static Command getAll(List<String> scmds, String fn, CommandState state) throws Exception {
+    static Command getAll(List<String> scmds, File fn, CommandState state) throws Exception {
         state.commentStart = false;
         Command tcmd = new Command(null, state);
-        tcmd.name = fn;
+        tcmd.name = fn.getName();
 
         List<Object[]> lio = new ArrayList<Object[]>();
         int cnt = 1;
         for (String s : scmds)
         {
-            lio.add(new Object[]{s, cnt++, fn, "", state});
+            lio.add(new Object[]{s, cnt++, fn, fn.getParentFile().getAbsolutePath(), state});
         }
 
         get(tcmd, lio.listIterator(), state);
@@ -768,7 +870,7 @@ public class Command {
         CommandState state = new CommandState();
         state.basePath = new File(filename).getParent();
         state.visitedFiles.add(new File(filename).getAbsolutePath());
-        Command cmd = Command.getAll(commands, filename, state);
+        Command cmd = Command.getAll(commands, new File(filename), state);
         return cmd;
     }
 
@@ -782,11 +884,11 @@ public class Command {
         CommandState state = new CommandState();
         state.basePath = context.getGatfExecutorConfig().getTestCasesBasePath();
         if(context.getGatfExecutorConfig().getTestCaseDir()!=null) {
-            state.basePath += SystemUtils.FILE_SEPARATOR + context.getGatfExecutorConfig().getTestCaseDir();
+            state.testcaseDir += context.getGatfExecutorConfig().getTestCaseDir();
         }
         loadPlugins(state, context);
         state.visitedFiles.add(file.getAbsolutePath());
-        Command cmd = Command.getAll(commands, file.getName(), state);
+        Command cmd = Command.getAll(commands, file, state);
         cmd.mp = context.getGatfExecutorConfig().getSelDriverConfigMap();
         return cmd;
     }
@@ -895,7 +997,7 @@ public class Command {
         b.append("import org.openqa.selenium.OutputType;\n");
         b.append("import com.gatf.executor.core.AcceptanceTestContext;\n");
         b.append("import com.gatf.selenium.SeleniumTest;\n");
-        b.append("import com.gatf.selenium.SeleniumTest.SeleniumTestResult;\n");
+        b.append("import com.gatf.selenium.SeleniumTestSession;\n");
         b.append("import org.openqa.selenium.Dimension;\n");
         b.append("import org.openqa.selenium.Point;\n");
         b.append("import org.openqa.selenium.By;\n");
@@ -931,53 +1033,97 @@ public class Command {
             }
             b.append("}\n"); 
         }
-        List<String> bn = new ArrayList<String>();
-        List<String> stn = new ArrayList<String>();
+        List<String[]> bn = new ArrayList<String[]>();
+        Set<String> sessDups = new HashSet<String>();
+        int lastSessionId = 0;
         for (Command c : children) {
             if(c instanceof RequireCommand) {
                 //TODO
             } else if(c instanceof BrowserCommand) {
-                if(mp.containsKey(c.name)) {
-                    bn.add(c.name.toLowerCase());
-                } else {
-                    throw new RuntimeException("Driver configuration not found for " + c.name);
+                if(state.modeSet==2 && ((BrowserCommand)c).sessionName!=null && sessDups.contains(((BrowserCommand)c).sessionName)) {
+                    throwError(c.fileLineDetails, new RuntimeException("In integration mode duplicate session names are not allowed " + c.name + "/" + ((BrowserCommand)c).sessionName));
                 }
+                if(((BrowserCommand)c).sessionName!=null) {
+                    sessDups.add(((BrowserCommand)c).sessionName);
+                }
+                ((BrowserCommand)c).sessionId = lastSessionId;
+                if(mp.containsKey(c.name)) {
+                    bn.add(new String[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+""});
+                } else {
+                    throwError(c.fileLineDetails, new RuntimeException("Driver configuration not found for " + c.name));
+                }
+                lastSessionId++;
             } else if(c instanceof SubTestCommand) {
-                stn.add(c.name);
+                
             }
         }
-        b.append("@SuppressWarnings(\"unchecked\")\npublic Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {\n");
-        for (String brn : bn)
+        b.append("public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {\n");
+        for (String[] brn : bn)
         {
-            b.append("addTest(\""+esc(brn)+"\");\n");
-            for (String st : stn)
+            b.append("java.util.Set<String> "+state.varnameat()+" = addTest("+(StringUtils.isNotBlank(brn[1])?("\""+esc(brn[1])+"\""):"null")+", \""+esc(brn[0])+"\");\n");
+            for (String[] st : state.subtestDetails)
             {
-                b.append("addSubTest(\""+esc(brn)+"\", \""+esc(st)+"\");\n");
+                String sessionName = StringUtils.isNotBlank(st[1])?st[1]:null;
+                String sessionId = null;
+                try {
+                    sessionId = Integer.parseInt(st[2])-1>=0?Integer.parseInt(st[2])-1+"":null;
+                } catch (Exception e) {
+                }
+                b.append("if(checkifSessionIdExistsInSet("+state.currvarnameat()+", "
+                            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+                            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
+                b.append("setSession("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+                            +(sessionId!=null?sessionId:"-1")+", false);\n");
+                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc(st[0])+"\");\n}\n");
             }
         }
-        b.append("startTest();\n");
-        for (String brn : bn)
-        {
-            b.append("quit();\n");
-            b.append("setupDriver"+brn.replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
+        b.append("\n\n");
+        
+        if(state.modeSet==2) {
+            if(bn.size()>1 && state.subtestDetails.size()==0) {
+                throw new RuntimeException("In integration mode subtests are required per browser session");
+            }
+            for (int y=bn.size()-1;y>=0;y--)
+            {
+                String[] brn = bn.get(y);
+                b.append("quit();\n");
+                b.append("setupDriver"+brn[0].replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
+            }
             b.append("_execute(___lp___);\n");
+        } else {
+            for (String[] brn : bn)
+            {
+                b.append("setSession(null, " + (brn[2]!=null?brn[2]:"-1")+", true);\n");
+                //b.append("startTest();\n");
+                b.append("quit();\n");
+                b.append("setupDriver"+brn[0].replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
+                b.append("_execute(___lp___);\n");
+            }
         }
-        b.append("return get__result__();\n}\n");
+        
+        b.append("return get__sessions__();\n}\n");
         b.append("public int concurrentExecutionNum() {\n");
         b.append("return " + state.concExec+";\n");
         b.append("}\n");
-        b.append("@SuppressWarnings(\"unchecked\")\npublic void _execute(LoggingPreferences ___lp___) throws Exception {\n");
+        b.append("public void _execute(LoggingPreferences ___lp___) throws Exception {\n");
         b.append("try {\n");
         state.pushSc();
         b.append("SearchContext "+state.currvarnamesc()+" = get___d___();\n");
         b.append("WebDriver ___cw___ = get___d___();\n");
         b.append("WebDriver ___ocw___ = ___cw___;\n");
         b.append("List<WebElement> ___ce___ = null;\n");
+        int subtestcount = 0;
         for (Command c : children) {
-            if((c instanceof RequireCommand) || (c instanceof BrowserCommand)) {
+            if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand)) {
                 continue;
             }
-            String cc = c.javacode();
+            String cc = null;
+            if(c instanceof SubTestCommand) {
+                cc = ((SubTestCommand)c).javacodesubtest(subtestcount>0);
+                subtestcount++;
+            } else {
+                cc = c.javacode();
+            }
             b.append(cc);
             if(!cc.isEmpty()) {
                 b.append("\n");
@@ -1084,7 +1230,7 @@ public class Command {
                 code = code.replace("@printProvJson", "___cxt___print_provider__json");
                 code = code.replace("@printProv", "___cxt___print_provider__");
                 code = code.replace("@print", "System.out.println");
-                code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1);");
+                code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1)");
                 String args = "";
                 for (String arg : arglist)
                 {
@@ -1266,19 +1412,29 @@ public class Command {
     }
 
     public static class SubTestCommand extends Command {
+        String sessionName;
+        int sessionId = 0;
         String fName = "__st__" + state.NUMBER_ST++;
-        SubTestCommand(String name, Object[] cmdDetails, CommandState state) {
+        SubTestCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(name);
-            if(name.length()>0 && name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>=1) {
+                name = unSantizedUnQuoted(parts[0].trim(), state);
+                if(name.length()>0) {
+                } else {
+                    name = "Subtest " + (state.NUMBER_ST - 1);
+                }
+                if(parts.length>1) {
+                    if(parts[1].trim().matches("@[1-9]+")) {
+                        sessionId = Integer.parseInt(parts[1].trim().substring(1));
+                    } else {
+                        sessionName = unSantizedUnQuoted(parts[1].trim(), state);
+                    }
                 }
             } else {
                 name = "Subtest " + (state.NUMBER_ST - 1);
             }
-            this.name = name;
-            state.allSubTests.add(this);
+            state.addSubtest(this);
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
@@ -1295,7 +1451,30 @@ public class Command {
             return b.toString();
         }
         String javacode() {
-            return "___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n";
+            return javacodesubtest(false);
+        }
+        String javacodesubtest(boolean initvars) {
+            StringBuilder b = new StringBuilder();
+            if(state.modeSet==2) {
+                if(sessionName!=null) {
+                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
+                } else if(sessionId>0) {
+                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
+                }
+            } else {
+                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+                        +(sessionId>0?((sessionId-1)+""):"-1") + ")) {");
+            }
+            if(initvars) {
+                b.append("___sc___1 = get___d___();\n");
+                b.append("___cw___ = get___d___();\n");
+                b.append("___ocw___ = ___cw___;\n");
+            }
+            b.append("___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            if(state.modeSet!=2) {
+                b.append("}\n");
+            }
+            return b.toString();
         }
         String javacodeint() {
             StringBuilder b = new StringBuilder();
@@ -1575,17 +1754,45 @@ public class Command {
         }
     }
 
+    public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
+        boolean isVisible;
+        WaitTillElementVisibleOrInvisibleCommand(FindCommand cond, Object[] cmdDetails, CommandState state, boolean isVisible) {
+            super(cmdDetails, state);
+            this.cond = cond;
+            cond.children = new ArrayList<Command>();
+            this.isVisible = isVisible;
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("?? "+(isVisible?"+":"-"));
+            b.append(cond.toCmd());
+            return b.toString();
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            b.append("\nwhile(true) {\n");
+            b.append(cond.javacodeonlyNoAssert(children, true));
+            b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;");
+            b.append("sleep(1000);\n");
+            b.append("}\n");
+            return b.toString();
+        }
+        public String toSampleSelCmd() {
+            return "??(+|-) {find-expr}";
+        }
+    }
+    
     public static class ValidateCommand extends FindCommandImpl {
         ValidateCommand(String time, String val, Object[] lineNumber, CommandState state) {
             super(lineNumber, state);
             String[] parts = val.trim().split("[\t ]+");
             String cmd = parts[0];
             if(parts.length>1) {
-                if (parts[1].toLowerCase().startsWith("type") || (parts[1].toLowerCase().startsWith("select") && !parts[1].toLowerCase().startsWith("selected")) 
+                if (parts[1].toLowerCase().equals("type") || parts[1].toLowerCase().equals("sendkeys") || parts[1].toLowerCase().equals("select") 
                         || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
-                        || parts[1].toLowerCase().startsWith("hoverclick") || parts[1].toLowerCase().equals("clear")
+                        || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
                         || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
-                        || parts[1].toLowerCase().equals("chord ")) {
+                        || parts[1].toLowerCase().equals("chord") || parts[1].toLowerCase().equals("randomize")) {
                     cmd = "";
                     for (int i = 1; i < parts.length; i++)
                     {
@@ -1594,11 +1801,11 @@ public class Command {
                     cond = time.equals("0")?new FindCommand(parts[0], lineNumber, state):new WaitAndFindCommand(parts[0], Long.valueOf(time), lineNumber, state);
                     cmd = cmd.trim();
                     if(!cmd.isEmpty()) {
-                        if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
+                        if (cmd.toLowerCase().startsWith("type ") || parts[1].toLowerCase().startsWith("sendkeys ") || cmd.toLowerCase().startsWith("select ") 
                                 || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
                                 || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
-                                || cmd.toLowerCase().equals("chord ")) {
+                                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("randomize ")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, lineNumber, state);
                             children.add(comd);
@@ -1629,6 +1836,11 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             b.append(cond.javacodeonly(children));
+            for (Command command : children) {
+                if(command instanceof RandomizeCommand) {
+                    b.append(command.javacode());
+                }
+            }
             //if(!(cond instanceof WaitAndFindCommand))
             //b.append("\nAssert.assertTrue("+cond.condition()+");");
             return b.toString();
@@ -1873,7 +2085,7 @@ public class Command {
             if(!children.isEmpty())
             {
                 b.append(cond.javacodeonly(null));
-                String cvarname = state.currvarname();
+                String cvarname = cond.getActionableVar();
                 //pushSc();
                 state.pushParc();
                 state.pushItr();
@@ -1903,24 +2115,62 @@ public class Command {
 
     public static class ProviderLoopCommand extends Command {
         String name;
-        int index = -1;
-        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state) {
+        int index = Integer.MIN_VALUE;
+        int end = Integer.MIN_VALUE;
+        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean counter) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
-            name = state.unsanitize(parts[0].trim());
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
+            if(counter) {
+                if(parts.length>0 && !parts[0].trim().isEmpty()) {
+                    try
+                    {
+                        index = Integer.valueOf(parts[0].trim());
+                    }
+                    catch (Exception e)
+                    {
+                        throwError(fileLineDetails, new RuntimeException("Counter start should be a number"));
+                    }
                 }
-            }
-            if(parts.length>1 && !parts[1].trim().isEmpty()) {
-                try
-                {
-                    index = Integer.valueOf(parts[1].trim());
+                if(parts.length>1 && !parts[1].trim().isEmpty()) {
+                    try
+                    {
+                        end = Integer.valueOf(parts[1].trim());
+                    }
+                    catch (Exception e)
+                    {
+                        throwError(fileLineDetails, new RuntimeException("Counter end should be a number"));
+                    }
                 }
-                catch (Exception e)
-                {
-                    throw new AssertionError("Provider index should be a number");
+                if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end) {
+                } else {
+                    throwError(fileLineDetails, new RuntimeException("Counter needs both start and end values and start should be less than end"));
+                }
+            } else {
+                name = state.unsanitize(parts[0].trim());
+                if(name.charAt(0)==name.charAt(name.length()-1)) {
+                    if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                        name = name.substring(1, name.length()-1);
+                    }
+                }
+                if(parts.length>1 && !parts[1].trim().isEmpty()) {
+                    try
+                    {
+                        index = Integer.valueOf(parts[1].trim());
+                    }
+                    catch (Exception e)
+                    {
+                        throwError(fileLineDetails, new RuntimeException("Provider index/start should be a number"));
+                    }
+                }
+                if(parts.length>2 && !parts[2].trim().isEmpty()) {
+                    try
+                    {
+                        end = Integer.valueOf(parts[2].trim());
+                    }
+                    catch (Exception e)
+                    {
+                        throwError(fileLineDetails, new RuntimeException("Provider end should be a number"));
+                    }
                 }
             }
         }
@@ -1941,7 +2191,19 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            if(index>=0)
+            if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end)
+            {
+                state.loopCounter++;
+                String loopname = state.varname();
+                b.append("\nfor(long " + loopname + "="+index+";"+loopname+"<" + end + ";"+loopname+"++) {\n");
+                for (Command c : children) {
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+                b.append("}");
+                state.loopCounter--;
+            }
+            else if(index>=0)
             {
                 b.append("set__provname__(\"" + name + "\");\n");
                 b.append("set__provpos__(\"" + name + "\", " + index + ");\n{\n");
@@ -2014,7 +2276,7 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             b.append("newProvider(\""+value+"\");\n");
-            b.append(cond.javacodeonly(children));
+            b.append(cond.javacodetrprovonly(children));
             String provname = cond.rtl;
             String loopname = state.varname();
             List<String> ssl = Arrays.asList(varname.split("[\t ]*,[\t ]*"));
@@ -2058,9 +2320,11 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.addArguments(\"--ignore-certificate-errors\");\n");
                 b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
+                b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2069,25 +2333,12 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                if(config.getVersion()!=null) {
-                    try
-                    {
-                        double ver = Double.valueOf(config.getVersion());
-                        if(ver<=46) {
-                            b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
-                        } else {
-                            b.append("set___d___(new org.openqa.selenium.firefox.MarionetteDriver(___dc___));\n");
-                        }
-                    }
-                    catch (Exception e)
-                    {
-                        b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
-                    }
-                } else {
-                    b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
-                }
+                b.append("___dc___.getProfile().setAcceptUntrustedCertificates(true);\n");
+                b.append("___dc___.getProfile().setAssumeUntrustedCertificateIssuer(true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("ie")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.internetExplorer();\n");
+                b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2096,9 +2347,10 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("safari")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.safari();\n");
+                b.append("org.openqa.selenium.safari.SafariOptions ___dc___ = new org.openqa.selenium.safari.SafariOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2107,9 +2359,10 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("opera")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.operaBlink();\n");
+                b.append("org.openqa.selenium.opera.OperaOptions ___dc___ = new org.openqa.selenium.opera.OperaOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2118,9 +2371,10 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("edge")) {
-                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities."+config.getName().toLowerCase()+"();\n");
+                b.append("org.openqa.selenium.edge.EdgeOptions ___dc___ = new org.openqa.selenium.edge.EdgeOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2129,6 +2383,7 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-android")) {
                 b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+config.getVersion()+"\", org.openqa.selenium.Platform.ANDROID);\n");
@@ -2176,9 +2431,8 @@ public class Command {
                 //b.append("get___d___() = new org.openqa.selenium.remote.RemoteWebDriver(\"http://127.0.0.1:4723/wd/hub\", ___dc___);\n");
             }
             else {
-                throw new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName());
+                throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
             }
-            b.append("setBrowserName(\""+config.getName()+"\");\n");
             return b.toString();
         }
         int weight() {
@@ -2190,11 +2444,16 @@ public class Command {
     }
 
     public static class BrowserCommand extends Command {
+        String sessionName;
+        int sessionId = -1;
         BrowserCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
-                name = state.unsanitize(parts[0].trim());
+                name = unSantizedUnQuoted(parts[0].trim(), state);
+                if(parts.length>1) {
+                    sessionName = unSantizedUnQuoted(parts[1].trim(), state);
+                }
             } else {
                 //excep
             }
@@ -2211,6 +2470,50 @@ public class Command {
         }
         public String toSampleSelCmd() {
             return "open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..}";
+        }
+    }
+
+    public static class LayerCommand extends Command {
+        LayerCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            this.name = val;
+            if(!val.trim().isEmpty()) {
+                state.layers.add(unSantizedUnQuoted(val, state));
+            }
+        }
+        String toCmd() {
+            return "layer " + name;
+        }
+        public String toSampleSelCmd() {
+            return "layer {find-expr}";
+        }
+        public String javacode() {
+            return "";
+        }
+    }
+
+    public static class ModeCommand extends Command {
+        ModeCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>=1) {
+                name = state.unsanitize(parts[0].trim());
+            } else {
+                //excep
+            }
+        }
+        String name() {
+            return name;
+        }
+
+        String toCmd() {
+            return "mode " + name;
+        }
+        int weight() {
+            return 2;
+        }
+        public String toSampleSelCmd() {
+            return "mode {normal|integration}";
         }
     }
 
@@ -2561,7 +2864,7 @@ public class Command {
     }
 
     public static class FindCommand extends Command {
-        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null;
+        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null;
         boolean suppressErr = false, byselsame = false;
         String by() {
             return by;
@@ -2598,7 +2901,7 @@ public class Command {
                         subselector = state.unsanitize(subselector);
                     }
                     if(parts.length>2) {
-                        String oper = parts[2].trim();
+                        oper = parts[2].trim();
                         oper = state.unsanitize(oper);
                         String cval = oper;
                         if(oper.startsWith("<=")) {
@@ -2704,7 +3007,136 @@ public class Command {
         String getErr() {
             return "\"Element not found by selector " + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \"";
         }
+        String javacodetrprovonly(List<Command> children) {
+            javacodeonlyint(children);
+            String sc = state.currvarnamesc();
+            String value = null, values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ValueCommand) {
+                   value = "evaluate(\"" + esc(((ValueCommand)c).value) + "\")";
+                } else if(c instanceof ValueListCommand) {
+                } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
+                        || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
+                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
+                        || c instanceof RandomizeCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
+                        action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
+                        if(c instanceof TypeCommand) {
+                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
+                        } else if(c instanceof ChordCommand) {
+                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        }
+                    }
+                }
+            }
+            if(ssubselector!=null) {
+                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+            }
+            if(soper!=null) {
+                soper = "\""+soper+"\"";
+            }
+            if(sclassifier!=null) {
+                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            }
+            String var = state.varname();
+            rtl = var;
+            return "List<String[]> " + var + " = transientProviderData("+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+                    + ssubselector + ", "+byselsame+", "+value+", "+values+", "
+                    + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
+                    + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
+        }
         String javacodeonly(List<Command> children) {
+            return javacodeonlyNoAssert(children, false)
+                    + "\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
+                    + "' at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
+        }
+        String javacodeonlyNoAssert(List<Command> children, boolean noexcep) {
+            javacodeonlyint(children);
+            String sc = state.currvarnamesc();
+            String value = null, values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ValueCommand) {
+                   value = "evaluate(\"" + esc(((ValueCommand)c).value) + "\")";
+                } else if(c instanceof ValueListCommand) {
+                } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
+                        || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
+                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
+                        || c instanceof RandomizeCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
+                        action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
+                        if(c instanceof TypeCommand) {
+                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
+                        } else if(c instanceof ChordCommand) {
+                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        }
+                    }
+                }
+            }
+            if(ssubselector!=null) {
+                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+            }
+            if(soper!=null) {
+                soper = "\""+soper+"\"";
+            }
+            if(sclassifier!=null) {
+                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            }
+            return "___ce___ = handleWaitFunc("+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+                    + ssubselector + ", "+byselsame+", "+value+", "+values+", "
+                    + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
+                    + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", "+noexcep+", "+state.getLayers()+");\n";
+        }
+        String javacodeonly(List<Command> children, long waitTime) {
+            javacodeonlyint(children);
+            String sc = state.currvarnamesc();
+            String value = null, values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ValueCommand) {
+                   value = "evaluate(\"" + esc(((ValueCommand)c).value) + "\")";
+                } else if(c instanceof ValueListCommand) {
+                } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
+                        || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
+                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
+                        || c instanceof RandomizeCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
+                        action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
+                        if(c instanceof TypeCommand) {
+                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
+                        } else if(c instanceof ChordCommand) {
+                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        }
+                    }
+                }
+            }
+            if(ssubselector!=null) {
+                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+            }
+            if(soper!=null) {
+                soper = "\""+soper+"\"";
+            }
+            if(sclassifier!=null) {
+                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            }
+            String b = "___ce___ = handleWaitFunc("+sc+", ___ce___, (long)"+waitTime+", "+sclassifier+", \""+by+"\", "
+                    + ssubselector + ", "+byselsame+", "+value+", "+values+", "
+                    + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
+                    + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n"
+                    + "\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
+                    + "' at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ActionsCommand || c instanceof RobotCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && c instanceof ActionsCommand) {
+                        b += ((ActionsCommand)c).javacode();
+                    }
+                }
+            }
+            return b;
+        }
+        String javacodeonlyint(List<Command> children) {
             try {
                 StringBuilder b = new StringBuilder();
                 topele = state.varname();
@@ -2964,7 +3396,7 @@ public class Command {
             return null;
         }
         String getActionable(String action, String post, String actionsVar) {
-            StringBuilder b = new StringBuilder();
+            /*StringBuilder b = new StringBuilder();
             if(cfiltvar!=null) {
                 b.append("\nfor(final WebElement " + state.varname() + " : " + cfiltvar + ")\n{");
                 b.append("\n" + state.currvarname() + "." + action + "(" + (post!=null?post:"") + ");");
@@ -2976,10 +3408,15 @@ public class Command {
             } else {
                 b.append("\n" + state.currvarname() + ".get(0)." + action + "(" + (post!=null?post:"") + ");");
             }
-            return b.toString();
+            return b.toString();*/
+            if(actionsVar!=null) {
+                return "\n"+actionsVar+".moveToElement(___ce___.get(0))."+action+"(" + (post!=null?post:"") + ").perform();";
+            } else {
+                return "\n___ce___.get(0)." + action + "(" + (post!=null?post:"") + ");";
+            }
         }
         String getActionableVar() {
-            return cfiltvar;
+            return "___ce___";
         }
         String condition() {
             return condvar;
@@ -3005,28 +3442,7 @@ public class Command {
             return "";
         }
         String javacodeonly(List<Command> children) {
-            String tsc = state.currvarnamesc();
-            state.pushSc();
-            String wfte = state.varname();
-            String ex = state.evarname();
-            String v = "final Object[]  " + wfte + " = new Object[2];\n"
-                    + "final WebDriver "+state.currvarnamesc()+" = (WebDriver)"+tsc+";\ntry{\n(new WebDriverWait("+state.currvarnamesc()+", "+waitfor+")).until(" +
-                    "\nnew Function<WebDriver, Boolean>(){"+
-                    "\npublic Boolean apply(WebDriver input) {\n"+
-                    "\nList<WebElement> ___ce___ = null;\n" +
-                    super.javacodeonly(children) +
-                    "\n" + wfte + "[0] = " + topele() + ";\n" +
-                    "\n" + wfte + "[1] = ___ce___;\n" +
-                    "\nreturn "+super.condition()+";" +
-                    "\n}"+
-                    "\npublic String toString() {"+
-                    "\nreturn \"\";" +
-                    "\n}"+
-                    "\n});\n} catch(org.openqa.selenium.TimeoutException "+ex+") {\nthrow new RuntimeException("+getErr()+", "+ex+");\n}" +
-                    "\n___ce___ = (List<WebElement>)" + wfte + "[1];\n";
-            state.prevvarnamesc();
-            topele = wfte;
-            return v;
+            return super.javacodeonly(children, waitfor);
         }
     }
 
@@ -3126,14 +3542,19 @@ public class Command {
     public static class RandomizeCommand extends FindCommandImpl {
         String v1;
         String v2, v3;
-        RandomizeCommand(String val, Object[] cmdDetails, CommandState state) {
+        RandomizeCommand(String val, Object[] cmdDetails, CommandState state, FindCommand cond) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>0) {
-                cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
-                parts[0] = parts[0].trim();
-                if(parts.length>1){
-                    v1 = parts[1];
+                int c = 1, t = 1;
+                if(cond!=null) {
+                    c = 0;
+                    t = 0;
+                } else {
+                    this.cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+                }
+                if(parts.length>t) {
+                    v1 = parts[c];
                     v1 = state.unsanitize(v1);
                     if(v1.charAt(0)==v1.charAt(v1.length()-1)) {
                         if(v1.charAt(0)=='"' || v1.charAt(0)=='\'') {
@@ -3141,8 +3562,8 @@ public class Command {
                         }
                     }
                 }
-                if(parts.length>2){
-                    v2 = parts[2];
+                if(parts.length>t+1) {
+                    v2 = parts[c+1];
                     v2 = state.unsanitize(v2);
                     if(v2.charAt(0)==v2.charAt(v2.length()-1)) {
                         if(v2.charAt(0)=='"' || v2.charAt(0)=='\'') {
@@ -3150,8 +3571,8 @@ public class Command {
                         }
                     }
                 }
-                if(parts.length>3){
-                    v3 = parts[3];
+                if(parts.length>t+2) {
+                    v3 = parts[c+2];
                     v3 = state.unsanitize(v3);
                     if(v3.charAt(0)==v3.charAt(v3.length()-1)) {
                         if(v3.charAt(0)=='"' || v3.charAt(0)=='\'') {
@@ -3170,9 +3591,9 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
-                b.append("\nrandomize("+cond.getActionableVar()+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");");
+                b.append("\nrandomize("+cond.getActionableVar()+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
             } else {
-                b.append("\nrandomize("+state.currvarname()+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");");
+                b.append("\nrandomize(___ce___, \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
             }
             return b.toString();
         }
@@ -3331,7 +3752,13 @@ public class Command {
                 b.append(cond.javacodeonly(children));
                 //b.append("\nAssert.assertTrue("+cond.condition()+");");
             }
-            String cvarnm = cond!=null?cond.getActionableVar():state.currvarname();
+            String cvarnm = null;;
+            if(cond!=null) {
+                cvarnm = cond.getActionableVar();
+            }
+            if(cond.getActionableVar()==null) {
+                cvarnm = state.currvarname();
+            }
             String selvrnm = state.varname();
             b.append("\nSelect "+selvrnm+" = new Select("+cvarnm+".get(0));");
             if(by.equalsIgnoreCase("text")) {
@@ -3379,7 +3806,13 @@ public class Command {
                 b.append(cond.javacodeonly(children));
                 //b.append("\nAssert.assertTrue("+cond.condition()+");");o
             }
-            String cvarnm = cond!=null?cond.getActionableVar():state.currvarname();
+            String cvarnm = null;
+            if(cond!=null) {
+                cvarnm = cond.getActionableVar();
+            }
+            if(cond.getActionableVar()==null) {
+                cvarnm = state.currvarname();
+            }
             String hvvrnm = state.varname();
             b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+cvarnm+".get(0)).perform();");
@@ -3457,7 +3890,8 @@ public class Command {
         String action;
         String expr1;
         String expr2;
-
+        static final String ALLCMDS = "click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick|movetoelement|moveto|keydown|keyup"
+                + "|sendkeys|type|draganddrop|movebyoffset|moveby|dragdrop|";
         public ActionsCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
@@ -3467,8 +3901,9 @@ public class Command {
             int tl = t.length, counter = 0;
             ActionsCommand cmd = this;
             this.cond = fcmd;
+            boolean moveDone = false;
             while(counter<tl) {
-                if(t[counter].toLowerCase().matches("click|clickandhold|release|doubleclick|contextclick|clickhold|rightclick")) {
+                if(t[counter].toLowerCase().matches("click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick")) {
                     cmd.action = t[counter].toLowerCase();
                     if(cmd.action.equals("clickhold") || cmd.action.equals("clickandhold")) {
                         cmd.action = "clickAndHold";
@@ -3477,7 +3912,24 @@ public class Command {
                     } else if(cmd.action.equals("doubleclick") || cmd.action.equals("dblclick")) {
                         cmd.action = "doubleClick";
                     }
-                } else if(t[counter].toLowerCase().matches("keydown|keyup|sendkeys|type|movetoelement|moveto")) {
+                } else if(t[counter].toLowerCase().matches("movetoelement|moveto")) {
+                    cmd.action = t[counter].toLowerCase();
+                    if(cmd.action.equals("moveto") || cmd.action.equals("movetoelement")) {
+                        cmd.action = "moveToElement";
+                    }
+                    if(!moveDone && cond!=null && ((tl>counter+1 && t[counter+1].toLowerCase().matches(ALLCMDS)) || tl==counter+1)) {
+                        moveDone = true;
+                    } else if(tl>counter+1) {
+                        cmd.expr1 = state.unsanitize(t[++counter]);
+                        if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
+                            if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
+                                cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
+                            }
+                        }
+                    } else {
+                        throwParseError(null, new RuntimeException("Expression expected after actions (keyDown|keyUp|sendKeys|moveToElement)"));
+                    }
+                } else if(t[counter].toLowerCase().matches("keydown|keyup|sendkeys|type")) {
                     cmd.action = t[counter].toLowerCase();
                     if(cmd.action.equals("type") || cmd.action.equals("sendkeys")) {
                         cmd.action = "sendKeys";
@@ -3560,22 +4012,22 @@ public class Command {
                 String ck = state.unsanitize(expr1);
                 b.append("\n"+acnm+".sendKeys(evaluate(\""+ck+"\"));");
             } else if(action.toLowerCase().matches("movetoelement")) {
-                String ck = state.unsanitize(expr1);
-                FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-                b.append("\n"+fc.javacodeonly(null));
-                //b.append("\nAssert.assertTrue("+fc.condition()+");");
-                String cvarnm = state.currvarname();
-                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0));");
+                if(cond!=null && expr1==null) {
+                    b.append("\n"+acnm+"."+action+"("+cond.getActionableVar()+".get(0));");
+                } else {
+                    String ck = state.unsanitize(expr1);
+                    FindCommand fc = new FindCommand(ck, fileLineDetails, state);
+                    b.append("\n"+fc.javacodeonly(null));
+                    b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
+                }
             } else if(action.toLowerCase().matches("draganddrop")) {
                 String ck = state.unsanitize(expr1);
                 FindCommand fc = new FindCommand(ck, fileLineDetails, state);
                 b.append("\n"+fc.javacodeonly(null));
-                //b.append("\nAssert.assertTrue("+fc.condition()+");");
                 String cvarnm = state.currvarname();
                 String ck1 = state.unsanitize(expr1);
                 FindCommand fc1 = new FindCommand(ck1, fileLineDetails, state);
                 b.append("\n"+fc1.javacodeonly(null));
-                //b.append("\nAssert.assertTrue("+fc1.condition()+");");
                 String cvarnm1 = state.currvarname();
                 b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), "+cvarnm1+".get(0));");
             } else if(action.toLowerCase().matches("movebyoffset")) {
@@ -3598,7 +4050,18 @@ public class Command {
             String acnm = state.varname();
             b.append("\nActions "+acnm+" = new Actions(get___d___());");
             if(cond!=null) {
-                b.append("\n"+acnm+".moveToElement("+cond.topele+".get(0));");
+                b.append("\n"+acnm+".moveToElement("+cond.getActionableVar()+".get(0));");
+            }
+            b.append(_javacode(acnm));
+            b.append("\n"+acnm+".build().perform();");
+            return b.toString();
+        }
+        String javacode(String elnm, boolean a) {
+            StringBuilder b = new StringBuilder();
+            String acnm = state.varname();
+            b.append("\nActions "+acnm+" = new Actions(get___d___());");
+            if(cond!=null) {
+                b.append("\n"+acnm+".moveToElement("+elnm+".get(0));");
             }
             b.append(_javacode(acnm));
             b.append("\n"+acnm+".build().perform();");
@@ -3697,7 +4160,7 @@ public class Command {
             String acnm = state.varname();
             b.append("\njava.awt.Robot "+acnm+" = new java.awt.Robot();");
             b.append(_javacode(acnm));
-            b.append("\ntry{Thread.sleep(100);}catch(Exception "+state.evarname()+"){}");
+            b.append("\nsleep(100);");
             return b.toString();
         }
     }
@@ -3718,7 +4181,7 @@ public class Command {
             return "sleep " + ms;
         }
         String javacode() {
-            return "\ntry{Thread.sleep("+ms+");}catch(Exception "+state.evarname()+"){}";
+            return "\nsleep("+ms+");";
         }
         public String toSampleSelCmd() {
             return "sleep {time-in-ms}";
@@ -4559,6 +5022,9 @@ public class Command {
     }
 
     public static void main(String[] args) throws Exception {
+        System.out.println("\u0005\u0000\u0003 \u0002\u0001Despido Injusto, Accidente de Auto o Trabajo? Recibe Compensacion Economica, Medica y Entrenamiento para nuevo trabajo GRATIS! Consult\u0005\u0000\u0003 \u0002\u0002a a 800-201-6597");
+        
+        
         /*Reflections reflections = new Reflections("com.gatf.selenium");
         Set<Class<? extends Command>> cmds = reflections.getSubTypesOf(Command.class);
         for (Class<? extends Command> cls : cmds)
@@ -4568,32 +5034,81 @@ public class Command {
             m.setAccessible(true);
             System.out.println(cls.getSimpleName().substring(0, cls.getSimpleName().length()-7)+ ":\n\t" + m.invoke(o, new Object[]{}));
         }*/
+        final Provider[] providers = Security.getProviders();
+        final Boolean verbose = Arrays.asList(args).contains("-v");
+        for (final Provider p : providers)
+        {
+            System.out.format("%s %s%s", p.getName(), p.getVersion(), System.getProperty("line.separator"));
+            for (final Object o : p.keySet())
+            {
+                if (verbose)
+                {
+                    System.out.format("\t%s : %s%s", o, p.getProperty((String)o), System.getProperty("line.separator"));
+                }
+            }
+        }
+        System.out.println(Cipher.getMaxAllowedKeyLength("AES"));
+        
         Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
         SeleniumDriverConfig dc = new SeleniumDriverConfig();
         dc.setName("chrome");
         dc.setDriverName("webdriver.chrome.driver");
         dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("chrome", dc);dc = new SeleniumDriverConfig();
+        mp.put("chrome", dc);
+        dc = new SeleniumDriverConfig();
         dc.setName("appium-ios");
         dc.setDriverName("webdriver.chrome.driver");
         dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("appium-ios", dc);
+        dc = new SeleniumDriverConfig();
+        dc.setName("firefox");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        mp.put("firefox", dc);
+        dc = new SeleniumDriverConfig();
+        dc.setName("edge");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        mp.put("edge", dc);
+        dc = new SeleniumDriverConfig();
+        dc.setName("safari");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        mp.put("safari", dc);
+        dc = new SeleniumDriverConfig();
+        dc.setName("ie");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        mp.put("ie", dc);
+        dc = new SeleniumDriverConfig();
+        dc.setName("opera");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        mp.put("opera", dc);
         List<String> commands = new ArrayList<String>();
-        GatfExecutorConfig config = new GatfExecutorConfig();
-        config.setTestCasesBasePath("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\");
-        config.setTestCaseDir("data");
-        config.setSeleniumDriverConfigs(mp.values().toArray(new SeleniumDriverConfig[mp.values().size()]));
+        GatfExecutorConfig config = getConfig("gatf-config.xml", 
+                "F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\");
+        config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
+        for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
+        {
+            if(selConf.getDriverName()!=null) {
+                System.setProperty(selConf.getDriverName(), selConf.getPath());
+            }
+        }
         AcceptanceTestContext c = new AcceptanceTestContext();
         c.setGatfExecutorConfig(config);
-        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\data\\test.sel"), commands, c);
+        c.validateAndInit(true);
+        c.getWorkflowContextHandler().initializeSuiteContext(1);
+        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\test.sel"), commands, c);
         String jc = cmd.javacode();
         System.out.println(jc);
         System.out.println(new Formatter().formatSource(jc));
 
+        //FileUtils.writeStringToFile(new File("src\\main\\java\\com\\gatf\\selenium\\Test.java"), new Formatter().formatSource(jc).replaceAll(cmd.className, "Test"), "UTF-8");
+        
         /*SeleniumTest t = new SeleniumTest(jc, c, 0) {
 
             @Override
-            public Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {
+            public Map<String, SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {
                 return null;
             }
 
@@ -4644,39 +5159,102 @@ public class Command {
          ___a___1.add("$v{xxo}");
          System.out.println(t.pluginize("jsonpath", "com.gatf.selenium.plugins.JsonPlugin@path", ___a___1, null));*/
 
-        testSelScript();
+        testSelScript(c);
     }
-
-    public static void testSelScript() throws Exception {
-        Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
-        SeleniumDriverConfig dc = new SeleniumDriverConfig();
-        dc.setName("chrome");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("chrome", dc);dc = new SeleniumDriverConfig();
-        GatfExecutorConfig config = new GatfExecutorConfig();
-        config.setSeleniumDriverConfigs(mp.values().toArray(new SeleniumDriverConfig[mp.values().size()]));
-        AcceptanceTestContext c = new AcceptanceTestContext();
-        c.setGatfExecutorConfig(config);
-
-        config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
-        for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
-        {
-            if(selConf.getDriverName()!=null) {
-                System.setProperty(selConf.getDriverName(), selConf.getPath());
+    
+    private static GatfExecutorConfig getConfig(String configFile, String testCasesBasePath) {
+        GatfExecutorConfig configuration = null;
+        if(configFile!=null) {
+            try {
+                File resource = null;
+                File basePath = new File(testCasesBasePath);
+                resource = new File(basePath, configFile);
+                if(resource.exists()) {
+                    XStream xstream = new XStream(new DomDriver("UTF-8"));
+                    XStream.setupDefaultSecurity(xstream);
+                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class,
+                            GatfTestDataConfig.class, GatfTestDataProvider.class});
+                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
+                             GatfTestDataConfig.class, GatfTestDataProvider.class});
+                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
+                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
+                    xstream.alias("testCaseHooksPaths", String[].class);
+                    xstream.alias("testCaseHooksPath", String.class);
+                    xstream.alias("args", String[].class);
+                    xstream.alias("arg", String.class);
+                    xstream.alias("testCaseHooksPaths", String[].class);
+                    xstream.alias("testCaseHooksPath", String.class);
+                    xstream.alias("queryStrs", String[].class);
+                    xstream.alias("queryStr", String.class);
+                    xstream.alias("distributedNodes", String[].class);
+                    xstream.alias("distributedNode", String.class);
+                    xstream.alias("ignoreFiles", String[].class);
+                    xstream.alias("orderedFiles", String[].class);
+                    xstream.alias("string", String.class);
+                    xstream.alias("seleniumScripts", String[].class);
+                    xstream.alias("seleniumScript", String.class);
+                    
+                    configuration = (GatfExecutorConfig)xstream.fromXML(resource);
+                    
+                    if(configuration.getTestCasesBasePath()==null)
+                        configuration.setTestCasesBasePath(testCasesBasePath);
+                    
+                    if(configuration.getOutFilesBasePath()==null)
+                        configuration.setOutFilesBasePath(testCasesBasePath);
+                    
+                    if(configuration.getTestCaseDir()==null)
+                        configuration.setTestCaseDir("");
+                    
+                    if(configuration.getNumConcurrentExecutions()==null)
+                        configuration.setNumConcurrentExecutions(1);
+                    
+                    if(configuration.getHttpConnectionTimeout()==null)
+                        configuration.setHttpConnectionTimeout(10000);
+                    
+                    if(configuration.getHttpRequestTimeout()==null)
+                        configuration.setHttpRequestTimeout(10000);
+                    
+                    if(!configuration.isHttpCompressionEnabled())
+                        configuration.setHttpCompressionEnabled(true);
+                    
+                    if(configuration.getConcurrentUserSimulationNum()==null)
+                        configuration.setConcurrentUserSimulationNum(1);
+                    
+                    if(configuration.getLoadTestingReportSamples()==null)
+                        configuration.setLoadTestingReportSamples(1);
+                    
+                    if(configuration.getConcurrentUserRampUpTime()==null)
+                        configuration.setConcurrentUserRampUpTime(10000L);
+                    
+                    if(configuration.isEnabled()==null)
+                        configuration.setEnabled(true);
+                    
+                    if(configuration.getRepeatSuiteExecutionNum()==null)
+                        configuration.setRepeatSuiteExecutionNum(0);
+                    
+                    configuration.setJavaVersion(System.getProperty("java.version"));
+                }
+            } catch (Exception e) {
+                throw new AssertionError(e);
             }
         }
+        return configuration;
+    }
 
+    public static void testSelScript(AcceptanceTestContext c) throws Exception {
         Map<String, Object> _mt = new HashMap<String, Object>();
         _mt.put("a", "test");
         c.getWorkflowContextHandler().templatize(_mt, "dsadasd ${a} $v{f}");
 
         Test t1 = new Test(c, 0);
-        t1.execute(SeleniumCodeGeneratorAndUtil.getLp(config));
-        t1.quit();
+        t1.execute(SeleniumCodeGeneratorAndUtil.getLp(c.getGatfExecutorConfig()));
+        t1.quitAll();
         TestCase tc = new TestCase();
         tc.setSimulationNumber(0);
         System.out.println(t1.get___cxt___().getWorkflowContextHandler().getSuiteWorkflowContext(tc));
-
     }
 }
