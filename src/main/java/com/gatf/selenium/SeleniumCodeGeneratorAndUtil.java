@@ -15,7 +15,9 @@
 */
 package com.gatf.selenium;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.ArrayList;
@@ -57,7 +59,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, String javaHome) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
@@ -88,7 +90,7 @@ public class SeleniumCodeGeneratorAndUtil {
         
         File srcfile = new File(dir, cmd.getClassName()+".java");
         retvals[2] = srcfile.getAbsolutePath();
-        FileUtils.writeStringToFile(srcfile, sourceCode);
+        FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
         Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
         JavaCompiler.CompilationTask task = compiler.getTask(
             null, 
@@ -107,20 +109,40 @@ public class SeleniumCodeGeneratorAndUtil {
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
             return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         } else {
-            for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-                System.out.format("Error on line %d in %s%n",
-                        diagnostic.getLineNumber(),
-                        diagnostic.getSource().toUri());
-                System.out.println(diagnostic.toString());
+            ProcessBuilder pb = new ProcessBuilder("\"" + javaHome + "/bin/javac\"", "-classpath", "gatf-alldep-jar-1.8.jar", "\"" + retvals[2].toString() + "\"");
+            pb.redirectErrorStream(true);
+            Process process = pb.start();
+            BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
+
+            boolean errd = false;
+            String err = null;
+            while((err = inStreamReader.readLine()) != null) {
+                errd |= err.indexOf("error:")!=-1;
             }
-            return null;
+            if(errd) {
+                for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                    System.out.format("Error on line %d in %s%n",
+                            diagnostic.getLineNumber(),
+                            diagnostic.getSource().toUri());
+                    System.out.println(diagnostic.toString());
+                }
+                return null;
+            } else {
+                URL[] urls = new URL[1];
+                urls[0] = gcdir.toURI().toURL();
+                if(classLoader==null) {
+                    classLoader = new URLClassLoader(urls, loader);
+                }
+                Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
+                return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
+            }
         }
 	}
 	
 	public static File zipSeleniumTests() {
 		File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
 		String fileName = UUID.randomUUID().toString()+".zip";
-		ReportHandler.zipDirectory(gcdir, new String[]{".class"}, fileName, true);
+		ReportHandler.zipDirectory(gcdir, new String[]{".class"}, fileName, true, true);
 		File zipFile = new File(gcdir, fileName);
 		return zipFile;
 	}

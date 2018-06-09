@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.test</groupId>
 	<artifactId>gatf-parent</artifactId>
-	<version>1.7</version>
+	<version>1.8</version>
 	<packaging>pom</packaging>
 	<name>gatf</name>
 	<description>Generic Automated Test Framework For API/UI Testing</description>
@@ -39,6 +39,10 @@
 			<url>http://repo.reficio.org/maven/</url>
 		</repository>
 		<repository>
+			<id>smartbear</id>
+			<url>https://downloads.smartbear.com/repository/maven2/</url>
+		</repository>
+		<repository>
 			<id>sonatype-nexus</id>
 			<name>Sonatype repository</name>
 			<url>https://oss.sonatype.org/content/repositories/releases</url>
@@ -55,48 +59,48 @@
 		<dependency>
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-plugin-api</artifactId>
-			<version>3.0</version>
+			<version>3.5.3</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.maven.plugin-tools</groupId>
 			<artifactId>maven-plugin-annotations</artifactId>
-			<version>3.2</version>
+			<version>3.5.1</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.maven</groupId>
 			<artifactId>maven-artifact</artifactId>
-			<version>2.2.1</version>
+			<version>3.5.3</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.maven</groupId>
-			<artifactId>maven-project</artifactId>
-			<version>2.2.1</version>
+			<artifactId>maven-core</artifactId>
+			<version>3.5.3</version>
 		</dependency>
 
 		<dependency>
 			<groupId>javax.ws.rs</groupId>
 			<artifactId>javax.ws.rs-api</artifactId>
-			<version>2.0.1</version>
+			<version>2.1</version>
 		</dependency>
 
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
-			<version>4.9</version>
+			<version>4.12</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>com.thoughtworks.xstream</groupId>
 			<artifactId>xstream</artifactId>
-			<version>1.4.8</version>
+			<version>1.4.10</version>
 		</dependency>
 		<dependency>
 			<groupId>com.ning</groupId>
 			<artifactId>async-http-client</artifactId>
-			<version>1.8.3</version>
+			<version>1.9.40</version>
 		</dependency>
 		
 		<dependency>
@@ -175,7 +179,7 @@
 		<dependency>
 			<groupId>com.jayway.jsonpath</groupId>
 			<artifactId>json-path</artifactId>
-			<version>2.0.0</version>
+			<version>2.4.0</version>
 		</dependency>
 		
 		<dependency>
@@ -187,7 +191,7 @@
 		<dependency>
 			<groupId>org.skyscreamer</groupId>
 			<artifactId>jsonassert</artifactId>
-			<version>1.2.3</version>
+			<version>1.5.0</version>
 		</dependency>
 		
 		<dependency>
@@ -199,31 +203,31 @@
 		<dependency>
 			<groupId>org.glassfish.grizzly</groupId>
 			<artifactId>grizzly-http-server</artifactId>
-			<version>2.3.11</version>
+			<version>2.4.3</version>
 		</dependency>
 
 		<dependency>
 			<groupId>commons-validator</groupId>
 			<artifactId>commons-validator</artifactId>
-			<version>1.4.0</version>
+			<version>1.6</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
-			<version>3.12</version>
+			<version>3.17</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-			<version>3.12</version>
+			<version>3.17</version>
 		</dependency>
 		
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml-schemas</artifactId>
-			<version>3.12</version>
+			<version>3.17</version>
 		</dependency>
 		
 		<dependency>
@@ -241,14 +245,14 @@
 		<dependency>
 			<groupId>org.zeroturnaround</groupId>
 			<artifactId>zt-zip</artifactId>
-			<version>1.8</version>
+			<version>1.13</version>
 			<type>jar</type>
 		</dependency>
 
 		<dependency>
 			<groupId>org.seleniumhq.selenium</groupId>
 			<artifactId>selenium-java</artifactId>
-			<version>3.6.0</version>
+			<version>3.12.0</version>
 		</dependency>
 		
 		<dependency>
@@ -266,7 +270,7 @@
 		<dependency>
 			<groupId>org.reflections</groupId>
 			<artifactId>reflections</artifactId>
-			<version>0.9.10</version>
+			<version>0.9.11</version>
 		</dependency>
 		
 		<dependency>
@@ -278,21 +282,26 @@
 		<dependency>
 		    <groupId>org.codehaus.groovy</groupId>
 		    <artifactId>groovy-all</artifactId>
-		    <version>2.4.7</version>
+		    <version>2.4.15</version>
 		</dependency>
 		
 		<dependency>
 		    <groupId>org.jruby</groupId>
 		    <artifactId>jruby-complete</artifactId>
-		    <version>9.1.5.0</version>
+		    <version>9.1.17.0</version>
 		</dependency>
 		
 		<dependency>
 		    <groupId>org.python</groupId>
 		    <artifactId>jython-standalone</artifactId>
-		    <version>2.7.0</version>
+		    <version>2.7.1</version>
 		</dependency>
 		
+		<dependency>
+		    <groupId>com.google.guava</groupId>
+		    <artifactId>guava</artifactId>
+		    <version>25.0-jre</version>
+		</dependency>
 	</dependencies>
 
 	<modules>

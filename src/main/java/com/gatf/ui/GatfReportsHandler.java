@@ -219,6 +219,7 @@ public class GatfReportsHandler extends HttpHandler {
                             testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
+                        //Server logs api
                         context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
                         executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
                                 gatfConfig.isServerLogsApiAuthEnabled());
@@ -238,10 +239,40 @@ public class GatfReportsHandler extends HttpHandler {
                         throw new RuntimeException("No Authentication testcase found, please add one" +
                                 "or change the testcase to unsecure mode");
                     }
+                    
+                    List<Map<String, String>> sceanrios = found.getRepeatScenariosOrig();
+                    if (found.getRepeatScenarioProviderName() != null) {
+                        // actual repeat scenario map
+                        List<Map<String, String>> sceanriosp = context.getProviderTestDataMap(found.getRepeatScenarioProviderName());
+                        if (sceanriosp != null) {
+                            if (sceanrios != null) {
+                                sceanrios.addAll(sceanriosp);
+                            } else {
+                                sceanrios = sceanriosp;
+                            }
+                        }
+                        // repeat scenario map obtained from #responseMapped functions
+                        else {
+                            List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler().getSuiteWorkflowScenarioContextValues(found, found.getRepeatScenarioProviderName());
+                            if (sceanriowk != null) {
+                                if (sceanrios != null) {
+                                    sceanrios.addAll(sceanriowk);
+                                } else {
+                                    sceanrios = sceanriowk;
+                                }
+                            }
+                        }
+                        found.setRepeatScenarios(sceanrios);
+                    } else {
+                        found.setRepeatScenarios(null);
+                        found.setNumberOfExecutions(1);
+                    }
+                    
                     reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
                             testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
+                        //Server logs api
                         context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
                         executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
                                 gatfConfig.isServerLogsApiAuthEnabled());
@@ -270,6 +301,7 @@ public class GatfReportsHandler extends HttpHandler {
                 boolean isAuthExec = false;
                 TestCase authTestCaseT = context.getServerLogApi(true);
                 isAuthExec = gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT!=null;
+                //Server logs api
                 context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
                 
                 boolean complete = false;
@@ -392,6 +424,7 @@ public class GatfReportsHandler extends HttpHandler {
                 }
                 
                 isAuthExec = gatfConfig.isServerLogsApiAuthEnabled() && authTestCaseT!=null;
+                //Exrternal issue api
                 context.getWorkflowContextHandler().initializeSuiteContextWithnum(-2);
                 
                 boolean complete = false;
@@ -460,7 +493,7 @@ public class GatfReportsHandler extends HttpHandler {
                     executorMojo.setProject(project);
                     executorMojo.initilaizeContext(gatfConfig, true);
                     gatfConfig.setSeleniumScripts(new String[]{filePath});
-                    Map<String, List<Map<String, Map<String, List<Object[]>>>>> selReports = executorMojo.doSeleniumTest(gatfConfig, null);
+                    executorMojo.doSeleniumTest(gatfConfig, null);
                     String cont = "Please check Reports section for the selenium test results";
                     return new Object[]{HttpStatus.OK_200, cont, MediaType.TEXT_PLAIN, null};
                 }
@@ -514,6 +547,7 @@ public class GatfReportsHandler extends HttpHandler {
                         reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
                         if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                         {
+                          //Server logs api
                             context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
                             executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
                                     gatfConfig.isServerLogsApiAuthEnabled());
@@ -533,9 +567,39 @@ public class GatfReportsHandler extends HttpHandler {
                             throw new RuntimeException("No Authentication testcase found, please add one" +
                                     "or change the testcase to unsecure mode");
                         }
+                        
+                        List<Map<String, String>> sceanrios = found.getRepeatScenariosOrig();
+                        if (found.getRepeatScenarioProviderName() != null) {
+                            // actual repeat scenario map
+                            List<Map<String, String>> sceanriosp = context.getProviderTestDataMap(found.getRepeatScenarioProviderName());
+                            if (sceanriosp != null) {
+                                if (sceanrios != null) {
+                                    sceanrios.addAll(sceanriosp);
+                                } else {
+                                    sceanrios = sceanriosp;
+                                }
+                            }
+                            // repeat scenario map obtained from #responseMapped functions
+                            else {
+                                List<Map<String, String>> sceanriowk = context.getWorkflowContextHandler().getSuiteWorkflowScenarioContextValues(found, found.getRepeatScenarioProviderName());
+                                if (sceanriowk != null) {
+                                    if (sceanrios != null) {
+                                        sceanrios.addAll(sceanriowk);
+                                    } else {
+                                        sceanrios = sceanriowk;
+                                    }
+                                }
+                            }
+                            found.setRepeatScenarios(sceanrios);
+                        } else {
+                            found.setRepeatScenarios(null);
+                            found.setNumberOfExecutions(1);
+                        }
+                        
                         reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
                         if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                         {
+                            //Server logs api
                             context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
                             executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
                                     gatfConfig.isServerLogsApiAuthEnabled());

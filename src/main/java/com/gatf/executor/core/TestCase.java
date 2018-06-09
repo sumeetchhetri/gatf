@@ -17,6 +17,7 @@ package com.gatf.executor.core;
 
 import java.io.Serializable;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -44,8 +45,6 @@ import org.junit.Assert;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
-
-import edu.emory.mathcs.backport.java.util.Arrays;
 
 
 /**
@@ -807,7 +806,6 @@ public class TestCase implements Serializable {
 	public TestCase() {
 	}
 	
-	@SuppressWarnings("unchecked")
 	public TestCase(String[] csvP) {
 		boolean valid = false;
 		if(csvP!=null) {
@@ -825,7 +823,6 @@ public class TestCase implements Serializable {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public TestCase(String[] csvP, Map<Integer, Integer> mappings) {
 		boolean valid = false;
 		if(csvP!=null) {

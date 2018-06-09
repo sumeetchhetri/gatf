@@ -110,13 +110,15 @@ public class GatfTestCaseHandler extends HttpHandler {
     			}
     			tcs.remove(found);
     			
-    			XStream xstream = new XStream(
+    			    XStream xstream = new XStream(
             			new XppDriver() {
             				public HierarchicalStreamWriter createWriter(Writer out) {
             					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
             				}
             			}
             		);
+    			    XStream.setupDefaultSecurity(xstream);
+    			    xstream.allowTypes(new Class[]{TestCase.class});
             		xstream.processAnnotations(new Class[]{TestCase.class});
             		xstream.alias("TestCases", List.class);
             		xstream.toXML(tcs, new FileOutputStream(filePath));
@@ -128,7 +130,9 @@ public class GatfTestCaseHandler extends HttpHandler {
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && !isSelTc)) {
     		try {
     		    if(isSelTc) {
-    		        IOUtils.copy(request.getInputStream(), new FileOutputStream(filePath));
+    		        FileOutputStream fos = new FileOutputStream(filePath);
+    		        IOUtils.copy(request.getInputStream(), fos);
+    		        fos.close();
     		    } else {
         		    String testCaseName = request.getParameter("tcName");
         			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
@@ -203,7 +207,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     	} else if(request.getMethod().equals(Method.GET)) {
     		try {
     		    if(isSelTc) {
-    		        String data = FileUtils.readFileToString(new File(filePath));
+    		        String data = FileUtils.readFileToString(new File(filePath), "UTF-8");
                     response.setContentType(MediaType.TEXT_PLAIN);
                     response.setContentLength(data.length());
                     response.getWriter().write(data);

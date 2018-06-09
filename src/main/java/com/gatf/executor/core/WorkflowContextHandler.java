@@ -69,31 +69,18 @@ public class WorkflowContextHandler {
 	private final Map<Integer, Map<String, String>> cookies = new ConcurrentHashMap<Integer, Map<String, String>>();
 	
 	public void initializeSuiteContext(int numberOfRuns) {
-		
 		suiteWorkflowContext.clear();
 		suiteWorkflowScenarioContext.clear();
 		cookies.clear();
 		
-		//int start = (numberOfRuns>1?1:0);
-		//int end = (numberOfRuns>1?numberOfRuns+1:numberOfRuns);
 		for (int i = -2; i < numberOfRuns+1; i++) {
 			suiteWorkflowContext.put(i, new ConcurrentHashMap<String, String>());
 			suiteWorkflowScenarioContext.put(i, new ConcurrentHashMap<String, List<Map<String, String>>>());
 			cookies.put(i, new ConcurrentHashMap<String, String>());
 		}
-		/*suiteWorkflowContext.put(-1, new ConcurrentHashMap<String, String>());
-		suiteWorkflowScenarioContext.put(-1, new ConcurrentHashMap<String, List<Map<String, String>>>());
-		cookies.put(-1, new ConcurrentHashMap<String, String>());
-		
-		suiteWorkflowContext.put(-2, new ConcurrentHashMap<String, String>());
-		suiteWorkflowScenarioContext.put(-2, new ConcurrentHashMap<String, List<Map<String, String>>>());
-		cookies.put(-2, new ConcurrentHashMap<String, String>());*/
 	}
 	
 	public void initializeSuiteContextWithnum(int index) {
-		suiteWorkflowContext.clear();
-		suiteWorkflowScenarioContext.clear();
-		cookies.clear();
 		suiteWorkflowContext.put(index, new ConcurrentHashMap<String, String>());
 		suiteWorkflowScenarioContext.put(index, new ConcurrentHashMap<String, List<Map<String, String>>>());
 		cookies.put(index, new ConcurrentHashMap<String, String>());

@@ -30,7 +30,6 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.Component;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
 import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
@@ -69,7 +68,7 @@ import com.gatf.generator.core.GatfTestGeneratorMojo;
 		threadSafe = true)
 public class GatfConfigToolMojo extends AbstractMojo {
 
-	@Component
+    @Parameter( defaultValue = "${project}", readonly = true )
     private MavenProject project;
 	
 	@Parameter(alias = "rootDir", defaultValue = "${project.build.testOutputDirectory}")
@@ -216,7 +215,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 		if(isChanged)
 		{
 			FileUtils.writeStringToFile(new File(mojo.rootDir, "gatf-config.xml"), 
-					GatfTestCaseExecutorMojo.getConfigStr(gatfConfig));
+					GatfTestCaseExecutorMojo.getConfigStr(gatfConfig), "UTF-8");
 		}
 	}
 
@@ -236,7 +235,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 				GatfConfiguration gatfConfig = config==null?new GatfConfiguration():(GatfConfiguration)config;
 
 				FileUtils.writeStringToFile(new File(mojo.rootDir, "gatf-generator.xml"), 
-						GatfTestGeneratorMojo.getConfigStr(gatfConfig));
+						GatfTestGeneratorMojo.getConfigStr(gatfConfig), "UTF-8");
 			
 			} catch (IOException e) {
 			}
@@ -309,7 +308,7 @@ public class GatfConfigToolMojo extends AbstractMojo {
 			gatfConfig.setResourcepath(mojo.rootDir + "/generated");
 		}
 		FileUtils.writeStringToFile(new File(mojo.rootDir, "gatf-generator.xml"), 
-				GatfTestGeneratorMojo.getConfigStr(gatfConfig));
+				GatfTestGeneratorMojo.getConfigStr(gatfConfig), "UTF-8");
 		return gatfConfig;
 	}
 	

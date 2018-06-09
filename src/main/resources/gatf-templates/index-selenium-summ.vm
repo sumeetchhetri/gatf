@@ -126,7 +126,7 @@
 							#foreach($node in $nodeData.value)
 							<div class="panel panel-default">
 								<div class="panel-heading nodehdr">
-									Run - $velocityCount
+									<b>Run - $velocityCount</b>
 									<span class="badge"></span>
 									<span class="badge progress-bar-success"></span>
 									<span class="badge progress-bar-danger"></span>
@@ -202,139 +202,144 @@
 		
 		<script>
 			$(document).ready(function() {
-				initialize();
-				$('#n_filter').append('<option value="">ALL</option>');
-				$('.node').each(function() {
-					$('#n_filter').append('<option value="'+$(this).attr('data-node')+'">'+$(this).attr('data-node')+'</option>');
-				});								
-				$('.nodehdr').on('click', function(){
-					if($(this).next().is(':visible')) {
-						$(this).next().addClass('hidden');
-					} else {
-						$(this).next().removeClass('hidden');
+				var mainnode = $('#page-wrapper');
+				
+				initReport(mainnode);
+				
+				function initReport(mainnode) {
+					function initialize(pnode) {
+						if(!pnode)pnode = mainnode;
+						var errmap = {};
+						var counter = 1;
+						var tottime = 0;
+						pnode.find('.testresult').each(function(){
+							var err = $($(this).find('td')[3]).html();
+							if(!err) {
+								err = "";
+							}
+							if(err.length>100) {
+								err = err.substring(0, 100);
+							}
+							if(!errmap[err]) {
+								errmap[err] = counter++;
+							}
+							$(this).addClass("error_"+errmap[err]);
+						});
+						var stats = getStats(pnode, "total");
+						
+						mainnode.find('#t_time').html(stats[4]+"s");
+						
+						mainnode.find('#e_filter').html('');
+						for(var k in errmap) {
+							if(errmap.hasOwnProperty(k) && k && k.trim()!="") {
+								mainnode.find('#e_filter').append('<option value="error_'+errmap[k]+'">'+k+'</option>');
+							}
+						}				
+						
+						mainnode.find('#e_filter').on('change', function(){
+							var cls = $(this).val();
+							pnode.find('.testresult').hide();
+							pnode.find('.'+cls).show();
+						});
+					
+						var s = stats[0];
+						var e = stats[1];
+						var u = stats[2];
+						var t = stats[3];
+						mainnode.find('#s_count').html(s);
+						mainnode.find('#e_count').html(e);
+						mainnode.find('#u_count').html(u);
+						mainnode.find('#t_count').html(t);
+						
+						pnode.find('.filter').on('click', function() {
+							var filt = $(this).attr('data-filter');
+							if(filt=="total") {
+								pnode.find('.testresult').show();
+							} else if(filt=="success") {
+								pnode.find('.testresult').hide();
+								pnode.find('.SUCCESS').show();
+							} else if(filt=="failed") {
+								pnode.find('.testresult').hide();
+								pnode.find('.FAILED').show();
+							} else if(filt=="unknown") {
+								pnode.find('.testresult').hide();
+								pnode.find('.UNKNOWN').show();
+							}
+							initCounts(filt);
+						});						
 					}
-				});
-				$('#n_filter').on('change', function(){
-					var v = $('#n_filter').val();
-					var pnode;
-					$('.node').each(function() {
-						if(v=="") {
-							$(this).parent().show();
-						} else if($(this).attr('data-node')!=v) {
-							$(this).parent().hide();
+					
+					function initCounts(filt) {
+						mainnode.find('.node').each(function() {
+							var pnode = $(this).parent();
+							var stats = getStats(pnode, filt);
+							var avg = stats[4]/$(this).next().children().length;
+							pnode.find('span')[1].innerHTML = stats[0];
+							pnode.find('span')[2].innerHTML = stats[1];
+							pnode.find('span')[3].innerHTML = stats[2];
+							pnode.find('span')[0].innerHTML = avg;
+						});
+						mainnode.find('.nodehdr').each(function(){
+							var pnode = $(this).parent();
+							var stats = getStats(pnode, filt);
+							pnode.find('span')[1].innerHTML = stats[0];
+							pnode.find('span')[2].innerHTML = stats[1];
+							pnode.find('span')[3].innerHTML = stats[2];
+							pnode.find('span')[0].innerHTML = stats[4];
+						});
+					}
+					
+					function getStats(pnode, filt) {
+						var s = pnode.find('.SUCCESS').length;
+						var e = pnode.find('.FAILED').length;
+						var u = pnode.find('.UNKNOWN').length;
+						var tottime = 0;
+						pnode.find('.testresult').each(function(){
+							if($(this).find('td>a').html()=="-") {
+								var tim = $($(this).find('td')[2]).html();
+								tim = tim.substring(0, tim.length-1);
+								tottime += tim*1;
+							}
+						});
+						var t = s + e + u;
+						return [(filt=="total" || filt=="success")?s:0,
+								(filt=="total" || filt=="failed")?e:0,
+								(filt=="total" || filt=="unknown")?u:0,
+								t,
+								tottime.toFixed(3)];
+					}
+					
+					initialize(mainnode);
+					mainnode.find('#n_filter').append('<option value="">ALL</option>');
+					mainnode.find('.node').each(function() {
+						mainnode.find('#n_filter').append('<option value="'+$(this).attr('data-node')+'">'+$(this).attr('data-node')+'</option>');
+					});								
+					mainnode.find('.nodehdr').on('click', function(){
+						if($(this).next().is(':visible')) {
+							$(this).next().addClass('hidden');
 						} else {
-							pnode = $(this).parent();
-							$(this).parent().show();
+							$(this).next().removeClass('hidden');
 						}
 					});
-					initialize(pnode);
-				});
-				initCounts("total");
-			});
-			
-			function initialize(pnode) {
-				if(!pnode)pnode = $('body');
-				var errmap = {};
-				var counter = 1;
-				var tottime = 0;
-				pnode.find('.testresult').each(function(){
-					var err = $($(this).find('td')[3]).html();
-					if(!err) {
-						err = "";
-					}
-					if(err.length>100) {
-						err = err.substring(0, 100);
-					}
-					if(!errmap[err]) {
-						errmap[err] = counter++;
-					}
-					$(this).addClass("error_"+errmap[err]);
-				});
-				var stats = getStats(pnode, "total");
-				
-				$('#t_time').html(stats[4]+"s");
-				
-				$('#e_filter').html('');
-				for(var k in errmap) {
-					if(errmap.hasOwnProperty(k) && k && k.trim()!="") {
-						$('#e_filter').append('<option value="error_'+errmap[k]+'">'+k+'</option>');
-					}
-				}				
-				
-				$('#e_filter').on('change', function(){
-					var cls = $(this).val();
-					pnode.find('.testresult').hide();
-					pnode.find('.'+cls).show();
-				});
-			
-				var s = stats[0];
-				var e = stats[1];
-				var u = stats[2];
-				var t = stats[3];
-				$('#s_count').html(s);
-				$('#e_count').html(e);
-				$('#u_count').html(u);
-				$('#t_count').html(t);
-				
-				pnode.find('.filter').on('click', function() {
-					var filt = $(this).attr('data-filter');
-					if(filt=="total") {
-						pnode.find('.testresult').show();
-					} else if(filt=="success") {
-						pnode.find('.testresult').hide();
-						pnode.find('.SUCCESS').show();
-					} else if(filt=="failed") {
-						pnode.find('.testresult').hide();
-						pnode.find('.FAILED').show();
-					} else if(filt=="unknown") {
-						pnode.find('.testresult').hide();
-						pnode.find('.UNKNOWN').show();
-					}
-					initCounts(filt);
-				});
-				
-			}
-			
-			function initCounts(filt) {
-				$('.node').each(function() {
-					var pnode = $(this).parent();
-					var stats = getStats(pnode, filt);
-					var avg = stats[4]/$(this).next().children().length;
-					pnode.find('span')[1].innerHTML = stats[0];
-					pnode.find('span')[2].innerHTML = stats[1];
-					pnode.find('span')[3].innerHTML = stats[2];
-					pnode.find('span')[0].innerHTML = avg;
-				});
-				$('.nodehdr').each(function(){
-					var pnode = $(this).parent();
-					var stats = getStats(pnode, filt);
-					pnode.find('span')[1].innerHTML = stats[0];
-					pnode.find('span')[2].innerHTML = stats[1];
-					pnode.find('span')[3].innerHTML = stats[2];
-					pnode.find('span')[0].innerHTML = stats[4];
-				});
-			}
-			
-			function getStats(pnode, filt) {
-				var s = pnode.find('.SUCCESS').length;
-				var e = pnode.find('.FAILED').length;
-				var u = pnode.find('.UNKNOWN').length;
-				var tottime = 0;
-				pnode.find('.testresult').each(function(){
-					if($(this).find('td>a').html()=="-") {
-						var tim = $($(this).find('td')[2]).html();
-						tim = tim.substring(0, tim.length-1);
-						tottime += tim*1;
-					}
-				});
-				var t = s + e + u;
-				return [(filt=="total" || filt=="success")?s:0,
-						(filt=="total" || filt=="failed")?e:0,
-						(filt=="total" || filt=="unknown")?u:0,
-						t,
-						tottime.toFixed(3)];
-			}
-			
+					mainnode.find('#n_filter').on('change', function(){
+						var v = $(this).val();
+						var pnode;
+						mainnode.find('.node').each(function() {
+							if(v=="") {
+								$(this).parent().show();
+							} else if($(this).attr('data-node')!=v) {
+								$(this).parent().hide();
+							} else {
+								pnode = $(this).parent();
+								$(this).parent().show();
+							}
+						});
+						initialize(pnode);
+					});
+					initCounts("total");
+					console.log(mainnode.height());
+				}
+			});			
 		</script>
 	</body>
 </html>

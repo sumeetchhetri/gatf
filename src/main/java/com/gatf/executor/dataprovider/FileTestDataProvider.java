@@ -39,6 +39,7 @@ import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -292,7 +293,7 @@ public class FileTestDataProvider implements TestDataProvider {
 					Row hssfRow = rows.next();
 					String[] parts = new String[hssfRow.getLastCellNum()];
 					for(int cn=0; cn<hssfRow.getLastCellNum(); cn++) {
-						Cell hssfCell = hssfRow.getCell(cn, Row.CREATE_NULL_AS_BLANK);
+						Cell hssfCell = hssfRow.getCell(cn, MissingCellPolicy.CREATE_NULL_AS_BLANK);
 						DataFormatter fmt = new DataFormatter();
 						parts[cn] = fmt.formatCellValue(hssfCell);
 					}

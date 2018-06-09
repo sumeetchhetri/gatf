@@ -45,9 +45,9 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
+import org.apache.commons.io.filefilter.PrefixFileFilter;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang.StringEscapeUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
@@ -167,7 +167,7 @@ public class ReportHandler {
             if(prefix==null)
             	prefix = "";
             
-            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index.html";
+            String filenm = resource.getAbsolutePath() + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -210,7 +210,7 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + "index.html";
+            String filenm = resource.getAbsolutePath() + File.separator + "index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -413,7 +413,7 @@ public class ReportHandler {
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName, boolean addFolders)
+    public static void zipDirectory(File directory, final String[] fileFilters, String zipFileName, boolean addFolders, boolean suffixOrPrefix)
     {
         try
         {
@@ -429,16 +429,24 @@ public class ReportHandler {
         	
         	Collection<File> files = null;
         	if(addFolders) {
-        		files = FileUtils.listFilesAndDirs(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), FileFilterUtils.trueFileFilter());
+        	    if(suffixOrPrefix) {
+        	        files = FileUtils.listFilesAndDirs(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), FileFilterUtils.trueFileFilter());
+        	    } else {
+        	        files = FileUtils.listFilesAndDirs(directory, new PrefixFileFilter(Arrays.asList(fileFilters)), FileFilterUtils.trueFileFilter());
+        	    }
         	} else {
-        		files = FileUtils.listFiles(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), null);
+        	    if(suffixOrPrefix) {
+                    files = FileUtils.listFiles(directory, new SuffixFileFilter(Arrays.asList(fileFilters)), null);
+        	    } else {
+        	        files = FileUtils.listFiles(directory, new PrefixFileFilter(Arrays.asList(fileFilters)), null);
+                }
         	}
         	
         	for (File file : files) {
         		if(file.isDirectory()) {
         			String dp = file.getAbsolutePath();
         			dp = dp.replace(directory.getAbsolutePath(), "");
-        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			dp = dp.replace(File.separator, "/");
         			if(dp.isEmpty())continue;
         			if(dp.startsWith("/")) {
         				dp = dp.substring(1);
@@ -449,7 +457,7 @@ public class ReportHandler {
         		} else {
         			String dp = file.getAbsolutePath();
         			dp = dp.replace(directory.getAbsolutePath(), "");
-        			dp = dp.replace(SystemUtils.FILE_SEPARATOR, "/");
+        			dp = dp.replace(File.separator, "/");
         			if(dp.isEmpty())continue;
         			if(dp.startsWith("/")) {
         				dp = dp.substring(1);
@@ -493,7 +501,7 @@ public class ReportHandler {
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			
-        	String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + fileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+        	String filenm = resource.getAbsolutePath() + File.separator + fileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(contents);
             fwriter.close();
@@ -713,7 +721,7 @@ public class ReportHandler {
 			                	reportFileName = "index1.html";
 			                }
 			                
-			                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+			                String filenm = resource.getAbsolutePath() + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
 			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
 			                fwriter.write(writer.toString());
 			                fwriter.close();
@@ -835,7 +843,7 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                String filenm = resource.getAbsolutePath() + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -1083,7 +1091,7 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + orf.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                String filenm = resource.getAbsolutePath() + File.separator + orf.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -1178,7 +1186,7 @@ public class ReportHandler {
 
                 prefix = prefix==null?"":prefix;
                 
-                String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index-ta.html";
+                String filenm = resource.getAbsolutePath() + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index-ta.html";
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -1193,7 +1201,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doSeleniumSummaryTestReport(Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext)
+	public static void doSeleniumSummaryTestReport(Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
     {
         GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();
@@ -1226,7 +1234,49 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-summ.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + "selenium-index.html";
+            String filenm = resource.getAbsolutePath() + File.separator + runPrefix + "-" + loadTestRunNum + "-selenium-index.html";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
+            fwriter.write(writer.toString());
+            fwriter.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+	
+	public static void doSeleniumFinalTestReport(Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext)
+    {
+        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
+        VelocityContext context = new VelocityContext();
+        
+        try
+        {
+            context.put("indexes", indexes);
+            
+            File basePath = null;
+            if(config.getOutFilesBasePath()!=null)
+                basePath = new File(config.getOutFilesBasePath());
+            else
+            {
+                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
+                basePath = new File(url.getPath());
+            }
+            File resource = new File(basePath, config.getOutFilesDir());
+            
+            InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            if (resourcesIS != null)
+            {
+                unzipZipFile(resourcesIS, resource.getAbsolutePath());
+            }
+            
+            VelocityEngine engine = new VelocityEngine();
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.init();
+            
+            StringWriter writer = new StringWriter();
+            engine.mergeTemplate("/gatf-templates/selenium-final-index.vm", "UTF-8", context, writer);
+            
+            String filenm = resource.getAbsolutePath() + File.separator + "selenium-index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -1268,7 +1318,7 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + SystemUtils.FILE_SEPARATOR + prefix + ".html";
+            String filenm = resource.getAbsolutePath() + File.separator + prefix + ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();

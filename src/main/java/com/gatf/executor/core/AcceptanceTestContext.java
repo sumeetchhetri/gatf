@@ -132,8 +132,16 @@ public class AcceptanceTestContext {
 
 	private final Map<String, List<Map<String, String>>> providerTestDataMap = new HashMap<String, List<Map<String,String>>>();
 	
-	public Map<String, List<Map<String, String>>> getProviderTestDataMap() {
-		return providerTestDataMap;
+	public List<Map<String, String>> getProviderTestDataMap(String providerName) {
+	    if(liveProviders.containsKey(providerName))
+        {
+            GatfTestDataProvider provider = liveProviders.get(providerName);
+            return getProviderData(provider, null);
+        }
+	    else 
+	    {
+	        return providerTestDataMap.get(providerName);
+	    }
 	}
 	
 	public void newProvider(String name) {
@@ -177,8 +185,9 @@ public class AcceptanceTestContext {
 		getWorkflowContextHandler().init();
 	}
 	
-	public AcceptanceTestContext(DistributedAcceptanceContext dContext)
+	public AcceptanceTestContext(DistributedAcceptanceContext dContext, ClassLoader projectClassLoader)
 	{
+        this.projectClassLoader = projectClassLoader;
 		this.gatfExecutorConfig = dContext.getConfig();
 		this.httpHeaders.putAll(dContext.getHttpHeaders());
 		this.soapEndpoints.putAll(dContext.getSoapEndpoints());
@@ -344,7 +353,14 @@ public class AcceptanceTestContext {
 			if(gatfExecutorConfig.getTestCasesBasePath()!=null)
 			{
 				File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
-				File resource = new File(basePath, filename);
+				File resource = null;
+				if(gatfExecutorConfig.getTestCaseDir()!=null) {
+				    File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
+                    resource = new File(testPath, filename);
+                    if(!resource.exists()) {
+                        resource = new File(basePath, filename);
+                    }
+                }
 				return resource;
 			}
 			else
@@ -489,6 +505,8 @@ public class AcceptanceTestContext {
 			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
 			XStream xstream = new XStream(new DomDriver("UTF-8"));
+	        XStream.setupDefaultSecurity(xstream);
+	        xstream.allowTypes(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 			xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
 			xstream.alias("args", String[].class);
@@ -875,7 +893,7 @@ public class AcceptanceTestContext {
 		}
 		else
 		{
-			return getProviderTestDataMap().get(provName);
+			return providerTestDataMap.get(provName);
 		}
 	}
 	
@@ -935,7 +953,7 @@ public class AcceptanceTestContext {
 		return testData;
 	}
 
-	public DistributedAcceptanceContext getDistributedContext(String node)
+	public DistributedAcceptanceContext getDistributedContext(String node, List<Object[]> selTestdata)
 	{
 		DistributedAcceptanceContext distributedTestContext = new DistributedAcceptanceContext();
 		distributedTestContext.setConfig(gatfExecutorConfig);
@@ -944,6 +962,7 @@ public class AcceptanceTestContext {
 		distributedTestContext.setSoapEndpoints(soapEndpoints);
 		distributedTestContext.setSoapMessages(soapStrMessages);
 		distributedTestContext.setNode(node);
+		distributedTestContext.setSelTestdata(selTestdata);
 		
 		return distributedTestContext;
 	}

@@ -15,7 +15,6 @@
 */
 package com.gatf.executor.dataprovider;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -72,21 +71,11 @@ public class RandomValueTestDataProvider implements TestDataProvider {
 		List<String> variableTypesArr = new ArrayList<String>();
 		for (String varType : variableTypes.split(",")) {
 			if(!varType.trim().isEmpty()) {
-				if(!varType.equals("+number") && !varType.equals("alpha") && !varType.equals("alphanum")
-						&& !varType.equals("boolean") && !varType.equals("-number") && !varType.equals("number")
-						&& !varType.equals("float") && !varType.matches("^date\\([a-zA-Z\\-:\\s]*\\)"))
+			    Object val = GatfFunctionHandler.handleFunction(varType);
+				if(val==null)
 				{
 					throw new AssertionError("variable type needs to be one of alpha, alphanum, number, boolean," +
 							" -number, +number, float, boolean and date(format)");
-				}
-				if(varType.matches("^date\\([a-zA-Z\\-:\\s]*\\)"))
-				{
-					String pattr = varType.substring(varType.indexOf("(")+1, varType.lastIndexOf(")"));
-					try {
-						new SimpleDateFormat(pattr);
-					} catch (Exception e) {
-						throw new AssertionError("Invalid date format provided - " + pattr);
-					}
 				}
 				variableTypesArr.add(varType);
 			}

@@ -29,8 +29,6 @@ public class DistributedTestContext implements Serializable {
 	
 	private Set<String> relativeFileNames;
 	
-	private boolean doReporting;
-	
 	private int index;
 	
 	private int numberOfRuns;
@@ -43,14 +41,6 @@ public class DistributedTestContext implements Serializable {
 		this.simTestCases = simTestCases;
 	}
 
-	public boolean isDoReporting() {
-		return doReporting;
-	}
-
-	public void setDoReporting(boolean doReporting) {
-		this.doReporting = doReporting;
-	}
-	
 	public int getIndex() {
 		return index;
 	}
