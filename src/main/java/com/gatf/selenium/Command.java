@@ -44,7 +44,6 @@ import org.openqa.selenium.Keys;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.TestCase;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -5158,8 +5157,6 @@ public class Command {
          ___a___1.add("headers.X-Frame-Options");
          ___a___1.add("$v{xxo}");
          System.out.println(t.pluginize("jsonpath", "com.gatf.selenium.plugins.JsonPlugin@path", ___a___1, null));*/
-
-        testSelScript(c);
     }
     
     private static GatfExecutorConfig getConfig(String configFile, String testCasesBasePath) {
@@ -5243,18 +5240,5 @@ public class Command {
             }
         }
         return configuration;
-    }
-
-    public static void testSelScript(AcceptanceTestContext c) throws Exception {
-        Map<String, Object> _mt = new HashMap<String, Object>();
-        _mt.put("a", "test");
-        c.getWorkflowContextHandler().templatize(_mt, "dsadasd ${a} $v{f}");
-
-        Test t1 = new Test(c, 0);
-        t1.execute(SeleniumCodeGeneratorAndUtil.getLp(c.getGatfExecutorConfig()));
-        t1.quitAll();
-        TestCase tc = new TestCase();
-        tc.setSimulationNumber(0);
-        System.out.println(t1.get___cxt___().getWorkflowContextHandler().getSuiteWorkflowContext(tc));
     }
 }
