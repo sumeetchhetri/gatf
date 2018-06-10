@@ -109,7 +109,7 @@ public class SeleniumCodeGeneratorAndUtil {
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
             return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         } else {
-            ProcessBuilder pb = new ProcessBuilder("\"" + javaHome + "/bin/javac\"", "-classpath", "gatf-alldep-jar-1.8.jar", "\"" + retvals[2].toString() + "\"");
+            ProcessBuilder pb = new ProcessBuilder("\"" + javaHome + "/bin/javac\"", "-classpath", "gatf-alldep-jar-1.7.jar", "\"" + retvals[2].toString() + "\"");
             pb.redirectErrorStream(true);
             Process process = pb.start();
             BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
