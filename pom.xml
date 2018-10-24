@@ -94,7 +94,7 @@
 
 		<!-- WSDL/SOAP Builder Refer: https://github.com/reficio/soap-ws -->
 		<dependency>
-			<groupId>com.github.sumeetchhetri</groupId>
+			<groupId>com.github.sumeetchhetri.soap-ws</groupId>
 			<artifactId>soap-builder</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 			<exclusions>
