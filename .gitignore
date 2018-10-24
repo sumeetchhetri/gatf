@@ -10,3 +10,4 @@ target/*
 velocity.log*
 alldep-jar/*
 plugin/*
+out/*

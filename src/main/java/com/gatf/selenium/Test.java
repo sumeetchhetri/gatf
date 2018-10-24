@@ -42,24 +42,15 @@ public class Test extends SeleniumTest implements Serializable {
         DesiredCapabilities ___dc___ = new DesiredCapabilities("ios", "null", org.openqa.selenium.Platform.MAC);
         ___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
         set___d___(new io.appium.java_client.ios.IOSDriver(new java.net.URL("http://127.0.0.1:4723/wd/hub"), ___dc___));
-        setBrowserName("appium-ios");
+        //setBrowserName("appium-ios");
 
     }
     public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
         org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
         ___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);
         set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
-        setBrowserName("chrome");
+        //setBrowserName("chrome");
 
-    }
-    @SuppressWarnings("unchecked")
-    public Map<String, SeleniumResult> execute(LoggingPreferences ___lp___) throws Exception {
-        addTest("chrome");
-        startTest();
-        quit();
-        setupDriverchrome(___lp___);
-        _execute(___lp___);
-        return get__result__();
     }
     public int concurrentExecutionNum() {
         return 0;
@@ -1361,5 +1352,10 @@ public class Test extends SeleniumTest implements Serializable {
         } catch (Throwable ___e___41) {
             pushResult(new SeleniumTestResult(get___d___(), this, ___e___41, ___lp___));
         }
+    }
+    @Override
+    public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {
+        // TODO Auto-generated method stub
+        return null;
     }
 }

@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>com.test</groupId>
+	<groupId>com.github.sumeetchhetri</groupId>
 	<artifactId>gatf-parent</artifactId>
 	<version>1.8</version>
 	<packaging>pom</packaging>
@@ -21,37 +21,14 @@
 		<url>https://github.com/sumeetchhetri/gatf</url>
 	</scm>
 
-	<distributionManagement>
-		<repository>
-	        <id>bintray-sumeetchhetri-maven</id>
-	        <name>sumeetchhetri-maven</name>
-	        <url>https://api.bintray.com/maven/sumeetchhetri/maven/gatf/;publish=1</url>
-	    </repository>
-	</distributionManagement>
-
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
 	<repositories>
 		<repository>
-			<id>reficio</id>
-			<url>http://repo.reficio.org/maven/</url>
-		</repository>
-		<repository>
-			<id>smartbear</id>
-			<url>https://downloads.smartbear.com/repository/maven2/</url>
-		</repository>
-		<repository>
-			<id>sonatype-nexus</id>
-			<name>Sonatype repository</name>
-			<url>https://oss.sonatype.org/content/repositories/releases</url>
-			<releases>
-				<enabled>true</enabled>
-			</releases>
-			<snapshots>
-				<enabled>false</enabled>
-			</snapshots>
+		    <id>jitpack.io</id>
+		    <url>https://jitpack.io</url>
 		</repository>
 	</repositories>
 
@@ -117,7 +94,7 @@
 
 		<!-- WSDL/SOAP Builder Refer: https://github.com/reficio/soap-ws -->
 		<dependency>
-			<groupId>org.reficio</groupId>
+			<groupId>com.github.sumeetchhetri</groupId>
 			<artifactId>soap-builder</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 			<exclusions>
