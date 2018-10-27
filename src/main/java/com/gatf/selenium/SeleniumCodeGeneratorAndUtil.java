@@ -59,7 +59,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, String javaHome) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
@@ -109,7 +109,8 @@ public class SeleniumCodeGeneratorAndUtil {
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
             return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         } else {
-            ProcessBuilder pb = new ProcessBuilder("\"" + javaHome + "/bin/javac\"", "-classpath", "gatf-alldep-jar-1.8.jar", "\"" + retvals[2].toString() + "\"");
+            ProcessBuilder pb = new ProcessBuilder("\"" + config.getJavaHome() + "/bin/javac\"", "-classpath", 
+                    (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar-1.8.jar"), "\"" + retvals[2].toString() + "\"");
             pb.redirectErrorStream(true);
             Process process = pb.start();
             BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
@@ -133,7 +134,8 @@ public class SeleniumCodeGeneratorAndUtil {
                 if(classLoader==null) {
                     classLoader = new URLClassLoader(urls, loader);
                 }
-                Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
+                Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName(), true, classLoader);
+                //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
                 return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
             }
         }

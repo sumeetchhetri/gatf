@@ -46,6 +46,7 @@ import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriver.TargetLocator;
+import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LogEntries;
@@ -54,6 +55,7 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.logging.Logs;
 import org.openqa.selenium.support.ui.ExpectedCondition;
+import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
@@ -1017,7 +1019,7 @@ public abstract class SeleniumTest {
                 we.sendKeys(Keys.chord(tvalue));
                 break;
             }
-        } else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("dobleclick")) {
+        } else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
             for(final WebElement we: ret) {
                 Actions ac = new Actions(get___d___());
                 ac.moveToElement(we).doubleClick().perform();
@@ -1038,7 +1040,7 @@ public abstract class SeleniumTest {
         return (List<String[]>)handleWaitOrTransientProv(sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
     }
     
-    @SuppressWarnings({"unchecked", "unused"})
+    @SuppressWarnings("unchecked")
     private Object handleWaitOrTransientProv(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
             boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
         final WebDriver wsc = (WebDriver) sc;
@@ -1066,27 +1068,32 @@ public abstract class SeleniumTest {
                 (new WebDriverWait(wsc, timeOutInSeconds)).until(new Function<WebDriver, Boolean>() {
                     public Boolean apply(WebDriver input) {
                         List<WebElement> ___ce___ = ce;
-                        List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
-                        if (el == null || el.isEmpty()) return false;
-                        
-                        boolean enabledCheck = false;
-                        if(action!=null && (action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
-                            enabledCheck = true;
+                        try {
+                            List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
+                            if (el == null || el.isEmpty()) return false;
+
+                            boolean enabledCheck = false;
+                            if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
+                                enabledCheck = true;
+                            }
+
+                            WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
+                            if(elo!=null) {
+                                o[0] = el;
+                                o[1] = ___ce___;
+                                return true;
+                            }
+                            return false;
+                        } catch(Exception e) {
+                            return false;
                         }
-                        
-                        WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
-                        if(elo!=null) {
-                            o[0] = el;
-                            o[1] = ___ce___;
-                            return true;
-                        }
-                        return false;
-                      }
-                    });
+                    }
+                });
             } catch (org.openqa.selenium.TimeoutException e) {
                 throw new RuntimeException(exmsg, e);
             }
             timeoutRemaining = timeOutInSeconds - (System.currentTimeMillis() - start)/1000;
+            //System.out.println("Timeout remaining = " + timeoutRemaining);
         }
         List<WebElement> ret = (List<WebElement>)o[0];
         Object resp = ret;
@@ -1277,6 +1284,29 @@ public abstract class SeleniumTest {
             } else if(action!=null) {
                 try {
                     elementAction(ret, action, tvalue);
+                } catch (WebDriverException e) {
+                    if(timeoutRemaining>0 && e.getMessage().startsWith("unknown error: Element ") 
+                            && e.getMessage().contains("is not clickable at point (")
+                            && e.getMessage().contains("Other element would receive the click")) {
+                        Exception lastException = null;
+                        while(timeoutRemaining>0) {
+                            try {
+                                Thread.sleep(1000);
+                                System.out.println("Retrying operation.....");
+                                elementAction(ret, action, tvalue);
+                                lastException = null;
+                                break;
+                            } catch (Exception e1) {
+                                lastException = e1;
+                            }
+                            timeoutRemaining--;
+                        }
+                        if(lastException!=null) {
+                            lastException.printStackTrace();
+                        }
+                    } else {
+                        e.printStackTrace();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -1369,10 +1399,11 @@ public abstract class SeleniumTest {
             @Override
             public WebElement apply(WebDriver driver) {
                 try {
-                    boolean flag = element.isDisplayed() && (!enabledCheck || (enabledCheck && element.isEnabled()));
-                    if(flag && layers!=null && layers.length>0) {
-                        int tzl = getZIndex(element);
-                        Rectangle trec = getRect(element);
+                    WebElement telement = ExpectedConditions.elementToBeClickable(element).apply(driver);
+                    //element.isDisplayed() && (!enabledCheck || (enabledCheck && element.isEnabled()));
+                    if(telement!=null && layers!=null && layers.length>0) {
+                        int tzl = getZIndex(telement);
+                        Rectangle trec = getRect(telement);
                         for (String layer : layers) {
                             try {
                                 List<WebElement> el = getElements(test.get___d___(), test.get___d___(), layer);
@@ -1381,7 +1412,7 @@ public abstract class SeleniumTest {
                                     Rectangle orec = getRect(el.get(0));
                                     boolean temp = ozl>tzl && checkRectangleOnTop(trec, orec);
                                     if(!temp) {
-                                        flag = false;
+                                        telement = null;
                                         break;
                                     }
                                 }
@@ -1389,7 +1420,7 @@ public abstract class SeleniumTest {
                             }
                         }
                     }
-                    return flag ? element : null;
+                    return telement;
                 } catch (Exception e) {
                     return null;
                 }

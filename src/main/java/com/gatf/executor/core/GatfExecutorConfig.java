@@ -137,6 +137,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     private String javaHome;
     
     private String javaVersion;
+    
+    private String gatfJarPath;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -568,6 +570,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
     public void setJavaVersion(String javaVersion) {
         this.javaVersion = javaVersion;
+    }
+
+    public String getGatfJarPath() {
+        return gatfJarPath;
+    }
+
+    public void setGatfJarPath(String gatfJarPath) {
+        this.gatfJarPath = gatfJarPath;
     }
 
     public void validate()

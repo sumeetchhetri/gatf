@@ -599,6 +599,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             }
         }
         System.setProperty("java.home", configuration.getJavaHome());
+        System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();
@@ -617,7 +618,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         for (String selscript : configuration.getSeleniumScripts()) {
             try {
                 Object[] retvals = new Object[4];
-                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context, retvals, configuration.getJavaHome());
+                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context, retvals, configuration);
                 tests.add(dyn);
                 testdata.add(retvals);
                 testClassNames.add(dyn.getClass().getName());
