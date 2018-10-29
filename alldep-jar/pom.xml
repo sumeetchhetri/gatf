@@ -2,9 +2,9 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<parent>
-		<groupId>com.github.sumeetchhetri</groupId>
+		<groupId>com.github.sumeetchhetri.gatf</groupId>
 		<artifactId>gatf-parent</artifactId>
-		<version>1.82</version>
+		<version>1.83</version>
 	</parent>
 	
 	<artifactId>gatf-alldep-jar</artifactId>
