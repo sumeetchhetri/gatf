@@ -4,7 +4,7 @@
 	<parent>
         <groupId>com.github.sumeetchhetri</groupId>
         <artifactId>gatf-parent</artifactId>
-        <version>1.8</version>
+        <version>1.81</version>
     </parent>
     
 	<artifactId>gatf-plugin</artifactId>
@@ -13,12 +13,31 @@
 
 	<build>
 		<sourceDirectory>../src</sourceDirectory>
-		<resources>
-			<resource>
-				<directory>../src/main/resources</directory>
-			</resource>
-		</resources>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-resources-plugin</artifactId>
+				<version>3.0.1</version>
+				<executions>
+					<execution>
+						<id>filter-resources</id>
+						<phase>process-resources</phase>
+						<goals>
+							<goal>copy-resources</goal>
+						</goals>
+						<configuration>
+							<outputDirectory>${project.build.directory}</outputDirectory>
+							<resources>
+								<resource>
+									<filtering>true</filtering>
+									<directory>${basedir}/plugin/src/main/resources</directory>
+									<include>**/*</include>
+								</resource>
+							</resources>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-plugin-plugin</artifactId>
