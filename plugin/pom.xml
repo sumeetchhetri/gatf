@@ -10,14 +10,6 @@
 	<artifactId>gatf-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
 	<name>gatf-plugin</name>
-	
-	<dependencies>
-		<dependency>
-			<groupId>com.github.sumeetchhetri.gatf</groupId>
-			<artifactId>gatf-alldep-jar</artifactId>
-        	<version>1.9</version>
-		</dependency>
-	</dependencies>
 
 	<build>
 		<sourceDirectory>../src</sourceDirectory>
