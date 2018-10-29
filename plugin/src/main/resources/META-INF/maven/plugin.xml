@@ -7,7 +7,7 @@
   <description>Generic Automated Test Framework For API/UI Testing</description>
   <groupId>com.github.sumeetchhetri.gatf</groupId>
   <artifactId>gatf-plugin</artifactId>
-  <version>1.81</version>
+  <version>1.82</version>
   <goalPrefix>gatf</goalPrefix>
   <isolatedRealm>false</isolatedRealm>
   <inheritedByDefault>true</inheritedByDefault>
