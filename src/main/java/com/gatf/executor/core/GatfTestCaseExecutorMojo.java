@@ -509,8 +509,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 if (resource.exists()) {
                     XStream xstream = new XStream(new DomDriver("UTF-8"));
                     XStream.setupDefaultSecurity(xstream);
-                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class});
-                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class});
+                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
+                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
                     xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
                     xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
                     xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
@@ -2275,7 +2277,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         XStream.setupDefaultSecurity(xstream);
         xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
                 SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class});
+        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
         xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
         xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
         xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
@@ -2306,8 +2309,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
     public static String getConfigStr(GatfExecutorConfig configuration) {
         XStream xstream = new XStream(new DomDriver("UTF-8"));
         XStream.setupDefaultSecurity(xstream);
-        xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class});
-        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class});
+        xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
+        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
         xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
         xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
         xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
