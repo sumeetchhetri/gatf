@@ -83,6 +83,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+import org.codehaus.plexus.classworlds.ClassWorld;
+import org.codehaus.plexus.classworlds.realm.ClassRealm;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
@@ -1202,7 +1204,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		{
 	        try
 	        {
-	            List classpathElements = project.getCompileClasspathElements();
+	            /*List classpathElements = project.getCompileClasspathElements();
 	            classpathElements.add(project.getBuild().getOutputDirectory());
 	            classpathElements.add(project.getBuild().getTestOutputDirectory());
 	            URL[] urls = new URL[classpathElements.size()];
@@ -1210,7 +1212,25 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	            {
 	                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
 	            }
-	            return new URLClassLoader(urls, getClass().getClassLoader());
+	            return new URLClassLoader(urls, getClass().getClassLoader());*/
+	            ClassWorld world = new ClassWorld();
+	            ClassRealm realm;
+	            realm = world.newRealm("gatf", null);
+	            for (String elt : project.getCompileSourceRoots()) {
+	                URL url = new File(elt).toURI().toURL();
+	                realm.addURL(url);
+	                if (getLog().isDebugEnabled()) {
+	                    getLog().debug("Source root: " + url);
+	                }
+	            }
+	            for (String elt : project.getCompileClasspathElements()) {
+	                URL url = new File(elt).toURI().toURL();
+	                realm.addURL(url);
+	                if (getLog().isDebugEnabled()) {
+	                    getLog().debug("Compile classpath: " + url);
+	                }
+	            }
+	            return realm;
 	        }
 	        catch (Exception e)
 	        {

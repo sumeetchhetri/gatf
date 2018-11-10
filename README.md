@@ -12,10 +12,10 @@ Other important features
 1. Comparative Env Testing
 2. Concurrent User Testing
 3. Performance Testing
-4. Load Testing
+4. Load Testing (API and UI both)
 5. UI Testing
 6. Reporting Engine
-7. Remote Agent for Distributed Testing
+7. Remote Agent for Distributed Load Testing
 8. Workflow Testing
 9. Data Source Integrations
 	- SQL
