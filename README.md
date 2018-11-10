@@ -1,7 +1,7 @@
 Generic Automated Test Framework (GATF)
 =========
 
-**GATF** is a automated test generator and acceptance testing framework(laid on top of asyn-http-client and Soap-ws). Provides multiple components namely the **Test Generator**, the **Test Executor** , the **Config Tool** and the **Selenium Executor**
+**GATF** is a automated test generator and acceptance testing framework. It provides multiple components namely the **Test Generator**, the **Test Executor** , the **Config Tool** and the **Selenium Executor**
 
 GATF Acceptance Test executor is data-type agnostic, which means that your testcases can be in any formats like XML, JSON or plain old CSV. Whereas the Test generator generates only XML files (so that even complex data structures can be suuported within your testcases) 
 
@@ -487,7 +487,7 @@ GATF Selenium Executor
 
 The GATF selenium executor provides an easy to use language to write selenium tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover load and dsitributed load testing can now be very easily performed with gatf.
 
-Just to give a glimpse of how easy it is to write selenium test cases with seleasy(gatf) assume we have a login page hoted at http://example.com and after loggin in we need to see the Name of the user in the Profile section under the xpath (/html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]), an example gatf script to execute the test in 4 different browsers would look like,
+Just to give a glimpse of how easy it is to write selenium test cases with seleasy(gatf) assume we have a login page hosted at http://example.com and after logging in we need to see the Name of the user in the Profile section under the xpath */html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]*, an example gatf script to execute the test in 4 different browsers would look like,
 
 ```
 open chrome
@@ -500,12 +500,10 @@ goto http://example.com
 ??10 class@loginBtn click
 ??10 xpath@"/html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]" click
 ```
-Simplicity lies at the core of the seleasy language which was invented just to solve the the length of the code that needs to be written in java to acaheive the same effect as described above.
+Simplicity lies at the core of the seleasy language which was invented just to ensure that we focus on the problem at hand instead of writing lengthy selenium scripts in java.
 
 GATF Executor Configuration File
 --------------
-The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
-
 ```xml
 <gatf-execute-config>
 	<authEnabled>true</authEnabled>
@@ -564,7 +562,7 @@ Maven Configuration
 	</repository>
 </repositories>
 
-<!-- Add the generator plugin which will be invoked during the test phase -->
+<!-- Add the executor plugin which will be invoked during the test phase -->
 <build>
 	<plugins>
 		<plugin>
@@ -611,7 +609,7 @@ Maven Configuration
 	</repository>
 </repositories>
 
-<!-- Add the generator plugin which will be invoked during the test phase -->
+<!-- Add the config plugin which will be invoked during the test phase -->
 <build>
 	<plugins>
 		<plugin>
