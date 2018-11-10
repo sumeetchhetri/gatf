@@ -589,7 +589,7 @@ Maven Configuration
 GATF Config Tool
 ================
 
-Gatf also provides with a User Interface for managing and executing test cases online with the help of an embedded Http server which provides for an easy to to use configuration tool to control gatf, It provides real time statisticson test runs in a single or multi node load scenario.
+Gatf also provides with a User Interface for managing and executing test cases online with the help of an embedded Http server which provides for an easy to to use configuration tool to control gatf, It provides real time statistics on test runs in a single or multi node load scenario.
 
 Maven Configuration
 --------------
@@ -632,12 +632,12 @@ Maven Configuration
 
 Direct Execution
 --------------
-For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
+For direct execution,
 ```sh
 user@local> java -jar gatf-alldep-jar-2.0.0.jar -configtool 9080 localhost .
 ```
-*localhost:9080* - ip/port for embedded http server
-*.* - the current directory where the config file gatf-config.xml and other resource directories and files can be found
+**localhost:9080** - ip/port for embedded http server<br>
+**.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found
 
 Limitations
 -----
