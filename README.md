@@ -153,7 +153,9 @@ Simplest data format but cannot be used or complex request/response content
 Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
-user@local> **java -jar gatf-plugin-1.0.jar config.xml**
+```sh
+user@local> java -jar gatf-alldep-jar-2.0.0.jar -generator config.xml
+```
 
 Sample config.xml
 ```xml
@@ -201,7 +203,7 @@ The GATF Test Executor module provides a consolidated testing tool for,
 3. Scenario/Workflow based Test case execution
 4. Concurrent User Simulation
 5. Comparative Test case study against multiple environments
-6. Load Testing
+6. Load (Distributed) Testing
 
 It also provides the following,
 
@@ -228,13 +230,13 @@ The framework provides automatic built-in providers for easy integration to the 
 
 GATF Pre/Post Test Case Execution Hooks
 -------------------------
-The framework also provides the facility to plugin pre/post test case execution logic in order to control the test case execution flow, provides 2 simple annotations,
+The framework also provides the facility to plug in pre/post test case execution logic in order to control the test case execution flow, it provides 2 simple annotations,
 
 1. @PreTestCaseExecutionHook - Marks a method as a pre-test-case execution hook
 2. @PostTestCaseExecutionHook - Marks a method as a post-test-case execution hook
 
 
-GATF Executor Configuration
+GATF Executor Configuration File
 --------------
 The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
 
@@ -288,7 +290,7 @@ The complete configuration for the GATF executor framework is listed below, We j
     <!-- The number of concurrent connections to the Base environment HTTP Server, default 1 -->
     <numConcurrentExecutions>1</numConcurrentExecutions>\
   
-    <!-- The provider name that will be used to fetch user/password details for user simulation -->
+    <!-- The provider name that will be used to fetch user/password details for user credentials -->
     <simulationUsersProviderName>file-auth-provider</simulationUsersProviderName>
   
     <!-- Whether comparative analysis is enabled, if yes then the compareEnvBaseUrls property inside
@@ -436,521 +438,208 @@ The complete configuration for the GATF executor framework is listed below, We j
     </gatfTestDataConfig>
 </gatf-execute-config>
 ```
+Assuming the above configuration is present in a file named gatf-config.xml, the maven configuration required to execute the API testcases would be, 
 
-
-
-
-
-
-Workflow
-======
-The main focus of GATF is automation, and to acheive this goal is not simple and cannot be easily done just by generating testcases and having a test execution phase. What we actually need is a work-flow or orchestration logic to control the flow of API invocations in an orderly fashion receiving values from the response and using these values in further API requests. GATF provides this orchestration with the help of the Sequence/WorkflowContextParameterMap parameters in your GATF testcase file.
-
-Example
------
-Lets take an example from the sample application present [here][4],
-
+Maven Configuration
+--------------
 ```xml
-<TestCase url="api/rest/example?token={token}&amp;" name="com.sample.services.ExampleBeanServiceImpl.addBean" method="POST" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="true" soapBase="false">
-    <description>com.sample.services.ExampleBeanServiceImpl.addBean</description>
-    <content><![CDATA[{"id":"DfCobuXzhe","name":"TDymsEDzCE","order":53,"valid":false,"bean":{"prop1":"WmGSHlwUYz","prop2":69,"prop3":40,"prop4":1391159300719,"prop5":true,"prop6":["tPrZqJQxml"],"prop7":{"DXITdnJkDz":"QqKLlRNSQd"}},"beans":[{"prop1":"TiUfFBzpec","prop2":30,"prop3":57,"prop4":1391159300719,"prop5":true,"prop6":["VRvfIDvqLb"],"prop7":{"WlfJTXeHPf":"gKxjxsLPke"}}],"mapofBeans":{"tygvEkxPJJ":{"prop1":"TziuNauqep","prop2":30,"prop3":39,"prop4":1391159300719,"prop5":true,"prop6":["SMWsDefXEv"],"prop7":{"xNUmOnqQig":"MmtnagDQhJ"}}}}]]></content>
-    <headers>
-      <entry>
-        <string>Content-Type</string>
-        <string>application/json</string>
-      </entry>
-    </headers>
-    <workflowContextParameterMap>
-    	<entry>
-	        <string>beanId</string>
-	        <string>id</string>
-      </entry>
-    </workflowContextParameterMap>
-    <expectedNodes/>
-    <soapParameterValues/>
-    <filesToUpload/>
-</TestCase>
-<TestCase url="api/rest/example/$beanId?token={token}&amp;" name="com.sample.services.ExampleBeanServiceImpl.getBean" method="GET" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="true" soapBase="false">
-    <description>com.sample.services.ExampleBeanServiceImpl.getBean</description>
-    <content><![CDATA[]]></content>
-    <headers/>
-    <expectedNodes>
-    	<string>id</string>
-    	<string>bean.prop1</string>
-    </expectedNodes>
-    <soapParameterValues/>
-    <filesToUpload/>
-</TestCase>
-```
+<!-- Add jitpack artifact repositories for gatf dependencies -->
+<pluginRepositories>
+	<pluginRepository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</pluginRepository>
+</pluginRepositories>
 
-The example testcase above does not define a sequence value, if a work-flow sequence value is not defined for a testcase then the testcase workflow execution assumes the testcase definition order in a given testcase file as the workflow sequence. In this example [testcase-file][6] the sequence is automatically assumed to be the order of the testcase definitions. 
+<repositories>
+	<repository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</repository>
+</repositories>
 
-Talking about the workflowContextParameterMap, this is a key/value pair that defines parameter names and expected response nodes(jsonpath/json, xpath/xml) for a given API invocation. After the given API execution completes the GATF engine looks for the nodes defined in the workflowContextParameterMap and assigns the values found for these nodes as variable name definitions in a global map which can be used for the next testcase executions. In the example above after the API execution for api/rest/example?token={token}&amp; completes the engine reads the response node(json path) id from the response and assigns the value thus obtained to the beanId global variable. You may have already defined this variable in your testcase definitions coming later as $beanId(GATF uses Velocity templates). So after this API call completes the variable **$beanId** will have the value received from the API call. The second testcase gives an exmaple of the usage of variable names in GATF. GATF looks for the URL, content body and the query parameters(namely the ExQueryPart parameter) and replaces all computed variables at that instant before the execution of the next testcase, it actually transforms your testcase depending on all your variable definitions. All variable definitions are assumed to be string values.
-
-This helps you stage your test execution steps in an orderly fashion or orchestrate the flow of tests getting executed. This is a very important feature present in GATF which helps it acheive its goal 'AUTOMATION'
-
-
-SOAP based Acceptance Testing
-----------
-
-Assumptions - II
---------
-Continuing from the Assumption section - I, Let us now provide a sample application scneario where the same User Service above is implemented as a SOAP service, the WSDL file is laid out as an example.
-```xml
-<?xml version="1.0"?>
-<wsdl:definitions xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:tns="http://services.sample.com/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:ns2="http://schemas.xmlsoap.org/soap/http" xmlns:ns1="http://www.example.com" name="UserServiceServiceImplService" targetNamespace="http://services.sample.com/">
-<wsdl:types>
-    <xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://services.sample.com/" elementFormDefault="unqualified" targetNamespace="http://services.sample.com/" version="1.0">
-    <xs:element name="UserService" type="tns:UserService"/>
-    <xs:element name="addUser" type="tns:addUser"/>
-    <xs:element name="addUserResponse" type="tns:addUserResponse"/>
-    <xs:element name="deleteUser" type="tns:deleteUser"/>
-    <xs:element name="deleteUserResponse" type="tns:deleteUserResponse"/>
-    <xs:element name="getUser" type="tns:getUser"/>
-    <xs:element name="getUserResponse" type="tns:getUserResponse"/>
-    <xs:element name="getUsers" type="tns:getUsers"/>
-    <xs:element name="getUsersResponse" type="tns:getUsersResponse"/>
-    <xs:element name="updateUser" type="tns:updateUser"/>
-    <xs:element name="updateUserResponse" type="tns:updateUserResponse"/>
-    <xs:complexType name="getUser">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="arg0" type="xs:string"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="getUserResponse">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="return" type="tns:user"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="user">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="id" type="xs:string"/>
-            <xs:element minOccurs="0" name="name" type="xs:string"/>
-            <xs:element minOccurs="0" name="age" type="xs:int"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="errorDetail">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="status" type="xs:int"/>
-            <xs:element minOccurs="0" name="errorCode" type="xs:string"/>
-            <xs:element minOccurs="0" name="message" type="xs:string"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="addUser">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="arg0" type="tns:user"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="addUserResponse">
-        <xs:sequence/>
-    </xs:complexType>
-    <xs:complexType name="getUsers">
-        <xs:sequence/>
-    </xs:complexType>
-    <xs:complexType name="getUsersResponse">
-        <xs:sequence>
-            <xs:element maxOccurs="unbounded" minOccurs="0" name="return" type="tns:user"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="deleteUser">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="arg0" type="xs:string"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="deleteUserResponse">
-        <xs:sequence/>
-    </xs:complexType>
-    <xs:complexType name="updateUser">
-        <xs:sequence>
-            <xs:element minOccurs="0" name="arg0" type="xs:string"/>
-            <xs:element minOccurs="0" name="arg1" type="tns:user"/>
-        </xs:sequence>
-    </xs:complexType>
-    <xs:complexType name="updateUserResponse">
-        <xs:sequence/>
-    </xs:complexType>
-</xs:schema>
-<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:ns1="http://services.sample.com/" targetNamespace="http://mtel.proconconsole.com" version="1.0">
-<xs:import namespace="http://services.sample.com/"/>
-<xs:element name="errorDetail" type="ns1:errorDetail"/>
-</xs:schema>
-<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:tns="http://www.example.com" xmlns:ns0="http://services.sample.com/" attributeFormDefault="unqualified" elementFormDefault="unqualified" targetNamespace="http://www.example.com">
-<xsd:element name="UserServiceException" nillable="true" type="ns0:errorDetail"/>
-</xsd:schema>
-</wsdl:types>
-<wsdl:message name="deleteUserResponse">
-    <wsdl:part element="tns:deleteUserResponse" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="getUsers">
-    <wsdl:part element="tns:getUsers" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="getUserResponse">
-    <wsdl:part element="tns:getUserResponse" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="addUserResponse">
-    <wsdl:part element="tns:addUserResponse" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="getUsersResponse">
-    <wsdl:part element="tns:getUsersResponse" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="deleteUser">
-    <wsdl:part element="tns:deleteUser" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="UserServiceException">
-    <wsdl:part element="ns1:UserServiceException" name="UserServiceException"/>
-</wsdl:message>
-<wsdl:message name="getUser">
-    <wsdl:part element="tns:getUser" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="updateUserResponse">
-    <wsdl:part element="tns:updateUserResponse" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="updateUser">
-    <wsdl:part element="tns:updateUser" name="parameters"/>
-</wsdl:message>
-<wsdl:message name="addUser">
-    <wsdl:part element="tns:addUser" name="parameters"/>
-</wsdl:message>
-<wsdl:portType name="UserServiceServiceImpl">
-    <wsdl:operation name="getUser">
-        <wsdl:input message="tns:getUser" name="getUser"/>
-        <wsdl:output message="tns:getUserResponse" name="getUserResponse"/>
-        <wsdl:fault message="tns:UserServiceException" name="UserServiceException"/>
-    </wsdl:operation>
-    <wsdl:operation name="addUser">
-        <wsdl:input message="tns:addUser" name="addUser"/>
-        <wsdl:output message="tns:addUserResponse" name="addUserResponse"/>
-        <wsdl:fault message="tns:UserServiceException" name="UserServiceException"/>
-    </wsdl:operation>
-    <wsdl:operation name="getUsers">
-        <wsdl:input message="tns:getUsers" name="getUsers"/>
-        <wsdl:output message="tns:getUsersResponse" name="getUsersResponse"/>
-        <wsdl:fault message="tns:UserServiceException" name="UserServiceException"/>
-    </wsdl:operation>
-    <wsdl:operation name="deleteUser">
-        <wsdl:input message="tns:deleteUser" name="deleteUser"/>
-        <wsdl:output message="tns:deleteUserResponse" name="deleteUserResponse"/>
-        <wsdl:fault message="tns:UserServiceException" name="UserServiceException"/>
-    </wsdl:operation>
-    <wsdl:operation name="updateUser">
-        <wsdl:input message="tns:updateUser" name="updateUser"/>
-        <wsdl:output message="tns:updateUserResponse" name="updateUserResponse"/>
-        <wsdl:fault message="tns:UserServiceException" name="UserServiceException"/>
-    </wsdl:operation>
-</wsdl:portType>
-<wsdl:binding name="UserServiceServiceImplServiceSoapBinding" type="tns:UserServiceServiceImpl">
-    <soap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
-    <wsdl:operation name="getUser">
-        <soap:operation soapAction="" style="document"/>
-        <wsdl:input name="getUser">
-            <soap:body use="literal"/>
-        </wsdl:input>
-        <wsdl:output name="getUserResponse">
-            <soap:body use="literal"/>
-        </wsdl:output>
-        <wsdl:fault name="UserServiceException">
-            <soap:fault name="UserServiceException" use="literal"/>
-        </wsdl:fault>
-    </wsdl:operation>
-    <wsdl:operation name="addUser">
-        <soap:operation soapAction="" style="document"/>
-        <wsdl:input name="addUser">
-            <soap:body use="literal"/>
-        </wsdl:input>
-        <wsdl:output name="addUserResponse">
-            <soap:body use="literal"/>
-        </wsdl:output>
-        <wsdl:fault name="UserServiceException">
-            <soap:fault name="UserServiceException" use="literal"/>
-        </wsdl:fault>
-    </wsdl:operation>
-    <wsdl:operation name="getUsers">
-        <soap:operation soapAction="" style="document"/>
-        <wsdl:input name="getUsers">
-            <soap:body use="literal"/>
-        </wsdl:input>
-        <wsdl:output name="getUsersResponse">
-            <soap:body use="literal"/>
-        </wsdl:output>
-        <wsdl:fault name="UserServiceException">
-            <soap:fault name="UserServiceException" use="literal"/>
-        </wsdl:fault>
-    </wsdl:operation>
-    <wsdl:operation name="deleteUser">
-        <soap:operation soapAction="" style="document"/>
-        <wsdl:input name="deleteUser">
-            <soap:body use="literal"/>
-        </wsdl:input>
-        <wsdl:output name="deleteUserResponse">
-            <soap:body use="literal"/>
-        </wsdl:output>
-        <wsdl:fault name="UserServiceException">
-            <soap:fault name="UserServiceException" use="literal"/>
-        </wsdl:fault>
-    </wsdl:operation>
-    <wsdl:operation name="updateUser">
-        <soap:operation soapAction="" style="document"/>
-        <wsdl:input name="updateUser">
-            <soap:body use="literal"/>
-        </wsdl:input>
-        <wsdl:output name="updateUserResponse">
-            <soap:body use="literal"/>
-        </wsdl:output>
-        <wsdl:fault name="UserServiceException">
-            <soap:fault name="UserServiceException" use="literal"/>
-        </wsdl:fault>
-    </wsdl:operation>
-</wsdl:binding>
-<wsdl:service name="UserServiceServiceImplService">
-    <wsdl:port binding="tns:UserServiceServiceImplServiceSoapBinding" name="UserServiceServiceImplPort">
-        <soap:address location="http://localhost:8080/soap/users"/>
-    </wsdl:port>
-</wsdl:service>
-</wsdl:definitions>
-
-```
-
-Testcase (SOAP - Auto)
------
-This is an auto-generated testcase example generated by the GATF Test Generator, this test case will be executed a normal HTTP client call and not a SOAP client
-```xml
-<TestCase url="http://localhost:8080/soap/users" name="CreateUser" method="POST" expectedResCode="200" expectedResContentType="application/xml" skipTest="false" detailedLog="false" secure="false" soapBase="false">    
-    <description>Create a new User</description>    
-	<content><![CDATA[<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="http://services.sample.com/">
-		   <soapenv:Header/>
-		   <soapenv:Body>
-			  <ser:createUser>
-				 <arg0>
-					<id>gero et</id>
-					<name>sonoras imperio</name>
-					<age>3</age>
-				 </arg0>
-			  </ser:createUser>
-		   </soapenv:Body>
-		</soapenv:Envelope>]]>
-	</content>
-	<headers>      
-		<entry>        
-			<string>SOAPAction</string>
-			<string></string>
-		</entry>    
-	</headers>    
-	<expectedNodes/>    
-	<soapParameterValues/>  
-</TestCase>
-```
-
-wsdl-locations.csv
-----
-```csv
-LoginService,http://localhost:8080/soap/login?wsdl
-UserService,http://localhost:8080/soap/users?wsdl
-```
-
-Testcase (SOAP - Manual)
------
-This is a manually sepcified test case example here, soapbased is set to true, this call will be invoked using a SOAP client derived from the WSDL file specified in the wsdl-locations.csv, we don't need to sepcify the URL in this case as it is automatically derived from the WSDL file by the Acceptance Testing framework
-```xml
-<TestCase name="CreateUser" method="POST" expectedResCode="200" expectedResContentType="application/xml" skipTest="false" detailedLog="false" secure="false" soapBase="true">    
-    <description>Create a new User</description>
-	<headers>      
-		<entry>        
-			<string>SOAPAction</string>
-			<string></string>
-		</entry>    
-	</headers>    
-	<expectedNodes>  
-    	<string>id</string>
-    </expectedNodes>
-	<soapParameterValues>
-        <entry>        
-        	<string>arg0.id</string>
-			<string>3</string>
-		</entry>
-        <entry>        
-        	<string>arg0.name</string>
-			<string>Test</string>
-		</entry>
-        <entry>        
-        	<string>arg0.age</string>
-			<string>30</string>
-		</entry>
-    </soap>
-    <wsdlKey>UserService</wsdlKey>
-    <operationName>addUser</operationName>
-</TestCase>
-```
-Observe above that we did not specify the URL and the soap message content, we only mentioned that soapBased=true and the wsdlKey value mentioned in the wsdl-locations.csv and the operationName for the add user service from the WSDL above.
-Also remember that in this case the soapParameterValues specified in the testcase above will be used to transform the soap request generated automatically during execution of the testcase.
-
-
-
-Finally - Show me Authenticated Tests Example
------
-```xml
-<TestCases>
-    <TestCase name="Login" method="POST" expectedResCode="200" expectedResContentType="application/xml" skipTest="false" detailedLog="false" secure="false" soapBase="true">    
-        <description>Login</description>
-        <headers>      
-        	<entry>        
-    			<string>SOAPAction</string>
-    			<string></string>
-    		</entry>    
-    	</headers>    
-    	<expectedNodes>  
-        	<string>token</string>
-        </expectedNodes>
-    	<soapParameterValues>
-            <entry>        
-            	<string>arg0.username</string>
-    			<string>user</string>
-    		</entry>
-            <entry>        
-            	<string>arg0.password</string>
-    			<string>pass</string>
-    		</entry>
-        </soap>
-        <wsdlKey>AuthService</wsdlKey>
-        <operationName>loginbyHeaders</operationName>
-    </TestCase>
-    <TestCase name="CreateUser" method="POST" expectedResCode="200" expectedResContentType="application/xml" skipTest="false" detailedLog="false" secure="true" soapBase="true">    
-        <description>Create a new User</description>
-        <headers>      
-    		<entry>        
-    			<string>SOAPAction</string>
-    			<string></string>
-    		</entry>    
-    	</headers>    
-    	<expectedNodes>  
-        	<string>id</string>
-        </expectedNodes>
-    	<soapParameterValues>
-            <entry>        
-            	<string>arg0.id</string>
-    			<string>3</string>
-    		</entry>
-            <entry>        
-            	<string>arg0.name</string>
-    			<string>Test</string>
-    		</entry>
-            <entry>        
-            	<string>arg0.age</string>
-    			<string>30</string>
-    		</entry>
-        </soap>
-        <wsdlKey>UserService</wsdlKey>
-        <operationName>addUser</operationName>
-    </TestCase>
-</TestCases>
-```
-This example illustrates the soap method testcases, but you can just follow the same structure/property set to implement the testcases in eithe JSON/CSV.
-
-
-Usage
--------
-Maven - pom.xml
--------
-```xml
-<project ...>
-	<!-- In case the maven gatf generator needs to be used to generate testcases -->
-	<pluginRepositories>
-	        <pluginRepository>
-	            <id>testgen-repository</id>
-	            <name>Testgen Repository</name>
-	            <url>http://testgen.googlecode.com/svn/trunk/maven2/</url>
-	        </pluginRepository>
-	        <pluginRepository>
-	        	<id>gatf-repository</id>
-	            <name>Gatf Repository</name>
-	            <url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
-	        </pluginRepository>
-	</pluginRepositories>
-	
-	<!-- In case the maven gatf test class needs to be used to execute testcases -->
-	<repositories>
-		<repository>
-			<id>gatf 1.0</id>
-			<url>https://raw2.github.com/sumeetchhetri/gatf/master/maven/</url>
-		</repository>
-	</repositories>
-	
+<!-- Add the generator plugin which will be invoked during the test phase -->
+<build>
 	<plugins>
 		<plugin>
-				<groupId>com.test</groupId>
-				<artifactId>gatf-plugin</artifactId>
-				<version>1.0</version>
-				<configuration>
-					<!--The comma separated package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
-					<testPaths>
-						<testPath>com.sample.services.*</testPath>
-					</testPaths>
-					<!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
-					<soapWsdlKeyPairs>
-						<soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
-						<soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
-						<soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
-						<soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
-					</soapWsdlKeyPairs>
-					<!--The REST API service URL prefix-->
-					<urlPrefix>rest</urlPrefix>
-					<!--The request data type, when generating request entities-->
-					<requestDataType>json</requestDataType>
-					<!--The resource path where the testcases and wsdl-locations.csv will be generated-->
-					<resourcepath>src/test/resources/generated</resourcepath>
-					<!--Whether this plugin is enabled-->
-					<enabled>true</enabled>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>gatf</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			.
-			.
-			.
-			
+			<groupId>com.github.sumeetchhetri.gatf</groupId>
+			<artifactId>gatf-plugin</artifactId>
+			<version>2.0.0</version>
+			<executions>
+				<execution>
+					<id>gatf-execution</id>
+					<configuration>
+						<configFile>gatf-config.xml</configFile>
+					</configuration>
+					<phase>test</phase>
+					<goals>
+						<goal>gatf-executor</goal>
+					</goals>
+				</execution>
+			</executions>
+		</plugin>
 	</plugins>
-	.
-	.
-	.
-	.
-</project>
+</body>
 ```
 
-Direct jar execution - Command line
------
-config.xml
+GATF Selenium Executor
+================
+
+The GATF selenium executor provides an easy to use language to write selenium tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover load and dsitributed load testing can now be very easily performed with gatf.
+
+Just to give a glimpse of how easy it is to write selenium test cases with seleasy(gatf) assume we have a login page hoted at http://example.com and after loggin in we need to see the Name of the user in the Profile section under the xpath (/html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]), an example gatf script to execute the test in 4 different browsers would look like,
+
+```
+open chrome
+open firefox
+open ie
+open opera
+goto http://example.com
+??10 id@username type "user"
+??10 id@password type "password"
+??10 class@loginBtn click
+??10 xpath@"/html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]" click
+```
+Simplicity lies at the core of the seleasy language which was invented just to solve the the length of the code that needs to be written in java to acaheive the same effect as described above.
+
+GATF Executor Configuration File
+--------------
+The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
+
 ```xml
-<configuration>
-	<testPaths>
-		<testPath>com.sample.services.*</testPath>
-	</testPaths>
-	<soapWsdlKeyPairs>
-		<soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
-		<soapWsdlKeyPair>ExampleService,http://localhost:8080/soap/example?wsdl</soapWsdlKeyPair>
-		<soapWsdlKeyPair>MessageService,http://localhost:8080/soap/messages?wsdl</soapWsdlKeyPair>
-		<soapWsdlKeyPair>UserService,http://localhost:8080/soap/user?wsdl</soapWsdlKeyPair>
-	</soapWsdlKeyPairs>
-	<urlPrefix>rest</urlPrefix>
-	<requestDataType>json</requestDataType>
-	<resourcepath>.</resourcepath>
+<gatf-execute-config>
+	<authEnabled>true</authEnabled>
+	<baseUrl>http://localhost:8080/example</baseUrl>
 	<enabled>true</enabled>
-</configuration>
-```
-Then on the command line using the file above
-```
-user@local> java -jar gatf-plugin-1.0.jar config.xml
+	<outFilesDir>out</outFilesDir>
+	<testCaseDir>data</testCaseDir>
+	<httpRequestTimeout>100000</httpRequestTimeout>
+	<authDataProvider>file-auth-provider</authDataProvider>
+	<gatfTestDataConfig>
+		<providerTestDataList>
+			<gatf-testdata-provider>
+				<providerName>file-auth-provider</providerName>
+				<providerClass>com.gatf.executor.dataprovider.FileTestDataProvider</providerClass>
+				<providerProperties>username,password</providerProperties>
+				<enabled>true</enabled>
+				<args>
+					<seleniumScript>users.csv</seleniumScript>
+					<seleniumScript>csv</seleniumScript>
+				</args>
+			</gatf-testdata-provider>
+		</providerTestDataList>
+	</gatfTestDataConfig>
+	<isSeleniumExecutor>true</isSeleniumExecutor>
+	<javaHome>C:\\Path-to-java\\java-openjdk-1.8.0.191</javaHome>
+	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\2.0.0\\gatf-alldep-jar-2.0.0.jar</gatfJarPath>
+	<seleniumDriverConfigs>
+		<seleniumDriverConfig>
+			<name>chrome</name>
+			<driverName>webdriver.chrome.driver</driverName>
+			<path>C:\\Path-to-selenium-drivers\\chromedriver.exe</path>
+		</seleniumDriverConfig>
+	</seleniumDriverConfigs>
+	<seleniumScripts>
+		<seleniumScript>path-relative-to-testCaseDir-above\\test.sel</seleniumScript>
+	</seleniumScripts>
+	<seleniumLoggerPreferences>browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)</seleniumLoggerPreferences>
+</gatf-execute-config>
 ```
 
-File Upload example
------
-CSV example for file upload
+Maven Configuration
+--------------
+```xml
+<!-- Add jitpack artifact repositories for gatf dependencies -->
+<pluginRepositories>
+	<pluginRepository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</pluginRepository>
+</pluginRepositories>
+
+<repositories>
+	<repository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</repository>
+</repositories>
+
+<!-- Add the generator plugin which will be invoked during the test phase -->
+<build>
+	<plugins>
+		<plugin>
+			<groupId>com.github.sumeetchhetri.gatf</groupId>
+			<artifactId>gatf-plugin</artifactId>
+			<version>2.0.0</version>
+			<executions>
+				<execution>
+					<id>gatf-execution</id>
+					<configuration>
+						<configFile>gatf-config.xml</configFile>
+					</configuration>
+					<phase>test</phase>
+					<goals>
+						<goal>gatf-executor</goal>
+					</goals>
+				</execution>
+			</executions>
+		</plugin>
+	</plugins>
+</body>
 ```
-/users/upload,File upload,POST,Testing File upload functionality reading from CSV file - Postive/REST,,Content-Type:application/octet-stream,,200,application/json,,,false,false,true,file:file:wsdl-locations.csv:,false,,,
+
+GATF Config Tool
+================
+
+Gatf also provides with a User Interface for managing and executing test cases online with the help of an embedded Http server which provides for an easy to to use configuration tool to control gatf, It provides real time statisticson test runs in a single or multi node load scenario.
+
+Maven Configuration
+--------------
+```xml
+<!-- Add jitpack artifact repositories for gatf dependencies -->
+<pluginRepositories>
+	<pluginRepository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</pluginRepository>
+</pluginRepositories>
+
+<repositories>
+	<repository>
+	    <id>jitpack.io</id>
+	    <url>https://jitpack.io</url>
+	</repository>
+</repositories>
+
+<!-- Add the generator plugin which will be invoked during the test phase -->
+<build>
+	<plugins>
+		<plugin>
+			<groupId>com.github.sumeetchhetri.gatf</groupId>
+			<artifactId>gatf-plugin</artifactId>
+			<version>2.0.0</version>
+			<executions>
+				<execution>
+					<id>gatf-config</id>
+					<phase>test</phase>
+					<goals>
+						<goal>gatf-config</goal>
+					</goals>
+				</execution>
+			</executions>
+		</plugin>
+	</plugins>
+</body>
 ```
+
+Direct Execution
+--------------
+For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
+```sh
+user@local> java -jar gatf-alldep-jar-2.0.0.jar -configtool 9080 localhost .
+```
+*localhost:9080* - ip/port for embedded http server
+*.* - the current directory where the config file gatf-config.xml and other resource directories and files can be found
 
 Limitations
 -----
