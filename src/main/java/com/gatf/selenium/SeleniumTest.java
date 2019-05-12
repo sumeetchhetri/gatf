@@ -591,10 +591,10 @@ public abstract class SeleniumTest {
     protected static void randomize(List<WebElement> le, String v1, String v2, String v3) {
         if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
                 || (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
-            int count = 10;
+            int count = 10, totalcount = 1;
             if(StringUtils.isNotBlank(v3)) {
                 try {
-                    count = Integer.parseInt(v3);
+                	totalcount = Integer.parseInt(v3);
                 } catch (Exception e) {
                 }
             }
@@ -606,20 +606,24 @@ public abstract class SeleniumTest {
                     }
                 }
             }
-            if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
-                le.get(0).sendKeys(RandomStringUtils.randomAlphabetic(count));
-            } else if(v1.toLowerCase().equals("alphanumeric")) {
-                le.get(0).sendKeys(RandomStringUtils.randomAlphanumeric(count));
-            } else if(v1.toLowerCase().equals("numeric")) {
-                String fv = RandomStringUtils.randomNumeric(count);
-                long v = Long.parseLong(fv);
-                if(v==0) {
-                    fv = "1";
+            List<String> vals = new ArrayList<>();
+            for(int i=0;i<totalcount;i++) {
+            	if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
+            		vals.add(RandomStringUtils.randomAlphabetic(count));
+                } else if(v1.toLowerCase().equals("alphanumeric")) {
+                	vals.add(RandomStringUtils.randomAlphanumeric(count));
+                } else if(v1.toLowerCase().equals("numeric")) {
+                    String fv = RandomStringUtils.randomNumeric(count);
+                    long v = Long.parseLong(fv);
+                    if(v==0) {
+                        fv = "1";
+                    }
+                    vals.add(fv);
+                } else if(v1.toLowerCase().equals("value") && v2!=null) {
+                	vals.add(v2);
                 }
-                le.get(0).sendKeys(fv);
-            } else if(v1.toLowerCase().equals("value") && v2!=null) {
-                le.get(0).sendKeys(v2);
             }
+            le.get(0).sendKeys(StringUtils.join(vals, " "));
         } else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
             long min = 0;
             long max = 99999;

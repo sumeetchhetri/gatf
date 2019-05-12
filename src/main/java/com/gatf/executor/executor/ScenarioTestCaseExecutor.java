@@ -18,6 +18,7 @@ package com.gatf.executor.executor;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -28,7 +29,6 @@ import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.validator.ResponseValidator;
-import com.ning.http.client.ListenableFuture;
 
 /**
  * @author Sumeet Chhetri
@@ -45,7 +45,7 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 		
 		WorkflowContextHandler workflowContextHandler = testCaseExecutorUtil.getContext().getWorkflowContextHandler();
 		
-		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
+		List<CompletableFuture<TestCaseReport>> futures = new ArrayList<CompletableFuture<TestCaseReport>>();
 		for (Map<String, String> scenarioMap : testCase.getRepeatScenarios()) {
 			
 			logger.info("Running with Scenario map = " + scenarioMap);
@@ -74,15 +74,15 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				continue;
 			}
 				
-			ListenableFuture<TestCaseReport> listenableFuture = testCaseExecutorUtil.executeTestCase(testCaseCopy, testCaseReport);
+			CompletableFuture<TestCaseReport> CompletableFuture = testCaseExecutorUtil.executeTestCase(testCaseCopy, testCaseReport);
 			
 			if(!testCaseReport.getTestCase().isRepeatScenariosConcurrentExecution())
 			{
 				try {
-	                while(!listenableFuture.isDone()) {
+	                while(!CompletableFuture.isDone()) {
 	                    Thread.sleep(1);
 	                }
-					testCaseReport = listenableFuture.get();
+					testCaseReport = CompletableFuture.get();
 					ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
 							testCaseExecutorUtil.getContext(), scenarioMap);
 					testCaseReport.getTestCase().setCurrentScenarioVariables(null);
@@ -103,12 +103,12 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			}
 			else
 			{
-				futures.add(listenableFuture);
+				futures.add(CompletableFuture);
 			}
 		}
 		
-		for (ListenableFuture<TestCaseReport> listenableFuture : futures) {
-		    while(!listenableFuture.isDone()) {
+		for (CompletableFuture<TestCaseReport> CompletableFuture : futures) {
+		    while(!CompletableFuture.isDone()) {
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
@@ -116,10 +116,10 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
             }
         }
 		
-		for (ListenableFuture<TestCaseReport> listenableFuture : futures) {
+		for (CompletableFuture<TestCaseReport> CompletableFuture : futures) {
 			TestCaseReport testCaseReport = null;
 			try {
-				testCaseReport = listenableFuture.get();
+				testCaseReport = CompletableFuture.get();
 				ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
 						testCaseExecutorUtil.getContext(), testCaseReport.getTestCase().getCurrentScenarioVariables());
 				testCaseReport.getTestCase().setCurrentScenarioVariables(null);

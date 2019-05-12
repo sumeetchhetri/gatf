@@ -18,6 +18,7 @@ package com.gatf.executor.executor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -26,7 +27,6 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
-import com.ning.http.client.ListenableFuture;
 
 /**
  * @author Sumeet Chhetri
@@ -62,7 +62,7 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 			return lst;
 		}
 		
-		ListenableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
+		CompletableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
 		try {
 		    while(!report.isDone()) {
 		        Thread.sleep(1);
@@ -86,7 +86,7 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		testCaseReport.setTestCase(testCase);
 		testCaseReport.setNumberOfRuns(1);
 		
-		ListenableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
+		CompletableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
 		try {
             while(!report.isDone()) {
                 Thread.sleep(1);

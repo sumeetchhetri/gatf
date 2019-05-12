@@ -39,8 +39,9 @@ import com.gatf.executor.core.WorkflowContextHandler.ResponseType;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
-import com.ning.http.client.Response;
-import com.ning.http.client.cookie.Cookie;
+
+import okhttp3.Cookie;
+import okhttp3.Response;
 
 /**
  * @author Sumeet Chhetri
@@ -261,8 +262,7 @@ public abstract class ResponseValidator {
 			
 			extractWorkflowVariables(testCase, testCaseReport, intObj, context);
 			
-			List<Cookie> cookies = response.getCookies();
-			context.getWorkflowContextHandler().storeCookies(testCase, cookies);
+			List<Cookie> cookies = context.getWorkflowContextHandler().storeCookies(testCase, response.headers().values("Set-Cookie"));
 			
 			boolean authEnabled = testCase.isServerApiAuth()?context.getGatfExecutorConfig().isServerLogsApiAuthEnabled()
 					:context.getGatfExecutorConfig().isAuthEnabled();
@@ -276,15 +276,15 @@ public abstract class ResponseValidator {
 				if(authExtractAuthParams[1].equalsIgnoreCase("cookie")) {
 					authext = "cookie ";
 					for (Cookie cookie : cookies) {
-						if(authExtractAuthParams[0].equals(cookie.getName()))
+						if(authExtractAuthParams[0].equals(cookie.name()))
 						{
-							identifier = cookie.getValue();
+							identifier = cookie.value();
 							break;
 						}
 					}
 				} else if(authExtractAuthParams[1].equalsIgnoreCase("header")) {
 					authext = "header ";
-					identifier = response.getHeader(authExtractAuthParams[0]);
+					identifier = response.header(authExtractAuthParams[0]);
 				} else {
 					authext = "response-content ";
 					identifier = getNodeValue(intObj, authExtractAuthParams[0]);

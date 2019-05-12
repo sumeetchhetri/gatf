@@ -34,7 +34,6 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -1197,7 +1196,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     }
     
 
-    @SuppressWarnings({ "unchecked", "rawtypes" })
     private ClassLoader getClassLoader()
     {
 		if(project!=null)

@@ -38,13 +38,13 @@ import java.util.regex.Pattern;
 import javax.crypto.Cipher;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.openqa.selenium.Keys;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.TestCase;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -5022,6 +5022,9 @@ public class Command {
     }
 
     public static void main(String[] args) throws Exception {
+    	
+    	System.out.println(RandomStringUtils.randomAlphanumeric(6));
+    	
         System.out.println("\u0005\u0000\u0003 \u0002\u0001Despido Injusto, Accidente de Auto o Trabajo? Recibe Compensacion Economica, Medica y Entrenamiento para nuevo trabajo GRATIS! Consult\u0005\u0000\u0003 \u0002\u0002a a 800-201-6597");
         
         
@@ -5250,11 +5253,5 @@ public class Command {
         _mt.put("a", "test");
         c.getWorkflowContextHandler().templatize(_mt, "dsadasd ${a} $v{f}");
 
-        Test t1 = new Test(c, 0);
-        t1.execute(SeleniumCodeGeneratorAndUtil.getLp(c.getGatfExecutorConfig()));
-        t1.quitAll();
-        TestCase tc = new TestCase();
-        tc.setSimulationNumber(0);
-        System.out.println(t1.get___cxt___().getWorkflowContextHandler().getSuiteWorkflowContext(tc));
     }
 }

@@ -18,6 +18,7 @@ package com.gatf.executor.executor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
@@ -26,7 +27,6 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
-import com.ning.http.client.ListenableFuture;
 
 /**
  * @author Sumeet Chhetri
@@ -52,7 +52,7 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 			return reports;
 		}
 		
-		List<ListenableFuture<TestCaseReport>> futures = new ArrayList<ListenableFuture<TestCaseReport>>();
+		List<CompletableFuture<TestCaseReport>> futures = new ArrayList<CompletableFuture<TestCaseReport>>();
 		for (int i = 0; i < testCase.getNumberOfExecutions(); i++) {
 			
 				testCaseReport.setNumberOfRuns(testCaseReport.getNumberOfRuns()+1);
@@ -80,13 +80,13 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 				continue;
 			}
 			
-			ListenableFuture<TestCaseReport> listenableFuture = testCaseExecutorUtil.executeTestCase(testCaseCopy, testCaseReportCopy);
-			futures.add(listenableFuture);
+			CompletableFuture<TestCaseReport> CompletableFuture = testCaseExecutorUtil.executeTestCase(testCaseCopy, testCaseReportCopy);
+			futures.add(CompletableFuture);
 		}
 		
 		for(int i = 0; i < testCase.getNumberOfExecutions(); i++) {
-            ListenableFuture<TestCaseReport> listenableFuture = futures.get(i);
-            while(!listenableFuture.isDone()) {
+            CompletableFuture<TestCaseReport> CompletableFuture = futures.get(i);
+            while(!CompletableFuture.isDone()) {
                 try {
                     Thread.sleep(1);
                 } catch (InterruptedException e) {
@@ -95,9 +95,9 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 		}
 		
 		for(int i = 0; i < testCase.getNumberOfExecutions(); i++) {
-			ListenableFuture<TestCaseReport> listenableFuture = futures.get(i);
+			CompletableFuture<TestCaseReport> CompletableFuture = futures.get(i);
 			try {
-				TestCaseReport tc = listenableFuture.get();
+				TestCaseReport tc = CompletableFuture.get();
 				testCaseReport.setExecutionTime(testCaseReport.getExecutionTime() + tc.getExecutionTime());
 				testCaseReport.getExecutionTimes().add(tc.getExecutionTime());
 				if(tc.getError()!=null)

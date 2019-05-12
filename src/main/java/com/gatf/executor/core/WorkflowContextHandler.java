@@ -30,7 +30,9 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.gatf.executor.validator.XMLResponseValidator;
-import com.ning.http.client.cookie.Cookie;
+
+import okhttp3.Cookie;
+import okhttp3.HttpUrl;
 
 /**
  * @author Sumeet Chhetri
@@ -152,7 +154,7 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	public void storeCookies(TestCase testCase, List<Cookie> cookieLst) {
+	public List<Cookie> storeCookies(TestCase testCase, List<String> cookieLst) {
 		int simNumber = testCase.getSimulationNumber()==null?0:testCase.getSimulationNumber();
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			simNumber = -1;
@@ -161,15 +163,16 @@ public class WorkflowContextHandler {
 		} else if(testCase.getSimulationNumber()==null) {
 			simNumber = 0;
 		}
+		List<Cookie> cooklst = new ArrayList<Cookie>();
 		if(cookieLst!=null && cookies.get(simNumber)!=null)
 		{
-			for (Cookie cookie : cookieLst) {
-				if(cookie.getValue()!=null)
-				{
-					cookies.get(simNumber).put(cookie.getName(), cookie.getValue());
-				}
+			for (String cookie : cookieLst) {
+				Cookie c = Cookie.parse(HttpUrl.parse(testCase.getBaseUrl()), cookie);
+				cooklst.add(c);
+				cookies.get(simNumber).put(c.name(), c.value());
 			}
 		}
+		return cooklst;
 	}
 	
 	public Map<String, String> getGlobalSuiteAndTestLevelParameters(TestCase testCase, Map<String, String> variableMap, int index) {

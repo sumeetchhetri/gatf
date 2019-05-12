@@ -17,21 +17,24 @@ package com.gatf.executor.executor;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.logging.Logger;
 
+import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSession;
+import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.HttpMethod;
@@ -45,7 +48,6 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
@@ -61,21 +63,16 @@ import com.gatf.executor.validator.NoContentResponseValidator;
 import com.gatf.executor.validator.SOAPResponseValidator;
 import com.gatf.executor.validator.TextResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
-import com.ning.http.client.AsyncHandler;
-import com.ning.http.client.AsyncHttpClient;
-import com.ning.http.client.AsyncHttpClientConfig;
-import com.ning.http.client.AsyncHttpClientConfig.Builder;
-import com.ning.http.client.HttpResponseBodyPart;
-import com.ning.http.client.HttpResponseHeaders;
-import com.ning.http.client.HttpResponseStatus;
-import com.ning.http.client.ListenableFuture;
-import com.ning.http.client.Request;
-import com.ning.http.client.RequestBuilder;
-import com.ning.http.client.Response;
-import com.ning.http.client.multipart.FilePart;
-import com.ning.http.client.multipart.Part;
-import com.ning.http.client.multipart.StringPart;
-import com.ning.http.util.Base64;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.ConnectionPool;
+import okhttp3.MultipartBody;
+import okhttp3.MultipartBody.Part;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * @author Sumeet Chhetri
@@ -96,25 +93,34 @@ public class TestCaseExecutorUtil {
 	
 	private static final NoContentResponseValidator noContentResponseValidator = new NoContentResponseValidator(); 
 	
-	private AsyncHttpClient client;
+	private OkHttpClient client;
 	
 	private AcceptanceTestContext context = null;
 	
-    private SSLContext createSslContext() {
-        X509TrustManager tm = new X509TrustManager() {
-            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
-            public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
-            public X509Certificate[] getAcceptedIssuers() {
-                return null;
-            }
-        };
+    private void trustAllCertificates(OkHttpClient.Builder builder) {
+    	final TrustManager[] trustAllCerts = new TrustManager[] {
+    			new X509TrustManager() {
+		            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+		            public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+		            public X509Certificate[] getAcceptedIssuers() {
+		            	return new java.security.cert.X509Certificate[]{};
+		            }
+		        }
+    	};
         try {
             SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(null, new TrustManager[] {tm}, null);
-            return ctx;
+            ctx.init(null, trustAllCerts, new java.security.SecureRandom());
+            
+            final SSLSocketFactory sslSocketFactory = ctx.getSocketFactory();
+            builder.sslSocketFactory(sslSocketFactory, (X509TrustManager)trustAllCerts[0]);
+            builder.hostnameVerifier(new HostnameVerifier() {
+            	@Override
+                public boolean verify(String hostname, SSLSession session) {
+                    return true;
+                }
+            });
         } catch (Exception e) {
         }
-        return null;
     }
 	
 	public TestCaseExecutorUtil(AcceptanceTestContext context)
@@ -124,23 +130,20 @@ public class TestCaseExecutorUtil {
 			numConcurrentConns = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
 		}
 		
-		int maxConns = numConcurrentConns>100?numConcurrentConns:100;
+		int maxConns = numConcurrentConns>100?numConcurrentConns/10:10;
 		
-		Builder builder = new AsyncHttpClientConfig.Builder();
-		builder.setConnectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout())
-				.setMaxConnectionsPerHost(numConcurrentConns)
-				.setMaxConnections(maxConns)
-				.setRequestTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout())
-				.setAllowPoolingConnections(true)
-				.setCompressionEnforced(context.getGatfExecutorConfig().isHttpCompressionEnabled())
-				.setIOThreadMultiplier(2).setAcceptAnyCertificate(true);
+		ConnectionPool pool = new ConnectionPool(maxConns, 5, TimeUnit.MINUTES);
+		OkHttpClient.Builder builder = new OkHttpClient.Builder();
+		builder.connectionPool(pool)
+				.connectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
+				.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
+				.followRedirects(true).followSslRedirects(true)
+				.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
+				//.setIOThreadMultiplier(2).setAcceptAnyCertificate(true);
 		
-		SSLContext cntxt = createSslContext();
-		if(cntxt!=null) {
-		    builder.setSSLContext(cntxt).setAllowPoolingSslConnections(true);
-		}
+		trustAllCertificates(builder);
 		
-		client = new AsyncHttpClient(builder.build());
+		client = builder.build();
 		this.context = context;
 	}
 	
@@ -148,20 +151,8 @@ public class TestCaseExecutorUtil {
 	
 	public static TestCaseExecutorUtil getSingleConnection(AcceptanceTestContext context)
 	{
-		int maxConns = 1;
-		
-		Builder builder = new AsyncHttpClientConfig.Builder();
-		builder.setConnectTimeout(10000)
-				.setMaxConnectionsPerHost(1)
-				.setMaxConnections(maxConns)
-				.setRequestTimeout(100000)
-				.setAllowPoolingConnections(true)
-				.setCompressionEnforced(false)
-				.setIOThreadMultiplier(2)
-				.build();
-		
 		TestCaseExecutorUtil util = new TestCaseExecutorUtil();
-		util.client = new AsyncHttpClient(builder.build());
+		util.client = new OkHttpClient.Builder().build();
 		util.context = context;
 		return util;
 	}
@@ -176,19 +167,21 @@ public class TestCaseExecutorUtil {
 	 * @throws Exception
 	 * Handle the request content, handle flows for rest and soap separately...
 	 */
-	private void handleRequestContent(TestCase testCase, RequestBuilder builder) throws Exception
+	private void handleRequestContent(TestCase testCase, Request.Builder builder) throws Exception
 	{
+		RequestBody body = null;
 		//Set the request body first
 		if(testCase.getAcontent()!=null && !testCase.getAcontent().trim().isEmpty() 
 				&& !testCase.getMethod().equals(HttpMethod.GET))
 		{
 			if(!testCase.isSoapBase())
 			{
-				builder = builder.setBody(testCase.getAcontent());
+				body = RequestBody.create(null, testCase.getAcontent());
 			}
 		}
 		else if(testCase.getMultipartContent()!=null && !testCase.getMultipartContent().isEmpty())
 		{
+			MultipartBody.Builder mb = new MultipartBody.Builder().setType(MultipartBody.FORM);
 			for (String filedet : testCase.getMultipartContent()) {
 				String[] mulff = filedet.split(":");
 				if(mulff.length==4 || mulff.length==3) {
@@ -220,15 +213,14 @@ public class TestCaseExecutorUtil {
 							File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), fileNmOrTxt);
 							if(!testCase.isSoapBase())
 							{
-								Part part = new FilePart(controlname, file, contType, null);
-								builder = builder.addBodyPart(part);
+								mb.addPart(Part.createFormData(controlname, fileNmOrTxt, RequestBody.create(null, file)));
 							}
 							else
 							{
 							    FileInputStream fis = new FileInputStream(file);
 								byte[] fileData = IOUtils.toByteArray(fis);
 								fis.close();
-								String fileContents = Base64.encode(fileData);
+								String fileContents = Base64.getEncoder().encodeToString(fileData);
 								if(testCase.getSoapParameterValues()==null)
 								{
 									testCase.setSoapParameterValues(new HashMap<String, String>());
@@ -242,8 +234,7 @@ public class TestCaseExecutorUtil {
 					} else {
 						if(!testCase.isSoapBase())
 						{
-							Part part = new StringPart(controlname, fileNmOrTxt);
-							builder = builder.addBodyPart(part);
+							mb.addPart(Part.createFormData(controlname, fileNmOrTxt));
 						}
 						else
 						{
@@ -256,6 +247,7 @@ public class TestCaseExecutorUtil {
 					}
 				}			
 			}
+			body = mb.build();
 		}
 		else if(StringUtils.isNotBlank(testCase.getContentFile()))
 		{
@@ -266,13 +258,13 @@ public class TestCaseExecutorUtil {
 			    FileInputStream fis = new FileInputStream(file);
                 byte[] fileData = IOUtils.toByteArray(fis);
                 fis.close();
-				content = Base64.encode(fileData);
+				content = Base64.getEncoder().encodeToString(fileData);
 			}
 			else
 			{
 				content = FileUtils.readFileToString(file, "UTF-8");
 			}
-			builder.setBody(content);
+			body = RequestBody.create(null, content);
 		}
 		
 		//Now set the URL with authentication tokens etc...
@@ -347,6 +339,9 @@ public class TestCaseExecutorUtil {
 				}
 				
 				testCase.setContent(content);
+				if(StringUtils.isNotBlank(content)) {
+					body = RequestBody.create(null, content);
+				}
 			}
 			
 			String authUrl = testCase.isServerApiTarget()?"":context.getGatfExecutorConfig().getAuthUrl();
@@ -411,7 +406,7 @@ public class TestCaseExecutorUtil {
 			
 			testCase.setAurl(completeUrl);
 			try {
-			    builder = builder.setUrl(testCase.getAurl());
+			    builder = builder.url(testCase.getAurl());
             } catch (IllegalArgumentException e) {
                 Assert.assertTrue("Invalid URL, please check the url provided ("+ completeUrl + ")", false);
             }
@@ -473,21 +468,25 @@ public class TestCaseExecutorUtil {
 				DOMSource source = new DOMSource(soapMessage);
 				transformer.transform(source, result);
 				request = sw.toString();
+				body = RequestBody.create(null, request);
 			}
 			
 			try {
-			    builder = builder.setUrl(testCase.getAurl()).setBody(request);
+			    builder = builder.url(testCase.getAurl());
             } catch (IllegalArgumentException e) {
                 Assert.assertTrue("Invalid URL, please check the url provided ("+ testCase.getAurl() + ")", false);
             }
 		}
+		
+		builder.method(testCase.getMethod().toUpperCase(), body);
 	}
 	
-	public ListenableFuture<TestCaseReport> executeTestCase(TestCase testCase, TestCaseReport testCaseReport)
+	public CompletableFuture<TestCaseReport> executeTestCase(TestCase testCase, TestCaseReport testCaseReport)
 	{
 		long start = System.currentTimeMillis();
 		
-		RequestBuilder builder = new RequestBuilder(testCase.getMethod());
+		Request.Builder builder = new Request.Builder();
+		Call call = null;
 		
 		try {
 			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks())
@@ -525,7 +524,10 @@ public class TestCaseExecutorUtil {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
 			
-			return client.executeRequest(request, new TestCaseResponseHandler(testCase, testCaseReport, context, start));
+			call = client.newCall(request);
+			TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
+			call.enqueue(rp);
+			return rp.future;
 		} catch (Throwable e) {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			testCaseReport.setStatus(TestStatus.Failed.status);
@@ -536,60 +538,9 @@ public class TestCaseExecutorUtil {
 				testCaseReport.setError(testCaseReport.getErrorText().substring(0, testCaseReport.getErrorText().indexOf("\n")));
 			}
 			e.printStackTrace();
-			final TestCaseReport testCaseReportt = testCaseReport;
-			return new ListenableFuture<TestCaseReport>() {
-
-				public boolean cancel(boolean mayInterruptIfRunning) {
-					return false;
-				}
-
-				public boolean isCancelled() {
-					return false;
-				}
-
-				public boolean isDone() {
-					return true;
-				}
-
-				public TestCaseReport get() throws InterruptedException,
-						ExecutionException {
-					return testCaseReportt;
-				}
-
-				public TestCaseReport get(long timeout, TimeUnit unit)
-						throws InterruptedException, ExecutionException,
-						TimeoutException {
-					return testCaseReportt;
-				}
-
-				public void done() {
-				}
-
-				public void abort(Throwable t) {
-				}
-
-				@SuppressWarnings("unused")
-                public void content(TestCaseReport v) {
-				}
-
-				public void touch() {
-				}
-
-				@SuppressWarnings("unused")
-				public boolean getAndSetWriteHeaders(boolean writeHeader) {
-					return false;
-				}
-
-				@SuppressWarnings("unused")
-				public boolean getAndSetWriteBody(boolean writeBody) {
-					return false;
-				}
-
-				public ListenableFuture<TestCaseReport> addListener(
-						Runnable listener, Executor exec) {
-					return null;
-				}
-			};
+			TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
+			rp.onError(call, e);
+			return rp.future;
 		}
 	}
 	
@@ -603,14 +554,12 @@ public class TestCaseExecutorUtil {
 		}
 	}
 	
-	
 	/**
 	 * @author Sumeet Chhetri
 	 * The Async HTTP Response Handler logic returns a TestCaseReport
 	 */
-	public static class TestCaseResponseHandler implements AsyncHandler<TestCaseReport> {
-
-		private final Response.ResponseBuilder builder = new Response.ResponseBuilder();
+	public static class TestCaseResponseHandler implements Callback {
+		private final CompletableFuture<TestCaseReport> future = new CompletableFuture<>();
 		
 		private TestCase testCase;
 		
@@ -633,132 +582,88 @@ public class TestCaseExecutorUtil {
 			this.testCaseReport.setResponseContentType(testCase.getExpectedResContentType());
 		}
 		
-		/*
-		 * (non-Javadoc)
-		 * @see com.ning.http.client.AsyncHandler#onThrowable(java.lang.Throwable)
-		 * Handle error scenarios in the report
-		 */
-		public void onThrowable(Throwable t) {
+		public void onError(Call call, Throwable e) {
 			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
-			testCaseReport.setError(t.getMessage());
-			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(t));
+			testCaseReport.setError(e.getMessage());
+			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
 			testCase.setFailed(true);
-			t.printStackTrace();
-		}
-	
-		public static boolean isMatchesContentType(MediaType md, String contType) {
-		    return md.getType().equalsIgnoreCase(contType) || contType.toLowerCase().startsWith(md.getType().toLowerCase());
+			e.printStackTrace();
+			future.completeExceptionally(e);
 		}
 		
-		public com.ning.http.client.AsyncHandler.STATE onBodyPartReceived(
-				HttpResponseBodyPart bodyPart) throws Exception {
+		@Override
+		public void onFailure(Call call, IOException e) {
+			testCaseReport.setStatus(TestStatus.Failed.status);
+			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
+			testCaseReport.setError(e.getMessage());
+			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
+			testCase.setFailed(true);
+			e.printStackTrace();
+			future.completeExceptionally(e);
+		}
+
+		@Override
+		public void onResponse(Call call, Response response) throws IOException {
 			String contType = testCase.getExpectedResContentType();
-			if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
-					|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
-					|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
-			{
-				builder.accumulate(bodyPart);
-			}
-			else
-			{
-				bodyPart.writeTo(NullOutputStream.NULL_OUTPUT_STREAM);
-			}
 			testCaseReport.setResponseContentType(contType);
-			return STATE.CONTINUE;
-		}
-	
-		/*
-		 * (non-Javadoc)
-		 * @see com.ning.http.client.AsyncHandler#onStatusReceived(com.ning.http.client.HttpResponseStatus)
-		 * Abort if expected status code does not match the actual status code
-		 */
-		public com.ning.http.client.AsyncHandler.STATE onStatusReceived(
-				HttpResponseStatus responseStatus) throws Exception {
+			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			
-			int statusCode = responseStatus.getStatusCode();
-			testCaseReport.setResponseStatusCode(statusCode);
-			if (statusCode != testCase.getExpectedResCode()) {
-				testCaseReport.setError("Expected status code ["+testCase.getExpectedResCode()
-						+"] does not match actual status code ["+statusCode+"]");
-				testCaseReport.setStatus(TestStatus.Failed.status);
-				testCaseReport.setFailureReason(TestFailureReason.InvalidStatusCode.status);
-				if(testCase.isAbortOnInvalidStatusCode())
-	            {
-					return STATE.ABORT;
-	            }
-	        }
-			builder.accumulate(responseStatus);
-			return STATE.CONTINUE;
-		}
-	
-		/*
-		 * (non-Javadoc)
-		 * @see com.ning.http.client.AsyncHandler#onHeadersReceived(com.ning.http.client.HttpResponseHeaders)
-		 * Abort if expected content type does not match the actual content type
-		 */
-		public com.ning.http.client.AsyncHandler.STATE onHeadersReceived(
-				HttpResponseHeaders headers) throws Exception {
 			if(testCase.getExpectedResContentType()!=null)
 			{
 				if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty()
-						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)!=null 
-						&& headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)
+						&& response.headers().values(HttpHeaders.CONTENT_TYPE)!=null 
+						&& response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)
 							.indexOf(testCase.getExpectedResContentType())!=0)
 				{
 					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
-							+"] does not match actual content type ["+headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)+"]");
+							+"] does not match actual content type ["+response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)+"]");
 					testCaseReport.setStatus(TestStatus.Failed.status);
 					testCaseReport.setFailureReason(TestFailureReason.InvalidContentType.status);
 					if(testCase.isAbortOnInvalidContentType())
 					{
-						return STATE.ABORT;
+						response.body().close();
+						future.complete(testCaseReport);
+						return;
 					}
 				}
 			}
-			else if(headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE)!=null)
+			else if(response.headers().values(HttpHeaders.CONTENT_TYPE)!=null)
 			{
-				testCase.setExpectedResContentType(headers.getHeaders().getFirstValue(HttpHeaders.CONTENT_TYPE));
+				testCase.setExpectedResContentType(response.headers().values(HttpHeaders.CONTENT_TYPE).get(0));
 			}
-			builder.accumulate(headers);
-			return STATE.CONTINUE;
-		}
-	
-		/*
-		 * (non-Javadoc)
-		 * @see com.ning.http.client.AsyncHandler#onCompleted()
-		 * Validate the response as per the content type
-		 */
-		public TestCaseReport onCompleted() throws Exception {
-			Response response = builder.build();
+			
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-			if(testCaseReport.getError()==null)
+			if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
+					|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
+					|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
 			{
-				testCaseReport.setResponseContent(response.getResponseBody());
-				testCaseReport.setResHeaders(response.getHeaders());
-				if(!testCase.isSoapBase()) {
-					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
-					{
-						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
-					}
-					else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
-							|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
-					{
-						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
-					}
-					else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
-							|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
-					{
-						textResponseValidator.validate(response, testCase, testCaseReport, context);
-					}
-					else
-					{
-						noContentResponseValidator.validate(response, testCase, testCaseReport, context);
-						testCaseReport.setStatus(TestStatus.Success.status);
-					}
-				} else {
-					soapResponseValidator.validate(response, testCase, testCaseReport, context);
+				testCaseReport.setResponseContent(response.body().string());
+			}
+			
+			testCaseReport.setResHeaders(response.headers().toMultimap());
+			if(!testCase.isSoapBase()) {
+				if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
+				{
+					jsonResponseValidator.validate(response, testCase, testCaseReport, context);
 				}
+				else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
+						|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
+				{
+					xmlResponseValidator.validate(response, testCase, testCaseReport, context);
+				}
+				else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
+						|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
+				{
+					textResponseValidator.validate(response, testCase, testCaseReport, context);
+				}
+				else
+				{
+					noContentResponseValidator.validate(response, testCase, testCaseReport, context);
+					testCaseReport.setStatus(TestStatus.Success.status);
+				}
+			} else {
+				soapResponseValidator.validate(response, testCase, testCaseReport, context);
 			}
 			
 			if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
@@ -769,7 +674,11 @@ public class TestCaseExecutorUtil {
 				}
 			}
 			
-			return testCaseReport;
+			future.complete(testCaseReport);
+		}
+		
+		public static boolean isMatchesContentType(MediaType md, String contType) {
+		    return md.getType().equalsIgnoreCase(contType) || contType.toLowerCase().startsWith(md.getType().toLowerCase());
 		}
 	}
 
@@ -785,6 +694,6 @@ public class TestCaseExecutorUtil {
 	
 	public void shutdown()
 	{
-		client.close();
+		client.connectionPool().evictAll();
 	}
 }
