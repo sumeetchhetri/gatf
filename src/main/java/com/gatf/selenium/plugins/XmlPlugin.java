@@ -90,6 +90,19 @@ public class XmlPlugin {
         return null;
     }
     
+    public static String[] toSampleSelCmd() {
+    	return new String[] {
+    		"XML Plugin",
+    		"\txmlread {xml-text}",
+    		"\txmlwrite {optional-path-to-file} {xml-object-or-map-list-set}",
+    		"\txmlpath {xml-text} {xpath-string}",
+    		"Examples :-",
+    		"\txmlread '<o><a>abc</a><b>1</b></o>'",
+    		"\txmlwrite '/path/to/file.xml' $xmlObjectVar",
+    		"\txmlpath '<o><a>abc</a><b>1</b></o>' '/o/a'",
+        };
+    }
+    
     protected static String getNodeValue(Object intObj, String node) throws Exception {
         NodeList xmlNodeList = null;
         String xmlValue = null;

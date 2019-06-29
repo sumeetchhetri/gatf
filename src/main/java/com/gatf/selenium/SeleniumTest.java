@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2016, Sumeet Chhetri
+    Copyright 2013-2019, Sumeet Chhetri
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -30,9 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.logging.Level;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang.RandomStringUtils;
@@ -93,6 +96,8 @@ public abstract class SeleniumTest {
         add(LogType.PROFILER);
         add(LogType.SERVER);
     }};
+    
+    private static final String TOP_LEVEL_PROV_NAME = UUID.randomUUID().toString();
 
     private transient AcceptanceTestContext ___cxt___ = null;
     
@@ -162,10 +167,21 @@ public abstract class SeleniumTest {
         }
     }
     
+    protected void newTopLevelProvider() {
+    	if(!getSession().providerTestDataMap.containsKey(TOP_LEVEL_PROV_NAME)) {
+            getSession().providerTestDataMap.put(TOP_LEVEL_PROV_NAME, new ArrayList<Map<String,String>>());
+            getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).add(new HashMap<String, String>());
+        }
+    }
+    
     protected void newProvider(String name) {
         if(!getSession().providerTestDataMap.containsKey(name)) {
             getSession().providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
         }
+    }
+
+    protected void addToTopLevelProviderTestDataMap(String name, String value) {
+    	 getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).put(name, value);
     }
 
     protected List<Map<String, String>> getProviderTestDataMap(String name) {
@@ -208,9 +224,18 @@ public abstract class SeleniumTest {
         Map<String, Object> _mt = new HashMap<String, Object>();
         List<Map<String, String>> fp = getAllProviderData(pn);
         _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, CollectionUtils.isEmpty(fp)?null:fp.get(pp), index));
+        _mt.putAll(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0));
         return _mt;
     }
 
+    static Pattern p = Pattern.compile("\\$(p|P)\\{([\"'a-zA-Z0-9_\\.]+)\\.([0-9]+)\\.([a-zA-Z0-9_\\.]+)\\}");
+    
+    /*
+     * Three types of template variables can be evaluated
+     * 1. ${var-name} - a value inside a provider slot or a top-level variable
+     * 2. $v{var-name} - a current context java variable
+     * 3. $p{prov-name.position.var-name} - a direct reference to a variable in provider at a positional map of values
+     */
     protected String evaluate(String tmpl) {
         if(tmpl.indexOf("$")==-1)return tmpl;
         try
@@ -232,8 +257,34 @@ public abstract class SeleniumTest {
                 Map<String, Object> _mt = getFinalDataMap(null, null);
                 if(tmpl.indexOf("$v{")!=-1) {
                     tmpl = tmpl.replace("$v", "$");
+                    _mt.putAll(getSession().__vars__);
                 }
                 tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
+            }
+            String tmpln = tmpl;
+            Matcher m = p.matcher(tmpl);
+            Map<String, Object> _mt = new HashMap<String, Object>();
+            boolean foundProvRef = false;
+            while(m.find()) {
+            	String[] parts = m.group(4).split("\\.");
+            	if(parts.length>1) {
+            		String ivp = parts[0];
+            		for (int i = 1; i < parts.length; i++) {
+            			ivp += "." + parts[i];
+					}
+            		String provName = m.group(2);
+            		if((provName.startsWith("\"") && provName.endsWith("\"")) || (provName.startsWith("'") && provName.endsWith("'"))) {
+            			provName = provName.substring(1, provName.length()-1);
+            		}
+            		if(getSession().providerTestDataMap.containsKey(provName)) {
+            			foundProvRef = true;
+            			tmpln = tmpln.replace(tmpl.substring(m.start(), m.end()), "${"+ivp+"}");
+            			_mt.putAll(getSession().providerTestDataMap.get(provName).get(Integer.valueOf(m.group(3))));
+            		}
+            	}
+            }
+            if(foundProvRef) {
+            	tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpln);
             }
         }
         catch (Exception e)
@@ -250,6 +301,9 @@ public abstract class SeleniumTest {
                 return o.toString();
             }
             return null;
+        }
+        if(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
+        	return getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).get(key);
         }
         if(getSession().__provdetails__.size()>0) {
             ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
@@ -275,6 +329,9 @@ public abstract class SeleniumTest {
     protected Object getProviderDataValueO(String key, boolean isVar) {
         if(isVar) {
             return ___get_var__(key);
+        }
+        if(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
+        	return getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).get(key);
         }
         if(getSession().__provdetails__.size()>0) {
             ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
@@ -515,12 +572,12 @@ public abstract class SeleniumTest {
 
     public abstract List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception;
     
-    protected boolean checkifSessionIdExistsInSet(Set<String> st, String sname, String sid) {
+    /*protected boolean checkifSessionIdExistsInSet(Set<String> st, String sname, String sid) {
         if(sname==null && sid==null)return true;
         if(sname!=null && st.contains(sname))return true;
         if(sid!=null && st.contains(sid))return true;
         return false;
-    }
+    }*/
 
     public static class SeleniumTestResult implements Serializable {
         private static final long serialVersionUID = 1L;

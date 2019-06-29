@@ -1,0 +1,30 @@
+open chrome
+open chrome "abc"
+open chrome "xyz"
+goto https://abc.com
+select index@4 id@"Location"
+select index@4 id@"Location"
+subtest "sb1"
+{
+	select index@4 id@"Location"
+	#provider "abc"
+	{
+		??30 id@"$user" type "$abc.someval"
+	}
+}
+subtest "sb2" "abc"
+{
+	select index@4 id@"Location"
+	#provider "abc"
+	{
+		??30 id@"$user" type "$userval"
+	}
+}
+subtest "sb3" @3
+{
+	select index@4 id@"Location"
+	#provider "abc"
+	{
+		??30 id@"$user" type "$userval"
+	}
+}

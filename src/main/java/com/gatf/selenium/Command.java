@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2016, Sumeet Chhetri
+    Copyright 2013-2019, Sumeet Chhetri
 
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ package com.gatf.selenium;
 import java.awt.event.KeyEvent;
 import java.io.File;
 import java.lang.reflect.Method;
-import java.security.Provider;
-import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,13 +33,11 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.crypto.Cipher;
-
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.openqa.selenium.Keys;
+import org.reflections.Reflections;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
@@ -49,6 +45,10 @@ import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
 import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
+import com.gatf.selenium.plugins.ApiPlugin;
+import com.gatf.selenium.plugins.CurlPlugin;
+import com.gatf.selenium.plugins.JsonPlugin;
+import com.gatf.selenium.plugins.XmlPlugin;
 import com.google.googlejavaformat.java.Formatter;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
@@ -92,7 +92,7 @@ public class Command {
         Stack<String> stckifcnt = new Stack<String>();
         String ifcnt = null, pifcnt = null;
 
-        List<String[]> subtestDetails = new ArrayList<String[]>();
+        List<Object[]> subtestDetails = new ArrayList<Object[]>();
         Set<String> subtestDups = new HashSet<String>();
         List<Command> allSubTests = new ArrayList<Command>();
         Set<String> layers = new HashSet<String>();
@@ -122,10 +122,9 @@ public class Command {
             }
             subtestDups.add(st.name);
             allSubTests.add(st);
-            subtestDetails.add(new String[]{st.name, st.sessionName, st.sessionId+""});
+            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails});
         }
         Map<String, String> qss = new HashMap<String, String>();
-        Map<String, String> plugins = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
 
         String varnamerandom() {
@@ -296,6 +295,7 @@ public class Command {
         }
     }
 
+    protected static Map<String, String> plugins = new HashMap<String, String>();
     protected CommandState state;
     protected String name;
     protected Object[] fileLineDetails;
@@ -448,35 +448,59 @@ public class Command {
         } else if (cmd.startsWith(":")) {
             cmd = cmd.substring(1);
             comd = new ElseCommand(cmdDetails, state);
-        } else if (cmd.startsWith("#provider")) {
+        } else if (cmd.startsWith("#provider ")) {
             cmd = cmd.substring(9).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
-        } else if (cmd.startsWith("#counter")) {
+        } else if (cmd.startsWith("#p ")) {
+            cmd = cmd.substring(2).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
+        } else if (cmd.startsWith("#counter ")) {
             cmd = cmd.substring(8).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
-        } else if (cmd.startsWith("#transient-provider")) {
+        } else if (cmd.startsWith("#c ")) {
+            cmd = cmd.substring(2).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
+        } else if (cmd.startsWith("#transient-provider ")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
-            comd = new TransientProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
-        } else if (cmd.startsWith("#transient-suite-provider")) {
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
+        } else if (cmd.startsWith("#tp ")) {
+            cmd = cmd.substring(3).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
+        } else if (cmd.startsWith("#transient-suite-provider ")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
-            comd = new TransientProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
-        } else if (cmd.startsWith("##")) {
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
+        } else if (cmd.startsWith("#tsp ")) {
+            cmd = cmd.substring(4).trim();
+            if(cmd.isEmpty()) {
+                //exception
+            }
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
+        } else if (cmd.startsWith("## ")) {
             cmd = cmd.substring(2);
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
-        } else if (cmd.startsWith("#")) {
+        } else if (cmd.startsWith("# ")) {
             cmd = cmd.substring(1);
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
@@ -492,6 +516,8 @@ public class Command {
         } else if (cmd.startsWith("}")) {
             comd = new EndCommand(cmdDetails, state);
             ((EndCommand)comd).type = "}";
+        } else if (cmd.startsWith("pass ")) {
+            comd = new PassCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.startsWith("fail ")) {
             comd = new FailCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("open ")) {
@@ -565,8 +591,8 @@ public class Command {
             comd = new RequireCommand(cmd.substring(8), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
             comd = new ImportCommand(cmd.substring(7), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("screenshot ")) {
-            comd = new ScreenshotCommand(cmd.substring(11), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("screenshot")) {
+            comd = new ScreenshotCommand(cmd.substring(10), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {
             comd = new EleScreenshotCommand(cmd.substring(15), cmdDetails, state);
         } else if(cmd.toLowerCase().equals("alert") || cmd.toLowerCase().startsWith("alert ")) {
@@ -900,7 +926,7 @@ public class Command {
                 if(plg.indexOf("=")!=-1) {
                     String name = plg.substring(0, plg.indexOf("="));
                     String signature = plg.substring(plg.indexOf("=")+1);
-                    if(!name.trim().isEmpty() && !state.plugins.containsKey(name.toLowerCase())) {
+                    if(!name.trim().isEmpty() && !plugins.containsKey(name.toLowerCase())) {
                         String clsname = signature;
                         String method = "execute";
                         if(clsname.indexOf("@")!=-1) {
@@ -924,7 +950,7 @@ public class Command {
                                         + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
                                 continue;
                             }
-                            state.plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
+                            plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
                         } catch (Exception e) {
                             try {
                                 Class<?> cls = Class.forName(clsname);
@@ -934,7 +960,7 @@ public class Command {
                                             + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
                                     continue;
                                 }
-                                state.plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
+                                plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
                             } catch (Exception e1) {
                                 System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
                                         + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
@@ -953,8 +979,8 @@ public class Command {
         }
     }
 
-    public String toSampleSelCmd() {
-        return "";
+    public static String[] toSampleSelCmd() {
+    	return null;
     }
 
     String toCmd() {
@@ -1057,24 +1083,54 @@ public class Command {
                 
             }
         }
+        for (Object[] st : state.subtestDetails)
+        {
+        	String stsessionName = StringUtils.isNotBlank((String)st[1])?(String)st[1]:null;
+            String stsessionId = null;
+            try {
+                stsessionId = Integer.parseInt((String)st[2])+"";
+            } catch (Exception e) {
+            }
+            
+            if(stsessionName!=null || stsessionId!=null) {
+	            boolean flag = false;
+	        	for (String[] brn : bn)
+	            {
+	                String sessionName = brn[1];
+	                String sessionId = brn[2];
+	                
+	                flag |= (sessionName!=null && sessionName.equals(stsessionName)) || sessionId.equals(stsessionId);
+	            }
+	        	if(!flag) {
+	        		throwError((Object[])st[3], new RuntimeException("Session Details not found for \"" + (stsessionName!=null?stsessionName:stsessionId+1) + "\""));
+	        	} else {
+	        		
+	        	}
+            }
+        }
         b.append("public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {\n");
         for (String[] brn : bn)
         {
+        	String bsessionName = brn[1];
+            String bsessionId = brn[2];
             b.append("java.util.Set<String> "+state.varnameat()+" = addTest("+(StringUtils.isNotBlank(brn[1])?("\""+esc(brn[1])+"\""):"null")+", \""+esc(brn[0])+"\");\n");
-            for (String[] st : state.subtestDetails)
+            for (Object[] st : state.subtestDetails)
             {
-                String sessionName = StringUtils.isNotBlank(st[1])?st[1]:null;
+                String sessionName = StringUtils.isNotBlank((String)st[1])?(String)st[1]:null;
                 String sessionId = null;
                 try {
-                    sessionId = Integer.parseInt(st[2])-1>=0?Integer.parseInt(st[2])-1+"":null;
+                	sessionId = Integer.parseInt((String)st[2])+"";
                 } catch (Exception e) {
                 }
-                b.append("if(checkifSessionIdExistsInSet("+state.currvarnameat()+", "
-                            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
-                b.append("setSession("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                            +(sessionId!=null?sessionId:"-1")+", false);\n");
-                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc(st[0])+"\");\n}\n");
+                //b.append("if(checkifSessionIdExistsInSet("+state.currvarnameat()+", "
+                //            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+                //            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
+                if(((bsessionName!=null && bsessionName.equals(sessionName)) || bsessionId.equals(sessionId)) || (sessionName==null && sessionId==null)) {
+	                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
+	                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
+	                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\");\n\n");
+                }
+                //b.append("}\n");
             }
         }
         b.append("\n\n");
@@ -1159,10 +1215,10 @@ public class Command {
             code = code.replace("@window", "___ocw___");
             code = code.replace("@element", "___ce___.get(0)");
             code = code.replace("@sc", state.currvarnamesc());
-            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
             code = code.replace("@printProvJson", "___cxt___print_provider__json");
             code = code.replace("@printProv", "___cxt___print_provider__");
             code = code.replace("@print", "System.out.println");
+            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
             Matcher m = p.matcher(code);
             String fcode = "";
             int start = 0;
@@ -1174,8 +1230,29 @@ public class Command {
             fcode += code.substring(start);
             return fcode + ";";
         }
-        public String toSampleSelCmd() {
-            return "exec {statement}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Execute java code",
+				"\texec {java statement}",
+				"Available variables in context -",
+				"\t1. @driver - WebDriver instance",
+				"\t2. @window - WebDriver instance",
+				"\t3. @element - Currently selected WebElement instance",
+				"\t4. @sc - Currently selected SearchContext instance",
+				"\t5. @printProvJson - Print Provider data as json",
+				"\t6. @printProv - Print Provider data",
+				"\t7. @print - System.out.println",
+				"\t8. @index - Current provider index under interation",
+				"Examples :-",
+	    		"\texec @driver.refresh()",
+	    		"\texec @window.back()",
+	    		"\texec @element.click()",
+	    		"\texec @sc.findElement(org.openqa.selenium.By.id(\"id\")",
+	    		"\texec @printProvJson(\"provider-name\")",
+	    		"\texec @printProv(\"provider-name\")",
+	    		"\texec @print(\"something-to-console\")",
+	    		"\texec @print(@index)"
+        	};
         }
     }
 
@@ -1193,6 +1270,12 @@ public class Command {
             } else {
                 b.append("/*");
             }
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Single line comment or Block level comment",
+				"\t//... | /*...*/"
+        	};
         }
     }
 
@@ -1218,6 +1301,28 @@ public class Command {
         }
         String toCmd() {
             return "<<< \n" + b.toString() + "\n>>>\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Execute embedded code in java/js/ruby/groovy/python",
+				"\t<<<(java|js|ruby|groovy|python) a,b,c\n\tcode\n\t>>>",
+				"Available variables in context -",
+				"\t1. @driver - WebDriver instance (Java only)",
+				"\t2. @window - WebDriver instance (Java only)",
+				"\t3. @element - Currently selected WebElement instance (Java only)",
+				"\t4. @sc - Currently selected SearchContext instance (Java only)",
+				"\t5. @printProvJson - Print Provider data as json (Java only)",
+				"\t6. @printProv - Print Provider data (Java only)",
+				"\t7. @print - System.out.println (Java only)",
+				"\t8. @index - Current provider index under interation (Java only)",
+				"\t9. @cntxtParam - Add variable to current context",
+				"Examples :-",
+				"\t<<<(java) a,b,c\n\tSystem.out.println(a);\n\t>>>",
+				"\t<<<(js) a,b,c\n\tconsole.log(a);\n\t>>>",
+				"\t<<<(groovy) a,b,c\n\tprintln a\n\t>>>",
+				"\t<<<(ruby) a,b,c\n\tputs a\n\t>>>",
+				"\t<<<(python) a,b,c\n\tprint(a)\n\t>>>",
+        	};
         }
         String javacode() {
             String code = b.toString();
@@ -1406,14 +1511,20 @@ public class Command {
         String javacode() {
             return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(code)+"\"));\n}";
         }
-        public String toSampleSelCmd() {
-            return "execjs {jsstatement}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Execute javascript code in the browser",
+				"\texecjs {javascript statement}",
+				"Examples :-",
+	    		"\texecjs 'console.log(\"Hello\");'",
+	    		"\texecjs '$(\"#elid\").click();'"
+            };
         }
     }
 
     public static class SubTestCommand extends Command {
         String sessionName;
-        int sessionId = 0;
+        Integer sessionId = null;
         String fName = "__st__" + state.NUMBER_ST++;
         SubTestCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -1425,8 +1536,11 @@ public class Command {
                     name = "Subtest " + (state.NUMBER_ST - 1);
                 }
                 if(parts.length>1) {
-                    if(parts[1].trim().matches("@[1-9]+")) {
-                        sessionId = Integer.parseInt(parts[1].trim().substring(1));
+                    if(parts[1].trim().matches("@[0-9]+")) {
+                        sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
+                        if(sessionId<0) {
+                        	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                        }
                     } else {
                         sessionName = unSantizedUnQuoted(parts[1].trim(), state);
                     }
@@ -1463,7 +1577,7 @@ public class Command {
                 }
             } else {
                 b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                        +(sessionId>0?((sessionId-1)+""):"-1") + ")) {");
+                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
             }
             if(initvars) {
                 b.append("___sc___1 = get___d___();\n");
@@ -1496,8 +1610,17 @@ public class Command {
             b.append("return ___ce___;\n}\n");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Subtest definition",
+				"\tsubtest \"name\" session-name|@session-id\n\t{\n\t\tcode\n\t}",
+				"where",
+				"\tsession-name - the browser session name for which to run this sub test",
+				"\tsession-id - the browser session id prefixed with @ for which to run this sub test",
+				"Examples :-",
+				"\tsubtest \"sb1\" \"bs1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
+				"\tsubtest \"sb1\" @1\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
+        	};
         }
     }
 
@@ -1537,15 +1660,26 @@ public class Command {
         }
         String javacode() {
             if(cond!=null) {
-                return cond.javacodeonly(null) + "\nList<WebElement> " + name + " = " + state.currvarname() + ";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"");
+                return cond.javacodeonly(null) + "\nList<WebElement> " + name + " = " + state.currvarname() + ";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             } else if(pcomd!=null) {
-                return "\nObject " + name + " = null;\n"+pcomd.javacodev(name)+";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"");
+                return "\nObject " + name + " = null;\n"+pcomd.javacodev(name)+";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             } else {
-                return "\nString " + name + " = "+val+";\n" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"");
+                return "\n"+(val.startsWith("@")?"Object ":"String ") + name + " = "+(val.startsWith("@")?val.substring(1):val)+";\n" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             }
         }
-        public String toSampleSelCmd() {
-            return "var {name} {vale-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Variable definition",
+				"\tvar name @{another-variable-name}|plugin ...|{primitive-value}",
+				"Examples :-",
+				"\tvar var0 \"Some text\"",
+				"\tvar var1 @var0",
+				"\tvar var1 plugin jsonpath $v{myvar} out.x.y.z",
+				"\tvar var1 123455",
+				"\tvar var1 123.455",
+				"\tvar var1 true",
+				"\tvar var1 new java.util.Date()",
+        	};
         }
     }
 
@@ -1574,8 +1708,14 @@ public class Command {
             return "Object " + name + " = null;\nif (___ocw___ instanceof JavascriptExecutor) {\n" + 
                     name + " = ((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(script)+"\"));\n}";
         }
-        public String toSampleSelCmd() {
-            return "jsvar {name} {script-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Js Variable definition",
+				"\tjsvar {javascript statement returning value}",
+				"Examples :-",
+	    		"\tjsvar var1 'return \"123\"'",
+	    		"\tjsvar var1 'return $(\"#elid\").val()'"
+            };
         }
     }
 
@@ -1602,8 +1742,14 @@ public class Command {
             + "else{File "+sc+" = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);"
             + "\nFileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));}";
         }
-        public String toSampleSelCmd() {
-            return "screenshot {target-path}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Take screenshot",
+				"\tscreenshot {image-file-path-to-save-screenshot-to}",
+				"Examples :-",
+	    		"\tscreenshot",
+	    		"\tscreenshot \"/path/to/image/file/file.jpg\""
+            };
         }
     }
 
@@ -1645,8 +1791,14 @@ public class Command {
             b.append("\n}");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "ele-screenshot {target-path}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Take element screenshot",
+				"\tele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"Examples :-",
+	    		"\tele-screenshot id@'eleid'",
+	    		"\tele-screenshot id@'eleid' '/path/to/image/file/file.jpg'"
+            };
         }
     }
 
@@ -1661,11 +1813,18 @@ public class Command {
         String javacode() {
             return value;
         }
-        public String toSampleSelCmd() {
-            return "{value}";
-        }
         ValueCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Value",
+				"\t{primtive-value}",
+				"Examples :-",
+	    		"\t'abc'",
+	    		"\t123",
+	    		"\ttrue"
+            };
         }
     }
 
@@ -1693,8 +1852,15 @@ public class Command {
             }
             return s;
         }
-        public String toSampleSelCmd() {
-            return "[{value1},...,{valueN}]";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Value List",
+				"\t[{primtive-value},...,{primtive-value}]",
+				"Examples :-",
+	    		"\t['abc', 'sss']",
+	    		"\t[123, 234]",
+	    		"\t[true, false]"
+            };
         }
     }
 
@@ -1727,8 +1893,14 @@ public class Command {
         int weight() {
             return 1;
         }
-        public String toSampleSelCmd() {
-            return "require [{classname1},..{classnameN}]";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Specify Java Imports",
+				"\trequire [{classname1},..{classnameN}]",
+				"Examples :-",
+	    		"\trequire java.util.Date",
+	    		"\trequire [java.util.List, java.math.BigDecimal]"
+            };
         }
     }
 
@@ -1749,8 +1921,14 @@ public class Command {
         String javacode() {
             return "";
         }
-        public String toSampleSelCmd() {
-            return "import {classname}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Import other seleasy scripts",
+				"\timport {script-path}",
+				"Examples :-",
+	    		"\timport a/b/c/t1.sel",
+	    		"\timport t2.sel"
+            };
         }
     }
 
@@ -1777,8 +1955,16 @@ public class Command {
             b.append("}\n");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "??(+|-) {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Wait for element to be visible/invisible",
+				"\t??(+|-) {find-expr}",
+				"\t'+' - Check whether element is visible",
+				"\t'-' - Check whether element is not visible",
+				"Examples :-",
+	    		"\t??+ id@'eleid'",
+	    		"\t??- id@'eleid'",
+            };
         }
     }
     
@@ -1845,8 +2031,15 @@ public class Command {
             //b.append("\nAssert.assertTrue("+cond.condition()+");");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "??[:time-in-sec] {find-expr} {optional action(type|hover|hoverclick|click|clear|submit)}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Wait till an element is found and optionally execute actions on it",
+				"\t??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}",
+				"Examples :-",
+	    		"\t??10 id@'eleid'",
+	    		"\t??20 id@'eleid' click",
+	    		"\t??20 class@'eleid' type 'abc'",
+            };
         }
     }
 
@@ -1855,6 +2048,9 @@ public class Command {
         FindCommandImpl(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     public static class IfCommand extends FindCommandImpl {
@@ -1941,8 +2137,13 @@ public class Command {
             state.prevvarnameifcnt();
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "? {find-expr}\n\t{\n\t}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"If block",
+        		"\t? {find-expr}\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t? xpath@\"ddd\"\n\t{\n\t\texec @print(\"if\")\n\t}"
+            };
         }
     }
 
@@ -1974,8 +2175,13 @@ public class Command {
             b.append(IfCommand.getFp(cond, children, negation, state, vrd));
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return ":? {find-expr}\n\t{\n\t}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Else-If block, needs to be superseded by an If block",
+        		"\t:? {find-expr}\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t:? xpath@\"ddd\"\n\t{\n\t\texec @print(\"else-if\")\n\t}"
+            };
         }
     }
 
@@ -2009,8 +2215,13 @@ public class Command {
             }
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return ": {find-expr}\n\t{\n\t}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Else block, needs to be superseded by an If or Else-If block",
+        		"\t:\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t:\n\t{\n\t\texec @print(\"else\")\n\t}"
+            };
         }
     }
 
@@ -2108,8 +2319,13 @@ public class Command {
             }
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "## {find-expr}\n\t{\n\t}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Loop block",
+        		"\t## {find-expr}\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t## class@\"ddd\"\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@\"ddd-@index\"\n\t}"
+            };
         }
     }
 
@@ -2121,26 +2337,38 @@ public class Command {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(counter) {
-                if(parts.length>0 && !parts[0].trim().isEmpty()) {
-                    try
+            	if(parts.length==1 && !parts[0].trim().isEmpty()) {
+            		try
                     {
-                        index = Integer.valueOf(parts[0].trim());
-                    }
-                    catch (Exception e)
-                    {
-                        throwError(fileLineDetails, new RuntimeException("Counter start should be a number"));
-                    }
-                }
-                if(parts.length>1 && !parts[1].trim().isEmpty()) {
-                    try
-                    {
-                        end = Integer.valueOf(parts[1].trim());
+            			index = 0;
+                        end = Integer.valueOf(parts[0].trim());
                     }
                     catch (Exception e)
                     {
                         throwError(fileLineDetails, new RuntimeException("Counter end should be a number"));
                     }
-                }
+            	} else {
+	                if(!parts[0].trim().isEmpty()) {
+	                    try
+	                    {
+	                        index = Integer.valueOf(parts[0].trim());
+	                    }
+	                    catch (Exception e)
+	                    {
+	                        throwError(fileLineDetails, new RuntimeException("Counter start should be a number"));
+	                    }
+	                }
+	                if(!parts[1].trim().isEmpty()) {
+	                    try
+	                    {
+	                        end = Integer.valueOf(parts[1].trim());
+	                    }
+	                    catch (Exception e)
+	                    {
+	                        throwError(fileLineDetails, new RuntimeException("Counter end should be a number"));
+	                    }
+	                }
+            	}
                 if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end) {
                 } else {
                     throwError(fileLineDetails, new RuntimeException("Counter needs both start and end values and start should be less than end"));
@@ -2233,16 +2461,93 @@ public class Command {
             }
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "#provider {find-expr}\n\t{\n\t}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Provider Loop block",
+        		"\t#provider {find-expr}\n\t{\n\t\tcode\n\t}",
+        		"\t#p {find-expr}\n\t{\n\t\tcode\n\t}",
+        		"\t#counter {start-index} {end-index}\n\t{\n\t\tcode\n\t}",
+        		"\t#counter {end-index}\n\t{\n\t\tcode\n\t}",
+        		"\t#c {start-index} {end-index}\n\t{\n\t\tcode\n\t}",
+        		"\t#c {end-index}\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t#provider \"provider-name\"\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#provider \"provider-name\" 0 3\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#provider \"provider-name\" 2\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#p \"provider-name\"\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#p \"provider-name\" 0 3\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#p \"provider-name\" 2\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#counter 0 5\n\t{\n\t\texec @print(@index)\n\t}",
+				"\t#counter 5\n\t{\n\t\texec @print(@index)\n\t}",
+				"\t#c 0 5\n\t{\n\t\texec @print(@index)\n\t}",
+				"\t#c 5\n\t{\n\t\texec @print(@index)\n\t}",
+            };
         }
     }
 
-    public static class TransientProviderLoopCommand extends Command {
+    public static class TransientVariableCommand extends Command {
+        FindCommand cond;
+        String varname;
+        boolean isSuiteLevel;
+        TransientVariableCommand(String val, Object[] cmdDetails, CommandState state, boolean isSuiteLevel) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>=4) {
+                parts[0] = parts[0].trim();
+                varname = parts[0];
+                varname = state.unsanitize(varname);
+                if(varname.charAt(0)==varname.charAt(varname.length()-1)) {
+                    if(varname.charAt(0)=='"' || varname.charAt(0)=='\'') {
+                    	varname = varname.substring(1, varname.length()-1);
+                    }
+                }
+                cond = new FindCommand(parts[1].trim() + " " + parts[2].trim(), fileLineDetails, state);
+            } else {
+                //excep
+            }
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append(isSuiteLevel?"#transient-suite-variable ":"#transient-variable ");
+            b.append(name);
+            b.append(cond.toCmd());
+            return b.toString();
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            b.append("newTopLevelProvider();\n");
+            b.append(cond.javacodetrprovonly(children));
+            String provname = cond.rtl;
+            String loopname = state.varname();
+            List<String> ssl = Arrays.asList(varname.split("[\t ]*,[\t ]*"));
+            b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ".size();"+loopname+"++) {");
+            for (int i=0;i<ssl.size();i++)
+            {
+                b.append("\naddToTopLevelProviderTestDataMap(\""+ssl.get(i)+"\", " + provname + ".get(" + loopname + ")["+i+"]);\n"); 
+            }
+            b.append("break;\n}");
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Transient Variable definition",
+        		"\t#transient-variable {variable-name} {find-expr} {sub-selector}",
+				"Examples :-",
+				"\t#transient-variable var1 id@'abc' text",
+				"\t#transient-variable var1 id@'abc' html",
+				"\t#transient-variable var1 id@'abc' attr@data-prop",
+				"\t#tv var1 id@'abc' text",
+				"\t#tv var1 id@'abc' html",
+				"\t#tv var1 id@'abc' attr@data-prop",
+            };
+        }
+    }
+
+    public static class TransientProviderCommand extends Command {
         FindCommand cond;
         String varname, value;
         boolean isSuiteLevel;
-        TransientProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean isSuiteLevel) {
+        TransientProviderCommand(String val, Object[] cmdDetails, CommandState state, boolean isSuiteLevel) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=4) {
@@ -2290,8 +2595,14 @@ public class Command {
             b.append("}");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "#transient-provider {find-expr} {sub-selector}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Transient Provider definition",
+        		"\t#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN}",
+				"Examples :-",
+				"\t#transient-provider prov1 var1,var2 id@'abc' text,attr@abc",
+				"\t#tp prov1 var1,var2 id@'abc' text,attr@abc",
+            };
         }
     }
 
@@ -2304,10 +2615,12 @@ public class Command {
         String name() {
             return name;
         }
-
         String toCmd() {
             return "";
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
         String javacode() {
             StringBuilder b = new StringBuilder();
             if(config.getName().equalsIgnoreCase("chrome")) {
@@ -2438,9 +2751,6 @@ public class Command {
         int weight() {
             return 2;
         }
-        public String toSampleSelCmd() {
-            return "";
-        }
     }
 
     public static class BrowserCommand extends Command {
@@ -2468,8 +2778,14 @@ public class Command {
         int weight() {
             return 2;
         }
-        public String toSampleSelCmd() {
-            return "open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Open Browser",
+        		"\topen {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..} {optional session-name}",
+				"Examples :-",
+				"\topen chrome",
+				"\topen firefox \"my-ff-sess\"",
+            };
         }
     }
 
@@ -2484,8 +2800,14 @@ public class Command {
         String toCmd() {
             return "layer " + name;
         }
-        public String toSampleSelCmd() {
-            return "layer {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Define Screen No-activity layers",
+        		"\tlayer {find-expr}",
+				"Examples :-",
+				"\tlayer id@\"loader-icon\"",
+				"\tlayer id@\"overlay-div\"",
+            };
         }
         public String javacode() {
             return "";
@@ -2512,8 +2834,14 @@ public class Command {
         int weight() {
             return 2;
         }
-        public String toSampleSelCmd() {
-            return "mode {normal|integration}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Define test mode",
+        		"\tmode {normal|integration}",
+				"Examples :-",
+				"\tmode normal",
+				"\tmode integration",
+            };
         }
     }
 
@@ -2555,8 +2883,16 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "frame {name(main|1..N)}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Select frame",
+        		"\tframe main|parent|1..N|{some-name}",
+				"Examples :-",
+				"\tframe main",
+				"\tframe parent",
+				"\tframe 2",
+				"\tframe \"my-frame\"",
+            };
         }
     }
 
@@ -2593,8 +2929,15 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "window {name(main|1..N)}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Select/Open Window",
+        		"\twindow {optional main|0}",
+				"Examples :-",
+				"\twindow",
+				"\twindow 0",
+				"\twindow main",
+            };
         }
     }
 
@@ -2637,8 +2980,16 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "tab {name(main|1..N)}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Select frame",
+        		"\ttab main|0..N|{some-name}",
+				"Examples :-",
+				"\ttab main",
+				"\ttab 0",
+				"\ttab 2",
+				"\ttab \"my-frame\"",
+            };
         }
     }
 
@@ -2649,8 +3000,11 @@ public class Command {
         String javacode() {
             return "___cw___.navigate().back();";
         }
-        public String toSampleSelCmd() {
-            return "back";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Navigate Back/Previous",
+        		"\tback",
+            };
         }
         BackCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2664,8 +3018,11 @@ public class Command {
         String javacode() {
             return "___cw___.navigate().forward();";
         }
-        public String toSampleSelCmd() {
-            return "forward";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Navigate Forward/Next",
+        		"\tforward",
+            };
         }
         ForwardCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2679,8 +3036,11 @@ public class Command {
         String javacode() {
             return "___cw___.navigate().refresh();";
         }
-        public String toSampleSelCmd() {
-            return "refresh";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Refresh window",
+        		"\trefresh",
+            };
         }
         RefreshCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2694,8 +3054,11 @@ public class Command {
         String javacode() {
             return "___cw___.close();";
         }
-        public String toSampleSelCmd() {
-            return "close";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Close window",
+        		"\tclose",
+            };
         }
         CloseCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2709,8 +3072,11 @@ public class Command {
         String javacode() {
             return "___cw___.manage().window().maximize();";
         }
-        public String toSampleSelCmd() {
-            return "maximize";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Maximize window",
+        		"\tmaximize",
+            };
         }
         MaximizeCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2732,8 +3098,13 @@ public class Command {
         GotoCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "goto {url}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Open URL in window",
+        		"\tgoto {url}",
+        		"Examples :-",
+        		"\tgoto http://abc.com/testpage.html"
+            };
         }
     }
 
@@ -2753,8 +3124,14 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "fail {error string}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Fail test/sub-test",
+        		"\tfail {error string}",
+        		"Examples :-",
+        		"\tfail \"Test failed\"",
+        		"\tfail \"Sub-Test failed\"",
+            };
         }
     }
 
@@ -2774,8 +3151,14 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "pass {msg string}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Pass test/sub-test",
+        		"\tpass {error string}",
+        		"Examples :-",
+        		"\tpass \"Test passed\"",
+        		"\tpass \"Sub-Test passed\"",
+            };
         }
     }
 
@@ -2812,8 +3195,16 @@ public class Command {
             }
             return "";
         }
-        public String toSampleSelCmd() {
-            return "window_set {width|height|posx|posy} {value}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Set Window Properties",
+        		"\twindow_set {width|height|posx|posy} {value}",
+        		"Examples :-",
+        		"\twindow_set width 100",
+        		"\twindow_set height 100",
+        		"\twindow_set posx 100",
+        		"\twindow_set posy 100",
+            };
         }
     }
 
@@ -2843,9 +3234,9 @@ public class Command {
             }
             return "";
         }
-        public String toSampleSelCmd() {
-            return "capability_set {name} {value}";
-        }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     static String esc(String cmd) {
@@ -2878,8 +3269,11 @@ public class Command {
         String topele() {
             return topele;
         }
-        public String toSampleSelCmd() {
-            return "{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {value|value-list}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Find Expression",
+        		"\t{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+            };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -3454,6 +3848,9 @@ public class Command {
         String toCmd() {
             return type;
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     public static class EndCommentCommand extends Command {
@@ -3469,6 +3866,9 @@ public class Command {
         String javacode() {
             return "";
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     public static class EndCommand extends Command {
@@ -3479,6 +3879,9 @@ public class Command {
         String toCmd() {
             return type;
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     public static class NoopCommand extends Command {
@@ -3492,6 +3895,9 @@ public class Command {
         String javacode() {
             return "";
         }
+		public static String[] toSampleSelCmd() {
+			return null;
+		}
     }
 
     public static class TypeCommand extends FindCommandImpl {
@@ -3534,8 +3940,13 @@ public class Command {
             }
             return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));";
         }
-        public String toSampleSelCmd() {
-            return "type {text}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Type Value in input/textarea elements",
+        		"\ttype {text} {find-expr}",
+        		"Examples :-",
+        		"\ttype 'abc' id@'ele1'",
+            };
         }
     }
 
@@ -3623,8 +4034,16 @@ public class Command {
             }
             return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(v1)+"\"));";
         }
-        public String toSampleSelCmd() {
-            return "type {text}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Type random values in input/textarea elements",
+        		"\trandomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}",
+        		"Examples :-",
+        		"\trandomize id@'ele1' alphanumeric 12",
+        		"\trandomize id@'ele1' alpha 8 3 (first-name middle-name last-name)",
+        		"\trandomize id@'ele1' numeric 5",
+        		"\trandomize id@'ele1' value 'abcd'",
+            };
         }
     }
 
@@ -3710,8 +4129,13 @@ public class Command {
             }
             return "";
         }
-        public String toSampleSelCmd() {
-            return "chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Type UTF-8 or normal ASCII characters in input/textarea elements",
+        		"\tchord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}",
+        		"Examples :-",
+        		"\tchord \\u0048\\u0065\\u006c\\u006c\\u006f\\u0020\\u0057\\u006f\\u0072\\u006c\\u0064 id@'abc'",
+            };
         }
     }
 
@@ -3791,8 +4215,17 @@ public class Command {
             }
             return "";
         }
-        public String toSampleSelCmd() {
-            return "select {find-expr} {text|index|value|first|last}@{value}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Select value from dropdown element",
+        		"\tselect {text|index|value|first|last}@{value} {find-expr}",
+        		"Examples :-",
+        		"\tselect text@'first' id@'abc'",
+        		"\tselect index@2 id@'abc'",
+        		"\tselect value@'second' id@'abc'",
+        		"\tselect first id@'abc'",
+        		"\tselect last id@'abc'",
+            };
         }
     }
 
@@ -3831,8 +4264,13 @@ public class Command {
         public HoverCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "hover {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Hover over an element",
+        		"\thover {find-expr}",
+        		"Examples :-",
+        		"\thover id@'abc'",
+            };
         }
     }
 
@@ -3881,8 +4319,13 @@ public class Command {
             b.append("\n"+hvvrnm+".moveToElement("+varnm+".get(0)).click().perform();");
             return b.toString();
         }
-        public String toSampleSelCmd() {
-            return "hoverclick {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Hover over an element and click some other element",
+        		"\thoverclick {find-expr} {find-expr}",
+        		"Examples :-",
+        		"\thoverclick id@'hoverele' id@'clickele'",
+            };
         }
     }
 
@@ -3894,6 +4337,17 @@ public class Command {
                 + "|sendkeys|type|draganddrop|movebyoffset|moveby|dragdrop|";
         public ActionsCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Multiple Chained Actions",
+        		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|"
+        		+ "{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|"
+        		+ "{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...",
+        		"Examples :-",
+        		"\tactions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'",
+        		"\tactions movetoelement id@'ele' sendkeys 'abc'",
+            };
         }
         ActionsCommand(String val, FindCommand fcmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -4025,7 +4479,7 @@ public class Command {
                 FindCommand fc = new FindCommand(ck, fileLineDetails, state);
                 b.append("\n"+fc.javacodeonly(null));
                 String cvarnm = state.currvarname();
-                String ck1 = state.unsanitize(expr1);
+                String ck1 = state.unsanitize(expr2);
                 FindCommand fc1 = new FindCommand(ck1, fileLineDetails, state);
                 b.append("\n"+fc1.javacodeonly(null));
                 String cvarnm1 = state.currvarname();
@@ -4128,7 +4582,26 @@ public class Command {
             }
         }
         String toCmd() {
-            return "robot ";
+            return "robot keydown|keyup|keypress ";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Send keys using Robot",
+        		"\trobot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress {key-codeN}",
+        		"\tscrollup",
+        		"\tscrolldown",
+        		"\tscrollpageup",
+        		"\tscrollpagedown",
+        		"Examples :-",
+        		"\trobot keydown 1",
+        		"\trobot keyup 1",
+        		"\trobot keypress 1",
+        		"\trobot keypress 1 keydown 2 keyup ",
+        		"\tscrollup",
+        		"\tscrolldown",
+        		"\tscrollpageup",
+        		"\tscrollpagedown",
+            };
         }
         String _javacode(String acnm) {
             StringBuilder b = new StringBuilder();
@@ -4183,8 +4656,13 @@ public class Command {
         String javacode() {
             return "\nsleep("+ms+");";
         }
-        public String toSampleSelCmd() {
-            return "sleep {time-in-ms}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Sleep for milliseconds",
+        		"\tsleep {time-in-ms}",
+        		"Examples :-",
+        		"\tsleep 10000",
+            };
         }
     }
 
@@ -4201,8 +4679,11 @@ public class Command {
             }
             return "\nbreak;";
         }
-        public String toSampleSelCmd() {
-            return "break";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Break from loop",
+        		"\tbreak",
+            };
         }
     }
 
@@ -4219,8 +4700,11 @@ public class Command {
             }
             return "\ncontinue;";
         }
-        public String toSampleSelCmd() {
-            return "continue";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Continue in loop",
+        		"\tcontinue",
+            };
         }
     }
 
@@ -4247,8 +4731,13 @@ public class Command {
             }
             return "\n"+varnm+".get(0).click();";
         }
-        public String toSampleSelCmd() {
-            return "click {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Click element",
+        		"\tclick {find-expr}",
+        		"Examples :-",
+        		"\tclick id@'ele1'",
+            };
         }
     }
 
@@ -4280,8 +4769,14 @@ public class Command {
         public DoubleClickCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "doubleclick {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Double Click element",
+        		"\tdoubleclick {find-expr}",
+        		"\tdblclick {find-expr}",
+        		"Examples :-",
+        		"\tdoubleclick id@'ele1'",
+            };
         }
     }
 
@@ -4308,8 +4803,13 @@ public class Command {
         ClearCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "clear {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Clear element value",
+        		"\tclear {find-expr}",
+        		"Examples :-",
+        		"\tclear id@'ele1'",
+            };
         }
     }
 
@@ -4333,8 +4833,13 @@ public class Command {
             }
             return "\n"+varnm+".get(0).submit();";
         }
-        public String toSampleSelCmd() {
-            return "submit {find-expr}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Submit element",
+        		"\tsubmit {find-expr}",
+        		"Examples :-",
+        		"\tsubmit id@'ele1'",
+            };
         }
         SubmitCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -4365,8 +4870,13 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "alert {?value}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Show alert with message",
+        		"\talert {value}",
+        		"Examples :-",
+        		"\talert('Hello')",
+            };
         }
     }
 
@@ -4408,8 +4918,17 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "confirm [ok|cancel] {?value}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Handle Confirm Dialog",
+        		"\tconfirm ok|cancel|yes|no {optional button-text-to-check}",
+        		"Examples :-",
+        		"\tconfirm ok",
+        		"\tconfirm yes",
+        		"\tconfirm cancel",
+        		"\tconfirm no",
+        		"\tconfirm yes 'Confirm'",
+            };
         }
     }
 
@@ -4458,8 +4977,14 @@ public class Command {
                 throwParseError(null, new RuntimeException("zoom command needs valid x/y co-ordinates"));
             }
         }
-        public String toSampleSelCmd() {
-            return "zoom ({x} {y}|{find-expr})";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile Zoom",
+        		"\tzoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})",
+        		"Examples :-",
+        		"\tzoom 123 234",
+        		"\tzoom id@'ele'",
+            };
         }
     }
 
@@ -4508,8 +5033,14 @@ public class Command {
                 throwParseError(null, new RuntimeException("pinch command needs valid x/y co-ordinates"));
             }
         }
-        public String toSampleSelCmd() {
-            return "pinch ({x} {y}|{find-expr})";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile Pinch",
+        		"\tpinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})",
+        		"Examples :-",
+        		"\tpinch 123 234",
+        		"\tpinch id@'ele'",
+            };
         }
     }
 
@@ -4546,8 +5077,13 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "swipe {sx} {sy} {ex} {ey}";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile Swipe",
+        		"\tswipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}",
+        		"Examples :-",
+        		"\tswipe 123 234 200 300",
+            };
         }
     }
 
@@ -4609,7 +5145,7 @@ public class Command {
                     }
                     catch (Exception e1)
                     {
-                        throwParseError(null, new RuntimeException("tap command needs valid {find-expr}/x/y/d values"));
+                        throwParseError(null, new RuntimeException("tap command needs valid {find-expr}/x-co-ordinate/y-co-ordinate/duration values"));
                     }
                 }
             }
@@ -4631,17 +5167,41 @@ public class Command {
                     }
                     catch (Exception e1)
                     {
-                        throwParseError(null, new RuntimeException("tap command needs valid {find-expr}/x/y/d values"));
+                        throwParseError(null, new RuntimeException("tap command needs valid {find-expr}/x-co-ordinate/y-co-ordinate/duration values"));
                     }
+                }
+            }
+            else if(t.length==4)
+            {
+                cond = new FindCommand(t[0].trim(), fileLineDetails, state);
+                try
+                {
+                    x = Integer.parseInt(t[1].trim());
+                    y = Integer.parseInt(t[2].trim());
+                    d = Integer.parseInt(t[3].trim());
+                }
+                catch (Exception e1)
+                {
+                    throwParseError(null, new RuntimeException("tap command needs valid {find-expr}/x-co-ordinate/y-co-ordinate/duration values"));
                 }
             }
             else
             {
-                throwParseError(null, new RuntimeException("tap command needs valid x/y/d values"));
+                throwParseError(null, new RuntimeException("tap command needs valid x-co-ordinate/y-co-ordinate/duration values"));
             }
         }
-        public String toSampleSelCmd() {
-            return "tap ({f} {find-expr} {d}|{f} {x} {y} {d})";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile Tap",
+        		"\ttap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})",
+        		"Examples :-",
+        		"\ttap id@'ele'",
+        		"\ttap id@'ele' 2000",
+        		"\ttap id@'ele' 123 234",
+        		"\ttap id@'ele' 123 234 2000",
+        		"\ttap 123 234",
+        		"\ttap 123 234 2000",
+            };
         }
     }
 
@@ -4660,8 +5220,11 @@ public class Command {
         public MRotateCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "rotate";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile rotate",
+        		"\trotate",
+            };
         }
     }
 
@@ -4677,8 +5240,11 @@ public class Command {
         public MHideKeyPadCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "hidekeypad";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile hide keypad",
+        		"\thidekeypad",
+            };
         }
     }
 
@@ -4694,8 +5260,11 @@ public class Command {
         public MShakeCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        public String toSampleSelCmd() {
-            return "shake";
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile shake",
+        		"\tshake",
+            };
         }
     }
 
@@ -4705,6 +5274,18 @@ public class Command {
 
         public MTouchActionCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Mobile Touch",
+        		"\ttouch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|"
+        		+ "longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|"
+        		+ "{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|"
+        		+ "{wait {duration}}|release) ... ({press|moveto|tap {find-ex...",
+        		"Examples :-",
+        		"\ttouch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release",
+        		"\ttouch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release",
+            };
         }
         MTouchActionCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -4818,7 +5399,7 @@ public class Command {
                     } else if(fc==1) {
                         cmd.expr = t[++counter];
                     } else {
-                        throwParseError(null, new RuntimeException("Expressions(>=1 <=3) expected after actions (longpress)"));
+                        //throwParseError(null, new RuntimeException("Expressions(>=1 <=3) expected after actions (longpress)"));
                     }
                 } else if(t[counter].toLowerCase().matches("wait")) {
                     cmd.action = "waitAction";
@@ -4887,11 +5468,28 @@ public class Command {
                         }
                     }
                 } else {
-                    if(d==null) {
-                        b.append("\n"+acnm+"."+action+"("+x+", "+y+");");
-                    } else {
-                        b.append("\n"+acnm+"."+action+"("+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
-                    }
+                	if(x!=null && y!=null) {
+	                    if(d==null) {
+	                        b.append("\n"+acnm+"."+action+"("+x+", "+y+");");
+	                    } else {
+	                        b.append("\n"+acnm+"."+action+"("+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
+	                    }
+                	} else {
+                		String cvarnm = state.currvarname();
+                		if(d==null) {
+                            if(x==null) {
+                                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0));");
+                            } else {
+                                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), "+x+", "+y+");");
+                            }
+                        } else {
+                            if(x==null) {
+                                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), java.time.Duration.ofMillis("+d+"));");
+                            } else {
+                                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), "+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
+                            }
+                        }
+                	}
                 }
             } else if(action.toLowerCase().matches("wait")) {
                 if(d!=null) {
@@ -4952,7 +5550,7 @@ public class Command {
                 }
                 c += avn1 + ".add("+avn2+");\n";
             }
-            c += vn + " = pluginize(\""+name+"\", \""+state.plugins.get(name)+"\", "+avn+", "+avn1+")";
+            c += vn + " = pluginize(\""+name+"\", \""+plugins.get(name)+"\", "+avn+", "+avn1+")";
             return c;
         }
         String javacode() {
@@ -4971,7 +5569,7 @@ public class Command {
                 }
                 c += avn1 + ".add("+avn2+");\n";
             }
-            c += "pluginize(\""+name+"\", \""+state.plugins.get(name)+"\", "+avn+", "+avn1+");\n";
+            c += "pluginize(\""+name+"\", \""+plugins.get(name)+"\", "+avn+", "+avn1+");\n";
             return c;
         }
         public PluginCommand(String info, Object[] cmdDetails, CommandState state) {
@@ -4979,7 +5577,7 @@ public class Command {
             String[] parts = info.trim().split("[\t ]+");
             if(parts.length>0) {
                 name = unSantizedUnQuoted(parts[0], state);
-                if(!state.plugins.containsKey(name)) {
+                if(!plugins.containsKey(name)) {
                     throwError(cmdDetails, new RuntimeException("Plugin not found with name " + name));
                 }
                 for (int i = 1; i < parts.length; i++) {
@@ -4993,6 +5591,7 @@ public class Command {
                         for (Command vc : vlc.children) {
                             tm[c++] = unSantizedUnQuoted(((ValueCommand)vc).value, state); 
                         }
+                        in1.add(tm);
                     } else {
                         in1.add(new String[]{unSantizedUnQuoted(((ValueCommand)children.get(i)).value, state)});
                     }
@@ -5016,80 +5615,71 @@ public class Command {
                 }
             }
         }
-        public String toSampleSelCmd() {
-            return "plugin $abc \"123\" \"file://abc.txt\" 'http://abc.com/a.html' 'https://abc.com/a.html' (json|xml|csv|urlencoded|text)";
+        public static String[] toSampleSelCmd() {
+        	List<String> cmdl = new ArrayList<String>();
+        	for (String name : plugins.keySet()) {
+				String signature = plugins.get(name);
+		        try
+		        {
+		            String[] parts = signature.split("@");
+		            String clsname = parts[0].trim();
+
+		            Class<?> cls = Class.forName(clsname);
+		            Method meth = cls.getMethod("toSampleSelCmd", new Class[]{});
+		            
+		            String[] cmds = (String[])meth.invoke(null, new Object[] {});
+		            cmdl.addAll(Arrays.asList(cmds));
+		        }
+		        catch (Exception e)
+		        {
+		        }
+			}
+            return cmdl.toArray(new String[cmdl.size()]);
         }
     }
 
-    public static void main(String[] args) throws Exception {
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+	public static void main(String[] args) throws Exception {
+    	Reflections r = new Reflections("com.gatf.selenium");
+    	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);
+    	Set<Class<?>> pclasses = new HashSet<Class<?>>();
+    	pclasses.add(ApiPlugin.class);
+    	pclasses.add(CurlPlugin.class);
+    	pclasses.add(JsonPlugin.class);
+    	pclasses.add(XmlPlugin.class);
+    	for (Class c : classes) {
+    		Method m = c.getMethod("toSampleSelCmd", new Class[]{});
+    		String[] cmds = (String[])m.invoke(null, new Object[] {});
+    		//System.out.println(c.getName());
+    		if(cmds==null) {
+    			continue;
+    		}
+    		for (String s : cmds) {
+				System.out.println(s);
+			}
+    		System.out.println("\n");
+		}
+    	for (Class c : pclasses) {
+    		Method m = c.getMethod("toSampleSelCmd", new Class[]{});
+    		String[] cmds = (String[])m.invoke(null, new Object[] {});
+    		//System.out.println(c.getName());
+    		if(cmds==null) {
+    			continue;
+    		}
+    		for (String s : cmds) {
+				System.out.println(s);
+			}
+    		System.out.println("\n");
+		}
     	
-    	System.out.println(RandomStringUtils.randomAlphanumeric(6));
-    	
-        System.out.println("\u0005\u0000\u0003 \u0002\u0001Despido Injusto, Accidente de Auto o Trabajo? Recibe Compensacion Economica, Medica y Entrenamiento para nuevo trabajo GRATIS! Consult\u0005\u0000\u0003 \u0002\u0002a a 800-201-6597");
-        
-        
-        /*Reflections reflections = new Reflections("com.gatf.selenium");
-        Set<Class<? extends Command>> cmds = reflections.getSubTypesOf(Command.class);
-        for (Class<? extends Command> cls : cmds)
-        {
-            Object o = cls.newInstance();
-            Method m = cls.getMethod("toSampleSelCmd", new Class[]{});
-            m.setAccessible(true);
-            System.out.println(cls.getSimpleName().substring(0, cls.getSimpleName().length()-7)+ ":\n\t" + m.invoke(o, new Object[]{}));
-        }*/
-        final Provider[] providers = Security.getProviders();
-        final Boolean verbose = Arrays.asList(args).contains("-v");
-        for (final Provider p : providers)
-        {
-            System.out.format("%s %s%s", p.getName(), p.getVersion(), System.getProperty("line.separator"));
-            for (final Object o : p.keySet())
-            {
-                if (verbose)
-                {
-                    System.out.format("\t%s : %s%s", o, p.getProperty((String)o), System.getProperty("line.separator"));
-                }
-            }
-        }
-        System.out.println(Cipher.getMaxAllowedKeyLength("AES"));
-        
         Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
         SeleniumDriverConfig dc = new SeleniumDriverConfig();
         dc.setName("chrome");
         dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
+        dc.setPath("/Users/sumeetc/Projects/home/selenium/chromedriver");
         mp.put("chrome", dc);
-        dc = new SeleniumDriverConfig();
-        dc.setName("appium-ios");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        dc = new SeleniumDriverConfig();
-        dc.setName("firefox");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("firefox", dc);
-        dc = new SeleniumDriverConfig();
-        dc.setName("edge");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("edge", dc);
-        dc = new SeleniumDriverConfig();
-        dc.setName("safari");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("safari", dc);
-        dc = new SeleniumDriverConfig();
-        dc.setName("ie");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("ie", dc);
-        dc = new SeleniumDriverConfig();
-        dc.setName("opera");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("F:\\Laptop_Backup\\Development\\selenium-drivers\\chromedriver.exe");
-        mp.put("opera", dc);
         List<String> commands = new ArrayList<String>();
-        GatfExecutorConfig config = getConfig("gatf-config.xml", 
-                "F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\");
+        GatfExecutorConfig config = getConfig("gatf-config-sel.xml", "/Users/sumeetc/Projects/GitHub/gatf/sample/");
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
@@ -5097,35 +5687,17 @@ public class Command {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
+        
         AcceptanceTestContext c = new AcceptanceTestContext();
         c.setGatfExecutorConfig(config);
         c.validateAndInit(true);
         c.getWorkflowContextHandler().initializeSuiteContext(1);
-        Command cmd = Command.read(new File("F:\\Laptop_Backup\\sumeetc\\workspace\\sampleApp\\src\\test\\resources\\test.sel"), commands, c);
+        Command cmd = Command.read(new File("/Users/sumeetc/Projects/GitHub/gatf/sample/test.sel"), commands, c);
         String jc = cmd.javacode();
-        System.out.println(jc);
+        //System.out.println(jc);
         System.out.println(new Formatter().formatSource(jc));
 
-        //FileUtils.writeStringToFile(new File("src\\main\\java\\com\\gatf\\selenium\\Test.java"), new Formatter().formatSource(jc).replaceAll(cmd.className, "Test"), "UTF-8");
-        
-        /*SeleniumTest t = new SeleniumTest(jc, c, 0) {
-
-            @Override
-            public Map<String, SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {
-                return null;
-            }
-
-            @Override
-            public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
-                return null;
-            }
-
-            @Override
-            public void close() {
-
-            }
-        };
-        List<String> ___a___1 = new ArrayList<String>();
+        /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
         Object o = t.pluginize("jsonread", "com.gatf.selenium.plugins.JsonPlugin@read", ___a___1, null);
         System.out.println(o);
@@ -5162,7 +5734,7 @@ public class Command {
          ___a___1.add("$v{xxo}");
          System.out.println(t.pluginize("jsonpath", "com.gatf.selenium.plugins.JsonPlugin@path", ___a___1, null));*/
 
-        testSelScript(c);
+        //testSelScript(c);
     }
     
     private static GatfExecutorConfig getConfig(String configFile, String testCasesBasePath) {
@@ -5175,14 +5747,14 @@ public class Command {
                 if(resource.exists()) {
                     XStream xstream = new XStream(new DomDriver("UTF-8"));
                     XStream.setupDefaultSecurity(xstream);
-                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class,
-                            GatfTestDataConfig.class, GatfTestDataProvider.class});
-                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,
-                             GatfTestDataConfig.class, GatfTestDataProvider.class});
-                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class, GatfTestDataSourceHook.class, SeleniumDriverConfig.class,
+                            GatfTestDataConfig.class, GatfTestDataProvider.class, GatfTestDataSource.class});
+                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
                     xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
                     xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
                     xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
                     xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
                     xstream.alias("testCaseHooksPaths", String[].class);

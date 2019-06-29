@@ -44,4 +44,14 @@ public class ApiPlugin {
         
         return null;
     }
+    
+    public static String[] toSampleSelCmd() {
+    	return new String[] {
+    		"API Plugin",
+    		"\tplugin api {test-name}@{optional test-case-file-name}",
+    		"Examples :-",
+    		"\tplugin api api-name",
+    		"\tplugin api api-name@test-case-file-path",
+        };
+    }
 }

@@ -45,4 +45,17 @@ public class JsonPlugin {
         }
         return null;
     }
+    
+    public static String[] toSampleSelCmd() {
+    	return new String[] {
+    		"JSON Plugin",
+    		"\tjsonread {json-text}",
+    		"\tjsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}",
+    		"\tjsonpath {json-text} {json-path-string}",
+    		"Examples :-",
+    		"\tjsonread '{\"a\": \"abc\", \"b\": 1}'",
+    		"\tjsonwrite '/path/to/file.json' $jsonObjectVar",
+    		"\tjsonpath '{\"a\": \"abc\", \"b\": 1}' '$.a'",
+        };
+    }
 }

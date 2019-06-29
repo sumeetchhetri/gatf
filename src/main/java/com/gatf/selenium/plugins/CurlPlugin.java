@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -57,10 +58,15 @@ public class CurlPlugin {
             String content = null;
             if(method.equalsIgnoreCase("post") || method.equalsIgnoreCase("put")) {
                 content = lst.get(1).get(0).toString();
-                RequestBody.create(null, content);
+                body = RequestBody.create(null, content);
             }
         }
 
+        if(method.toUpperCase().equals("post") || method.toUpperCase().equals("put")) {
+			if(body==null) {
+				body = RequestBody.create(null, StringUtils.EMPTY);
+			}
+		}
         Response response = client.newCall(rbuilder.method(method.toUpperCase(), body).build()).execute();
         
         List<String> cookies = new ArrayList<String>();
@@ -82,5 +88,15 @@ public class CurlPlugin {
         resp.put("cookies", cookies);
         
         return new ObjectMapper().writeValueAsString(resp);
+    }
+    
+    public static String[] toSampleSelCmd() {
+    	return new String[] {
+    		"Curl Plugin",
+    		"\tplugin curl get|put|post|delete {url}\n\t{\n\t\t[\n\t\t\theader=value\n\t\t]\n\t\tcontent-body\n\t}",
+    		"Examples :-",
+    		"\tplugin curl get http://abc.com",
+    		"\tplugin curl post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
+        };
     }
 }

@@ -41,7 +41,7 @@
 				<dataSourceName>database-source</dataSourceName>
 				<dataSourceClass>com.gatf.executor.dataprovider.DatabaseTestDataSource</dataSourceClass>
 				<args>
-					<arg>jdbc:mysql://localhost/globaldb</arg>
+					<arg>jdbc:mysql://localhost/somedb</arg>
 					<arg>com.mysql.jdbc.Driver</arg>
 					<arg>root</arg>
 					<arg></arg>
@@ -84,7 +84,7 @@
 				<dataSourceName>database-source</dataSourceName>
 				<providerName>db-auth-provider</providerName>
 				<providerProperties>username,password</providerProperties>
-				<queryStr>SELECT USER_NAME,PASSWORD FROM BASE_USER</queryStr>
+				<queryStr>SELECT USER_NAME,PASSWORD FROM USER</queryStr>
 			</gatf-testdata-provider>
 			<gatf-testdata-provider>
 				<enabled>true</enabled>

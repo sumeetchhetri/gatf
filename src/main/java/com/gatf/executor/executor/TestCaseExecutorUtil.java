@@ -1,5 +1,5 @@
 /*
-    Copyright 2013-2016, Sumeet Chhetri
+    Copyright 2013-2019, Sumeet Chhetri
     
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
@@ -139,7 +139,6 @@ public class TestCaseExecutorUtil {
 				.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
 				.followRedirects(true).followSslRedirects(true)
 				.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
-				//.setIOThreadMultiplier(2).setAcceptAnyCertificate(true);
 		
 		trustAllCertificates(builder);
 		
@@ -478,6 +477,11 @@ public class TestCaseExecutorUtil {
             }
 		}
 		
+		if(testCase.getMethod().toUpperCase().equals("post") || testCase.getMethod().toUpperCase().equals("put")) {
+			if(body==null) {
+				body = RequestBody.create(null, StringUtils.EMPTY);
+			}
+		}
 		builder.method(testCase.getMethod().toUpperCase(), body);
 	}
 	
