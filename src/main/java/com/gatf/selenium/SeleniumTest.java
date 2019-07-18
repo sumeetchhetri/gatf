@@ -224,7 +224,9 @@ public abstract class SeleniumTest {
         Map<String, Object> _mt = new HashMap<String, Object>();
         List<Map<String, String>> fp = getAllProviderData(pn);
         _mt.putAll(___cxt___.getWorkflowContextHandler().getGlobalSuiteAndTestLevelParameters(null, CollectionUtils.isEmpty(fp)?null:fp.get(pp), index));
-        _mt.putAll(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0));
+        if(getSession().providerTestDataMap.containsKey(TOP_LEVEL_PROV_NAME) && getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0)!=null) {
+        	_mt.putAll(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0));
+        }
         return _mt;
     }
 
@@ -302,7 +304,7 @@ public abstract class SeleniumTest {
             }
             return null;
         }
-        if(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
+        if(getSession().providerTestDataMap.containsKey(TOP_LEVEL_PROV_NAME) && getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
         	return getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).get(key);
         }
         if(getSession().__provdetails__.size()>0) {
@@ -330,7 +332,7 @@ public abstract class SeleniumTest {
         if(isVar) {
             return ___get_var__(key);
         }
-        if(getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
+        if(getSession().providerTestDataMap.containsKey(TOP_LEVEL_PROV_NAME) && getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).containsKey(key)) {
         	return getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).get(key);
         }
         if(getSession().__provdetails__.size()>0) {
