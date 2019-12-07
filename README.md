@@ -9,15 +9,16 @@ GATF Acceptance Test executor is data-type agnostic, which means that your testc
 
 Important features
 ==========
-1. Comparative Env Testing
-2. Concurrent User Testing
-3. Performance Testing
-4. Load Testing (API and UI both)
-5. UI Testing
-6. Reporting Engine
-7. Remote Agent for Distributed Load Testing
-8. Workflow Testing
-9. Data Source Integrations
+1. Robotic Process Automation
+2. Comparative Env Testing
+3. Concurrent User Testing
+4. Performance Testing
+5. Load Testing (API and UI both)
+6. UI Testing
+7. Reporting Engine
+8. Remote Agent for Distributed Load Testing
+9. Workflow Testing
+10. Data Source Integrations
 	- SQL
 	- MongoDB
 	- Files (XML/JSON/CSV/XLS/XLSX/ODT)
