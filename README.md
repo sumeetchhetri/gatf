@@ -1,7 +1,7 @@
 Generic Automated Test Framework (GATF)
 =========
 
-**GATF** is an automated test generator and acceptance testing framework. It provides multiple components namely the **Test Generator**, the **Test Executor** , the **Config Tool** and the **Selenium Executor**
+**GATF** is an automated test generator and acceptance testing framework. It provides multiple components namely the **Test Generator**, the **Test Executor** , the **Config Tool** and the **Robotoc Process Automation Tool**
 
 GATF Acceptance Test executor is data-type agnostic, which means that your testcases can be in any formats like XML, JSON or plain old CSV. Whereas the Test generator generates only XML files (so that even complex data structures can be supported within your testcases) 
 
@@ -482,12 +482,14 @@ Maven Configuration
 </body>
 ```
 
-GATF Selenium Executor
+GATF Robotic Process Automation Tool
 ================
 
-The GATF selenium executor provides an easy to use language to write selenium tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover load and dsitributed load testing can now be very easily performed with gatf.
+The GATF RPA tool provides an easy to use language to write process automation tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover load and dsitributed load testing can now be very easily performed with gatf.
 
-Just to give a glimpse of how easy it is to write selenium test cases with seleasy(gatf) assume we have a login page hosted at http://example.com and after logging in we need to see the Name of the user in the Profile section under the xpath */html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]*, an example gatf script to execute the test in 4 different browsers would look like,
+Moreover a javascript library is provided as an additional support system to automatically record and playback browser actions, this small script when injected into the (Inspect Element - Chrome), (Developer Tools - Firefox) etc, provides an initial bootstrap to generate most of the automation scripts.
+
+Just to give a glimpse of how easy it is to write process automation test cases with seleasy(gatf) assume we have a login page hosted at http://example.com and after logging in we need to see the Name of the user in the Profile section under the xpath */html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]*, an example gatf script to execute the test in 4 different browsers would look like,
 
 ```
 open chrome
@@ -501,6 +503,15 @@ goto http://example.com
 ??10 xpath@"/html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]" click
 ```
 Simplicity lies at the core of the seleasy language which was invented just to ensure that we focus on the problem at hand instead of writing lengthy selenium scripts in java.
+
+To start recording browser actions just type into the Inspect Element -> Console (Chrome)
+```
+Fg.startRecording()
+```
+To stop recording
+```
+Fg.stopRecording()
+```
 
 Seleasy Syntax Reference
 ---------------------
