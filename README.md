@@ -486,7 +486,7 @@ Maven Configuration
 GATF Robotic Process Automation Tool
 ================
 
-The GATF RPA tool provides an easy to use language to write process automation tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover load and dsitributed load testing can now be very easily performed with gatf.
+The GATF RPA tool provides an easy to use language to write process automation tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover UI load and Distributed load testing can now be very easily performed with gatf.
 
 Moreover a javascript library is provided as an additional support system to automatically record and playback browser actions, this small script when injected into the (Inspect Element - Chrome), (Developer Tools - Firefox) etc, provides an initial bootstrap to generate most of the automation scripts.
 
