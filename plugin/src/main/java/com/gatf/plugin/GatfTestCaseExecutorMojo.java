@@ -18,6 +18,7 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -605,6 +606,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         }
         System.setProperty("java.home", configuration.getJavaHome());
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+        Security.setProperty("crypto.policy", "unlimited");
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();

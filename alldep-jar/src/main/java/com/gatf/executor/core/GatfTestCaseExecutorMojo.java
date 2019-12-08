@@ -16,8 +16,6 @@ package com.gatf.executor.core;
 import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -34,14 +32,11 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.logging.Logger;
 
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.InstantiationStrategy;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.openqa.selenium.logging.LoggingPreferences;
 
@@ -88,150 +83,101 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 /**
  * @author Sumeet Chhetri The maven plugin main class for the Test case Executor/Workflow engine
  */
-@Mojo(name = "gatf-executor", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP,
-        defaultPhase = LifecyclePhase.INTEGRATION_TEST, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true,
-        threadSafe = true)
 public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin {
 
-    @Parameter( defaultValue = "${project}", readonly = true )
-    private MavenProject project;
-
-    @Parameter(alias = "baseUrl")
+	private Logger logger = Logger.getLogger(GatfTestCaseExecutorMojo.class.getSimpleName());
+    
     private String baseUrl;
 
-    @Parameter(alias = "testCasesBasePath", defaultValue = "${project.build.testOutputDirectory}")
     private String testCasesBasePath;
 
-    @Parameter(alias = "testCaseDir", defaultValue = "data")
     private String testCaseDir;
 
-    @Parameter(alias = "outFilesBasePath", defaultValue = "${project.build.testOutputDirectory}")
     private String outFilesBasePath;
 
-    @Parameter(alias = "outFilesDir", defaultValue = "out")
     private String outFilesDir;
 
-    @Parameter(alias = "authEnabled")
     private boolean authEnabled;
-
-    @Parameter(alias = "authUrl")
+    
     private String authUrl;
 
-    @Parameter(alias = "authExtractAuth")
     private String authExtractAuth;
 
-    @Parameter(alias = "authParamsDetails")
     private String authParamsDetails;
-
-    @Parameter(alias = "wsdlLocFile")
+    
     private String wsdlLocFile;
-
-    @Parameter(alias = "soapAuthEnabled")
+    
     private boolean soapAuthEnabled;
-
-    @Parameter(alias = "soapAuthWsdlKey")
+    
     private String soapAuthWsdlKey;
-
-    @Parameter(alias = "soapAuthOperation")
+    
     private String soapAuthOperation;
 
-    @Parameter(alias = "soapAuthExtractAuth")
     private String soapAuthExtractAuth;
-
-    @Parameter(alias = "numConcurrentExecutions", defaultValue = "1")
+    
     private Integer numConcurrentExecutions;
 
-    @Parameter(alias = "configFile")
     private String configFile;
-
-    @Parameter(alias = "httpCompressionEnabled", defaultValue = "true")
+    
     private boolean httpCompressionEnabled;
-
-    @Parameter(alias = "httpConnectionTimeout", defaultValue = "10000")
+    
     private Integer httpConnectionTimeout;
-
-    @Parameter(alias = "httpRequestTimeout", defaultValue = "10000")
+    
     private Integer httpRequestTimeout;
 
-    @Parameter(alias = "concurrentUserSimulationNum", defaultValue = "0")
     private Integer concurrentUserSimulationNum;
 
-    @Parameter(alias = "testDataConfigFile")
     private String testDataConfigFile;
 
-    @Parameter(alias = "authDataProvider")
     private String authDataProvider;
-
-    @Parameter(alias = "compareEnabled")
+    
     private boolean compareEnabled;
-
-    @Parameter(alias = "testCaseHooksPaths")
+    
     private String[] testCaseHooksPath;
 
-    @Parameter(alias = "enabled", defaultValue = "true")
     private Boolean enabled;
 
-    @Parameter(alias = "loadTestingEnabled")
     private boolean loadTestingEnabled;
 
-    @Parameter(alias = "loadTestingTime")
     private Long loadTestingTime;
 
-    @Parameter(alias = "gatfTestDataConfig")
     private GatfTestDataConfig gatfTestDataConfig;
-
-    @Parameter(alias = "concurrentUserRampUpTime", defaultValue = "0")
+    
     private Long concurrentUserRampUpTime;
-
-    @Parameter(alias = "loadTestingReportSamples", defaultValue = "3")
+    
     private Integer loadTestingReportSamples;
-
-    @Parameter(alias = "debugEnabled", defaultValue = "false")
+    
     private boolean debugEnabled;
-
-    @Parameter(alias = "distributedLoadTests", defaultValue = "false")
+    
     private boolean distributedLoadTests;
-
-    @Parameter(alias = "distributedNodes")
+    
     private String[] distributedNodes;
-
-    @Parameter(alias = "ignoreFiles")
+    
     private String[] ignoreFiles;
-
-    @Parameter(alias = "orderedFiles")
+    
     private String[] orderedFiles;
-
-    @Parameter(alias = "isFetchFailureLogs", defaultValue = "false")
+    
     private boolean isFetchFailureLogs;
-
-    @Parameter(alias = "isServerLogsApiAuthEnabled", defaultValue = "false")
+    
     private boolean isServerLogsApiAuthEnabled;
-
-    @Parameter(alias = "serverLogsApiFileName")
-    private String serverLogsApiFileName;
-
-    @Parameter(alias = "serverLogsApiAuthExtractAuth")
+    
+    @SuppressWarnings("unused")
+	private String serverLogsApiFileName;
+    
     private String serverLogsApiAuthExtractAuth;
-
-    @Parameter(alias = "repeatSuiteExecutionNum")
+    
     private Integer repeatSuiteExecutionNum = 0;
 
-    @Parameter(alias = "isGenerateExecutionLogs")
     private boolean isGenerateExecutionLogs = false;
-
-    @Parameter(alias = "isSeleniumExecutor")
+    
     private boolean isSeleniumExecutor = false;
-
-    @Parameter(alias = "seleniumScripts")
+    
     private String[] seleniumScripts;
-
-    @Parameter(alias = "seleniumDriverConfigs")
+    
     private SeleniumDriverConfig[] seleniumDriverConfigs;
 
-    @Parameter(alias = "seleniumLoggerPreferences")
     private String seleniumLoggerPreferences;
 
-    @Parameter(alias = "javaHome")
     private String javaHome;
 
     private Long startTime = 0L;
@@ -246,7 +192,6 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
     private TestCase authTestCase;
 
     public void setProject(MavenProject project) {
-        this.project = project;
     }
 
     public void setBaseUrl(String baseUrl) {
@@ -1254,7 +1199,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             ReportHandler.doFinalLoadTestReport(runPrefix, loadStats, context, null, null, loadTestResources);
         }
 
-        getLog().info(loadStats.show());
+        logger.info(loadStats.show());
 
         if (distTasks != null && distTasks.size() > 0) {
             TestSuiteStats finalDistStats = loadStats;
@@ -1268,7 +1213,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 try {
                     DistributedTestStatus stats = futureTask.get();
                     if (stats != null && stats.getSuiteStats() != null) {
-                        getLog().info(stats.getSuiteStats().show());
+                        logger.info(stats.getSuiteStats().show());
                         nodes.add(stats.getNode());
                         nodesurls.add(stats.getIdentifier() + "-index.html");
                         finalDistStats.updateStats(stats.getSuiteStats(), false);
@@ -1288,7 +1233,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         ReportHandler.doTAReporting(null, context, isLoadTestingEnabled, testPercentiles, runPercentiles);
 
         if (loadStats != null) {
-            getLog().info(loadStats.show());
+            logger.info(loadStats.show());
             if (loadStats.getFailedTestCount() > 0) {
                 throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
             }
@@ -1391,7 +1336,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 setupTestCaseHooks(context);
             }
         } catch (Throwable e) {
-            getLog().error(e);
+            logger.severe(ExceptionUtils.getStackTrace(e));
             throw new MojoFailureException("Configuration is invalid", e);
         }
     }
@@ -1414,7 +1359,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                     testCase.setRepeatScenariosOrig(testCase.getRepeatScenarios());
                 }
             } catch (RuntimeException e) {
-                getLog().error("Got exception while running acceptance test " + testCase.getName() + "/" + testCase.getDescription(), e);
+                logger.severe("Got exception while running acceptance test " + testCase.getName() + "/" + testCase.getDescription() + "\n" + ExceptionUtils.getStackTrace(e));
                 throw e;
             }
         }
@@ -1516,7 +1461,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 }
 
                 if (context.getGatfExecutorConfig().isDebugEnabled() && testCase.isDetailedLog()) {
-                    getLog().info(testCaseReport.toString());
+                    logger.info(testCaseReport.toString());
                 }
 
                 if (!testCase.isExternalApi() && !testCase.isDisablePostHooks()) {
@@ -1590,31 +1535,31 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         boolean success = false;
         try {
 
-            getLog().info("Running acceptance test for " + testCase.getName() + "/" + testCase.getDescription());
+            logger.info("Running acceptance test for " + testCase.getName() + "/" + testCase.getDescription());
             if (testCase.isSkipTest()) {
-                getLog().info("Skipping acceptance test for " + testCase.getName() + "/" + testCase.getDescription());
-                getLog().info("============================================================\n\n\n");
+                logger.info("Skipping acceptance test for " + testCase.getName() + "/" + testCase.getDescription());
+                logger.info("============================================================\n\n\n");
                 addSkippedTestCase(testCase, null, reportHandler);
                 return success;
             }
 
             if (testCase.getExecuteOnCondition() != null
                     && !testCaseExecutorUtil.getContext().getWorkflowContextHandler().velocityValidate(testCase, testCase.getExecuteOnCondition(), null, context)) {
-                getLog().info("Execute Condition for Testcase " + testCase.getName() + " returned false." + " Condition was (" + testCase.getExecuteOnCondition() + ")");
-                getLog().info("============================================================\n\n\n");
+                logger.info("Execute Condition for Testcase " + testCase.getName() + " returned false." + " Condition was (" + testCase.getExecuteOnCondition() + ")");
+                logger.info("============================================================\n\n\n");
                 addSkippedTestCase(testCase, testCase.getExecuteOnCondition(), reportHandler);
                 return success;
             }
 
             if (testCaseExecutorUtil.getContext().getGatfExecutorConfig().isDebugEnabled() && testCase.isDetailedLog()) {
-                getLog().info(testCase.toString());
+                logger.info(testCase.toString());
             }
 
             success = handleTestCaseExecution(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs, reportHandler);
 
             if (success) {
-                getLog().info("Successfully ran acceptance test " + testCase.getName() + "/" + testCase.getDescription());
-                getLog().info("============================================================\n\n\n");
+                logger.info("Successfully ran acceptance test " + testCase.getName() + "/" + testCase.getDescription());
+                logger.info("============================================================\n\n\n");
 
                 // Execute all the related tests if the test is a success
                 Map<String, List<TestCase>> relTstcs = testCaseExecutorUtil.getContext().getRelatedTestCases();
@@ -1645,13 +1590,13 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                     }
                 }
             } else {
-                getLog().info("Failed while acceptance test " + testCase.getName() + "/" + testCase.getDescription());
-                getLog().info("============================================================\n\n\n");
+                logger.info("Failed while acceptance test " + testCase.getName() + "/" + testCase.getDescription());
+                logger.info("============================================================\n\n\n");
             }
         } catch (Exception e) {
-            getLog().error(e);
+            logger.severe(ExceptionUtils.getStackTrace(e));
         } catch (Error e) {
-            getLog().error(e);
+            logger.severe(ExceptionUtils.getStackTrace(e));
         }
         return success;
     }
@@ -1665,23 +1610,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         }
     }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private ClassLoader getClassLoader() {
-        if (project != null) {
-            try {
-                List classpathElements = project.getCompileClasspathElements();
-                classpathElements.addAll(project.getTestClasspathElements());
-                classpathElements.add(project.getBuild().getOutputDirectory());
-                classpathElements.add(project.getBuild().getTestOutputDirectory());
-                URL[] urls = new URL[classpathElements.size()];
-                for (int i = 0; i < classpathElements.size(); i++) {
-                    urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
-                }
-                return new URLClassLoader(urls, getClass().getClassLoader());
-            } catch (Exception e) {
-                getLog().error("Couldn't get the classloader.");
-            }
-        }
         return getClass().getClassLoader();
     }
 
@@ -1691,7 +1620,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         ClassLoader oldClassLoader = currentThread.getContextClassLoader();
         try {
             currentThread.setContextClassLoader(getClassLoader());
-            getLog().info("Searching for pre/post testcase execution hooks....");
+            logger.info("Searching for pre/post testcase execution hooks....");
             List<Class> allClasses = new ArrayList<Class>();
             if (context.getGatfExecutorConfig().getTestCaseHooksPaths() != null) {
                 for (String item : context.getGatfExecutorConfig().getTestCaseHooksPaths()) {
@@ -1699,16 +1628,16 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                         List<Class> classes = ClassLoaderUtils.getClasses(item.substring(0, item.indexOf(".*")));
                         if (classes != null && classes.size() > 0) {
                             allClasses.addAll(classes);
-                            getLog().info("Adding pre/post testcase execution hook package " + item);
+                            logger.info("Adding pre/post testcase execution hook package " + item);
                         } else {
-                            getLog().error("Error:pre/post testcase execution hook package not found - " + item);
+                            logger.severe("Error:pre/post testcase execution hook package not found - " + item);
                         }
                     } else {
                         try {
                             allClasses.add(Thread.currentThread().getContextClassLoader().loadClass(item));
-                            getLog().info("Adding pre/post testcase execution hook class " + item);
+                            logger.info("Adding pre/post testcase execution hook class " + item);
                         } catch (Exception e) {
-                            getLog().error("Error:pre/post testcase execution hook class not found - " + item);
+                            logger.severe("Error:pre/post testcase execution hook class not found - " + item);
                         }
                     }
                 }
@@ -1716,10 +1645,10 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                     loadAllPrePostHooks(allClasses, context);
                 }
             } else {
-                getLog().info("No pre/post testcase execution hooks found..");
+                logger.info("No pre/post testcase execution hooks found..");
             }
 
-            getLog().info("Done scanning pre/post testcase execution hooks...");
+            logger.info("Done scanning pre/post testcase execution hooks...");
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
@@ -1737,7 +1666,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 }
             }
         } catch (Exception e) {
-            getLog().error(e);
+            logger.severe(ExceptionUtils.getStackTrace(e));
         }
     }
 
@@ -1974,7 +1903,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         }
 
         if (loadStats != null) {
-            getLog().info(loadStats.show());
+            logger.info(loadStats.show());
         }
 
         DistributedTestStatus finalStats = new DistributedTestStatus();

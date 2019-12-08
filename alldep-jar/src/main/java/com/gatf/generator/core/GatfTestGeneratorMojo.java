@@ -33,7 +33,6 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URL;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -49,6 +48,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
@@ -60,16 +60,10 @@ import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
 
 import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.InstantiationStrategy;
-import org.apache.maven.plugins.annotations.LifecyclePhase;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
-import org.codehaus.plexus.classworlds.ClassWorld;
-import org.codehaus.plexus.classworlds.realm.ClassRealm;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
@@ -97,9 +91,9 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
  * <pre>
  * {@code
  * 	<plugin>
-		<groupId>com.test</groupId>
+		<groupId>com.github.sumeetchhetri.gatf</groupId>
 		<artifactId>gatf-plugin</artifactId>
-		<version>1.0</version>
+		<version>1.0.1</version>
 		<configuration>
 			<testPaths>
 				<testPath>com.sample.services.*</testPath>
@@ -132,25 +126,10 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
  *   }
  * </pre>
  */
-@Mojo(
-		name = "gatf-generator", 
-		aggregator = false, 
-		executionStrategy = "always", 
-		inheritByDefault = true, 
-		instantiationStrategy = InstantiationStrategy.PER_LOOKUP, 
-		defaultPhase = LifecyclePhase.GENERATE_TEST_RESOURCES, 
-		requiresDependencyResolution = ResolutionScope.TEST, 
-		requiresDirectInvocation = false, 
-		requiresOnline = false, 
-		requiresProject = true, 
-		threadSafe = true)
-public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
-{
+public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 
-    @Parameter( defaultValue = "${project}", readonly = true )
-    private MavenProject project;
-
-    @Parameter(alias = "testPaths")
+	private Logger logger = Logger.getLogger(GatfTestGeneratorMojo.class.getSimpleName());
+	
     private String[] testPaths;
 
     /**
@@ -169,7 +148,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         this.testPaths = testPaths;
     }
 
-    @Parameter(alias = "soapWsdlKeyPairs")
     private String[] soapWsdlKeyPairs;
     
     public String[] getSoapWsdlKeyPairs() {
@@ -179,8 +157,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	public void setSoapWsdlKeyPairs(String[] soapWsdlKeyPairs) {
 		this.soapWsdlKeyPairs = soapWsdlKeyPairs;
 	}
-
-	@Parameter(alias = "urlPrefix")
+	
     private String urlPrefix;
 
     public String getUrlPrefix()
@@ -193,7 +170,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         this.urlPrefix = urlPrefix;
     }
     
-    @Parameter(alias = "urlSuffix")
     private String urlSuffix;
 
     public String getUrlSuffix()
@@ -205,8 +181,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     {
         this.urlSuffix = urlSuffix;
     }
-
-    @Parameter(alias = "resourcepath")
+    
     private String resourcepath;
 
     /**
@@ -225,7 +200,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         this.resourcepath = resourcepath;
     }
     
-    @Parameter(alias = "debug-enabled")
     private boolean debugEnabled;
 
     /**
@@ -244,7 +218,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         this.debugEnabled = debugEnabled;
     }
 
-    @Parameter(alias = "requestDataType")
     private String requestDataType;
     
     public String getInDataType() {
@@ -255,7 +228,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.requestDataType = requestDataType;
 	}
 	
-	@Parameter(alias = "responseDataType")
 	private String outDataType;
 
 	public String getOutDataType() {
@@ -266,7 +238,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.outDataType = outDataType;
 	}
 
-	@Parameter(alias = "overrideSecure")
 	private boolean overrideSecure;
 	
 	public boolean isOverrideSecure() {
@@ -277,7 +248,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.overrideSecure = overrideSecure;
 	}
 	
-	@Parameter(alias = "enabled")
 	private boolean enabled;
 	
 	public boolean isEnabled() {
@@ -288,7 +258,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.enabled = enabled;
 	}
 	
-	@Parameter(alias = "useSoapClient")
 	private boolean useSoapClient;
 	
 	public boolean isUseSoapClient() {
@@ -298,8 +267,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	public void setUseSoapClient(boolean useSoapClient) {
 		this.useSoapClient = useSoapClient;
 	}
-
-	@Parameter(alias = "postmanCollectionVersion")
+	
 	private int postmanCollectionVersion;
 	
 	public int getPostmanCollectionVersion() {
@@ -310,7 +278,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 		this.postmanCollectionVersion = postmanCollectionVersion;
 	}
 	
-	@Parameter(alias = "testCaseFormat")
 	private String testCaseFormat;
 	
 	public String getTestCaseFormat() {
@@ -320,8 +287,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	public void setTestCaseFormat(String testCaseFormat) {
 		this.testCaseFormat = testCaseFormat;
 	}
-
-	@Parameter(alias = "configFile")
+	
 	private String configFile;
 	
 	public String getConfigFile() {
@@ -354,11 +320,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	}
 	
 	public MavenProject getProject() {
-		return project;
+		return null;
 	}
 
 	public void setProject(MavenProject project) {
-		this.project = project;
 	}
 
 	public String getRequestDataType() {
@@ -451,7 +416,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             boolean mayBemultipartContent = false;
                             
                             if(isDebugEnabled())
-                            	getLog().info("Started looking at " + claz.getSimpleName() + " " + method.getName());
+                            	logger.info("Started looking at " + claz.getSimpleName() + " " + method.getName());
                             
                             ViewField contentvf = null;
                             Map<String, String> params = new HashMap<String, String>();
@@ -534,7 +499,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                                     if(vf!=null) {
                                     	contentvf = vf;
                                     	if(isDebugEnabled())
-                                    		getLog().info("Done looking at " + claz.getSimpleName() + " " + method.getName());
+                                    		logger.info("Done looking at " + claz.getSimpleName() + " " + method.getName());
                                     	break;
                                     } else {
                                     	mayBemultipartContent = true;
@@ -648,7 +613,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	                            	consumes = "";
 	                            }
                             } catch (Exception e) {
-                            	getLog().error(e);
+                            	logger.severe(ExceptionUtils.getStackTrace(e));
                             }
                             
                             if(consumes!=null && !consumes.trim().isEmpty()) {
@@ -755,7 +720,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         }
         catch (Exception e)
         {
-            getLog().error(e);
+            logger.severe(ExceptionUtils.getStackTrace(e));
         }
     }
 
@@ -896,8 +861,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	            viewField.setValue(getObject(clas, heirarchies));
         	}
     	} catch (Exception e) {
-    		getLog().error(e);
-    		getLog().info("Invalid class, cannot be represented as a form/object in a test case - class name = " + claz);
+    		logger.severe(ExceptionUtils.getStackTrace(e));
+    		logger.info("Invalid class, cannot be represented as a form/object in a test case - class name = " + claz);
     	}
         return viewField;
     }
@@ -953,7 +918,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 			if(isPrimitive(claz)) {
 				return getPrimitiveValue(claz);
 			}
-			getLog().error("No public no-args constructor found for class " + claz.getName());
+			logger.severe("No public no-args constructor found for class " + claz.getName());
 			return null;
 		}
     	
@@ -974,7 +939,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 			List<Type> fheirlst = new ArrayList<Type>(heirarchies);
 			
 			if(isDebugEnabled())
-				getLog().info("Parsing Class " + getHeirarchyStr(fheirlst) + " field " + field.getName() + " type " + field.getType().equals(boolean.class));
+				logger.info("Parsing Class " + getHeirarchyStr(fheirlst) + " field " + field.getName() + " type " + field.getType().equals(boolean.class));
             
 			if (isPrimitive(field.getType()))
             {
@@ -998,7 +963,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
             else if (claz.equals(field.getType()))
             {
             	if(isDebugEnabled())
-            		getLog().info("Ignoring recursive fields...");
+            		logger.info("Ignoring recursive fields...");
             }
 		}
         return object;
@@ -1146,9 +1111,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	    		heirarchies.remove(types[1]);
 	    	}
 	    	if(k==null && isDebugEnabled()) {
-	    		getLog().info(types[0].toString());
-	    		getLog().info(types[1].toString());
-	    		getLog().error("Null key " + types[0]);
+	    		logger.info(types[0].toString());
+	    		logger.info(types[1].toString());
+	    		logger.severe("Null key " + types[0]);
 	    	}
 	    	if(k!=null) {
 	    	    ((Map)object).put(k, v);
@@ -1222,43 +1187,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 
     private ClassLoader getClassLoader()
     {
-		if(project!=null)
-		{
-	        try
-	        {
-	            /*List classpathElements = project.getCompileClasspathElements();
-	            classpathElements.add(project.getBuild().getOutputDirectory());
-	            classpathElements.add(project.getBuild().getTestOutputDirectory());
-	            URL[] urls = new URL[classpathElements.size()];
-	            for (int i = 0; i < classpathElements.size(); i++)
-	            {
-	                urls[i] = new File((String) classpathElements.get(i)).toURI().toURL();
-	            }
-	            return new URLClassLoader(urls, getClass().getClassLoader());*/
-	            ClassWorld world = new ClassWorld();
-	            ClassRealm realm;
-	            realm = world.newRealm("gatf", null);
-	            for (String elt : project.getCompileSourceRoots()) {
-	                URL url = new File(elt).toURI().toURL();
-	                realm.addURL(url);
-	                if (getLog().isDebugEnabled()) {
-	                    getLog().debug("Source root: " + url);
-	                }
-	            }
-	            for (String elt : project.getCompileClasspathElements()) {
-	                URL url = new File(elt).toURI().toURL();
-	                realm.addURL(url);
-	                if (getLog().isDebugEnabled()) {
-	                    getLog().debug("Compile classpath: " + url);
-	                }
-	            }
-	            return realm;
-	        }
-	        catch (Exception e)
-	        {
-	            getLog().error("Couldn't get the classloader.");
-	        }
-		}
         return getClass().getClassLoader();
     }
 
@@ -1275,7 +1203,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
             if (!directory.exists())
             {
                 directory.mkdirs();
-                getLog().info("Creating directory for Extraction...");
+                logger.info("Creating directory for Extraction...");
             }
             ZipEntry entry = in.getNextEntry();
             while (entry != null)
@@ -1303,13 +1231,13 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                 }
                 catch (Exception e)
                 {
-                    getLog().error(e);
+                    logger.severe(ExceptionUtils.getStackTrace(e));
                 }
             }
         }
         catch (IOException ioe)
         {
-            getLog().error(ioe);
+            logger.severe(ExceptionUtils.getStackTrace(ioe));
             return;
         }
     }
@@ -1391,7 +1319,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     {
     	if(!isEnabled())
     	{
-    		getLog().info("Skipping gatf-plugin execution....");
+    		logger.info("Skipping gatf-plugin execution....");
     		return;
     	}
     	
@@ -1431,7 +1359,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     	
     	if(getResourcepath()==null) {
     		setResourcepath(".");
-    		getLog().info("No resource path specified, using the current working directory to generate testcases...");
+    		logger.info("No resource path specified, using the current working directory to generate testcases...");
     	} else {
     		File dir = new File(getResourcepath());
     		if(!dir.exists())
@@ -1445,7 +1373,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
         try
         {
             currentThread.setContextClassLoader(getClassLoader());
-            getLog().info("Inside execute");
+            logger.info("Inside execute");
             List<Class> allClasses = new ArrayList<Class>();
             if (getTestPaths() != null)
             {
@@ -1457,11 +1385,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                         if (classes != null && classes.size() > 0)
                         {
                             allClasses.addAll(classes);
-                            getLog().info("Adding package " + item);
+                            logger.info("Adding package " + item);
                         }
                         else
                         {
-                            getLog().error("Error:package not found - " + item);
+                            logger.severe("Error:package not found - " + item);
                         }
                     }
                     else
@@ -1469,11 +1397,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                         try
                         {
                             allClasses.add(Thread.currentThread().getContextClassLoader().loadClass(item));
-                            getLog().info("Adding class " + item);
+                            logger.info("Adding class " + item);
                         }
                         catch (Exception e)
                         {
-                            getLog().error("Error:class not found - " + item);
+                            logger.severe("Error:class not found - " + item);
                         }
                     }
                 }
@@ -1484,11 +1412,11 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
             }
             else
             {
-            	getLog().info("Nothing to generate..");
+            	logger.info("Nothing to generate..");
             }
             generateSoapTestCases();
             
-            getLog().info("Done execute");
+            logger.info("Done execute");
         }
         catch (Exception e)
         {
@@ -1511,7 +1439,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 				if(!wsdlLoc.trim().isEmpty())
 				{
 					String[] wsdlLocParts = wsdlLoc.split(",");
-					getLog().info("Started Parsing WSDL location - " + wsdlLocParts[1]);
+					logger.info("Started Parsing WSDL location - " + wsdlLocParts[1]);
 					
 					Wsdl wsdl = Wsdl.parse(wsdlLocParts[1]);
 					for (QName bindingName : wsdl.getBindings()) {
@@ -1578,10 +1506,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                         		String file = getResourcepath() + File.separator + wsdlLocParts[0] + "_testcases_soap.xml";
                         		xstream.toXML(tcases, new FileOutputStream(file));
                             }
-							getLog().info("Adding message for SOAP operation - " + operation.getOperationName());
+							logger.info("Adding message for SOAP operation - " + operation.getOperationName());
 						}
 					}
-					getLog().info("Done Parsing WSDL location - " + wsdlLocParts[1]);
+					logger.info("Done Parsing WSDL location - " + wsdlLocParts[1]);
 					build.append(wsdlLoc.trim()+"\n");
 				}
 			}

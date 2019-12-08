@@ -100,9 +100,9 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
  * <pre>
  * {@code
  * 	<plugin>
-		<groupId>com.test</groupId>
+		<groupId>com.github.sumeetchhetri.gatf</groupId>
 		<artifactId>gatf-plugin</artifactId>
-		<version>1.0</version>
+		<version>1.0.1</version>
 		<configuration>
 			<testPaths>
 				<testPath>com.sample.services.*</testPath>

@@ -30,11 +30,6 @@ import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.plugins.annotations.InstantiationStrategy;
-import org.apache.maven.plugins.annotations.Mojo;
-import org.apache.maven.plugins.annotations.Parameter;
-import org.apache.maven.plugins.annotations.ResolutionScope;
-import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
@@ -55,29 +50,12 @@ import com.gatf.generator.core.GatfTestGeneratorMojo;
  * @author Sumeet Chhetri
  *
  */
-@Mojo(
-		name = "gatf-config", 
-		aggregator = false, 
-		executionStrategy = "always", 
-		inheritByDefault = true, 
-		instantiationStrategy = InstantiationStrategy.PER_LOOKUP, 
-		requiresDependencyResolution = ResolutionScope.TEST, 
-		requiresDirectInvocation = true, 
-		requiresOnline = false, 
-		requiresProject = true, 
-		threadSafe = true)
 public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMojoInt {
 
-    @Parameter( defaultValue = "${project}", readonly = true )
-    private MavenProject project;
-	
-	@Parameter(alias = "rootDir", defaultValue = "${project.build.testOutputDirectory}")
 	protected String rootDir;
 	
-	@Parameter(alias = "ipAddress", defaultValue = "localhost")
 	private String ipAddress;
 	
-	@Parameter(alias = "port", defaultValue = "9080")
 	private int port;
 
 	private AcceptanceTestContext context = null;
@@ -109,9 +87,9 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
         
         handleRootContext(server, mainDir, mojo);
         
-        server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, project), "/configure");
+        server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, null), "/configure");
         
-        server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo, project), "/reports");
+        server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo, null), "/reports");
         
         server.getServerConfiguration().addHttpHandler(new GatfMiscHandler(mojo), "/misc");
         
@@ -119,9 +97,9 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
         
         server.getServerConfiguration().addHttpHandler(new GatfTestCaseHandler(mojo), "/testcases");
 		
-        server.getServerConfiguration().addHttpHandler(new GatfPluginExecutionHandler(mojo, project), "/execute");
+        server.getServerConfiguration().addHttpHandler(new GatfPluginExecutionHandler(mojo, null), "/execute");
         
-        server.getServerConfiguration().addHttpHandler(new GatfProfileHandler(mojo, project), "/profile");
+        server.getServerConfiguration().addHttpHandler(new GatfProfileHandler(mojo, null), "/profile");
 		
 		try {
 		    server.start();
