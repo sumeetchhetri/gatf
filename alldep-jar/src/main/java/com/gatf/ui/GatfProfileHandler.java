@@ -38,11 +38,11 @@ import com.gatf.executor.report.DataSourceProfiler;
  */
 public class GatfProfileHandler  extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
 	private MavenProject project;
 	
-	protected GatfProfileHandler(GatfConfigToolMojo mojo, MavenProject project) {
+	public GatfProfileHandler(GatfConfigToolMojoInt mojo, MavenProject project) {
 		super();
 		this.mojo = mojo;
 		this.project = project;

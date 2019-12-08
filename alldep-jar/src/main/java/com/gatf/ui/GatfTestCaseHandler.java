@@ -46,9 +46,9 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
 
 public class GatfTestCaseHandler extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
-	protected GatfTestCaseHandler(GatfConfigToolMojo mojo) {
+	public GatfTestCaseHandler(GatfConfigToolMojoInt mojo) {
 		super();
 		this.mojo = mojo;
 	}
@@ -69,7 +69,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		{
 			try {
 				gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-    			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
+    			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
     			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 				if(!new File(dirPath).exists()) {
 					new File(dirPath).mkdir();
@@ -87,7 +87,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		else
 		{
 			gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
+			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 			filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 		}
 		

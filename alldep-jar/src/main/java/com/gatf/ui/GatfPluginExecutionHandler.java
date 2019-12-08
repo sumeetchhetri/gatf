@@ -47,11 +47,11 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	
 	private volatile String status = "";
 	
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
 	private MavenProject project;
 	
-	protected GatfPluginExecutionHandler(GatfConfigToolMojo mojo,
+	public GatfPluginExecutionHandler(GatfConfigToolMojoInt mojo,
 			MavenProject project) {
 		super();
 		this.mojo = mojo;
@@ -138,7 +138,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							}
 						}
 
-						private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
+						private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojoInt mojo) {
 							if(executorMojo instanceof GatfTestCaseExecutorMojo) {
 								mojo.setContext(((GatfTestCaseExecutorMojo)executorMojo).getContext());
 								mojo.setAuthTestCase(((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase());
@@ -215,7 +215,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 		}
 	}
 	
-	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojo mojo) throws Exception
+	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojoInt mojo) throws Exception
 	{
 		if(type.equals("executor"))
 		{

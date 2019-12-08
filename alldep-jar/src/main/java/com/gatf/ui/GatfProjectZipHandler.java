@@ -33,9 +33,9 @@ import com.gatf.executor.finder.TestCaseFinder;
 
 public class GatfProjectZipHandler extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
-	protected GatfProjectZipHandler(GatfConfigToolMojo mojo) {
+	public GatfProjectZipHandler(GatfConfigToolMojoInt mojo) {
 		super();
 		this.mojo = mojo;
 	}
@@ -44,7 +44,7 @@ public class GatfProjectZipHandler extends HttpHandler {
 	public void service(Request request, Response response) throws Exception {
     	List<String> res = new ArrayList<String>();
     	List<String> err = new ArrayList<String>();
-    	File configDir = new File(mojo.rootDir+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
+    	File configDir = new File(mojo.getRootDir()+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
     	
     	if(new File(configDir, "gatf-test-bin.zip").exists())
     		new File(configDir, "gatf-test-bin.zip").delete();
@@ -74,20 +74,20 @@ public class GatfProjectZipHandler extends HttpHandler {
     	}
     }
 
-	protected static String zipDirectory(String zipFileName, GatfConfigToolMojo mojo, boolean isPomProject)
+	protected static String zipDirectory(String zipFileName, GatfConfigToolMojoInt mojo, boolean isPomProject)
     {
         try
         {
         	GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
 
-        	String outbasepath = gatfConfig.getOutFilesBasePath()==null?mojo.rootDir:gatfConfig.getOutFilesBasePath();
-        	String testbasepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
+        	String outbasepath = gatfConfig.getOutFilesBasePath()==null?mojo.getRootDir():gatfConfig.getOutFilesBasePath();
+        	String testbasepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
         	
         	File directory = new File(testbasepath);
         	File outdirectory = new File(outbasepath);
         	String folder = System.currentTimeMillis() + "";
         	
-        	File configDir = new File(mojo.rootDir+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
+        	File configDir = new File(mojo.getRootDir()+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
         	File zipFile = new File(configDir, zipFileName);
         	
         	File zfolder = new File(directory, folder);

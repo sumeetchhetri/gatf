@@ -40,9 +40,9 @@ import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 
 public class GatfMiscHandler extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
-	protected GatfMiscHandler(GatfConfigToolMojo mojo) {
+	public GatfMiscHandler(GatfConfigToolMojoInt mojo) {
 		super();
 		this.mojo = mojo;
 	}

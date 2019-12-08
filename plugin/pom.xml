@@ -4,22 +4,22 @@
 	<parent>
         <groupId>com.github.sumeetchhetri.gatf</groupId>
         <artifactId>gatf-parent</artifactId>
-        <version>1.0</version>
+        <version>1.0003</version>
     </parent>
     
 	<artifactId>gatf-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
 	<name>gatf-plugin</name>
-
+	
+	<dependencies>
+		<dependency>
+			<groupId>com.github.sumeetchhetri.gatf</groupId>
+			<artifactId>gatf-alldep-jar</artifactId>
+			<version>1.0003</version>
+		</dependency>
+	</dependencies>
+	
 	<build>
-		<directory>plugin-target</directory>
-		<outputDirectory>plugin-target/classes</outputDirectory>  
-		<sourceDirectory>../src</sourceDirectory>
-		<resources>
-			<resource>
-				<directory>../src/main/resources</directory>
-			</resource>
-		</resources>
 		<plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

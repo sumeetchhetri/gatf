@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.sumeetchhetri.gatf</groupId>
 	<artifactId>gatf-parent</artifactId>
-	<version>1.0</version>
+	<version>1.0003</version>
 	<packaging>pom</packaging>
 	<name>gatf</name>
 	<description>Generic Automated Test Framework For API/UI Testing</description>

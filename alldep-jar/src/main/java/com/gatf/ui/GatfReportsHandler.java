@@ -46,7 +46,7 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 public class GatfReportsHandler extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
 	private MavenProject project;
 	
@@ -56,7 +56,7 @@ public class GatfReportsHandler extends HttpHandler {
 	
 	private ReentrantLock lock = new ReentrantLock();
 	
-	public GatfReportsHandler(GatfConfigToolMojo mojo, MavenProject project) {
+	public GatfReportsHandler(GatfConfigToolMojoInt mojo, MavenProject project) {
 		super();
 		this.mojo = mojo;
 		this.project = project;
@@ -67,7 +67,7 @@ public class GatfReportsHandler extends HttpHandler {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
     		final GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
-			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.rootDir:gatfConfig.getOutFilesBasePath();
+			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.getRootDir():gatfConfig.getOutFilesBasePath();
 			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
 			if(!new File(dirPath).exists()) {
 				new File(dirPath).mkdir();
@@ -113,7 +113,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	public Object[] executeTest(GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
 	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin) throws Exception {
-	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.rootDir:gatfConfig.getTestCasesBasePath();
+	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent"))
         {
             boolean isReplay = action.equals("replayTest");

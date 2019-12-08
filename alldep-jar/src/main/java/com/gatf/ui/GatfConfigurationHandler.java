@@ -31,11 +31,11 @@ import com.gatf.generator.core.GatfConfiguration;
 
 public class GatfConfigurationHandler extends HttpHandler {
 
-	private GatfConfigToolMojo mojo;
+	private GatfConfigToolMojoInt mojo;
 	
 	private MavenProject project;
 	
-	protected GatfConfigurationHandler(GatfConfigToolMojo mojo,
+	public GatfConfigurationHandler(GatfConfigToolMojoInt mojo,
 			MavenProject project) {
 		super();
 		this.mojo = mojo;
@@ -96,7 +96,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     	}
     }
 
-	private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojo mojo) {
+	private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojoInt mojo) {
 		mojo.setContext(((GatfTestCaseExecutorMojo)executorMojo).getContext());
 		mojo.setAuthTestCase(((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase());
 	}
