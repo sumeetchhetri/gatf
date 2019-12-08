@@ -52,23 +52,9 @@ import java.util.TreeMap;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-import javax.ws.rs.Consumes;
-import javax.ws.rs.DELETE;
-import javax.ws.rs.DefaultValue;
-import javax.ws.rs.FormParam;
-import javax.ws.rs.GET;
-import javax.ws.rs.HeaderParam;
 import javax.ws.rs.HttpMethod;
-import javax.ws.rs.POST;
-import javax.ws.rs.PUT;
-import javax.ws.rs.Path;
-import javax.ws.rs.PathParam;
-import javax.ws.rs.Produces;
-import javax.ws.rs.QueryParam;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
@@ -87,8 +73,6 @@ import org.codehaus.plexus.classworlds.realm.ClassRealm;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
@@ -398,19 +382,27 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
             {
                 classTypes.put(claz.getSimpleName(), 0);
 
-                Annotation theClassPath = claz.getAnnotation(Path.class);
-                if (theClassPath == null)
-                    theClassPath = claz.getAnnotation(RequestMapping.class);
+                Class<?> pathCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.Path");
+                Annotation theClassPath = claz.getAnnotation(pathCls);
+                if (theClassPath == null) {
+                	pathCls = Thread.currentThread().getContextClassLoader().loadClass("org.springframework.web.bind.annotation.RequestMapping");
+                    theClassPath = claz.getAnnotation(pathCls);
+                }
 
-                if (theClassPath != null)
+                if (theClassPath!=null)
                 {
                 	List<TestCase> tcases = new ArrayList<TestCase>();
                     Method[] methods = claz.getMethods();
                     for (Method method : methods)
                     {
-                        Annotation theMethodPath = method.getAnnotation(Path.class);
-                        if (theMethodPath == null)
-                            theMethodPath = method.getAnnotation(RequestMapping.class);
+                    	Annotation[] mal = method.getDeclaredAnnotations();
+                    	Annotation theMethodPath = null;
+                    	for(Annotation a : mal) {
+                    		if(a.annotationType().getName().equals("javax.ws.rs.Path") || a.annotationType().getName().equals("org.springframework.web.bind.annotation.RequestMapping")) {
+                    			theMethodPath = a;
+                    			break;
+                    		}
+                    	}
                         if (theMethodPath != null)
                         {
                         	TestCase tcase = new TestCase();
@@ -418,20 +410,26 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             String httpMethod = "";
                             String consumes = "text/plain";
 
-                            if (theClassPath instanceof Path && theMethodPath instanceof Path)
+                            if (theClassPath.annotationType().getName().equals("javax.ws.rs.Path") && theMethodPath.annotationType().getName().equals("javax.ws.rs.Path"))
                             {
-                                Path cpath = (Path) theClassPath;
-                                Path mpath = (Path) theMethodPath;
-                                completeServicePath = cpath.value() + mpath.value();
+                            	Method cvm = theClassPath.annotationType().getMethod("value");
+                            	Method mvm = theMethodPath.annotationType().getMethod("value");
+                                completeServicePath = (String)cvm.invoke(theClassPath) + (String)mvm.invoke(theMethodPath);
                             }
-                            else if (theClassPath instanceof RequestMapping
-                                    && theMethodPath instanceof RequestMapping)
+                            else if (theClassPath.annotationType().getName().equals("org.springframework.web.bind.annotation.RequestMapping")
+                                    && theMethodPath.annotationType().getName().equals("org.springframework.web.bind.annotation.RequestMapping"))
                             {
-                                RequestMapping cpath = (RequestMapping) theClassPath;
-                                RequestMapping mpath = (RequestMapping) theMethodPath;
-                                completeServicePath = cpath.value()[0] + mpath.value()[0];
-                                httpMethod = mpath.method()[0].name();
-                                consumes = mpath.consumes()[0];
+                            	Method vm = theClassPath.annotationType().getMethod("value");
+                            	String[] cv = (String[])vm.invoke(theClassPath);
+                            	vm = theMethodPath.annotationType().getMethod("value");
+                            	String[] mv = (String[])vm.invoke(theMethodPath);
+                                completeServicePath = cv[0] + mv[0];
+                                vm = theMethodPath.annotationType().getMethod("method");
+                                Object[] arr = (Object[])vm.invoke(theMethodPath);
+                                httpMethod = arr[0].toString();
+                                vm = theMethodPath.annotationType().getMethod("consumes");
+                                arr = (Object[])vm.invoke(theMethodPath);
+                                consumes = arr[0].toString();
                             }
                             else
                             {
@@ -465,51 +463,66 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                                 {
                                     String formpnm = null;
 
-                                    if (annotations[0] instanceof FormParam)
+                                    if (annotations[0].annotationType().getName().equals("javax.ws.rs.FormParam"))
                                     {
-                                    	formpnm = ((FormParam) annotations[0]).value();
-                                    	if(annotations[1]!=null)
-                                    		params.put(formpnm, ((DefaultValue)annotations[1]).value());
+                                    	Method vm = annotations[0].annotationType().getMethod("value");
+                                    	formpnm = (String)vm.invoke(annotations[0]);
+                                    	if(annotations[1]!=null && annotations[1].annotationType().getName().equals("javax.ws.rs.DefaultValue")) {
+                                    		vm = annotations[1].annotationType().getMethod("value");
+                                    		params.put(formpnm, (String)vm.invoke(annotations[1]));
+                                    	}
                                     	else
                                     		params.put(formpnm, String.valueOf(getPrimitiveValue(argTypes[i])));
                                     	continue;
                                     }
                                     
-                                    if (annotations[0] instanceof RequestParam)
+                                    if (annotations[0].annotationType().getName().equals("org.springframework.web.bind.annotation.RequestParam"))
                                     {
+                                    	Method vm = annotations[0].annotationType().getMethod("value");
+                                    	String v = (String)vm.invoke(annotations[0]);
+                                    	vm = annotations[0].annotationType().getMethod("defaultValue");
+                                    	String dv = (String)vm.invoke(annotations[0]);
                                         if (completeServiceSubmitPath.indexOf("?") == -1)
                                             completeServiceSubmitPath += "?";
                                         if(completeServiceSubmitPath.charAt(completeServiceSubmitPath.length()-1)!='&')
                                         	completeServiceSubmitPath += "&";
-                                        if(((RequestParam) annotations[0]).defaultValue()!=null)
-                                        	completeServiceSubmitPath += ((RequestParam) annotations[0]).value() + "={"
-                                                    + ((RequestParam) annotations[0]).defaultValue() + "}&";
+                                        if(dv!=null)
+                                        	completeServiceSubmitPath += v + "={" + dv + "}&";
                                         else
-                                        	completeServiceSubmitPath += ((RequestParam) annotations[0]).value() + "={"
-                                        			+ ((RequestParam) annotations[0]).value() + "}&";
+                                        	completeServiceSubmitPath += v + "={" + v + "}&";
                                         continue;
                                     }
 
-                                    if (annotations[0] instanceof QueryParam)
+                                    if (annotations[0].annotationType().getName().equals("javax.ws.rs.QueryParam"))
                                     {
+                                    	Method vm = annotations[0].annotationType().getMethod("value");
+                                    	String v = (String)vm.invoke(annotations[0]);
                                         if (completeServiceSubmitPath.indexOf("?") == -1)
                                             completeServiceSubmitPath += "?";
                                         if(completeServiceSubmitPath.charAt(completeServiceSubmitPath.length()-1)!='&')
                                         	completeServiceSubmitPath += "&";
-                                        if(annotations[1]!=null)
-                                        	completeServiceSubmitPath += ((QueryParam) annotations[0]).value() + "={"
-                                                    + ((DefaultValue)annotations[1]).value() + "}&";
+                                        if(annotations[1]!=null && annotations[1].annotationType().getName().equals("javax.ws.rs.DefaultValue")) {
+                                    		vm = annotations[1].annotationType().getMethod("value");
+                                    		completeServiceSubmitPath += v + "={" + (String)vm.invoke(annotations[1]) + "}&";
+                                    	}
                                         else
-                                        	completeServiceSubmitPath += ((QueryParam) annotations[0]).value() + "={"
-                                                    + ((QueryParam) annotations[0]).value() + "}&";
+                                        	completeServiceSubmitPath += v + "={" + v + "}&";
                                         continue;
                                     }
 
-                                    if (annotations[0] instanceof HeaderParam)
+                                    if (annotations[0].annotationType().getName().equals("javax.ws.rs.PathParam"))
                                     {
-                                        formpnm = ((HeaderParam) annotations[0]).value();
-                                    	if(annotations[1]!=null)
-                                    		hparams.put(formpnm, ((DefaultValue)annotations[1]).value());
+                                        continue;
+                                    }
+
+                                    if (annotations[0].annotationType().getName().equals("javax.ws.rs.HeaderParam"))
+                                    {
+                                    	Method vm = annotations[0].annotationType().getMethod("value");
+                                    	formpnm = (String)vm.invoke(annotations[0]);
+                                    	if(annotations[1]!=null && annotations[1].annotationType().getName().equals("javax.ws.rs.DefaultValue")) {
+                                    		vm = annotations[1].annotationType().getMethod("value");
+                                    		hparams.put(formpnm, (String)vm.invoke(annotations[1]));
+                                    	}
                                     	else
                                     		hparams.put(formpnm, String.valueOf(getPrimitiveValue(argTypes[i])));
                                         continue;
@@ -531,28 +544,32 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 
                             classTypes.put(claz.getSimpleName(), classTypes.get(claz.getSimpleName()) + 1);
 
-                            Annotation hm = method.getAnnotation(POST.class);
+                            Class postCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.POST");
+                            Annotation hm = method.getAnnotation(postCls);
                             if (hm != null)
                             {
                                 httpMethod = "POST";
                             }
                             else
                             {
-                                hm = method.getAnnotation(GET.class);
+                            	Class getCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.GET");
+                                hm = method.getAnnotation(getCls);
                                 if (hm != null)
                                 {
                                     httpMethod = "GET";
                                 }
                                 else
                                 {
-                                    hm = method.getAnnotation(PUT.class);
+                                	Class putCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.PUT");
+                                    hm = method.getAnnotation(putCls);
                                     if (hm != null)
                                     {
                                         httpMethod = "PUT";
                                     }
                                     else
                                     {
-                                        hm = method.getAnnotation(DELETE.class);
+                                    	Class delCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.DELETE");
+                                        hm = method.getAnnotation(delCls);
                                         if (hm != null)
                                         {
                                             httpMethod = "DELETE";
@@ -561,10 +578,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                                 }
                             }
 
-                            Annotation annot = method.getAnnotation(Consumes.class);
+                            Class conCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.Consumes");
+                            Annotation annot = method.getAnnotation(conCls);
                             if (annot != null)
                             {
-                                consumes = ((Consumes) annot).value()[0];
+                            	Method vm = annot.annotationType().getMethod("value");
+                                consumes = ((String[])vm.invoke(annot))[0];
                             }
                             
                             String produces = null;
@@ -576,10 +595,12 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
                             	produces = MediaType.TEXT_PLAIN;
                             }
                             
-                            annot = method.getAnnotation(Produces.class);
+                            Class prdCls = Thread.currentThread().getContextClassLoader().loadClass("javax.ws.rs.Produces");
+                            annot = method.getAnnotation(prdCls);
                             if (annot != null)
                             {
-                            	produces = ((Produces) annot).value()[0];
+                            	Method vm = annot.annotationType().getMethod("value");
+                            	produces = ((String[])vm.invoke(annot))[0];
                             }
 
                             String content = "";
@@ -746,11 +767,14 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
     	{
 	    	for (Annotation annotation : annotations) 
 	    	{
-				if(annotation instanceof FormParam || annotation instanceof QueryParam
-		                || annotation instanceof RequestParam || annotation instanceof HeaderParam
-		                || annotation instanceof PathParam)
+	    		@SuppressWarnings("rawtypes")
+				Class clas = annotation.annotationType();
+				if(clas.getName().equals("javax.ws.rs.FormParam") || clas.getName().equals("javax.ws.rs.QueryParam")
+						|| clas.getName().equals("javax.ws.rs.HeaderParam") || clas.getName().equals("javax.ws.rs.PathParam")
+		                || clas.getName().equals("org.springframework.web.bind.annotation.RequestParam")
+		                || clas.getName().equals("org.springframework.web.bind.annotation.PathParam"))
 					annot[0] = annotation;
-				if(annotation instanceof DefaultValue)
+				if(clas.getName().equals("javax.ws.rs.DefaultValue"))
 					annot[1] = annotation;
 			}
     	}
@@ -842,8 +866,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin
 	        else if (clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.Attachment")
 	        		|| clas.getName().equals("org.apache.cxf.message.Attachment")
 	        		|| clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.MultipartBody")
-	        		|| clas.equals(MultivaluedMap.class)
-	        		|| clas.equals(MultivaluedHashMap.class)
+	        		|| clas.getName().equals("javax.ws.rs.core.MultivaluedMap")
+	        		|| clas.getName().equals("javax.ws.rs.core.MultivaluedHashMap")
 	        		|| 
 	        		(isCollection(clas) && clas.getTypeParameters().length>0 
 	        				&& clas.getTypeParameters()[0].toString().equals("class org.apache.cxf.jaxrs.ext.multipart.Attachment"))
