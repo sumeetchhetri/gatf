@@ -33,12 +33,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.FutureTask;
+import java.util.function.Function;
 import java.util.logging.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.project.MavenProject;
 import org.openqa.selenium.logging.LoggingPreferences;
 
 import com.gatf.GatfPlugin;
@@ -77,16 +75,16 @@ import com.gatf.selenium.SeleniumTest;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 import com.gatf.selenium.SeleniumTestSession;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
-import com.gatf.ui.GatfConfigToolMojo;
+import com.gatf.ui.GatfConfigToolUtil;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri The maven plugin main class for the Test case Executor/Workflow engine
  */
-public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin {
+public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
-	private Logger logger = Logger.getLogger(GatfTestCaseExecutorMojo.class.getSimpleName());
+	private Logger logger = Logger.getLogger(GatfTestCaseExecutorUtil.class.getSimpleName());
     
     private String baseUrl;
 
@@ -191,8 +189,19 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
     private Thread tclgenerator = null;
 
     private TestCase authTestCase;
+    
+    private Function<Void, ClassLoader> fcl = new Function<Void, ClassLoader>() {
+		@Override
+		public ClassLoader apply(Void t) {
+			return getClass().getClassLoader();
+		}
+	};
 
-    public void setProject(MavenProject project) {
+	public void setFcl(Function<Void, ClassLoader> fcl) {
+		this.fcl = fcl;
+	}
+
+	public void setProject(Object project) {
     }
 
     public void setBaseUrl(String baseUrl) {
@@ -399,8 +408,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         return allTestCases;
     }
 
-    public void execute() throws MojoFailureException {
-
+    public void execute() throws Exception {
         GatfExecutorConfig configuration = new GatfExecutorConfig();
         configuration.setAuthEnabled(authEnabled);
         configuration.setAuthExtractAuth(authExtractAuth);
@@ -567,7 +575,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         for (String selscript : configuration.getSeleniumScripts()) {
             try {
                 Object[] retvals = new Object[4];
-                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, getClassLoader(), context, retvals, configuration);
+                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration);
                 tests.add(dyn);
                 testdata.add(retvals);
                 testClassNames.add(dyn.getClass().getName());
@@ -904,12 +912,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         }
     }
 
-    public void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException {
+    public void doExecute(GatfPluginConfig configuration, List<String> files) throws Exception {
         doExecute((GatfExecutorConfig) configuration, files);
     }
 
     @SuppressWarnings({"rawtypes"})
-    public void doExecute(GatfExecutorConfig configuration, List<String> files) throws MojoFailureException {
+    public void doExecute(GatfExecutorConfig configuration, List<String> files) throws Exception {
 
         if (configuration.isGenerateExecutionLogs() && !configuration.isSeleniumExecutor()) {
             tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
@@ -1237,7 +1245,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         if (loadStats != null) {
             logger.info(loadStats.show());
             if (loadStats.getFailedTestCount() > 0) {
-                throw new MojoFailureException(loadStats.getFailedTestCount() + " testcases have failed");
+                throw new RuntimeException(loadStats.getFailedTestCount() + " testcases have failed");
             }
         }
 
@@ -1330,8 +1338,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             runnable.run();
     }
 
-    public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws MojoFailureException {
-        context = new AcceptanceTestContext(configuration, getClassLoader());
+    public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception {
+        context = new AcceptanceTestContext(configuration, fcl.apply(null));
         try {
             context.validateAndInit(flag);
             if (flag) {
@@ -1339,7 +1347,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             }
         } catch (Throwable e) {
             logger.severe(ExceptionUtils.getStackTrace(e));
-            throw new MojoFailureException("Configuration is invalid", e);
+            throw new RuntimeException("Configuration is invalid", e);
         }
     }
 
@@ -1612,16 +1620,12 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         }
     }
 
-    private ClassLoader getClassLoader() {
-        return getClass().getClassLoader();
-    }
-
     @SuppressWarnings("rawtypes")
     public void setupTestCaseHooks(AcceptanceTestContext context) {
         Thread currentThread = Thread.currentThread();
         ClassLoader oldClassLoader = currentThread.getContextClassLoader();
         try {
-            currentThread.setContextClassLoader(getClassLoader());
+            currentThread.setContextClassLoader(fcl.apply(null));
             logger.info("Searching for pre/post testcase execution hooks....");
             List<Class> allClasses = new ArrayList<Class>();
             if (context.getGatfExecutorConfig().getTestCaseHooksPaths() != null) {
@@ -1675,7 +1679,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
     public static void main(String[] args) throws Exception {
 
         if (args.length > 1 && args[0].equals("-executor") && !args[1].trim().isEmpty()) {
-            GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+            GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
             mojo.setConfigFile(args[1]);
             mojo.setNumConcurrentExecutions(1);
             mojo.setHttpConnectionTimeout(10000);
@@ -1692,7 +1696,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
             mojo.setOutFilesBasePath(System.getProperty("user.dir"));
             mojo.execute();
         } else if (args.length > 1 && args[0].equals("-selenium") && !args[1].trim().isEmpty()) {
-            GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+            GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
             mojo.setConfigFile(args[1]);
             mojo.setNumConcurrentExecutions(1);
             mojo.setHttpConnectionTimeout(10000);
@@ -1712,7 +1716,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
                 && !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
         {
-            GatfConfigToolMojo.main(args);
+            GatfConfigToolUtil.main(args);
         }
         else if(args.length > 1 && args[0].equals("-listener"))
         {
@@ -1730,7 +1734,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 
     @SuppressWarnings("rawtypes")
     public DistributedTestStatus handleDistributedTests(DistributedAcceptanceContext dContext, DistributedTestContext tContext) {
-        context = new AcceptanceTestContext(dContext, getClassLoader());
+        context = new AcceptanceTestContext(dContext, fcl.apply(null));
         context.handleTestDataSourcesAndHooks(context.getGatfExecutorConfig().getGatfTestDataConfig());
 
         GatfExecutorConfig configuration = context.getGatfExecutorConfig();
@@ -1917,8 +1921,8 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
         return finalStats;
     }
 
-    public DistributedTestStatus handleDistributedSeleniumTests(DistributedAcceptanceContext dContext, List<Class<SeleniumTest>> classes, DistributedTestContext tContext) throws MojoFailureException {
-        context = new AcceptanceTestContext(dContext, getClassLoader());
+    public DistributedTestStatus handleDistributedSeleniumTests(DistributedAcceptanceContext dContext, List<Class<SeleniumTest>> classes, DistributedTestContext tContext) throws Exception {
+        context = new AcceptanceTestContext(dContext, fcl.apply(null));
         context.handleTestDataSourcesAndHooks(dContext.getConfig().getGatfTestDataConfig());
 
         long concurrentUserRampUpTimeMs = 0;

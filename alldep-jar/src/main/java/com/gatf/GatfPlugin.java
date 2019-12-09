@@ -17,12 +17,23 @@
 package com.gatf;
 
 import java.util.List;
+import java.util.Set;
 
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.project.MavenProject;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.TestCase;
+import com.gatf.executor.executor.TestCaseExecutorUtil;
+import com.gatf.executor.report.TestCaseReport;
 
 public interface GatfPlugin {
-	void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException;
-	void setProject(MavenProject project);
+	void doExecute(GatfPluginConfig configuration, List<String> files) throws Exception;
+	void setProject(Object project);
 	void shutdown();
+	void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception;
+	AcceptanceTestContext getContext();
+	void setContext(AcceptanceTestContext context);
+	List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames, List<String> targetFileNames);
+	TestCase getAuthTestCase();
+	void invokeServerLogApi(boolean success, TestCaseReport testCaseReport, TestCaseExecutorUtil testCaseExecutorUtil, boolean isFetchFailureLogs);
+	void doSeleniumTest(GatfExecutorConfig configuration, List<String> files);
 }

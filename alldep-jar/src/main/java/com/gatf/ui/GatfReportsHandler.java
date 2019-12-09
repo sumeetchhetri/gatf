@@ -21,12 +21,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
-import org.apache.maven.project.MavenProject;
 import org.apache.velocity.VelocityContext;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -34,9 +34,9 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.XMLTestCaseFinder;
@@ -48,7 +48,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	private GatfConfigToolMojoInt mojo;
 	
-	private MavenProject project;
+	private Function<String, GatfPlugin> f;
 	
 	private AcceptanceTestContext context = null;
 	
@@ -56,17 +56,17 @@ public class GatfReportsHandler extends HttpHandler {
 	
 	private ReentrantLock lock = new ReentrantLock();
 	
-	public GatfReportsHandler(GatfConfigToolMojoInt mojo, MavenProject project) {
+	public GatfReportsHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
 		this.mojo = mojo;
-		this.project = project;
+		this.f = f;
 	}
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
-    		final GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+    		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.getRootDir():gatfConfig.getOutFilesBasePath();
 			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
 			if(!new File(dirPath).exists()) {
@@ -103,7 +103,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    response.setStatus((HttpStatus)out[0]);
 			}
     	} catch (Exception e) {
-    		GatfConfigToolMojo.handleError(e, response, null);
+    		GatfConfigToolUtil.handleError(e, response, null);
 		} finally {
 		    if(lock.isLocked()) {
 		        lock.unlock();
@@ -139,7 +139,7 @@ public class GatfReportsHandler extends HttpHandler {
                     throw new RuntimeException("Testcase does not exist");
                 }
                 
-                GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
+                GatfPlugin executorMojo = f.apply("executor");
 
                 lock.lock();
                 
@@ -147,7 +147,6 @@ public class GatfReportsHandler extends HttpHandler {
                     context = mojo.getContext();
                 } else if(context==null) {
                     try {
-                        executorMojo.setProject(project);
                         executorMojo.initilaizeContext(gatfConfig, true);
                         context = executorMojo.getContext();
                     } catch (Exception e) {
@@ -287,8 +286,7 @@ public class GatfReportsHandler extends HttpHandler {
             {
                 AcceptanceTestContext context = null;
                 try {
-                    GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
-                    executorMojo.setProject(project);
+                	GatfPlugin executorMojo = f.apply("executor");
                     executorMojo.initilaizeContext(gatfConfig, false);
                     context = executorMojo.getContext();
                 } catch (Exception e) {
@@ -356,8 +354,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 AcceptanceTestContext context = null;
                 try {
-                    GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
-                    executorMojo.setProject(project);
+                	GatfPlugin executorMojo = f.apply("executor");
                     executorMojo.initilaizeContext(gatfConfig, false);
                     context = executorMojo.getContext();
                 } catch (Exception e) {
@@ -485,12 +482,11 @@ public class GatfReportsHandler extends HttpHandler {
                     }
                 }
 
-                GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
+                GatfPlugin executorMojo = f.apply("executor");
                 
                 lock.lock();
                 
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
-                    executorMojo.setProject(project);
                     executorMojo.initilaizeContext(gatfConfig, true);
                     gatfConfig.setSeleniumScripts(new String[]{filePath});
                     executorMojo.doSeleniumTest(gatfConfig, null);
@@ -504,7 +500,6 @@ public class GatfReportsHandler extends HttpHandler {
                         context = mojo.getContext();
                     } else if(context==null) {
                         try {
-                            executorMojo.setProject(project);
                             executorMojo.initilaizeContext(gatfConfig, true);
                             context = executorMojo.getContext();
                         } catch (Exception e) {

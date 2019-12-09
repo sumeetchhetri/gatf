@@ -477,7 +477,7 @@ public class TestCaseExecutorUtil {
             }
 		}
 		
-		if(testCase.getMethod().toUpperCase().equals("post") || testCase.getMethod().toUpperCase().equals("put")) {
+		if(testCase.getMethod().equalsIgnoreCase("post") || testCase.getMethod().equalsIgnoreCase("put")) {
 			if(body==null) {
 				body = RequestBody.create(null, StringUtils.EMPTY);
 			}

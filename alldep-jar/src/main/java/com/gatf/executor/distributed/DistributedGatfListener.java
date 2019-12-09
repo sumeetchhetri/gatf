@@ -38,7 +38,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -138,7 +138,7 @@ public class DistributedGatfListener {
 					logger.info("Fetched GATF tests ...");
 					
 					logger.info("Started executing GATF tests...");
-					GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+					GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
 					
 					boolean isLoadTestingEnabled = context.getConfig().isLoadTestingEnabled() && context.getConfig().getLoadTestingTime()>10000;
 					
@@ -390,7 +390,7 @@ public class DistributedGatfListener {
                         oos.flush();
                         logger.info("Selenium Test Request");
                         
-                        GatfTestCaseExecutorMojo mojo = new GatfTestCaseExecutorMojo();
+                        GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
                         DistributedTestStatus report = mojo.handleDistributedSeleniumTests(context, tests, tContext);
                         mojo.shutdown();
                         Thread.sleep(2000);

@@ -1014,7 +1014,7 @@ public class TestCase implements Serializable {
 					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE))
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
 			
-			//if(("POST".equals(getMethod()) || "PUT".equals(getMethod())) && getHeaders().isEmpty())
+			//if(("POST".equalsIgnoreCase(getMethod()) || "PUT".equalsIgnoreCase(getMethod())) && getHeaders().isEmpty())
 			//	throw new RuntimeException("No Content-Type Header provided");
 		}
 		

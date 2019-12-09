@@ -15,9 +15,10 @@
 */
 package com.gatf.ui;
 
+import java.util.function.Function;
+
 import javax.ws.rs.core.MediaType;
 
-import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -26,20 +27,19 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.GatfPlugin;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.generator.core.GatfConfiguration;
 
 public class GatfConfigurationHandler extends HttpHandler {
 
 	private GatfConfigToolMojoInt mojo;
 	
-	private MavenProject project;
+	private Function<String, GatfPlugin> f = null;
 	
-	public GatfConfigurationHandler(GatfConfigToolMojoInt mojo,
-			MavenProject project) {
+	public GatfConfigurationHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
 		this.mojo = mojo;
-		this.project = project;
+		this.f = f;
 	}
 
 	@Override
@@ -50,12 +50,12 @@ public class GatfConfigurationHandler extends HttpHandler {
     		try {
     			String configJson = null;
     			if(configType.equalsIgnoreCase("executor")) {
-    				GatfConfigToolMojo.createConfigFileIfNotExists(mojo, true, null);
-    				GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+    				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, true, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
         			configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(gatfConfig);
     			} else if(configType.equalsIgnoreCase("generator")) {
-    				GatfConfigToolMojo.createConfigFileIfNotExists(mojo, false, null);
-    				GatfConfiguration gatfConfig = GatfConfigToolMojo.getGatfConfiguration(mojo, null);
+    				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, false, null);
+    				GatfConfiguration gatfConfig = GatfConfigToolUtil.getGatfConfiguration(mojo, null);
         			configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(gatfConfig);
     			}
     			response.setContentType(MediaType.APPLICATION_JSON);
@@ -63,19 +63,18 @@ public class GatfConfigurationHandler extends HttpHandler {
 	            response.getWriter().write(configJson);
 	            response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {
-				GatfConfigToolMojo.handleError(e, response, null);
+				GatfConfigToolUtil.handleError(e, response, null);
 			}
     	} else if(request.getMethod().equals(Method.POST) ) {
     		try {
     			if(configType.equalsIgnoreCase("executor")) {
     				GatfExecutorConfig gatfConfig = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
         					GatfExecutorConfig.class);
-    				GatfConfigToolMojo.getGatfExecutorConfig(mojo, gatfConfig);
-    				GatfPlugin executorMojo = GatfPluginExecutionHandler.getGatfPlugin(configType);
-        			if(executorMojo instanceof GatfTestCaseExecutorMojo) {
-    					executorMojo.setProject(project);
+    				GatfConfigToolUtil.getGatfExecutorConfig(mojo, gatfConfig);
+    				GatfPlugin executorMojo = f.apply(configType);
+        			if(executorMojo instanceof GatfTestCaseExecutorUtil) {
     					try {
-    						((GatfTestCaseExecutorMojo)executorMojo).initilaizeContext(gatfConfig, true);
+    						((GatfTestCaseExecutorUtil)executorMojo).initilaizeContext(gatfConfig, true);
     						initializeMojoProps(executorMojo, mojo);
     					} catch (Throwable e) {
     						e.printStackTrace();
@@ -87,17 +86,17 @@ public class GatfConfigurationHandler extends HttpHandler {
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfiguration gatfConfig = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
         					GatfConfiguration.class);
-    				GatfConfigToolMojo.getGatfConfiguration(mojo, gatfConfig);
+    				GatfConfigToolUtil.getGatfConfiguration(mojo, gatfConfig);
     			}
     			response.setStatus(HttpStatus.OK_200);
 			} catch (Throwable e) {
-				GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+				GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
     	}
     }
 
 	private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojoInt mojo) {
-		mojo.setContext(((GatfTestCaseExecutorMojo)executorMojo).getContext());
-		mojo.setAuthTestCase(((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase());
+		mojo.setContext(((GatfTestCaseExecutorUtil)executorMojo).getContext());
+		mojo.setAuthTestCase(((GatfTestCaseExecutorUtil)executorMojo).getAuthTestCase());
 	}
 }

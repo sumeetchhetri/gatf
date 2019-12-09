@@ -17,12 +17,12 @@ package com.gatf.ui;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -32,10 +32,9 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
-import com.gatf.generator.core.GatfTestGeneratorMojo;
 
 public class GatfPluginExecutionHandler extends HttpHandler {
 
@@ -49,13 +48,12 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	
 	private GatfConfigToolMojoInt mojo;
 	
-	private MavenProject project;
+	private Function<String, GatfPlugin> f;
 	
-	public GatfPluginExecutionHandler(GatfConfigToolMojoInt mojo,
-			MavenProject project) {
+	public GatfPluginExecutionHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
 		this.mojo = mojo;
-		this.project = project;
+		this.f = f;
 	}
 
 	@Override
@@ -107,8 +105,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					final GatfPluginConfig config = gatfConfig;
 					_executorThread = new Thread(new Runnable() {
 						public void run() {
-							GatfPlugin executorMojo = getGatfPlugin(pluginType);
-    						executorMojo.setProject(project);
+							GatfPlugin executorMojo = f.apply(pluginType);
     						try {
 								executorMojo.doExecute(config, files);
 								initializeMojoProps(executorMojo, mojo);
@@ -139,9 +136,9 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						}
 
 						private void initializeMojoProps(GatfPlugin executorMojo, GatfConfigToolMojoInt mojo) {
-							if(executorMojo instanceof GatfTestCaseExecutorMojo) {
-								mojo.setContext(((GatfTestCaseExecutorMojo)executorMojo).getContext());
-								mojo.setAuthTestCase(((GatfTestCaseExecutorMojo)executorMojo).getAuthTestCase());
+							if(executorMojo instanceof GatfTestCaseExecutorUtil) {
+								mojo.setContext(((GatfTestCaseExecutorUtil)executorMojo).getContext());
+								mojo.setAuthTestCase(((GatfTestCaseExecutorUtil)executorMojo).getAuthTestCase());
 							}
 						}
 					});
@@ -198,33 +195,21 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				}
         	}
 		} catch (Exception e) {
-			GatfConfigToolMojo.handleErrorJson(e, response, HttpStatus.BAD_REQUEST_400);
+			GatfConfigToolUtil.handleErrorJson(e, response, HttpStatus.BAD_REQUEST_400);
 			return;
 		}
     }
-
-	protected static GatfPlugin getGatfPlugin(String type)
-	{
-		if(type.equals("executor"))
-		{
-			return new GatfTestCaseExecutorMojo();
-		}
-		else
-		{
-			return new GatfTestGeneratorMojo();
-		}
-	}
 	
 	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojoInt mojo) throws Exception
 	{
 		if(type.equals("executor"))
 		{
-			GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			return gatfConfig;
 		}
 		else
 		{
-			GatfConfiguration gatfConfig = GatfConfigToolMojo.getGatfConfiguration(mojo, null);
+			GatfConfiguration gatfConfig = GatfConfigToolUtil.getGatfConfiguration(mojo, null);
 			return gatfConfig;
 		}
 	}

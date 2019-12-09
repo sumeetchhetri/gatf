@@ -51,38 +51,34 @@ import java.util.TreeMap;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
-
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
-
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.maven.plugin.AbstractMojo;
-import org.apache.maven.plugin.MojoFailureException;
-import org.apache.maven.project.MavenProject;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
-
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.distributed.DistributedGatfListener;
+import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
+import com.gatf.executor.report.TestCaseReport;
 import com.gatf.generator.postman.PostmanCollection;
-import com.gatf.ui.GatfConfigToolMojo;
+import com.gatf.ui.GatfConfigToolUtil;
 import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 import com.thoughtworks.xstream.io.xml.XppDriver;
-
-
 
 /**
  * @author Sumeet Chhetri<br/>
@@ -126,109 +122,93 @@ import com.thoughtworks.xstream.io.xml.XppDriver;
  *   }
  * </pre>
  */
-public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
+public class GatfTestGeneratorUtil implements GatfPlugin {
 
-	private Logger logger = Logger.getLogger(GatfTestGeneratorMojo.class.getSimpleName());
+	private Logger logger = Logger.getLogger(GatfTestGeneratorUtil.class.getSimpleName());
+
+    private boolean debugEnabled;
 	
+	private boolean enabled;
+
+    private String requestDataType;
+    
     private String[] testPaths;
-
-    /**
-     * @return the testPaths
-     */
-    public String[] getTestPaths()
-    {
-        return testPaths;
-    }
-
-    /**
-     * @param testPaths packageNames/classes to set
-     */
-    public void setTestPaths(String[] testPaths)
-    {
-        this.testPaths = testPaths;
-    }
 
     private String[] soapWsdlKeyPairs;
     
-    public String[] getSoapWsdlKeyPairs() {
+    private String urlPrefix;
+
+    private String resourcepath;
+    
+	private String outDataType;
+    
+    private String urlSuffix;
+	
+	private boolean useSoapClient;
+	
+	private String testCaseFormat;
+	
+	private int postmanCollectionVersion;
+
+	private boolean overrideSecure;
+	
+	private String configFile;
+	
+	public Logger getLogger() {
+		return logger;
+	}
+
+	public void setLogger(Logger logger) {
+		this.logger = logger;
+	}
+
+	public String[] getTestPaths() {
+		return testPaths;
+	}
+
+	public void setTestPaths(String[] testPaths) {
+		this.testPaths = testPaths;
+	}
+
+	public String[] getSoapWsdlKeyPairs() {
 		return soapWsdlKeyPairs;
 	}
 
 	public void setSoapWsdlKeyPairs(String[] soapWsdlKeyPairs) {
 		this.soapWsdlKeyPairs = soapWsdlKeyPairs;
 	}
-	
-    private String urlPrefix;
 
-    public String getUrlPrefix()
-    {
-        return urlPrefix;
-    }
-
-    public void setUrlPrefix(String urlPrefix)
-    {
-        this.urlPrefix = urlPrefix;
-    }
-    
-    private String urlSuffix;
-
-    public String getUrlSuffix()
-    {
-        return urlSuffix;
-    }
-
-    public void setUrlSuffix(String urlSuffix)
-    {
-        this.urlSuffix = urlSuffix;
-    }
-    
-    private String resourcepath;
-
-    /**
-     * @return the resourcepath
-     */
-    public String getResourcepath()
-    {
-        return resourcepath;
-    }
-
-    /**
-     * @param resourcepath the resourcepath to set
-     */
-    public void setResourcepath(String resourcepath)
-    {
-        this.resourcepath = resourcepath;
-    }
-    
-    private boolean debugEnabled;
-
-    /**
-     * @return the debugEnabled
-     */
-    public boolean isDebugEnabled()
-    {
-        return debugEnabled;
-    }
-
-    /**
-     * @param debugEnabled the debugEnabled to set
-     */
-    public void setDebugEnabled(boolean debugEnabled)
-    {
-        this.debugEnabled = debugEnabled;
-    }
-
-    private String requestDataType;
-    
-    public String getInDataType() {
-		return requestDataType;
+	public String getUrlPrefix() {
+		return urlPrefix;
 	}
 
-	public void setInDataType(String requestDataType) {
-		this.requestDataType = requestDataType;
+	public void setUrlPrefix(String urlPrefix) {
+		this.urlPrefix = urlPrefix;
 	}
-	
-	private String outDataType;
+
+	public String getUrlSuffix() {
+		return urlSuffix;
+	}
+
+	public void setUrlSuffix(String urlSuffix) {
+		this.urlSuffix = urlSuffix;
+	}
+
+	public String getResourcepath() {
+		return resourcepath;
+	}
+
+	public void setResourcepath(String resourcepath) {
+		this.resourcepath = resourcepath;
+	}
+
+	public boolean isDebugEnabled() {
+		return debugEnabled;
+	}
+
+	public void setDebugEnabled(boolean debugEnabled) {
+		this.debugEnabled = debugEnabled;
+	}
 
 	public String getOutDataType() {
 		return outDataType;
@@ -238,8 +218,6 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 		this.outDataType = outDataType;
 	}
 
-	private boolean overrideSecure;
-	
 	public boolean isOverrideSecure() {
 		return overrideSecure;
 	}
@@ -247,9 +225,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	public void setOverrideSecure(boolean overrideSecure) {
 		this.overrideSecure = overrideSecure;
 	}
-	
-	private boolean enabled;
-	
+
 	public boolean isEnabled() {
 		return enabled;
 	}
@@ -257,9 +233,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	public void setEnabled(boolean enabled) {
 		this.enabled = enabled;
 	}
-	
-	private boolean useSoapClient;
-	
+
 	public boolean isUseSoapClient() {
 		return useSoapClient;
 	}
@@ -267,9 +241,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	public void setUseSoapClient(boolean useSoapClient) {
 		this.useSoapClient = useSoapClient;
 	}
-	
-	private int postmanCollectionVersion;
-	
+
 	public int getPostmanCollectionVersion() {
 		return postmanCollectionVersion;
 	}
@@ -277,9 +249,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	public void setPostmanCollectionVersion(int postmanCollectionVersion) {
 		this.postmanCollectionVersion = postmanCollectionVersion;
 	}
-	
-	private String testCaseFormat;
-	
+
 	public String getTestCaseFormat() {
 		return testCaseFormat;
 	}
@@ -287,9 +257,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	public void setTestCaseFormat(String testCaseFormat) {
 		this.testCaseFormat = testCaseFormat;
 	}
-	
-	private String configFile;
-	
+
 	public String getConfigFile() {
 		return configFile;
 	}
@@ -318,12 +286,8 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 		}
 		return url;
 	}
-	
-	public MavenProject getProject() {
-		return null;
-	}
 
-	public void setProject(MavenProject project) {
+	public void setProject(Object project) {
 	}
 
 	public String getRequestDataType() {
@@ -338,7 +302,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
      * @param classes Generates all testcases for all the rest-full services found in the classes discovered
      */
     @SuppressWarnings({ "rawtypes", "unchecked" })
-    private void generateRestTestCases(List<Class> classes)
+    protected void generateRestTestCases(List<Class> classes)
     {
         try
         {
@@ -582,7 +546,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	                            {
 	                            	content = (String)contentvf.getValue();
 	                            }
-	                            else if(("JSON".equalsIgnoreCase(getInDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, consumes))
+	                            else if(("JSON".equalsIgnoreCase(getRequestDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, consumes))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
 	                            	if(contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.map.annotate.JsonSerialize.class)
@@ -596,7 +560,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
                                 	}
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
-	                            else if (("XML".equalsIgnoreCase(getInDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_XML_TYPE, consumes))
+	                            else if (("XML".equalsIgnoreCase(getRequestDataType()) || TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_XML_TYPE, consumes))
 	                            		&& contentvf!=null && contentvf.getValue()!=null)
 	                            {
 	                            	JAXBContext context = JAXBContext.newInstance(contentvf.getValue().getClass());
@@ -607,9 +571,9 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	                                content = writer.toString();
 	                                consumes = MediaType.APPLICATION_XML;
 	                            }
-	                            else if((httpMethod.equals("POST") || httpMethod.equals("PUT")) && mayBemultipartContent) {
+	                            else if((httpMethod.equalsIgnoreCase("POST") || httpMethod.equalsIgnoreCase("PUT")) && mayBemultipartContent) {
 	                            	consumes = MediaType.MULTIPART_FORM_DATA;
-	                            } else if(httpMethod.equals("GET") || httpMethod.equals("DELETE")) {
+	                            } else if(httpMethod.equalsIgnoreCase("GET") || httpMethod.equalsIgnoreCase("DELETE")) {
 	                            	consumes = "";
 	                            }
                             } catch (Exception e) {
@@ -1260,31 +1224,31 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	    		
 	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
 	    		
-	    		GatfTestGeneratorMojo testGenerator = new GatfTestGeneratorMojo();
+	    		GatfTestGeneratorUtil testGenerator = new GatfTestGeneratorUtil();
 	    		testGenerator.setDebugEnabled(config.isDebugEnabled());
 	    		testGenerator.setEnabled(config.isEnabled());
-	    		testGenerator.setInDataType(config.getRequestDataType());
+	    		testGenerator.setRequestDataType(config.getRequestDataType());
 	    		testGenerator.setTestPaths(config.getTestPaths());
 	    		testGenerator.setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
 	    		testGenerator.setUrlPrefix(config.getUrlPrefix());
 	    		testGenerator.setResourcepath(config.getResourcepath());
-	    		testGenerator.setInDataType(config.getRequestDataType());
 	    		testGenerator.setOutDataType(config.getResponseDataType()); 
 	    		testGenerator.setOverrideSecure(config.isOverrideSecure());
 	    		testGenerator.setUrlSuffix(config.getUrlSuffix());
 	    		testGenerator.setUseSoapClient(config.isUseSoapClient());
 	    		testGenerator.setTestCaseFormat(config.getTestCaseFormat());
 	    		testGenerator.setPostmanCollectionVersion(config.getPostmanCollectionVersion());
+	    		testGenerator.setOverrideSecure(config.isOverrideSecure());
 	    		testGenerator.execute();
     		}
     		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
     		{
-    			GatfTestCaseExecutorMojo.main(args);
+    			GatfTestCaseExecutorUtil.main(args);
     		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
     		{
-    			GatfConfigToolMojo.main(args);
+    			GatfConfigToolUtil.main(args);
     		}
     		else if(args[0].equals("-listener"))
     		{
@@ -1307,6 +1271,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
 					"java -jar gatf-plugin-{version}.jar -listener\n");
 		}
+		System.exit(0);
     }
 
     /*
@@ -1340,18 +1305,18 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 	    		
 	    		setDebugEnabled(config.isDebugEnabled());
 	    		setEnabled(config.isEnabled());
-	    		setInDataType(config.getRequestDataType());
+	    		setRequestDataType(config.getRequestDataType());
 	    		setTestPaths(config.getTestPaths());
 	    		setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
 	    		setUrlPrefix(config.getUrlPrefix());
 	    		setResourcepath(config.getResourcepath());
-	    		setInDataType(config.getRequestDataType());
 	    		setOutDataType(config.getResponseDataType()); 
 	    		setOverrideSecure(config.isOverrideSecure());
 	    		setUrlSuffix(config.getUrlSuffix());
 	    		setUseSoapClient(config.isUseSoapClient());
 	    		setTestCaseFormat(config.getTestCaseFormat());
 	    		setPostmanCollectionVersion(config.getPostmanCollectionVersion());
+	    		setOverrideSecure(config.isOverrideSecure());
 			} catch (Exception e) {
 				throw new AssertionError(e);
 			}
@@ -1428,7 +1393,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
         }
     }
 
-	private void generateSoapTestCases() {
+	protected void generateSoapTestCases() {
 		try {
 			
 			if(getSoapWsdlKeyPairs()==null || getSoapWsdlKeyPairs().length==0)
@@ -1554,26 +1519,59 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 		return xstream.toXML(configuration);
 	}
 
-	public void doExecute(GatfPluginConfig configuration, List<String> files) throws MojoFailureException {
+	public void doExecute(GatfPluginConfig configuration, List<String> files) throws Exception {
 		GatfConfiguration config = (GatfConfiguration)configuration;
 		
 		setDebugEnabled(false);
 		setEnabled(config.isEnabled());
-		setInDataType(config.getRequestDataType());
+		setRequestDataType(config.getRequestDataType());
 		setTestPaths(config.getTestPaths());
 		setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
 		setUrlPrefix(config.getUrlPrefix());
 		setResourcepath(config.getResourcepath());
-		setInDataType(config.getRequestDataType());
 		setOutDataType(config.getResponseDataType()); 
 		setOverrideSecure(config.isOverrideSecure());
 		setUrlSuffix(config.getUrlSuffix());
 		setUseSoapClient(config.isUseSoapClient());
 		setTestCaseFormat(config.getTestCaseFormat());
 		setPostmanCollectionVersion(config.getPostmanCollectionVersion());
+		setOverrideSecure(config.isOverrideSecure());
 		execute();
 	}
 
 	public void shutdown() {
+	}
+
+	@Override
+	public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception {
+	}
+
+	@Override
+	public AcceptanceTestContext getContext() {
+		return null;
+	}
+
+	@Override
+	public void setContext(AcceptanceTestContext context) {
+	}
+
+	@Override
+	public TestCase getAuthTestCase() {
+		return null;
+	}
+
+	@Override
+	public void invokeServerLogApi(boolean b, TestCaseReport testCaseReport, TestCaseExecutorUtil testCaseExecutorUtil,
+			boolean serverLogsApiAuthEnabled) {
+	}
+
+	@Override
+	public List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames,
+			List<String> targetFileNames) {
+		return null;
+	}
+
+	@Override
+	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
 	}
 }

@@ -59,7 +59,7 @@ import org.skyscreamer.jsonassert.JSONAssert;
 import com.AlphanumComparator;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
@@ -683,7 +683,7 @@ public class ReportHandler {
 						context.put("testcaseReports", reportingJson);
 						allTestCases.clear();
 						context.put("compareStats", "{}");
-						InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+						InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
 			            if (resourcesIS != null)
 			            {
 			            	
@@ -813,7 +813,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
             	
@@ -1059,7 +1059,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
             	
@@ -1160,7 +1160,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
             	
@@ -1220,7 +1220,7 @@ public class ReportHandler {
             }
             File resource = new File(basePath, config.getOutFilesDir());
             
-            InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
                 unzipZipFile(resourcesIS, resource.getAbsolutePath());
@@ -1262,7 +1262,7 @@ public class ReportHandler {
             }
             File resource = new File(basePath, config.getOutFilesDir());
             
-            InputStream resourcesIS = GatfTestCaseExecutorMojo.class.getResourceAsStream("/gatf-resources.zip");
+            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
                 unzipZipFile(resourcesIS, resource.getAbsolutePath());

@@ -52,7 +52,7 @@ public class GatfMiscHandler extends HttpHandler {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	if(request.getMethod().equals(Method.GET) ) {
     		try {
-    			GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+    			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			
     			Map<String, List<String>> miscMap = new HashMap<String, List<String>>();
 				if(gatfConfig.getGatfTestDataConfig()!=null && 
@@ -101,7 +101,7 @@ public class GatfMiscHandler extends HttpHandler {
 	            response.getWriter().write(configJson);
 	            response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {
-				GatfConfigToolMojo.handleError(e, response, null);
+				GatfConfigToolUtil.handleError(e, response, null);
 			}
     	}
     }

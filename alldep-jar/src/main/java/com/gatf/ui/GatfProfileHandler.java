@@ -17,19 +17,19 @@ package com.gatf.ui;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.lang.StringUtils;
-import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.GatfPlugin;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.report.DataSourceProfiler;
 
 /**
@@ -40,12 +40,12 @@ public class GatfProfileHandler  extends HttpHandler {
 
 	private GatfConfigToolMojoInt mojo;
 	
-	private MavenProject project;
+	private Function<String, GatfPlugin> f = null;
 	
-	public GatfProfileHandler(GatfConfigToolMojoInt mojo, MavenProject project) {
+	public GatfProfileHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
 		this.mojo = mojo;
-		this.project = project;
+		this.f = f;
 	}
 
 	@Override
@@ -53,14 +53,13 @@ public class GatfProfileHandler  extends HttpHandler {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	if(request.getMethod().equals(Method.GET) ) {
     		try {
-    			final GatfExecutorConfig gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+    			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String dsnames = request.getParameter("dsnames");
     			if(StringUtils.isBlank(dsnames) || dsnames.equalsIgnoreCase("all")) {
     				dsnames = null;
     			}
     			try {
-					GatfTestCaseExecutorMojo executorMojo = new GatfTestCaseExecutorMojo();
-					executorMojo.setProject(project);
+    				GatfPlugin executorMojo = f.apply("executor");
 					executorMojo.initilaizeContext(gatfConfig, true);
 					DataSourceProfiler profiler = new DataSourceProfiler(executorMojo.getContext());
 					Map<String, List<List<String>>> retval = profiler.getProfileStats(dsnames);
@@ -74,7 +73,7 @@ public class GatfProfileHandler  extends HttpHandler {
 					throw new RuntimeException("Something went wrong...");
 				}
     		} catch (Exception e) {
-				GatfConfigToolMojo.handleError(e, response, null);
+				GatfConfigToolUtil.handleError(e, response, null);
 			} 
     	}
 	}

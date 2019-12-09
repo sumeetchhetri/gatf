@@ -2,7 +2,7 @@ package com.gatf.selenium.plugins;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.report.TestCaseReport;
-import com.gatf.ui.GatfConfigToolMojo;
+import com.gatf.ui.GatfConfigToolUtil;
 import com.gatf.ui.GatfReportsHandler;
 
 /**
@@ -19,7 +19,7 @@ public class ApiPlugin {
             testname = testname.substring(testname.indexOf("@")+1);
         }
         
-        GatfConfigToolMojo mojo = new GatfConfigToolMojo();
+        GatfConfigToolUtil mojo = new GatfConfigToolUtil();
         mojo.setContext((AcceptanceTestContext)args[args.length-1]);
         
         int index = (Integer)args[args.length-2];

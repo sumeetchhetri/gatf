@@ -68,7 +68,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		if(!isApiIntType)
 		{
 			try {
-				gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+				gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
     			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
 				if(!new File(dirPath).exists()) {
@@ -80,13 +80,13 @@ public class GatfTestCaseHandler extends HttpHandler {
     				throw new RuntimeException("Test case file does not exist");
     			}
 			} catch (Exception e) {
-				GatfConfigToolMojo.handleError(e, response, null);
+				GatfConfigToolUtil.handleError(e, response, null);
 				return;
 			}
 		}
 		else
 		{
-			gatfConfig = GatfConfigToolMojo.getGatfExecutorConfig(mojo, null);
+			gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 			filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
 		}
@@ -125,7 +125,7 @@ public class GatfTestCaseHandler extends HttpHandler {
         			
         			response.setStatus(HttpStatus.OK_200);
     		} catch (Exception e) {
-    			GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+    			GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && !isSelTc)) {
     		try {
@@ -202,7 +202,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     			
     			response.setStatus(HttpStatus.OK_200);
 			} catch (Throwable e) {
-				GatfConfigToolMojo.handleError(e, response, null);
+				GatfConfigToolUtil.handleError(e, response, null);
 			}
     	} else if(request.getMethod().equals(Method.GET)) {
     		try {
@@ -280,7 +280,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     		    }
         		response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {
-				GatfConfigToolMojo.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+				GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
     	}
     }
