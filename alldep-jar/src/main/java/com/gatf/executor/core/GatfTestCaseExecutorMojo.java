@@ -16,6 +16,7 @@ package com.gatf.executor.core;
 import java.io.File;
 import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -545,8 +546,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
-        System.setProperty("java.home", configuration.getJavaHome());
+        //System.setProperty("java.home", configuration.getJavaHome());
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+        Security.setProperty("crypto.policy", "unlimited");
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();

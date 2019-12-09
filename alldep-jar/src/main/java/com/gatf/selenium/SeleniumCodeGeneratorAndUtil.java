@@ -69,10 +69,6 @@ public class SeleniumCodeGeneratorAndUtil {
 		retvals[1] = StringUtils.join(commands, '\n');
 		retvals[3] = sourceCode;
 	    
-        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-
         List<String> optionList = new ArrayList<String>();
         optionList.add("-classpath");
         
@@ -91,53 +87,60 @@ public class SeleniumCodeGeneratorAndUtil {
         File srcfile = new File(dir, cmd.getClassName()+".java");
         retvals[2] = srcfile.getAbsolutePath();
         FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
-        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
-        JavaCompiler.CompilationTask task = compiler.getTask(
-            null, 
-            fileManager, 
-            diagnostics, 
-            optionList, 
-            null, 
-            compilationUnit);
-        /********************************************************************************************* Compilation Requirements **/
-        if (task.call()) {
-        	URL[] urls = new URL[1];
+        
+        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        
+        
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if(compiler!=null) {
+	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
+	        JavaCompiler.CompilationTask task = compiler.getTask(
+	            null, 
+	            fileManager, 
+	            diagnostics, 
+	            optionList, 
+	            null, 
+	            compilationUnit);
+	        if (task.call()) {
+	        	URL[] urls = new URL[1];
+	            urls[0] = gcdir.toURI().toURL();
+	            if(classLoader==null) {
+	            	classLoader = new URLClassLoader(urls, loader);
+	            }
+	            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
+	            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
+	        }
+        }
+        
+        ProcessBuilder pb = new ProcessBuilder("\"" + config.getJavaHome() + "/bin/javac\"", "-classpath", 
+                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar-1.8.jar"), "\"" + retvals[2].toString() + "\"");
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
+
+        boolean errd = false;
+        String err = null;
+        while((err = inStreamReader.readLine()) != null) {
+            errd |= err.indexOf("error:")!=-1;
+        }
+        if(errd) {
+            for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                System.out.format("Error on line %d in %s%n",
+                        diagnostic.getLineNumber(),
+                        diagnostic.getSource().toUri());
+                System.out.println(diagnostic.toString());
+            }
+            return null;
+        } else {
+            URL[] urls = new URL[1];
             urls[0] = gcdir.toURI().toURL();
             if(classLoader==null) {
-            	classLoader = new URLClassLoader(urls, loader);
+                classLoader = new URLClassLoader(urls, loader);
             }
-            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
+            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName(), true, classLoader);
+            //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
             return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
-        } else {
-            ProcessBuilder pb = new ProcessBuilder("\"" + config.getJavaHome() + "/bin/javac\"", "-classpath", 
-                    (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar-1.8.jar"), "\"" + retvals[2].toString() + "\"");
-            pb.redirectErrorStream(true);
-            Process process = pb.start();
-            BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
-
-            boolean errd = false;
-            String err = null;
-            while((err = inStreamReader.readLine()) != null) {
-                errd |= err.indexOf("error:")!=-1;
-            }
-            if(errd) {
-                for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-                    System.out.format("Error on line %d in %s%n",
-                            diagnostic.getLineNumber(),
-                            diagnostic.getSource().toUri());
-                    System.out.println(diagnostic.toString());
-                }
-                return null;
-            } else {
-                URL[] urls = new URL[1];
-                urls[0] = gcdir.toURI().toURL();
-                if(classLoader==null) {
-                    classLoader = new URLClassLoader(urls, loader);
-                }
-                Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName(), true, classLoader);
-                //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-                return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
-            }
         }
 	}
 	
