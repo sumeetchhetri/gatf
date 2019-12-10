@@ -114,7 +114,7 @@ public class SeleniumCodeGeneratorAndUtil {
         }
         
         ProcessBuilder pb = new ProcessBuilder("\"" + config.getJavaHome() + "/bin/javac\"", "-classpath", 
-                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar-1.8.jar"), "\"" + retvals[2].toString() + "\"");
+                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar.jar"), "\"" + retvals[2].toString() + "\"");
         pb.redirectErrorStream(true);
         Process process = pb.start();
         BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 

@@ -876,7 +876,7 @@ public class Command {
         int cnt = 1;
         for (String s : scmds)
         {
-            lio.add(new Object[]{s, cnt++, fn, fn.getParentFile().getAbsolutePath(), state});
+            lio.add(new Object[]{s, cnt++, fn, fn.getParentFile()!=null?fn.getParentFile().getAbsolutePath():"", state});
         }
 
         get(tcmd, lio.listIterator(), state);

@@ -52,11 +52,9 @@ import org.openqa.selenium.WebDriver.TargetLocator;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
-import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
-import org.openqa.selenium.logging.Logs;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
@@ -612,26 +610,26 @@ public abstract class SeleniumTest {
         {
             this.status = true;
             this.internalTestRes = test.getSession().internalTestRs;
-            Logs logs = d.manage().logs();
+            /*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
                 LogEntries logEntries = logs.get(s);
                 if(logEntries!=null && !logEntries.getAll().isEmpty()) {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
-            }
+            }*/
         }
         public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, LoggingPreferences ___lp___) {
             this.status = false;
             this.internalTestRes = test.getSession().internalTestRs;
-            Logs logs = d.manage().logs();
+            /*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
                 LogEntries logEntries = logs.get(s);
                 if(logEntries!=null && !logEntries.getAll().isEmpty()) {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
-            }
+            }*/
             List<LogEntry> entries = new ArrayList<LogEntry>();
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
             entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
