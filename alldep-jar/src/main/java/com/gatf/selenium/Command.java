@@ -575,7 +575,8 @@ public class Command {
                 || cmd.toLowerCase().startsWith("randomize ") || cmd.toLowerCase().startsWith("actions ")
                 || cmd.toLowerCase().startsWith("robot ") ||  cmd.toLowerCase().equals("scrollup") 
                 || cmd.toLowerCase().equals("scrolldown") || cmd.toLowerCase().equals("scrollpageup") 
-                || cmd.toLowerCase().equals("scrollpagedown")) {
+                || cmd.toLowerCase().equals("scrollpagedown")
+                || cmd.toLowerCase().startsWith("upload ")) {
             comd = handleActions(cmd, null, cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("var ")) {
             comd = new VarCommand(cmd.substring(4), cmdDetails, state);
@@ -585,6 +586,8 @@ public class Command {
             comd = new ExecCommand(cmd.substring(5), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("execjs ")) {
             comd = new ExecJsCommand(cmd.substring(7), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("canvas ")) {
+            comd = new CanvasCommand(cmd.substring(7), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("subtest ") || cmd.toLowerCase().equals("subtest")) {
             comd = new SubTestCommand(cmd.substring((cmd.toLowerCase().equals("subtest")?7:8)), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("require ")) {
@@ -642,6 +645,8 @@ public class Command {
         Command comd = null;
         if (cmd.toLowerCase().startsWith("type ")) {
             comd = new TypeCommand(cmd.substring(5), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("upload ")) {
+            comd = new UploadCommand(cmd.substring(7), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("randomize ")) {
             comd = new RandomizeCommand(cmd.substring(10), cmdDetails, state, fcmd);
         } else if (cmd.toLowerCase().startsWith("chord ")) {
@@ -1518,6 +1523,35 @@ public class Command {
 				"Examples :-",
 	    		"\texecjs 'console.log(\"Hello\");'",
 	    		"\texecjs '$(\"#elid\").click();'"
+            };
+        }
+    }
+
+    public static class CanvasCommand extends Command {
+        String code;
+        CanvasCommand(String code, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            code = state.unsanitize(code);
+            if(code.charAt(0)==code.charAt(code.length()-1)) {
+                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
+                    code = code.substring(1, code.length()-1);
+                }
+            }
+            this.code = code;
+        }
+        String toCmd() {
+            return "canvas \"" + code + "\"";
+        }
+        String javacode() {
+            return "if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript(\"var c = document.getElementById('"+esc(code)+"');var ctx = c.getContext(\\\"2d\\\");" + 
+            		"ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();\");}";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Draw a circle in a canvas element",
+				"\tcanvas {canvas-id}",
+				"Examples :-",
+	    		"\tcanvas 'somecanvasele'",
             };
         }
     }
@@ -3413,13 +3447,15 @@ public class Command {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
                         || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand) {
+                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
                             tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
                         } else if(c instanceof ChordCommand) {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        } else if(c instanceof UploadCommand) {
+                            tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
                         }
                     }
                 }
@@ -3457,13 +3493,15 @@ public class Command {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
                         || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand) {
+                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
                             tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
                         } else if(c instanceof ChordCommand) {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        } else if(c instanceof UploadCommand) {
+                            tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
                         }
                     }
                 }
@@ -3494,13 +3532,15 @@ public class Command {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
                         || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand) {
+                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
                             tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
                         } else if(c instanceof ChordCommand) {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        } else if(c instanceof UploadCommand) {
+                            tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
                         }
                     }
                 }
@@ -3693,7 +3733,8 @@ public class Command {
                     Command c = children.get(0);
                     if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                             || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                            || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand) {
+                            || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
+                            || c instanceof UploadCommand) {
                         if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                             b.append(c.selcode(topele));
                         }
@@ -3803,6 +3844,9 @@ public class Command {
                 b.append("\n" + state.currvarname() + ".get(0)." + action + "(" + (post!=null?post:"") + ");");
             }
             return b.toString();*/
+        	if(action.equalsIgnoreCase("upload")) {
+        		return "\nuploadFile(___ce___, "+post+")";
+        	}
             if(actionsVar!=null) {
                 return "\n"+actionsVar+".moveToElement(___ce___.get(0))."+action+"(" + (post!=null?post:"") + ").perform();";
             } else {
@@ -3946,6 +3990,56 @@ public class Command {
         		"\ttype {text} {find-expr}",
         		"Examples :-",
         		"\ttype 'abc' id@'ele1'",
+            };
+        }
+    }
+    
+    public static class UploadCommand extends FindCommandImpl {
+        String value;
+        UploadCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length>0) {
+                parts[0] = parts[0].trim();
+                value = parts[0];
+                value = state.unsanitize(value);
+                if(value.charAt(0)==value.charAt(value.length()-1)) {
+                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+                        value = value.substring(1, value.length()-1);
+                    }
+                }
+                if(parts.length>1){
+                    cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
+                }
+            } else {
+                //excep
+            }
+        }
+        String toCmd() {
+            return "upload \"" + value + "\"" + (cond!=null?cond.toCmd():"");
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            if(cond!=null) {
+                b.append(cond.javacodeonly(children));
+                b.append(cond.getActionable("uploadFile", "evaluate(\""+esc(value)+"\")", null));
+            } else {
+                b.append("\nuploadFile("+state.currvarname()+", evaluate(\""+esc(value)+"\"));");
+            }
+            return b.toString();
+        }
+        String selcode(String varnm) {
+            if(varnm==null) {
+                varnm = state.currvarname();
+            }
+            return "\nuploadFile("+varnm+", evaluate(\""+esc(value)+"\"));";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Upload file",
+        		"\tupload {filepath} {find-expr}",
+        		"Examples :-",
+        		"\tupload '/path/to/file.txt' id@'ele1'",
             };
         }
     }

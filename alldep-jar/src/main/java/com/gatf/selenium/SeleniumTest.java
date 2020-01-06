@@ -15,6 +15,7 @@
  */
 package com.gatf.selenium;
 
+import java.awt.AWTException;
 import java.io.File;
 import java.io.Serializable;
 import java.lang.reflect.Method;
@@ -1040,6 +1041,22 @@ public abstract class SeleniumTest {
         return el;
     }
     
+    protected void uploadFile(List<WebElement> ret, String filePath) {
+    	ret.get(0).click();
+    	java.awt.datatransfer.StringSelection ss = new java.awt.datatransfer.StringSelection(filePath);
+    	java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+		try {
+			java.awt.Robot robot21 = new java.awt.Robot();
+			robot21.keyPress(java.awt.event.KeyEvent.VK_CONTROL);
+	    	robot21.keyPress(java.awt.event.KeyEvent.VK_V);
+	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_V);
+	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_CONTROL);
+	    	robot21.keyPress(java.awt.event.KeyEvent.VK_ENTER);
+	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
+		} catch (AWTException e) {
+		}
+    }
+    
     private void elementAction(List<WebElement> ret, String action, String tvalue) {
         if(action.equalsIgnoreCase("click")) {
             for(final WebElement we: ret) {
@@ -1073,6 +1090,8 @@ public abstract class SeleniumTest {
                 we.sendKeys(tvalue);
                 break;
             }
+        } else if(action.equalsIgnoreCase("upload")) {
+        	uploadFile(ret, tvalue);
         } else if(action.equalsIgnoreCase("select")) {
             
         } else if(action.equalsIgnoreCase("chord")) {
