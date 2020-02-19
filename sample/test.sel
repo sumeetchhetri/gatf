@@ -28,3 +28,4 @@ subtest "sb3" @3
 		??30 id@"$user" type "$userval"
 	}
 }
+screenshot "/Users/sumeetc/Documents/1.jpg"

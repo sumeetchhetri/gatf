@@ -435,18 +435,18 @@ public class Command {
             }
         }*/ else if (cmd.startsWith("?") || cmd.startsWith("?!")) {
             boolean isIfNot = cmd.startsWith("?!");
-            cmd = cmd.substring((isIfNot?2:1));
+            cmd = cmd.substring((isIfNot?2:1)).trim();
             comd = new IfCommand(isIfNot, cmdDetails, state);
             ((IfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
             ((IfCommand)comd).cond.suppressErr = true;
         } else if (cmd.startsWith(":?") || cmd.startsWith(":?!")) {
             boolean isIfNot = cmd.startsWith(":?!");
-            cmd = cmd.substring((isIfNot?3:2));
+            cmd = cmd.substring((isIfNot?3:2)).trim();
             comd = new ElseIfCommand(isIfNot, cmdDetails, state);
             ((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
             ((ElseIfCommand)comd).cond.suppressErr = true;
         } else if (cmd.startsWith(":")) {
-            cmd = cmd.substring(1);
+            cmd = cmd.substring(1).trim();
             comd = new ElseCommand(cmdDetails, state);
         } else if (cmd.startsWith("#provider ")) {
             cmd = cmd.substring(9).trim();
@@ -485,7 +485,7 @@ public class Command {
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
         } else if (cmd.startsWith("#transient-suite-provider ")) {
-            cmd = cmd.substring(19).trim();
+            cmd = cmd.substring(25).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
@@ -497,11 +497,11 @@ public class Command {
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
         } else if (cmd.startsWith("## ")) {
-            cmd = cmd.substring(2);
+            cmd = cmd.substring(2).trim();
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("# ")) {
-            cmd = cmd.substring(1);
+            cmd = cmd.substring(1).trim();
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("[")) {
@@ -539,7 +539,7 @@ public class Command {
             comd = new GotoCommand(cmdDetails, state);
             ((GotoCommand)comd).url = url;
         } else if (cmd.toLowerCase().startsWith("layer ")) {
-            comd = new LayerCommand(cmd.substring(6), cmdDetails, state);
+            comd = new LayerCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("break")) {
             comd = new BreakCommand(cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("continue")) {
@@ -555,15 +555,15 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("maximize")) {
             comd = new MaximizeCommand(cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("window_set ")) {
-            comd = new WindowSetPropertyCommand(cmd.substring(11), cmdDetails, state);
+            comd = new WindowSetPropertyCommand(cmd.substring(11).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("frame ")) {
-            comd = new FrameCommand(cmd.substring(6), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("tab ") || cmd.toLowerCase().equals("tab")) {
-            comd = new TabCommand(cmd.substring(cmd.toLowerCase().equals("tab")?3:4), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("window ") || cmd.toLowerCase().equals("window")) {
-            comd = new WindowCommand(cmd.substring(cmd.toLowerCase().equals("window")?6:7), cmdDetails, state);
+            comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("tab ")) {
+            comd = new TabCommand(cmd.substring(4).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("window ")) {
+            comd = new WindowCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
-            comd = new SleepCommand(cmd.substring(6), cmdDetails, state);
+            comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
                 || cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")
                 || cmd.toLowerCase().startsWith("doubleclick ") || cmd.toLowerCase().equals("doubleclick")
@@ -579,48 +579,48 @@ public class Command {
                 || cmd.toLowerCase().startsWith("upload ")) {
             comd = handleActions(cmd, null, cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("var ")) {
-            comd = new VarCommand(cmd.substring(4), cmdDetails, state);
+            comd = new VarCommand(cmd.substring(4).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("jsvar ")) {
-            comd = new JsVarCommand(cmd.substring(6), cmdDetails, state);
+            comd = new JsVarCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("exec ")) {
-            comd = new ExecCommand(cmd.substring(5), cmdDetails, state);
+            comd = new ExecCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("execjs ")) {
-            comd = new ExecJsCommand(cmd.substring(7), cmdDetails, state);
+            comd = new ExecJsCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("canvas ")) {
-            comd = new CanvasCommand(cmd.substring(7), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("subtest ") || cmd.toLowerCase().equals("subtest")) {
-            comd = new SubTestCommand(cmd.substring((cmd.toLowerCase().equals("subtest")?7:8)), cmdDetails, state);
+            comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("subtest ")) {
+            comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("require ")) {
-            comd = new RequireCommand(cmd.substring(8), cmdDetails, state);
+            comd = new RequireCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
-            comd = new ImportCommand(cmd.substring(7), cmdDetails, state);
+            comd = new ImportCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("screenshot")) {
-            comd = new ScreenshotCommand(cmd.substring(10), cmdDetails, state);
+            comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {
-            comd = new EleScreenshotCommand(cmd.substring(15), cmdDetails, state);
-        } else if(cmd.toLowerCase().equals("alert") || cmd.toLowerCase().startsWith("alert ")) {
-            comd = new AlertCommand(cmd.substring((cmd.toLowerCase().equals("alert")?5:6)), cmdDetails, state);
-        } else if(cmd.toLowerCase().equals("confirm") || cmd.toLowerCase().startsWith("confirm ")) {
-            comd = new ConfirmCommand(cmd.substring((cmd.toLowerCase().equals("confirm")?7:8)), cmdDetails, state);
+            comd = new EleScreenshotCommand(cmd.substring(15).trim(), cmdDetails, state);
+        } else if(cmd.toLowerCase().startsWith("alert ")) {
+            comd = new AlertCommand(cmd.substring(6).trim(), cmdDetails, state);
+        } else if(cmd.toLowerCase().startsWith("confirm ")) {
+            comd = new ConfirmCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("zoom ") || cmd.toLowerCase().startsWith("pinch ") 
                 || cmd.toLowerCase().startsWith("tap ") || cmd.toLowerCase().equals("rotate")
                 || cmd.toLowerCase().equals("hidekeypad") || cmd.toLowerCase().startsWith("touch ")
                 || cmd.toLowerCase().startsWith("swipe ") || cmd.toLowerCase().equals("shake")) {
             if(cmd.toLowerCase().startsWith("zoom ")) {
-                comd = new MZoomCommand(cmd.substring(5), cmdDetails, state);
+                comd = new MZoomCommand(cmd.substring(5).trim(), cmdDetails, state);
             } else if(cmd.toLowerCase().startsWith("pinch ")) {
-                comd = new MPinchCommand(cmd.substring(6), cmdDetails, state);
+                comd = new MPinchCommand(cmd.substring(6).trim(), cmdDetails, state);
             } else if(cmd.toLowerCase().startsWith("tap ")) {
-                comd = new MTapCommand(cmd.substring(4), cmdDetails, state);
-            } else if(cmd.toLowerCase().equals("rotate")) {
+                comd = new MTapCommand(cmd.substring(4).trim(), cmdDetails, state);
+            } else if(cmd.toLowerCase().trim().equals("rotate")) {
                 comd = new MRotateCommand(cmdDetails, state);
-            } else if(cmd.toLowerCase().equals("hidekeypad")) {
+            } else if(cmd.toLowerCase().trim().equals("hidekeypad")) {
                 comd = new MHideKeyPadCommand(cmdDetails, state);
             } else if(cmd.toLowerCase().startsWith("touch ")) {
-                comd = new MTouchActionCommand(cmd.substring(6), cmdDetails, state);
+                comd = new MTouchActionCommand(cmd.substring(6).trim(), cmdDetails, state);
             } else if(cmd.toLowerCase().startsWith("swipe ")) {
                 comd = new MSwipeCommand(cmd.substring(6), cmdDetails, state);
-            } else if(cmd.toLowerCase().equals("shake")) {
+            } else if(cmd.toLowerCase().trim().equals("shake")) {
                 comd = new MShakeCommand(cmdDetails, state);
             }
         } else if (cmd.trim().isEmpty()) {

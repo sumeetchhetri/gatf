@@ -11,9 +11,9 @@
 			<attribute name="org.eclipse.jst.component.nondependency" value=""/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="src" output="alldep-jar/target/classes" path="alldep-jar/src/main/resources"/>
-	<classpathentry kind="src" output="alldep-jar/target/classes" path="alldep-jar/src/main/java"/>
-	<classpathentry kind="src" output="plugin/target/classes" path="plugin/src/main/java"/>
-	<classpathentry kind="src" output="alldep-jar/target/test-classes" path="alldep-jar/src/test/java"/>
+	<classpathentry kind="src" path="alldep-jar/src/main/resources"/>
+	<classpathentry kind="src" path="alldep-jar/src/main/java"/>
+	<classpathentry kind="src" path="plugin/src/main/java"/>
+	<classpathentry kind="src" path="alldep-jar/src/test/java"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
