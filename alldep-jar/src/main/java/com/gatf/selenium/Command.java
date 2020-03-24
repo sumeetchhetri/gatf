@@ -3280,11 +3280,11 @@ public class Command {
         String crid = "######" + UUID.randomUUID().toString() + "######";
         String ffid = "######" + UUID.randomUUID().toString() + "######";
         String dqid = "######" + UUID.randomUUID().toString() + "######";
-        String tmp = cmd.replace("\\b", blid).replace("\\n", nlid).replace("\\t", tbid)
-                .replace("\\r", crid).replace("\\f", ffid).replace("\\\"", dqid);
+        String tmp = cmd.replace("\\\\b", blid).replace("\\\\n", nlid).replace("\\\\t", tbid)
+                .replace("\\\\r", crid).replace("\\\\f", ffid).replace("\\\"", dqid);
         tmp = tmp.replace("\\", "\\\\").replace("\"", "\\\"");
-        tmp = tmp.replace(blid, "\\b").replace(nlid, "\\n").replace(tbid, "\\t")
-                .replace(crid, "\\r").replace(ffid, "\\f").replace(dqid, "\\\"");
+        tmp = tmp.replace(blid, "\\\\b").replace(nlid, "\\\\n").replace(tbid, "\\\\t")
+                .replace(crid, "\\\\r").replace(ffid, "\\\\f").replace(dqid, "\\\"");
         return tmp;
     }
 

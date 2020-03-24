@@ -61,7 +61,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.3</version>
+			<version>1.0.4</version>
 			<executions>
 				<execution>
 					<id>gatf-rest-json-xml</id>
@@ -155,7 +155,7 @@ Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
 ```sh
-user@local> java -jar gatf-alldep-jar-1.0.3.jar -generator config.xml
+user@local> java -jar gatf-alldep-jar-1.0.4.jar -generator config.xml
 ```
 
 Sample config.xml
@@ -465,7 +465,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.3</version>
+			<version>1.0.4</version>
 			<executions>
 				<execution>
 					<id>gatf-execution</id>
@@ -1168,7 +1168,7 @@ GATF Executor Configuration File
 	</gatfTestDataConfig>
 	<isSeleniumExecutor>true</isSeleniumExecutor>
 	<javaHome>C:\\Path-to-java\\java-openjdk-1.8.0.191</javaHome>
-	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\1.0.3\\gatf-alldep-jar-1.0.3.jar</gatfJarPath>
+	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\1.0.4\\gatf-alldep-jar-1.0.4.jar</gatfJarPath>
 	<seleniumDriverConfigs>
 		<seleniumDriverConfig>
 			<name>chrome</name>
@@ -1207,7 +1207,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.3</version>
+			<version>1.0.4</version>
 			<executions>
 				<execution>
 					<id>gatf-execution</id>
@@ -1254,7 +1254,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.3</version>
+			<version>1.0.4</version>
 			<executions>
 				<execution>
 					<id>gatf-config</id>
@@ -1273,7 +1273,7 @@ Direct Execution
 --------------
 For direct execution,
 ```sh
-user@local> java -jar gatf-alldep-jar-1.0.3.jar -configtool 9080 localhost .
+user@local> java -jar gatf-alldep-jar-1.0.4.jar -configtool 9080 localhost .
 ```
 **localhost:9080** - ip/port for embedded http server<br>
 **.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found
