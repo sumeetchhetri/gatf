@@ -586,6 +586,8 @@ public class Command {
             comd = new ExecCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("execjs ")) {
             comd = new ExecJsCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("execjsfile ")) {
+            comd = new ExecJsFileCommand(cmd.substring(11).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("canvas ")) {
             comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("subtest ")) {
@@ -1402,24 +1404,25 @@ public class Command {
                 String args = "";
                 for (String arg : arglist)
                 {
+                	String vn = "";
+                    if(arg.indexOf("=")!=-1) {
+                        vn = arg.substring(0, arg.indexOf("="));
+                        arg = arg.substring(arg.indexOf("=")+1);
+                    }
+                    if(vn.trim().equals(arg.trim()))continue;
                     Matcher m = p.matcher(arg);
                     if(m.find()) {
-                        args += "getProviderDataValue(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+"),";
-                    } else {
-                        arg = arg.replace("@element", "___ce___.get(0)");
-                        arg = arg.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
-                        if(!arg.trim().isEmpty()) {
-                            args += arg +",";
+                        if(vn.trim().isEmpty()) {
+                            vn = m.group(2);
                         }
+                        args += "var " + vn + " = \\\"\"+getProviderDataValue(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")+\"\\\";";
+                    } else {
+                    	arg = arg.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+                    	args += "var " + vn + " = " + arg + ";";
                     }
                 }
                 jscode += "if (___ocw___ instanceof JavascriptExecutor) {\n";
-                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\"";
-                if(!args.isEmpty()) {
-                    args = args.substring(0, args.length()-1);
-                    jscode += ", "+args;
-                }
-                jscode += ");\n}\n";
+                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+args+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n}\n";
                 return jscode;
             } else if(lang.equals("ruby")) {
                 String rcode = "";
@@ -1523,6 +1526,34 @@ public class Command {
 				"Examples :-",
 	    		"\texecjs 'console.log(\"Hello\");'",
 	    		"\texecjs '$(\"#elid\").click();'"
+            };
+        }
+    }
+
+    public static class ExecJsFileCommand extends Command {
+        String code;
+        ExecJsFileCommand(String code, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            code = state.unsanitize(code);
+            if(code.charAt(0)==code.charAt(code.length()-1)) {
+                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
+                    code = code.substring(1, code.length()-1);
+                }
+            }
+            this.code = code;
+        }
+        String toCmd() {
+            return "execjsfile \"" + code + "\"";
+        }
+        String javacode() {
+            return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(org.apache.commons.io.FileUtils.readFileToString(new java.io.File(\""+esc(code)+"\"), \"UTF-8\"));\n}";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Execute javascript code in the browser",
+				"\texecjsfile {javascript file path}",
+				"Examples :-",
+	    		"\texecjsfile 'file.js'"
             };
         }
     }
