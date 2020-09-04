@@ -5,7 +5,7 @@ FROM selenium/standalone-chrome:latest
 ARG DEBIAN_FRONTEND=noninteractive
 
 USER root
-RUN apt update -y && apt install -y --no-install-recommends default-jdk git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
+RUN apt update -y && apt install -y --no-install-recommends openjdk-11-jdk openjdk-11-jre git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
 
 COPY --from=0 /gatf-alldep.jar /
 RUN sed -i'' -e "s|java |java -jar /gatf-alldep.jar -configtool 9080 0.0.0.0 /workdir > gatf.log 2>\&1 \&\\njava |g" /opt/bin/start-selenium-standalone.sh

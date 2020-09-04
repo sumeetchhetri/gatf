@@ -5,7 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 # Set the working directory to /app
 WORKDIR /tmp
 
-RUN apt update -y && apt install -y --no-install-recommends default-jdk git wget unzip maven net-tools && rm -rf /var/lib/apt/lists/*
+RUN apt update -y && apt install -y --no-install-recommends openjdk-11-jdk openjdk-11-jre git wget unzip maven net-tools && rm -rf /var/lib/apt/lists/*
 
 RUN git clone https://github.com/sumeetchhetri/gatf
 RUN rm -rf alldep-jar plugin sample pom.xml plugins.txt
