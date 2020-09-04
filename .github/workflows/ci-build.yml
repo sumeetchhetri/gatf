@@ -42,7 +42,7 @@ jobs:
     - name: Build gatf util
       run: |
         docker build . --file Dockerfile-util --tag $UTIL_IMAGE
-        docker run -v ./sample:/workdir -i $UTIL_IMAGE -validate-sel test.sel
+        docker run -v sample:/workdir -i $UTIL_IMAGE -validate-sel test.sel
     - name: Login to the registry
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
