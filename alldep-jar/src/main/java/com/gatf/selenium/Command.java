@@ -6043,7 +6043,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "/Users/sumeetc/Projects/GitHub/gatf/sample/test.sel", "/Users/sumeetc/Projects/GitHub/gatf/sample/", "true"});
+        validateSel(new String[] {"-validate-sel", "/Users/sumeetc/Projects/GitHub/gatf/sample/test.sel", 
+        		"/Users/sumeetc/Projects/GitHub/gatf/sample/gatf-config-sel.xml", 
+        		"/Users/sumeetc/Projects/GitHub/gatf/sample", "true"});
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
