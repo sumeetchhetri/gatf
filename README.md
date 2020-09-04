@@ -61,7 +61,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.5</version>
+			<version>1.0.6</version>
 			<executions>
 				<execution>
 					<id>gatf-rest-json-xml</id>
@@ -155,7 +155,7 @@ Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
 ```sh
-user@local> java -jar gatf-alldep-jar-1.0.5.jar -generator config.xml
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -generator /workdir/path-to-gatf-gen-config.xml-file
 ```
 
 Sample config.xml
@@ -465,7 +465,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.5</version>
+			<version>1.0.6</version>
 			<executions>
 				<execution>
 					<id>gatf-execution</id>
@@ -481,6 +481,25 @@ Maven Configuration
 		</plugin>
 	</plugins>
 </body>
+```
+
+Direct Execution
+--------------
+For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
+```sh
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -executor /workdir/path-to-gatf-executor-config.xml-file
+```
+For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
+```sh
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -selenium /workdir/path-to-gatf-executor-config.xml-file
+```
+For validating test script for RPA (selenium), use the following command,
+```sh
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -validate-sel test-script-name-relative-to-workdir.sel
+```
+For running gatf in distributed mode as a listener, use the following command,
+```sh
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -listener
 ```
 
 GATF Robotic Process Automation Tool
@@ -518,10 +537,22 @@ Seleasy Syntax Reference
 ---------------------
 
 ```
-Find Expression a.k.a {find-expr}
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
-	
-	
+Double Click element
+	doubleclick {find-expr}
+	dblclick {find-expr}
+Examples :-
+	doubleclick id@'ele1'
+
+
+Type random values in input/textarea elements
+	randomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}
+Examples :-
+	randomize id@'ele1' alphanumeric 12
+	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
+	randomize id@'ele1' numeric 5
+	randomize id@'ele1' value 'abcd'
+
+
 If block
 	? {find-expr}
 	{
@@ -534,36 +565,20 @@ Examples :-
 	}
 
 
-Else-If block, needs to be superseded by an If block
-	:? {find-expr}
-	{
-		code
-	}
+Sleep for milliseconds
+	sleep {time-in-ms}
 Examples :-
-	:? xpath@"ddd"
-	{
-		exec @print("else-if")
-	}
-	
+	sleep 10000
 
-Else block, needs to be superseded by an If or Else-If block
-	:
-	{
-		code
-	}
-Examples :-
-	:
-	{
-		exec @print("else")
-	}
-	
 
-Value List
-	[{primtive-value},...,{primtive-value}]
+Single line comment or Block level comment
+	//... | /*...*/
+
+
+Mobile Swipe
+	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
 Examples :-
-	['abc', 'sss']
-	[123, 234]
-	[true, false]
+	swipe 123 234 200 300
 
 
 Handle Confirm Dialog
@@ -576,148 +591,101 @@ Examples :-
 	confirm yes 'Confirm'
 
 
-Value
-	{primtive-value}
+Maximize window
+	maximize
+
+
+Hover over an element
+	hover {find-expr}
 Examples :-
-	'abc'
-	123
-	true
+	hover id@'abc'
 
 
-Send keys using Robot
-	robot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress {key-codeN}
-	scrollup
-	scrolldown
-	scrollpageup
-	scrollpagedown
+Else block, needs to be superseded by an If or Else-If block
+	:
+	{
+		code
+	}
 Examples :-
-	robot keydown 1
-	robot keyup 1
-	robot keypress 1
-	robot keypress 1 keydown 2 keyup 
-	scrollup
-	scrolldown
-	scrollpageup
-	scrollpagedown
+	:
+	{
+		exec @print("else")
+	}
 
 
-Open Browser
-	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..} {optional session-name}
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+
+
+Loop block
+	## {find-expr}
+	{
+		code
+	}
 Examples :-
-	open chrome
-	open firefox "my-ff-sess"
+	## class@"ddd"
+	{
+		exec @print(@index)
+		click xpath@"ddd-@index"
+	}
 
 
-Wait for element to be visible/invisible
-	??(+|-) {find-expr}
-	'+' - Check whether element is visible
-	'-' - Check whether element is not visible
+Mobile rotate
+	rotate
+
+
+Specify Java Imports
+	require [{classname1},..{classnameN}]
 Examples :-
-	??+ id@'eleid'
-	??- id@'eleid'
+	require java.util.Date
+	require [java.util.List, java.math.BigDecimal]
 
 
-Execute embedded code in java/js/ruby/groovy/python
-	<<<(java|js|ruby|groovy|python) a,b,c
-	code
-	>>>
-Available variables in context -
-	1. @driver - WebDriver instance (Java only)
-	2. @window - WebDriver instance (Java only)
-	3. @element - Currently selected WebElement instance (Java only)
-	4. @sc - Currently selected SearchContext instance (Java only)
-	5. @printProvJson - Print Provider data as json (Java only)
-	6. @printProv - Print Provider data (Java only)
-	7. @print - System.out.println (Java only)
-	8. @index - Current provider index under interation (Java only)
-	9. @cntxtParam - Add variable to current context
+Transient Variable definition
+	#transient-variable {variable-name} {find-expr} {sub-selector}
 Examples :-
-	<<<(java) a,b,c
-	System.out.println(a);
-	>>>
-	<<<(js) a,b,c
-	console.log(a);
-	>>>
-	<<<(groovy) a,b,c
-	println a
-	>>>
-	<<<(ruby) a,b,c
-	puts a
-	>>>
-	<<<(python) a,b,c
-	print(a)
-	>>>
+	#transient-variable var1 id@'abc' text
+	#transient-variable var1 id@'abc' html
+	#transient-variable var1 id@'abc' attr@data-prop
+	#tv var1 id@'abc' text
+	#tv var1 id@'abc' html
+	#tv var1 id@'abc' attr@data-prop
 
 
-Fail test/sub-test
-	fail {error string}
+Submit element
+	submit {find-expr}
 Examples :-
-	fail "Test failed"
-	fail "Sub-Test failed"
+	submit id@'ele1'
 
 
-Pass test/sub-test
-	pass {error string}
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+
+
+Mobile Touch
+	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
 Examples :-
-	pass "Test passed"
-	pass "Sub-Test passed"
+	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
+	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
 
 
-Click element
-	click {find-expr}
+Break from loop
+	break
+
+
+Select frame
+	tab main|0..N|{some-name}
 Examples :-
-	click id@'ele1'
+	tab main
+	tab 0
+	tab 2
+	tab "my-frame"
 
 
-Define Screen No-activity layers
-	layer {find-expr}
+Type UTF-8 or normal ASCII characters in input/textarea elements
+	chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
 Examples :-
-	layer id@"loader-icon"
-	layer id@"overlay-div"
-
-
-Hover over an element and click some other element
-	hoverclick {find-expr} {find-expr}
-Examples :-
-	hoverclick id@'hoverele' id@'clickele'
-
-
-Refresh window
-	refresh
-
-
-Close window
-	close
-
-
-Open URL in window
-	goto {url}
-Examples :-
-	goto http://abc.com/testpage.html
-
-
-Wait till an element is found and optionally execute actions on it
-	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
-Examples :-
-	??10 id@'eleid'
-	??20 id@'eleid' click
-	??20 class@'eleid' type 'abc'
-
-
-Type random values in input/textarea elements
-	randomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}
-Examples :-
-	randomize id@'ele1' alphanumeric 12
-	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
-	randomize id@'ele1' numeric 5
-	randomize id@'ele1' value 'abcd'
-
-
-Mobile Zoom
-	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
-Examples :-
-	zoom 123 234
-	zoom id@'ele'
+	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
 
 
 Execute java code
@@ -742,21 +710,18 @@ Examples :-
 	exec @print(@index)
 
 
-Clear element value
-	clear {find-expr}
+Fail test/sub-test
+	fail {error string}
 Examples :-
-	clear id@'ele1'
+	fail "Test failed"
+	fail "Sub-Test failed"
 
 
-Mobile hide keypad
-	hidekeypad
-
-
-Mobile Pinch
-	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
+Pass test/sub-test
+	pass {error string}
 Examples :-
-	pinch 123 234
-	pinch id@'ele'
+	pass "Test passed"
+	pass "Sub-Test passed"
 
 
 Show alert with message
@@ -765,39 +730,94 @@ Examples :-
 	alert('Hello')
 
 
-Submit element
-	submit {find-expr}
+Take element screenshot
+	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
 Examples :-
-	submit id@'ele1'
+	ele-screenshot id@'eleid'
+	ele-screenshot id@'eleid' '/path/to/image/file/file.jpg'
 
 
-Type UTF-8 or normal ASCII characters in input/textarea elements
-	chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
+Define Screen No-activity layers
+	layer {find-expr}
 Examples :-
-	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
+	layer id@"loader-icon"
+	layer id@"overlay-div"
 
 
-Mobile rotate
-	rotate
-
-
-Execute javascript code in the browser
-	execjs {javascript statement}
+Click element
+	click {find-expr}
 Examples :-
-	execjs 'console.log("Hello");'
-	execjs '$("#elid").click();'
+	click id@'ele1'
+
+
+Type Value in input/textarea elements
+	type {text} {find-expr}
+Examples :-
+	type 'abc' id@'ele1'
 
 
 Continue in loop
 	continue
 
 
-Single line comment or Block level comment
-	//... | /*...*/
+Navigate Back/Previous
+	back
 
 
-Break from loop
-	break
+Hover over an element and click some other element
+	hoverclick {find-expr} {find-expr}
+Examples :-
+	hoverclick id@'hoverele' id@'clickele'
+
+
+Open Browser
+	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..} {optional session-name}
+Examples :-
+	open chrome
+	open firefox "my-ff-sess"
+
+
+Clear element value
+	clear {find-expr}
+Examples :-
+	clear id@'ele1'
+
+
+Execute javascript code from file in the browser
+	execjsfile {javascript file path}
+Examples :-
+	execjsfile 'file.js'
+
+
+Send keys using Robot
+	robot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress {key-codeN}
+	scrollup
+	scrolldown
+	scrollpageup
+	scrollpagedown
+Examples :-
+	robot keydown 1
+	robot keyup 1
+	robot keypress 1
+	robot keypress 1 keydown 2 keyup 
+	scrollup
+	scrolldown
+	scrollpageup
+	scrollpagedown
+
+
+Select value from dropdown element
+	select {text|index|value|first|last}@{value} {find-expr}
+Examples :-
+	select text@'first' id@'abc'
+	select index@2 id@'abc'
+	select value@'second' id@'abc'
+	select first id@'abc'
+	select last id@'abc'
+
+
+Navigate Forward/Next
+	forward
 
 
 Subtest definition
@@ -819,61 +839,82 @@ Examples :-
 	}
 
 
-Take element screenshot
-	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
+Execute javascript code in the browser
+	execjs {javascript statement}
 Examples :-
-	ele-screenshot id@'eleid'
-	ele-screenshot id@'eleid' '/path/to/image/file/file.jpg'
+	execjs 'console.log("Hello");'
+	execjs '$("#elid").click();'
 
 
-Take screenshot
-	screenshot {image-file-path-to-save-screenshot-to}
+Else-If block, needs to be superseded by an If block
+	:? {find-expr}
+	{
+		code
+	}
 Examples :-
-	screenshot
-	screenshot "/path/to/image/file/file.jpg"
+	:? xpath@"ddd"
+	{
+		exec @print("else-if")
+	}
 
 
-Multiple Chained Actions
-	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
+Select/Open Window
+	window {optional main|0}
 Examples :-
-	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
-	actions movetoelement id@'ele' sendkeys 'abc'
+	window
+	window 0
+	window main
 
 
-Define test mode
-	mode {normal|integration}
+Execute embedded code in java/js/ruby/groovy/python
+	<<<(java|js|ruby|groovy|python) a,b,c
+	code
+	>>>
+Available variables in context -
+	1. @driver - WebDriver instance (Java only)
+	2. @window - WebDriver instance (Java only)
+	3. @element - Currently selected WebElement instance (Java only)
+	4. @sc - Currently selected SearchContext instance (Java only)
+	5. @printProvJson - Print Provider data as json (Java only)
+	6. @printProv - Print Provider data (Java only)
+	7. @print - System.out.println (Java only)
+	8. @index - Current provider index under interation (Java only)
+	9. @cntxtParam - Add variable to current context
 Examples :-
-	mode normal
-	mode integration
+	<<<(java) ${a},${b},${c}
+	System.out.println(a);
+	>>>
+	<<<(js) a=${a},b1=${b},c_var=${c}
+	console.log(a);
+	>>>
+	<<<(groovy) ${a},${b},${c}
+	println a
+	>>>
+	<<<(ruby) ${a},${b},${c}
+	puts a
+	>>>
+	<<<(python) ${a},${b},${c}
+	print(a)
+	>>>
 
 
-Maximize window
-	maximize
 
 
-Select value from dropdown element
-	select {text|index|value|first|last}@{value} {find-expr}
+Value List
+	[{primtive-value},...,{primtive-value}]
 Examples :-
-	select text@'first' id@'abc'
-	select index@2 id@'abc'
-	select value@'second' id@'abc'
-	select first id@'abc'
-	select last id@'abc'
+	['abc', 'sss']
+	[123, 234]
+	[true, false]
 
 
-Mobile Tap
-	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
+Set Window Properties
+	window_set {width|height|posx|posy} {value}
 Examples :-
-	tap id@'ele'
-	tap id@'ele' 2000
-	tap id@'ele' 123 234
-	tap id@'ele' 123 234 2000
-	tap 123 234
-	tap 123 234 2000
-
-
-Navigate Back/Previous
-	back
+	window_set width 100
+	window_set height 100
+	window_set posx 100
+	window_set posy 100
 
 
 Variable definition
@@ -888,19 +929,57 @@ Examples :-
 	var var1 new java.util.Date()
 
 
-Type Value in input/textarea elements
-	type {text} {find-expr}
+Mobile Pinch
+	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
 Examples :-
-	type 'abc' id@'ele1'
+	pinch 123 234
+	pinch id@'ele'
 
 
-Set Window Properties
-	window_set {width|height|posx|posy} {value}
+Mobile Tap
+	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
 Examples :-
-	window_set width 100
-	window_set height 100
-	window_set posx 100
-	window_set posy 100
+	tap id@'ele'
+	tap id@'ele' 2000
+	tap id@'ele' 123 234
+	tap id@'ele' 123 234 2000
+	tap 123 234
+	tap 123 234 2000
+
+
+Define test mode
+	mode {normal|integration}
+Examples :-
+	mode normal
+	mode integration
+
+
+Select frame
+	frame main|parent|1..N|{some-name}
+Examples :-
+	frame main
+	frame parent
+	frame 2
+	frame "my-frame"
+
+
+Wait till an element is found and optionally execute actions on it
+	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
+Examples :-
+	??10 id@'eleid'
+	??20 id@'eleid' click
+	??20 class@'eleid' type 'abc'
+
+
+Mobile Zoom
+	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
+Examples :-
+	zoom 123 234
+	zoom id@'ele'
+
+
+Refresh window
+	refresh
 
 
 Import other seleasy scripts
@@ -910,46 +989,11 @@ Examples :-
 	import t2.sel
 
 
-Hover over an element
-	hover {find-expr}
+Transient Provider definition
+	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN}
 Examples :-
-	hover id@'abc'
-
-
-Mobile Swipe
-	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
-Examples :-
-	swipe 123 234 200 300
-
-
-Navigate Forward/Next
-	forward
-
-
-Sleep for milliseconds
-	sleep {time-in-ms}
-Examples :-
-	sleep 10000
-
-
-Mobile shake
-	shake
-
-
-Select frame
-	tab main|0..N|{some-name}
-Examples :-
-	tab main
-	tab 0
-	tab 2
-	tab "my-frame"
-
-
-Double Click element
-	doubleclick {find-expr}
-	dblclick {find-expr}
-Examples :-
-	doubleclick id@'ele1'
+	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
+	#tp prov1 var1,var2 id@'abc' text,attr@abc
 
 
 Js Variable definition
@@ -959,37 +1003,30 @@ Examples :-
 	jsvar var1 'return $("#elid").val()'
 
 
-Select/Open Window
-	window {optional main|0}
+Upload file
+	upload {filepath} {find-expr}
 Examples :-
-	window
-	window 0
-	window main
+	upload '/path/to/file.txt' id@'ele1'
 
 
-Mobile Touch
-	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
+Mobile hide keypad
+	hidekeypad
+
+
+Open URL in window
+	goto {url}
 Examples :-
-	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
-	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
+	goto http://abc.com/testpage.html
 
 
-Transient Provider definition
-	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN}
+Close window
+	close
+
+
+Draw a circle in a canvas element
+	canvas {canvas-id}
 Examples :-
-	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
-	#tp prov1 var1,var2 id@'abc' text,attr@abc
-
-
-Transient Variable definition
-	#transient-variable {variable-name} {find-expr} {sub-selector}
-Examples :-
-	#transient-variable var1 id@'abc' text
-	#transient-variable var1 id@'abc' html
-	#transient-variable var1 id@'abc' attr@data-prop
-	#tv var1 id@'abc' text
-	#tv var1 id@'abc' html
-	#tv var1 id@'abc' attr@data-prop
+	canvas 'somecanvasele'
 
 
 Provider Loop block
@@ -1066,40 +1103,39 @@ Examples :-
 	}
 
 
-Specify Java Imports
-	require [{classname1},..{classnameN}]
+Take screenshot
+	screenshot {image-file-path-to-save-screenshot-to}
 Examples :-
-	require java.util.Date
-	require [java.util.List, java.math.BigDecimal]
+	screenshot
+	screenshot "/path/to/image/file/file.jpg"
 
 
-Loop block
-	## {find-expr}
-	{
-		code
-	}
+Wait for element to be visible/invisible
+	??(+|-) {find-expr}
+	'+' - Check whether element is visible
+	'-' - Check whether element is not visible
 Examples :-
-	## class@"ddd"
-	{
-		exec @print(@index)
-		click xpath@"ddd-@index"
-	}
+	??+ id@'eleid'
+	??- id@'eleid'
 
 
-Select frame
-	frame main|parent|1..N|{some-name}
+Mobile shake
+	shake
+
+
+Value
+	{primtive-value}
 Examples :-
-	frame main
-	frame parent
-	frame 2
-	frame "my-frame"
+	'abc'
+	123
+	true
 
 
-API Plugin
-	plugin api {test-name}@{optional test-case-file-name}
+Multiple Chained Actions
+	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
 Examples :-
-	plugin api api-name
-	plugin api api-name@test-case-file-path
+	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
+	actions movetoelement id@'ele' sendkeys 'abc'
 
 
 XML Plugin
@@ -1110,16 +1146,6 @@ Examples :-
 	xmlread '<o><a>abc</a><b>1</b></o>'
 	xmlwrite '/path/to/file.xml' $xmlObjectVar
 	xmlpath '<o><a>abc</a><b>1</b></o>' '/o/a'
-
-
-JSON Plugin
-	jsonread {json-text}
-	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
-	jsonpath {json-text} {json-path-string}
-Examples :-
-	jsonread '{"a": "abc", "b": 1}'
-	jsonwrite '/path/to/file.json' $jsonObjectVar
-	jsonpath '{"a": "abc", "b": 1}' '$.a'
 
 
 Curl Plugin
@@ -1139,6 +1165,23 @@ Examples :-
 		]
 		<abc>abc</abc>
 	}
+
+
+API Plugin
+	plugin api {test-name}@{optional test-case-file-name}
+Examples :-
+	plugin api api-name
+	plugin api api-name@test-case-file-path
+
+
+JSON Plugin
+	jsonread {json-text}
+	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
+	jsonpath {json-text} {json-path-string}
+Examples :-
+	jsonread '{"a": "abc", "b": 1}'
+	jsonwrite '/path/to/file.json' $jsonObjectVar
+	jsonpath '{"a": "abc", "b": 1}' '$.a'
 ```
 
 GATF Executor Configuration File
@@ -1168,7 +1211,7 @@ GATF Executor Configuration File
 	</gatfTestDataConfig>
 	<isSeleniumExecutor>true</isSeleniumExecutor>
 	<javaHome>C:\\Path-to-java\\java-openjdk-1.8.0.191</javaHome>
-	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\1.0.5\\gatf-alldep-jar-1.0.5.jar</gatfJarPath>
+	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\1.0.6\\gatf-alldep-jar-1.0.6.jar</gatfJarPath>
 	<seleniumDriverConfigs>
 		<seleniumDriverConfig>
 			<name>chrome</name>
@@ -1207,7 +1250,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.5</version>
+			<version>1.0.6</version>
 			<executions>
 				<execution>
 					<id>gatf-execution</id>
@@ -1254,7 +1297,7 @@ Maven Configuration
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>1.0.5</version>
+			<version>1.0.6</version>
 			<executions>
 				<execution>
 					<id>gatf-config</id>
@@ -1273,9 +1316,9 @@ Direct Execution
 --------------
 For direct execution,
 ```sh
-user@local> java -jar gatf-alldep-jar-1.0.5.jar -configtool 9080 localhost .
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -configtool 9080 0.0.0.0 /workdir
 ```
-**localhost:9080** - ip/port for embedded http server<br>
+**0.0.0.0:9080** - ip/port for embedded http server<br>
 **.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found
 
 Limitations

@@ -575,12 +575,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         for (String selscript : configuration.getSeleniumScripts()) {
             try {
                 Object[] retvals = new Object[4];
-                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration);
+                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false);
                 tests.add(dyn);
                 testdata.add(retvals);
                 testClassNames.add(dyn.getClass().getName());
             } catch (Exception e) {
                 e.printStackTrace();
+                throw new RuntimeException("Unable to compile seleasy script " + selscript);
             }
         }
 

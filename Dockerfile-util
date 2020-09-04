@@ -1,0 +1,27 @@
+FROM sumeetchhetri/gatf-jar:latest
+
+FROM ubuntu:20.04
+ 
+ARG DEBIAN_FRONTEND=noninteractive
+
+ENV JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64/
+
+# Set the working directory to /app
+WORKDIR /tmp
+
+RUN apt update -y && apt install -y --no-install-recommends openjdk-11-jdk openjdk-11-jre git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /local
+
+COPY --from=0 /gatf-alldep.jar /
+COPY sample/gatf-config-sel.xml /local/
+RUN sed -i'' -e "s|/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home|/usr/lib/jvm/java-11-openjdk-amd64/|g" /local/gatf-config-sel.xml
+RUN sed -i'' -e "s|/Users/sumeetc/Projects/home/selenium/chromedriver|chromedriver|g" /local/gatf-config-sel.xml
+RUN sed -i'' -e "s|/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/target/gatf-alldep-jar-1.0.6.jar|/gatf-alldep.jar|g" /local/gatf-config-sel.xml
+
+#Mount local directory to /workdir, local directory should also be 
+#mapped to /tmp of docker for viewing contents of the selenium java code.
+WORKDIR /workdir
+
+ENTRYPOINT [ "java",  "-jar", "/gatf-alldep.jar" ]
+CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]

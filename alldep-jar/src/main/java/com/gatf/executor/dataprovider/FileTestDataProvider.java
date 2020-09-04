@@ -34,6 +34,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
@@ -57,6 +58,8 @@ import au.com.bytecode.opencsv.CSVReader;
  * The file test case data provider implementation
  */
 public class FileTestDataProvider implements TestDataProvider {
+	
+	private File provFile = null;
 
 	private Logger logger = Logger.getLogger(FileTestDataProvider.class.getSimpleName());
 	
@@ -99,7 +102,6 @@ public class FileTestDataProvider implements TestDataProvider {
 		build.append(String.format("variableNames is %s]", variableNames));
 		logger.info(build.toString());
 		
-		File provFile = null;
 		try {
 			provFile = context.getResourceFile(filePath);
 			Assert.assertTrue(String.format("Unable to find %s", filePath), provFile!=null && provFile.exists());
@@ -108,11 +110,11 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 		
 		if(fileType.equalsIgnoreCase("csv") || fileType.equalsIgnoreCase("xls") || fileType.equalsIgnoreCase("xlsx")) {
-			handleCsvFamilyFile(provider.getArgs(), fileType, provFile, variableNamesArr, result);
+			handleCsvFamilyFile(provider.getArgs(), fileType, variableNamesArr, result);
 		} else if(fileType.equalsIgnoreCase("xml")) {
-			handleXMLFile(provFile, variableNamesArr, result);
+			handleXMLFile(variableNamesArr, result);
 		} else if(fileType.equalsIgnoreCase("json")) {
-			handleJSONFile(provFile, variableNamesArr, result);
+			handleJSONFile(variableNamesArr, result);
 		} else {
 			throw new AssertionError(String.format("Invalid fileType %s, only csv, xml and json allowed", fileType));
 		}
@@ -120,7 +122,17 @@ public class FileTestDataProvider implements TestDataProvider {
 		return result;
 	}
 	
-	private void handleCsvFamilyFile(String[] args, String fileType, File file, List<String> variableNamesArr, 
+	public String getHash() {
+		if(provFile!=null && provFile.exists()) {
+			try {
+				return DigestUtils.sha512Hex(new FileInputStream(provFile));
+			} catch (Exception e) {
+			}
+		}
+		return null;
+	}
+	
+	private void handleCsvFamilyFile(String[] args, String fileType, List<String> variableNamesArr, 
 			List<Map<String, String>> result)
 	{
 		List<String[]> list = new ArrayList<String[]>();
@@ -130,13 +142,13 @@ public class FileTestDataProvider implements TestDataProvider {
 				if(args.length>2 && args[2].trim().matches("separator=(.*)")) {
 					splitStr = args[2].trim().charAt(10);
 				}
-				list = readCsvFamilyFile(fileType, file, splitStr, -1);
+				list = readCsvFamilyFile(fileType, provFile, splitStr, -1);
 			} else if(fileType.equalsIgnoreCase("xls") || fileType.equalsIgnoreCase("xlsx")) {
 				int sheet = 0;
 				if(args.length>2 && args[2].trim().matches("sheet=([0-9]+)")) {
 					sheet = Integer.parseInt(args[2].trim().substring(6));
 				}
-				list = readCsvFamilyFile(fileType, file, ',', sheet);
+				list = readCsvFamilyFile(fileType, provFile, ',', sheet);
 			}
 			
 			int counter = 1;
@@ -189,10 +201,10 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 	}*/
 	
-	private void handleXMLFile(File file, List<String> variableNamesArr, List<Map<String, String>> result) {
+	private void handleXMLFile(List<String> variableNamesArr, List<Map<String, String>> result) {
 		try
 		{
-			String content = FileUtils.readFileToString(file, "UTF-8");
+			String content = FileUtils.readFileToString(provFile, "UTF-8");
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			
 			DocumentBuilder db = dbf.newDocumentBuilder();
@@ -237,10 +249,10 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 	}
 	
-	private void handleJSONFile(File file, List<String> variableNamesArr, List<Map<String, String>> result) {
+	private void handleJSONFile(List<String> variableNamesArr, List<Map<String, String>> result) {
 		try
 		{
-			String content = FileUtils.readFileToString(file, "UTF-8");
+			String content = FileUtils.readFileToString(provFile, "UTF-8");
 			if(content!=null && !content.isEmpty()) {
 				List<List<String>> varValues = new ArrayList<List<String>>();
 				for (int i = 0; i < variableNamesArr.size(); i++) {

@@ -131,6 +131,7 @@ public class AcceptanceTestContext {
 	}
 
 	private final Map<String, List<Map<String, String>>> providerTestDataMap = new HashMap<String, List<Map<String,String>>>();
+	private final Map<String, String> fileProviderStateMap = new HashMap<String, String>();
 	
 	public List<Map<String, String>> getProviderTestDataMap(String providerName) {
 	    if(liveProviders.containsKey(providerName))
@@ -142,6 +143,13 @@ public class AcceptanceTestContext {
 	    {
 	        return providerTestDataMap.get(providerName);
 	    }
+	}
+	
+	public String getFileProviderHash(String name) {
+	    if(!fileProviderStateMap.containsKey(name)) {
+	        return fileProviderStateMap.get(name);
+	    }
+	    return null;
 	}
 	
 	public void newProvider(String name) {
@@ -950,6 +958,9 @@ public class AcceptanceTestContext {
 		}
 		
 		testData = testDataProvider.provide(provider, this);
+		if(testDataProvider instanceof FileTestDataProvider) {
+			fileProviderStateMap.put(provider.getProviderName(), ((FileTestDataProvider)testDataProvider).getHash());
+		}
 		return testData;
 	}
 

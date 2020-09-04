@@ -39,6 +39,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.RandomStringUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -185,6 +186,10 @@ public abstract class SeleniumTest {
 
     protected List<Map<String, String>> getProviderTestDataMap(String name) {
         return getAllProviderData(getPn(name));
+    }
+
+    protected String getFileProviderHash(String name) {
+        return getFileProviderHash(name);
     }
 
     private SeleniumTestSession getSession() {
@@ -1506,5 +1511,57 @@ public abstract class SeleniumTest {
                 }
             }
         };
+    }
+    
+    protected void initStateFulProvider(String name) {
+    	String hash = getFileProviderHash(name);
+    	if(hash==null) {
+    		throw new RuntimeException("Only File providers can have stateful loops, provder " + name + " is not a file provider");
+    	}
+    	File stateFile = new File(name+"_s_state");
+    	if(!stateFile.exists()) {
+    		try {
+				stateFile.createNewFile();
+				FileUtils.write(stateFile, hash+";0", "UTF-8");
+			} catch (Exception e) {
+			}
+    	} else {
+    		try {
+				String contents = FileUtils.readFileToString(stateFile, "UTF-8");
+				if(!contents.startsWith(hash+";")) {
+					throw new RuntimeException("File provider " + name + " has changed, cannot continue with stateful provider loop\n"
+							+ "Delete the " + name+"_s_state" + " file to continue from the beginning of the provider loop");
+				}
+			} catch (Exception e) {
+			}
+    	}
+    }
+    
+    protected int preStateFulProvider(String name, int index) {
+    	File stateFile = new File(name+"_s_state");
+    	if(stateFile.exists()) {
+    		try {
+				String contents = FileUtils.readFileToString(stateFile, "UTF-8");
+				return Integer.valueOf(contents.substring(contents.indexOf(";")+1));
+			} catch (Exception e) {
+			}
+    	} else {
+    		System.out.println("File provider " + name + " has been deleted on the filesystem, but we will continue as far as we can");
+    	}
+    	return index;
+    }
+    
+    protected void postStateFulProvider(String name, int index) {
+    	File stateFile = new File(name+"_s_state");
+    	if(stateFile.exists()) {
+    		try {
+				String contents = FileUtils.readFileToString(stateFile, "UTF-8");
+				contents = contents.substring(0, contents.indexOf(";")+1) + (index+1);
+				FileUtils.write(stateFile, contents, "UTF-8");
+			} catch (Exception e) {
+			}
+    	} else {
+    		System.out.println("File provider " + name + " has been deleted on the filesystem, but we will continue as far as we can");
+    	}
     }
 }

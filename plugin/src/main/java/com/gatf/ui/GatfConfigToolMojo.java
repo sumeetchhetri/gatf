@@ -15,6 +15,7 @@
 */
 package com.gatf.ui;
 
+import java.io.File;
 import java.io.InputStream;
 import java.util.function.Function;
 import org.apache.commons.lang.SystemUtils;
@@ -126,8 +127,10 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 		
 		try {
 		    server.start();
-		    System.out.println("Press any key to stop the server...");
-		    System.in.read();
+		    new File("gatf.ctrl").createNewFile();
+		    while(new File("gatf.ctrl").exists()) {
+				Thread.sleep(10000);
+		    }
 		} catch (Exception e) {
 		    System.err.println(e);
 		}

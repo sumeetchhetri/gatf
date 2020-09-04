@@ -118,8 +118,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		
 		try {
 		    server.start();
-		    System.out.println("Press any key to stop the server...");
-		    System.in.read();
+		    new File("gatf.ctrl").createNewFile();
+		    while(new File("gatf.ctrl").exists()) {
+				Thread.sleep(10000);
+		    }
 		} catch (Exception e) {
 		    System.err.println(e);
 		}

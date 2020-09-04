@@ -43,6 +43,7 @@ import org.openqa.selenium.logging.LoggingPreferences;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.report.ReportHandler;
+import com.google.googlejavaformat.java.Formatter;
 
 public class SeleniumCodeGeneratorAndUtil {
 	
@@ -59,11 +60,17 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
 		String sourceCode =  cmd.javacode();
+		
+		if(isLog) {
+			String jc = cmd.javacode();
+			System.out.println(jc);
+	        System.out.println(new Formatter().formatSource(jc));
+		}
 		
 		retvals[0] = fileName;
 		retvals[1] = StringUtils.join(commands, '\n');
@@ -79,6 +86,8 @@ public class SeleniumCodeGeneratorAndUtil {
         		cp += url.getPath() + SystemUtils.PATH_SEPARATOR;
 			}
         	optionList.add(cp);
+        } else {
+        	optionList.add(StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep.jar");
         }
         
         File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
@@ -103,6 +112,19 @@ public class SeleniumCodeGeneratorAndUtil {
 	            null, 
 	            compilationUnit);
 	        if (task.call()) {
+	        	boolean errCd = false;
+	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+	                System.out.format("Error on line %d in %s%n",
+	                        diagnostic.getLineNumber(),
+	                        diagnostic.getSource().toUri());
+	                errCd = true;
+	                System.out.println(diagnostic.toString());
+	            }
+	        	
+	        	if(errCd) {
+	        		return null;
+	        	}
+	        	
 	        	URL[] urls = new URL[1];
 	            urls[0] = gcdir.toURI().toURL();
 	            if(classLoader==null) {
@@ -113,8 +135,10 @@ public class SeleniumCodeGeneratorAndUtil {
 	        }
         }
         
-        ProcessBuilder pb = new ProcessBuilder("\"" + config.getJavaHome() + "/bin/javac\"", "-classpath", 
-                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar.jar"), "\"" + retvals[2].toString() + "\"");
+        boolean isWindows = SystemUtils.IS_OS_WINDOWS;
+        ProcessBuilder pb = new ProcessBuilder((isWindows?"\"":"") + config.getJavaHome() + "/bin/javac" + (isWindows?"\"":""), "-classpath", 
+                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar.jar"), 
+                (isWindows?"\"":"") + retvals[2].toString() + (isWindows?"\"":""));
         pb.redirectErrorStream(true);
         Process process = pb.start();
         BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
@@ -123,14 +147,10 @@ public class SeleniumCodeGeneratorAndUtil {
         String err = null;
         while((err = inStreamReader.readLine()) != null) {
             errd |= err.indexOf("error:")!=-1;
+            System.out.println(err);
         }
+        
         if(errd) {
-            for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-                System.out.format("Error on line %d in %s%n",
-                        diagnostic.getLineNumber(),
-                        diagnostic.getSource().toUri());
-                System.out.println(diagnostic.toString());
-            }
             return null;
         } else {
             URL[] urls = new URL[1];

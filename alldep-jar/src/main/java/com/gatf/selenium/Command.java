@@ -16,17 +16,23 @@
 package com.gatf.selenium;
 
 import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 import java.util.Stack;
 import java.util.UUID;
@@ -49,7 +55,6 @@ import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
 import com.gatf.selenium.plugins.XmlPlugin;
-import com.google.googlejavaformat.java.Formatter;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -98,6 +103,9 @@ public class Command {
         Set<String> layers = new HashSet<String>();
         
         String layerStr = null;
+        
+        Properties configProps = null;
+        Map<String, String> dynProps = null;
         
         String getLayers() {
             if(layerStr==null) {
@@ -448,34 +456,52 @@ public class Command {
         } else if (cmd.startsWith(":")) {
             cmd = cmd.substring(1).trim();
             comd = new ElseCommand(cmdDetails, state);
+        } else if (cmd.startsWith("#j")) {
+            cmd = cmd.substring(2).trim();
+            if(!cmd.matches("(if|else|else if|while|for|continue|break|\\{|\\}|synchronized).*")) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Only following java control statements allowed - if|else|else if|while|for|continue|break|\\{|\\}|synchronized"));
+            }
+            comd = new JavaControlCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("#provider ")) {
             cmd = cmd.substring(9).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, false);
         } else if (cmd.startsWith("#p ")) {
             cmd = cmd.substring(2).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, false);
+        } else if (cmd.startsWith("#provider-sf ")) {
+            cmd = cmd.substring(12).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, true);
+        } else if (cmd.startsWith("#p-sf ")) {
+            cmd = cmd.substring(5).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, true);
         } else if (cmd.startsWith("#counter ")) {
             cmd = cmd.substring(8).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, false);
         } else if (cmd.startsWith("#c ")) {
             cmd = cmd.substring(2).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, false);
         } else if (cmd.startsWith("#transient-provider ")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
         } else if (cmd.startsWith("#tp ")) {
@@ -487,13 +513,13 @@ public class Command {
         } else if (cmd.startsWith("#transient-suite-provider ")) {
             cmd = cmd.substring(25).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
         } else if (cmd.startsWith("#tsp ")) {
             cmd = cmd.substring(4).trim();
             if(cmd.isEmpty()) {
-                //exception
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
         } else if (cmd.startsWith("## ")) {
@@ -596,6 +622,10 @@ public class Command {
             comd = new RequireCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
             comd = new ImportCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("config ")) {
+            comd = new ConfigPropsCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("dynprops ")) {
+            comd = new DynPropsCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("screenshot")) {
             comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {
@@ -702,6 +732,12 @@ public class Command {
         while(iter.hasNext()) {
             Command tmp = null;
             Object[] o = iter.next();
+            
+            if(state.dynProps!=null && state.dynProps.size()>0) {
+            	for (String dkey : state.dynProps.keySet()) {
+					o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
+				}
+            }
 
             try
             {
@@ -777,9 +813,9 @@ public class Command {
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
                         f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
                     }
-                    if(!f.exists()) {
-                        throwParseErrorS(o, new RuntimeException("Import script not found in any of the search paths"));
-                    }
+                }
+                if(!f.exists()) {
+                    throwParseErrorS(o, new RuntimeException("Import script not found in any of the search paths"));
                 }
                 if(state.visitedFiles.contains(f.getAbsolutePath())) {
                     throwParseErrorS(o, new RuntimeException("Possible import script recursion observed"));
@@ -791,8 +827,6 @@ public class Command {
                     fnm = fnm.substring(0, fnm.lastIndexOf("\\")+1);
                 } else if(fnm.lastIndexOf("/")!=-1) {
                     fnm = fnm.substring(0, fnm.lastIndexOf("/")+1);
-                } else {
-                    fnm = ""; 
                 }
                 for (String c : commands) {
                     iter.add(new Object[]{c, cnt++, f.getParentFile().getAbsolutePath(), fnm, state});
@@ -800,6 +834,62 @@ public class Command {
                 for (@SuppressWarnings("unused") String c : commands) {
                     iter.previous();
                 }
+                isValid = true;
+            } else if(tmp instanceof ConfigPropsCommand) {
+                String parentPath = state.basePath;
+                if(StringUtils.isNotBlank(o[3].toString())) {
+                    parentPath = o[3].toString();
+                }
+                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                if(!f.exists()) {
+                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                    }
+                }
+                if(!f.exists()) {
+                    throwParseErrorS(o, new RuntimeException("Config properties file not found in any of the search paths"));
+                }
+                Properties tprops = new Properties();
+                try {
+					tprops.load(new FileInputStream(f));
+				} catch (Exception e) {
+					throwError(o, new RuntimeException("Config properties file not a valid properties file"));
+				}
+                state.configProps = tprops;
+                parent.children.add(tmp);
+                isValid = true;
+            } else if(tmp instanceof DynPropsCommand) {
+                String parentPath = state.basePath;
+                if(StringUtils.isNotBlank(o[3].toString())) {
+                    parentPath = o[3].toString();
+                }
+                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                if(!f.exists()) {
+                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                    }
+                }
+                if(!f.exists()) {
+                    throwParseErrorS(o, new RuntimeException("Dynamic properties file not found in any of the search paths"));
+                }
+                Properties tprops = new Properties();
+                try {
+					tprops.load(new FileInputStream(f));
+					if(tprops.size()>0) {
+						state.dynProps = new HashMap<String, String>();
+						@SuppressWarnings("unchecked")
+		                Enumeration<String> enums = (Enumeration<String>) tprops.propertyNames();
+		                while (enums.hasMoreElements()) {
+		                	String key = enums.nextElement();
+		                    String value = tprops.getProperty(key);
+		                	state.dynProps.put(key, value);
+		                }
+					}
+				} catch (Exception e) {
+					throwError(o, new RuntimeException("Dynamic properties file not a valid properties file"));
+				}
                 isValid = true;
             } else {
                 if(parent instanceof CodeCommand) {
@@ -978,7 +1068,7 @@ public class Command {
                         if(name.trim().isEmpty()) {
                             System.out.println("Invalid Plugin name specified");
                         } else {
-                            System.out.println("Plugin already defined"); 
+                            System.out.println("Plugin already defined " + name); 
                         }
                     }
                 }
@@ -1063,6 +1153,11 @@ public class Command {
             b.append(cc);
             if(!cc.isEmpty()) {
                 b.append("\n");
+            }
+            for (Command c : children) {
+            	if(c instanceof ConfigPropsCommand) {
+            		b.append(c.javacode());
+            	}
             }
             b.append("}\n"); 
         }
@@ -1177,7 +1272,7 @@ public class Command {
         b.append("List<WebElement> ___ce___ = null;\n");
         int subtestcount = 0;
         for (Command c : children) {
-            if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand)) {
+            if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand) || (c instanceof ConfigPropsCommand)) {
                 continue;
             }
             String cc = null;
@@ -1393,7 +1488,7 @@ public class Command {
                     }
                 }
                 gcode += "GroovyShell __gs = new GroovyShell(__b);\n";
-                gcode += "__gs.evaluate(\""+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n";
+                gcode += "__gs.evaluate(\""+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n";
                 for (String s : ms)
                 {
                     gcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __gs.getVariable(\"$1\").toString());\n");
@@ -1422,7 +1517,7 @@ public class Command {
                     }
                 }
                 jscode += "if (___ocw___ instanceof JavascriptExecutor) {\n";
-                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+args+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n}\n";
+                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+args+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n}\n";
                 return jscode;
             } else if(lang.equals("ruby")) {
                 String rcode = "";
@@ -1454,7 +1549,7 @@ public class Command {
                         rcode += "__rs.put(\""+vn+"\", "+arg+");\n";
                     }
                 }
-                rcode += "__rs.runScriptlet(\""+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n";
+                rcode += "__rs.runScriptlet(\""+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n";
                 for (String s : ms)
                 {
                     rcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __rs.get(\"$1\").toString());\n");
@@ -1485,12 +1580,12 @@ public class Command {
                         if(vn.trim().isEmpty()) {
                             vn = m.group(2);
                         }
-                        pcode += "pi.set(\""+vn+"\", getProviderDataValueO(\""+esc(m.group(1))+"\", "+(m.group(2).toLowerCase().trim().equals("v")?"true":"false")+"));\n";
+                        pcode += "pi.set(\""+vn+"\", getProviderDataValueO(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+"));\n";
                     } else {
                         pcode += "pi.set(\""+vn+"\", "+arg+");\n";
                     }
                 }
-                pcode += "pi.exec(\""+esc(state.unsanitize(code.replaceAll("\n", "\\\\n")))+"\");\n";
+                pcode += "pi.exec(\""+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n";
                 for (String s : ms)
                 {
                     pcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __rs.get(\"$1\").toString());\n");
@@ -1498,6 +1593,34 @@ public class Command {
                 return pcode;
             }
             return "";
+        }
+    }
+
+    public static class JavaControlCommand extends Command {
+        String code;
+        JavaControlCommand(String code, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            this.code = state.unsanitize(code);
+        }
+        String toCmd() {
+            return "#j" + code;
+        }
+        String javacode() {
+        	Matcher m = CodeCommand.p.matcher(code);
+            while(m.find()) {
+            	code = code.replaceFirst("\\$"+m.group(1)+"\\{"+m.group(2)+"\\}", "getProviderDataValueO(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")");
+            }
+            //System.out.println(code);
+            return code;
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Execute java code",
+				"\t#j{if|else|else if|while|for|continue|break|\\{|\\}|synchronized} {java statement}",
+				"Examples :-",
+	    		"\tjif(1==1) {} else {}",
+	    		"\tfor(int i=0;i<10;i++){}"
+            };
         }
     }
 
@@ -1550,7 +1673,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Execute javascript code in the browser",
+				"Execute javascript code from file in the browser",
 				"\texecjsfile {javascript file path}",
 				"Examples :-",
 	    		"\texecjsfile 'file.js'"
@@ -1997,6 +2120,71 @@ public class Command {
         }
     }
 
+    public static class ConfigPropsCommand extends Command {
+        String name;
+        ConfigPropsCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            name = state.unsanitize(cmd);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
+        }
+        String toCmd() {
+            return "config " + name;
+        }
+        String javacode() {
+        	StringBuilder b = new StringBuilder();
+            b.append("newTopLevelProvider();\n");
+            @SuppressWarnings("unchecked")
+            Enumeration<String> enums = (Enumeration<String>) state.configProps.propertyNames();
+            while (enums.hasMoreElements()) {
+            	String key = enums.nextElement();
+                String value = state.configProps.getProperty(key);
+                b.append("addToTopLevelProviderTestDataMap(\""+key+"\", \""+value+"\");\n"); 
+            }
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Import config properties file",
+				"\tconfig {file-path}",
+				"Examples :-",
+	    		"\tconfig a/b/c/t1.props",
+	    		"\tconfig t2.props"
+            };
+        }
+    }
+
+    public static class DynPropsCommand extends Command {
+        String name;
+        DynPropsCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            name = state.unsanitize(cmd);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
+        }
+        String toCmd() {
+            return "dynprops " + name;
+        }
+        String javacode() {
+        	return "";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Import dynamic (code vars) properties file",
+				"\tdynprops {file-path}",
+				"Examples :-",
+	    		"\tdynprops a/b/c/t1.props",
+	    		"\tdynprops t2.props"
+            };
+        }
+    }
+
     public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
         WaitTillElementVisibleOrInvisibleCommand(FindCommand cond, Object[] cmdDetails, CommandState state, boolean isVisible) {
@@ -2398,8 +2586,10 @@ public class Command {
         String name;
         int index = Integer.MIN_VALUE;
         int end = Integer.MIN_VALUE;
-        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean counter) {
+        boolean isStateFul = false;
+        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean counter, boolean isStateFul) {
             super(cmdDetails, state);
+            this.isStateFul = isStateFul;
             String[] parts = val.trim().split("[\t ]+");
             if(counter) {
             	if(parts.length==1 && !parts[0].trim().isEmpty()) {
@@ -2446,6 +2636,9 @@ public class Command {
                     }
                 }
                 if(parts.length>1 && !parts[1].trim().isEmpty()) {
+                	if(isStateFul) {
+                		throwError(fileLineDetails, new RuntimeException("Stateful Providers cannot specify index/start"));
+                	}
                     try
                     {
                         index = Integer.valueOf(parts[1].trim());
@@ -2456,6 +2649,9 @@ public class Command {
                     }
                 }
                 if(parts.length>2 && !parts[2].trim().isEmpty()) {
+                	if(isStateFul) {
+                		throwError(fileLineDetails, new RuntimeException("Stateful Providers cannot specify end"));
+                	}
                     try
                     {
                         end = Integer.valueOf(parts[2].trim());
@@ -2469,7 +2665,11 @@ public class Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append("#provider ");
+            if(isStateFul) {
+            	b.append("#provider-sf ");
+            } else {
+            	b.append("#provider ");
+            }
             b.append(name);
             if(!children.isEmpty())
             {
@@ -2514,11 +2714,21 @@ public class Command {
                 b.append("set__provname__(\"" + name + "\");\n");
                 String provname = state.currvarname();
                 String loopname = state.varname();
-                b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                if(isStateFul) {
+                	b.append("initStateFulProvider(\""+name+"\");");
+                }
+                if(isStateFul) {
+                	b.append("\nfor(int " + loopname + "=preStateFulProvider(\""+name+"\", 0);"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                } else {
+                	b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                }
                 b.append("set__provpos__(\"" + name + "\", " + loopname + ");\n");
                 for (Command c : children) {
                     b.append(c.javacode());
                     b.append("\n");
+                }
+                if(isStateFul) {
+                	b.append("postStateFulProvider(\""+name+"\", "+loopname+");\n");
                 }
                 b.append("}");
                 b.append("rem__provname__(\"" + name + "\");\n");
@@ -5762,9 +5972,45 @@ public class Command {
             return cmdl.toArray(new String[cmdl.size()]);
         }
     }
+    
+    public static void validateSel(String[] args) throws Exception {
+    	Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
+        SeleniumDriverConfig dc = new SeleniumDriverConfig();
+        dc.setName("chrome");
+        dc.setDriverName("webdriver.chrome.driver");
+        dc.setPath("chromedriver");
+        mp.put("chrome", dc);
+        GatfExecutorConfig config = getConfig("gatf-config-sel.xml", args.length>2?args[2].trim():"/local");
+        config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
+        for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
+        {
+            if(selConf.getDriverName()!=null) {
+                System.setProperty(selConf.getDriverName(), selConf.getPath());
+            }
+        }
+        
+        AcceptanceTestContext c = new AcceptanceTestContext();
+        c.setGatfExecutorConfig(config);
+        c.validateAndInit(true);
+        c.getWorkflowContextHandler().initializeSuiteContext(1);
+        
+        if(args[1].indexOf(File.separator)==-1) {
+        	args[1] = "/workdir/"+args[1];
+        }
+    	
+        try {
+            Object[] retvals = new Object[4];
+            SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>3?args[3].trim().equalsIgnoreCase("true"):false);
+            System.out.println(dyn!=null?"SUCCESS":"FAILURE");
+        } catch (Throwable e) {
+            e.printStackTrace();
+            throw new RuntimeException("Unable to compile seleasy script " + args[1]);
+        }
+    }
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
+    	System.out.println(UUID.randomUUID().toString());
     	Reflections r = new Reflections("com.gatf.selenium");
     	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);
     	Set<Class<?>> pclasses = new HashSet<Class<?>>();
@@ -5796,31 +6042,8 @@ public class Command {
 			}
     		System.out.println("\n");
 		}
-    	
-        Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
-        SeleniumDriverConfig dc = new SeleniumDriverConfig();
-        dc.setName("chrome");
-        dc.setDriverName("webdriver.chrome.driver");
-        dc.setPath("/Users/sumeetc/Projects/home/selenium/chromedriver");
-        mp.put("chrome", dc);
-        List<String> commands = new ArrayList<String>();
-        GatfExecutorConfig config = getConfig("gatf-config-sel.xml", "/Users/sumeetc/Projects/GitHub/gatf/sample/");
-        config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
-        for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
-        {
-            if(selConf.getDriverName()!=null) {
-                System.setProperty(selConf.getDriverName(), selConf.getPath());
-            }
-        }
-        
-        AcceptanceTestContext c = new AcceptanceTestContext();
-        c.setGatfExecutorConfig(config);
-        c.validateAndInit(true);
-        c.getWorkflowContextHandler().initializeSuiteContext(1);
-        Command cmd = Command.read(new File("/Users/sumeetc/Projects/GitHub/gatf/sample/test.sel"), commands, c);
-        String jc = cmd.javacode();
-        //System.out.println(jc);
-        System.out.println(new Formatter().formatSource(jc));
+
+        validateSel(new String[] {"-validate-sel", "/Users/sumeetc/Projects/GitHub/gatf/sample/test.sel", "/Users/sumeetc/Projects/GitHub/gatf/sample/", "true"});
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
@@ -5951,4 +6174,76 @@ public class Command {
         c.getWorkflowContextHandler().templatize(_mt, "dsadasd ${a} $v{f}");
 
     }
+    
+    public static void getSeleniumTest(File file, AcceptanceTestContext context) throws Exception
+	{
+	    List<String> commands = new ArrayList<String>();
+		Command cmd = Command.read(file, commands, context);
+		String sourceCode =  cmd.javacode();
+		
+        List<String> optionList = new ArrayList<String>();
+        optionList.add("-classpath");
+        
+        File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
+        File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
+        
+        File srcfile = new File(dir, cmd.getClassName()+".java");
+        FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
+        
+        /*DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
+        if(compiler!=null && false) {
+	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
+	        JavaCompiler.CompilationTask task = compiler.getTask(
+	            null, 
+	            fileManager, 
+	            diagnostics, 
+	            optionList, 
+	            null, 
+	            compilationUnit);
+	        if (task.call()) {
+	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+	                System.out.format("Error on line %d in %s%n",
+	                        diagnostic.getLineNumber(),
+	                        diagnostic.getSource().toUri());
+	                System.out.println(diagnostic.toString());
+	            }
+	        	
+	        	URL[] urls = new URL[1];
+	            urls[0] = gcdir.toURI().toURL();
+	            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName());
+	            loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
+	        }
+	        return;
+        }*/
+        
+        String javaHome = "/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home";
+        String gatfJarPath = "/Users/sumeetc/Projects/home/.m2/repository/com/github/sumeetchhetri/gatf/gatf-alldep-jar/1.0.6/gatf-alldep-jar-1.0.6.jar";
+        boolean isWindows = SystemUtils.IS_OS_WINDOWS;
+        ProcessBuilder pb = new ProcessBuilder((isWindows?"\"":"") + javaHome + "/bin/javac" + (isWindows?"\"":""), "-classpath", 
+                (gatfJarPath), 
+                (isWindows?"\"":"") + srcfile.getAbsolutePath() + (isWindows?"\"":""));
+        System.out.println(String.join(" ", pb.command()));
+        pb.redirectErrorStream(true);
+        Process process = pb.start();
+        BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
+
+        boolean errd = false;
+        String err = null;
+        while((err = inStreamReader.readLine()) != null) {
+        	System.out.println(err);
+            errd |= err.indexOf("error:")!=-1;
+        }
+        if(errd) {
+            
+        } else {
+            URL[] urls = new URL[1];
+            urls[0] = gcdir.toURI().toURL();
+            @SuppressWarnings("unchecked")
+			Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName());
+            //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
+            loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
+        }
+	}
 }

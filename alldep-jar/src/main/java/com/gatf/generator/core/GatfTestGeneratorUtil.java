@@ -73,6 +73,7 @@ import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.generator.postman.PostmanCollection;
+import com.gatf.selenium.Command;
 import com.gatf.ui.GatfConfigToolUtil;
 import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
@@ -1254,12 +1255,18 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     		{
     			DistributedGatfListener.main(args);
     		}
+    		else if(args[0].equals("-validate-sel"))
+    		{
+    			Command.validateSel(args);
+    		}
     		else
     		{
     			System.out.println("Please specify proper arguments to the program - valid invocation options are, \n" +
     					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
     					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
+    					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
     					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
+    					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
     					"java -jar gatf-plugin-{version}.jar -listener\n");
     		}
     	}
@@ -1268,7 +1275,9 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 			System.out.println("Invalid invocation - valid invocation options are, \n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
+					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
+					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
 					"java -jar gatf-plugin-{version}.jar -listener\n");
 		}
 		System.exit(0);
