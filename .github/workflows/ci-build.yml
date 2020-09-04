@@ -107,4 +107,3 @@ jobs:
         echo VERSION=$VERSION
         docker tag $BIN_VNC_IMAGE $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION
- 
