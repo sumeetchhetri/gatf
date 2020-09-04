@@ -5980,7 +5980,7 @@ public class Command {
         dc.setDriverName("webdriver.chrome.driver");
         dc.setPath("chromedriver");
         mp.put("chrome", dc);
-        GatfExecutorConfig config = getConfig("gatf-config-sel.xml", args.length>2?args[2].trim():"/local");
+        GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():"gatf-config-sel.xml", args.length>3?args[3].trim():"/workdir");
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
@@ -6089,9 +6089,11 @@ public class Command {
         GatfExecutorConfig configuration = null;
         if(configFile!=null) {
             try {
-                File resource = null;
-                File basePath = new File(testCasesBasePath);
-                resource = new File(basePath, configFile);
+                File resource = new File(configFile);
+                if(!resource.exists())
+                {
+                	resource = new File(new File(testCasesBasePath), configFile);
+                }
                 if(resource.exists()) {
                     XStream xstream = new XStream(new DomDriver("UTF-8"));
                     XStream.setupDefaultSecurity(xstream);
