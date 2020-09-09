@@ -495,7 +495,7 @@ docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-u
 ```
 For validating test script for RPA (selenium), use the following command,
 ```sh
-docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -validate-sel test-script-name-relative-to-workdir.sel
+docker run -v /local-folder:/workdir /local-folder:/tmp -it sumeetchhetri/gatf-util:latest -validate-sel test-script-name-relative-to-workdir.sel /local/gatf-config-sel.xml
 ```
 For running gatf in distributed mode as a listener, use the following command,
 ```sh
