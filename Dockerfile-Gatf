@@ -54,6 +54,6 @@ EXPOSE 9080
 
 WORKDIR /workdir
 
-ENTRYPOINT [ "java", "-DD_JAVA_HOME=${D_JAVA_HOME}", "-DD_CHROME_DRIVER=${D_CHROME_DRIVER}", "-DD_GATF_JAR=${D_GATF_JAR}" "-jar", "/gatf-alldep.jar" ]
+ENTRYPOINT [ "java", "-DD_JAVA_HOME=${D_JAVA_HOME}", "-DD_CHROME_DRIVER=${D_CHROME_DRIVER}", "-DD_GATF_JAR=${D_GATF_JAR}", "-jar", "/gatf-alldep.jar" ]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]
 #CMD java -DJAVA_HOME=${JAVA_HOME} -DCHROME_DRIVER=${CHROME_DRIVER} -DGATF_JAR=${GATF_JAR} -jar /gatf-alldep.jar -configtool 9080 0.0.0.0 /workdir > gatf.log 2>&1
