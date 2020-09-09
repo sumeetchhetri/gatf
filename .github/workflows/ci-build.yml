@@ -6,7 +6,6 @@ on:
       - master
 env:
   JAR_IMAGE: sumeetchhetri/gatf-jar
-  UTIL_IMAGE: sumeetchhetri/gatf-util
   BIN_IMAGE: sumeetchhetri/gatf-bin
   BIN_VNC_IMAGE: sumeetchhetri/gatf-bin-vnc
 
@@ -83,27 +82,4 @@ jobs:
         echo IMAGE_ID=$IMAGE_ID
         echo VERSION=$VERSION
         docker tag $BIN_VNC_IMAGE $IMAGE_ID:$VERSION
-        docker push $IMAGE_ID:$VERSION
-
-    - name: Build gatf util
-      run: |
-        docker build . --file Dockerfile-util --tag $UTIL_IMAGE
-        docker run -v `pwd`/sample:/workdir -i $UTIL_IMAGE -validate-sel test.sel /local/gatf-config-sel.xml
-    - name: Login to the registry
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-
-    - name: Push gatf util image
-      run: |
-        IMAGE_ID=$UTIL_IMAGE
-        # Change all uppercase to lowercase
-        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-        # Strip git ref prefix from version
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-        # Strip "v" prefix from tag name
-        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-        # Use Docker `latest` tag convention
-        [ "$VERSION" == "master" ] && VERSION=latest
-        echo IMAGE_ID=$IMAGE_ID
-        echo VERSION=$VERSION
-        docker tag $UTIL_IMAGE $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION

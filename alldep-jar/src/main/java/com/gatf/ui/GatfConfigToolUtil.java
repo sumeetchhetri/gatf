@@ -43,6 +43,7 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
+import com.gatf.selenium.SeleniumDriverConfig;
 
 
 /**
@@ -56,7 +57,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	private String ipAddress;
 	
 	private int port;
-
+	
 	private AcceptanceTestContext context = null;
 	
 	private TestCase authTestCase = null;
@@ -207,6 +208,36 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setRepeatSuiteExecutionNum(0);
 		}
 		
+		if(System.getProperty("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+			gatfConfig.setJavaHome(System.getProperty("D_JAVA_HOME"));
+		} else if(System.getenv("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+			gatfConfig.setJavaHome(System.getenv("D_JAVA_HOME"));
+		}
+		
+		if(System.getProperty("D_CHROME_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
+				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
+					if(sc.getName().equalsIgnoreCase("chrome")) {
+						sc.setPath(System.getProperty("D_CHROME_DRIVER"));
+					}
+				}
+			}
+		} else if(System.getenv("D_CHROME_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
+				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
+					if(sc.getName().equalsIgnoreCase("chrome")) {
+						sc.setPath(System.getenv("D_CHROME_DRIVER"));
+					}
+				}
+			}
+		}
+		
+		if(System.getProperty("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+			gatfConfig.setGatfJarPath(System.getProperty("D_GATF_JAR"));
+		} else if(System.getenv("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+			gatfConfig.setGatfJarPath(System.getenv("D_GATF_JAR"));
+		}
+		
 		if(isChanged)
 		{
 			FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), 
@@ -223,15 +254,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
 			} catch (IOException e) {
 			}
-        }
-		else if(!isExecutor && !new File(mojo.getRootDir(), "gatf-generator.xml").exists()) {
+        } else if(!isExecutor && !new File(mojo.getRootDir(), "gatf-generator.xml").exists()) {
 			try {
 				new File(mojo.getRootDir(), "gatf-generator.xml").createNewFile();
 				GatfConfiguration gatfConfig = config==null?new GatfConfiguration():(GatfConfiguration)config;
-
-				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), 
-						GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
-			
+				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
 			} catch (IOException e) {
 			}
         }
