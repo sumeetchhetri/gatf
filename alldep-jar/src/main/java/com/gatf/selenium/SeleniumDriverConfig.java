@@ -35,6 +35,10 @@ public class SeleniumDriverConfig implements Serializable {
 
     private String path;
 
+    private String arguments;
+
+    private String url;
+
     @XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
     private Map<String, String> capabilities = new HashMap<String, String>();
 
@@ -91,7 +95,23 @@ public class SeleniumDriverConfig implements Serializable {
         this.path = path;
     }
 
-    public Map<String, String> getCapabilities()
+    public String getArguments() {
+		return arguments;
+	}
+
+	public void setArguments(String arguments) {
+		this.arguments = arguments;
+	}
+
+	public String getUrl() {
+		return url;
+	}
+
+	public void setUrl(String url) {
+		this.url = url;
+	}
+
+	public Map<String, String> getCapabilities()
     {
         return capabilities;
     }

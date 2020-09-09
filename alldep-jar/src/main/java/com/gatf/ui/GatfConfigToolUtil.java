@@ -26,6 +26,7 @@ import java.util.function.Function;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -73,6 +74,8 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         if (resourcesIS != null)
         {
         	ReportHandler.unzipZipFile(resourcesIS, rootDir);
+        	IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
+        			new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
         }
         
         final GatfConfigToolUtil mojo = this;
@@ -209,8 +212,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		}
 		
 		if(System.getProperty("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+			isChanged = true;
 			gatfConfig.setJavaHome(System.getProperty("D_JAVA_HOME"));
 		} else if(System.getenv("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+			isChanged = true;
 			gatfConfig.setJavaHome(System.getenv("D_JAVA_HOME"));
 		}
 		
@@ -218,6 +223,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
+						isChanged = true;
 						sc.setPath(System.getProperty("D_CHROME_DRIVER"));
 					}
 				}
@@ -226,6 +232,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
+						isChanged = true;
 						sc.setPath(System.getenv("D_CHROME_DRIVER"));
 					}
 				}
@@ -233,15 +240,16 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		}
 		
 		if(System.getProperty("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+			isChanged = true;
 			gatfConfig.setGatfJarPath(System.getProperty("D_GATF_JAR"));
 		} else if(System.getenv("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+			isChanged = true;
 			gatfConfig.setGatfJarPath(System.getenv("D_GATF_JAR"));
 		}
 		
 		if(isChanged)
 		{
-			FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), 
-					GatfTestCaseExecutorUtil.getConfigStr(gatfConfig), "UTF-8");
+			FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStr(gatfConfig), "UTF-8");
 		}
 	}
 

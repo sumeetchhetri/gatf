@@ -3,7 +3,7 @@ FROM sumeetchhetri/gatf-jar:latest
 FROM ubuntu:20.04
 
 ENV D_JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
-ENV D_CHROME_DRIVER chromedriver
+ENV D_CHROME_DRIVER /urs/bin/chromedriver
 ENV D_GATF_JAR /gatf-alldep.jar
   
 ARG DEBIAN_FRONTEND=noninteractive
@@ -47,13 +47,14 @@ RUN if [ -z "$CHROME_DRIVER_VERSION" ]; \
   && ln -fs /opt/selenium/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver
 
 COPY --from=0 /gatf-alldep.jar /
-COPY artifacts/run-gatf.sh /
-RUN chmod +x /run-gatf.sh
+COPY artifacts/run-gatf.sh artifacts/run.sh /
+RUN chmod +x /run-gatf.sh /run.sh
+
 
 EXPOSE 9080
 
 WORKDIR /workdir
 
-ENTRYPOINT [ "java", "-DD_JAVA_HOME=${D_JAVA_HOME}", "-DD_CHROME_DRIVER=${D_CHROME_DRIVER}", "-DD_GATF_JAR=${D_GATF_JAR}", "-jar", "/gatf-alldep.jar" ]
+ENTRYPOINT ["/run.sh"]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]
 #CMD java -DJAVA_HOME=${JAVA_HOME} -DCHROME_DRIVER=${CHROME_DRIVER} -DGATF_JAR=${GATF_JAR} -jar /gatf-alldep.jar -configtool 9080 0.0.0.0 /workdir > gatf.log 2>&1

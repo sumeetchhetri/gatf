@@ -2898,6 +2898,10 @@ public class Command {
 		}
         String javacode() {
             StringBuilder b = new StringBuilder();
+            String rUrl = config.getUrl();
+            if(StringUtils.isBlank(rUrl)) {
+            	rUrl = "http://127.0.0.1:4723/wd/hub"; 
+            }
             if(config.getName().equalsIgnoreCase("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -2909,7 +2913,14 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
-                b.append("___dc___.addArguments(\"--ignore-certificate-errors\");\n");
+                if(StringUtils.isNotBlank(config.getArguments()))
+                {
+                	b.append("___dc___.addArguments(\""+esc(config.getArguments())+" --ignore-certificate-errors\".split(\"\\\\s+\"));\n");
+                }
+                else
+                {
+                	b.append("___dc___.addArguments(\"--ignore-certificate-errors\");\n");
+                }
                 b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
@@ -2924,6 +2935,10 @@ public class Command {
                 b.append("___dc___.getProfile().setAcceptUntrustedCertificates(true);\n");
                 b.append("___dc___.getProfile().setAssumeUntrustedCertificateIssuer(true);\n");
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                if(StringUtils.isNotBlank(config.getArguments()))
+                {
+                	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
+                }
                 b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("ie")) {
                 b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
@@ -2934,6 +2949,10 @@ public class Command {
                     {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
+                }
+                if(StringUtils.isNotBlank(config.getArguments()))
+                {
+                	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
@@ -2959,6 +2978,10 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
+                if(StringUtils.isNotBlank(config.getArguments()))
+                {
+                	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
+                }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("edge")) {
@@ -2973,6 +2996,72 @@ public class Command {
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("remote-chrome")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+            }  else if(config.getName().equalsIgnoreCase("remote-firefox")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.firefox();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("remote-ie")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.internetExplorer();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("remote-edge")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.edge();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+            } else if(config.getName().equalsIgnoreCase("remote-opera")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.operaBlink();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+            }  else if(config.getName().equalsIgnoreCase("remote-safari")) {
+                b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.safari();\n");
+                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                if(config.getCapabilities()!=null)
+                {
+                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+                    {
+                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-android")) {
                 b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+config.getVersion()+"\", org.openqa.selenium.Platform.ANDROID);\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -2983,7 +3072,7 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\"http://127.0.0.1:4723/wd/hub\"), ___dc___));\n");
+                b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-ios")) {
                 b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(\"ios\", \""+config.getVersion()+"\", org.openqa.selenium.Platform.MAC);\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -2994,7 +3083,7 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("set___d___(new io.appium.java_client.ios.IOSDriver(new java.net.URL(\"http://127.0.0.1:4723/wd/hub\"), ___dc___));\n");
+                b.append("set___d___(new io.appium.java_client.ios.IOSDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("selendroid")) {
                 b.append("SelendroidCapabilities  ___dc___ = new SelendroidCapabilities(\"\");\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3016,7 +3105,7 @@ public class Command {
                 //        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                 //    }
                 //}
-                //b.append("get___d___() = new org.openqa.selenium.remote.RemoteWebDriver(\"http://127.0.0.1:4723/wd/hub\", ___dc___);\n");
+                //b.append("get___d___() = new org.openqa.selenium.remote.RemoteWebDriver(\""+rUrl+"\", ___dc___);\n");
             }
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
