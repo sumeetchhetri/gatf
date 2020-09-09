@@ -28,6 +28,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import javax.tools.Diagnostic;
+import javax.tools.Diagnostic.Kind;
 import javax.tools.DiagnosticCollector;
 import javax.tools.JavaCompiler;
 import javax.tools.JavaFileObject;
@@ -114,10 +115,10 @@ public class SeleniumCodeGeneratorAndUtil {
 	        if (task.call()) {
 	        	boolean errCd = false;
 	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-	                System.out.format("Error on line %d in %s%n",
-	                        diagnostic.getLineNumber(),
-	                        diagnostic.getSource().toUri());
-	                errCd = true;
+	        		if(diagnostic.getKind()==Kind.ERROR) {
+	        			errCd = true;
+	        			System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource().toUri());
+	        		}
 	                System.out.println(diagnostic.toString());
 	            }
 	        	
@@ -146,7 +147,7 @@ public class SeleniumCodeGeneratorAndUtil {
         boolean errd = false;
         String err = null;
         while((err = inStreamReader.readLine()) != null) {
-            errd |= err.indexOf("error:")!=-1;
+            errd |= err.indexOf("error: ")!=-1;
             System.out.println(err);
         }
         
