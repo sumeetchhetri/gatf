@@ -219,12 +219,28 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setJavaHome(System.getenv("D_JAVA_HOME"));
 		}
 		
+		boolean isDocker = false;
+		if("true".equalsIgnoreCase(System.getProperty("D_DOCKER"))) {
+			isChanged = true;
+			isDocker = true;
+			gatfConfig.setTestCasesBasePath("/workdir");
+			gatfConfig.setOutFilesBasePath("/workdir");
+		} else if("true".equalsIgnoreCase(System.getenv("D_DOCKER"))) {
+			isChanged = true;
+			isDocker = true;
+			gatfConfig.setTestCasesBasePath("/workdir");
+			gatfConfig.setOutFilesBasePath("/workdir");
+		}
+		
 		if(System.getProperty("D_CHROME_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
 						isChanged = true;
 						sc.setPath(System.getProperty("D_CHROME_DRIVER"));
+						if(isDocker) {
+							sc.setArguments("--headless --whitelisted-ips --no-sandbox");
+						}
 					}
 				}
 			}
@@ -234,6 +250,29 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
 						isChanged = true;
 						sc.setPath(System.getenv("D_CHROME_DRIVER"));
+						if(isDocker) {
+							sc.setArguments("--headless --whitelisted-ips --no-sandbox");
+						}
+					}
+				}
+			}
+		}
+		
+		if(System.getProperty("D_FF_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
+				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
+					if(sc.getName().equalsIgnoreCase("firefox")) {
+						isChanged = true;
+						sc.setPath(System.getProperty("D_FF_DRIVER"));
+					}
+				}
+			}
+		} else if(System.getenv("D_FF_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
+				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
+					if(sc.getName().equalsIgnoreCase("firefox")) {
+						isChanged = true;
+						sc.setPath(System.getenv("D_FF_DRIVER"));
 					}
 				}
 			}
