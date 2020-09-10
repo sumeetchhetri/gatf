@@ -3,7 +3,7 @@ FROM sumeetchhetri/gatf-jar:latest
 FROM ubuntu:20.04
 
 ENV D_JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
-ENV D_CHROME_DRIVER /urs/bin/chromedriver
+ENV D_CHROME_DRIVER /usr/bin/chromedriver
 ENV D_GATF_JAR /gatf-alldep.jar
   
 ARG DEBIAN_FRONTEND=noninteractive
@@ -49,7 +49,6 @@ RUN if [ -z "$CHROME_DRIVER_VERSION" ]; \
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh artifacts/run.sh /
 RUN chmod +x /run-gatf.sh /run.sh
-
 
 EXPOSE 9080
 

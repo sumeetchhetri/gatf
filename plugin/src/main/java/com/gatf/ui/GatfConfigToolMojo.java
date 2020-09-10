@@ -16,8 +16,11 @@
 package com.gatf.ui;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.function.Function;
+
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -80,6 +83,8 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
         if (resourcesIS != null)
         {
         	ReportHandler.unzipZipFile(resourcesIS, rootDir);
+        	IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
+        			new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
         }
         
         final GatfConfigToolMojo mojo = this;
