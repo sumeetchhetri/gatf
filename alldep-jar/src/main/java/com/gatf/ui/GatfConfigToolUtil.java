@@ -298,14 +298,18 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	{
 		if(isExecutor && !new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
 			try {
-				new File(mojo.getRootDir(), "gatf-config.xml").createNewFile();
+				synchronized (mojo) {
+					new File(mojo.getRootDir(), "gatf-config.xml").createNewFile();
+				}
 				GatfExecutorConfig gatfConfig = config==null?new GatfExecutorConfig():(GatfExecutorConfig)config;
 				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
 			} catch (IOException e) {
 			}
         } else if(!isExecutor && !new File(mojo.getRootDir(), "gatf-generator.xml").exists()) {
 			try {
-				new File(mojo.getRootDir(), "gatf-generator.xml").createNewFile();
+				synchronized (mojo) {
+					new File(mojo.getRootDir(), "gatf-generator.xml").createNewFile();
+				}
 				GatfConfiguration gatfConfig = config==null?new GatfConfiguration():(GatfConfiguration)config;
 				synchronized (mojo) {
 					FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
@@ -356,7 +360,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		GatfExecutorConfig gatfConfig = config;
 		if(gatfConfig == null)
 		{
-			gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")));
+			synchronized (mojo) {
+				gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")));
+			}
 		}
 		if(gatfConfig == null) {
 			throw new RuntimeException("Invalid configuration present");
