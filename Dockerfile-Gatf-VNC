@@ -6,6 +6,8 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 USER root
 
+RUN apt update -y && apt install -y openjdk-11-jdk openjdk-11-jre git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
+
 #============================================
 # Chrome webdriver
 #============================================
@@ -39,8 +41,6 @@ RUN GK_VERSION=$(if [ ${GECKODRIVER_VERSION:-latest} = "latest" ]; then echo "0.
   && mv /opt/geckodriver /opt/geckodriver-$GK_VERSION \
   && chmod 755 /opt/geckodriver-$GK_VERSION \
   && ln -fs /opt/geckodriver-$GK_VERSION /usr/bin/geckodriver
-
-RUN apt update -y && apt install -y openjdk-11-jdk openjdk-11-jre git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
 
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh /
