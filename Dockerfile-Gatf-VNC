@@ -4,8 +4,6 @@ FROM dorowu/ubuntu-desktop-lxde-vnc
   
 ARG DEBIAN_FRONTEND=noninteractive
 
-USER root
-
 RUN apt update -y && apt install -y openjdk-11-jdk openjdk-11-jre git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
 
 #============================================

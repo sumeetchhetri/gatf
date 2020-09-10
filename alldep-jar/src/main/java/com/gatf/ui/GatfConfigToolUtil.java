@@ -211,10 +211,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setRepeatSuiteExecutionNum(0);
 		}
 		
-		if(System.getProperty("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+		if(System.getProperty("D_JAVA_HOME")!=null) {
 			isChanged = true;
 			gatfConfig.setJavaHome(System.getProperty("D_JAVA_HOME"));
-		} else if(System.getenv("D_JAVA_HOME")!=null && gatfConfig.getJavaHome()!=null) {
+		} else if(System.getenv("D_JAVA_HOME")!=null) {
 			isChanged = true;
 			gatfConfig.setJavaHome(System.getenv("D_JAVA_HOME"));
 		}
@@ -239,10 +239,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			}
 		}
 		
-		if(System.getProperty("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+		if(System.getProperty("D_GATF_JAR")!=null) {
 			isChanged = true;
 			gatfConfig.setGatfJarPath(System.getProperty("D_GATF_JAR"));
-		} else if(System.getenv("D_GATF_JAR")!=null && gatfConfig.getJavaHome()!=null) {
+		} else if(System.getenv("D_GATF_JAR")!=null) {
 			isChanged = true;
 			gatfConfig.setGatfJarPath(System.getenv("D_GATF_JAR"));
 		}

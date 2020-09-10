@@ -9,6 +9,9 @@ ENV D_GATF_JAR /gatf-alldep.jar
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt update -y && apt install -y openjdk-11-jdk openjdk-11-jre git wget unzip net-tools gnupg && rm -rf /var/lib/apt/lists/*
+
+#============================================
+# Google Chrome
 #============================================
 # can specify versions by CHROME_VERSION;
 #  e.g. google-chrome-stable=53.0.2785.101-1
