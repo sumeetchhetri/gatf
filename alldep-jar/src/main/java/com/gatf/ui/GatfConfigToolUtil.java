@@ -288,7 +288,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		
 		if(isChanged)
 		{
-			FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStr(gatfConfig), "UTF-8");
+			synchronized (mojo) {
+				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStr(gatfConfig), "UTF-8");
+			}
 		}
 	}
 
@@ -305,7 +307,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			try {
 				new File(mojo.getRootDir(), "gatf-generator.xml").createNewFile();
 				GatfConfiguration gatfConfig = config==null?new GatfConfiguration():(GatfConfiguration)config;
-				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
+				synchronized (mojo) {
+					FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
+				}
 			} catch (IOException e) {
 			}
         }
@@ -376,8 +380,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		{
 			gatfConfig.setResourcepath(mojo.getRootDir() + "/generated");
 		}
-		FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"), 
-				GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
+		synchronized (mojo) {
+			FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-generator.xml"),  GatfTestGeneratorUtil.getConfigStr(gatfConfig), "UTF-8");
+		}
 		return gatfConfig;
 	}
 	

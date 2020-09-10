@@ -83,16 +83,14 @@ public class GatfReportsHandler extends HttpHandler {
 			    TestCaseReport tcReport = null;
 			    if(action.equals("replayTest"))
 			    { 
-			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
-			                TestCaseReport.class);
+			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			        if(tcReport == null) {
 			            throw new RuntimeException("Invalid testcase report details provided");
 			        }
 			    } 
 			    else if(isExternalLogsApi && !action.equals("playTest"))
 			    {
-			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
-			                TestCaseReport.class);
+			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			    }
 			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false);
 			    if(out[1]!=null) {

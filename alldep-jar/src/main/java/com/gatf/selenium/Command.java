@@ -2923,7 +2923,9 @@ public class Command {
                 }
                 b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
+            	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
+                b.append("___dc___.setProfile(___dcprf___);\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
