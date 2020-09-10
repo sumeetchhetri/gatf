@@ -83,8 +83,12 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
         if (resourcesIS != null)
         {
         	ReportHandler.unzipZipFile(resourcesIS, rootDir);
-        	IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
-        			new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
+        	try {
+        		IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
+        				new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
+        	} catch (Exception e) {
+        		throw new RuntimeException(e);
+        	}
         }
         
         final GatfConfigToolMojo mojo = this;
