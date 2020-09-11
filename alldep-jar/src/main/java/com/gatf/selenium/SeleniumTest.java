@@ -1372,12 +1372,13 @@ public abstract class SeleniumTest {
                 try {
                     elementAction(ret, action, tvalue);
                 } catch (WebDriverException e) {
-                	boolean isInvClk = e.getMessage().contains("org.openqa.selenium.ElementClickInterceptedException") 
-                			&& e.getMessage().contains("is not clickable at point (")
-                			&& e.getMessage().contains("Other element would receive the click");
-                	boolean isNotSel = e.getMessage().contains("org.openqa.selenium.ElementNotSelectableException");
-                	boolean isNotInt = e.getMessage().contains("org.openqa.selenium.ElementNotInteractableException");
-                	boolean isNotVis = e.getMessage().contains("org.openqa.selenium.ElementNotVisibleException");
+                	String exMsg = ExceptionUtils.getStackTrace(e);
+                	boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
+                			&& exMsg.contains("is not clickable at point (")
+                			&& exMsg.contains("Other element would receive the click");
+                	boolean isNotSel = exMsg.contains("org.openqa.selenium.ElementNotSelectableException");
+                	boolean isNotInt = exMsg.contains("org.openqa.selenium.ElementNotInteractableException");
+                	boolean isNotVis = exMsg.contains("org.openqa.selenium.ElementNotVisibleException");
                     if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
                         Exception lastException = null;
                         while(timeoutRemaining>0) {
@@ -1408,7 +1409,42 @@ public abstract class SeleniumTest {
                         e.printStackTrace();
                     }
                 } catch (Exception e) {
-                    e.printStackTrace();
+                	String exMsg = ExceptionUtils.getStackTrace(e);
+                	boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
+                			&& exMsg.contains("is not clickable at point (")
+                			&& exMsg.contains("Other element would receive the click");
+                	boolean isNotSel = exMsg.contains("org.openqa.selenium.ElementNotSelectableException");
+                	boolean isNotInt = exMsg.contains("org.openqa.selenium.ElementNotInteractableException");
+                	boolean isNotVis = exMsg.contains("org.openqa.selenium.ElementNotVisibleException");
+                    if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
+                        Exception lastException = null;
+                        while(timeoutRemaining>0) {
+                            try {
+                                Thread.sleep(1000);
+                                System.out.println("Retrying operation.....");
+                                elementAction(ret, action, tvalue);
+                                lastException = null;
+                                break;
+                            } catch (Exception e1) {
+                                lastException = e1;
+                                isInvClk = e1.getMessage().contains("org.openqa.selenium.ElementClickInterceptedException") 
+                                		&& e1.getMessage().contains("is not clickable at point (")
+                                		&& e1.getMessage().contains("Other element would receive the click");
+                                isNotSel = e1.getMessage().contains("org.openqa.selenium.ElementNotSelectableException");
+                                isNotInt = e1.getMessage().contains("org.openqa.selenium.ElementNotInteractableException");
+                                isNotVis = e1.getMessage().contains("org.openqa.selenium.ElementNotVisibleException");
+                            	if(!(isInvClk || isNotSel || isNotInt || isNotVis)) {
+                            		break;
+                            	}
+                            }
+                            timeoutRemaining--;
+                        }
+                        if(lastException!=null) {
+                            lastException.printStackTrace();
+                        }
+                    } else {
+                        e.printStackTrace();
+                    }
                 }
             } else if("selected".equalsIgnoreCase(subselector) || "enabled".equalsIgnoreCase(subselector) || "visible".equalsIgnoreCase(subselector)) {
                 for(final WebElement we: ret) {

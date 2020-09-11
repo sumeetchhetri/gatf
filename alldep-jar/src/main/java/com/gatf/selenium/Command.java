@@ -1290,7 +1290,11 @@ public class Command {
         }
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
-        b.append("}\ncatch(Throwable "+ex+")\n{\npushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
+        b.append("}\ncatch(Throwable "+ex+")\n{\n");
+        String img = System.getProperty("java.io.tmpdir") + File.separator + "_main_exec.jpg";
+        ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
+        b.append(tm.javacode());
+        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
@@ -1793,7 +1797,11 @@ public class Command {
                 }
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
-                b.append("\n}\ncatch(Throwable "+ex+")\n{\npushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
+                b.append("\n}\ncatch(Throwable "+ex+")\n{\n");
+                String img = System.getProperty("java.io.tmpdir") + File.separator + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
+                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
+                b.append(tm.javacode());
+                b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
                 b.append("\n}\nfinally {\nset__subtestname__(null);\n}");
             }
             b.append("return ___ce___;\n}\n");

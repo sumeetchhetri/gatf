@@ -14,7 +14,7 @@ ENV DISPLAY :99.0
   
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt update -y && apt install -y software-properties-common xvfb openjdk-11-jdk openjdk-11-jre git wget unzip net-tools gnupg && rm -rf /var/lib/apt/lists/*
+RUN apt update -y && apt install -y software-properties-common xvfb fluxbox wmctrl openjdk-11-jdk openjdk-11-jre git wget unzip net-tools gnupg && rm -rf /var/lib/apt/lists/*
 
 #============================================
 # Google Chrome
