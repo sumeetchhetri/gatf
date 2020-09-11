@@ -100,23 +100,21 @@ public class SeleniumCodeGeneratorAndUtil {
         
         DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
         
+        if(retvals.length==5) retvals[4] += "";
         
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if(compiler!=null) {
 	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
 	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
-	        JavaCompiler.CompilationTask task = compiler.getTask(
-	            null, 
-	            fileManager, 
-	            diagnostics, 
-	            optionList, 
-	            null, 
-	            compilationUnit);
+	        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit);
 	        if (task.call()) {
 	        	boolean errCd = false;
 	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
 	        		if(diagnostic.getKind()==Kind.ERROR) {
 	        			errCd = true;
+	        			if(retvals.length==5) {
+	        				retvals[4] += diagnostic.toString();
+	        			}
 	        			System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource().toUri());
 	        		}
 	                System.out.println(diagnostic.toString());
@@ -148,6 +146,9 @@ public class SeleniumCodeGeneratorAndUtil {
         String err = null;
         while((err = inStreamReader.readLine()) != null) {
             errd |= err.indexOf("error: ")!=-1;
+            if(retvals.length==5 && err.indexOf("error: ")!=-1) {
+				retvals[4] += err;
+			}
             System.out.println(err);
         }
         
@@ -160,7 +161,6 @@ public class SeleniumCodeGeneratorAndUtil {
                 classLoader = new URLClassLoader(urls, loader);
             }
             Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName(), true, classLoader);
-            //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
             return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         }
 	}

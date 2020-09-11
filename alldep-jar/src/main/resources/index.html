@@ -1408,9 +1408,13 @@
 												htmm= "";
 												$('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=30 style="width:90%">'+data1+'</textarea>');
 												prepareForm("testcases?testcaseFileName="+currtestcasefile+"&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
-												$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+												$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button style="margin-left:10px" id="validate_test_case" type="submit" class="postbigb" type="submit">Validate</button><br/><div id="play_result_area"></div>');
 												$('#play_test_case').click(function(){
 													playTest(currtestcasefile, "", false, false);
+													return false;
+												});
+                        $('#validate_test_case').click(function(){
+													playTest(currtestcasefile, "", false, false, true);
 													return false;
 												});
 												return;
@@ -1489,18 +1493,27 @@
 				}
 			}
 
-			function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi)
+			function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi, action)
 			{
+        action = (action===undefined || action===null || action==="")?'playTest':action;
 				var isserverlogfile = isServerLogsApi?"&isServerLogsApi=true":"";
 				isserverlogfile += isExternalLogsApi?"&isExternalLogsApi=true":"";
-				ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName="+tcf+"&testCaseName="+tc+isserverlogfile, "", "", {}, function(tcf){
+				ajaxCall(true, "PUT", "/reports?action="+action+"&testcaseFileName="+tcf+"&testCaseName="+tc+isserverlogfile, "", "", {}, function(tcf){
 					return function(data) {
-						if(tcf.toLowerCase().endsWith(".sel")) {
+						if(action!="validateTest" && tcf.toLowerCase().endsWith(".sel")) {
 							$("#myModalB").html('Test Report for script ' + tcf);
 							$("#myModalB").html('<iframe src="reports/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
 							$("#myModal").modal();
 							return;
-						}
+						} else if(action=="validateTest" && tcf.toLowerCase().endsWith(".sel")) {
+              if(data && data["status"]=="SUCCESS") {
+                  $('#play_result_area').html(content);
+                  return;
+              } else if(data) {
+                  $('#play_result_area').html(data["status"] + "\n" + data["error"]);
+                  return;
+              }
+            }
 						var content = getTestResultContent1(data);
 						$('#play_result_area').html(content);
 					};

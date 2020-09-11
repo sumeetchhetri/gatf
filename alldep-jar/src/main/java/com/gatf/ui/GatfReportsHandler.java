@@ -43,6 +43,7 @@ import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
+import com.gatf.selenium.Command;
 
 public class GatfReportsHandler extends HttpHandler {
 
@@ -81,7 +82,16 @@ public class GatfReportsHandler extends HttpHandler {
 			    boolean isServerLogsApi = request.getParameter("isServerLogsApi")!=null;
 			    boolean isExternalLogsApi = request.getParameter("isExternalLogsApi")!=null;
 			    TestCaseReport tcReport = null;
-			    if(action.equals("replayTest"))
+			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
+			    {
+			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()});
+			    	response.setContentType(MediaType.APPLICATION_JSON);
+			        response.setContentLength(status.length());
+			        response.getWriter().write(status);
+			        response.setStatus(HttpStatus.OK_200);
+			        return;
+			    }
+			    else if(action.equals("replayTest"))
 			    { 
 			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			        if(tcReport == null) {
@@ -91,6 +101,10 @@ public class GatfReportsHandler extends HttpHandler {
 			    else if(isExternalLogsApi && !action.equals("playTest"))
 			    {
 			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
+			    }
+			    else 
+			    {
+			    	throw new RuntimeException("Invalid action specified..");
 			    }
 			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false);
 			    if(out[1]!=null) {

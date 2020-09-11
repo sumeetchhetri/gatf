@@ -27,6 +27,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -211,79 +212,61 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setRepeatSuiteExecutionNum(0);
 		}
 		
-		if(System.getProperty("D_JAVA_HOME")!=null) {
+		String tmp = System.getProperty("D_JAVA_HOME")!=null?System.getProperty("D_JAVA_HOME"):System.getenv("D_JAVA_HOME");
+		if(tmp!=null) {
 			isChanged = true;
-			gatfConfig.setJavaHome(System.getProperty("D_JAVA_HOME"));
-		} else if(System.getenv("D_JAVA_HOME")!=null) {
-			isChanged = true;
-			gatfConfig.setJavaHome(System.getenv("D_JAVA_HOME"));
+			gatfConfig.setJavaHome(tmp);
 		}
 		
 		boolean isDocker = false;
-		if("true".equalsIgnoreCase(System.getProperty("D_DOCKER"))) {
-			isChanged = true;
-			isDocker = true;
-			gatfConfig.setTestCasesBasePath("/workdir");
-			gatfConfig.setOutFilesBasePath("/workdir");
-		} else if("true".equalsIgnoreCase(System.getenv("D_DOCKER"))) {
+		tmp = System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER");
+		if("true".equalsIgnoreCase(tmp)) {
 			isChanged = true;
 			isDocker = true;
 			gatfConfig.setTestCasesBasePath("/workdir");
 			gatfConfig.setOutFilesBasePath("/workdir");
 		}
 		
-		if(System.getProperty("D_CHROME_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+		tmp = System.getProperty("D_CHROME_DRIVER")!=null?System.getProperty("D_CHROME_DRIVER"):System.getenv("D_CHROME_DRIVER");
+		if(tmp!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
 						isChanged = true;
-						sc.setPath(System.getProperty("D_CHROME_DRIVER"));
+						sc.setPath(tmp);
 						if(isDocker) {
-							sc.setArguments("--headless --whitelisted-ips --no-sandbox");
-						}
-					}
-				}
-			}
-		} else if(System.getenv("D_CHROME_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
-			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
-				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
-					if(sc.getName().equalsIgnoreCase("chrome")) {
-						isChanged = true;
-						sc.setPath(System.getenv("D_CHROME_DRIVER"));
-						if(isDocker) {
-							sc.setArguments("--headless --whitelisted-ips --no-sandbox");
+							String args = "--whitelisted-ips --no-sandbox";
+							if("true".equalsIgnoreCase(System.getProperty("D_CHROME_HEADLESS")) || "true".equalsIgnoreCase(System.getenv("D_CHROME_HEADLESS"))) {
+								args += " --headless";
+							}
+							if(StringUtils.isNotBlank(sc.getArguments())) {
+								String cargs = sc.getArguments().trim();
+								cargs = cargs.replace("--whitelisted-ips", "").replace("--no-sandbox", "").replace("--headless", "");
+								args += " " + cargs;
+							}
+							sc.setArguments(args);
 						}
 					}
 				}
 			}
 		}
 		
-		if(System.getProperty("D_FF_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
+		tmp = System.getProperty("D_FF_DRIVER")!=null?System.getProperty("D_FF_DRIVER"):System.getenv("D_FF_DRIVER");
+		if(tmp!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("firefox")) {
 						isChanged = true;
-						sc.setPath(System.getProperty("D_FF_DRIVER"));
-					}
-				}
-			}
-		} else if(System.getenv("D_FF_DRIVER")!=null && gatfConfig.getSeleniumDriverConfigs()!=null) {
-			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
-				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
-					if(sc.getName().equalsIgnoreCase("firefox")) {
-						isChanged = true;
-						sc.setPath(System.getenv("D_FF_DRIVER"));
+						sc.setPath(tmp);
 					}
 				}
 			}
 		}
 		
-		if(System.getProperty("D_GATF_JAR")!=null) {
+		tmp = System.getProperty("D_GATF_JAR")!=null?System.getProperty("D_GATF_JAR"):System.getenv("D_GATF_JAR");
+		if(tmp!=null) {
 			isChanged = true;
-			gatfConfig.setGatfJarPath(System.getProperty("D_GATF_JAR"));
-		} else if(System.getenv("D_GATF_JAR")!=null) {
-			isChanged = true;
-			gatfConfig.setGatfJarPath(System.getenv("D_GATF_JAR"));
+			gatfConfig.setGatfJarPath(tmp);
 		}
 		
 		if(isChanged)

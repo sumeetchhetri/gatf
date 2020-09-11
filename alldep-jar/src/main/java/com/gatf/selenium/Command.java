@@ -45,6 +45,7 @@ import org.apache.commons.lang.SystemUtils;
 import org.openqa.selenium.Keys;
 import org.reflections.Reflections;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
@@ -78,7 +79,7 @@ public class Command {
         int NUMBER_IF = 1;
         int NUMBER_AL = 1;
         int NUMBER_RD = 1;
-        int NUMBER_AT = 1;//addtest
+        int NUMBER_AT = 1;
         int loopCounter = 0;
 
         int NUMBER_SC = 1;
@@ -6064,14 +6065,14 @@ public class Command {
         }
     }
     
-    public static void validateSel(String[] args) throws Exception {
+    public static String validateSel(String[] args) throws Exception {
     	Map<String, SeleniumDriverConfig> mp = new HashMap<String, SeleniumDriverConfig>();
         SeleniumDriverConfig dc = new SeleniumDriverConfig();
         dc.setName("chrome");
         dc.setDriverName("webdriver.chrome.driver");
         dc.setPath("chromedriver");
         mp.put("chrome", dc);
-        GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():"gatf-config-sel.xml", args.length>3?args[3].trim():"/workdir");
+        GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():"gatf-config.xml", args.length>3?args[3].trim():"/workdir");
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
@@ -6089,13 +6090,27 @@ public class Command {
         	args[1] = "/workdir/"+args[1];
         }
     	
+        Object[] retvals = new Object[5];
         try {
-            Object[] retvals = new Object[4];
             SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>3?args[3].trim().equalsIgnoreCase("true"):false);
             System.out.println(dyn!=null?"SUCCESS":"FAILURE");
+            if(dyn!=null) {
+            	return "{\"status\": \"SUCCESS\"}";
+            }
+        	Map<String, String> mpe = new HashMap<String, String>();
+        	mpe.put("status", "FAILURE");
+        	mpe.put("error", retvals[4].toString());
+            return new ObjectMapper().writeValueAsString(mpe);
+        } catch (GatfSelCodeParseError e) {
+        	Map<String, String> mpe = new HashMap<String, String>();
+        	mpe.put("status", "FAILURE");
+        	mpe.put("error", e.getMessage());
+            return new ObjectMapper().writeValueAsString(mpe);
         } catch (Throwable e) {
-            e.printStackTrace();
-            throw new RuntimeException("Unable to compile seleasy script " + args[1]);
+        	Map<String, String> mpe = new HashMap<String, String>();
+        	mpe.put("status", "FAILURE");
+        	mpe.put("error", "Unable to compile seleasy script " + args[1]);
+            return new ObjectMapper().writeValueAsString(mpe);
         }
     }
 

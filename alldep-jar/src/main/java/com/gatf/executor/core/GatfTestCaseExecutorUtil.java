@@ -69,6 +69,7 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
@@ -579,6 +580,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 tests.add(dyn);
                 testdata.add(retvals);
                 testClassNames.add(dyn.getClass().getName());
+            } catch (GatfSelCodeParseError e) {
+                e.printStackTrace();
+                throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
             } catch (Exception e) {
                 e.printStackTrace();
                 throw new RuntimeException("Unable to compile seleasy script " + selscript);
