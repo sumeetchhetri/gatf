@@ -64,6 +64,8 @@ RUN groupadd seluser \
 
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh /
+COPY sample1.* jpg* png* /home/seluser/
+RUN chown seluser:seluser /home/seluser/*
 COPY artifacts/supervisord.conf /etc/supervisor/conf.d/
 RUN chmod +x /run-gatf.sh
 

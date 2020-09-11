@@ -54,9 +54,27 @@ RUN if [ -z "$CHROME_DRIVER_VERSION" ]; \
   && chmod 755 /opt/selenium/chromedriver-$CHROME_DRIVER_VERSION \
   && ln -fs /opt/selenium/chromedriver-$CHROME_DRIVER_VERSION /usr/bin/chromedriver
 
+#============================================
+# Add normal user and group with passwordless sudo
+#============================================
+RUN groupadd seluser \
+         --gid 1201 \
+  && useradd seluser \
+         --create-home \
+         --gid 1201 \
+         --shell /bin/bash \
+         --uid 1200 \
+  && usermod -a -G sudo seluser \
+  && echo 'ALL ALL = (ALL) NOPASSWD: ALL' >> /etc/sudoers \
+  && echo 'seluser:secret' | chpasswd
+
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh artifacts/run.sh /
+COPY sample1.* jpg* png* /home/seluser/
 RUN chmod +x /run-gatf.sh /run.sh
+RUN chown seluser:seluser /home/seluser/* /run-gatf.sh /run.sh
+
+USER seluser
 
 EXPOSE 9080
 
