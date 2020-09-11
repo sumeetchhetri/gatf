@@ -1056,9 +1056,11 @@ public abstract class SeleniumTest {
 	    	robot21.keyPress(java.awt.event.KeyEvent.VK_V);
 	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_V);
 	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_CONTROL);
+	    	Thread.sleep(1000);
 	    	robot21.keyPress(java.awt.event.KeyEvent.VK_ENTER);
 	    	robot21.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
 		} catch (AWTException e) {
+		} catch (InterruptedException e) {
 		}
     }
     
@@ -1370,9 +1372,13 @@ public abstract class SeleniumTest {
                 try {
                     elementAction(ret, action, tvalue);
                 } catch (WebDriverException e) {
-                    if(timeoutRemaining>0 && e.getMessage().startsWith("unknown error: Element ") 
-                            && e.getMessage().contains("is not clickable at point (")
-                            && e.getMessage().contains("Other element would receive the click")) {
+                	boolean isInvClk = e.getMessage().contains("org.openqa.selenium.ElementClickInterceptedException") 
+                			&& e.getMessage().contains("is not clickable at point (")
+                			&& e.getMessage().contains("Other element would receive the click");
+                	boolean isNotSel = e.getMessage().contains("org.openqa.selenium.ElementNotSelectableException");
+                	boolean isNotInt = e.getMessage().contains("org.openqa.selenium.ElementNotInteractableException");
+                	boolean isNotVis = e.getMessage().contains("org.openqa.selenium.ElementNotVisibleException");
+                    if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
                         Exception lastException = null;
                         while(timeoutRemaining>0) {
                             try {
@@ -1383,6 +1389,15 @@ public abstract class SeleniumTest {
                                 break;
                             } catch (Exception e1) {
                                 lastException = e1;
+                                isInvClk = e1.getMessage().contains("org.openqa.selenium.ElementClickInterceptedException") 
+                                		&& e1.getMessage().contains("is not clickable at point (")
+                                		&& e1.getMessage().contains("Other element would receive the click");
+                                isNotSel = e1.getMessage().contains("org.openqa.selenium.ElementNotSelectableException");
+                                isNotInt = e1.getMessage().contains("org.openqa.selenium.ElementNotInteractableException");
+                                isNotVis = e1.getMessage().contains("org.openqa.selenium.ElementNotVisibleException");
+                            	if(!(isInvClk || isNotSel || isNotInt || isNotVis)) {
+                            		break;
+                            	}
                             }
                             timeoutRemaining--;
                         }

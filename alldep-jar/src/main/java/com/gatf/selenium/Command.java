@@ -2279,6 +2279,8 @@ public class Command {
             for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
                     b.append(command.javacode());
+                } else if(command instanceof SelectCommand) {
+                	b.append(((SelectCommand)command).javacodeonly(cond.getActionableVar()));
                 }
             }
             //if(!(cond instanceof WaitAndFindCommand))
@@ -3835,7 +3837,11 @@ public class Command {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
-                        }
+                        }/* else if(c instanceof SelectCommand) {
+                        	SelectCommand scc = (SelectCommand)c;
+                        	ssubselector = scc.by;
+                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        }*/
                     }
                 }
             }
@@ -3874,11 +3880,15 @@ public class Command {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
-                        }
+                        }/* else if(c instanceof SelectCommand) {
+                        	SelectCommand scc = (SelectCommand)c;
+                        	ssubselector = scc.by;
+                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        }*/
                     }
                 }
             }
-            if(ssubselector!=null) {
+            if(subselector!=null) {
                 ssubselector = "evaluate(\""+esc(subselector)+"\")";
             }
             if(soper!=null) {
@@ -4597,6 +4607,23 @@ public class Command {
         String toCmd() {
             return "select \"" + by + "\"" + (cond!=null?cond.toCmd():"");
         }
+        String javacodeonly(String cvarnm) {
+        	StringBuilder b = new StringBuilder();
+        	String selvrnm = state.varname();
+            b.append("\nSelect "+selvrnm+" = new Select("+cvarnm+".get(0));");
+            if(by.equalsIgnoreCase("text")) {
+                b.append("\n"+selvrnm+".selectByVisibleText(evaluate(\""+value+"\"));");
+            } else if(by.equalsIgnoreCase("index")) {
+                b.append("\n"+selvrnm+".selectByIndex(Integer.parseInt(evaluate(\""+value+"\")));"); 
+            } else if(by.equalsIgnoreCase("value")) {
+                b.append("\n"+selvrnm+".selectByValue(evaluate(\""+value+"\"));"); 
+            } else if(by.equalsIgnoreCase("first")) {
+                b.append("\n"+selvrnm+".selectByIndex(0);"); 
+            } else if(by.equalsIgnoreCase("last")) {
+                b.append("\n"+selvrnm+".selectByIndex("+selvrnm+".getOptions().size()-1);"); 
+            }
+            return b.toString();
+        }
         String javacode() {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
@@ -4607,7 +4634,7 @@ public class Command {
             if(cond!=null) {
                 cvarnm = cond.getActionableVar();
             }
-            if(cond.getActionableVar()==null) {
+            if(cond==null || cond.getActionableVar()==null) {
                 cvarnm = state.currvarname();
             }
             String selvrnm = state.varname();
@@ -6092,7 +6119,7 @@ public class Command {
     	
         Object[] retvals = new Object[5];
         try {
-            SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>3?args[3].trim().equalsIgnoreCase("true"):false);
+            SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>4?args[4].trim().equalsIgnoreCase("true"):false);
             System.out.println(dyn!=null?"SUCCESS":"FAILURE");
             if(dyn!=null) {
             	return "{\"status\": \"SUCCESS\"}";
@@ -6102,11 +6129,13 @@ public class Command {
         	mpe.put("error", retvals[4].toString());
             return new ObjectMapper().writeValueAsString(mpe);
         } catch (GatfSelCodeParseError e) {
+        	e.printStackTrace();
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", e.getMessage());
             return new ObjectMapper().writeValueAsString(mpe);
         } catch (Throwable e) {
+        	e.printStackTrace();
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", "Unable to compile seleasy script " + args[1]);
