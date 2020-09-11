@@ -70,7 +70,7 @@ RUN groupadd seluser \
 
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh artifacts/run.sh /
-COPY sample1.* jpg* png* /home/seluser/
+COPY artifacts/sample1.* artifacts/jpg* artifacts/png* /home/seluser/
 RUN chmod +x /run-gatf.sh /run.sh
 RUN chown seluser:seluser /home/seluser/* /run-gatf.sh /run.sh
 
