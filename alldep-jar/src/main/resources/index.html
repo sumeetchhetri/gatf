@@ -1414,7 +1414,7 @@
 													return false;
 												});
                         $('#validate_test_case').click(function(){
-													playTest(currtestcasefile, "", false, false, true);
+													playTest(currtestcasefile, "", false, false, 'validateTest');
 													return false;
 												});
 												return;
@@ -1507,7 +1507,7 @@
 							return;
 						} else if(action=="validateTest" && tcf.toLowerCase().endsWith(".sel")) {
               if(data && data["status"]=="SUCCESS") {
-                  $('#play_result_area').html(content);
+                  $('#play_result_area').html(data["status"]);
                   return;
               } else if(data) {
                   $('#play_result_area').html(data["status"] + "\n" + data["error"]);

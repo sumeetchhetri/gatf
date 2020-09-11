@@ -102,7 +102,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    {
 			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			    }
-			    else 
+			    else if(!action.equals("playTest"))
 			    {
 			    	throw new RuntimeException("Invalid action specified..");
 			    }
