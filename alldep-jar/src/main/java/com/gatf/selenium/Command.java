@@ -1292,7 +1292,7 @@ public class Command {
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
-        String img = System.getProperty("java.io.tmpdir") + "_main_exec.jpg";
+        String img = System.getProperty("java.io.tmpdir") + File.separator + "_main_exec.jpg";
         b.append("java.lang.System.out.println(\""+img+"\");");
         ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
         b.append(tm.javacode());
@@ -1800,7 +1800,7 @@ public class Command {
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
-                String img = System.getProperty("java.io.tmpdir") + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
+                String img = System.getProperty("java.io.tmpdir") + File.separator + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
                 b.append("java.lang.System.out.println(\""+img+"\");");
                 ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
                 b.append(tm.javacode());
