@@ -1265,11 +1265,12 @@ public class Command {
         b.append("return " + state.concExec+";\n");
         b.append("}\n");
         b.append("public void _execute(LoggingPreferences ___lp___) throws Exception {\n");
+        b.append("WebDriver ___ocw___ = null;\n");
         b.append("try {\n");
         state.pushSc();
         b.append("SearchContext "+state.currvarnamesc()+" = get___d___();\n");
         b.append("WebDriver ___cw___ = get___d___();\n");
-        b.append("WebDriver ___ocw___ = ___cw___;\n");
+        b.append("___ocw___ = ___cw___;\n");
         b.append("List<WebElement> ___ce___ = null;\n");
         int subtestcount = 0;
         for (Command c : children) {
@@ -1290,11 +1291,12 @@ public class Command {
         }
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
-        b.append("}\ncatch(Throwable "+ex+")\n{\n");
-        String img = System.getProperty("java.io.tmpdir") + File.separator + "_main_exec.jpg";
+        b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
+        String img = System.getProperty("java.io.tmpdir") + "_main_exec.jpg";
+        b.append("java.lang.System.out.println(\""+img+"\");");
         ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
         b.append(tm.javacode());
-        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
+        b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
@@ -1797,11 +1799,12 @@ public class Command {
                 }
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
-                b.append("\n}\ncatch(Throwable "+ex+")\n{\n");
-                String img = System.getProperty("java.io.tmpdir") + File.separator + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
+                b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
+                String img = System.getProperty("java.io.tmpdir") + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
+                b.append("java.lang.System.out.println(\""+img+"\");");
                 ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
                 b.append(tm.javacode());
-                b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
+                b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
                 b.append("\n}\nfinally {\nset__subtestname__(null);\n}");
             }
             b.append("return ___ce___;\n}\n");
@@ -2913,6 +2916,7 @@ public class Command {
             if(StringUtils.isBlank(rUrl)) {
             	rUrl = "http://127.0.0.1:4723/wd/hub"; 
             }
+            
             if(config.getName().equalsIgnoreCase("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3122,6 +3126,22 @@ public class Command {
             }
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
+            }
+            
+            boolean isDocker = "true".equalsIgnoreCase(System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER"));
+            if(isDocker) {
+            	String tmp = System.getProperty("SCREEN_WIDTH")!=null?System.getProperty("SCREEN_WIDTH"):System.getenv("SCREEN_WIDTH");
+            	String tmp1 = System.getProperty("SCREEN_HEIGHT")!=null?System.getProperty("SCREEN_HEIGHT"):System.getenv("SCREEN_HEIGHT");
+            	if(StringUtils.isNotBlank(tmp) && StringUtils.isNotBlank(tmp1)) {
+            		try {
+						WindowSetPropertyCommand ws = new WindowSetPropertyCommand("width "+Integer.valueOf(tmp.trim()), new Object[] {}, state);
+						WindowSetPropertyCommand wh = new WindowSetPropertyCommand("height "+Integer.valueOf(tmp1.trim()), new Object[] {}, state);
+						b.append("WebDriver ___cw___ = get___d___();");
+						b.append(ws.javacode());
+						b.append(wh.javacode());
+					} catch (Exception e) {
+					}
+            	}
             }
             return b.toString();
         }
