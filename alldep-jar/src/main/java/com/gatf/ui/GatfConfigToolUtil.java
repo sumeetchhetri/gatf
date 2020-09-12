@@ -236,14 +236,12 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 						sc.setPath(tmp);
 						if(isDocker) {
 							String args = "--whitelisted-ips --no-sandbox";
-							if("true".equalsIgnoreCase(System.getProperty("D_CHROME_HEADLESS")) || "true".equalsIgnoreCase(System.getenv("D_CHROME_HEADLESS"))) {
-								args += " --headless";
-							}
 							if(StringUtils.isNotBlank(sc.getArguments())) {
 								String cargs = sc.getArguments().trim();
-								cargs = cargs.replace("--whitelisted-ips", "").replace("--no-sandbox", "").replace("--headless", "");
+								cargs = cargs.replace("--whitelisted-ips", "").replace("--no-sandbox", "");
 								args += " " + cargs;
 							}
+							args = args.replaceAll("\\s+", " ");
 							sc.setArguments(args);
 						}
 					}

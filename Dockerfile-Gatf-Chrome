@@ -4,7 +4,6 @@ FROM ubuntu:20.04
 
 ENV D_JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 ENV D_CHROME_DRIVER /usr/bin/chromedriver
-ENV D_CHROME_HEADLESS true
 ENV D_GATF_JAR /gatf-alldep.jar
 ENV SCREEN_WIDTH 1360
 ENV SCREEN_HEIGHT 1020
@@ -83,4 +82,3 @@ WORKDIR /workdir
 
 ENTRYPOINT ["/run.sh"]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]
-#CMD java -DJAVA_HOME=${JAVA_HOME} -DCHROME_DRIVER=${CHROME_DRIVER} -DGATF_JAR=${GATF_JAR} -jar /gatf-alldep.jar -configtool 9080 0.0.0.0 /workdir > gatf.log 2>&1
