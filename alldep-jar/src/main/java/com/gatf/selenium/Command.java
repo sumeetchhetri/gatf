@@ -1292,8 +1292,8 @@ public class Command {
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
-        String img = System.getProperty("java.io.tmpdir") + File.separator + "_main_exec.jpg";
-        b.append("java.lang.System.out.println(\""+img+"\");");
+        String img = "System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + \"_main_exec.jpg\"";
+        b.append("java.lang.System.out.println("+img+");");
         ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
         b.append(tm.javacode());
         b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
@@ -1593,6 +1593,7 @@ public class Command {
                     }
                 }
                 pcode += "pi.exec(\""+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n";
+                pcode += "pi.close();\n";
                 for (String s : ms)
                 {
                     pcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __rs.get(\"$1\").toString());\n");
@@ -1800,8 +1801,8 @@ public class Command {
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
-                String img = System.getProperty("java.io.tmpdir") + File.separator + "_st_exec_" + name.replaceAll("[^a-zA-Z0-9]", "") +".jpg";
-                b.append("java.lang.System.out.println(\""+img+"\");");
+                String img = "System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + \"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".jpg\"";
+                b.append("java.lang.System.out.println("+img+");");
                 ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
                 b.append(tm.javacode());
                 b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");

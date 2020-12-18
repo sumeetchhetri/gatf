@@ -15,5 +15,6 @@
 	<classpathentry kind="src" path="alldep-jar/src/main/java"/>
 	<classpathentry kind="src" path="plugin/src/main/java"/>
 	<classpathentry kind="src" path="alldep-jar/src/test/java"/>
+	<classpathentry kind="src" path="/gatf-plugin"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
