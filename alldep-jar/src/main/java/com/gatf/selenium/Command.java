@@ -42,6 +42,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.Keys;
 import org.reflections.Reflections;
 
@@ -382,10 +383,10 @@ public class Command {
             ((ValueCommand)comd).value = cmd;
         } else if(cmd.startsWith("??+")) {
             cmd = cmd.substring(3).trim();
-            comd = new WaitTillElementVisibleOrInvisibleCommand(new FindCommand(cmd, cmdDetails, state), cmdDetails, state, true);
+            comd = new WaitTillElementVisibleOrInvisibleCommand(cmd, cmdDetails, state, true);
         } else if(cmd.startsWith("??-")) {
             cmd = cmd.substring(3).trim();
-            comd = new WaitTillElementVisibleOrInvisibleCommand(new FindCommand(cmd, cmdDetails, state), cmdDetails, state, false);
+            comd = new WaitTillElementVisibleOrInvisibleCommand(cmd, cmdDetails, state, false);
         } else if(cmd.startsWith("??")) {
             String time = "0";
             Matcher m = WAIT.matcher(cmd);
@@ -1074,6 +1075,26 @@ public class Command {
                     }
                 }
             }
+            for (String name : plugins.keySet()) {
+            	String signature = plugins.get(name);
+		        try
+		        {
+		            String[] parts = signature.split("@");
+		            String clsname = parts[0].trim();
+
+		            Class<?> cls = Class.forName(clsname);
+		            Method meth = cls.getMethod("init", new Class[]{AcceptanceTestContext.class});
+		            
+		            meth.invoke(null, new Object[] {cntxt});
+		        }
+		        catch (NoSuchMethodException e)
+		        {
+		        }
+		        catch (Exception e)
+		        {
+		        	System.out.println("Exception during initilization of plugin \n" + ExceptionUtils.getStackTrace(e));
+		        }
+			}
         }
     }
 
@@ -1166,9 +1187,7 @@ public class Command {
         Set<String> sessDups = new HashSet<String>();
         int lastSessionId = 0;
         for (Command c : children) {
-            if(c instanceof RequireCommand) {
-                //TODO
-            } else if(c instanceof BrowserCommand) {
+            if(c instanceof BrowserCommand) {
                 if(state.modeSet==2 && ((BrowserCommand)c).sessionName!=null && sessDups.contains(((BrowserCommand)c).sessionName)) {
                     throwError(c.fileLineDetails, new RuntimeException("In integration mode duplicate session names are not allowed " + c.name + "/" + ((BrowserCommand)c).sessionName));
                 }
@@ -2200,15 +2219,47 @@ public class Command {
 
     public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
-        WaitTillElementVisibleOrInvisibleCommand(FindCommand cond, Object[] cmdDetails, CommandState state, boolean isVisible) {
+        WaitTillElementVisibleOrInvisibleCommand(String val, Object[] cmdDetails, CommandState state, boolean isVisible) {
             super(cmdDetails, state);
-            this.cond = cond;
-            cond.children = new ArrayList<Command>();
+            String[] parts = val.trim().split("[\t ]+");
+            String cmd = parts[0];
+            if(parts.length>1) {
+                if (parts[1].toLowerCase().equals("type") || parts[1].toLowerCase().equals("sendkeys") || parts[1].toLowerCase().equals("select") 
+                        || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
+                        || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
+                        || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
+                        || parts[1].toLowerCase().equals("chord") || parts[1].toLowerCase().equals("randomize")) {
+                    cmd = "";
+                    for (int i = 1; i < parts.length; i++)
+                    {
+                        cmd += parts[i] + " ";
+                    }
+                    cond = new FindCommand(parts[0], cmdDetails, state);
+                    cmd = cmd.trim();
+                    if(!cmd.isEmpty()) {
+                        if (cmd.toLowerCase().startsWith("type ") || parts[1].toLowerCase().startsWith("sendkeys ") || cmd.toLowerCase().startsWith("select ") 
+                                || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
+                                || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
+                                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
+                                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("randomize ")) {
+                            //cmd = unsanitize(cmd);
+                            Command comd = handleActions(cmd, cond, cmdDetails, state);
+                            children.add(comd);
+                        }
+                    }
+                } else {
+                    cmd = val;
+                    cond = new FindCommand(parts[0], cmdDetails, state);
+                }
+            } else {
+                cmd = val;
+                cond = new FindCommand(parts[0], cmdDetails, state);
+            }
             this.isVisible = isVisible;
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append("?? "+(isVisible?"+":"-"));
+            b.append("??"+(isVisible?"+":"-"));
             b.append(cond.toCmd());
             return b.toString();
         }
@@ -2218,15 +2269,31 @@ public class Command {
             b.append(cond.javacodeonlyNoAssert(children, true));
             b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;");
             b.append("sleep(1000);\n");
-            b.append("}\n");
+            b.append("}");
+            for (Command command : children) {
+                if(command instanceof RandomizeCommand) {
+                    b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof SelectCommand) {
+                	b.append(((SelectCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof TypeCommand) {
+                	b.append(((TypeCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof ClickCommand) {
+                	b.append(((ClickCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof SubmitCommand) {
+                	b.append(((SubmitCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof ClearCommand) {
+                	b.append(((ClearCommand)command).javacodeonly(cond.getActionableVar()));
+                }
+            }
+            b.append("\n");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Wait for element to be visible/invisible",
 				"\t??(+|-) {find-expr}",
-				"\t'+' - Check whether element is visible",
-				"\t'-' - Check whether element is not visible",
+				"\t'+' - wait till element is visible",
+				"\t'-' - wait till element is not visible",
 				"Examples :-",
 	    		"\t??+ id@'eleid'",
 	    		"\t??- id@'eleid'",
@@ -2290,9 +2357,17 @@ public class Command {
             b.append(cond.javacodeonly(children));
             for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
-                    b.append(command.javacode());
+                    b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
                 } else if(command instanceof SelectCommand) {
                 	b.append(((SelectCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof TypeCommand) {
+                	b.append(((TypeCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof ClickCommand) {
+                	b.append(((ClickCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof SubmitCommand) {
+                	b.append(((SubmitCommand)command).javacodeonly(cond.getActionableVar()));
+                } else if(command instanceof ClearCommand) {
+                	b.append(((ClearCommand)command).javacodeonly(cond.getActionableVar()));
                 }
             }
             //if(!(cond instanceof WaitAndFindCommand))
@@ -2937,11 +3012,19 @@ public class Command {
                 {
                 	b.append("___dc___.addArguments(\"--ignore-certificate-errors\");\n");
                 }
+                if(config.getProperties()!=null)
+                {
+                	b.append("Map<String, Object> __prefs = new java.util.HashMap<String, Object>();\n");
+                	for (Map.Entry<String, String> e : config.getProperties().entrySet())
+                    {
+                        b.append("__prefs.put(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
+                }
                 b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
-                b.append("___dc___.setProfile(___dcprf___);\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
@@ -2957,6 +3040,14 @@ public class Command {
                 {
                 	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
+                if(config.getProperties()!=null)
+                {
+                	for (Map.Entry<String, String> e : config.getProperties().entrySet())
+                    {
+                        b.append("___dcprf___.setPreference(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                    }
+                }
+                b.append("___dc___.setProfile(___dcprf___);\n");
                 b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("ie")) {
                 b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
@@ -4350,6 +4441,11 @@ public class Command {
             }
             return b.toString();
         }
+        String javacodeonly(String cvarnm) {
+        	StringBuilder b = new StringBuilder();
+        	b.append("\n"+cvarnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
+            return b.toString();
+        }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
@@ -4472,6 +4568,11 @@ public class Command {
             } else {
                 b.append("\nrandomize(___ce___, \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
             }
+            return b.toString();
+        }
+        String javacodeonly(String condVarnm) {
+            StringBuilder b = new StringBuilder();
+            b.append("\nrandomize("+condVarnm+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
             return b.toString();
         }
         String ifTextEl() {
@@ -5208,6 +5309,11 @@ public class Command {
             }
             return b.toString();
         }
+        String javacodeonly(String condvarnm) {
+            StringBuilder b = new StringBuilder();
+            b.append("\n"+condvarnm+".get(0).click();");
+            return b.toString();
+        }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
@@ -5277,6 +5383,11 @@ public class Command {
             }
             return b.toString();
         }
+        String javacodeonly(String condvarnm) {
+            StringBuilder b = new StringBuilder();
+            b.append("\n"+condvarnm+".get(0).clear();");
+            return b.toString();
+        }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
@@ -5308,6 +5419,11 @@ public class Command {
             } else {
                 b.append("\n"+state.currvarname()+".get(0).submit();");
             }
+            return b.toString();
+        }
+        String javacodeonly(String condvarnm) {
+            StringBuilder b = new StringBuilder();
+            b.append("\n"+condvarnm+".get(0).submit();");
             return b.toString();
         }
         String selcode(String varnm) {

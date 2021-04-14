@@ -38,6 +38,12 @@
 			<platform></platform>
 			<driverName>webdriver.chrome.driver</driverName>
 			<path>/Users/sumeetc/Projects/home/selenium/chromedriver</path>
+			<capabilities>
+				<property key="deviceName">test</property>
+			</capabilities>
+			<properties>
+				<property key="download.default_directory">/tmp/</property>
+			</properties>
 		</seleniumDriverConfig>
 		<!--seleniumDriverConfig>
 			<name>firefox</name>

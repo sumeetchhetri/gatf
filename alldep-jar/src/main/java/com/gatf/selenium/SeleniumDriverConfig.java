@@ -9,7 +9,7 @@ import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
 import org.codehaus.jackson.map.annotate.JsonSerialize;
 import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
 
-import com.gatf.executor.core.MapKeyValueCustomXstreamConverter;
+import com.gatf.executor.core.MapKeyValueAttributeXstreamConverter;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 import com.thoughtworks.xstream.annotations.XStreamConverter;
 
@@ -39,10 +39,10 @@ public class SeleniumDriverConfig implements Serializable {
 
     private String url;
 
-    @XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
+    @XStreamConverter(value=MapKeyValueAttributeXstreamConverter.class)
     private Map<String, String> capabilities = new HashMap<String, String>();
 
-    @XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
+    @XStreamConverter(value=MapKeyValueAttributeXstreamConverter.class)
     private Map<String, String> properties = new HashMap<String, String>();  
 
     public String getName()

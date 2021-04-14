@@ -139,6 +139,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     private String javaVersion;
     
     private String gatfJarPath;
+    
+    private boolean selDebugger;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -580,7 +582,15 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
         this.gatfJarPath = gatfJarPath;
     }
 
-    public void validate()
+    public boolean isSelDebugger() {
+		return selDebugger;
+	}
+
+	public void setSelDebugger(boolean selDebugger) {
+		this.selDebugger = selDebugger;
+	}
+
+	public void validate()
 	{
 		Assert.assertTrue("Testcase directory name is blank...", 
 				getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
