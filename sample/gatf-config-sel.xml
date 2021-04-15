@@ -31,6 +31,12 @@
 	<isSeleniumExecutor>true</isSeleniumExecutor>
 	<javaHome>/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home</javaHome>
 	<gatfJarPath>/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/target/gatf-alldep-jar-1.0.6.jar</gatfJarPath>
+	<gatfTestDataConfig>
+		<globalVariables>
+			<token>env.TOKEN</token>
+			<fileName>env.FILENAME</fileName>
+		</globalVariables>
+	</gatfTestDataConfig>
 	<seleniumDriverConfigs>
 		<seleniumDriverConfig>
 			<name>chrome</name>

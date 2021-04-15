@@ -9,11 +9,10 @@ ENV SCREEN_WIDTH 1360
 ENV SCREEN_HEIGHT 1020
 ENV SCREEN_DEPTH 24
 ENV SCREEN_DPI 96
-ENV DISPLAY :99.0
   
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN apt update -y && apt install -y software-properties-common xvfb fluxbox wmctrl openjdk-11-jdk openjdk-11-jre git wget unzip net-tools gnupg && rm -rf /var/lib/apt/lists/*
+RUN apt update -yqq && apt install -yqq software-properties-common xvfb fluxbox wmctrl openjdk-11-jdk openjdk-11-jre git wget unzip net-tools gnupg && rm -rf /var/lib/apt/lists/*
 
 #============================================
 # Google Chrome
@@ -71,14 +70,16 @@ RUN groupadd seluser \
 COPY --from=0 /gatf-alldep.jar /
 COPY artifacts/run-gatf.sh artifacts/run.sh /
 COPY artifacts/sample1.* artifacts/jpg* artifacts/png* /home/seluser/
-RUN chmod +x /run-gatf.sh /run.sh
-RUN chown seluser:seluser /home/seluser/* /run-gatf.sh /run.sh
-
-USER seluser
-
-EXPOSE 9080
 
 WORKDIR /workdir
+
+RUN chmod +x /run-gatf.sh /run.sh
+RUN chown -Rf seluser:seluser /home/seluser/* /run-gatf.sh /run.sh /workdir
+
+USER seluser
+WORKDIR /workdir
+
+EXPOSE 9080
 
 ENTRYPOINT ["/run.sh"]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]

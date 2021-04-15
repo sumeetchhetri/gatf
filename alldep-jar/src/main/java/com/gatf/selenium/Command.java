@@ -315,6 +315,7 @@ public class Command {
 
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
     static Pattern WAIT = Pattern.compile("^\\?\\?[\t ]*([0-9]+)");
+    static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
     static Pattern CONCNUM = Pattern.compile("^\\^[\t ]*([0-9]+)");
 
     Command(Object[] fileLineDetails, CommandState state) {
@@ -382,21 +383,35 @@ public class Command {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
         } else if(cmd.startsWith("??+")) {
-            cmd = cmd.substring(3).trim();
-            comd = new WaitTillElementVisibleOrInvisibleCommand(cmd, cmdDetails, state, true);
-        } else if(cmd.startsWith("??-")) {
-            cmd = cmd.substring(3).trim();
-            comd = new WaitTillElementVisibleOrInvisibleCommand(cmd, cmdDetails, state, false);
-        } else if(cmd.startsWith("??")) {
-            String time = "0";
-            Matcher m = WAIT.matcher(cmd);
-            int start = 2;
+        	String time = "0";
+            Matcher m = WAIT_IF.matcher(cmd);
+            int start = 3;
             if(m.find()) {
-                time = m.group(1);
-                start = m.end(1) + 1;
+                time = m.group(2);
+                start = m.end(2) + 1;
             }
             cmd = cmd.substring(start).trim();
-            comd = new ValidateCommand(time, cmd, cmdDetails, state);
+            comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, true);
+        } else if(cmd.startsWith("??-")) {
+        	String time = "0";
+        	Matcher m = WAIT_IF.matcher(cmd);
+        	int start = 3;
+        	if(m.find()) {
+        		time = m.group(2);
+        		start = m.end(2) + 1;
+        	}
+        	cmd = cmd.substring(start).trim();
+        	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false);
+        } else if(cmd.startsWith("??")) {
+        	String time = "0";
+        	Matcher m = WAIT.matcher(cmd);
+        	int start = 2;
+        	if(m.find()) {
+        		time = m.group(1);
+        		start = m.end(1) + 1;
+        	}
+        	cmd = cmd.substring(start).trim();
+        	comd = new ValidateCommand(time, cmd, cmdDetails, state);
         } else if (cmd.startsWith("//")) {
             cmd = cmd.substring(2);
             comd = new CommentCommand(false, cmdDetails, state);
@@ -629,9 +644,9 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("dynprops ")) {
             comd = new DynPropsCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("screenshot")) {
-            comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state);
+            comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {
-            comd = new EleScreenshotCommand(cmd.substring(15).trim(), cmdDetails, state);
+            comd = new EleScreenshotCommand(cmd.substring(15).trim(), cmdDetails, state, false);
         } else if(cmd.toLowerCase().startsWith("alert ")) {
             comd = new AlertCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("confirm ")) {
@@ -1311,9 +1326,8 @@ public class Command {
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
-        String img = "System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + \"_main_exec.jpg\"";
-        b.append("java.lang.System.out.println("+img+");");
-        ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
+        b.append("java.lang.System.out.println(\"_main_exec.jpg\");");
+        ScreenshotCommand tm = new ScreenshotCommand("_main_exec.jpg", new Object[] {}, state, true);
         b.append(tm.javacode());
         b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
         b.append("}\n");
@@ -1820,9 +1834,9 @@ public class Command {
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
-                String img = "System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + \"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".jpg\"";
+                String img = "\"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".jpg\"";
                 b.append("java.lang.System.out.println("+img+");");
-                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state);
+                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
                 b.append(tm.javacode());
                 b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
                 b.append("\n}\nfinally {\nset__subtestname__(null);\n}");
@@ -1941,7 +1955,8 @@ public class Command {
 
     public static class ScreenshotCommand extends Command {
         String fpath;
-        ScreenshotCommand(String code, Object[] cmdDetails, CommandState state) {
+        boolean isTmp = false;
+        ScreenshotCommand(String code, Object[] cmdDetails, CommandState state, boolean isTmp) {
             super(cmdDetails, state);
             code = state.unsanitize(code);
             if(code.charAt(0)==code.charAt(code.length()-1)) {
@@ -1950,17 +1965,22 @@ public class Command {
                 }
             }
             this.fpath = code.trim().isEmpty()?System.nanoTime()+".jpg":code;
+            this.isTmp = isTmp;
         }
         String toCmd() {
             return "screenshot \"" + fpath + "\"";
         }
         String javacode() {
             String sc = state.varnamesr();
+            String filepath = "evaluate(\""+esc(fpath)+"\")";
+            if(isTmp) {
+            	filepath = "java.lang.System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
+            }
             return "if(get___d___() instanceof io.appium.java_client.AppiumDriver){"
             + "File "+sc+" = ((TakesScreenshot)new org.openqa.selenium.remote.Augmenter().augment(get___d___())).getScreenshotAs(OutputType.FILE);"
-            + "FileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));}\n"
+            + "FileUtils.copyFile("+sc+", new File("+filepath+"));}\n"
             + "else{File "+sc+" = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);"
-            + "\nFileUtils.copyFile("+sc+", new File(\""+esc(fpath)+"\"));}";
+            + "\nFileUtils.copyFile("+sc+", new File("+filepath+"));}";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -1975,7 +1995,8 @@ public class Command {
 
     public static class EleScreenshotCommand extends FindCommandImpl {
         String fpath;
-        EleScreenshotCommand(String val, Object[] cmdDetails, CommandState state) {
+        boolean isTmp = false;
+        EleScreenshotCommand(String val, Object[] cmdDetails, CommandState state, boolean isTmp) {
             super(cmdDetails, state);
             String[] parts = val.split("[\t ]+");
             if(parts.length==1) {
@@ -1990,11 +2011,16 @@ public class Command {
                     }
                 }
             }
+            this.isTmp = isTmp;
         }
         String toCmd() {
             return "ele-screenshot \"" + fpath + "\"";
         }
         String javacode() {
+            String filepath = "evaluate(\""+esc(fpath)+"\")";
+            if(isTmp) {
+            	filepath = "java.lang.System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
+            }
             StringBuilder b = new StringBuilder();
             b.append(cond.javacodeonly(children));
             b.append("\nif("+cond.condition()+")");
@@ -2007,7 +2033,7 @@ public class Command {
             b.append("\nint eh = ele.getSize().getHeight();");
             b.append("\nBufferedImage esc = fi.getSubimage(point.getX(), point.getY(), ew, eh);");
             b.append("\nImageIO.write(esc, \"png\", sc);");
-            b.append("\nFileUtils.copyFile(sc, new File(\""+esc(fpath)+"\"));");
+            b.append("\nFileUtils.copyFile(sc, new File("+filepath+"));");
             b.append("\n}");
             return b.toString();
         }
@@ -2219,8 +2245,15 @@ public class Command {
 
     public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
-        WaitTillElementVisibleOrInvisibleCommand(String val, Object[] cmdDetails, CommandState state, boolean isVisible) {
+        int counter = 60;
+        WaitTillElementVisibleOrInvisibleCommand(String time, String val, Object[] cmdDetails, CommandState state, boolean isVisible) {
             super(cmdDetails, state);
+            try {
+				if(Integer.valueOf(time)>0) {
+					counter = Integer.valueOf(time);
+				}
+			} catch (Exception e) {
+			}
             String[] parts = val.trim().split("[\t ]+");
             String cmd = parts[0];
             if(parts.length>1) {
@@ -2265,10 +2298,13 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
+            String cntvar = state.varnamerandom();
+            b.append("\n int "+cntvar+" = 0;\n");
             b.append("\nwhile(true) {\n");
             b.append(cond.javacodeonlyNoAssert(children, true));
-            b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;");
+            b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;\n");
             b.append("sleep(1000);\n");
+            b.append("if("+cntvar+"++=="+counter+")break;\n");
             b.append("}");
             for (Command command : children) {
                 if(command instanceof RandomizeCommand) {

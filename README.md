@@ -1337,7 +1337,7 @@ Direct Execution
 --------------
 For direct execution,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
 ```
 **0.0.0.0:9080** - ip/port for embedded http server<br>
 **.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found

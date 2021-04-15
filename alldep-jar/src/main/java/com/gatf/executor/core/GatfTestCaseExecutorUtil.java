@@ -581,19 +581,20 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         final List<Object[]> testdata = new ArrayList<Object[]>();
         final List<String> testClassNames = new ArrayList<String>();
         for (String selscript : configuration.getSeleniumScripts()) {
-            try {
-                Object[] retvals = new Object[4];
-                SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false);
-                tests.add(dyn);
-                testdata.add(retvals);
-                testClassNames.add(dyn.getClass().getName());
-            } catch (GatfSelCodeParseError e) {
-                e.printStackTrace();
-                throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
-            } catch (Exception e) {
-                e.printStackTrace();
-                throw new RuntimeException("Unable to compile seleasy script " + selscript);
-            }
+        	try {
+        		selscript = context.getWorkflowContextHandler().templatize(selscript);
+        		Object[] retvals = new Object[4];
+        		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false);
+        		tests.add(dyn);
+        		testdata.add(retvals);
+        		testClassNames.add(dyn.getClass().getName());
+        	} catch (GatfSelCodeParseError e) {
+        		e.printStackTrace();
+        		throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
+        	} catch (Exception e) {
+        		e.printStackTrace();
+        		throw new RuntimeException("Unable to compile seleasy script " + selscript);
+        	}
         }
 
         String runPrefix = "LRun-1";

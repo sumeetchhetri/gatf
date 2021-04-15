@@ -10,7 +10,7 @@ launch_xvfb() {
 	local resolution=${GEOMETRY:-1280x1024x24}
 	local timeout=${XVFB_TIMEOUT:-10}
 	# Start and wait for either Xvfb to be fully up, or we hit the timeout.
-	/usr/bin/Xvfb ${DISPLAY} -screen ${screen} ${resolution} -dpi ${SCREEN_DPI} &
+	/usr/bin/Xvfb ${DISPLAY} -screen ${screen} ${resolution} -dpi ${SCREEN_DPI} > /dev/null 2>&1 &
 	local loopCount=0
 	until xdpyinfo -display ${DISPLAY} > /dev/null 2>&1
 	do
@@ -28,7 +28,7 @@ launch_window_manager() {
     local timeout=${XVFB_TIMEOUT:-10}
 
     # Start and wait for either fluxbox to be fully up or we hit the timeout.
-    fluxbox &
+    fluxbox > /dev/null 2>&1 &
     local loopCount=0
     until wmctrl -m > /dev/null 2>&1
     do
@@ -46,4 +46,4 @@ launch_xvfb
 
 launch_window_manager
 
-java -DD_DOCKER=true -DSCREEN_WIDTH=${SCREEN_WIDTH} -DSCREEN_HEIGHT=${SCREEN_HEIGHT} -DD_JAVA_HOME=${D_JAVA_HOME} -DD_FF_DRIVER=${D_FF_DRIVER} -DD_GATF_JAR=${D_GATF_JAR} -jar /gatf-alldep.jar "$@" > /workdir/gatf.log 2>&1
+java -DD_DOCKER=true -DSCREEN_WIDTH=${SCREEN_WIDTH} -DSCREEN_HEIGHT=${SCREEN_HEIGHT} -DD_JAVA_HOME=${D_JAVA_HOME} -DD_FF_DRIVER=${D_FF_DRIVER} -DD_GATF_JAR=${D_GATF_JAR} -jar /gatf-alldep.jar "$@"

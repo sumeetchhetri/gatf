@@ -90,7 +90,34 @@ public class WorkflowContextHandler {
 	
 	void addGlobalVariables(Map<String, String> variableMap) {
 		if(variableMap!=null) {
-			globalworkflowContext.putAll(variableMap);
+			for (String property : variableMap.keySet()) {
+				String value = variableMap.get(property);
+				if(value.equals("env.var")) {
+					try {
+						value = System.getenv(property);
+					} catch (Exception e) {
+					}
+				} else if(value.equals("property.var")) {
+					try {
+						value = System.getProperty(property);
+					} catch (Exception e) {
+					}
+				} else if(value.startsWith("env.")) {
+					try {
+						value = System.getenv(value.substring(4));
+					} catch (Exception e) {
+					}
+				} else if(value.startsWith("property.")) {
+					try {
+						value = System.getProperty(value.substring(9));
+					} catch (Exception e) {
+					}
+				}
+				if(value==null) {
+					value = variableMap.get(property);
+				}
+				globalworkflowContext.put(property, value);
+			}
 		}
 	}
 	
