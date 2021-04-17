@@ -74,5 +74,5 @@ EXPOSE 9080
 
 WORKDIR /workdir
 
-ENTRYPOINT ["/run.sh"]
+ENTRYPOINT ["/run-ff.sh"]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]
