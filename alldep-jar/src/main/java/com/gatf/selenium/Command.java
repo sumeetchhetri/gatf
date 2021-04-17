@@ -61,7 +61,7 @@ import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
 public class Command {
-
+	
     protected static class CommandState {
         boolean commentStart = false, codeStart = false, started = false, pluginstart = false;
         String basePath = "";
@@ -1177,7 +1177,9 @@ public class Command {
         b.append("import org.python.core.*;\n");
         b.append("import java.util.Map;\n");
         b.append("import org.junit.Assert;\n");
-        b.append("import org.openqa.selenium.Keys;\n\n");
+        b.append("import org.openqa.selenium.Keys;\n");
+        b.append("import ru.yandex.qatools.ashot.AShot;\n");
+        b.append("import ru.yandex.qatools.ashot.shooting.ShootingStrategies;\n\n");
         b.append("public class "+className+" extends SeleniumTest implements Serializable {\n");
         b.append("public "+className+"(AcceptanceTestContext ___cxt___, int index) {\nsuper(\""+esc(name)+"\", ___cxt___, index);\n}\n");
         b.append("public void close() {\nif(get___d___()!=null)get___d___().close();\n}\n");
@@ -1959,28 +1961,25 @@ public class Command {
         ScreenshotCommand(String code, Object[] cmdDetails, CommandState state, boolean isTmp) {
             super(cmdDetails, state);
             code = state.unsanitize(code);
-            if(code.charAt(0)==code.charAt(code.length()-1)) {
-                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
-                    code = code.substring(1, code.length()-1);
-                }
+            if(StringUtils.isNotBlank(code)) {
+	            if(code.charAt(0)==code.charAt(code.length()-1)) {
+	                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
+	                    code = code.substring(1, code.length()-1);
+	                }
+	            }
             }
-            this.fpath = code.trim().isEmpty()?System.nanoTime()+".jpg":code;
+            this.fpath = code.trim().isEmpty()?System.nanoTime()+".png":code;
             this.isTmp = isTmp;
         }
         String toCmd() {
             return "screenshot \"" + fpath + "\"";
         }
         String javacode() {
-            String sc = state.varnamesr();
             String filepath = "evaluate(\""+esc(fpath)+"\")";
             if(isTmp) {
             	filepath = "java.lang.System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
             }
-            return "if(get___d___() instanceof io.appium.java_client.AppiumDriver){"
-            + "File "+sc+" = ((TakesScreenshot)new org.openqa.selenium.remote.Augmenter().augment(get___d___())).getScreenshotAs(OutputType.FILE);"
-            + "FileUtils.copyFile("+sc+", new File("+filepath+"));}\n"
-            + "else{File "+sc+" = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);"
-            + "\nFileUtils.copyFile("+sc+", new File("+filepath+"));}";
+            return "screenshotAsFile(get___d___(), "+filepath+");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -1988,7 +1987,7 @@ public class Command {
 				"\tscreenshot {image-file-path-to-save-screenshot-to}",
 				"Examples :-",
 	    		"\tscreenshot",
-	    		"\tscreenshot \"/path/to/image/file/file.jpg\""
+	    		"\tscreenshot \"/path/to/image/file/file.png\""
             };
         }
     }
@@ -2000,7 +1999,7 @@ public class Command {
             super(cmdDetails, state);
             String[] parts = val.split("[\t ]+");
             if(parts.length==1) {
-                fpath = System.nanoTime()+".jpg";
+                fpath = System.nanoTime()+".png";
                 cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
             } else {
                 cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
@@ -2026,14 +2025,7 @@ public class Command {
             b.append("\nif("+cond.condition()+")");
             b.append("\n{");
             b.append("\nWebElement ele = " +state.currvarname() + ".get(0);");
-            b.append("\nFile sc = ((TakesScreenshot)___ocw___).getScreenshotAs(OutputType.FILE);");
-            b.append("\nBufferedImage fi = ImageIO.read(sc);");
-            b.append("\nPoint point = ele.getLocation();");
-            b.append("\nint ew = ele.getSize().getWidth();");
-            b.append("\nint eh = ele.getSize().getHeight();");
-            b.append("\nBufferedImage esc = fi.getSubimage(point.getX(), point.getY(), ew, eh);");
-            b.append("\nImageIO.write(esc, \"png\", sc);");
-            b.append("\nFileUtils.copyFile(sc, new File("+filepath+"));");
+            b.append("elementScreenshotAsFile(get___d___(), ele, "+filepath+");\n");
             b.append("\n}");
             return b.toString();
         }
@@ -2043,7 +2035,7 @@ public class Command {
 				"\tele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}",
 				"Examples :-",
 	    		"\tele-screenshot id@'eleid'",
-	    		"\tele-screenshot id@'eleid' '/path/to/image/file/file.jpg'"
+	    		"\tele-screenshot id@'eleid' '/path/to/image/file/file.png'"
             };
         }
     }
