@@ -37,7 +37,7 @@ import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
@@ -443,18 +443,19 @@ public class AcceptanceTestContext {
 					{	removeFolder(resource);
 						File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 						nresource.mkdirs();
+						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
 					}
 				}
 				else
 				{
-					URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-					File resource = new File(url.getPath());
+					File resource = new File(System.getProperty("user.dir"));
 					File file = new File(resource, gatfExecutorConfig.getOutFilesDir());
 					if(flag)
 					{	
 						removeFolder(file);
 						File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
-						nresource.mkdirs();
+						nresource.mkdir();
+						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
 					}
 				}
 			} catch (Exception e) {
@@ -464,16 +465,15 @@ public class AcceptanceTestContext {
 		}
 		else
 		{
-			URL url = Thread.currentThread().getContextClassLoader().getResource("out");
-			File resource = new File(url.getPath());
+			File resource = new File(System.getProperty("user.dir"));
 			if(flag)
 			{
 				removeFolder(resource);
-				File nresource = new File(url.getPath());
+				File nresource = new File(System.getProperty("user.dir"), "out");
 				nresource.mkdir();
 			}
 			gatfExecutorConfig.setOutFilesDir("out");
-			gatfExecutorConfig.setOutFilesBasePath(gatfExecutorConfig.getTestCasesBasePath());
+			gatfExecutorConfig.setOutFilesBasePath(System.getProperty("user.dir"));
 		}
 		
 		if(flag)

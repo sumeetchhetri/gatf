@@ -61,6 +61,6 @@ launch_window_manager() {
 
 launch_xvfb
 
-launch_window_manager
+#launch_window_manager
 
 java -DD_DOCKER=true -DSCREEN_WIDTH=${SCREEN_WIDTH} -DSCREEN_HEIGHT=${SCREEN_HEIGHT} -DD_JAVA_HOME=${D_JAVA_HOME} -DD_FF_DRIVER=${D_FF_DRIVER} -DD_GATF_JAR=${D_GATF_JAR} -jar /gatf-alldep.jar "$@"

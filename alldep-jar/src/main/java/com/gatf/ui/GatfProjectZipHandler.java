@@ -20,8 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.SystemUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
@@ -44,7 +43,7 @@ public class GatfProjectZipHandler extends HttpHandler {
 	public void service(Request request, Response response) throws Exception {
     	List<String> res = new ArrayList<String>();
     	List<String> err = new ArrayList<String>();
-    	File configDir = new File(mojo.getRootDir()+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
+    	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool");
     	
     	if(new File(configDir, "gatf-test-bin.zip").exists())
     		new File(configDir, "gatf-test-bin.zip").delete();
@@ -87,7 +86,7 @@ public class GatfProjectZipHandler extends HttpHandler {
         	File outdirectory = new File(outbasepath);
         	String folder = System.currentTimeMillis() + "";
         	
-        	File configDir = new File(mojo.getRootDir()+SystemUtils.FILE_SEPARATOR+"gatf-config-tool");
+        	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool");
         	File zipFile = new File(configDir, zipFileName);
         	
         	File zfolder = new File(directory, folder);

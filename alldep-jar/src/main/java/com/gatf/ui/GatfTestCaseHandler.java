@@ -27,8 +27,7 @@ import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -70,11 +69,11 @@ public class GatfTestCaseHandler extends HttpHandler {
 			try {
 				gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-    			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
 				if(!new File(dirPath).exists()) {
 					new File(dirPath).mkdir();
 				}
-    			filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
+    			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
     					+ testcaseFileName;
     			if(!new File(filePath).exists()) {
     				throw new RuntimeException("Test case file does not exist");
@@ -88,7 +87,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		{
 			gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-			filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+			filePath = basepath + File.separator + testcaseFileName;
 		}
 		
 		boolean isSelTc = testcaseFileName.toLowerCase().endsWith(".sel");

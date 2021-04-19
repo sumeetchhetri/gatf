@@ -259,7 +259,7 @@ public class DistributedGatfListener {
 				fos.flush();
 				fos.close();
 				
-				ReportHandler.unzipZipFile(new FileInputStream(zipFile), gcdir.getAbsolutePath());
+				ReportHandler.unzipZipFile(zipFile, gcdir.getAbsolutePath());
 				zipFile.delete();
 				
 				boolean isLoadTestingEnabled = context.getConfig().isLoadTestingEnabled() && context.getConfig().getLoadTestingTime()>10000;

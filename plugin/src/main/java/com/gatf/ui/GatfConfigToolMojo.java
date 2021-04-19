@@ -18,10 +18,10 @@ package com.gatf.ui;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.UUID;
 import java.util.function.Function;
 
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.SystemUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -32,6 +32,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
+
 import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
@@ -78,12 +79,17 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		HttpServer server = new HttpServer();
 
-		final String mainDir = rootDir + SystemUtils.FILE_SEPARATOR + "gatf-config-tool";
+		final String mainDir = rootDir + File.separator + "gatf-config-tool";
 		InputStream resourcesIS = GatfConfigToolMojo.class.getResourceAsStream("/gatf-config-tool.zip");
         if (resourcesIS != null)
         {
-        	ReportHandler.unzipZipFile(resourcesIS, rootDir);
         	try {
+        		File gctzip = File.createTempFile("gatf-config-tool_" + UUID.randomUUID().toString(), ".zip");
+        		FileOutputStream fos = new FileOutputStream(gctzip);
+        		IOUtils.copy(resourcesIS, fos);
+        		fos.close();
+            	ReportHandler.unzipZipFile(gctzip, rootDir);
+            	gctzip.delete();
         		IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
         				new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
         	} catch (Exception e) {

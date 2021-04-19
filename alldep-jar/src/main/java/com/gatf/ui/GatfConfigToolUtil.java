@@ -21,15 +21,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.UUID;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
-import org.apache.commons.lang.exception.ExceptionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
@@ -70,13 +70,22 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	public void execute() throws Exception {
 		HttpServer server = new HttpServer();
 
-		final String mainDir = rootDir + SystemUtils.FILE_SEPARATOR + "gatf-config-tool";
+		final String mainDir = rootDir + File.separator + "gatf-config-tool";
 		InputStream resourcesIS = GatfConfigToolUtil.class.getResourceAsStream("/gatf-config-tool.zip");
         if (resourcesIS != null)
         {
-        	ReportHandler.unzipZipFile(resourcesIS, rootDir);
-        	IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
-        			new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
+        	try {
+        		File gctzip = File.createTempFile("gatf-config-tool_" + UUID.randomUUID().toString(), ".zip");
+        		FileOutputStream fos = new FileOutputStream(gctzip);
+        		IOUtils.copy(resourcesIS, fos);
+        		fos.close();
+            	ReportHandler.unzipZipFile(gctzip, rootDir);
+            	gctzip.delete();
+        		IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
+        				new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
+        	} catch (Exception e) {
+        		throw new RuntimeException(e);
+        	}
         }
         
         final GatfConfigToolUtil mojo = this;

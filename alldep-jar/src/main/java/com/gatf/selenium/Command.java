@@ -40,8 +40,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.Keys;
 import org.reflections.Reflections;
@@ -824,11 +825,11 @@ public class Command {
                 if(StringUtils.isNotBlank(o[3].toString())) {
                     parentPath = o[3].toString();
                 }
-                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                File f = new File(parentPath + File.separator + ((ImportCommand)tmp).name);
                 if(!f.exists()) {
-                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                    f = new File(state.basePath + File.separator + ((ImportCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((ImportCommand)tmp).name);
+                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((ImportCommand)tmp).name);
                     }
                 }
                 if(!f.exists()) {
@@ -857,11 +858,11 @@ public class Command {
                 if(StringUtils.isNotBlank(o[3].toString())) {
                     parentPath = o[3].toString();
                 }
-                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                File f = new File(parentPath + File.separator + ((ConfigPropsCommand)tmp).name);
                 if(!f.exists()) {
-                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                    f = new File(state.basePath + File.separator + ((ConfigPropsCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((ConfigPropsCommand)tmp).name);
+                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((ConfigPropsCommand)tmp).name);
                     }
                 }
                 if(!f.exists()) {
@@ -881,11 +882,11 @@ public class Command {
                 if(StringUtils.isNotBlank(o[3].toString())) {
                     parentPath = o[3].toString();
                 }
-                File f = new File(parentPath + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                File f = new File(parentPath + File.separator + ((DynPropsCommand)tmp).name);
                 if(!f.exists()) {
-                    f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                    f = new File(state.basePath + File.separator + ((DynPropsCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + SystemUtils.FILE_SEPARATOR + state.testcaseDir.trim() + SystemUtils.FILE_SEPARATOR + ((DynPropsCommand)tmp).name);
+                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
                     }
                 }
                 if(!f.exists()) {
@@ -1328,8 +1329,9 @@ public class Command {
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
-        b.append("java.lang.System.out.println(\"_main_exec.jpg\");");
-        ScreenshotCommand tm = new ScreenshotCommand("_main_exec.jpg", new Object[] {}, state, true);
+        b.append(ex+".printStackTrace();\n");
+        b.append("java.lang.System.out.println(\"_main_exec.png\");");
+        ScreenshotCommand tm = new ScreenshotCommand("_main_exec.png", new Object[] {}, state, true);
         b.append(tm.javacode());
         b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
         b.append("}\n");
@@ -1836,7 +1838,8 @@ public class Command {
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
-                String img = "\"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".jpg\"";
+                b.append(ex+".printStackTrace();\n");
+                String img = "\"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
                 b.append("java.lang.System.out.println("+img+");");
                 ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
                 b.append(tm.javacode());
@@ -4659,7 +4662,7 @@ public class Command {
                         value = value.substring(1, value.length()-1);
                     }
                 }
-                String temp = org.apache.commons.lang.StringEscapeUtils.unescapeJava(value);
+                String temp = StringEscapeUtils.unescapeJava(value);
                 try
                 {
                     if(parts.length>1) {

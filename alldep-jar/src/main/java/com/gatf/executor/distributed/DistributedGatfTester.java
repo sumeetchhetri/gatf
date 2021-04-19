@@ -168,7 +168,7 @@ public class DistributedGatfTester {
 							fos.flush();
 							fos.close();
 				        	
-				        	ReportHandler.unzipZipFile(new FileInputStream(zipFile), resource.getAbsolutePath());
+				        	ReportHandler.unzipZipFile(zipFile, resource.getAbsolutePath());
 							
 							logger.info("Done Receiving GATF tests Result files from node " + connection.node);
 						} catch (Exception e) {
@@ -277,7 +277,7 @@ public class DistributedGatfTester {
 	                            fos.flush();
 	                            fos.close();
 	                            
-	                            ReportHandler.unzipZipFile(new FileInputStream(zipFile), resource.getAbsolutePath());
+	                            ReportHandler.unzipZipFile(zipFile, resource.getAbsolutePath());
 								
 								logger.info("Done Receiving GATF Selenium tests Results from node " + connection.node);
 							} catch (Exception e) {

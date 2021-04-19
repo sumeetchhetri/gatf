@@ -36,15 +36,16 @@ import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.SystemUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.report.ReportHandler;
 import com.google.googlejavaformat.java.Formatter;
+
+import net.lingala.zip4j.ZipFile;
 
 public class SeleniumCodeGeneratorAndUtil {
 	
@@ -84,7 +85,7 @@ public class SeleniumCodeGeneratorAndUtil {
         	URL[] urls = ((URLClassLoader)loader).getURLs();
         	String cp = "";
         	for (URL url : urls) {
-        		cp += url.getPath() + SystemUtils.PATH_SEPARATOR;
+        		cp += url.getPath() + File.separator;
 			}
         	optionList.add(cp);
         } else {
@@ -168,8 +169,12 @@ public class SeleniumCodeGeneratorAndUtil {
 	public static File zipSeleniumTests() {
 		File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
 		String fileName = UUID.randomUUID().toString()+".zip";
-		ReportHandler.zipDirectory(gcdir, new String[]{".class"}, fileName, true, true);
-		File zipFile = new File(gcdir, fileName);
+		File zipFile = new File(System.getProperty("java.io.tmpdir"), fileName);
+		try {
+			new ZipFile(zipFile).addFolder(gcdir);
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 		return zipFile;
 	}
 	

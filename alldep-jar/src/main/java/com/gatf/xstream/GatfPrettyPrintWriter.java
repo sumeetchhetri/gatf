@@ -13,7 +13,7 @@ package com.gatf.xstream;
 
 import java.io.Writer;
 
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.thoughtworks.xstream.core.util.FastStack;
 import com.thoughtworks.xstream.core.util.QuickWriter;

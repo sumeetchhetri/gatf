@@ -25,8 +25,7 @@ import java.util.List;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -58,11 +57,11 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
     				if(!new File(dirPath).exists()) {
     					new File(dirPath).mkdir();
     				}
-        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
         			if(new File(filePath).exists()) {
         				throw new RuntimeException("Testcase file already exists");
         			}
@@ -93,7 +92,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
     				if(!new File(dirPath).exists()) {
     					new File(dirPath).mkdir();
     				}
@@ -129,8 +128,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     					}
     				}
     				
-        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
-        			String tofilePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileNameTo;
+        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			String tofilePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileNameTo;
         			if(new File(filePath).exists()) {
         			    try
                         {
@@ -160,11 +159,11 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
     				if(!new File(dirPath).exists()) {
     					new File(dirPath).mkdir();
     				}
-        			String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
         			if(new File(filePath).exists()) {
         				new File(filePath).delete();
         			} else {
@@ -181,7 +180,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     		try {
     			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-    			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir();
+    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
 				if(!new File(dirPath).exists()) {
 					new File(dirPath).mkdir();
 				}

@@ -33,22 +33,23 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.PrefixFileFilter;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
-import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
@@ -64,6 +65,8 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
+
+import net.lingala.zip4j.ZipFile;
 
 /**
  * @author Sumeet Chhetri
@@ -356,51 +359,16 @@ public class ReportHandler {
 			compareStatusLst.add(comStatus);
 		}
 	}
-
+	
 	/**
      * @param zipFile
      * @param directoryToExtractTo Provides file unzip functionality
      */
-    public static void unzipZipFile(InputStream zipFile, String directoryToExtractTo)
+    public static void unzipZipFile(File zipFile, String directoryToExtractTo)
     {
-        ZipInputStream in = new ZipInputStream(zipFile);
         try
         {
-            File directory = new File(directoryToExtractTo);
-            if (!directory.exists())
-            {
-                directory.mkdirs();
-                logger.info("Creating directory for Extraction...");
-            }
-            ZipEntry entry = in.getNextEntry();
-            while (entry != null)
-            {
-                try
-                {
-                    File file = new File(directory, entry.getName());
-                    if (entry.isDirectory())
-                    {
-                        file.mkdirs();
-                    }
-                    else
-                    {
-                        FileOutputStream out = new FileOutputStream(file);
-                        byte[] buffer = new byte[2048];
-                        int len;
-                        while ((len = in.read(buffer)) > 0)
-                        {
-                            out.write(buffer, 0, len);
-                        }
-                        out.close();
-                    }
-                    in.closeEntry();
-                    entry = in.getNextEntry();
-                }
-                catch (Exception e)
-                {
-                	logger.severe(ExceptionUtils.getStackTrace(e));
-                }
-            }
+        	new ZipFile(zipFile).extractAll(directoryToExtractTo);
         }
         catch (IOException ioe)
         {
@@ -697,7 +665,7 @@ public class ReportHandler {
 			            	}
 			            	File resource = new File(basePath, config.getOutFilesDir());
 			                if(runNumber==1 && unzipFile)
-			                	unzipZipFile(resourcesIS, resource.getAbsolutePath());
+			                	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
 			                
 			                VelocityEngine engine = new VelocityEngine();
 			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1073,7 +1041,7 @@ public class ReportHandler {
             	}
             	File resource = new File(basePath, config.getOutFilesDir());
                 if(!unzipped)
-                	unzipZipFile(resourcesIS, resource.getAbsolutePath());
+                	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
                 
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1223,7 +1191,7 @@ public class ReportHandler {
             InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
-                unzipZipFile(resourcesIS, resource.getAbsolutePath());
+            	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
             }
             
             VelocityEngine engine = new VelocityEngine();
@@ -1265,7 +1233,7 @@ public class ReportHandler {
             InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
-                unzipZipFile(resourcesIS, resource.getAbsolutePath());
+            	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
             }
             
             VelocityEngine engine = new VelocityEngine();
@@ -1284,6 +1252,12 @@ public class ReportHandler {
             e.printStackTrace();
         }
     }
+	
+	private static void unzipGatfResources(InputStream resourcesIS, String path) throws IOException {
+		File gctzip = File.createTempFile("gatf-resources-"+UUID.randomUUID(), ".zip");
+		IOUtils.copy(resourcesIS, new FileOutputStream(gctzip));
+    	unzipZipFile(gctzip, path);
+	}
     
     public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
     {
@@ -1292,17 +1266,19 @@ public class ReportHandler {
         
         try
         {
-            context.put("selFileName", StringEscapeUtils.escapeHtml((String)retvals[0]));
-            context.put("selCode", StringEscapeUtils.escapeHtml((String)retvals[1]));
-            context.put("javaFileName", StringEscapeUtils.escapeHtml((String)retvals[2]));
-            context.put("javaCode", StringEscapeUtils.escapeHtml((String)retvals[3]));
+            context.put("selFileName", StringEscapeUtils.escapeHtml4((String)retvals[0]));
+            context.put("selCode", StringEscapeUtils.escapeHtml4((String)retvals[1]));
+            context.put("javaFileName", StringEscapeUtils.escapeHtml4((String)retvals[2]));
+            context.put("javaCode", StringEscapeUtils.escapeHtml4((String)retvals[3]));
             context.put("selLogs", result.getLogs());
             context.put("succFail", result.isStatus()?"SUCCESS":"FAILED");
             context.put("StringEscapeUtils", StringEscapeUtils.class);
             
             File basePath = null;
             if(config.getOutFilesBasePath()!=null)
+            {
                 basePath = new File(config.getOutFilesBasePath());
+            }
             else
             {
                 URL url = Thread.currentThread().getContextClassLoader().getResource(".");

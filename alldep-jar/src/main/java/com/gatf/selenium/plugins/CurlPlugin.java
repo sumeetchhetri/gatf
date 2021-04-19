@@ -7,7 +7,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
@@ -58,13 +58,13 @@ public class CurlPlugin {
             String content = null;
             if(method.equalsIgnoreCase("post") || method.equalsIgnoreCase("put")) {
                 content = lst.get(1).get(0).toString();
-                body = RequestBody.create(null, content);
+                body = RequestBody.create(content, null);
             }
         }
 
         if(method.toUpperCase().equals("post") || method.toUpperCase().equals("put")) {
 			if(body==null) {
-				body = RequestBody.create(null, StringUtils.EMPTY);
+				body = RequestBody.create(StringUtils.EMPTY, null);
 			}
 		}
         Response response = client.newCall(rbuilder.method(method.toUpperCase(), body).build()).execute();

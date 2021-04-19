@@ -48,7 +48,7 @@ import javax.xml.transform.stream.StreamResult;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
 import org.w3c.dom.Document;
@@ -175,7 +175,7 @@ public class TestCaseExecutorUtil {
 		{
 			if(!testCase.isSoapBase())
 			{
-				body = RequestBody.create(null, testCase.getAcontent());
+				body = RequestBody.create(testCase.getAcontent(), null);
 			}
 		}
 		else if(testCase.getMultipartContent()!=null && !testCase.getMultipartContent().isEmpty())
@@ -212,7 +212,7 @@ public class TestCaseExecutorUtil {
 							File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), fileNmOrTxt);
 							if(!testCase.isSoapBase())
 							{
-								mb.addPart(Part.createFormData(controlname, fileNmOrTxt, RequestBody.create(null, file)));
+								mb.addPart(Part.createFormData(controlname, fileNmOrTxt, RequestBody.create(file, null)));
 							}
 							else
 							{
@@ -263,7 +263,7 @@ public class TestCaseExecutorUtil {
 			{
 				content = FileUtils.readFileToString(file, "UTF-8");
 			}
-			body = RequestBody.create(null, content);
+			body = RequestBody.create(content, null);
 		}
 		
 		//Now set the URL with authentication tokens etc...
@@ -339,7 +339,7 @@ public class TestCaseExecutorUtil {
 				
 				testCase.setContent(content);
 				if(StringUtils.isNotBlank(content)) {
-					body = RequestBody.create(null, content);
+					body = RequestBody.create(content, null);
 				}
 			}
 			
@@ -467,7 +467,7 @@ public class TestCaseExecutorUtil {
 				DOMSource source = new DOMSource(soapMessage);
 				transformer.transform(source, result);
 				request = sw.toString();
-				body = RequestBody.create(null, request);
+				body = RequestBody.create(request, null);
 			}
 			
 			try {
@@ -479,7 +479,7 @@ public class TestCaseExecutorUtil {
 		
 		if(testCase.getMethod().equalsIgnoreCase("post") || testCase.getMethod().equalsIgnoreCase("put")) {
 			if(body==null) {
-				body = RequestBody.create(null, StringUtils.EMPTY);
+				body = RequestBody.create(StringUtils.EMPTY, null);
 			}
 		}
 		builder.method(testCase.getMethod().toUpperCase(), body);

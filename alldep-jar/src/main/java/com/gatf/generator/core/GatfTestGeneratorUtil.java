@@ -49,15 +49,13 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
@@ -1153,58 +1151,6 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     private ClassLoader getClassLoader()
     {
         return getClass().getClassLoader();
-    }
-
-    /**
-     * @param zipFile
-     * @param directoryToExtractTo Provides file unzip functionality
-     */
-    public void unzipZipFile(InputStream zipFile, String directoryToExtractTo)
-    {
-        ZipInputStream in = new ZipInputStream(zipFile);
-        try
-        {
-            File directory = new File(directoryToExtractTo);
-            if (!directory.exists())
-            {
-                directory.mkdirs();
-                logger.info("Creating directory for Extraction...");
-            }
-            ZipEntry entry = in.getNextEntry();
-            while (entry != null)
-            {
-                try
-                {
-                    File file = new File(directory, entry.getName());
-                    if (entry.isDirectory())
-                    {
-                        file.mkdirs();
-                    }
-                    else
-                    {
-                        FileOutputStream out = new FileOutputStream(file);
-                        byte[] buffer = new byte[2048];
-                        int len;
-                        while ((len = in.read(buffer)) > 0)
-                        {
-                            out.write(buffer, 0, len);
-                        }
-                        out.close();
-                    }
-                    in.closeEntry();
-                    entry = in.getNextEntry();
-                }
-                catch (Exception e)
-                {
-                    logger.severe(ExceptionUtils.getStackTrace(e));
-                }
-            }
-        }
-        catch (IOException ioe)
-        {
-            logger.severe(ExceptionUtils.getStackTrace(ioe));
-            return;
-        }
     }
 
     public static void main(String[] args) throws Exception

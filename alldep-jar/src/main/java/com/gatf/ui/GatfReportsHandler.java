@@ -25,8 +25,7 @@ import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
-import org.apache.commons.lang.StringUtils;
-import org.apache.commons.lang.SystemUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -69,7 +68,7 @@ public class GatfReportsHandler extends HttpHandler {
     	try {
     		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.getRootDir():gatfConfig.getOutFilesBasePath();
-			String dirPath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getOutFilesDir();
+			String dirPath = basepath + File.separator + gatfConfig.getOutFilesDir();
 			if(!new File(dirPath).exists()) {
 				new File(dirPath).mkdir();
 			}
@@ -134,7 +133,7 @@ public class GatfReportsHandler extends HttpHandler {
             if(isReplay)
             {
                 TestCase origfound = null;
-                String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
+                String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
                         + testcaseFileName;
                 if(!new File(filePath).exists()) {
                     throw new RuntimeException("Test case file does not exist");
@@ -346,7 +345,7 @@ public class GatfReportsHandler extends HttpHandler {
             else if(isExternalLogsApi)
             {
                 TestCase origfound = null;
-                String filePath = basepath + SystemUtils.FILE_SEPARATOR + testcaseFileName;
+                String filePath = basepath + File.separator + testcaseFileName;
                 if(!new File(filePath).exists()) {
                     throw new RuntimeException("External API Test case file does not exist");
                 }
@@ -475,7 +474,7 @@ public class GatfReportsHandler extends HttpHandler {
             else
             {
                 TestCase origfound = null;
-                String filePath = basepath + SystemUtils.FILE_SEPARATOR + gatfConfig.getTestCaseDir() + SystemUtils.FILE_SEPARATOR
+                String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
                         + testcaseFileName;
                 if(!new File(filePath).exists()) {
                     throw new RuntimeException("Test case file does not exist");
