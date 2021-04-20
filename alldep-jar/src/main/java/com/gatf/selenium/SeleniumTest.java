@@ -1663,4 +1663,8 @@ public abstract class SeleniumTest {
 			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
 		}
 	}
+	
+	protected String getOutDir() {
+		return ___cxt___.getOutDirPath();
+	}
 }

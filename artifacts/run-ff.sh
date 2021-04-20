@@ -8,7 +8,10 @@ launch_xvfb() {
 		echo "[ERROR] xvfb failed to start, not more than 99 instances of X displays can be run"
 		exit 1
 	fi
-	echo "[INFO] Trying port ${xvfb_count} for Xvfb..."
+	if [ ${xvfb_count} -gt 1 ]
+	then
+		echo "[INFO] Trying port ${xvfb_count} for Xvfb..."
+	fi
 	if [ -d "/tmp/.X${xvfb_count}-lock" ]
 	then
 		xvfb_count=$((xvfb_count+1))

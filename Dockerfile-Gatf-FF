@@ -65,7 +65,7 @@ RUN chmod +x /run-gatf.sh /run-ff.sh
 
 WORKDIR /workdir
 
-RUN chown -Rf seluser:seluser /home/seluser/* /run-gatf.sh /run-ff.sh /workdir
+RUN chown -Rf seluser:seluser /home/seluser/* /run-gatf.sh /run-ff.sh
 RUN mv /run-ff.sh /run.sh
 
 USER seluser
@@ -74,5 +74,5 @@ EXPOSE 9080
 
 WORKDIR /workdir
 
-ENTRYPOINT ["/run-ff.sh"]
+ENTRYPOINT ["/run.sh"]
 CMD [ "-configtool", "9080", "0.0.0.0", "/workdir" ]

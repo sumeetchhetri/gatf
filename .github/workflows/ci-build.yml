@@ -42,7 +42,7 @@ jobs:
     - name: Build gatf chrome
       run: |
         docker build . --file Dockerfile-Gatf-Chrome --tag $BIN_IMAGE
-        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh
+        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh gatf-bin
     - name: Login to the registry
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 
@@ -65,7 +65,7 @@ jobs:
     - name: Build gatf firefox
       run: |
         docker build . --file Dockerfile-Gatf-FF --tag $BIN_FF_IMAGE
-        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh
+        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh gatf-bin-ff
     - name: Login to the registry
       run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
 

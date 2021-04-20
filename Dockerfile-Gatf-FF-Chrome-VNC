@@ -67,7 +67,7 @@ COPY artifacts/run-gatf.sh /
 COPY artifacts/sample1.* artifacts/jpg* artifacts/png* /home/seluser/
 
 WORKDIR /workdir
-RUN chown -Rf seluser:seluser /home/seluser/* /workdir
+RUN chown -Rf seluser:seluser /home/seluser/*
 COPY artifacts/supervisord.conf /etc/supervisor/conf.d/
 RUN chmod +x /run-gatf.sh
 

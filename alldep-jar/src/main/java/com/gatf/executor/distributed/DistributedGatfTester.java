@@ -22,7 +22,6 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
-import java.net.URL;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -157,8 +156,7 @@ public class DistributedGatfTester {
 				        		basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
 				        	else
 				        	{
-				        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-				        		basePath = new File(url.getPath());
+				        		basePath = new File(System.getProperty("user.dir"));
 				        	}
 				        	File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
 				        	
@@ -266,8 +264,7 @@ public class DistributedGatfTester {
 	                                basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
 	                            else
 	                            {
-	                                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-	                                basePath = new File(url.getPath());
+	                                basePath = new File(System.getProperty("user.dir"));
 	                            }
 	                            File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
 	                            

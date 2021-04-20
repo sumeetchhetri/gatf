@@ -20,7 +20,6 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Writer;
-import java.net.URL;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
@@ -55,8 +54,7 @@ public class TestCaseExecutionLogGenerator implements Runnable {
         		basePath = new File(config.getOutFilesBasePath());
         	else
         	{
-        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-        		basePath = new File(url.getPath());
+        		basePath = new File(System.getProperty("user.dir"));
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			writer = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()

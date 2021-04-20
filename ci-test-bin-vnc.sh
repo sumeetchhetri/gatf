@@ -1,6 +1,8 @@
 #!/bin/bash
 
 CONTAINER_NAME=`date +%s`
+mkdir temp && chmod -Rf 777 temp
+cd temp
 docker run --rm -d --name "${CONTAINER_NAME}" -p 9080:9080 -p 6080:80 -p 5900:5900 -v `pwd`/sample:/workdir -i sumeetchhetri/gatf-bin-vnc
 echo "Waiting for gatf to listen on port 9080..."
 COUNTER=0
@@ -40,3 +42,5 @@ done
 echo "gatf listening on port 5900..."
 docker logs ${CONTAINER_NAME}
 docker kill ${CONTAINER_NAME}
+cd -
+rm -rf temp

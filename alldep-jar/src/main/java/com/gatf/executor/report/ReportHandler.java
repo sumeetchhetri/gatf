@@ -23,7 +23,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -154,8 +153,7 @@ public class ReportHandler {
         		basePath = new File(config.getOutFilesBasePath());
         	else
         	{
-        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-        		basePath = new File(url.getPath());
+        		basePath = new File(System.getProperty("user.dir"));
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			
@@ -200,8 +198,7 @@ public class ReportHandler {
         		basePath = new File(config.getOutFilesBasePath());
         	else
         	{
-        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-        		basePath = new File(url.getPath());
+        		basePath = new File(System.getProperty("user.dir"));
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			
@@ -464,8 +461,7 @@ public class ReportHandler {
         		basePath = new File(config.getOutFilesBasePath());
         	else
         	{
-        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-        		basePath = new File(url.getPath());
+        		basePath = new File(System.getProperty("user.dir"));
         	}
         	File resource = new File(basePath, config.getOutFilesDir());
 			
@@ -660,8 +656,7 @@ public class ReportHandler {
 			            		basePath = new File(config.getOutFilesBasePath());
 			            	else
 			            	{
-			            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-			            		basePath = new File(url.getPath());
+			            		basePath = new File(System.getProperty("user.dir"));
 			            	}
 			            	File resource = new File(basePath, config.getOutFilesDir());
 			                if(runNumber==1 && unzipFile)
@@ -790,8 +785,7 @@ public class ReportHandler {
             		basePath = new File(config.getOutFilesBasePath());
             	else
             	{
-            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-            		basePath = new File(url.getPath());
+            		basePath = new File(System.getProperty("user.dir"));
             	}
             	File resource = new File(basePath, config.getOutFilesDir());
                 
@@ -1036,8 +1030,7 @@ public class ReportHandler {
             		basePath = new File(config.getOutFilesBasePath());
             	else
             	{
-            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-            		basePath = new File(url.getPath());
+            		basePath = new File(System.getProperty("user.dir"));
             	}
             	File resource = new File(basePath, config.getOutFilesDir());
                 if(!unzipped)
@@ -1137,8 +1130,7 @@ public class ReportHandler {
             		basePath = new File(config.getOutFilesBasePath());
             	else
             	{
-            		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-            		basePath = new File(url.getPath());
+            		basePath = new File(System.getProperty("user.dir"));
             	}
             	File resource = new File(basePath, config.getOutFilesDir());
                 
@@ -1183,8 +1175,7 @@ public class ReportHandler {
                 basePath = new File(config.getOutFilesBasePath());
             else
             {
-                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-                basePath = new File(url.getPath());
+                basePath = new File(System.getProperty("user.dir"));
             }
             File resource = new File(basePath, config.getOutFilesDir());
             
@@ -1225,8 +1216,7 @@ public class ReportHandler {
                 basePath = new File(config.getOutFilesBasePath());
             else
             {
-                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-                basePath = new File(url.getPath());
+                basePath = new File(System.getProperty("user.dir"));
             }
             File resource = new File(basePath, config.getOutFilesDir());
             
@@ -1281,8 +1271,7 @@ public class ReportHandler {
             }
             else
             {
-                URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-                basePath = new File(url.getPath());
+                basePath = new File(System.getProperty("user.dir"));
             }
             File resource = new File(basePath, config.getOutFilesDir());
             

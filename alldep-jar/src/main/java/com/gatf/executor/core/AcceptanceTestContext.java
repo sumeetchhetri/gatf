@@ -22,7 +22,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -373,8 +372,8 @@ public class AcceptanceTestContext {
 			}
 			else
 			{
-				URL url = Thread.currentThread().getContextClassLoader().getResource(filename);
-				File resource = new File(url.getPath());
+				File basePath = new File(System.getProperty("user.dir"));
+				File resource = new File(basePath, gatfExecutorConfig.getTestCaseDir());
 				return resource;
 			}
 		} catch (Exception e) {
@@ -395,8 +394,9 @@ public class AcceptanceTestContext {
 			}
 			else
 			{
-				URL url = Thread.currentThread().getContextClassLoader().getResource(gatfExecutorConfig.getOutFilesDir());
-				File resource = new File(url.getPath());
+
+				File basePath = new File(System.getProperty("user.dir"));
+				File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 				File file = new File(resource, filename);
 				if(!file.exists())
 					file.createNewFile();
@@ -404,6 +404,22 @@ public class AcceptanceTestContext {
 			}
 		} catch (Exception e) {
 			return null;
+		}
+	}
+	
+	public String getOutDirPath() {
+		if(gatfExecutorConfig.getOutFilesBasePath()!=null)
+		{
+			File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
+			File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+			return resource.getAbsolutePath();
+		}
+		else
+		{
+
+			File basePath = new File(System.getProperty("user.dir"));
+			File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+			return resource.getAbsolutePath();
 		}
 	}
 	

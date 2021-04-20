@@ -226,8 +226,7 @@ public class DistributedGatfListener {
 		        		basePath = new File(context.getConfig().getOutFilesBasePath());
 		        	else
 		        	{
-		        		URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-		        		basePath = new File(url.getPath());
+		        		basePath = new File(System.getProperty("user.dir"));
 		        	}
 		        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
 		        	
@@ -415,8 +414,7 @@ public class DistributedGatfListener {
                             basePath = new File(context.getConfig().getOutFilesBasePath());
                         else
                         {
-                            URL url = Thread.currentThread().getContextClassLoader().getResource(".");
-                            basePath = new File(url.getPath());
+                            basePath = new File(System.getProperty("user.dir"));
                         }
                         File resource = new File(basePath, context.getConfig().getOutFilesDir());
                         

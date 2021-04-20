@@ -1980,7 +1980,7 @@ public class Command {
         String javacode() {
             String filepath = "evaluate(\""+esc(fpath)+"\")";
             if(isTmp) {
-            	filepath = "java.lang.System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
+            	filepath = "getOutDir() + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
             }
             return "screenshotAsFile(get___d___(), "+filepath+");\n";
         }
@@ -2021,7 +2021,7 @@ public class Command {
         String javacode() {
             String filepath = "evaluate(\""+esc(fpath)+"\")";
             if(isTmp) {
-            	filepath = "java.lang.System.getProperty(\"java.io.tmpdir\") + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
+            	filepath = "getOutDir() + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
             }
             StringBuilder b = new StringBuilder();
             b.append(cond.javacodeonly(children));

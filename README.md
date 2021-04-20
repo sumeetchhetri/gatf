@@ -155,7 +155,7 @@ Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -generator /workdir/path-to-gatf-gen-config.xml-file
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -generator /workdir/path-to-gatf-gen-config.xml-file
 ```
 
 Sample config.xml
@@ -487,19 +487,19 @@ Direct Execution
 --------------
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -executor /workdir/path-to-gatf-executor-config.xml-file
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -executor /workdir/path-to-gatf-executor-config.xml-file
 ```
 For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -selenium /workdir/path-to-gatf-executor-config.xml-file
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -selenium /workdir/path-to-gatf-executor-config.xml-file
 ```
 For validating test script for RPA (selenium), use the following command,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -validate-sel test-script-name-relative-to-workdir.sel /local/gatf-config-sel.xml
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -validate-sel test-script-name-relative-to-workdir.sel /local/gatf-config-sel.xml
 ```
 For running gatf in distributed mode as a listener, use the following command,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -listener
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -listener
 ```
 
 GATF Robotic Process Automation Tool
@@ -1337,7 +1337,7 @@ Direct Execution
 --------------
 For direct execution,
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -v /local-folder:/tmp -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
 ```
 **0.0.0.0:9080** - ip/port for embedded http server<br>
 **.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found
@@ -1351,7 +1351,4 @@ License
 ------
 Apache License Version 2.0
 
-**Free Software, Hell Yeah!**
-<br/>
-**Happy Gatfying**
 
