@@ -60,6 +60,8 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -1155,21 +1157,30 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 
     public static void main(String[] args) throws Exception
     {
+    	boolean showHelp = false;
     	if(args.length>=1) {
     		if(args.length>1 && args[0].equals("-generator") && !args[1].trim().isEmpty())
     		{
-	    		InputStream io = new FileInputStream(args[1]);
-	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-	            XStream.setupDefaultSecurity(xstream);
-	            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-	    		xstream.alias("testPaths", String[].class);
-	    		xstream.alias("testPath", String.class);
-	    		xstream.alias("soapWsdlKeyPairs", String[].class);
-	    		xstream.alias("soapWsdlKeyPair", String.class);
-	    		xstream.alias("string", String.class);
-	    		
-	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
+    			GatfConfiguration config = null;
+    			
+    			if(args[1].trim().endsWith(".xml")) {
+    				InputStream io = new FileInputStream(args[1]);
+		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+		            XStream.setupDefaultSecurity(xstream);
+		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
+		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+		    		xstream.alias("testPaths", String[].class);
+		    		xstream.alias("testPath", String.class);
+		    		xstream.alias("soapWsdlKeyPairs", String[].class);
+		    		xstream.alias("soapWsdlKeyPair", String.class);
+		    		xstream.alias("string", String.class);
+		    		config = (GatfConfiguration)xstream.fromXML(io);
+    			} else if(args[1].trim().endsWith(".json")) {
+    				InputStream io = new FileInputStream(args[1]);
+    				config = new ObjectMapper().readValue(io, GatfConfiguration.class);
+    			} else {
+    				showHelp = true;
+    			}
 	    		
 	    		GatfTestGeneratorUtil testGenerator = new GatfTestGeneratorUtil();
 	    		testGenerator.setDebugEnabled(config.isDebugEnabled());
@@ -1190,7 +1201,13 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     		}
     		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
     		{
-    			GatfTestCaseExecutorUtil.main(args);
+    			try {
+    				GatfTestCaseExecutorUtil.main(args);
+				} catch (Exception e) {
+					e.printStackTrace();
+					showHelp = true;
+				}
+    			
     		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
@@ -1207,25 +1224,22 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     		}
     		else
     		{
-    			System.out.println("Please specify proper arguments to the program - valid invocation options are, \n" +
-    					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
-    					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
-    					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
-    					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
-    					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
-    					"java -jar gatf-plugin-{version}.jar -listener\n");
+    			showHelp = true;
     		}
+    	} else {
+    		showHelp = true;
     	}
-    	else
-    	{
-			System.out.println("Invalid invocation - valid invocation options are, \n" +
+    	
+    	if(showHelp) {
+    		System.out.println("Invalid invocation - valid invocation options are, \n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
 					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
 					"java -jar gatf-plugin-{version}.jar -listener\n");
-		}
+    	}
+    	
 		System.exit(0);
     }
 
@@ -1245,18 +1259,23 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     	
     	if(configFile!=null) {
 			try {
-				InputStream io = new FileInputStream(configFile);
-	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-	            XStream.setupDefaultSecurity(xstream);
-	            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-	    		xstream.alias("testPaths", String[].class);
-	    		xstream.alias("testPath", String.class);
-	    		xstream.alias("soapWsdlKeyPairs", String[].class);
-	    		xstream.alias("soapWsdlKeyPair", String.class);
-	    		xstream.alias("string", String.class);
-	    		
-	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
+				GatfConfiguration config = null;
+				if(configFile.trim().endsWith(".xml")) {
+					InputStream io = new FileInputStream(configFile);
+		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+		            XStream.setupDefaultSecurity(xstream);
+		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
+		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+		    		xstream.alias("testPaths", String[].class);
+		    		xstream.alias("testPath", String.class);
+		    		xstream.alias("soapWsdlKeyPairs", String[].class);
+		    		xstream.alias("soapWsdlKeyPair", String.class);
+		    		xstream.alias("string", String.class);
+		    		config = (GatfConfiguration)xstream.fromXML(io);
+				} else if(configFile.trim().endsWith(".json")) {
+    				InputStream io = new FileInputStream(configFile);
+    				config = new ObjectMapper().readValue(io, GatfConfiguration.class);
+    			}
 	    		
 	    		setDebugEnabled(config.isDebugEnabled());
 	    		setEnabled(config.isEnabled());

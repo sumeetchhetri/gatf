@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=UTF-8"> 
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+        <title>GATF Config Tool</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+        <link href="resources/bootstrap.min.css" rel="stylesheet">
+		<!-- Page-Level Plugin CSS - Tables -->
+		<link href="resources/dataTables.bootstrap.css" rel="stylesheet">
+		<link href="resources/dataTables.tableTools.css" rel="stylesheet">
+        
+        <!--[if lt IE 9]>
+          <script src="resources/html5.js"></script>
+        <![endif]-->
+
+        <!-- CSS code from Bootply.com editor -->
+        
+        <style type="text/css">
+            /* custom google plus style theme */
+			@import url(resources/css.css);
+			body {
+			  background-color:#e0e0e0;
+			  -webkit-font-smoothing: antialiased;
+			  font: normal 14px Roboto,arial,sans-serif;
+			}
+			.navbar-default {background-color:#f4f4f4;margin-top:50px;border-width:0;z-index:5;}
+			.navbar-default .navbar-nav > .active > a,.navbar-default .navbar-nav > li:hover > a {border:0 solid #4285f4;border-bottom-width:2px;font-weight:800;background-color:transparent;}
+			.navbar-default .dropdown-menu {background-color:#ffffff;}
+			.navbar-default .dropdown-menu li > a {padding-left:30px;}
+			/*.navbar-default .dropdown-submenu{position:relative;}
+			.navbar-default .dropdown-submenu>.dropdown-menu{top:0;left:100%;margin-top:-6px;margin-left:-1px;-webkit-border-radius:0 6px 6px 6px;-moz-border-radius:0 6px 6px 6px;border-radius:0 6px 6px 6px;}
+			
+			.navbar-default .dropdown-submenu>a:after{display:block;content:" ";float:right;width:0;height:0;border-color:transparent;border-style:solid;border-width:5px 0 5px 5px;border-left-color:#cccccc;margin-top:5px;margin-right:-10px;}
+			.navbar-default .dropdown-submenu:hover>a:after{border-left-color:#ffffff;}
+			.navbar-default .dropdown-submenu.pull-left{float:none;}.dropdown-submenu.pull-left>.dropdown-menu{left:-100%;margin-left:10px;-webkit-border-radius:6px 0 6px 6px;-moz-border-radius:6px 0 6px 6px;border-radius:6px 0 6px 6px;}*/
+			.dropdown-submenu{
+				position:relative;
+			}
+
+			.dropdown-submenu > .dropdown-menu
+			{
+				top:0;
+				left:100%;
+				margin-top:-6px;
+				margin-left:-1px;
+				-webkit-border-radius:0 6px 6px 6px;
+				-moz-border-radius:0 6px 6px 6px;
+				border-radius:0 6px 6px 6px;
+			}
+
+			.dropdown-submenu:hover > .dropdown-menu{
+				display:block;
+			}
+
+			.dropdown-submenu > a:after{
+				display:block;
+				content:" ";
+				float:right;
+				width:0;
+				height:0;
+				border-color:transparent;
+				border-style:solid;
+				border-width:5px 0 5px 5px;
+				border-left-color:#cccccc;
+				margin-top:5px;
+				margin-right:-10px;
+			}
+
+			.dropdown-submenu:hover > a:after{
+				border-left-color:#ffffff;
+			}
+
+			.dropdown-submenu .pull-left{
+				float:none;
+			}
+
+			.dropdown-submenu.pull-left > .dropdown-menu{
+				left:-100%;
+				margin-left:10px;
+				-webkit-border-radius:6px 0 6px 6px;
+				-moz-border-radius:6px 0 6px 6px;
+				border-radius:6px 0 6px 6px;
+			}
+
+			.header {background-color:#ffffff;border-width:0;}
+			.header .navbar-collapse {background-color:#ffffff;}
+			.btn,.form-control,.panel,.list-group,.well {border-radius:1px;box-shadow:0 0 0;}
+			.form-control {border-color:#d7d7d7;}
+			.btn-primary {border-color:transparent;}
+			.btn-primary,.label-primary,.list-group-item.active, .list-group-item.active:hover, .list-group-item.active:focus {background-color:#4285f4;}
+			.btn-plus {background-color:#ffffff;border-width:1px;border-color:#dddddd;box-shadow:1px 1px 0 #999999;border-radius:3px;color:#666666;text-shadow:0 0 1px #bbbbbb;}
+			.well,.panel {border-color:#d2d2d2;box-shadow:0 1px 0 #cfcfcf;border-radius:3px;}
+			.btn-success,.label-success,.progress-bar-success{background-color:#65b045;}
+			.btn-info,.label-info,.progress-bar-info{background-color:#a0c3ff,border-color:#a0c3ff;}
+			.btn-danger,.label-danger,.progress-bar-danger{background-color:#dd4b39;}
+			.btn-warning,.label-warning,.progress-bar-warning{background-color:#f4b400;color:#444444;}
+
+			hr {border-color:#ececec;}
+			button {
+				outline: 0;
+			}
+			textarea {
+			  resize: none;
+			  outline: 0;
+			  
+			}
+			.panel .btn i,.btn span{
+			  color:#666666;
+			}
+			.panel .panel-heading {
+			  background-color: #ffffff;
+			  font-weight:700;
+			  font-size:16px;
+			  color:#262626;
+			  border-color:#ffffff;
+			}
+			.panel .panel-heading a {
+			  font-weight:400;
+			  font-size:11px;
+			}
+			.panel .panel-default {
+			  border-color:#cccccc;
+			}
+			.panel .panel-thumbnail {
+			  padding:0;
+			}
+			.panel .img-circle {
+			  width:50px;
+			  height:50px;
+			}
+			.list-group-item:first-child,.list-group-item:last-child {
+				border-radius:0;
+			}
+			h3,h4,h5 { 
+			  border:0 solid #efefef; 
+			  border-bottom-width:1px;
+			  padding-bottom:10px;
+			}
+
+			.modal-dialog {
+			 width: 450px;
+			}
+
+			.modal-footer {
+			 border-width:0;
+			}
+
+			.dropdown-menu {
+			   background-color:#f4f4f4;
+			   border-color:#f0f0f0;
+			   border-radius:0;
+			   margin-top:-1px;
+			}
+			/* end theme */
+
+			/* template layout*/
+			#subnav {
+				position:fixed;
+				width:100%;
+			}
+
+			@media (max-width: 768px) {
+				#subnav {
+				padding-top: 6px;
+				}
+			}
+
+			#main {
+				padding-top:120px;
+			}
+			.test {
+			  margin:0;
+			  padding:0;
+			}
+			
+			.postbig{
+				font-size:12px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:orange;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.putbig{
+				font-size:12px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:blue;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.getbig{
+				font-size:12px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:green;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.deletebig{
+				font-size:12px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:red;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+			
+			.postbigb{
+				font-size:16px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:orange;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.putbigb{
+				font-size:16px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:blue;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.getbigb{
+				font-size:16px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:green;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+
+			.deletebigb{
+				font-size:16px;
+				color:white;
+				padding:1px 3px 2px;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:red;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+			
+			.plusminuslist{
+				font-size:12px;
+				color:white;
+				font-weight:bold;
+				text-transform:uppercase;
+				background-color:orange;
+				-webkit-border-radius:3px;
+				-moz-border-radius:3px;
+				border-radius:3px;
+			}
+			
+			table
+			{
+				font-family:"Trebuchet MS", Arial, Helvetica, sans-serif;
+				width:90%;
+				border-collapse:collapse;
+			}
+			table td, table th 
+			{
+				font-size:0.9em;
+				border:1px solid #98bf21;
+				padding:3px 7px 2px 7px;
+			}
+			table th 
+			{
+				font-size:1.0em;
+				text-align:left;
+				padding-top:5px;
+				padding-bottom:4px;
+				background-color:#A7C942;
+				color:#fff;
+			}
+			table tr.alt td 
+			{
+				color:#000;
+				background-color:#EAF2D3;
+			}
+			.string { color: green; }
+			.number { color: darkorange; }
+			.boolean { color: blue; }
+			.null { color: magenta; }
+			.key { color: red; }
+			.asideLink {word-wrap: break-word;}
+			.asideLink1 {word-wrap: break-word;}
+        </style>
+    </head>
+    
+    <body  >
+        <div class="navbar navbar-fixed-top header">
+			<div class="col-md-12">
+				<div class="navbar-header"> 
+					<a href="#" class="navbar-brand droppedHover">GATF - Config Tool</a>
+					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse1"> 
+						<i class="glyphicon glyphicon-search"></i>
+					</button>
+				</div>
+				<div class="collapse navbar-collapse" id="navbar-collapse1">
+					<form class="navbar-form pull-left">
+						<div class="input-group" style="max-width:470px;">
+							<input type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term" onkeyup="searchLeftNavs(this)">
+							<div class="input-group-btn">
+								<button class="btn btn-default btn-primary" type="submit"><i class="glyphicon glyphicon-search"></i></button>
+							</div>
+						</div>
+					</form>
+					<ul class="nav navbar-nav navbar-right">
+						<li><a href="#" target="_ext" class="">© GATF 2014, All rights reserved.</a></li>
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div class="navbar navbar-default" id="subnav">
+			<div class="col-md-12">
+				<div class="btn-group">
+				  <a href="#" onclick="configuration()" style="margin-left:15px;" class="navbar-btn btn btn-default btn-plus">
+					  Configuration 
+				  </a>
+			  </div>
+			  <div class="btn-group">
+	  <a href="#" onclick="addTcFileHTml()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+		   TestCase Files
+	  </a>
+	    </div>   <div class="btn-group">
+	  <a href="#" onclick="executeHtml('executor')" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+		   Execute
+	  </a>
+	    </div>  <div class="btn-group">
+	  <a href="#" onclick="getReports()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+		   Reports
+	  </a>
+	    </div>  <div class="btn-group">
+	  <a href="#" onclick="initiateDownloads()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+		   Download Project
+	  </a>
+	    </div>  
+			</div>
+		</div>
+		<!--main-->
+		<div class="container" id="main">
+			<div class="row">
+				<div class="col-md-4">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							 <h4 class="">All Links</h4>
+						</div>
+						<div class="panel-body">
+							<div class="list-group"> 
+							  <div class="accordion" id="leftNavAccordionDiv">
+								  <div class="accordion-group">
+  <div class="accordion-heading list-group-item">
+  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse4">
+  	  		 Configuration
+		  </a>
+	    </div>
+		<div id="leftNavCollapse4" class="accordion-body collapse in" style="margin-left:20px">
+	  <div class="accordion-inner">
+	  		  <a href="#" class="list-group-item asideLink" onclick="configuration()">&nbsp;Executor</a>
+			  <a href="#" class="list-group-item asideLink" onclick="generatorConfig()">&nbsp;Generator</a>
+			  <a href="#" class="list-group-item asideLink" onclick="getExtIntData('gatf-logging-api-int.xml','loggingapi')">&nbsp;Server Logs API</a>
+			  <a href="#" class="list-group-item asideLink" onclick="getExtIntData('gatf-issuetracking-api-int.xml','issuetrackerapi')">&nbsp;Issue Tracking API</a>
+	  	  </div>
+  </div>
+  </div><div class="accordion-group">
+  <div class="accordion-heading list-group-item">
+  	  	  	  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse3">
+			  TestCase Files
+		  </a>
+	    </div>
+    <div id="leftNavCollapse3" class="accordion-body collapse in" style="margin-left:20px">
+	  <div class="accordion-inner" id="testcasefile-holder">
+	  		  
+	  	  </div>
+  </div>
+  </div><div class="accordion-group">
+  <div class="accordion-heading list-group-item">
+  	  		  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse5">
+			  Execute
+		  </a>
+	    </div>
+		<div id="leftNavCollapse5" class="accordion-body collapse in" style="margin-left:20px">
+	  <div class="accordion-inner">
+	  		  <a href="#" class="list-group-item asideLink" onclick="executeHtml('executor')">&nbsp;Executor</a>
+			  <a href="#" class="list-group-item asideLink" onclick="executeHtml('generator')">&nbsp;Generator</a>
+	  	  </div>
+  </div>
+  </div><div class="accordion-group">
+  <div class="accordion-heading list-group-item">
+  	  		  <a class="accordion-toggle" href="#" onclick="getReports()">
+			  Reports
+		  </a>
+	    </div>
+  </div><div class="accordion-group">
+  <div class="accordion-heading list-group-item">
+  	  		  <a class="accordion-toggle" href="#" onclick="initiateDownloads()">
+			  Download Project
+		  </a>
+	    </div>
+  </div>
+
+  
+							  </div>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="col-md-8">
+										
+															<div class="panel panel-default">
+						<div class="panel-heading">
+							 <h4 class="" id="heading_main">Manage Testcases </h4>
+						</div>
+						<div class="panel-body">
+							<form class="form form-vertical" id="ExampleBeanServiceImpl_form" name="ExampleBeanServiceImpl_form"  style="margin-left:30px">
+														</form>
+						</div>
+						<!--/panel content-->
+					</div>
+									</div>
+			</div>
+			<!--/main-->
+		</div>
+		<div id="push" class=""></div>
+		<script type="text/javascript" src="resources/javascript-xpath-latest-cmp.js"></script>
+		<script type="text/javascript" src="resources/prettify.js"></script>
+        <script type='text/javascript' src="resources/jquery-2.1.0.min.js"></script>
+        <script type='text/javascript' src="resources/bootstrap.min.js"></script>
+		<script type="text/javascript" src="resources/json2.js"></script>
+		<script type="text/javascript" src="resources/jquery.form.js"></script>
+		<script type="text/javascript" src="resources/testgen.js"></script>
+		<script type="text/javascript" src="resources/jquery.blockUI.js"></script>
+		<script type="text/javascript" src="resources/vkbeautify.js"></script>
+		<link href="resources/prettify.css" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="resources/jquery.datetimepicker.css"/ >
+		<script type="text/javascript" src="resources/jquery.datetimepicker.js"></script>
+	    <script type="text/javascript" src="resources/jquery.autosize.min.js"></script>
+		<script type="text/javascript" src="resources/jquery.dataTables.js"></script>
+		<script type="text/javascript" src="resources/dataTables.bootstrap.js"></script>
+		<script type="text/javascript" src="resources/dataTables.tableTools.js"></script>
+		<script type='text/javascript'>
+        	
+        	
+        	isUseBootstrapUI = true;
+
+			var loadtestingdatatable = null;
+
+			var loadtestingdatatablecnt = 1;
+        	
+        	        	var schema = JSON.parse('{"type":"object","properties":{"baseUrl":{"type":"string"},"url":{"type":"string"},"name":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","DELETE"]},"description":{"type":"string"},"content":{"type":"string","ui":"textarea"},"headers":{"type":"map","types":{"key":{"type":"string","defaultIndex":1,"enum":["","Accept","Accept-Charset","Accept-Encoding","Accept-Language","Allow","Authorization","Cache-Control","Content-Disposition","Content-Encoding","Content-ID","Content-Language","Content-Length","Content-Location","Content-Type","Date","ETag","Expires","Host","If-Match","If-Modified-Since","If-None-Match","If-Unmodified-Since","Last-Modified","Location","Link","Retry-After","User-Agent","Vary","WWW-Authenticate","Cookie","Set-Cookie"]},"value":{"type":"string"}}},"exQueryPart":{"type":"string"},"expectedResCode":{"type":"integer","defaultIndex":0,"enum":[200,201,202,204,205,206,301,302,303,304,305,307,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,500,501,502,503,504,505]},"expectedResContentType":{"type":"string"},"expectedResContent":{"type":"string","ui":"textarea"},"skipTest":{"type":"boolean","required":true},"detailedLog":{"type":"boolean","required":true},"secure":{"type":"boolean","required":true},"expectedNodes":{"type":"array","items":{"nolabel":true,"type":"string"}},"soapBase":{"type":"boolean","required":true},"wsdlKey":{"type":"string"},"operationName":{"type":"string"},"soapParameterValues":{"type":"map","types":{"key":{"type":"string"},"value":{"type":"string"}}},"workflowContextParameterMap":{"type":"map","types":{"key":{"type":"string"},"value":{"type":"string"}}},"sequence":{"type":"integer"},"filesToUpload":{"type":"array","items":{"nolabel":true,"type":"string"}},"outFileName":{"type":"string"},"repeatScenarioProviderName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'providers\']"},"numberOfExecutions":{"type":"integer"},"repeatScenariosConcurrentExecution":{"type":"boolean","required":true},"stopOnFirstFailureForPerfTest":{"type":"boolean","required":true},"simulationNumber":{"type":"integer"},"preWaitMs":{"type":"number"},"postWaitMs":{"type":"number"},"reportResponseContent":{"type":"boolean","defaultIndex":1},"preExecutionDataSourceHookName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'hooks\']"},"postExecutionDataSourceHookName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'hooks\']"},"abortOnInvalidStatusCode":{"type":"boolean","required":true},"abortOnInvalidContentType":{"type":"boolean","required":true},"relatedTestName":{"type":"string","defaultIndex":0,"enumVar":"currtestcases"},"executeOnCondition":{"type":"string"},"logicalValidations":{"type":"array","items":{"nolabel":true,"type":"string"}}}}');
+        	
+        	function isPrimitive(type)
+        	{
+        		return (type=='string' || type=='number' || type=='integer' 
+					  		|| type=='boolean' || type=='date' || type=='float'
+					  		|| type=='double');
+        	}
+
+			function showInpTitle(ele)
+			{
+				ele.title = ele.value;
+			}
+
+			function decorateList(schema, list, acValue, attrs, nmdef, addclses, label, divstyle, width)
+			{
+				var defval = schema.hasOwnProperty('default')?schema['default']:null;
+				var defind = schema.hasOwnProperty('defaultIndex')?schema['defaultIndex']:null;
+				
+				//Check the defaultIndex first, if valid use it
+				defind = (list!=null && defind<list.length && defind>=0)?defind:null;
+				if(defind==null && defval!=null && acValue==null)
+					acValue = defval;
+
+				if(acValue!=null)
+				{
+					if(list!=null)
+					{
+						defind = null;
+						for(var i=0;i<list.length;i++)
+						{
+							if(list[i]==(acValue+""))
+							{
+								defind = i;
+								break;
+							}
+						}
+					}
+					if(defind==null && acValue!='')
+					{
+						return ("<div "+divstyle+" class=\"form-elems controls\">"+label+"<input onmouseover=\"showInpTitle(this)\" "+attrs+" "+nmdef+" class=\"form-control "+addclses+"\" onblur=\"validate(this, '"+schema.type+"')\" value=\""+acValue+"\" "+width+" type='text'/></div>");
+					}
+				}
+				var html = "<div "+divstyle+" class=\"form-elems controls\">"+label+"<div><select onchange='handleBlankSelect(this)' "+attrs+" "+nmdef+" class=\"form-control "+addclses+"\" "+width+">";
+				if(list!=null)
+				{
+					for(var i=0;i<list.length;i++)
+					{
+						var issel = (defind!=null && defind==i)?"selected":"";
+						html += "<option value=\""+list[i]+"\" "+issel+">"+list[i]+"</option>";
+					}
+				}
+				return html + ("</select><input "+attrs+" class=\"form-control "+addclses+"\" onblur=\"validate(this, '"+schema.type+"')\" "+width+" type='hidden'/></div></div>");
+			}        	
+
+			function handleBlankSelect(elem)
+			{
+				if(elem.value=="")
+				{
+					var parentN = elem.parentNode;
+					var name = elem.name;
+					elem.setAttribute("name", "");
+					$(elem).hide();
+					var inp = parentN.childNodes[parentN.childNodes.length-1];
+					inp.setAttribute("name", name);
+					inp.type = "text";
+				}
+			}
+
+			function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, isObjspan, isshowlabel, isTop, propLabel)
+			{
+				  if(isPrimitive(schema.type))
+				  {
+				  		var valut = respValue==null?'':respValue;
+						var ovalut = respValue;
+						if(typeof valut=='string' && valut!='')
+						{
+							valut = valut.replace(/"/g,"&quot;");
+						}
+				  		var nmdef = (isnm?("name=\""+heirar+"\""):"");
+						var dtcls = "";
+						if(schema.type=='date')
+							dtcls = "clsDatePicker";
+						var isAttr = "";
+						var label = isshowlabel?"<label class=\""+addclas+"\" "+labinpdet+">"+propLabel+"</label>":"";
+						var divstyle = isObjspan?" style=\"display:inline-block;margin-left:10px\" ":"";
+						var width = isObjspan?"":"style=\"width: 70%; height: 30px;\"";
+						if(schema.hasOwnProperty('isattr'))
+						{
+							isAttr = "isattr=\"true\";"
+						}
+						if(schema.type==('boolean'))
+						{
+							return decorateList(schema, ["false","true"], ovalut, isAttr+" "+labinpdet, nmdef, addclas+""+dtcls, label, divstyle, width);
+						}
+						else if(schema.hasOwnProperty('enum') && schema.enum.length>0)
+						{
+							return decorateList(schema, schema.enum, ovalut, isAttr+" "+labinpdet, nmdef, addclas+""+dtcls, label, divstyle, width);
+						}
+						else if(schema.hasOwnProperty('enumVar'))
+						{
+							eval("var bvals = "+schema.enumVar+";");
+							return decorateList(schema, bvals, ovalut, isAttr+" "+labinpdet, nmdef, addclas+""+dtcls, label, divstyle, width);
+						}
+						else
+						{
+							var sp1 = isAttr+" "+labinpdet;
+							var sp2 = addclas+""+dtcls;
+							if(schema.hasOwnProperty('ui') && schema.ui=='textarea')
+							{								
+								return ("<div "+divstyle+" class=\"form-elems controls\">"+label+"<textarea onmouseover=\"showInpTitle(this)\" "+sp1+" "+nmdef+" class=\"form-control "+sp2+"\" onblur=\"validate(this, '"+schema.type+"')\" style=\"width:70%;height:200px;\">"+valut+"</textarea></div>");
+								
+							}
+							else
+							{								
+								return ("<div "+divstyle+" class=\"form-elems controls\">"+label+"<input onmouseover=\"showInpTitle(this)\" "+sp1+" "+nmdef+" class=\"form-control "+sp2+"\" onblur=\"validate(this, '"+schema.type+"')\" value=\""+valut+"\" "+width+" type='text'/></div>");
+							}
+						}
+				  }
+				  else if(schema.type=='object')
+				  {
+						if(schema.hasOwnProperty('properties'))
+						{
+							if(!heirar && schema.hasOwnProperty('name'))
+							{
+								if(!heirar)
+									heirar = schema.name;
+								else
+									heirar += "['"+schema.name+"']";
+							}
+							var vald = respValue==null?{}:respValue;
+							var slab = '';
+							if(schema.hasOwnProperty('label') && schema.label!=undefined)
+							{
+								slab = '<h4>' + schema.label.value + '</h4><br/>';
+							}
+							//var sty = isTop?"":"style=\"border:1px dotted\"";
+							var html = "<div class=\"control-group\">" + slab;
+							for (var property in schema.properties) {
+								if (schema.properties.hasOwnProperty(property)) {
+									var hirNm = heirar;
+									if(!hirNm || hirNm=="")
+										hirNm = property;
+									else
+										hirNm += "['"+property+"']";
+									
+									isObjspan = isObjspan && schema.hasOwnProperty("isSpan") && schema.isSpan;
+									if(schema.hasOwnProperty("nolabel") && schema.nolabel)
+										isshowlabel = false;
+
+									var propobj = schema.properties[property];
+									var htmlp = generateFromValue(propobj, hirNm, isnm, addclas, "orig_val_cls=\""+hirNm+"\"", vald[property], isObjspan, isshowlabel, false, property);
+									html += htmlp;
+								}
+							}				
+							return html + "</div>";
+						}
+				  }
+				  else if(schema.type=='array')
+				  {
+						if(schema.hasOwnProperty('items'))
+						{
+							//schema.items.nolabel = true;
+							var hirNm = heirar;	
+							if(!hirNm || hirNm=="")
+								hirNm = "";
+							if(!countMap.hasOwnProperty(hirNm))
+								countMap[hirNm] = 0;
+							schemaMap[hirNm] = schema.items;
+							var vald = respValue==null?[]:respValue;
+							var rvalue = null;
+							if(vald.length>countMap[hirNm])
+								rvalue = vald[countMap[hirNm]];
+							var slab = '';
+							if(schema.hasOwnProperty('label') && schema.label!=undefined)
+							{
+								slab = '<h4>' + schema.label.value + '</h4><br/>';
+							}
+							var html = '<div id="_element_'+hirNm+'" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">'+slab+'<b>'+propLabel+'</b>&nbsp;&nbsp;<button class="plusminuslist" optype="true" list_value_cls="'+hirNm+'" onclick=\"plusminuslistfunc(this)\">Add</button>&nbsp;&nbsp;<button list_value_cls="'+hirNm+'" class="plusminuslist" optype="false" onclick=\"plusminuslistfunc(this)\">Remove</button><br/><br/>';
+							var isshowlabel = schema.items.nolabel==undefined?true:!schema.items.nolabel;
+
+							if(vald.length>0)
+							{
+								for(var rvi=0;rvi<vald.length;rvi++)
+								{
+									var nhirNm = hirNm + "["+rvi+"]";
+									countMap[hirNm]++;
+									html += "<div style=\"border-bottom:1px solid #C0C0C0;margin-bottom:10px;padding-bottom:10px\">" + generateFromValue(schema.items, nhirNm, isnm, addclas, "orig_val_cls=\""+nhirNm+"\"", vald[rvi], false, isshowlabel, false, hhirNm)+"</div>";
+								}
+							}
+							html += "</div>";				
+							return html;
+						}
+				  }
+				  else if(schema.type=='marray')
+				  {
+						if(schema.hasOwnProperty('items'))
+						{
+							var hirNm = heirar;	
+							if(!hirNm || hirNm=="")
+								hirNm = "";
+							if(!countMap.hasOwnProperty(hirNm))
+								countMap[hirNm] = 0;
+							schemaMap[hirNm] = schema.items;
+							var vald = respValue==null?{}:respValue;
+							var rvalue = null;
+							//if(vald.length>countMap[hirNm])
+							//	rvalue = vald[countMap[hirNm]];
+							var slab = '';
+							if(schema.hasOwnProperty('label') && schema.label!=undefined)
+							{
+								slab = '<h4>' + schema.label.value + '</h4><br/>';
+							}
+							var html = '<div id="_element_'+hirNm+'" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">'+slab+'<b>'+propLabel+'</b>&nbsp;&nbsp;<button class="plusminuslist" optype="true" list_value_cls="'+hirNm+'" onclick=\"plusminuslistfunc(this)\">Add</button>&nbsp;&nbsp;<button list_value_cls="'+hirNm+'" class="plusminuslist" optype="false" onclick=\"plusminuslistfunc(this)\">Remove</button><br/><br/>';
+							
+							var isSpan = schema.items.isSpan==undefined?false:schema.items.isSpan;
+							var isshowlabel = schema.items.nolabel==undefined?true:!schema.items.nolabel;
+	
+							var propobj = schema.items.properties.value;
+							var keyobj = schema.items.properties.key;
+							for (var property in vald) {
+								if (vald.hasOwnProperty(property)) {
+									var hhirNm = hirNm + "["+(countMap[hirNm])+"]" + "['key']";
+									html += "<div style=\"border-bottom:1px solid #C0C0C0;margin-bottom:10px;padding-bottom:10px\">"+generateFromValue(keyobj, hhirNm, isnm, addclas, "orig_val_cls=\""+hhirNm+"\"", property, isSpan, isshowlabel, false, property);
+									hhirNm = hirNm + "["+(countMap[hirNm])+"]" + "['value']";
+									html += generateFromValue(propobj, hhirNm, isnm, addclas, "orig_val_cls=\""+hhirNm+"\"", vald[property], isSpan, isshowlabel, false, hhirNm)+"</div>";
+									countMap[hirNm]++;
+								}
+							}							
+							html += "</div>";				
+							return html;
+						}
+				  }
+				  else if(schema.type=='map')
+				  {
+						var hirNm = heirar;
+						if(!hirNm)
+							hirNm = "";
+						if(schema.hasOwnProperty('types'))
+						{
+							if(schema.types.hasOwnProperty('key') && schema.types.hasOwnProperty('value'))
+							{
+																var updschema = {};
+								updschema.type = "marray";
+								updschema.mtype = "map";
+								updschema.items = {};
+								updschema.items.isSpan = true;
+								updschema.items.nolabel = true;
+								updschema.items.type = "object";
+								updschema.items.properties = {};
+								updschema.items.properties.key = schema.types.key;
+								updschema.items.properties.value = schema.types.value;
+								updschema.label = schema.label;
+								schemaMap[hirNm+"_dummymap"] = updschema;
+								return generateFromValue(updschema, hirNm, isnm, addclas, labinpdet, respValue, false, true, false, propLabel);
+																
+								/*if(!countMap.hasOwnProperty(hirNm))
+									countMap[hirNm] = 0;
+								var contid = "_ele_"+hirNm+(countMap[hirNm]++);
+								var html = '<div id="_element_'+hirNm+'" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">'+hirNm+'<a href="#" class="plusminusmap" optype="true" map_value_cls="'+hirNm+'" onclick=\"plusminusmapfunc(this)\">&nbsp;&nbsp;<b>+</b></a><a href="#" map_value_cls="'+hirNm+'" class="plusminusmap" optype="false" onclick=\"plusminusmapfunc(this)\">&nbsp;&nbsp;<b>-</b></a><br/><div  id="'+contid+'">';
+								html += generate(schema.types.key, hirNm, false, "map_key_cls", "onblur=\"updateMapValueNms(this)\" map_value_cls=\""+hirNm+"\"");
+								var cls = hirNm + " " + addclas;
+								html += generate(schema.types.value, hirNm, true, cls, "orig_val_cls=\""+hirNm+"\"");
+								html += "</div></div>";
+								schemaMap[hirNm] = schema.types;								
+								return html;*/
+							}
+						}
+				  }
+			}
+
+			function updateMapValueNms(key)
+			{
+				var clsnm = key.getAttribute('map_value_cls');
+				if(key.value.trim()=="")return;
+				if(!key.hasOwnProperty('lastclsnm'))
+					key.lastclsnm = "";
+				var nclsnm = clsnm;
+				var kval = key.value.replace(/\'/g,"\'");
+				if(nclsnm.lastIndexOf("[")!=-1)
+					nclsnm = nclsnm.substring(0, nclsnm.lastIndexOf("[")) + "['" + kval + "']" + nclsnm.substring(nclsnm.lastIndexOf("["));
+				else
+					nclsnm += "['" + kval + "']";
+				var nodes = getElementsByClassName(clsnm, key.parentNode.parentNode);
+				for(var i =0;i<nodes.length;i++)
+				{
+					var node = nodes[i];
+					node.className = node.className.replace(key.lastclsnm, "");
+					node.className += " " + nclsnm + " ";					
+					if(node.nodeName.toLowerCase()=="input")
+					{
+						var nnnm = node.getAttribute('orig_val_cls');
+						nnnm += "['" + kval + "']";
+						node.name = nnnm
+					}
+					else if(node.nodeName.toLowerCase()=="label")
+					{
+						var nnnm = node.getAttribute('orig_val_cls');
+						nnnm += "['" + kval + "']";
+						node.name = nnnm
+						node.innerHTML = nnnm
+					}
+				}
+				key.lastclsnm = " " +nclsnm+" ";
+			}
+        	        	
+			function loadURL()
+			{
+				var urlValue = readCookie('ExampleBeanServiceImpl_form');
+				if(urlValue!=null)
+				{
+					$('#93be7b20299b11e281c10800200c9a66_URL').val(urlValue);
+				}
+			}
+			
+						
+			function updatetawidcont()
+			{
+				var cont = "";
+									cont = JSON.stringify($('#ExampleBeanServiceImpl_form').serializeObject(), undefined, "\t");
+								if(cont!="" && $('#req-txtarea').length>0)
+				{
+					$('#req-txtarea').val(cont).trigger('autosize.resize');
+				}
+			}
+			
+			var firstFile = '';
+			var currtestcasefile;
+			var miscMap = {};
+			var currtestcases = [''];
+			var alltestcasefiles = [];
+
+			(function() {
+				debugEnabled = false;
+				serverUrl = "http://localhost:9080/";
+				
+				$(document).ready(function() {
+					ajaxCall(true, "GET", "misc", "", "", {}, function(data){
+						miscMap = data;
+						startInitConfigTool(configuration);
+					}, null);
+				});
+			})();
+
+			function executeHtml(pluginType)
+			{
+				var htmm = '<a href="#" class="plusminuslist" onclick=\"executionHandler(\'PUT\', true, \''+pluginType+'\');\">Start Execution</a><br/></br/><a href="#" class="plusminuslist" onclick=\"executionHandler(\'DELETE\', true, \''+pluginType+'\');\">Stop Execution</a><br/></br/><a href="#" class="plusminuslist" onclick=\"executionHandler(\'GET\', true, \''+pluginType+'\');\">Check Execution Status</a><br/><br/><image id="image_status" src="resources/yellow.png"/>';
+				
+				if(pluginType=='executor')
+				{
+					htmm += ' <br/><br/>Overall Statistics<br/><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><br/>Run-Wise Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Failed Tests</th><th style="color:black">Skip. Tests</th><th style="color:black">Time</th></tr/></thead><tbody></tbody></table>';
+					$('#ExampleBeanServiceImpl_form').html(htmm);
+					loadtestingdatatable = $('#lol_tblcu').dataTable({
+						"aoColumns": [
+							{"sWidth" : "20%", "sType": "alphanum"},
+							{"sWidth" : "20%"},
+							{"sWidth" : "20%"},
+							{"sWidth" : "20%"},
+							{"sWidth" : "20%"}
+						 ],
+						"aaSorting" : [],
+						"bPaginate": true,
+						"bFilter": true,
+						"bJQueryUI": true,
+						"bSort": true,
+						"bDestroy": true,
+						"iDisplayLength": 100,
+						"tableTools": {
+							"sSwfPath": "resources/copy_csv_xls_pdf.swf"
+						}
+					});
+					loadtestingdatatablecnt = 1;
+					$('#heading_main').html('Execute Tests');
+				}
+				else
+				{
+					$('#heading_main').html('Generate Tests');
+					$('#ExampleBeanServiceImpl_form').html(htmm);
+				}
+			}
+
+			function getExtIntData(extApiFileName, configType)
+			{
+				var isExternal = configType=='issuetrackerapi'?true:false;
+				ajaxCall(true, "GET", "testcases?testcaseFileName="+extApiFileName+"&configType="+configType, "", "", {}, function(data1){
+					currtestcasefile = extApiFileName;
+					var htmm = '';
+					if(data1!=null && data1.length>0)
+					{
+						htmm += '<table border="1">';
+						for (var t1=0;t1<data1.length;t1++)
+						{
+							var tcid = 'tc_'+t1;
+							htmm += '<tr><td><b class="'+data1[t1]["method"].toLowerCase()+'big">' + data1[t1]["method"] + '</b></td><td><a href="#" id="'+tcid+'">' + data1[t1]["name"] + '</a></td></tr>';
+						}
+						htmm += '</table>';
+						$('#ExampleBeanServiceImpl_form').html(htmm);
+						for (var t1=0;t1<data1.length;t1++)
+						{
+							var tcid = 'tc_'+t1;
+							$('#'+tcid).attr('tcfname', data1[t1]["name"]);
+							document.getElementById(tcid).data = data1[t1];
+							$('#'+tcid).click(function(){
+								addTestCase(false, this.data, configType, extApiFileName, !isExternal, isExternal);
+							});
+						}
+					}
+					else
+					{
+						var htmm = '<table border="1">';
+						htmm += '<tr><td><b class="postbig">POST</b></td><td><a href="#" onclick="extaddTestCase(true, \'authapi\', \''+configType+'\')">authapi</a></td></tr>';
+						htmm += '<tr><td><b class="postbig">POST</b></td><td><a href="#" onclick="extaddTestCase(true, \'targetapi\', \''+configType+'\')">targetapi</a></td></tr>';
+						htmm += '</table>';
+						$('#ExampleBeanServiceImpl_form').html(htmm);
+					}
+				}, null);
+			}
+
+			function extaddTestCase(isNew, type, configType)
+			{
+				var isExternal = configType=='issuetrackerapi'?true:false;
+				addTestCase(true, {name: type}, configType, 'gatf-logging-api-int.xml', !isExternal, isExternal);
+			}			
+
+			jQuery.fn.dataTableExt.oSort["alphanum-desc"] = function (a, b) {
+				if(a.indexOf('</b>')!=-1)
+					a = a.substring(0, a.indexOf('</b>'));
+				if(b.indexOf('</b>')!=-1)
+					b = b.substring(0, b.indexOf('</b>'));
+				if(a.indexOf('#')!=-1)
+					a = a.substring(a.indexOf('#')+1);
+				if(b.indexOf('#')!=-1)
+					b = b.substring(b.indexOf('#')+1);
+				var aa = a.replace(/[^0-9]+/g,'').replace('.', ''), bb = b.replace(/[^0-9]+/g,'').replace('.', '');
+				if(aa!='' && bb!='')
+				{
+					aa = parseInt(aa);
+					bb = parseInt(bb);
+					return aa == bb ? 0 : ( aa < bb ? 1 : -1 );
+				}
+				else
+				{
+					aa = a;
+					bb = b;
+					return 0;
+				}    
+			};
+
+			jQuery.fn.dataTableExt.oSort["alphanum-asc"] = function (a, b) {
+				if(a.indexOf('</b>')!=-1)
+					a = a.substring(0, a.indexOf('</b>'));
+				if(b.indexOf('</b>')!=-1)
+					b = b.substring(0, b.indexOf('</b>'));
+				if(a.indexOf('#')!=-1)
+					a = a.substring(a.indexOf('#')+1);
+				if(b.indexOf('#')!=-1)
+					b = b.substring(b.indexOf('#')+1);
+				var aa = a.replace(/[^0-9]+/g,'').replace('.', ''), bb = b.replace(/[^0-9]+/g,'').replace('.', '');
+				if(aa!='' && bb!='')
+				{
+					aa = parseInt(aa);
+					bb = parseInt(bb);
+					return aa == bb ? 0 : ( aa < bb ? -1 : 1 );
+				}
+				else
+				{
+					aa = a;
+					bb = b;
+					return 0;
+				}    
+			};
+
+			var execTimes = {};
+			function executionHandler(method, shwPp, pluginType)
+			{
+				ajaxCall(false, method, "execute?pluginType="+pluginType, "", "", {}, function(data){
+					if(shwPp)alert(data);
+					if(data.error=='Execution already in progress..')
+					{
+						setTimeout(executionHandler('GET', false, pluginType), 1000);
+						/*if(data.hasOwnProperty('tstats')) 
+						{
+							$('#lol_tr').html(data.tstats.totalSuiteRuns);
+							$('#lol_tt').html(data.tstats.totalTestCount);
+							$('#lol_ft').html(data.tstats.failedTestCount);
+							$('#lol_st').html(data.tstats.skippedTestCount);
+							$('#lol_ti').html(data.tstats.executionTime);
+						}
+						if(data.hasOwnProperty('stats')) 
+						{
+							var url = $('#lol_tblcu thead').length;
+							if(data.node==null)
+								url = 'L#' + url;
+							else
+								url = data.node + '#' + url;
+							if(data.url!=null)
+								url = '<a href="/reports/'+data.url+'">'+url+'</a>';
+							$('#lol_tblcu tr').last().after('<tr><td>'+url+'</td><td>'+data.stats.totalTestCount+'</td><td>'+data.stats.failedTestCount+'</td><td>'+data.stats.skippedTestCount+'</td><td>'+data.stats.executionTime+'</td></tr>');
+						}*/
+					}
+					else if(data.error.indexOf('Execution failed with Error - ')!=-1)
+					{
+						$("#image_status").attr("src", "resources/red.png");
+					}
+					else if(data.error=="Execution completed, check Reports Section")
+					{
+						$("#image_status").attr("src", "resources/green.png");
+					}
+					else if(data.error=="Please Start the Execution....")
+					{
+						$("#image_status").attr("src", "resources/yellow.png");
+					}
+					else if(data.error=="Testcase execution is not in progress...")
+					{
+						$("#image_status").attr("src", "resources/yellow.png");
+					}
+					else if(data.error=="Unknown Error...")
+					{
+						$("#image_status").attr("src", "resources/red.png");
+					}
+					else if(data.error=="Execution Started")
+					{
+						$("#image_status").attr("src", "resources/red_anime.gif");
+						setTimeout(executionHandler('GET', false, pluginType), 1000);
+					}
+				}, function(data){
+					if(shwPp)alert(data.error);
+					if(data.error=='Execution already in progress..')
+					{
+						setTimeout(executionHandler('GET', false, pluginType), 1000);						
+						if(data.hasOwnProperty('stats')) 
+						{
+							if(execTimes.hasOwnProperty(data.runNo))
+							{
+								if(execTimes[data.runNo]<data.stats.executionTime)
+									execTimes[data.runNo] = data.stats.executionTime;
+							}
+							else
+							{
+								execTimes[data.runNo] = data.stats.executionTime;
+							}
+							var url = loadtestingdatatablecnt++;
+							if(data.node==null)
+								url = 'L#' + url;
+							else
+								url = data.node + '#' + url;
+							if(data.url!=null)
+								url = '<a href="/reports/'+data.url+'">'+url+'</a>';
+							loadtestingdatatable.fnAddData( [  
+								 url,  
+								 data.stats.totalTestCount,  
+								 data.stats.failedTestCount,  
+								 data.stats.skippedTestCount,  
+								 data.stats.executionTime], true);
+							loadtestingdatatable.fnSort([[ 0, "desc" ]]);
+						}
+						if(data.hasOwnProperty('tstats')) 
+						{
+							$('#lol_tr').html(data.tstats.totalSuiteRuns);
+							$('#lol_tt').html(data.tstats.totalTestCount);
+							$('#lol_ft').html(data.tstats.failedTestCount);
+							$('#lol_st').html(data.tstats.skippedTestCount);
+							$('#lol_tti').html(data.tstats.executionTime);
+							var exectimestot = 0;
+							for (var k in execTimes)
+							{
+								exectimestot += execTimes[k];
+							}
+							$('#lol_eti').html(exectimestot);
+						}
+					}
+					else if(data.error.indexOf('Execution failed with Error - ')!=-1)
+					{
+						$("#image_status").attr("src", "resources/red.png");
+					}
+					else if(data.error=="Execution completed, check Reports Section")
+					{
+						$("#image_status").attr("src", "resources/green.png");
+					}
+					else if(data.error=="Please Start the Execution....")
+					{
+						$("#image_status").attr("src", "resources/yellow.png");
+					}
+					else if(data.error=="Testcase execution is not in progress...")
+					{
+						$("#image_status").attr("src", "resources/yellow.png");
+					}
+					else if(data.error=="Unknown Error...")
+					{
+						$("#image_status").attr("src", "resources/red.png");
+					}
+					else if(data.error=="Execution Started")
+					{
+						$("#image_status").attr("src", "resources/red_anime.gif");
+						setTimeout(executionHandler('GET', false, pluginType), 1000);
+					}
+				});
+				return false;
+			}
+
+			function addTcFileHTml()
+			{
+				var htmm = '<input type="text" id="tcfile_name_holder_add">&nbsp;&nbsp;<a href="#" class="plusminuslist" onclick=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\');\">Add Testcase File</a><br/></br/>';
+				htmm += '<table border="1">';
+				for(var i=0;i<alltestcasefiles.length;i++)
+				{
+					var tcid = 'tcf_'+i;
+					htmm += '<tr><td><a href="#" id="'+tcid+'" class="asideLink1" onclick="$(\'#tcfile_'+i+'\').trigger(\'click\')">' + alltestcasefiles[i] + '</a><input id="inp_'+tcid+'" type="text" style="display:none" value="' + alltestcasefiles[i] + '" onblur="manageTcFileHandler(\'PUT\', $(\'#'+tcid+'\').html(), this.value)"/></td><td><a href="#" onclick="manageRenameFile(\''+tcid+'\')">Rename</a></td><td><a href="#" onclick="manageTcFileHandler(\'DELETE\', $(\'#'+tcid+'\').html(),\'\')">X</a></td></tr>';
+				}
+				htmm += '</table>';
+				$('#ExampleBeanServiceImpl_form').html(htmm);
+				$('#heading_main').html('Manage Tests');
+			}
+
+			function manageRenameFile(tcid)
+			{
+				$('#'+tcid).hide();
+				$('#inp_'+tcid).show();
+				return false;
+			}
+
+			function manageTcFileHandler(method, tcFileName, tcFileNameTo)
+			{
+				ajaxCall(true, method, "testcasefiles?testcaseFileName="+tcFileName+"&testcaseFileNameTo="+tcFileNameTo, "", "", {}, function(data){
+					alert(data);
+					startInitConfigTool(addTcFileHTml);
+				}, function(data){
+					alert(data);
+					startInitConfigTool(addTcFileHTml);
+				});
+				return false;
+			}
+
+			function testcasesHandler(method, index)
+			{
+				ajaxCall(true, method, "testcases?testcaseFileName="+currtestcasefile, "", "", {"testcasename": currtestcases[index+1]}, function(data){
+					alert(data);
+					startInitConfigTool(testcasefileView);
+				}, null);
+				return false;
+			}
+
+			function testcasefileView()
+			{
+				for(var i=0;i<alltestcasefiles.length;i++)
+				{
+					if(currtestcasefile==alltestcasefiles[i])
+					{
+						$('#tcfile_'+i).trigger("click");
+					}
+				}
+			}
+
+			function startInitConfigTool(func)
+			{
+				ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(data){
+					alltestcasefiles = data;
+					$('#testcasefile-holder').html('');
+					$('#testcasefile-holder').append('<a href="#" onclick="addTcFileHTml()" class="list-group-item asideLink">&nbsp;Manage Testcase Files</a>');
+					
+					var filesGrps = [];
+					for (var t=0;t<data.length;t++)
+					{
+						var testname = data[t];
+						var folder = "";
+						var fileName = testname;
+						if(testname.indexOf("\\")!=-1)
+						{
+							var folder = testname.substring(0, testname.lastIndexOf("\\"));
+							var fileName = testname.substring(testname.lastIndexOf("\\")+1);
+						}
+						if(filesGrps[folder]==undefined)
+						{
+							filesGrps[folder] = [];							
+						}
+						filesGrps[folder].push({fileName: fileName, completeName: testname});
+					}
+					
+					filesGrps.sort();
+					var tind = 0;
+					for (var folder in filesGrps) {
+						if (filesGrps.hasOwnProperty(folder)) {
+						
+							filesGrps[folder].sort();					
+							if(folder!="")
+							{
+								var fid = 'folder_'+tind;
+								$('#testcasefile-holder').append('<a status="hide" id="'+fid+'" href="#" class="list-group-item asideLink">&nbsp;<u>'+folder+'</u></a>');
+								$('#'+fid).attr('folder', folder);	
+								$('#'+fid).click(function(){
+									var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/-/g, '').replace(/\./g, '');
+									if($(this).attr('status')=="show")
+									{
+										$('.'+escapedfolder+'_claz').hide();
+										$(this).attr('status', 'hide');
+									}
+									else
+									{
+										$('.'+escapedfolder+'_claz').show();
+										$(this).attr('status', 'show');
+									}
+									return false;
+								});
+							}
+							
+							for (var t=0;t<filesGrps[folder].length;t++, tind++)
+							{
+								var testFileName = filesGrps[folder][t].completeName;
+								var fileName = filesGrps[folder][t].fileName;
+								var id = 'tcfile_'+tind;
+								if(firstFile=='')
+									firstFile = id;
+								if(folder!="")
+								{
+									var escapedfolder = folder.replace(/\\/g, '').replace(/-/g, '').replace(/\./g, '');
+									$('#testcasefile-holder').append('<a style="margin-left:20px;display:none" id="'+id+'" href="#" class="list-group-item asideLink '+escapedfolder+'_claz">&nbsp;'+fileName+'</a>');
+								}
+								else
+								{
+									$('#testcasefile-holder').append('<a id="'+id+'" href="#" class="list-group-item asideLink">&nbsp;'+testFileName+'</a>');
+								}
+								$('#'+id).attr('tcfname', testFileName);								
+								$('#'+id).click(function(){
+									$('#heading_main').html('Manage Tests');
+									currtestcasefile = $(this).attr('tcfname');
+									currtestcases = [''];
+									ajaxCall(true, "GET", "testcases?testcaseFileName="+currtestcasefile, "", "", {}, function(data1){
+										var htmm = '<button class="plusminuslist" onclick=\"addTestCase(true, null, \'\', null, false, false);\">Add New Testcase</button><br/></br/>';
+										if(data1!=null && data1.length>0)
+										{
+											htmm += '<table border="1">';
+											for (var t1=0;t1<data1.length;t1++)
+											{
+												var tcid = 'tc_'+t1;
+												htmm += '<tr><td><b class="'+data1[t1]["method"].toLowerCase()+'big">' + data1[t1]["method"] + '</b></td><td><a href="#" id="'+tcid+'">' + data1[t1]["name"] + '</a></td><td><a href="#" onclick="testcasesHandler(\'DELETE\', '+t1+')">X</a></td></tr>';
+												currtestcases.push(data1[t1]["name"]);
+											}
+											htmm += '</table>';
+											$('#ExampleBeanServiceImpl_form').html(htmm);
+											for (var t1=0;t1<data1.length;t1++)
+											{
+												var tcid = 'tc_'+t1;
+												$('#'+tcid).attr('tcfname', currtestcasefile);
+												document.getElementById(tcid).data = data1[t1];
+												$('#'+tcid).click(function(){
+													addTestCase(false, this.data, '', $('#'+tcid).attr('tcfname'), false, false);
+													return false;
+												});
+											}
+										}
+										else
+										{
+											$('#ExampleBeanServiceImpl_form').html(htmm);
+										}
+										return false;
+									}, null);
+								});
+							}
+						}
+					}
+					if(func!=null)func();
+				}, null);
+			}
+
+			function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExternalLogsApi)
+			{
+				countMap = {};
+				if(tcfname==null)
+					tcfname = currtestcasefile;
+				if(isNew)
+				{
+					document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
+					prepareForm('testcases?testcaseFileName='+tcfname+'&configType='+configType, 'POST', 'Add', null, null);	
+				}
+				else
+				{
+					document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
+					prepareForm('testcases?testcaseFileName='+tcfname+'&configType='+configType, 'PUT', 'Update', null, null);
+					$('#ExampleBeanServiceImpl_form').append();
+					if(tcfname!=null && data!=null)
+					{
+						$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+						$('#play_test_case').click(function(){
+							playTest(tcfname, data["name"], isServerLogsApi, isExternalLogsApi);
+							return false;
+						});
+					}
+				}
+			}
+
+			function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi)
+			{
+				var isserverlogfile = isServerLogsApi?"&isServerLogsApi=true":"";
+				isserverlogfile += isExternalLogsApi?"&isExternalLogsApi=true":"";
+				ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName="+tcf+"&testCaseName="+tc+isserverlogfile, "", "", {}, function(data){
+					var content = getTestResultContent1(data);
+					$('#play_result_area').html(content);
+				}, null);
+			}
+
+			function initiateDownloads()
+			{
+				ajaxCall(true, "GET", "/projectZip", "", "", {}, function(data){
+					var content = "<br/>";
+					if(data[0]=="binary")
+						content += "<a href=\"/gatf-test-bin.zip\"><h3>Binary Project</h3></a><br/><br/>";
+					else if(data[0]=="maven")
+						content += "<a href=\"/gatf-test-bin.zip\"><h3>Maven Project</h3></a><br/><br/>";
+					if(data.length>1)
+						content += "<a href=\"/gatf-test-mvn.zip\"><h3>Maven Project</h3></a><br/><br/>";
+					$('#ExampleBeanServiceImpl_form').html(content);
+				}, function(data){
+					var content = "<p>Error while generating projects..\n" + data+"</p><br/><br/>";
+					$('#ExampleBeanServiceImpl_form').html(content);
+				});
+				return false;
+			}
+
+			function syntaxHighlight1(json) {
+				json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+				return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, function (match) {
+					var cls = 'number';
+					if (/^"/.test(match)) {
+						if (/:$/.test(match)) {
+							cls = 'key';
+						} else {
+							cls = 'string';
+						}
+					} else if (/true|false/.test(match)) {
+						cls = 'boolean';
+					} else if (/null/.test(match)) {
+						cls = 'null';
+					}
+					return '<span class="' + cls + '">' + match + '</span>';
+				});
+			}
+
+			function escapeHtml1(s) {
+				return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+			}
+
+			function printResponse1(msg, contentTypeHeader)
+			{
+				var resp = msg;
+				if(contentTypeHeader!=null && contentTypeHeader.indexOf('application/json')!=-1)
+				{
+					resp = syntaxHighlight1(msg);
+				}
+				else if(contentTypeHeader!=null && contentTypeHeader.indexOf('xml')!=-1)
+				{
+					resp = vkbeautify.xml(resp);
+					resp = escapeHtml1(resp);
+					resp = prettyPrintOne(resp);
+				}
+				return resp;
+			}
+
+			function getData1(value, contentType)
+			{
+				if(undefined == value  || value == null || value == '')
+					return 'NA';
+				else
+				{
+					var jsonobj = null;
+					try {
+					  jsonobj = JSON.parse(value);
+					  value = JSON.stringify(jsonobj, undefined, 4);
+					  contentType = 'application/json';
+					} catch (e) {
+					  //console.error("Parsing error:", e); 
+					}
+					return printResponse1(value, contentType);				
+				}
+			}
+
+			function getTestResultContent1(report)
+			{
+				var reqhdrsVal = getData1(report.requestHeaders, 'text/plain');
+					
+				var rescnttyp = 'text/plain';
+				if(undefined!=report.responseContentType && report.responseContentType!=null)
+					rescnttyp = report.responseContentType;
+
+				var responseHeaders = getData1(report.responseHeaders, 'text/plain');
+				
+				var reqcnttyp = 'text/plain';
+				if(undefined!=report.requestContentType && report.requestContentType!=null)
+					reqcnttyp = report.requestContentType;
+
+				var content = '<div><p>Request:</p><pre>Actual Url: '+report.actualUrl+'</pre><pre>Template Url: '+report.url+'</pre><pre>'+reqhdrsVal+'</pre>';
+				content += '<pre>'+getData1(report.requestContent, reqcnttyp)+'</pre></div>';
+				content += '<div><p>Response:</p><pre>'+responseHeaders+'</pre>';
+				if(report.responseStatusCode!=undefined)content += '<pre>Status Code: '+report.responseStatusCode+'</pre>';
+				if(report.serverLogs!=undefined)content += '<pre>Server Log: '+report.serverLogs+'</pre>';
+				content += '<pre>'+getData1(report.responseContent, rescnttyp)+'</pre></div>';
+
+				var error = getData1(report.error, 'text/plain');
+				if(undefined!=report.errors && report.errors!=null)
+				{
+					var err = '';
+					for (var key in report.errors) {
+						if (report.errors.hasOwnProperty(key)) {
+							err += ('Run ' + key + "\n" + report.errors[key] + "\n\n");
+						}
+					}
+					if(err!='')
+						error = err;
+				}
+				if(error!='NA')
+				{
+					error = escapeHtml(error);
+					content += '<div><p>Errors:</p><pre>'+error+'</pre>';
+					content += '<pre>'+escapeHtml(getData1(report.errorText, 'text/plain'))+'</pre></div>';
+				}
+				return content;
+			}
+
+			function generatorConfig()
+			{
+				$('#heading_main').html('Generator Configurationuration');
+				var configschema = JSON.parse('{"type":"object","properties":{"testPaths":{"type":"array","items":{"nolabel":true,"type":"string"}},"soapWsdlKeyPairs":{"type":"array","items":{"nolabel":true,"type":"string"}},"urlPrefix":{"type":"string"},"requestDataType":{"type":"string"},"responseDataType":{"type":"string"},"resourcepath":{"type":"string"},"enabled":{"type":"boolean","required":true},"overrideSecure":{"type":"boolean","required":true},"useSoapClient":{"type":"boolean","required":true},"urlSuffix":{"type":"string"},"postmanCollectionVersion":{"type":"integer"},"testCaseFormat":{"type":"string"}}}');
+				ajaxCall(true, "GET", "configure?configType=generator", "", "", {}, function(data){
+					countMap = {};
+					$('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '',data, false, true, true, ''));
+					prepareForm('configure?configType=generator', 'POST', jQuery.isEmptyObject(data)?'Add':'Update', null, null);
+				}, null);
+			}
+
+			function configuration()
+			{
+				$('#heading_main').html('Manage Configuration');
+				var configschema = JSON.parse('{"type":"object","properties":{"baseUrl":{"type":"string"},"testCasesBasePath":{"type":"string"},"testCaseDir":{"type":"string"},"outFilesBasePath":{"type":"string"},"outFilesDir":{"type":"string"},"authEnabled":{"type":"boolean","required":true},"authUrl":{"type":"string"},"authExtractAuth":{"type":"string"},"authParamsDetails":{"type":"string"},"wsdlLocFile":{"type":"string"},"soapAuthEnabled":{"type":"boolean","required":true},"soapAuthWsdlKey":{"type":"string"},"soapAuthOperation":{"type":"string"},"soapAuthExtractAuth":{"type":"string"},"numConcurrentExecutions":{"type":"integer"},"httpCompressionEnabled":{"type":"boolean","required":true},"httpConnectionTimeout":{"type":"integer"},"httpRequestTimeout":{"type":"integer"},"concurrentUserSimulationNum":{"type":"integer"},"testDataConfigFile":{"type":"string"},"authDataProvider":{"type":"string","defaultIndex":1,"enumVar":"miscMap[\'providers\']"},"compareEnabled":{"type":"boolean","required":true},"enabled":{"type":"boolean"},"loadTestingEnabled":{"type":"boolean","required":true},"loadTestingTime":{"type":"number"},"distributedLoadTests":{"type":"boolean","required":true},"compareBaseUrlsNum":{"type":"integer"},"concurrentUserRampUpTime":{"type":"number"},"loadTestingReportSamples":{"type":"integer"},"debugEnabled":{"type":"boolean","required":true},"isOrderByFileName":{"type":"boolean","required":true},"isServerLogsApiAuthEnabled":{"type":"boolean","required":true},"serverLogsApiAuthExtractAuth":{"type":"string"},"isFetchFailureLogs":{"type":"boolean","required":true},"testCaseHooksPaths":{"type":"array","items":{"nolabel":true,"type":"string"}},"distributedNodes":{"label":{"type":"section","value":"Distributed Load Test Nodes"},"type":"array","items":{"nolabel":true,"type":"string"}},"ignoreFiles":{"type":"array","items":{"nolabel":true,"type":"string"}},"orderedFiles":{"type":"array","items":{"nolabel":true,"type":"string","enumVar":"alltestcasefiles"}},"gatfTestDataConfig":{"type":"object","properties":{"globalVariables":{"label":{"type":"section","value":"Global Test Variables"},"type":"map","types":{"key":{"type":"string"},"value":{"type":"string"}}},"compareEnvBaseUrls":{"label":{"type":"section","value":"Comparison Environments"},"type":"array","items":{"nolabel":true,"type":"string"}},"dataSourceList":{"label":{"type":"section","value":"Data Sources"},"type":"array","items":{"type":"object","properties":{"dataSourceName":{"type":"string"},"dataSourceClass":{"type":"string","enumVar":"miscMap[\'datasourcecls\']"},"poolSize":{"type":"integer"},"newResourceCheckoutTimeMs":{"type":"number"},"args":{"type":"array","items":{"nolabel":true,"type":"string"}}}}},"providerTestDataList":{"label":{"type":"section","value":"Test Data Providers"},"type":"array","items":{"type":"object","properties":{"dataSourceName":{"type":"string","enumVar":"miscMap[\'datasources\']"},"providerName":{"type":"string"},"providerClass":{"type":"string","enumVar":"miscMap[\'providercls\']"},"sourceProperties":{"type":"string"},"providerProperties":{"type":"string"},"queryStr":{"type":"string"},"enabled":{"type":"boolean"},"args":{"type":"array","items":{"nolabel":true,"type":"string"}},"live":{"type":"boolean"}}}},"dataSourceHooks":{"label":{"type":"section","value":"Data Source Hooks"},"type":"array","items":{"type":"object","properties":{"hookName":{"type":"string"},"hookClass":{"type":"string"},"dataSourceName":{"type":"string","enumVar":"miscMap[\'datasources\']"},"queryStrs":{"type":"array","items":{"nolabel":true,"type":"string"}},"executeOnStart":{"type":"boolean","required":true},"executeOnShutdown":{"type":"boolean","required":true}}}}},"name":"GatfTestDataConfig"}}}');
+				ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(data){
+					countMap = {};
+					$('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '',data, false, true, true, ''));
+					prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data)?'Add':'Update', reloadTests, null);
+				}, null);
+			}
+
+			function reloadTests(jqXhr)
+			{
+				startInitConfigTool(null);
+			}
+			
+			function handleAuth(token)
+			{
+				if(debugEnabled)alert("Providing authentication access to Test Links....");
+				$('.asideLink').each(function() {
+					var lnkupd = "?" + authTokNm + "=";
+					if(typeof authTokNm!="undefined" && typeof authTokTyp!="undefined")
+					{	
+						if(this.href.indexOf(lnkupd)==-1)
+						{
+							this.href += lnkupd + token;
+						}
+						else
+						{
+							var tempbefore = this.href.substr(0, this.href.indexOf(lnkupd));
+							var tempafter = this.href.substr(this.href.indexOf(lnkupd));
+							if(tempafter.indexOf('&')!=-1)
+							{
+								tempafter = tempafter.substr(this.href.indexOf('&'));
+							}
+							else
+							{
+								tempafter = '';
+							}
+							this.href = tempbefore + lnkupd + token + tempafter;
+						}
+					}
+				});
+			}
+			
+			function togglehideShowClassGroup(clas,check)
+			{
+				$('#ExampleBeanServiceImpl_form div').each(function() {
+					
+					if(this.className!="" && (this.className==clas || this.className.indexOf(clas+"[")!=-1))
+					{
+						if(this.style.display=='none')
+							this.style.display = 'block';
+						else
+							this.style.display = 'none';
+					}
+				});
+				$('#ExampleBeanServiceImpl_form span').each(function() {
+					
+					if(this.className!="" && this.className.indexOf(clas+"[")!=-1)
+					{
+						if(check.checked)
+							this.style.display = 'block';
+						else
+							this.style.display = 'none';
+					}
+				});								
+			}
+			
+			function hideShowClasses(clas1, clas2, check)
+			{
+				$('.'+clas1).each(function() {
+					if(check.checked)
+						this.style.display = 'none';
+					else
+						this.style.display = 'block';
+				});
+				$('.'+clas2).each(function() {
+					if(check.checked)
+						this.style.display = 'block';
+					else
+						this.style.display = 'none';
+				});
+			}
+			
+						
+			function addMapKV(label)
+			{
+				var tem = document.getElementById(label+'_holder');
+				if(tem==null)
+					$('#ExampleBeanServiceImpl_form').append('<div id="'+label+'_holder"></div>');
+				var temid = label + '_holder';
+				var temkey = document.getElementById(label+'+mapkey').value;
+				var temval = document.getElementById(label+'+mapvalue').value;
+				var inptem = document.getElementById(label+'['+temkey+']');
+				if(inptem!=null)
+				{
+					alert('A map entry with the same key already exists!!');
+					return;
+				}
+				document.getElementById(temid).innerHTML += ('<input type="hidden" id="'+label+'['+temkey+']" name="'+label+'[\''+temkey+'\']" value="'+temval+'"/>');
+				document.getElementById(temid).innerHTML += ('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '+label+' entry Key:'+temkey);
+				document.getElementById(temid).innerHTML += (', '+label+' entry Value:'+temval+'<br/>');
+			}
+			
+			
+			function addListV(label)
+			{
+				var vcounter = 0;
+				var tem = document.getElementById(label+'_holder');
+				if(tem==null)
+					$('#ExampleBeanServiceImpl_form').append('<div id="'+label+'_holder"></div>');
+				var temid = label + '_holder';
+				var temlval = document.getElementById(label+'_'+vcounter);
+				while(temlval!=null)
+				{
+					vcounter++;
+					temlval = document.getElementById(label+'_'+vcounter);
+				}
+				var temval = document.getElementById(label+'+listv').value;
+				document.getElementById(temid).innerHTML += ('<input type="hidden" id="'+label+'_'+vcounter+'" name="'+label+'['+vcounter+']" value="'+temval+'"/>');
+				vcounter++;
+				document.getElementById(temid).innerHTML += ('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '+label+' entry value:'+temval+'<br/>');
+			}								
+			
+			function addSetV(label)
+			{
+				var scounter = 0;
+				var tem = document.getElementById(label+'_holder');
+				if(tem==null)
+					$('#ExampleBeanServiceImpl_form').append('<div id="'+label+'_holder"></div>');
+				var temid = label + '_holder';
+				var temlval = document.getElementById(label+'_'+vcounter);
+				while(temlval!=null)
+				{
+					scounter++;
+					temlval = document.getElementById(label+'_'+scounter);
+				}
+				var temval = document.getElementById(label+'+setv').value;
+				$('.'+label+'setclass').each(function() {
+					if(this.value==temval)
+					{
+						alert('A set entry with the same value already exists!!');
+						return;
+					} 
+				});
+				document.getElementById(temid).innerHTML += ('<input type="hidden" id="'+label+'_'+scounter+'" class="'+label+'setclass" name="'+label+'['+scounter+']" value="'+temval+'"/>');
+				scounter++;
+				document.getElementById(temid).innerHTML += ('&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; '+label+' entry value:'+temval+'<br/>');
+			}
+			
+			function addFormParm(label)
+			{
+				var url = "../" + $('#93be7b20299b11e281c10800200c9a66_URL').val();	
+				$('#ExampleBeanServiceImpl_form').attr('action', url);
+				
+				var temkey = document.getElementById(label+'+name').value;
+				var temsel = document.getElementById(label+'+sel').value;
+				if(document.getElementById(label+temkey)!=null)
+				{
+					alert('A parameter with this name already exists!!');
+					return;
+				}
+				if(temsel=="text")
+					$('#ExampleBeanServiceImpl_form').append('<label>'+temkey+'&nbsp;</label><input type="text" id="'+label+temkey+'" name="'+temkey+'"/><br/><br/>');
+				else
+				{	
+					$('#ExampleBeanServiceImpl_form').append('<label>'+temkey+'&nbsp;</label><input type="file" id="'+label+temkey+'" name="'+temkey+'"/><br/><br/>');													
+				}
+			}
+			
+			function getReports()
+			{
+				ajaxCall(true, "GET", "reports/index.html", "", "", {}, function(data){
+					document.location = "reports/index.html";
+				}, function(data){
+					alert("No Reports found...");
+				});
+				return false;
+			}
+						
+			function searchLeftNavs(ele)
+			{
+				var term = ele.value.trim();
+				$('.accordion-toggle').each(function() {
+					if(term=='')
+					{
+						$(this).parent().show();
+					}
+					else
+					{
+						if($(this).text().search(new RegExp(term, "i"))==-1)
+						{
+							$(this).parent().hide();
+						}
+					}
+				});
+				$('.accordion-inner').each(function() {
+					if(term=='')
+					{
+						$(this).parent().show();
+						$(this).children().show();
+					}
+					else
+					{
+						var flag = false;
+						$(this).children().each(function() {
+							if($(this).text().search(new RegExp(term, "i"))==-1)
+								$(this).hide();
+							else
+							{
+								flag = true;
+								$(this).show();
+							}
+						});
+						if(flag)
+						{
+							$(this).parent().show();
+							$(this).parent().parent().children().eq(0).show();
+						}
+					}
+				});
+			}
+
+			function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
+			{
+				if(blockUi)$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' }); 
+				$.ajax({
+				  headers: vheaders,
+				  type: meth,
+				  processData: false,
+				  url: url,
+				  contentType: contType,
+				  data: content
+				}).done(function(msg,statusText,jqXhr) {
+				  if(blockUi)$.unblockUI();
+				  var data = jqXhr.responseText;
+				  try
+				  {
+					data = JSON.parse(jqXhr.responseText)
+				  }
+				  catch (err)
+				  {
+					data = jqXhr.responseText;
+				  }
+				  sfunc(data);
+				}).fail(function(jqXhr, textStatus, msg) {
+				  if(blockUi)$.unblockUI();
+				  if(efunc==null)alert(jqXhr.responseText);
+				  var data = jqXhr.responseText;
+				  try
+				  {
+					data = JSON.parse(jqXhr.responseText)
+				  }
+				  catch (err)
+				  {
+					data = jqXhr.responseText;
+				  }
+				  if(efunc!=null) efunc(data);
+				});
+			}
+
+			function prepareForm(url, method, buttonLabel, succFunc, failFunc)
+			{
+				$('#ExampleBeanServiceImpl_form').prepend(
+							'<div class="control-group"> \
+								<label>Use Raw Text:&nbsp;</label> \
+								<div class="controls"><input id="raw_req_cont_flag" type="checkbox" onchange="hideShowClasses(\'form-elems\',\'form-request_content\', this);updatetawidcont()"/></div> \
+							</div> \
+							<div class="control-group" style="display:none"> \
+									<label>url&nbsp; \
+									</label> \
+									<div class="controls"> \
+									<input class="form-control" type ="text" style="width: 70%; height: 30px;" id="93be7b20299b11e281c10800200c9a66_URL" value="'+url+'"/> \
+									</div> \
+								</div>');	
+						
+						$('.map_key_cls').each(function() {
+							if(this.nodeName.toLowerCase()=="input")
+								updateMapValueNms(this);
+						});
+						if($('#req-txtarea').length==0)
+						{
+							$('#ExampleBeanServiceImpl_form').append('<div class="controls form-request_content"><label> Request Content&nbsp;</label>'
+									 + '<textarea class="form-control" id="req-txtarea" style="width: 70%;"></textarea></div>');
+							$('#req-txtarea').val('');							$('#req-txtarea').autosize();
+							$('#req-txtarea').parent().hide();
+						}
+						else
+						{
+							$('#req-txtarea').parent().addClass('form-request_content');
+							$('#req-txtarea').val('');							$('#req-txtarea').autosize();
+							$('#req-txtarea').parent().hide();
+						}
+						$('.clsDatePicker').datetimepicker({format: 'Y-m-d\\TH:i:s.000\\Z', step:1, validateOnBlur:false});
+						$('#ExampleBeanServiceImpl_form').append(
+															'<div class="control-group"> \
+									<label class=""></label> \
+									<div class="controls"> \
+										<button type="submit" class="'+method.toLowerCase()+'bigb" type="submit" onclick="executeTest(\'#93be7b20299b11e281c10800200c9a66_URL\',\''+method.toUpperCase()+'\',\'application/json\',\'#ExampleBeanServiceImpl_form\','+succFunc+','+failFunc+');$(\'#api_execution_reponse\').show();return false;">'+buttonLabel+'</button> \
+									</div> \
+								</div> \
+								<br/><br/><p></p><br/> \
+								<div id="api_execution_reponse" style="display:none"> \
+								<label>Response Time&nbsp;</label><span id="restime"></span><br/><br/> \
+								<label>Response Headers:&nbsp;</label><div><pre id="reshdrs" style="word-wrap:break"></pre></div> \
+								<label style="word-wrap:break-word;margin-left:50px;width:auto;background-color: #ebf4fb;border:none;"></label><div><br/><pre id="status" class="prettyprint" style="word-wrap:break-word;margin-left:50px;width:auto;border:none;"></pre></div><br/></div>'
+													);
+			}
+        </script>
+    </body>
+</html>

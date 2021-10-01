@@ -1,0 +1,15 @@
+Execution steps for the Maven project
+
+1. Download the Maven project and unzip to location of your choice (assume /home/user/gatf-test-mvn or C:/gatf-test-mvn)
+2. Open a command prompt and navigate to the project folder (/home/user/gatf-test-mvn)
+3. Make sure you have maven installed on the machine
+4. The pom.xml has all the configurations for the GATF plugin modules namely config-tool, executor and the generator
+5. By default the config-tool is enabled within the default pom.xml downloaded with the project
+6. The Executor and Generator plugins can be enabled by un-commenting their sections within the pom.xml file
+7. Execute the following commands at the command prompt,
+	1. GATF Config UI: mvn test
+	2. GATF Test Executor: mvn test (Comment other gatf execution sections and uncomment the executor section)
+	3. GATF Test Generator: mvn test (Comment other gatf execution sections and uncomment the generator section)
+8. For GATF Config UI, open a browser winow and navigate to http://localhost:9080 and you should see the GATF config tool UI
+9. There is one last thing you may have to change before executing your tests, set the testCasesBasePath and outFilesBasePath properties in the Configuration -> Executor section to blank and Click Update at the very end of the page to update the configuration. Then refresh the browser page to reload the configuration, you should see you project folder's path reflected in these properties on the config UI home screen.
+10. Continue normally with the GATF config tool.

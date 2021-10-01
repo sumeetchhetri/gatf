@@ -75,7 +75,7 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 	
 	public GatfConfigToolMojo() {
 	}
-
+	
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		HttpServer server = new HttpServer();
 

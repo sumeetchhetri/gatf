@@ -64,6 +64,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.setCorsHeaders(response);
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
     		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
@@ -211,8 +212,7 @@ public class GatfReportsHandler extends HttpHandler {
                     {
                         if(header.indexOf(": ")!=-1)
                         {
-                            found.getHeaders().put(header.substring(0, header.indexOf(": ")),
-                                    header.substring(header.indexOf(": ")+2));
+                            found.getHeaders().put(header.substring(0, header.indexOf(": ")), header.substring(header.indexOf(": ")+2));
                         }
                     }
                 }
@@ -225,14 +225,12 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 if(isAuthExec)
                 {
-                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
-                            testCaseExecutorUtil);
+                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
                         //Server logs api
                         context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-                        executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-                                gatfConfig.isServerLogsApiAuthEnabled());
+                        executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil, gatfConfig.isServerLogsApiAuthEnabled());
                         complete = true;
                     }
                 }
@@ -246,8 +244,7 @@ public class GatfReportsHandler extends HttpHandler {
                 {
                     if(found.isSecure() && authTestCaseT==null)
                     {
-                        throw new RuntimeException("No Authentication testcase found, please add one" +
-                                "or change the testcase to unsecure mode");
+                        throw new RuntimeException("No Authentication testcase found, please add one or change the testcase to unsecure mode");
                     }
                     
                     List<Map<String, String>> sceanrios = found.getRepeatScenariosOrig();
@@ -278,14 +275,12 @@ public class GatfReportsHandler extends HttpHandler {
                         found.setNumberOfExecutions(1);
                     }
                     
-                    reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, 
-                            testCaseExecutorUtil);
+                    reports = context.getSingleTestCaseExecutor().executeDirectTestCase(found, testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
                         //Server logs api
                         context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-                        executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-                                gatfConfig.isServerLogsApiAuthEnabled());
+                        executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil, gatfConfig.isServerLogsApiAuthEnabled());
                     }
                 }
                 
@@ -317,8 +312,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 if(isAuthExec)
                 {
-                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
-                            testCaseExecutorUtil);
+                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
                         complete = true;
@@ -335,8 +329,7 @@ public class GatfReportsHandler extends HttpHandler {
                     }
                     if(testCaseName.equals(found.getName()))
                     {
-                        reports = context.getSingleTestCaseExecutor().execute(found, 
-                                testCaseExecutorUtil);
+                        reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
                     }
                 }
                 
@@ -398,19 +391,17 @@ public class GatfReportsHandler extends HttpHandler {
                         throw new RuntimeException("Invalid testcase report details provided");
                     }
                     
-                    if(!StringUtils.isBlank(found.getContent())) 
+                    if(!StringUtils.isBlank(found.getContent()))
                     {
                         VelocityContext vcontext = new VelocityContext();
                         vcontext.put("report", tcReport);
                         
                         StringWriter writer = new StringWriter();
-                        context.getWorkflowContextHandler().getEngine()
-                            .evaluate(vcontext, writer, "ERROR", found.getContent());
+                        context.getWorkflowContextHandler().getEngine().evaluate(vcontext, writer, "ERROR", found.getContent());
                         String content = writer.toString();
                         
                         writer = new StringWriter();
-                        context.getWorkflowContextHandler().getEngine()
-                            .evaluate(vcontext, writer, "ERROR", found.getUrl());
+                        context.getWorkflowContextHandler().getEngine().evaluate(vcontext, writer, "ERROR", found.getUrl());
                         String url = writer.toString();
                         
                         TestCaseReport nrep = new TestCaseReport();
@@ -450,8 +441,7 @@ public class GatfReportsHandler extends HttpHandler {
                     }
                     authTestCaseT.setExternalApi(true);
                     authTestCaseT.validate(context.getHttpHeaders(), null);
-                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, 
-                            testCaseExecutorUtil);
+                    reports = context.getSingleTestCaseExecutor().execute(authTestCaseT, testCaseExecutorUtil);
                     if(reports.size()>0 && !reports.get(0).getStatus().equals(TestStatus.Success.status))
                     {
                         complete = true;
@@ -462,8 +452,7 @@ public class GatfReportsHandler extends HttpHandler {
                 {
                     if(found.isSecure() && authTestCaseT==null)
                     {
-                        throw new RuntimeException("No Authentication testcase found, please add one" +
-                                "or change the testcase to unsecure mode");
+                        throw new RuntimeException("No Authentication testcase found, please add one or change the testcase to unsecure mode");
                     }
                     found.validate(context.getHttpHeaders(), null);
                     reports = context.getSingleTestCaseExecutor().execute(found, testCaseExecutorUtil);
@@ -555,8 +544,7 @@ public class GatfReportsHandler extends HttpHandler {
                         {
                           //Server logs api
                             context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-                            executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-                                    gatfConfig.isServerLogsApiAuthEnabled());
+                            executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil, gatfConfig.isServerLogsApiAuthEnabled());
                             complete = true;
                         }
                     }
@@ -607,8 +595,7 @@ public class GatfReportsHandler extends HttpHandler {
                         {
                             //Server logs api
                             context.getWorkflowContextHandler().initializeSuiteContextWithnum(-1);
-                            executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil,
-                                    gatfConfig.isServerLogsApiAuthEnabled());
+                            executorMojo.invokeServerLogApi(false, reports.get(0), testCaseExecutorUtil, gatfConfig.isServerLogsApiAuthEnabled());
                         }
                     }
                     

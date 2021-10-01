@@ -279,14 +279,14 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(isChanged)
 		{
 			synchronized (mojo) {
-				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStr(gatfConfig), "UTF-8");
+				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStrXml(gatfConfig), "UTF-8");
 			}
 		}
 	}
 
 	protected static void createConfigFileIfNotExists(GatfConfigToolMojoInt mojo, boolean isExecutor, Object config)
 	{
-		if(isExecutor && !new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
+		if(isExecutor && !new File(mojo.getRootDir(), "gatf-config.xml").exists() && !new File(mojo.getRootDir(), "gatf-config.json").exists()) {
 			try {
 				synchronized (mojo) {
 					new File(mojo.getRootDir(), "gatf-config.xml").createNewFile();
@@ -295,7 +295,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
 			} catch (IOException e) {
 			}
-        } else if(!isExecutor && !new File(mojo.getRootDir(), "gatf-generator.xml").exists()) {
+        } else if(!isExecutor && !new File(mojo.getRootDir(), "gatf-generator.xml").exists() && !new File(mojo.getRootDir(), "gatf-generator.json").exists()) {
 			try {
 				synchronized (mojo) {
 					new File(mojo.getRootDir(), "gatf-generator.xml").createNewFile();
@@ -351,7 +351,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(gatfConfig == null)
 		{
 			synchronized (mojo) {
-				gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")));
+				if(new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
+					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")), true);
+				} else {
+					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.json")), false);
+				}
 			}
 		}
 		if(gatfConfig == null) {

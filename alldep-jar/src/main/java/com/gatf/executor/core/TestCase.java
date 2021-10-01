@@ -35,11 +35,11 @@ import javax.ws.rs.core.Response.Status;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import org.junit.Assert;
 
 import com.thoughtworks.xstream.annotations.XStreamAlias;
@@ -55,7 +55,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
  */
 @XStreamAlias("TestCase")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
-@JsonSerialize(include=Inclusion.NON_NULL)
+@JsonInclude(value = Include.NON_NULL)
 public class TestCase implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -224,6 +224,8 @@ public class TestCase implements Serializable {
 	@XStreamOmitField
 	@JsonIgnore
 	private boolean isExternalApi = false;
+	
+	private PerformanceConfig perfConfig;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -680,6 +682,14 @@ public class TestCase implements Serializable {
 
 	public void setExternalApi(boolean isExternalApi) {
 		this.isExternalApi = isExternalApi;
+	}
+
+	public PerformanceConfig getPerfConfig() {
+		return perfConfig;
+	}
+
+	public void setPerfConfig(PerformanceConfig perfConfig) {
+		this.perfConfig = perfConfig;
 	}
 
 	@Override
@@ -1162,6 +1172,8 @@ public class TestCase implements Serializable {
 		this.currentScenarioVariables = other.currentScenarioVariables;
 		this.isServerApiAuth = other.isServerApiAuth;
 		this.isServerApiTarget = other.isServerApiTarget;
+		this.isExternalApi = other.isExternalApi;
+		this.perfConfig = other.perfConfig;
 	}
 
 	@Override

@@ -23,11 +23,11 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
 import com.gatf.executor.core.TestCase;
 import com.thoughtworks.xstream.annotations.XStreamOmitField;
@@ -39,7 +39,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
  * This data is used in generating graphical reports
  */
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
-@JsonSerialize(include=Inclusion.NON_NULL)
+@JsonInclude(value = Include.NON_NULL)
 public class TestCaseReport implements Serializable {
 	
 	private static final long serialVersionUID = 1L;
@@ -95,6 +95,8 @@ public class TestCaseReport implements Serializable {
 	@XStreamOmitField
 	@JsonIgnore
 	private Map<String, List<String>> resHeaders;
+	
+	private Map<String, Object> perfResult = new HashMap<String, Object>();
 	
 	public String getWorkflowName() {
 		return workflowName;
@@ -318,6 +320,14 @@ public class TestCaseReport implements Serializable {
 		this.serverLogs = serverLogs;
 	}
 
+	public Map<String, Object> getPerfResult() {
+		return perfResult;
+	}
+
+	public void setPerfResult(Map<String, Object> perfResult) {
+		this.perfResult = perfResult;
+	}
+
 	public TestCaseReport(){}
 	
 	public TestCaseReport(TestCaseReport other) {
@@ -345,6 +355,7 @@ public class TestCaseReport implements Serializable {
 		this.responseStatusCode = other.responseStatusCode;
 		this.method = other.method;
 		this.failureReason = other.failureReason;
+		this.perfResult = other.perfResult;
 	}
 
 	@Override

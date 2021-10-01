@@ -32,6 +32,8 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.codehaus.plexus.classworlds.ClassWorld;
 import org.codehaus.plexus.classworlds.realm.ClassRealm;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -328,18 +330,25 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
     	
     	if(configFile!=null) {
 			try {
-				InputStream io = new FileInputStream(configFile);
-	    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-	            XStream.setupDefaultSecurity(xstream);
-	            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-	    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-	    		xstream.alias("testPaths", String[].class);
-	    		xstream.alias("testPath", String.class);
-	    		xstream.alias("soapWsdlKeyPairs", String[].class);
-	    		xstream.alias("soapWsdlKeyPair", String.class);
-	    		xstream.alias("string", String.class);
-	    		
-	    		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(io);
+				GatfConfiguration config = null;
+    			
+    			if(configFile.trim().endsWith(".xml")) {
+					InputStream io = new FileInputStream(configFile);
+		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
+		            XStream.setupDefaultSecurity(xstream);
+		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
+		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
+		    		xstream.alias("testPaths", String[].class);
+		    		xstream.alias("testPath", String.class);
+		    		xstream.alias("soapWsdlKeyPairs", String[].class);
+		    		xstream.alias("soapWsdlKeyPair", String.class);
+		    		xstream.alias("string", String.class);
+		    		
+		    		config = (GatfConfiguration)xstream.fromXML(io);
+    			} else if(configFile.trim().endsWith(".json")) {
+    				InputStream io = new FileInputStream(configFile);
+    				config = new ObjectMapper().readValue(io, GatfConfiguration.class);
+    			}
 	    		
 	    		setDebugEnabled(config.isDebugEnabled());
 	    		setEnabled(config.isEnabled());

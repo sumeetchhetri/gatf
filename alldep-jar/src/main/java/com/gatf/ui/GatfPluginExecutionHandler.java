@@ -31,6 +31,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
+import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.report.RuntimeReportUtil;
@@ -58,6 +59,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.setCorsHeaders(response);
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	GatfPluginConfig gatfConfig = null;
     	final String pluginType = request.getParameter("pluginType");

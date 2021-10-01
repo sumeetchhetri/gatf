@@ -27,6 +27,8 @@ import org.apache.maven.plugins.annotations.Mojo;
 import org.apache.maven.plugins.annotations.Parameter;
 import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
@@ -391,36 +393,42 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
                 File basePath = new File(testCasesBasePath);
                 resource = new File(basePath, configFile);
                 if (resource.exists()) {
-                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-                    XStream.setupDefaultSecurity(xstream);
-                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
-                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
-                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-                    xstream.alias("testCaseHooksPaths", String[].class);
-                    xstream.alias("testCaseHooksPath", String.class);
-                    xstream.alias("args", String[].class);
-                    xstream.alias("arg", String.class);
-                    xstream.alias("testCaseHooksPaths", String[].class);
-                    xstream.alias("testCaseHooksPath", String.class);
-                    xstream.alias("queryStrs", String[].class);
-                    xstream.alias("queryStr", String.class);
-                    xstream.alias("distributedNodes", String[].class);
-                    xstream.alias("distributedNode", String.class);
-                    xstream.alias("ignoreFiles", String[].class);
-                    xstream.alias("orderedFiles", String[].class);
-                    xstream.alias("string", String.class);
-                    xstream.alias("seleniumScripts", String[].class);
-                    xstream.alias("seleniumScript", String.class);
-
-                    configuration = (GatfExecutorConfig) xstream.fromXML(resource);
-
+                	if(configFile.trim().endsWith(".xml")) {
+	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
+	                    XStream.setupDefaultSecurity(xstream);
+	                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
+	                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
+	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
+	                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
+	                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+	                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
+	                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
+	                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
+	                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
+	                    xstream.alias("testCaseHooksPaths", String[].class);
+	                    xstream.alias("testCaseHooksPath", String.class);
+	                    xstream.alias("args", String[].class);
+	                    xstream.alias("arg", String.class);
+	                    xstream.alias("testCaseHooksPaths", String[].class);
+	                    xstream.alias("testCaseHooksPath", String.class);
+	                    xstream.alias("queryStrs", String[].class);
+	                    xstream.alias("queryStr", String.class);
+	                    xstream.alias("distributedNodes", String[].class);
+	                    xstream.alias("distributedNode", String.class);
+	                    xstream.alias("ignoreFiles", String[].class);
+	                    xstream.alias("orderedFiles", String[].class);
+	                    xstream.alias("string", String.class);
+	                    xstream.alias("seleniumScripts", String[].class);
+	                    xstream.alias("seleniumScript", String.class);
+	
+	                    configuration = (GatfExecutorConfig) xstream.fromXML(resource);
+                	} else if(configFile.trim().endsWith(".json")) {
+                		configuration = new ObjectMapper().readValue(resource, GatfExecutorConfig.class);
+                	} else {
+                		throw new RuntimeException("Invalid Config file, please provide either an xml or a json config file");
+                	}
+                    
                     if (configuration.getTestCasesBasePath() == null)
                         configuration.setTestCasesBasePath(testCasesBasePath);
 

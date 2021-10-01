@@ -78,7 +78,7 @@ public class DataProviderAccessor {
 		Assert.assertNotNull("Provider not found - " + name, provData);
 		if(index<0)
 		{
-			if(!func.matches(GatfFunctionHandler.RANDOM_RANGE_REGEX))
+			if(!func.matches(GatfFunctionHandler.NUMBER_RANGE_REGEX))
 			{
 				throw new AssertionError("Invalid index function provided for dataprovider - " + name);
 			}

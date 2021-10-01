@@ -54,6 +54,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.setCorsHeaders(response);
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	String configType = request.getParameter("configType");
     	String testcaseFileName = request.getParameter("testcaseFileName");

@@ -29,6 +29,7 @@ import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.GatfPlugin;
+import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.report.DataSourceProfiler;
 
@@ -50,6 +51,7 @@ public class GatfProfileHandler  extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.setCorsHeaders(response);
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	if(request.getMethod().equals(Method.GET) ) {
     		try {

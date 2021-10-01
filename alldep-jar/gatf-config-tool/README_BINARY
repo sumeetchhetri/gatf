@@ -1,0 +1,13 @@
+Execution steps for the Binary project
+
+1. Download the Binary project and unzip to location of your choice (assume /home/user/gatf-test-bin or C:/gatf-test-bin)
+2. Downlad the GATF v1.2 plugin jar - https://raw.githubusercontent.com/sumeetchhetri/gatf/master/maven/com/test/gatf-plugin/1.2/gatf-plugin-1.2.jar
+3. Copy the downloaded plugin jar file (gatf-plugin-1.2.jar) to the Binary project folder you just unzipped in Step 1 (/home/user/gatf-test-bin)
+4. Open a command prompt and navigate to the project folder (/home/user/gatf-test-bin)
+5. Execute the following commands at the command prompt,
+	1. GATF Config UI: java -jar gatf-plugin-1.2.jar -configtool 9080 localhost . (HTTP Port, Ip address, project folder)
+	2. GATF Test Executor: java -jar gatf-plugin-1.2.jar -executor gatf-config.xml
+	3. GATF Test Generator: java -jar gatf-plugin-1.2.jar -generator gatf-generator.xml
+6. For GATF Config UI, open a browser winow and navigate to http://localhost:9080 and you should see the GATF config tool UI
+7. There is one last thing you may have to change before executing your tests, set the testCasesBasePath and outFilesBasePath properties in the Configuration -> Executor section to blank and Click Update at the very end of the page to update the configuration. Then refresh the browser page to reload the configuration, you should see you project folder's path reflected in these properties on the config UI home screen.
+8. Continue normally with the GATF config tool.

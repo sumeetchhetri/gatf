@@ -38,12 +38,14 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.glassfish.grizzly.http.server.Response;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
@@ -124,6 +126,14 @@ public class AcceptanceTestContext {
 	private Map<String, Method> prePostTestCaseExecHooks = new HashMap<String, Method>();
 	
 	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
+	
+	public static void setCorsHeaders(Response response) {
+		if(Boolean.TRUE.toString().equalsIgnoreCase(System.getenv("cor.enabled")) || Boolean.TRUE.toString().equalsIgnoreCase(System.getProperty("cor.enabled"))) {
+			response.setHeader("Access-Control-Allow-Origin", "*");
+			response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
+			response.setHeader("Access-Control-Allow-Headers", "*");
+		}
+	}
 	
 	public ClassLoader getProjectClassLoader() {
 		return projectClassLoader;
@@ -521,22 +531,25 @@ public class AcceptanceTestContext {
 		}
 	}
 
-	private void initTestDataProviderAndGlobalVariables() {
+	private void initTestDataProviderAndGlobalVariables() throws Exception {
 		GatfTestDataConfig gatfTestDataConfig = null;
 		if(gatfExecutorConfig.getTestDataConfigFile()!=null) {
 			File file = getResourceFile(gatfExecutorConfig.getTestDataConfigFile());
 			Assert.assertNotNull("Testdata configuration file not found...", file);
 			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
-			XStream xstream = new XStream(new DomDriver("UTF-8"));
-	        XStream.setupDefaultSecurity(xstream);
-	        xstream.allowTypes(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
-			xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
-			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-			xstream.alias("args", String[].class);
-			xstream.alias("arg", String.class);
-			
-			gatfTestDataConfig = (GatfTestDataConfig)xstream.fromXML(file);
+			if(gatfExecutorConfig.getTestDataConfigFile().trim().endsWith(".xml")) {
+				XStream xstream = new XStream(new DomDriver("UTF-8"));
+		        XStream.setupDefaultSecurity(xstream);
+		        xstream.allowTypes(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
+				xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
+				xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
+				xstream.alias("args", String[].class);
+				xstream.alias("arg", String.class);
+				gatfTestDataConfig = (GatfTestDataConfig)xstream.fromXML(file);
+			} else  {
+				gatfTestDataConfig = new ObjectMapper().readValue(file, GatfTestDataConfig.class);
+			}
 			gatfExecutorConfig.setGatfTestDataConfig(gatfTestDataConfig);
 		} else {
 			gatfTestDataConfig = gatfExecutorConfig.getGatfTestDataConfig();

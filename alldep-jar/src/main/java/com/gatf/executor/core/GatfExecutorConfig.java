@@ -20,10 +20,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.apache.commons.lang3.StringUtils;
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import org.junit.Assert;
 
 import com.gatf.GatfPluginConfig;
@@ -38,7 +38,7 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
  */
 @XStreamAlias("gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
-@JsonSerialize(include=Inclusion.NON_NULL)
+@JsonInclude(value = Include.NON_NULL)
 public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	private static final long serialVersionUID = 1L;
@@ -141,6 +141,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     private String gatfJarPath;
     
     private boolean selDebugger;
+    
+    private String wrkPath;
+    
+    private String wrk2Path;
+    
+    private String autocannonPath;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -588,6 +594,30 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setSelDebugger(boolean selDebugger) {
 		this.selDebugger = selDebugger;
+	}
+
+	public String getWrkPath() {
+		return wrkPath;
+	}
+
+	public void setWrkPath(String wrkPath) {
+		this.wrkPath = wrkPath;
+	}
+
+	public String getWrk2Path() {
+		return wrk2Path;
+	}
+
+	public void setWrk2Path(String wrk2Path) {
+		this.wrk2Path = wrk2Path;
+	}
+
+	public String getAutocannonPath() {
+		return autocannonPath;
+	}
+
+	public void setAutocannonPath(String autocannonPath) {
+		this.autocannonPath = autocannonPath;
 	}
 
 	public void validate()

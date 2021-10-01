@@ -19,6 +19,38 @@
 		</resources>
 		<plugins>
 			<plugin>
+	            <groupId>org.apache.maven.plugins</groupId>
+	            <artifactId>maven-assembly-plugin</artifactId>
+	            <executions>
+	                <execution>
+	                    <id>gatf-resources</id>
+	                    <phase>package</phase>
+	                    <goals>
+	                        <goal>single</goal>
+	                    </goals>
+	                    <configuration>
+	                    	<finalName>gatf-resources</finalName>
+	                    	<appendAssemblyId>false</appendAssemblyId>
+	                        <descriptor>gatf-resources.xml</descriptor>
+	                        <outputDirectory>${project.build.directory}/classes</outputDirectory>
+	                    </configuration>
+	                </execution>
+	                <execution>
+	                    <id>gatf-config-tool</id>
+	                    <phase>package</phase>
+	                    <goals>
+	                        <goal>single</goal>
+	                    </goals>
+	                    <configuration>
+	                    	<finalName>gatf-config-tool</finalName>
+	                    	<appendAssemblyId>false</appendAssemblyId>
+	                        <descriptor>gatf-config-tool.xml</descriptor>
+	                        <outputDirectory>${project.build.directory}/classes</outputDirectory>
+	                    </configuration>
+	                </execution>
+	            </executions>
+	        </plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>
 				<version>3.1.0</version>
@@ -40,62 +72,11 @@
 						                <exclude>META-INF/*.RSA</exclude>
 						            </excludes>
 						        </filter>
-						        <!-- <filter>
-			                        <artifact>org.apache.maven:maven-plugin-api</artifact>
-			                        <excludes>
-			                            <exclude>**</exclude>
-			                        </excludes>
-			                    </filter>
-						        <filter>
-			                        <artifact>org.apache.maven.plugin-tools:maven-plugin-annotations</artifact>
-			                        <excludes>
-			                            <exclude>**</exclude>
-			                        </excludes>
-			                    </filter>
-						        <filter>
-			                        <artifact>org.apache.maven:maven-artifact</artifact>
-			                        <excludes>
-			                            <exclude>**</exclude>
-			                        </excludes>
-			                    </filter>
-						        <filter>
-			                        <artifact>org.apache.maven:maven-core</artifact>
-			                        <excludes>
-			                            <exclude>**</exclude>
-			                        </excludes>
-			                    </filter> -->
 						    </filters>
 							<shadedArtifactAttached>false</shadedArtifactAttached>
             				<createDependencyReducedPom>true</createDependencyReducedPom>
-            				<!-- <relocations>
-				                <relocation>
-				                    <pattern>com</pattern>
-				                    <shadedPattern>gatf.com</shadedPattern>
-				                </relocation>
-				                <relocation>
-				                    <pattern>net</pattern>
-				                    <shadedPattern>gatf.net</shadedPattern>
-				                </relocation>
-				                <relocation>
-				                    <pattern>org</pattern>
-				                    <shadedPattern>gatf.org</shadedPattern>
-				                </relocation>
-				                <relocation>
-				                    <pattern>junit</pattern>
-				                    <shadedPattern>gatf.junit</shadedPattern>
-				                </relocation>
-				                <relocation>
-				                    <pattern>au</pattern>
-				                    <shadedPattern>gatf.au</shadedPattern>
-				                </relocation>
-				                <relocation>
-				                    <pattern>edu</pattern>
-				                    <shadedPattern>gatf.edu</shadedPattern>
-				                </relocation>
-				            </relocations> -->
 							<transformers>
-								<transformer
-									implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<mainClass>com.gatf.generator.core.GatfTestGeneratorUtil</mainClass>
 								</transformer>
 							</transformers>
@@ -110,7 +91,7 @@
 			<dependency>
 				<groupId>commons-io</groupId>
 				<artifactId>commons-io</artifactId>
-				<version>2.3</version>
+				<version>2.7</version>
 			</dependency>
 			<dependency>
 				<groupId>xml-apis</groupId>

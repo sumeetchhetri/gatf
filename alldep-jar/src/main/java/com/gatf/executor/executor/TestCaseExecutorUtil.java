@@ -55,6 +55,7 @@ import org.w3c.dom.Document;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.ext.WrkTestCaseExecutor;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
@@ -523,15 +524,25 @@ public class TestCaseExecutorUtil {
 			testCaseReport.setTestCase(testCase);
 			Request request = builder.build();
 			
-			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks() && testCase.getPreWaitMs()!=null 
-					&& testCase.getPreWaitMs()>0) {
+			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks() && testCase.getPreWaitMs()!=null && testCase.getPreWaitMs()>0) {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
 			
-			call = client.newCall(request);
-			TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
-			call.enqueue(rp);
-			return rp.future;
+			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && testCase.getPerfConfig().getType().startsWith("wrk")) {
+				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
+				if(testCase.getPerfConfig().getType().startsWith("wrk")) {
+					WrkTestCaseExecutor.execute(context, testCase, testCaseReport);
+				} else {
+					//TODO autocannon
+				}
+				future.complete(testCaseReport);
+				return future;
+			} else {
+				call = client.newCall(request);
+				TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
+				call.enqueue(rp);
+				return rp.future;
+			}
 		} catch (Throwable e) {
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			testCaseReport.setStatus(TestStatus.Failed.status);

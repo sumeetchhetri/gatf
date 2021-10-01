@@ -26,6 +26,7 @@ import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.GatfPlugin;
+import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.generator.core.GatfConfiguration;
@@ -42,8 +43,10 @@ public class GatfConfigurationHandler extends HttpHandler {
 		this.f = f;
 	}
 
+	
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.setCorsHeaders(response);
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	String configType = request.getParameter("configType");
     	if(request.getMethod().equals(Method.GET) ) {

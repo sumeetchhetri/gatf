@@ -43,8 +43,7 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		testCaseReport.setNumberOfRuns(1);
 		
 		try {
-			workflowContextHandler.handleContextVariables(testCase, new HashMap<String, String>(), 
-					testCaseExecutorUtil.getContext());
+			workflowContextHandler.handleContextVariables(testCase, new HashMap<String, String>(), testCaseExecutorUtil.getContext());
 		} catch (Exception e) {
 			testCaseReport.setExecutionTime(0L);
 			testCaseReport.setStatus(TestStatus.Failed.status);
@@ -86,11 +85,11 @@ public class SingleTestCaseExecutor implements TestCaseExecutor {
 		testCaseReport.setTestCase(testCase);
 		testCaseReport.setNumberOfRuns(1);
 		
-		CompletableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
 		try {
-            while(!report.isDone()) {
-                Thread.sleep(1);
-            }
+			CompletableFuture<TestCaseReport> report = testCaseExecutorUtil.executeTestCase(testCase, testCaseReport);
+			while(!report.isDone()) {
+				Thread.sleep(1);
+			}
 			testCaseReport = report.get();
 		} catch (Exception e) {
 			testCaseReport.setStatus(TestStatus.Failed.status);

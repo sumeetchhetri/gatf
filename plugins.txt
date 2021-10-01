@@ -6,3 +6,4 @@ xmlwrite=com.gatf.selenium.plugins.XmlPlugin@write
 xmlpath=com.gatf.selenium.plugins.XmlPlugin@path
 api=com.gatf.selenium.plugins.ApiPlugin@api
 curl=com.gatf.selenium.plugins.CurlPlugin@execute
+curl=com.gatf.selenium.plugins.MailPlugin@execute

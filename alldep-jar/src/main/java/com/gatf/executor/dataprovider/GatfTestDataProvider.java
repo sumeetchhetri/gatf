@@ -18,11 +18,10 @@ package com.gatf.executor.dataprovider;
 import java.io.Serializable;
 import java.util.Arrays;
 
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
 /**
@@ -31,7 +30,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
  */
 @XStreamAlias("gatf-testdata-provider")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
-@JsonSerialize(include=Inclusion.NON_NULL)
+@JsonInclude(value = Include.NON_NULL)
 public class GatfTestDataProvider implements Serializable {
 
 	private static final long serialVersionUID = 1L;

@@ -17,11 +17,10 @@ package com.gatf.generator.core;
 
 import java.io.Serializable;
 
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.codehaus.jackson.annotate.JsonAutoDetect.Visibility;
-import org.codehaus.jackson.map.annotate.JsonSerialize;
-import org.codehaus.jackson.map.annotate.JsonSerialize.Inclusion;
-
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.gatf.GatfPluginConfig;
 import com.thoughtworks.xstream.annotations.XStreamAlias;
 
@@ -53,7 +52,7 @@ import com.thoughtworks.xstream.annotations.XStreamAlias;
  */
 @XStreamAlias("configuration")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
-@JsonSerialize(include=Inclusion.NON_NULL)
+@JsonInclude(value = Include.NON_NULL)
 public class GatfConfiguration implements Serializable, GatfPluginConfig {
 
 	private static final long serialVersionUID = 1L;
