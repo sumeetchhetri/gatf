@@ -22,6 +22,7 @@ ENV CFLAGS="-I /usr/include/luajit-2.1 $LDFLAGS"
 RUN make WITH_LUAJIT=/usr WITH_OPENSSL=/usr -j "$(nproc)"
 RUN cp wrk /usr/local/bin
 
+WORKDIR /tmp
 RUN git clone https://github.com/sumeetchhetri/gatf
 RUN rm -rf alldep-jar plugin sample pom.xml plugins.txt
 COPY alldep-jar /tmp/gatf/alldep-jar
