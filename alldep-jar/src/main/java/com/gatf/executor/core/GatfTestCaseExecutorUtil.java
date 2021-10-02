@@ -472,7 +472,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 if (resource.exists()) {
                 	if(configFile.trim().endsWith(".xml")) {
 	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-	                    XStream.setupDefaultSecurity(xstream);
+	                   
 	                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
 	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
 	                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
@@ -2234,7 +2234,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     	GatfExecutorConfig configuration = null;
     	if(isXml) {
 	        XStream xstream = new XStream(new DomDriver("UTF-8"));
-	        XStream.setupDefaultSecurity(xstream);
+	       
 	        xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
 	                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
 	        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
@@ -2277,7 +2277,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
     public static String getConfigStrXml(GatfExecutorConfig configuration) {
         XStream xstream = new XStream(new DomDriver("UTF-8"));
-        XStream.setupDefaultSecurity(xstream);
+       
         xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
                 SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
         xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 

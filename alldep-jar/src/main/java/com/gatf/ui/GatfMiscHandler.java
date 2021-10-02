@@ -97,7 +97,7 @@ public class GatfMiscHandler extends HttpHandler {
 				dataLst.add(RandomValueTestDataProvider.class.getName());
 				miscMap.put("providercls", dataLst);
     			
-    			String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(miscMap);
+    			String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(miscMap);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(configJson.length());
 	            response.getWriter().write(configJson);

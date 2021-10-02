@@ -96,7 +96,7 @@ public class TestCaseReport implements Serializable {
 	@JsonIgnore
 	private Map<String, List<String>> resHeaders;
 	
-	private Map<String, Object> perfResult = new HashMap<String, Object>();
+	private List<Map<String, Object>> perfResult = new ArrayList<Map<String, Object>>();
 	
 	public String getWorkflowName() {
 		return workflowName;
@@ -320,11 +320,11 @@ public class TestCaseReport implements Serializable {
 		this.serverLogs = serverLogs;
 	}
 
-	public Map<String, Object> getPerfResult() {
+	public List<Map<String, Object>> getPerfResult() {
 		return perfResult;
 	}
 
-	public void setPerfResult(Map<String, Object> perfResult) {
+	public void setPerfResult(List<Map<String, Object>> perfResult) {
 		this.perfResult = perfResult;
 	}
 

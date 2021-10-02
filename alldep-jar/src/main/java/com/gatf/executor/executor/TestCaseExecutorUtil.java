@@ -620,8 +620,6 @@ public class TestCaseExecutorUtil {
 
 		@Override
 		public void onResponse(Call call, Response response) throws IOException {
-			String contType = testCase.getExpectedResContentType();
-			testCaseReport.setResponseContentType(contType);
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			
 			if(testCase.getExpectedResContentType()!=null)
@@ -648,10 +646,17 @@ public class TestCaseExecutorUtil {
 				testCase.setExpectedResContentType(response.headers().values(HttpHeaders.CONTENT_TYPE).get(0));
 			}
 			
+			String contType = testCase.getExpectedResContentType();
+			testCaseReport.setResponseContentType(contType);
+			
 			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 			if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
 					|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
 					|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
+			{
+				testCaseReport.setResponseContent(response.body().string());
+			}
+			if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
 			{
 				testCaseReport.setResponseContent(response.body().string());
 			}
@@ -693,7 +698,8 @@ public class TestCaseExecutorUtil {
 		}
 		
 		public static boolean isMatchesContentType(MediaType md, String contType) {
-		    return md.getType().equalsIgnoreCase(contType) || contType.toLowerCase().startsWith(md.getType().toLowerCase());
+			MediaType md2 = MediaType.valueOf(contType);
+			return md.getType().equalsIgnoreCase(md2.getType()) && md.getSubtype().equalsIgnoreCase(md2.getSubtype());
 		}
 	}
 

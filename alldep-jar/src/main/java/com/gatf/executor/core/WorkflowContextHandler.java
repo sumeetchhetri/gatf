@@ -242,7 +242,7 @@ public class WorkflowContextHandler {
 			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);
 			if(testCase!=null && !nmap.isEmpty()) {
 				if(template!=null) {
-					VelocityContext context = new VelocityContext(Collections.<String, Object>unmodifiableMap(nmap));
+					VelocityContext context = new VelocityContext(new HashMap<String, Object>(nmap));
 					DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
 					context.put("_DPA_", dpa);
 					engine.evaluate(context, writer, "ERROR", template);
@@ -273,7 +273,7 @@ public class WorkflowContextHandler {
 		
 		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap, -3);
 		
-		VelocityContext context = new VelocityContext(Collections.<String, Object>unmodifiableMap(nmap));
+		VelocityContext context = new VelocityContext(new HashMap<String, Object>(nmap));
 		DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
 		context.put("_DPA_", dpa);
 		
@@ -341,7 +341,7 @@ public class WorkflowContextHandler {
 			StringWriter writer = new StringWriter();
 			String condition = "#if(" +  template + ")true#end";
 			try {
-				VelocityContext context = new VelocityContext(Collections.<String, Object>unmodifiableMap(nmap));
+				VelocityContext context = new VelocityContext(new HashMap<String, Object>(nmap));
 				DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
 				context.put("_DPA_", dpa);
 				engine.evaluate(context, writer, "ERROR", condition);

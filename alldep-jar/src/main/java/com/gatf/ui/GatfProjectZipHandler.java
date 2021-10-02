@@ -59,14 +59,14 @@ public class GatfProjectZipHandler extends HttpHandler {
     	else err.add(resStr);
     	if(res.size()>0)
     	{
-    		String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(res);
+    		String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(res);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.OK_200);
     	}
     	else
     	{
-    		String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(err);
+    		String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(err);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);

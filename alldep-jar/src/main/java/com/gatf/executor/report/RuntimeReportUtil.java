@@ -226,8 +226,8 @@ public class RuntimeReportUtil {
     	        if(st.size()>100 || sst.size()>100)break;
     	    }
             String arr = "{\"error\": \"Execution already in progress..\", \"lstats\": " + 
-                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(st) + ", \"sstats\": " + 
-                    new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(sst) + "}";
+                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(st) + ", \"sstats\": " + 
+                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(sst) + "}";
             return arr;
 	    } catch (Exception e) {
             e.printStackTrace();

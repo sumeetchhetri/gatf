@@ -125,10 +125,6 @@ public class GatfTestDataProvider implements Serializable {
 		this.live = live;
 	}
 
-	public Boolean getEnabled() {
-		return enabled;
-	}
-	
 	public GatfTestDataProvider(){}
 
 	public GatfTestDataProvider(GatfTestDataProvider other) {

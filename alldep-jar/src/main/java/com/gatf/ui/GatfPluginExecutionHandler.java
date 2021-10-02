@@ -29,6 +29,7 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -96,8 +97,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				}
 			}
 			else if(request.getMethod().equals(Method.PUT) ) {
-				final List<String> files = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
-						org.codehaus.jackson.map.type.TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
+				final List<String> files = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
+						TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
 				
 				if(!isStarted.get() && !isDone.get()) {
 					isStarted.set(true);

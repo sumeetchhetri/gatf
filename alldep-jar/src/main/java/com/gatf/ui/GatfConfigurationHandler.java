@@ -55,11 +55,11 @@ public class GatfConfigurationHandler extends HttpHandler {
     			if(configType.equalsIgnoreCase("executor")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, true, null);
     				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
-        			configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(gatfConfig);
+        			configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(gatfConfig);
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, false, null);
     				GatfConfiguration gatfConfig = GatfConfigToolUtil.getGatfConfiguration(mojo, null);
-        			configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(gatfConfig);
+        			configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(gatfConfig);
     			}
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(configJson.length());
@@ -71,7 +71,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     	} else if(request.getMethod().equals(Method.POST) ) {
     		try {
     			if(configType.equalsIgnoreCase("executor")) {
-    				GatfExecutorConfig gatfConfig = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
+    				GatfExecutorConfig gatfConfig = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
         					GatfExecutorConfig.class);
     				GatfConfigToolUtil.getGatfExecutorConfig(mojo, gatfConfig);
     				GatfPlugin executorMojo = f.apply(configType);
@@ -87,7 +87,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     					}
         			}
     			} else if(configType.equalsIgnoreCase("generator")) {
-    				GatfConfiguration gatfConfig = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
+    				GatfConfiguration gatfConfig = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
         					GatfConfiguration.class);
     				GatfConfigToolUtil.getGatfConfiguration(mojo, gatfConfig);
     			}

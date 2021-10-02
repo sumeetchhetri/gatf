@@ -206,11 +206,11 @@ public class GatfFunctionHandler {
 			ProcessBuilder processBuilder = new ProcessBuilder();
 
 			if(SystemUtils.IS_OS_WINDOWS) {
-				builderList.add("cmd.exe");
-				builderList.add("/C");
+				//builderList.add("cmd.exe");
+				//builderList.add("/C");
 			} else {
-				builderList.add("sh");
-				builderList.add("-c");
+				//builderList.add("sh");
+				//builderList.add("-c");
 			}
 
 			builderList.addAll(inpBl);
@@ -226,6 +226,7 @@ public class GatfFunctionHandler {
 				while ((line = outreader.readLine()) != null) {
 					if(out!=null) {
 						out.append(line);
+						out.append("\n");
 					} else {
 						System.out.println(line);
 					}
@@ -233,6 +234,7 @@ public class GatfFunctionHandler {
 				while ((line = errreader.readLine()) != null) {
 					if(err!=null) {
 						err.append(line);
+						err.append("\n");
 					} else {
 						System.out.println(line);
 					}

@@ -553,7 +553,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	                            	if(contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.map.annotate.JsonSerialize.class)
                             				|| contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.annotate.JsonAutoDetect.class))
                             		{
-	                            		content = new org.codehaus.jackson.map.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+	                            		content = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
                             		}
                                 	else
                                 	{
@@ -628,7 +628,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                     	
                     	if("json".equalsIgnoreCase(getTestCaseFormat()))
                     	{
-                    		String postManJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcases);
+                    		String postManJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(tcases);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -655,7 +655,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 		                			}
 	                			}
 	                		);
-	                        XStream.setupDefaultSecurity(xstream);
+	                       
 	                        xstream.allowTypes(new Class[]{TestCase.class});
 	                		xstream.processAnnotations(new Class[]{TestCase.class});
 	                		xstream.alias("TestCases", List.class);
@@ -673,7 +673,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                 				postmanCollection.addTestCase(testCase, getPostmanCollectionVersion());
 							}
                 			
-                			String postManJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(postmanCollection);
+                			String postManJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(postmanCollection);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_postman.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -1166,7 +1166,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     			if(args[1].trim().endsWith(".xml")) {
     				InputStream io = new FileInputStream(args[1]);
 		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		            XStream.setupDefaultSecurity(xstream);
+		           
 		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		    		xstream.alias("testPaths", String[].class);
@@ -1263,7 +1263,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 				if(configFile.trim().endsWith(".xml")) {
 					InputStream io = new FileInputStream(configFile);
 		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		            XStream.setupDefaultSecurity(xstream);
+		           
 		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		    		xstream.alias("testPaths", String[].class);
@@ -1437,7 +1437,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 			                			}
                         			}
                         		);
-                                XStream.setupDefaultSecurity(xstream);
+                               
                                 xstream.allowTypes(new Class[]{TestCase.class});
                         		xstream.processAnnotations(new Class[]{TestCase.class});
                         		xstream.alias("TestCases", List.class);
@@ -1465,7 +1465,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	public static GatfConfiguration getConfig(InputStream resource)
 	{
 		XStream xstream = new XStream(new DomDriver("UTF-8"));
-        XStream.setupDefaultSecurity(xstream);
+       
         xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		xstream.alias("testPaths", String[].class);
@@ -1481,7 +1481,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	public static String getConfigStr(GatfConfiguration configuration)
 	{
 		XStream xstream = new XStream(new DomDriver("UTF-8"));
-        XStream.setupDefaultSecurity(xstream);
+       
         xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		xstream.alias("testPaths", String[].class);

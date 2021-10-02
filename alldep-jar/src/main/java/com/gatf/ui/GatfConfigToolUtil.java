@@ -320,7 +320,17 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			} catch (Exception e) {
 			}
 			mojo.ipAddress = args[2].trim();
-			mojo.setRootDir(args[3].trim());
+			if(new File(args[3].trim()).exists()) {
+				mojo.setRootDir(new File(args[3].trim()).getAbsolutePath());
+			} else if(args[3].trim().equals(".")) {
+				mojo.setRootDir(System.getProperty("user.dir"));
+			} else {
+				if(new File(System.getProperty("user.dir") + File.separatorChar + args[3].trim()).exists()) {
+					mojo.setRootDir(System.getProperty("user.dir") + File.separatorChar + args[3].trim());
+				} else {
+					throw new RuntimeException("Invalid root dir");
+				}
+			}
 			mojo.execute();
 		}
 	}

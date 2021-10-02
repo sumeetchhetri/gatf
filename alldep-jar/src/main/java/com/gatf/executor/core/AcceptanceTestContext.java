@@ -540,7 +540,7 @@ public class AcceptanceTestContext {
 			
 			if(gatfExecutorConfig.getTestDataConfigFile().trim().endsWith(".xml")) {
 				XStream xstream = new XStream(new DomDriver("UTF-8"));
-		        XStream.setupDefaultSecurity(xstream);
+		       
 		        xstream.allowTypes(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 				xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
 				xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);

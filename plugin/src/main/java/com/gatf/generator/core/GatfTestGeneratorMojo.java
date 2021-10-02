@@ -335,7 +335,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
     			if(configFile.trim().endsWith(".xml")) {
 					InputStream io = new FileInputStream(configFile);
 		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		            XStream.setupDefaultSecurity(xstream);
+		           
 		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
 		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
 		    		xstream.alias("testPaths", String[].class);

@@ -17,7 +17,6 @@ package com.gatf.executor.finder;
 
 import java.io.File;
 import java.util.List;
-
 import com.gatf.executor.core.TestCase;
 
 /**
@@ -30,10 +29,9 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 		return TestCaseFileType.JSON;
 	}
 
-	@SuppressWarnings("unchecked")
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		org.codehaus.jackson.map.ObjectMapper jsonMapper = new org.codehaus.jackson.map.ObjectMapper();
-		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new org.codehaus.jackson.type.TypeReference<List<TestCase>>(){});
+		com.fasterxml.jackson.databind.ObjectMapper jsonMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new com.fasterxml.jackson.core.type.TypeReference<List<TestCase>>(){});
 		return jsonTestCases;
 	}
 }

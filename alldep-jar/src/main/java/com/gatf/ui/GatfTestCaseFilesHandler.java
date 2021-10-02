@@ -206,7 +206,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     				fileNames.add(TestCaseFinder.getRelativePath(file, dirFPath));
 				}
     			
-    			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(fileNames);
+    			String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileNames);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(json.length());
 	            response.getWriter().write(json);

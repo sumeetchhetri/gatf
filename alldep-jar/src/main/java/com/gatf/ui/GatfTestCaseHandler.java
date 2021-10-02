@@ -117,7 +117,7 @@ public class GatfTestCaseHandler extends HttpHandler {
             				}
             			}
             		);
-    			    XStream.setupDefaultSecurity(xstream);
+    			   
     			    xstream.allowTypes(new Class[]{TestCase.class});
             		xstream.processAnnotations(new Class[]{TestCase.class});
             		xstream.alias("TestCases", List.class);
@@ -135,7 +135,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     		        fos.close();
     		    } else {
         		    String testCaseName = request.getParameter("tcName");
-        			TestCase testCase = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), 
+        			TestCase testCase = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
         					TestCase.class);
         			if(testCase.getName()==null) {
         				throw new RuntimeException("Testcase does not specify name");
@@ -273,7 +273,7 @@ public class GatfTestCaseHandler extends HttpHandler {
                     		xstream.toXML(tcsn, new FileOutputStream(filePath));
         				}
         			}
-        			String json = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(tcsn);
+        			String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(tcsn);
         			response.setContentType(MediaType.APPLICATION_JSON);
     	            response.setContentLength(json.length());
     	            response.getWriter().write(json);

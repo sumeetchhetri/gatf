@@ -93,14 +93,14 @@ public class GatfReportsHandler extends HttpHandler {
 			    }
 			    else if(action.equals("replayTest"))
 			    { 
-			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
+			        tcReport = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			        if(tcReport == null) {
 			            throw new RuntimeException("Invalid testcase report details provided");
 			        }
 			    } 
 			    else if(isExternalLogsApi && !action.equals("playTest"))
 			    {
-			        tcReport = new org.codehaus.jackson.map.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
+			        tcReport = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
 			    }
 			    else if(!action.equals("playTest"))
 			    {
@@ -408,7 +408,7 @@ public class GatfReportsHandler extends HttpHandler {
                         nrep.setUrl(url);
                         nrep.setRequestContent(content);
                         
-                        String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(nrep);
+                        String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(nrep);
                         return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, nrep};
                     }
                 }
@@ -613,7 +613,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 TestCaseReport report = reports.get(0);
                 ReportHandler.populateRequestResponseHeaders(report);
-                String configJson = new org.codehaus.jackson.map.ObjectMapper().writeValueAsString(report);
+                String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(report);
                 return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, report};
             }
         }

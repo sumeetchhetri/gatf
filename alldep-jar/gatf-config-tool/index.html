@@ -93,7 +93,7 @@
 			.btn-plus {background-color:#ffffff;border-width:1px;border-color:#dddddd;box-shadow:1px 1px 0 #999999;border-radius:3px;color:#666666;text-shadow:0 0 1px #bbbbbb;}
 			.well,.panel {border-color:#d2d2d2;box-shadow:0 1px 0 #cfcfcf;border-radius:3px;}
 			.btn-success,.label-success,.progress-bar-success{background-color:#65b045;}
-			.btn-info,.label-info,.progress-bar-info{background-color:#a0c3ff,border-color:#a0c3ff;}
+			.btn-info,.label-info,.progress-bar-info{background-color:#a0c3ff;border-color:#a0c3ff;}
 			.btn-danger,.label-danger,.progress-bar-danger{background-color:#dd4b39;}
 			.btn-warning,.label-warning,.progress-bar-warning{background-color:#f4b400;color:#444444;}
 
@@ -505,7 +505,6 @@
 		<script type="text/javascript" src="resources/dataTables.tableTools.js"></script>
 		<script type='text/javascript'>
         	
-        	
         	isUseBootstrapUI = true;
 
 			var loadtestingdatatable = null;
@@ -518,8 +517,232 @@
 
 			var loadtestingdatatablecnt = 1;
         	
-        	        	var schema = JSON.parse('{"type":"object","properties":{"baseUrl":{"type":"string"},"url":{"type":"string"},"name":{"type":"string"},"method":{"type":"string","enum":["GET","POST","PUT","DELETE"]},"description":{"type":"string"},"content":{"type":"string","ui":"textarea"},"headers":{"type":"map","types":{"key":{"type":"string","defaultIndex":1,"enum":["","Accept","Accept-Charset","Accept-Encoding","Accept-Language","Allow","Authorization","Cache-Control","Content-Disposition","Content-Encoding","Content-ID","Content-Language","Content-Length","Content-Location","Content-Type","Date","ETag","Expires","Host","If-Match","If-Modified-Since","If-None-Match","If-Unmodified-Since","Last-Modified","Location","Link","Retry-After","User-Agent","Vary","WWW-Authenticate","Cookie","Set-Cookie"]},"value":{"type":"string"}}},"exQueryPart":{"type":"string"},"expectedResCode":{"type":"integer","defaultIndex":0,"enum":[200,201,202,204,205,206,301,302,303,304,305,307,400,401,402,403,404,405,406,407,408,409,410,411,412,413,414,415,416,417,500,501,502,503,504,505]},"expectedResContentType":{"type":"string"},"expectedResContent":{"type":"string","ui":"textarea"},"skipTest":{"type":"boolean","required":true},"detailedLog":{"type":"boolean","required":true},"secure":{"type":"boolean","required":true},"expectedNodes":{"type":"array","items":{"nolabel":true,"type":"string"}},"soapBase":{"type":"boolean","required":true},"wsdlKey":{"type":"string"},"operationName":{"type":"string"},"soapParameterValues":{"type":"map","types":{"key":{"type":"string"},"value":{"type":"string"}}},"workflowContextParameterMap":{"type":"map","types":{"key":{"type":"string"},"value":{"type":"string"}}},"sequence":{"type":"integer"},"filesToUpload":{"type":"array","items":{"nolabel":true,"type":"string"}},"outFileName":{"type":"string"},"repeatScenarioProviderName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'providers\']"},"numberOfExecutions":{"type":"integer"},"repeatScenariosConcurrentExecution":{"type":"boolean","required":true},"stopOnFirstFailureForPerfTest":{"type":"boolean","required":true},"simulationNumber":{"type":"integer"},"preWaitMs":{"type":"number"},"postWaitMs":{"type":"number"},"reportResponseContent":{"type":"boolean","defaultIndex":1},"preExecutionDataSourceHookName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'hooks\']"},"postExecutionDataSourceHookName":{"type":"string","defaultIndex":0,"enumVar":"miscMap[\'hooks\']"},"abortOnInvalidStatusCode":{"type":"boolean","required":true},"abortOnInvalidContentType":{"type":"boolean","required":true},"relatedTestName":{"type":"string","defaultIndex":0,"enumVar":"currtestcases"},"executeOnCondition":{"type":"string"},"logicalValidations":{"type":"array","items":{"nolabel":true,"type":"string"}}}}');
-        	
+        	var schema = {
+       			"type": "object",
+       			"properties": {
+       				"baseUrl": {
+       					"type": "string"
+       				},
+       				"url": {
+       					"type": "string"
+       				},
+       				"name": {
+       					"type": "string"
+       				},
+       				"method": {
+       					"type": "string",
+       					"enum": ["GET", "POST", "PUT", "DELETE"]
+       				},
+       				"description": {
+       					"type": "string"
+       				},
+       				"content": {
+       					"type": "string",
+       					"ui": "textarea"
+       				},
+       				"headers": {
+       					"type": "map",
+       					"types": {
+       						"key": {
+       							"type": "string",
+       							"defaultIndex": 1,
+       							"enum": ["", "Accept", "Accept-Charset", "Accept-Encoding", 
+       								"Accept-Language", "Allow", "Authorization", "Cache-Control", 
+       								"Content-Disposition", "Content-Encoding", "Content-ID", 
+       								"Content-Language", "Content-Length", "Content-Location", 
+       								"Content-Type", "Date", "ETag", "Expires", "Host", "If-Match", 
+       								"If-Modified-Since", "If-None-Match", "If-Unmodified-Since", 
+       								"Last-Modified", "Location", "Link", "Retry-After", "User-Agent", 
+       								"Vary", "WWW-Authenticate", "Cookie", "Set-Cookie"
+       							]
+       						},
+       						"value": {
+       							"type": "string"
+       						}
+       					}
+       				},
+       				"exQueryPart": {
+       					"type": "string"
+       				},
+       				"expectedResCode": {
+       					"type": "integer",
+       					"defaultIndex": 0,
+       					"enum": [200, 201, 202, 204, 205, 206, 301, 302, 303, 304, 305, 307, 400, 401, 
+       						402, 403, 404, 405, 406, 407, 408, 409, 410, 411, 412, 413, 414, 415, 416, 
+       						417, 500, 501, 502, 503, 504, 505
+       					]
+       				},
+       				"expectedResContentType": {
+       					"type": "string"
+       				},
+       				"expectedResContent": {
+       					"type": "string",
+       					"ui": "textarea"
+       				},
+       				"skipTest": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"detailedLog": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"secure": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"expectedNodes": {
+       					"type": "array",
+       					"items": {
+       						"nolabel": true,
+       						"type": "string"
+       					}
+       				},
+       				"soapBase": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"wsdlKey": {
+       					"type": "string"
+       				},
+       				"operationName": {
+       					"type": "string"
+       				},
+       				"soapParameterValues": {
+       					"type": "map",
+       					"types": {
+       						"key": {
+       							"type": "string"
+       						},
+       						"value": {
+       							"type": "string"
+       						}
+       					}
+       				},
+       				"workflowContextParameterMap": {
+       					"type": "map",
+       					"types": {
+       						"key": {
+       							"type": "string"
+       						},
+       						"value": {
+       							"type": "string"
+       						}
+       					}
+       				},
+       				"sequence": {
+       					"type": "integer"
+       				},
+       				"filesToUpload": {
+       					"type": "array",
+       					"items": {
+       						"nolabel": true,
+       						"type": "string"
+       					}
+       				},
+       				"outFileName": {
+       					"type": "string"
+       				},
+       				"repeatScenarioProviderName": {
+       					"type": "string",
+       					"defaultIndex": 0,
+       					"enumVar": "miscMap['providers']"
+       				},
+       				"numberOfExecutions": {
+       					"type": "integer"
+       				},
+       				"repeatScenariosConcurrentExecution": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"stopOnFirstFailureForPerfTest": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"simulationNumber": {
+       					"type": "integer"
+       				},
+       				"preWaitMs": {
+       					"type": "number"
+       				},
+       				"postWaitMs": {
+       					"type": "number"
+       				},
+       				"reportResponseContent": {
+       					"type": "boolean",
+       					"defaultIndex": 1
+       				},
+       				"preExecutionDataSourceHookName": {
+       					"type": "string",
+       					"defaultIndex": 0,
+       					"enumVar": "miscMap['hooks']"
+       				},
+       				"postExecutionDataSourceHookName": {
+       					"type": "string",
+       					"defaultIndex": 0,
+       					"enumVar": "miscMap['hooks']"
+       				},
+       				"abortOnInvalidStatusCode": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"abortOnInvalidContentType": {
+       					"type": "boolean",
+       					"required": true
+       				},
+       				"relatedTestName": {
+       					"type": "string",
+       					"defaultIndex": 0,
+       					"enumVar": "currtestcases"
+       				},
+       				"executeOnCondition": {
+       					"type": "string"
+       				},
+       				"logicalValidations": {
+       					"type": "array",
+       					"items": {
+       						"nolabel": true,
+       						"type": "string"
+       					}
+       				},
+       				"perfConfig": {
+       					"label": {
+    						"type": "section",
+    						"value": "Performance Test Details"
+    					},
+  						"type": "object",
+  						"properties": {
+  							"type": {
+  								"type": "string",
+      							"defaultIndex": 1,
+      							"enum": ["wrk", "wrk2", "autocannon"]
+  							},
+  							"connections": {
+  								"type": "number"
+  							},
+  							"durationSeconds": {
+  								"type": "number"
+  							},
+  							"threads": {
+  								"type": "number"
+  							},
+  							"rate": {
+  								"type": "number"
+  							},
+  							"scriptPath": {
+  								"type": "string"
+  							},
+  							"timeout": {
+  								"type": "number"
+  							},
+  							"latency": {
+  								"type": "boolean"
+  							}
+  						}
+       				}
+       			}
+       		};
+        		
         	function isPrimitive(type)
         	{
         		return (type=='string' || type=='number' || type=='integer' 
@@ -1640,7 +1863,411 @@
 			function configuration()
 			{
 				$('#heading_main').html('Manage Configuration');
-				var configschema = JSON.parse('{ "type": "object", "properties": {"baseUrl": {"type": "string"},"testCasesBasePath": {"type": "string"},"testCaseDir": {"type": "string"},"outFilesBasePath": {"type": "string"},"outFilesDir": {"type": "string"},"authEnabled": {"type": "boolean","required": true},"authUrl": {"type": "string"},"authExtractAuth": {"type": "string"},"authParamsDetails": {"type": "string"},"wsdlLocFile": {"type": "string"},"soapAuthEnabled": {"type": "boolean","required": true},"soapAuthWsdlKey": {"type": "string"},"soapAuthOperation": {"type": "string"},"soapAuthExtractAuth": {"type": "string"},"numConcurrentExecutions": {"type": "integer"},"httpCompressionEnabled": {"type": "boolean","required": true},"httpConnectionTimeout": {"type": "integer"},"httpRequestTimeout": {"type": "integer"},"concurrentUserSimulationNum": {"type": "integer"},"testDataConfigFile": {"type": "string"},"authDataProvider": {"type": "string","defaultIndex": 1,"enumVar": "miscMap[\'providers\']"},"compareEnabled": {"type": "boolean","required": true},"enabled": {"type": "boolean"},"loadTestingEnabled": {"type": "boolean","required": true},"loadTestingTime": {"type": "number"},"distributedLoadTests": {"type": "boolean","required": true},"compareBaseUrlsNum": {"type": "integer"},"concurrentUserRampUpTime": {"type": "number"},"loadTestingReportSamples": {"type": "integer"},"repeatSuiteExecutionNum": {"type": "integer"},"isGenerateExecutionLogs": {"type": "boolean","required": false},"isSeleniumExecutor": {"type": "boolean","required": false},"seleniumScripts": {"type": "array","items": {"nolabel": true,"type": "string"}},"seleniumLoggerPreferences": {"type": "string"},"javaHome": {"type": "string"},"seleniumDriverConfigs": {"label": {"type": "section","value": "Selenium Driver Configurations"},"type": "array","items": {"type": "object","properties": {"name": {"type": "string"},"version": {"type": "string"},"platform": {"type": "string"},"driverName": {"type": "string"},"path": {"type": "string"},"capabilities": {"label": {"type": "section","value": "Capabilities"},"type": "map","types": {"key": {"type": "string"},"value": {"type": "string"}}}}}},"debugEnabled": {"type": "boolean","required": true},"isOrderByFileName": {"type": "boolean","required": true},"isServerLogsApiAuthEnabled": {"type": "boolean","required": true},"serverLogsApiAuthExtractAuth": {"type": "string"},"isFetchFailureLogs": {"type": "boolean","required": true},"testCaseHooksPaths": {"type": "array","items": {"nolabel": true,"type": "string"}},"distributedNodes": {"label": {"type": "section","value": "Distributed Load Test Nodes"},"type": "array","items": {"nolabel": true,"type": "string"}},"ignoreFiles": {"type": "array","items": {"nolabel": true,"type": "string"}},"orderedFiles": {"type": "array","items": {"nolabel": true,"type": "string","enumVar": "alltestcasefiles"}},"gatfTestDataConfig": {"type": "object","properties": {"globalVariables": {"label": {"type": "section","value": "Global Test Variables"},"type": "map","types": {"key": {"type": "string"},"value": {"type": "string"}}},"compareEnvBaseUrls": {"label": {"type": "section","value": "Comparison Environments"},"type": "array","items": {"nolabel": true,"type": "string"}},"dataSourceList": {"label": {"type": "section","value": "Data Sources"},"type": "array","items": {"type": "object","properties": {"dataSourceName": {"type": "string"},"dataSourceClass": {"type": "string","enumVar": "miscMap[\'datasourcecls\']"},"poolSize": {"type": "integer"},"newResourceCheckoutTimeMs": {"type": "number"},"args": {"type": "array","items": {"nolabel": true,"type": "string"}}}}},"dataSourceListForProfiling": {"label": {"type": "section","value": "Data Sources For Profiling"},"type": "array","items": {"type": "object","properties": {"dataSourceName": {"type": "string"},"dataSourceClass": {"type": "string","enumVar": "miscMap[\'datasourcecls\']"},"poolSize": {"type": "integer"},"newResourceCheckoutTimeMs": {"type": "number"},"args": {"type": "array","items": {"nolabel": true,"type": "string"}}}}},"providerTestDataList": {"label": {"type": "section","value": "Test Data Providers"},"type": "array","items": {"type": "object","properties": {"dataSourceName": {"type": "string","enumVar": "miscMap[\'datasources\']"},"providerName": {"type": "string"},"providerClass": {"type": "string","enumVar": "miscMap[\'providercls\']"},"sourceProperties": {"type": "string"},"providerProperties": {"type": "string"},"queryStr": {"type": "string"},"enabled": {"type": "boolean"},"args": {"type": "array","items": {"nolabel": true,"type": "string"}},"live": {"type": "boolean"}}}},"dataSourceHooks": {"label": {"type": "section","value": "Data Source Hooks"},"type": "array","items": {"type": "object","properties": {"hookName": {"type": "string"},"hookClass": {"type": "string"},"dataSourceName": {"type": "string","enumVar": "miscMap[\'datasources\']"},"queryStrs": {"type": "array","items": {"nolabel": true,"type": "string"}},"executeOnStart": {"type": "boolean","required": true},"executeOnShutdown": {"type": "boolean","required": true}}}}},"name": "GatfTestDataConfig"} } }');
+				var configschema = {
+					"type": "object",
+					"properties": {
+						"baseUrl": {
+							"type": "string"
+						},
+						"testCasesBasePath": {
+							"type": "string"
+						},
+						"testCaseDir": {
+							"type": "string"
+						},
+						"outFilesBasePath": {
+							"type": "string"
+						},
+						"outFilesDir": {
+							"type": "string"
+						},
+						"authEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"authUrl": {
+							"type": "string"
+						},
+						"authExtractAuth": {
+							"type": "string"
+						},
+						"authParamsDetails": {
+							"type": "string"
+						},
+						"wsdlLocFile": {
+							"type": "string"
+						},
+						"soapAuthEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"soapAuthWsdlKey": {
+							"type": "string"
+						},
+						"soapAuthOperation": {
+							"type": "string"
+						},
+						"soapAuthExtractAuth": {
+							"type": "string"
+						},
+						"numConcurrentExecutions": {
+							"type": "integer"
+						},
+						"httpCompressionEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"httpConnectionTimeout": {
+							"type": "integer"
+						},
+						"httpRequestTimeout": {
+							"type": "integer"
+						},
+						"concurrentUserSimulationNum": {
+							"type": "integer"
+						},
+						"testDataConfigFile": {
+							"type": "string"
+						},
+						"authDataProvider": {
+							"type": "string",
+							"defaultIndex": 1,
+							"enumVar": "miscMap['providers']"
+						},
+						"compareEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"enabled": {
+							"type": "boolean"
+						},
+						"loadTestingEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"loadTestingTime": {
+							"type": "number"
+						},
+						"distributedLoadTests": {
+							"type": "boolean",
+							"required": true
+						},
+						"compareBaseUrlsNum": {
+							"type": "integer"
+						},
+						"concurrentUserRampUpTime": {
+							"type": "number"
+						},
+						"loadTestingReportSamples": {
+							"type": "integer"
+						},
+						"repeatSuiteExecutionNum": {
+							"type": "integer"
+						},
+						"isGenerateExecutionLogs": {
+							"type": "boolean",
+							"required": false
+						},
+						"isSeleniumExecutor": {
+							"type": "boolean",
+							"required": false
+						},
+						"seleniumScripts": {
+							"type": "array",
+							"items": {
+								"nolabel": true,
+								"type": "string"
+							}
+						},
+						"seleniumLoggerPreferences": {
+							"type": "string"
+						},
+						"javaHome": {
+							"type": "string"
+						},
+						"seleniumDriverConfigs": {
+							"label": {
+								"type": "section",
+								"value": "Selenium Driver Configurations"
+							},
+							"type": "array",
+							"items": {
+								"type": "object",
+								"properties": {
+									"name": {
+										"type": "string"
+									},
+									"version": {
+										"type": "string"
+									},
+									"platform": {
+										"type": "string"
+									},
+									"driverName": {
+										"type": "string"
+									},
+									"path": {
+										"type": "string"
+									},
+									"capabilities": {
+										"label": {
+											"type": "section",
+											"value": "Capabilities"
+										},
+										"type": "map",
+										"types": {
+											"key": {
+												"type": "string"
+											},
+											"value": {
+												"type": "string"
+											}
+										}
+									}
+								}
+							}
+						},
+						"debugEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"isOrderByFileName": {
+							"type": "boolean",
+							"required": true
+						},
+						"isServerLogsApiAuthEnabled": {
+							"type": "boolean",
+							"required": true
+						},
+						"serverLogsApiAuthExtractAuth": {
+							"type": "string"
+						},
+						"isFetchFailureLogs": {
+							"type": "boolean",
+							"required": true
+						},
+						"testCaseHooksPaths": {
+							"type": "array",
+							"items": {
+								"nolabel": true,
+								"type": "string"
+							}
+						},
+						"distributedNodes": {
+							"label": {
+								"type": "section",
+								"value": "Distributed Load Test Nodes"
+							},
+							"type": "array",
+							"items": {
+								"nolabel": true,
+								"type": "string"
+							}
+						},
+						"ignoreFiles": {
+							"type": "array",
+							"items": {
+								"nolabel": true,
+								"type": "string"
+							}
+						},
+						"orderedFiles": {
+							"type": "array",
+							"items": {
+								"nolabel": true,
+								"type": "string",
+								"enumVar": "alltestcasefiles"
+							}
+						},
+						"gatfTestDataConfig": {
+							"type": "object",
+							"properties": {
+								"globalVariables": {
+									"label": {
+										"type": "section",
+										"value": "Global Test Variables"
+									},
+									"type": "map",
+									"types": {
+										"key": {
+											"type": "string"
+										},
+										"value": {
+											"type": "string"
+										}
+									}
+								},
+								"compareEnvBaseUrls": {
+									"label": {
+										"type": "section",
+										"value": "Comparison Environments"
+									},
+									"type": "array",
+									"items": {
+										"nolabel": true,
+										"type": "string"
+									}
+								},
+								"dataSourceList": {
+									"label": {
+										"type": "section",
+										"value": "Data Sources"
+									},
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"dataSourceName": {
+												"type": "string"
+											},
+											"dataSourceClass": {
+												"type": "string",
+												"enumVar": "miscMap['datasourcecls']"
+											},
+											"poolSize": {
+												"type": "integer"
+											},
+											"newResourceCheckoutTimeMs": {
+												"type": "number"
+											},
+											"args": {
+												"type": "array",
+												"items": {
+													"nolabel": true,
+													"type": "string"
+												}
+											}
+										}
+									}
+								},
+								"dataSourceListForProfiling": {
+									"label": {
+										"type": "section",
+										"value": "Data Sources For Profiling"
+									},
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"dataSourceName": {
+												"type": "string"
+											},
+											"dataSourceClass": {
+												"type": "string",
+												"enumVar": "miscMap['datasourcecls']"
+											},
+											"poolSize": {
+												"type": "integer"
+											},
+											"newResourceCheckoutTimeMs": {
+												"type": "number"
+											},
+											"args": {
+												"type": "array",
+												"items": {
+													"nolabel": true,
+													"type": "string"
+												}
+											}
+										}
+									}
+								},
+								"providerTestDataList": {
+									"label": {
+										"type": "section",
+										"value": "Test Data Providers"
+									},
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"dataSourceName": {
+												"type": "string",
+												"enumVar": "miscMap['datasources']"
+											},
+											"providerName": {
+												"type": "string"
+											},
+											"providerClass": {
+												"type": "string",
+												"enumVar": "miscMap['providercls']"
+											},
+											"sourceProperties": {
+												"type": "string"
+											},
+											"providerProperties": {
+												"type": "string"
+											},
+											"queryStr": {
+												"type": "string"
+											},
+											"enabled": {
+												"type": "boolean"
+											},
+											"args": {
+												"type": "array",
+												"items": {
+													"nolabel": true,
+													"type": "string"
+												}
+											},
+											"live": {
+												"type": "boolean"
+											}
+										}
+									}
+								},
+								"dataSourceHooks": {
+									"label": {
+										"type": "section",
+										"value": "Data Source Hooks"
+									},
+									"type": "array",
+									"items": {
+										"type": "object",
+										"properties": {
+											"hookName": {
+												"type": "string"
+											},
+											"hookClass": {
+												"type": "string"
+											},
+											"dataSourceName": {
+												"type": "string",
+												"enumVar": "miscMap['datasources']"
+											},
+											"queryStrs": {
+												"type": "array",
+												"items": {
+													"nolabel": true,
+													"type": "string"
+												}
+											},
+											"executeOnStart": {
+												"type": "boolean",
+												"required": true
+											},
+											"executeOnShutdown": {
+												"type": "boolean",
+												"required": true
+											}
+										}
+									}
+								}
+							},
+							"name": "GatfTestDataConfig"
+						},
+						"wrkPath": {
+							"type": "string"
+						},
+						"wrk2Path": {
+							"type": "string"
+						},
+						"autocannonPath": {
+							"type": "string"
+						}
+					}
+				};
 				ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema){
 					return function(data) {
 						countMap = {};

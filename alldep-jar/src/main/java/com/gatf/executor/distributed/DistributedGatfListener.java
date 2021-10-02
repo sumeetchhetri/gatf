@@ -464,7 +464,7 @@ public class DistributedGatfListener {
                 if(resource.exists()) {
                 	if(configFile.trim().endsWith(".xml")) {
 	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-	                    XStream.setupDefaultSecurity(xstream);
+	                   
 	                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class,
 	                            GatfTestDataConfig.class, GatfTestDataProvider.class});
 	                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class,

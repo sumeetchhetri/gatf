@@ -6410,7 +6410,7 @@ public class Command {
                 if(resource.exists()) {
                 	if(configFile.trim().endsWith(".xml")) {
 	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-	                    XStream.setupDefaultSecurity(xstream);
+	                   
 	                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class, GatfTestDataSourceHook.class, SeleniumDriverConfig.class,
 	                            GatfTestDataConfig.class, GatfTestDataProvider.class, GatfTestDataSource.class});
 	                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
