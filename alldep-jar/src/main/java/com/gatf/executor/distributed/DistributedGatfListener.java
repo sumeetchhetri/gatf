@@ -19,10 +19,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
-import java.io.OutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.net.URL;
@@ -37,6 +33,8 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
@@ -57,7 +55,7 @@ public class DistributedGatfListener {
 	private static final Logger logger = Logger.getLogger(DistributedGatfListener.class.getSimpleName());
 	
 	public static void main(String[] args) throws Exception {
-		
+		String workingDir = System.getProperty("user.dir");
 	    int port = 9567;
 	    if(args.length>1) {
 	        try {
@@ -66,22 +64,31 @@ public class DistributedGatfListener {
                 logger.info("Invalid port number specified for listener, defaulting to 9567");
             }
 	    }
+	    if(args.length>2) {
+	        try {
+	        	workingDir = args[2].trim();
+	        	if(!new File(workingDir).exists()) {
+	        		throw new RuntimeException("Invalid working directory");
+	        	}
+            } catch (Exception e) {
+            	throw new RuntimeException("Invalid working directory");
+            }
+	    }
 	    
+	    final String wd = workingDir;
 		ServerSocket server = new ServerSocket(port);
 		logger.info("Distributed GATF node listening on port "+port);
 		try {
 			while(true) {
 				final Socket client = server.accept();
-				InputStream in = client.getInputStream();
-				OutputStream out = client.getOutputStream();
 				
-				final ObjectInputStream ois = new ObjectInputStream(in);
-				final ObjectOutputStream oos = new ObjectOutputStream(out);
+				Output oos = new Output(client.getOutputStream());
+				Input ios = new Input(client.getInputStream());
 				
 				new Thread(new Runnable() {
 					public void run() {
 						try {
-							handleCommand(ois, oos);
+							handleCommand(ios, oos, wd);
 						} catch (Exception e) {
 							e.printStackTrace();
 						} finally {
@@ -102,7 +109,7 @@ public class DistributedGatfListener {
 		}
 	}
 	
-	private static void handleCommand(ObjectInputStream ois, final ObjectOutputStream oos) throws Exception {
+	private static void handleCommand(Input ois, final Output oos, final String workingDir) throws Exception {
 		
 		logger.info("Got a new distributed GATF request...");
 		
@@ -110,31 +117,31 @@ public class DistributedGatfListener {
 		DistributedTestContext tContext = null;
 		try {
 			
-			Command command = (Command)ois.readObject();
+			Command command = Command.values()[ois.readInt()];
 			logger.info("Received command - " + command);
 			if(command==Command.CONFIG_SHARE_REQ) {
-				context = (DistributedAcceptanceContext)ois.readObject();
+				context = DistributedAcceptanceContext.unser(ois);
 				if(context!=null) {
-					oos.writeObject(Command.CONFIG_SHARE_RES);
+					oos.writeInt(Command.CONFIG_SHARE_RES.ordinal());
 					oos.flush();
 					logger.info("Fetched GATF configuration...");
 				} else {
-					oos.writeObject(Command.INVALID);
+					oos.writeInt(Command.INVALID.ordinal());
 					oos.flush();
 					logger.info("Invalid GATF configuration received...");
 				}
 			} else {
-				oos.writeObject(Command.INVALID);
+				oos.writeInt(Command.INVALID.ordinal());
 				oos.flush();
 				logger.info("Invalid Command received...");
 			}
 			
-			command = (Command)ois.readObject();
+			command = Command.values()[ois.readInt()];;
 			logger.info("Received command - " + command);
 			if(command==Command.TESTS_SHARE_REQ) {
-				tContext = (DistributedTestContext)ois.readObject();
+				tContext = DistributedAcceptanceContext.unser(ois);
 				if(tContext!=null) {
-					oos.writeObject(Command.TESTS_SHARE_RES);
+					oos.writeInt(Command.TESTS_SHARE_RES.ordinal());
 					oos.flush();
 					logger.info("Fetched GATF tests ...");
 					
@@ -149,8 +156,8 @@ public class DistributedGatfListener {
 								while(true) {
 									Object entry = RuntimeReportUtil.getDLEntry();
 									if(entry!=null) {
-										oos.writeObject(Command.LOAD_TESTS_RES);
-										oos.writeObject(entry);
+										oos.writeInt(Command.LOAD_TESTS_RES.ordinal());
+										DistributedAcceptanceContext.ser(oos, entry);
 										oos.flush();
 									}
 									Thread.sleep(500);
@@ -159,13 +166,10 @@ public class DistributedGatfListener {
 							    Object entry = null;
 								while((entry=RuntimeReportUtil.getDLEntry())!=null)
 								{
-									try {
-										if(entry!=null) {
-											oos.writeObject(Command.LOAD_TESTS_RES);
-											oos.writeObject(entry);
-											oos.flush();
-										}
-									} catch (IOException e1) {
+									if(entry!=null) {
+										oos.writeInt(Command.LOAD_TESTS_RES.ordinal());
+										DistributedAcceptanceContext.ser(oos, entry);
+										oos.flush();
 									}
 								}
 							}
@@ -175,9 +179,9 @@ public class DistributedGatfListener {
 					    dlreporter.start();  
 					}
 					
-					context.getConfig().setTestCasesBasePath(System.getProperty("user.dir"));
-					context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
-					logger.info("Current working directory is: " + System.getProperty("user.dir"));
+					context.getConfig().setTestCasesBasePath(workingDir);
+					context.getConfig().setOutFilesBasePath(workingDir);
+					logger.info("Current working directory is: " + workingDir);
 					
 					GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
 					if(localConfig!=null) {
@@ -212,24 +216,17 @@ public class DistributedGatfListener {
                         Thread.sleep(3000);
                     }
 					
-					oos.writeObject(Command.TESTS_SHARE_RES);
+					oos.writeInt(Command.TESTS_SHARE_RES.ordinal());
 					oos.flush();
 					
 					String fileName = UUID.randomUUID().toString()+".zip";
 					report.setZipFileName(fileName);
 					
-					oos.writeObject(report);
+					DistributedAcceptanceContext.ser(oos, report);
 					oos.flush();
 					logger.info("Writing GATF results...");
 					
-					File basePath = null;
-		        	if(context.getConfig().getOutFilesBasePath()!=null)
-		        		basePath = new File(context.getConfig().getOutFilesBasePath());
-		        	else
-		        	{
-		        		basePath = new File(System.getProperty("user.dir"));
-		        	}
-		        	File resource = new File(basePath, context.getConfig().getOutFilesDir());
+		        	File resource = new File(workingDir, context.getConfig().getOutFilesDir());
 		        	
 					ReportHandler.zipDirectory(resource, new String[]{".html",".csv"}, fileName, false, true);
 					
@@ -240,7 +237,7 @@ public class DistributedGatfListener {
 					oos.flush();
 					logger.info("Done Writing GATF results...");
 				} else {
-					oos.writeObject(Command.INVALID);
+					oos.writeInt(Command.INVALID.ordinal());
 					oos.flush();
 					logger.info("Invalid GATF tests received...");
 				}
@@ -250,17 +247,21 @@ public class DistributedGatfListener {
 		        if(gcdir.exists()) {
 		        	FileUtils.deleteDirectory(gcdir);
 		        }
-				
 				gcdir.mkdir();
 				String fileName = UUID.randomUUID().toString()+".zip";
 				File zipFile = new File(gcdir, fileName);
 	        	FileOutputStream fos = new FileOutputStream(zipFile);
-				IOUtils.copy(ois, fos);
+	        	long length = ois.readLong();
+	        	for (int i=0;i<length;i++) {
+	        		fos.write(ois.read());
+				}
 				fos.flush();
 				fos.close();
 				
 				ReportHandler.unzipZipFile(zipFile, gcdir.getAbsolutePath());
 				zipFile.delete();
+				
+				gcdir = new File(gcdir, "gatf-code");
 				
 				boolean isLoadTestingEnabled = context.getConfig().isLoadTestingEnabled() && context.getConfig().getLoadTestingTime()>10000;
 				
@@ -275,8 +276,8 @@ public class DistributedGatfListener {
                                         String sentry = context1.getNode() + "|" + entry;
                                         entry = sentry;
                                     }
-                                    oos.writeObject(Command.LOAD_TESTS_RES);
-                                    oos.writeObject(entry);
+                                    oos.writeInt(Command.LOAD_TESTS_RES.ordinal());
+                                    DistributedAcceptanceContext.ser(oos, entry);
                                     oos.flush();
                                 }
                                 Thread.sleep(500);
@@ -285,17 +286,14 @@ public class DistributedGatfListener {
                             Object entry = null;
                             while((entry=RuntimeReportUtil.getDLEntry())!=null)
                             {
-                                try {
-                                    if(entry!=null) {
-                                        if(entry instanceof String) {
-                                            String sentry = context1.getNode() + "|" + entry;
-                                            entry = sentry;
-                                        }
-                                        oos.writeObject(Command.LOAD_TESTS_RES);
-                                        oos.writeObject(entry);
-                                        oos.flush();
+                                if(entry!=null) {
+                                    if(entry instanceof String) {
+                                        String sentry = context1.getNode() + "|" + entry;
+                                        entry = sentry;
                                     }
-                                } catch (IOException e1) {
+                                    oos.writeInt(Command.LOAD_TESTS_RES.ordinal());
+                                    DistributedAcceptanceContext.ser(oos, entry);
+                                    oos.flush();
                                 }
                             }
                         }
@@ -305,9 +303,9 @@ public class DistributedGatfListener {
 				    dlreporter.start();
 				}
 				
-				context.getConfig().setTestCasesBasePath(System.getProperty("user.dir"));
-                context.getConfig().setOutFilesBasePath(System.getProperty("user.dir"));
-                logger.info("Current working directory is: " + System.getProperty("user.dir"));
+				context.getConfig().setTestCasesBasePath(workingDir);
+                context.getConfig().setOutFilesBasePath(workingDir);
+                logger.info("Current working directory is: " + workingDir);
                 
                 GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
                 if(localConfig!=null) {
@@ -348,23 +346,23 @@ public class DistributedGatfListener {
                     throw new RuntimeException("Invalid java version found");
                 }
 				
+                System.out.println(gcdir.getAbsolutePath());
 				URL[] urls = new URL[1];
 	            urls[0] = gcdir.toURI().toURL();
 				URLClassLoader classLoader = new URLClassLoader(urls, DistributedGatfListener.class.getClassLoader());
 				Thread.currentThread().setContextClassLoader(classLoader);
 				
 				List<Class<SeleniumTest>> tests = new ArrayList<Class<SeleniumTest>>();
-				@SuppressWarnings("unchecked")
-				List<String> testClassNames = (List<String>)ois.readObject();
+				List<String> testClassNames = DistributedAcceptanceContext.unser(ois);
 				for (String clsname : testClassNames) {
 					@SuppressWarnings("unchecked")
 					Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass(clsname);
 					tests.add(loadedClass);
 				}
 				
-				tContext = (DistributedTestContext)ois.readObject();
+				tContext = DistributedAcceptanceContext.unser(ois);
 				
-				oos.writeObject(Command.SELENIUM_RES);
+				oos.writeInt(Command.SELENIUM_RES.ordinal());
 				oos.flush();
 				
 				if(tests==null || tests.size()==0 || context.getConfig().isValidSeleniumRequest()) {
@@ -400,24 +398,17 @@ public class DistributedGatfListener {
                             Thread.sleep(3000);
                         }
                         
-                        oos.writeObject(Command.TESTS_SHARE_RES);
+                        oos.writeInt(Command.TESTS_SHARE_RES.ordinal());
                         oos.flush();
                         
                         fileName = UUID.randomUUID().toString()+".zip";
                         report.setZipFileName(fileName);
                         
-                        oos.writeObject(report);
+                        DistributedAcceptanceContext.ser(oos, report);
                         oos.flush();
                         logger.info("Writing Selenium results...");
                         
-                        File basePath = null;
-                        if(context.getConfig().getOutFilesBasePath()!=null)
-                            basePath = new File(context.getConfig().getOutFilesBasePath());
-                        else
-                        {
-                            basePath = new File(System.getProperty("user.dir"));
-                        }
-                        File resource = new File(basePath, context.getConfig().getOutFilesDir());
+                        File resource = new File(workingDir, context.getConfig().getOutFilesDir());
                         
                         String runPrefix = "DRun-" + tContext.getIndex();
                         
@@ -441,7 +432,7 @@ public class DistributedGatfListener {
 					logger.info("Selenium Test Request");
 				}
 			} else {
-				oos.writeObject(Command.INVALID);
+				oos.writeInt(Command.INVALID.ordinal());
 				oos.flush();
 				logger.info("Invalid Command received...");
 			}

@@ -81,8 +81,6 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         		fos.close();
             	ReportHandler.unzipZipFile(gctzip, rootDir);
             	gctzip.delete();
-        		IOUtils.copy(GatfConfigToolUtil.class.getResourceAsStream("/index.html"),
-        				new FileOutputStream(rootDir+File.separator+"gatf-config-tool"+File.separator+"index.html"));
         	} catch (Exception e) {
         		throw new RuntimeException(e);
         	}

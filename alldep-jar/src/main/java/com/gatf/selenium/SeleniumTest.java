@@ -49,8 +49,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.openqa.selenium.By;
+import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Point;
@@ -72,6 +72,7 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
@@ -1099,6 +1100,7 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
 				we.clear();
+				blur(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
@@ -1108,7 +1110,9 @@ public abstract class SeleniumTest {
 			}
 		} else if(action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys")) {
 			for(final WebElement we: ret) {
+				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
+				blur(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("upload")) {
@@ -1118,6 +1122,7 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
+				blur(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
@@ -1127,6 +1132,11 @@ public abstract class SeleniumTest {
 				break;
 			}
 		}
+	}
+	
+	protected void blur(WebElement we) {
+		//get___d___().findElement(By.tagName("body"))
+		((JavascriptExecutor)get___d___()).executeScript("arguments[0].blur();", we);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1148,6 +1158,7 @@ public abstract class SeleniumTest {
 		final Object[] o = new Object[2];
 		final SeleniumTest test = this;
 		long timeoutRemaining = 0;
+		System.out.println("Searching element => " + by+"@"+classifier);
 		if(timeOutInSeconds<=0) {
 			List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
 			if (el == null || el.isEmpty())  {
@@ -1393,6 +1404,9 @@ public abstract class SeleniumTest {
 					boolean isNotSel = exMsg.contains("org.openqa.selenium.ElementNotSelectableException");
 					boolean isNotInt = exMsg.contains("org.openqa.selenium.ElementNotInteractableException");
 					boolean isNotVis = exMsg.contains("org.openqa.selenium.ElementNotVisibleException");
+					if(isInvClk || isNotSel || isNotInt || isNotVis) {
+						resp = null;
+					}
 					if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
@@ -1431,6 +1445,9 @@ public abstract class SeleniumTest {
 					boolean isNotSel = exMsg.contains("org.openqa.selenium.ElementNotSelectableException");
 					boolean isNotInt = exMsg.contains("org.openqa.selenium.ElementNotInteractableException");
 					boolean isNotVis = exMsg.contains("org.openqa.selenium.ElementNotVisibleException");
+					if(isInvClk || isNotSel || isNotInt || isNotVis) {
+						resp = null;
+					}
 					if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
@@ -1514,7 +1531,7 @@ public abstract class SeleniumTest {
 		if(!noExcep && !flag) {
 			throw new RuntimeException(exmsg);
 		} else if(noExcep) {
-			resp = null;
+			//resp = null;
 		}
 		return resp;
 	}

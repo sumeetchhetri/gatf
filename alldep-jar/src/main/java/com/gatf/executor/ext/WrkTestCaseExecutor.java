@@ -252,7 +252,7 @@ public class WrkTestCaseExecutor {
 	    return retval;
 	}
 
-	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr) throws Exception {
+	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {
 		GatfExecutorConfig config = context.getGatfExecutorConfig();
 
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("wrk")) {
@@ -334,13 +334,16 @@ public class WrkTestCaseExecutor {
 			StringBuilder out = new StringBuilder();
 			StringBuilder err = new StringBuilder();
 			
-			executeInt(builderList, out, err, tcr, config.getBaseUrl());
+			long start = System.currentTimeMillis();
+			executeInt(builderList, out, err, tcr, tc.getBaseUrl());
 			
-			if(config.getGatfTestDataConfig()!=null && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
-				for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
-					String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-					builderList.set(builderList.size()-1, aurl);
-					executeInt(builderList, out, err, tcr, burl);
+			if(isSingleExecutionContext) {
+				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
+					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
+						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
+						builderList.set(builderList.size()-1, aurl);
+						executeInt(builderList, out, err, tcr, burl);
+					}
 				}
 			}
 			
@@ -349,16 +352,16 @@ public class WrkTestCaseExecutor {
 			}
 
 			if(out.length()>0) {
-				out.insert(0, String.join(" ", builderList)+"\n\n");
 				tcr.setResponseContent(out.toString());
 				tcr.setResponseContentType(MediaType.TEXT_PLAIN);
 				tcr.setStatus(TestStatus.Success.status);
 			}
  			if(err.length()>0) {
-				err.insert(0, String.join(" ", builderList)+"\n\n");
  				tcr.setErrorText(err.toString());
 				tcr.setStatus(TestStatus.Failed.status);
 			}
+ 			
+ 			tcr.setExecutionTime(System.currentTimeMillis() - start);
 		}
 	}
 	
@@ -369,6 +372,7 @@ public class WrkTestCaseExecutor {
 		if(out1.length()>0) {
 			Map<String, Object> retval = parse_wrk_output(out1);
 			tcr.getPerfResult().add(retval);
+			out.append(String.join(" ", builderList)+"\n\n");
 			out.append("Result for ");
 			out.append(baseUrl);
 			out.append("\n");
@@ -376,6 +380,7 @@ public class WrkTestCaseExecutor {
 			out.append("\n\n");
 		}
 		if(err1.length()>0) {
+			err1.append(String.join(" ", builderList)+"\n\n");
 			err.append("Error for ");
 			err.append(baseUrl);
 			err.append("\n");

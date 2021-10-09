@@ -17,10 +17,12 @@ package com.gatf.executor.report;
 
 import java.io.Serializable;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author Sumeet Chhetri
@@ -36,16 +38,18 @@ public class RuntimeReportUtil {
 		String prefix;
 		int runNo;
 		String url;
+		Date time;
 		TestSuiteStats currStats;
 		Map<String, Map<String, List<Object[]>>> currSelStats;
 		
-		public LoadTestEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats) {
+		public LoadTestEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats, Date time) {
 			super();
 			this.node = node;
 			this.prefix = prefix;
 			this.runNo = runNo;
 			this.url = url;
 			this.currStats = currStats;
+			this.time = time;
 		}
         
         public LoadTestEntry(String node, String prefix, int runNo, String url, Map<String, Map<String, List<Object[]>>> currSelStats) {
@@ -55,6 +59,9 @@ public class RuntimeReportUtil {
             this.runNo = runNo;
             this.url = url;
             this.currSelStats = currSelStats;
+        }
+        
+        public LoadTestEntry() {
         }
 		
 		public String getNode() {
@@ -68,6 +75,9 @@ public class RuntimeReportUtil {
 		}
 		public String getUrl() {
 			return url;
+		}
+		public Date getTime() {
+			return time;
 		}
 		public TestSuiteStats getCurrStats() {
 			return currStats;
@@ -131,20 +141,19 @@ public class RuntimeReportUtil {
 		{
 		    if(entry instanceof LoadTestEntry) {
 		        LoadTestEntry lentry = (LoadTestEntry)entry;
-		        Map<String, Object> parts = new HashMap<String, Object>();
+		        List<Object> parts = new ArrayList<Object>();
 	            if(lentry.prefix==null)
 	                lentry.prefix = "Run";
-	            parts.put("title", lentry.prefix+"-"+lentry.runNo);
-	            parts.put("runNo", lentry.runNo+"");
-	            parts.put("url", lentry.url);
-	            parts.put("node", lentry.node);
-	            parts.put("stats", lentry.currStats);
-	            parts.put("selStats", lentry.currSelStats);
+	            parts.add(lentry.prefix);//
+	            parts.add(lentry.runNo+"");
+	            parts.add(lentry.url);
+	            parts.add(lentry.node);
+	            parts.add(lentry.time);
+	            parts.add(lentry.currStats.toList());
+	            parts.add(lentry.currSelStats);
 	            if(lentry.currStats!=null) {
 	                synchronized (gloadStats) {
 	                    gloadStats.updateStats(lentry.currStats, false);
-	                    parts.put("tstats", gloadStats);
-	                    parts.put("error", "Execution already in progress..");
 	                    try {
 	                        Q.add(parts);
 	                    } catch (Exception e) {
@@ -174,22 +183,22 @@ public class RuntimeReportUtil {
 		}
 	}
 	
-	public static void addEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats)
+	public static void addEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats, Date time)
 	{
 		if(registered)
 		{
-			Map<String, Object> parts = new HashMap<String, Object>();
+			List<Object> parts = new ArrayList<Object>();
 			if(prefix==null)
 				prefix = "Run";
-			parts.put("title", prefix+"-"+runNo);
-			parts.put("runNo", runNo+"");
-			parts.put("url", url);
-			parts.put("node", node);
-			parts.put("stats", currStats);
+			parts.add(prefix);
+			parts.add(runNo+"");
+			parts.add(url);
+			parts.add(node);
+			parts.add(time.getTime());
+			parts.add(currStats.toList());
+			parts.add(null);
 			synchronized (gloadStats) {
 				gloadStats.updateStats(currStats, false);
-				parts.put("tstats", gloadStats);
-				parts.put("error", "Execution already in progress..");
 				try {
 					Q.add(parts);
 				} catch (Exception e) {
@@ -214,20 +223,26 @@ public class RuntimeReportUtil {
     public static String getEntry()
 	{
 	    try {
-    	    List<Map<String, Object>> st = new ArrayList<Map<String, Object>>();
+    	    List<List<Object>> st = new ArrayList<List<Object>>();
     	    List<String> sst = new ArrayList<String>();
     	    Object parts = null;
     	    while((parts = Q.poll())!=null) {
     	        if(parts instanceof String) {
     	            sst.add((String)parts);
-    	        } else {
+    	        } /*else if(parts instanceof Map) {
     	            st.add((Map<String, Object>)parts);
+    	        }*/ else {
+    	        	st.add((List<Object>)parts);
     	        }
-    	        if(st.size()>100 || sst.size()>100)break;
+    	        if(st.size()>=1000 || sst.size()>=1000)break;
     	    }
-            String arr = "{\"error\": \"Execution already in progress..\", \"lstats\": " + 
-                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(st) + ", \"sstats\": " + 
-                    new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(sst) + "}";
+    	    String gstats = "";
+    	    synchronized (gloadStats) {
+    	    	gstats = ",\"gstats\":" + new ObjectMapper().writeValueAsString(gloadStats);
+    	    }
+            String arr = "{\"error\":\"Execution already in progress..\",\"lstats\":" + 
+                    new ObjectMapper().writeValueAsString(st) + ",\"sstats\":" + 
+                    new ObjectMapper().writeValueAsString(sst) + gstats + "}";
             return arr;
 	    } catch (Exception e) {
             e.printStackTrace();

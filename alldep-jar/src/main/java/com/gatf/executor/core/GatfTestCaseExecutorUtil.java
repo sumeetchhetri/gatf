@@ -18,8 +18,10 @@ import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.security.Security;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -36,6 +38,10 @@ import java.util.concurrent.FutureTask;
 import java.util.function.Function;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FalseFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.logging.LoggingPreferences;
 
@@ -584,6 +590,23 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if (files != null && files.size() > 0) {
             configuration.setSeleniumScripts(files.toArray(new String[files.size()]));
         }
+        
+        if(configuration.isSeleniumModuleTests()) {
+        	File mdir = context.getResourceFile(configuration.getTestCaseDir());
+        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
+        	List<String> modules = new ArrayList<String>();
+        	for (File f : dirs) {
+    			if(new File(f, "main.sel").exists()) {
+    				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
+    				modules.add(sfpath);
+    			}
+    		}
+        	configuration.setSeleniumScripts(modules.toArray(new String[modules.size()]));;
+        }
+        
+        if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
+        	throw new RuntimeException("Please provide Selenium scripts for execution");
+        }
 
         final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
         final List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
@@ -835,6 +858,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             Map<String, Map<String, List<Object[]>>> summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
             TestSuiteStats stats = new TestSuiteStats();
             int tot = 0, fal = 0, succ = 0, skp = 0;
+            Date time = new Date();
             for (int i = 0; i < tests.size(); i++) {
                 SeleniumTest dyn = tests.get(i).copy(context, index + 1);
                 Object[] retvals = testdata.get(i);
@@ -851,17 +875,17 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 for (int u = 0; u < sessions.size(); u++) {
                     SeleniumTestSession sess = sessions.get(u);
                     for (Map.Entry<String, SeleniumResult> e : sess.getResult().entrySet()) {
-                        String keykey = e.getKey() + (sess.getSessionName() != null ? ("-" + sess.getSessionName()) : "");
+                        String keykey = e.getKey() + (sess.getSessionName() != null ? ("-" + sess.getSessionName()) : StringUtils.EMPTY);
                         if (!summLst.get((String) retvals[0]).containsKey(keykey)) {
                             summLst.get((String) retvals[0]).put(keykey, new ArrayList<Object[]>());
                         }
 
                         SeleniumResult res = e.getValue();
                         if (res.getResult() == null) {
-                            summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", "#", "UNKNOWN", "", "0s"});
+                            summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                             skp++;
                         } else {
-                            String tim = res.getResult().getExecutionTime() / Math.pow(10, 9) + "";
+                            String tim = res.getResult().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                             stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
                             if (tim.indexOf(".") != -1) {
                                 String[] parts = tim.split("\\.");
@@ -870,7 +894,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             tim += "s";
                             String fileName = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", fileName + ".html", res.getResult().isStatus() ? "SUCCESS" : "FAILED",
-                                    !res.getResult().isStatus() ? res.getResult().getLogs().get("gatf").getAll().get(0).getMessage() : "", tim});
+                                    !res.getResult().isStatus() ? res.getResult().getLogs().get("gatf").getAll().get(0).getMessage() : StringUtils.EMPTY, tim});
                             if (dorep) {
                                 ReportHandler.doSeleniumTestReport(fileName, retvals, res.getResult(), context);
                             }
@@ -885,10 +909,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                         for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet()) {
                             if (e1.getValue() == null) {
-                                summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", "", "0s"});
+                                summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                                 skp++;
                             } else {
-                                String tim = e1.getValue().getExecutionTime() / Math.pow(10, 9) + "";
+                                String tim = e1.getValue().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                                 stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
                                 if (tim.indexOf(".") != -1) {
                                     String[] parts = tim.split("\\.");
@@ -898,7 +922,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 String fileName = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "-"
                                         + e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), fileName + ".html", e1.getValue().isStatus() ? "SUCCESS" : "FAILED",
-                                        !e1.getValue().isStatus() ? e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage() : "", tim});
+                                        !e1.getValue().isStatus() ? e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage() : StringUtils.EMPTY, tim});
                                 if (dorep) {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
                                 }
@@ -925,9 +949,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             stats.setTotalSuiteRuns(1);
             
             if(node.equals("local")) {
-                RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats);
+                RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time);
             } else {
-                LoadTestEntry lentry = new LoadTestEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats);
+                LoadTestEntry lentry = new LoadTestEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time);
                 RuntimeReportUtil.addLEntry(lentry);
             }
             return summLst;
@@ -954,7 +978,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             if(configuration.isValidSeleniumRequest()) {
                 doSeleniumTest(configuration, files);
             } else {
-                throw new RuntimeException("Please provide Selenium scripts for execution");
+                throw new RuntimeException("Please provide valid Selenium driver configuration");
             }
             return;
         }
@@ -1164,6 +1188,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
 
             if (numberOfRuns > 1) {
+            	Date execTime = new Date();
                 List<Future> userSimulations = doConcurrentRunExecution(compareEnabledOnlySingleTestCaseExec, numberOfRuns, allTestCases, baseUrlList, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
                         threadPool, dorep, reportHandler);
 
@@ -1180,19 +1205,20 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 doAsyncConcReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
-                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), (System.currentTimeMillis() - suiteStartTime));
+                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), (System.currentTimeMillis() - suiteStartTime), execTime);
 
                 if (dorep && isLoadTestingEnabled) {
                     loadTestRunNum++;
                     loadTstReportsCount++;
                 }
             } else {
+            	Date execTime = new Date();
                 long currentTime = System.currentTimeMillis();
                 String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
                 executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec, reportHandler);
 
                 doAsyncReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
-                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, (System.currentTimeMillis() - suiteStartTime));
+                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, (System.currentTimeMillis() - suiteStartTime), execTime);
 
                 if (dorep && isLoadTestingEnabled) {
                     loadTestRunNum++;
@@ -1277,7 +1303,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     private void doAsyncConcReporting(final boolean compareEnabledOnlySingleTestCaseExec, final ReportHandler reportHandler, final long suiteStartTime, final String fileurl,
             final boolean isLoadTestingEnabled, final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, final boolean dorep, final Integer loadTestRunNum,
             final List<LoadTestResource> loadTestResources, final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool, final int concrunNos,
-            final long suiteExecTime) {
+            final long suiteExecTime, final Date time) {
         reportingThreadPool.execute(new Runnable() {
             public void run() {
                 for (int y = 0; y < concrunNos; y++) {
@@ -1295,14 +1321,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 doAsyncReporting(compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
-                        loadTestResources, numberOfRuns, loadStats, null, suiteExecTime);
+                        loadTestResources, numberOfRuns, loadStats, null, suiteExecTime, time);
             }
         });
     }
 
     private void doAsyncReporting(final boolean compareEnabledOnlySingleTestCaseExec, final ReportHandler reportHandler, final long suiteStartTime, final String fileurl,
             final boolean isLoadTestingEnabled, final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles, final boolean dorep, final Integer loadTestRunNum,
-            final List<LoadTestResource> loadTestResources, final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool, final long suiteExecTime) {
+            final List<LoadTestResource> loadTestResources, final int numberOfRuns, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool, final long suiteExecTime, Date time) {
         Runnable runnable = new Runnable() {
             public void run() {
                 if (compareEnabledOnlySingleTestCaseExec) {
@@ -1310,7 +1336,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     stats.setExecutionTime(suiteExecTime);
                     synchronized (loadStats) {
                         loadStats.copy(stats);
-                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats);
+                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
                     }
                 } else if (dorep) {
                     TestSuiteStats stats = null;
@@ -1330,14 +1356,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 stats.setGroupStats(null);
                                 loadStats.updateStats(stats, false);
                             }
-                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats);
+                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
                         }
                         reportHandler.clearForLoadTests(context);
                     } else {
                         synchronized (loadStats) {
                             loadStats.copy(stats);
                             loadStats.setTotalUserSuiteRuns(numberOfRuns);
-                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats);
+                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
                         }
                     }
                 } else {
@@ -1349,7 +1375,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         } else {
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, null, stats);
+                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, null, stats, time);
                     }
                 }
             }
@@ -1539,9 +1565,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     if (logData.get(0).getStatus().equals(TestStatus.Success.status))
                         testCaseReport.setServerLogs(logData.get(0).getResponseContent());
                     else {
-                        String content = logData.get(0).getError() != null ? logData.get(0).getError() : "";
+                        String content = logData.get(0).getError() != null ? logData.get(0).getError() : StringUtils.EMPTY;
                         content += "\n";
-                        content += logData.get(0).getErrorText() != null ? logData.get(0).getErrorText() : "";
+                        content += logData.get(0).getErrorText() != null ? logData.get(0).getErrorText() : StringUtils.EMPTY;
                         testCaseReport.setServerLogs(content);
                     }
                 }
@@ -1873,6 +1899,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
 
             if (numberOfRuns > 1) {
+            	Date time = new Date();
                 List<Future> userSimulations =
                         doConcurrentRunExecution(false, numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs, threadPool, dorep, reportHandler);
 
@@ -1889,17 +1916,18 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 doAsyncDistributedConcReporting(reportHandler, suiteStartTime, fileurl, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, numberOfRuns, loadStats,
-                        reportingThreadPool, userSimulations.size(), runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime));
+                        reportingThreadPool, userSimulations.size(), runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
 
                 if (dorep) {
                     loadTestRunNum++;
                     loadTstReportsCount++;
                 }
             } else {
+            	Date time = new Date();
                 executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false, reportHandler);
 
                 doAsyncDistributedReporting(reportHandler, suiteStartTime, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, loadStats, reportingThreadPool, tContext,
-                        runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime));
+                        runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
 
                 if (dorep) {
                     loadTestRunNum++;
@@ -1980,11 +2008,32 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if (dContext.getConfig().isSeleniumExecutor()) {
 
             for (SeleniumDriverConfig selConf : dContext.getConfig().getSeleniumDriverConfigs()) {
-                if (selConf.getDriverName() != null) {
+                if (selConf != null && selConf.getDriverName() != null) {
                     System.setProperty(selConf.getDriverName(), selConf.getPath());
                 }
             }
-            System.setProperty("java.home", dContext.getConfig().getJavaHome());
+            //System.setProperty("java.home", configuration.getJavaHome());
+            System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+            Security.setProperty("crypto.policy", "unlimited");
+
+            try {
+                SeleniumCodeGeneratorAndUtil.clean();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            
+            if(dContext.getConfig().isSeleniumModuleTests()) {
+            	File mdir = context.getResourceFile(dContext.getConfig().getTestCaseDir());
+            	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
+            	List<String> modules = new ArrayList<String>();
+            	for (File f : dirs) {
+        			if(new File(f, "main.sel").exists()) {
+        				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
+        				modules.add(sfpath);
+        			}
+        		}
+            	dContext.getConfig().setSeleniumScripts(modules.toArray(new String[modules.size()]));
+            }
 
             final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(dContext.getConfig());
 
@@ -2150,7 +2199,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     private void doAsyncDistributedConcReporting(final ReportHandler reportHandler, final long suiteStartTime, final String fileurl, final TestExecutionPercentile testPercentiles,
             final TestExecutionPercentile runPercentiles, final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, final int numberOfRuns,
             final TestSuiteStats loadStats, final ExecutorService reportingThreadPool, final int concrunNos, final String runPrefix, final DistributedAcceptanceContext dContext,
-            final long suiteExecTime) {
+            final long suiteExecTime, Date time) {
         reportingThreadPool.execute(new Runnable() {
             public void run() {
                 for (int y = 0; y < concrunNos; y++) {
@@ -2173,7 +2222,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             stats.setGroupStats(null);
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats));
+                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats, time));
                     }
                     reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
                     reportHandler.clearForLoadTests(context);
@@ -2186,7 +2235,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         } else {
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats));
+                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats, time));
                     }
                 }
             }
@@ -2195,7 +2244,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
     private void doAsyncDistributedReporting(final ReportHandler reportHandler, final long suiteStartTime, final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles,
             final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool,
-            final DistributedTestContext tContext, final String runPrefix, final DistributedAcceptanceContext dContext, final long suiteExecTime) {
+            final DistributedTestContext tContext, final String runPrefix, final DistributedAcceptanceContext dContext, final long suiteExecTime, Date time) {
         reportingThreadPool.execute(new Runnable() {
             public void run() {
                 if (dorep) {
@@ -2211,7 +2260,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             stats.setGroupStats(null);
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats));
+                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats, time));
                     }
                     reportHandler.clearForLoadTests(context);
                 } else {
@@ -2223,7 +2272,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         } else {
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats));
+                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats, time));
                     }
                 }
             }

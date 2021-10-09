@@ -53,6 +53,8 @@ public class TestSuiteStats implements Serializable {
 	private Integer totalUserSuiteRuns = 0;
 	
 	private List<TestGroupStats> groupStats = new ArrayList<TestGroupStats>();
+	
+	private List<Object[]> exStats = new ArrayList<Object[]>();
 
 	public Integer getTotalTestCount() {
 		return totalTestCount;
@@ -134,6 +136,14 @@ public class TestSuiteStats implements Serializable {
 		this.totalUserSuiteRuns = totalUserSuiteRuns;
 	}
 
+	public List<Object[]> getExStats() {
+		return exStats;
+	}
+
+	public void setExStats(List<Object[]> exStats) {
+		this.exStats = exStats;
+	}
+
 	public void updateStats(TestSuiteStats stats, boolean isUserRuns) {
 		setActualExecutionTime(getActualExecutionTime() + stats.getActualExecutionTime());
 		setFailedRuns(getFailedRuns() +  stats.getFailedRuns());
@@ -144,6 +154,7 @@ public class TestSuiteStats implements Serializable {
 			setTotalSuiteRuns(getTotalSuiteRuns() + stats.getTotalSuiteRuns());
 		setSkippedTestCount(getSkippedTestCount() + stats.getSkippedTestCount());
 		setExecutionTime(getExecutionTime() + stats.getExecutionTime());
+		//getExStats()
 	}
 	
 	public void copy(TestSuiteStats stats) {
@@ -208,5 +219,15 @@ public class TestSuiteStats implements Serializable {
 		builder.append(failedRuns);
 		builder.append("\n");
 		return builder.toString();
+	}
+	
+	@SuppressWarnings("serial")
+	public List<Object> toList() {
+		return new ArrayList<Object>() {{
+			add(totalTestCount);
+			add(failedTestCount);
+			add(skippedTestCount);
+			add(executionTime);
+		}};
 	}
 }

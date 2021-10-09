@@ -98,6 +98,8 @@ public class TestCaseExecutorUtil {
 	
 	private AcceptanceTestContext context = null;
 	
+	private boolean singleExecutionContext  = false;
+	
     private void trustAllCertificates(OkHttpClient.Builder builder) {
     	final TrustManager[] trustAllCerts = new TrustManager[] {
     			new X509TrustManager() {
@@ -531,7 +533,7 @@ public class TestCaseExecutorUtil {
 			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && testCase.getPerfConfig().getType().startsWith("wrk")) {
 				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
 				if(testCase.getPerfConfig().getType().startsWith("wrk")) {
-					WrkTestCaseExecutor.execute(context, testCase, testCaseReport);
+					WrkTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
 				} else {
 					//TODO autocannon
 				}
@@ -656,7 +658,7 @@ public class TestCaseExecutorUtil {
 			{
 				testCaseReport.setResponseContent(response.body().string());
 			}
-			if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
+			else if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
 			{
 				testCaseReport.setResponseContent(response.body().string());
 			}
@@ -716,5 +718,13 @@ public class TestCaseExecutorUtil {
 	public void shutdown()
 	{
 		client.connectionPool().evictAll();
+	}
+
+	public boolean isSingleExecutionContext() {
+		return singleExecutionContext;
+	}
+
+	public void setSingleExecutionContext(boolean singleExecutionContext) {
+		this.singleExecutionContext = singleExecutionContext;
 	}
 }

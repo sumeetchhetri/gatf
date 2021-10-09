@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -40,10 +41,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.text.StringEscapeUtils;
+import org.apache.commons.io.filefilter.FalseFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.Keys;
 import org.reflections.Reflections;
 
@@ -2300,8 +2303,8 @@ public class Command {
             b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;\n");
             b.append("sleep(1000);\n");
             b.append("if("+cntvar+"++=="+counter+")break;\n");
-            b.append("}");
-            for (Command command : children) {
+            b.append("}\n");
+            /*for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
                     b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
                 } else if(command instanceof SelectCommand) {
@@ -2316,7 +2319,7 @@ public class Command {
                 	b.append(((ClearCommand)command).javacodeonly(cond.getActionableVar()));
                 }
             }
-            b.append("\n");
+            b.append("\n");*/
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -2386,7 +2389,7 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             b.append(cond.javacodeonly(children));
-            for (Command command : children) {
+            /*for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
                     b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
                 } else if(command instanceof SelectCommand) {
@@ -2400,7 +2403,7 @@ public class Command {
                 } else if(command instanceof ClearCommand) {
                 	b.append(((ClearCommand)command).javacodeonly(cond.getActionableVar()));
                 }
-            }
+            }*/
             //if(!(cond instanceof WaitAndFindCommand))
             //b.append("\nAssert.assertTrue("+cond.condition()+");");
             return b.toString();
@@ -4469,19 +4472,21 @@ public class Command {
                 b.append(cond.getActionable("sendKeys", "evaluate(\""+esc(value)+"\")", null));
             } else {
                 b.append("\n"+state.currvarname()+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
+                b.append("\nblur("+state.currvarname()+".get(0));\n");
             }
             return b.toString();
         }
         String javacodeonly(String cvarnm) {
         	StringBuilder b = new StringBuilder();
         	b.append("\n"+cvarnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
+        	b.append("\nblur("+cvarnm+".get(0));\n");
             return b.toString();
         }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));";
+            return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));\nblur("+varnm+".get(0));\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -4596,14 +4601,17 @@ public class Command {
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
                 b.append("\nrandomize("+cond.getActionableVar()+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+                b.append("\nblur("+cond.getActionableVar()+".get(0));\n");
             } else {
                 b.append("\nrandomize(___ce___, \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+                b.append("\nblur(___ce___.get(0));\n");
             }
             return b.toString();
         }
         String javacodeonly(String condVarnm) {
             StringBuilder b = new StringBuilder();
             b.append("\nrandomize("+condVarnm+", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+            b.append("\nblur("+condVarnm+".get(0));\n");
             return b.toString();
         }
         String ifTextEl() {
@@ -4630,7 +4638,7 @@ public class Command {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(v1)+"\"));";
+            return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(v1)+"\"));\nblur("+varnm+".get(0));\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -4709,6 +4717,7 @@ public class Command {
                     b.append(cond.getActionable("sendKeys", "Keys.chord("+chs+")", null));
                 } else {
                     b.append("\n"+state.currvarname()+".get(0).sendKeys(Keys.chord("+chs+"));");
+                    b.append("\nblur("+state.currvarname()+".get(0));\n");
                 }
             }
             return b.toString();
@@ -4723,7 +4732,7 @@ public class Command {
                     chs += values.get(i);
                     chs += (i!=values.size()-1)?", ":"";
                 }
-                return "\n"+varnm+".get(0).sendKeys(Keys.chord("+chs+"));";
+                return "\n"+varnm+".get(0).sendKeys(Keys.chord("+chs+"));\nblur("+varnm+".get(0));\n";
             }
             return "";
         }
@@ -6321,6 +6330,20 @@ public class Command {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
+    	File mdir = new File("/Users/sumeetc/Projects/GitHub/gatf");
+    	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
+    	List<String> modules = new ArrayList<String>();
+    	for (File f : dirs) {
+			if(new File(f, "main.sel").exists()) {
+				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), "");
+				modules.add(sfpath);
+			}
+		}
+    	System.out.println(modules);
+    	System.exit(0);
+    	
+    	
+    	
     	System.out.println(UUID.randomUUID().toString());
     	Reflections r = new Reflections("com.gatf.selenium");
     	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);

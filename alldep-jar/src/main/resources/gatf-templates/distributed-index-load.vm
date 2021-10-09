@@ -17,7 +17,7 @@
 			}
 			pre {
 				background-color: white;
-				width;auto;
+				width:auto;
 			}
 
 			handcursor {
@@ -53,7 +53,7 @@
 		<!-- /#wrapper -->
 
 		<!-- Core Scripts - Include with every page -->
-		<script src="js/jquery-2.1.0.min.js"></script>
+		<script src="js/jquery-3.6.0.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
 		<script>
 			

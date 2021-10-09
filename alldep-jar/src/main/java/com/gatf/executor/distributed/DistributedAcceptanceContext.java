@@ -22,6 +22,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.esotericsoftware.kryo.util.Pool;
 import com.gatf.executor.core.GatfExecutorConfig;
 
 public class DistributedAcceptanceContext implements Serializable {
@@ -55,6 +59,16 @@ public class DistributedAcceptanceContext implements Serializable {
 	List<Object[]> selTestdata = new ArrayList<Object[]>();
     
     private int index;
+    
+    private static Pool<Kryo> pool = new Pool<Kryo>(true, true) {
+		@Override
+		protected Kryo create() {
+			Kryo k = new Kryo();
+			k.setRegistrationRequired(false); 
+            k.setClassLoader(DistributedGatfListener.class.getClassLoader());
+            return k;
+		}
+	};
 	
 	public String getNode() {
 		return node;
@@ -139,5 +153,31 @@ public class DistributedAcceptanceContext implements Serializable {
 
     public void setIndex(int index) {
         this.index = index;
+    }
+    
+	public static void ser(Output output, Object o) {
+        Kryo kryo = pool.obtain();
+        try {
+            kryo.writeClassAndObject(output, o);
+            output.flush();
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.free(kryo);
+        }
+    }
+    
+    @SuppressWarnings("unchecked")
+	public static <T> T unser(Input input) {
+        Kryo kryo = pool.obtain();
+        try {
+            Object r = kryo.readClassAndObject(input);
+            return (T)r;
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            pool.free(kryo);
+        }
+        return null;
     }
 }

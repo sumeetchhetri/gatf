@@ -7,9 +7,11 @@
         <title>GATF Config Tool</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
         <link href="resources/bootstrap.min.css" rel="stylesheet">
+
 		<!-- Page-Level Plugin CSS - Tables -->
-		<link href="resources/dataTables.bootstrap.css" rel="stylesheet">
-		<link href="resources/dataTables.tableTools.css" rel="stylesheet">
+		<link href="css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
+		<!--link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
+		<link rel="stylesheet" href="css/dygraph.css" />
         
         <!--[if lt IE 9]>
           <script src="resources/html5.js"></script>
@@ -489,22 +491,39 @@
 		<div id="push" class=""></div>
 		<script type="text/javascript" src="resources/javascript-xpath-latest-cmp.js"></script>
 		<script type="text/javascript" src="resources/prettify.js"></script>
-        <script type='text/javascript' src="resources/jquery-2.1.0.min.js"></script>
+        <script type='text/javascript' src="resources/jquery-3.6.0.min.js"></script>
         <script type='text/javascript' src="resources/bootstrap.min.js"></script>
 		<script type="text/javascript" src="resources/json2.js"></script>
 		<script type="text/javascript" src="resources/jquery.form.js"></script>
 		<script type="text/javascript" src="resources/testgen.js"></script>
 		<script type="text/javascript" src="resources/jquery.blockUI.js"></script>
 		<script type="text/javascript" src="resources/vkbeautify.js"></script>
-		<link href="resources/prettify.css" rel="stylesheet">
+		<link rel="stylesheet" type="text/css" href="resources/prettify.css">
 		<link rel="stylesheet" type="text/css" href="resources/jquery.datetimepicker.css"/>
 		<script type="text/javascript" src="resources/jquery.datetimepicker.js"></script>
 	    <script type="text/javascript" src="resources/jquery.autosize.min.js"></script>
-		<script type="text/javascript" src="resources/jquery.dataTables.js"></script>
+	    <script type="text/javascript" language="javascript" src="js/plugins/dataTables/jquery.dataTables.min.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/dataTables.buttons.min.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/jszip.min.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/pdfmake.min.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/vfs_fonts.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.html5.min.js"></script>
+		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.print.min.js"></script>
+		<!--  script type="text/javascript" src="resources/jquery.dataTables.js"></script -->
 		<script type="text/javascript" src="resources/dataTables.bootstrap.js"></script>
 		<script type="text/javascript" src="resources/dataTables.tableTools.js"></script>
+		
+		<script type="text/javascript" src="js/dygraph.min.js"></script>
+		<script type="text/javascript" src="js/hdrhistogram.umd.js"></script>
+		
+		<script type="text/javascript" src="js/html2canvas.min.js"></script>
+		<script type="text/javascript" src="js/canvas2image.js"></script>
+		<script type="text/javascript" src="js/FileSaver.js"></script>
+		
 		<script type='text/javascript'>
         	
+			var loadTestData = {hdr: null, dyg: null, points: []};
+		
         	isUseBootstrapUI = true;
 
 			var loadtestingdatatable = null;
@@ -515,7 +534,7 @@
 				};
 			}
 
-			var loadtestingdatatablecnt = 1;
+			var loadtestingdatatablecnt = 0;
         	
         	var schema = {
        			"type": "object",
@@ -714,8 +733,7 @@
   						"properties": {
   							"type": {
   								"type": "string",
-      							"defaultIndex": 1,
-      							"enum": ["wrk", "wrk2", "autocannon"]
+      							"enum": ["none", "wrk", "wrk2", "autocannon"]
   							},
   							"connections": {
   								"type": "number"
@@ -742,7 +760,14 @@
        				}
        			}
        		};
-        		
+        	
+        	function saveAsPngFile() {
+        		html2canvas(document.querySelector('#ExampleBeanServiceImpl_form')).then(function(canvas) {
+        			var tim = "TestDetails_" + new Date().getTime() + ".png";
+            		saveAs(Canvas2Image.convertToPNG(canvas, canvas.width, canvas.height).src, tim);
+        		});
+        	}
+        	
         	function isPrimitive(type)
         	{
         		return (type=='string' || type=='number' || type=='integer' 
@@ -1078,7 +1103,7 @@
 				serverUrl = "http://localhost:9080/";
 				
 				$(document).ready(function() {
-					ajaxCall(true, "GET", "misc", "", "", {}, function(data){
+					ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
 						miscMap = data;
 						startInitConfigTool(configuration);
 					}, null);
@@ -1089,7 +1114,7 @@
 			{
 				$('#heading_main').html('Data Source Statistics');
 				$('#ExampleBeanServiceImpl_form').html('');
-				ajaxCall(true, "GET", "profile?dsnames=all", "", "", {},	function(data1){
+				ajaxCall(true, "GET", "profile?dsnames=all", "", "", {},	function(data1) {
 					for (var property in data1) {
 						if (data1.hasOwnProperty(property)) {
 							var htm = '<u><b>' + property + '</u></b><br/><br/><table id="'+property+'" class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black">';
@@ -1113,9 +1138,9 @@
 										"bDestroy": true,
 										"iDisplayLength": 10,
 										"dom": 'Tlfrtip',
-										"tableTools": {
-											"sSwfPath": "resources/copy_csv_xls_pdf.swf"
-										}
+								        "buttons": [
+								            'copy', 'csv', 'excel', 'pdf', 'print'
+								        ]
 									});
 								}
 								ttable.fnAddData(data1[property][ind], true);
@@ -1139,7 +1164,7 @@
 					}
 					calledbytestfpage = false;
 					//if(!isSeleniumExecutor) {
-						htmm += ' <br/><br/>Overall Statistics<br/><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><div class="hidden"><br/>Subtest Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_sts" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Success Tests</th><th style="color:black">Fail. Tests</th></tr/></thead><tbody></tbody></table></div><br/>Run-Wise Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Failed Tests</th><th style="color:black">Skip. Tests</th><th style="color:black">Time</th></tr/></thead><tbody></tbody></table>';		
+					htmm += '<br/><br/><p>Overall Statistics</p><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><br><table id="lol_hdr"><thead><tr><th>Max</th><th>Min</th><th>Std Dev</th><th>Mean</th><th>50%</th><th>75%</th></tr></thead><tbody id="hdr1"></tbody><thead><tr><th>90%</th><th>97.5%</th><th>99%</th><th>99.9%</th><th>99.99%</th><th>99.999%</th></tr></thead><tbody id="hdr2"></tbody></table><div class="hidden"><br/>Subtest Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_sts" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Success Tests</th><th style="color:black">Fail. Tests</th></tr></thead><tbody></tbody></table></div><br/><p>Run-Wise Statistics</p></table><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Failed Tests</th><th style="color:black">Skip. Tests</th><th style="color:black">Time</th></tr></thead><tbody></tbody></table>';
 					//}
 					$('#ExampleBeanServiceImpl_form').html(htmm);
 					if(isSeleniumExecutor) {
@@ -1161,11 +1186,11 @@
 						"bDestroy": true,
 						"iDisplayLength": 100,
 						"dom": 'Tlfrtip',
-						"tableTools": {
-							"sSwfPath": "resources/copy_csv_xls_pdf.swf"
-						}
+				        "buttons": [
+				            'copy', 'csv', 'excel', 'pdf', 'print'
+				        ]
 					});*/
-					loadtestingdatatablecnt = 1;
+					loadtestingdatatablecnt = 0;
 					$('#heading_main').html('Execute Tests');
 				}
 				else
@@ -1178,7 +1203,7 @@
 			function getExtIntData(extApiFileName, configType)
 			{
 				var isExternal = configType=='issuetrackerapi'?true:false;
-				ajaxCall(true, "GET", "testcases?testcaseFileName="+extApiFileName+"&configType="+configType, "", "", {}, function(isExternal, extApiFileName, configType){
+				ajaxCall(true, "GET", "testcases?testcaseFileName="+extApiFileName+"&configType="+configType, "", "", {}, function(isExternal, extApiFileName, configType) {
 					return function(data1) {
 						currtestcasefile = extApiFileName;
 						var htmm = '';
@@ -1197,7 +1222,7 @@
 								var tcid = 'tc_'+t1;
 								$('#'+tcid).attr('tcfname', data1[t1]["name"]);
 								document.getElementById(tcid).data = data1[t1];
-								$('#'+tcid).click(function(configType, extApiFileName, isExternal){
+								$('#'+tcid).click(function(configType, extApiFileName, isExternal) {
 									return function() {
 										addTestCase(false, this.data, configType, extApiFileName, !isExternal, isExternal);
 									};
@@ -1222,7 +1247,7 @@
 				addTestCase(true, {name: type}, configType, 'gatf-logging-api-int.xml', !isExternal, isExternal);
 			}			
 
-			jQuery.fn.dataTableExt.oSort["alphanum-desc"] = function (a, b) {
+			$.fn.dataTable.ext.type.order["alphanum-desc"] = function (a, b) {
 				if(a.indexOf('</b>')!=-1)
 					a = a.substring(0, a.indexOf('</b>'));
 				if(b.indexOf('</b>')!=-1)
@@ -1246,7 +1271,7 @@
 				}    
 			};
 
-			jQuery.fn.dataTableExt.oSort["alphanum-asc"] = function (a, b) {
+			$.fn.dataTable.ext.type.order["alphanum-asc"] = function (a, b) {
 				if(a.indexOf('</b>')!=-1)
 					a = a.substring(0, a.indexOf('</b>'));
 				if(b.indexOf('</b>')!=-1)
@@ -1271,6 +1296,7 @@
 			};
 
 			//var execTimes = {};
+			var simplifyInterval;
 			var execFiles = new Array();
 			function executionHandler(method, shwPp, pluginType)
 			{
@@ -1281,32 +1307,49 @@
 					cdt = JSON.stringify(execFiles, undefined, 4);
 					cdttype = 'application/json';
 				}
-				ajaxCall(false, method, "execute?pluginType="+pluginType, cdttype, cdt, {}, function(shwPp, pluginType){
+				ajaxCall(false, method, "execute?pluginType="+pluginType, cdttype, cdt, {}, function(shwPp, pluginType) {
 					return function(data) {
 						if(shwPp)alert(data);
-						if(data.error=='Execution already in progress..')
+						if(data.error=='Execution already in progress..' || data.error=="Execution completed, check Reports Section")
 						{
-							setTimeout(function(pluginType) {
-								return function() {
-									executionHandler('GET', false, pluginType)
-								};
-							}(pluginType), 1000);
-							if (data["lstats"]) {
-								for(var i=0;i<data["lstats"].length;i++) {
-									loadStatisticsInTable(data["lstats"][i]);
+							if(data.error=="Execution completed, check Reports Section")
+							{
+								$("#image_status").attr("src", "resources/green.png");
+								if(loadTestData.hdr) {
+									$('#hdr1').html('<tr><td>'+loadTestData.hdr.maxValue+'</td><td>'+loadTestData.hdr.minNonZeroValue+'</td><td>'+loadTestData.hdr.stdDeviation.toFixed(2)+'</td><td>'+loadTestData.hdr.mean.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p50.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p75.toFixed(2)+'</td></tr/>');
+									$('#hdr2').html('<tr><td>'+loadTestData.hdr.summary.p90.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p97_5.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_9.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_99.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_999.toFixed(2)+'</td></tr/>');
 								}
+								$('#image_status').off().on('click', function() {
+									saveAsPngFile();
+								});
+							}
+							else
+							{
+								setTimeout(function(pluginType) {
+									return function() {
+										executionHandler('GET', false, pluginType)
+									};
+								}(pluginType), 1000);
+							}
+							if (data["lstats"] && data["lstats"].length>0) {
+								loadStatisticsInTable(data["lstats"]);
+							}
+							if(data["sstats"] && data["sstats"].length>0) {
 								loadStatisticsInTable2(data["sstats"]);
-							} else {
-								loadStatisticsInTable(data);
+							}
+							if(data["gstats"]) 
+							{
+								$('#lol_tr').html(data["gstats"].totalSuiteRuns);
+								$('#lol_tt').html(data["gstats"].totalTestCount);
+								$('#lol_ft').html(data["gstats"].failedTestCount);
+								$('#lol_st').html(data["gstats"].skippedTestCount);
+								$('#lol_tti').html(data["gstats"].executionTime);
+								$('#lol_eti').html(data["gstats"].actualExecutionTime);
 							}
 						}
 						else if(data.error.indexOf('Execution failed with Error - ')!=-1)
 						{
 							$("#image_status").attr("src", "resources/red.png");
-						}
-						else if(data.error=="Execution completed, check Reports Section")
-						{
-							$("#image_status").attr("src", "resources/green.png");
 						}
 						else if(data.error=="Please Start the Execution....")
 						{
@@ -1322,6 +1365,32 @@
 						}
 						else if(data.error=="Execution Started")
 						{
+							if(data.loadTestingEnabled===true) {
+								if(loadTestData.hdr) {
+									loadTestData.hdr.destroy();
+								}
+								loadTestData.hdr = hdr.build({
+									bitBucketSize: 32,                // may be 8, 16, 32, 64 or 'packed'
+								    autoResize: true,                 // default value is true
+								    lowestDiscernibleValue: 1,        // default value is also 1
+								    highestTrackableValue: Number.MAX_SAFE_INTEGER,         // can increase up to Number.MAX_SAFE_INTEGER
+								    numberOfSignificantValueDigits: 3,// Number between 1 and 5 (inclusive)
+								    useWebAssembly: false              // default value is false, see WebAssembly section for details
+								});
+								loadTestData.points = [];
+								//$('#lol_tblcu').parent().append('<div class="canvas-container cf"> <p class="tolerance-container"><input id="tolerance" type="text" value="0.8" /></p> <canvas id="canvas" width="800" height="400"></canvas> </div>');
+								$('<br/><div id="div_g" style="width:97%; height:400px;"></div><br/>').insertBefore('#lol_tblcu');
+								//loadsimplify(true);
+								//simplifyInterval = setInterval(loadsimplify, 2000);
+								if(loadTestData.dyg) {
+									loadTestData.dyg.destroy();
+								}
+								loadTestData.dyg = new Dygraph(document.getElementById("div_g"), loadTestData.points, {
+		                            drawPoints: true,
+		                            showRoller: true,
+		                            labels: ['Time', 'ExecutionTime']
+		                        });
+							}
 							currltsnum = 0;
 							$("#image_status").attr("src", "resources/red_anime.gif");
 							setTimeout(function(pluginType) {
@@ -1331,32 +1400,49 @@
 							}(pluginType), 1000);
 						}
 					};
-				}(shwPp, pluginType), function(shwPp, pluginType){
+				}(shwPp, pluginType), function(shwPp, pluginType) {
 					return function(data) {
 						if(shwPp)alert(data.error);
-						if(data.error=='Execution already in progress..')
-						{
-							setTimeout(function(pluginType) {
-								return function() {
-									executionHandler('GET', false, pluginType)
-								};
-							}(pluginType), 1000);
-							if (data["lstats"]) {
-								for(var i=0;i<data["lstats"].length;i++) {
-									loadStatisticsInTable(data["lstats"][i]);
+						if(data.error=='Execution already in progress..' || data.error=="Execution completed, check Reports Section")
+							{
+							if(data.error=="Execution completed, check Reports Section")
+							{
+								$("#image_status").attr("src", "resources/green.png");
+								if(loadTestData.hdr) {
+									$('#hdr1').html('<tr><td>'+loadTestData.hdr.maxValue+'</td><td>'+loadTestData.hdr.minNonZeroValue+'</td><td>'+loadTestData.hdr.stdDeviation.toFixed(2)+'</td><td>'+loadTestData.hdr.mean.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p50.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p75.toFixed(2)+'</td></tr/>');
+									$('#hdr2').html('<tr><td>'+loadTestData.hdr.summary.p90.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p97_5.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_9.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_99.toFixed(2)+'</td><td>'+loadTestData.hdr.summary.p99_999.toFixed(2)+'</td></tr/>');
 								}
+								$('#image_status').off().on('click', function() {
+									saveAsPngFile();
+								});
+							}
+							else
+							{
+								setTimeout(function(pluginType) {
+									return function() {
+										executionHandler('GET', false, pluginType)
+									};
+								}(pluginType), 1000);
+							}
+							if (data["lstats"] && data["lstats"].length>0) {
+								loadStatisticsInTable(data["lstats"]);
+							}
+							if(data["sstats"] && data["sstats"].length>0) {
 								loadStatisticsInTable2(data["sstats"]);
-							} else {
-								loadStatisticsInTable(data);
-							}						
+							}
+							if(data["gstats"]) 
+							{
+								$('#lol_tr').html(data["gstats"].totalSuiteRuns);
+								$('#lol_tt').html(data["gstats"].totalTestCount);
+								$('#lol_ft').html(data["gstats"].failedTestCount);
+								$('#lol_st').html(data["gstats"].skippedTestCount);
+								$('#lol_tti').html(data["gstats"].executionTime);
+								$('#lol_eti').html(data["gstats"].actualExecutionTime);
+							}
 						}
 						else if(data.error.indexOf('Execution failed with Error - ')!=-1)
 						{
 							$("#image_status").attr("src", "resources/red.png");
-						}
-						else if(data.error=="Execution completed, check Reports Section")
-						{
-							$("#image_status").attr("src", "resources/green.png");
 						}
 						else if(data.error=="Please Start the Execution....")
 						{
@@ -1372,6 +1458,32 @@
 						}
 						else if(data.error=="Execution Started")
 						{
+							if(data.loadTestingEnabled===true) {
+								if(loadTestData.hdr) {
+									loadTestData.hdr.destroy();
+								}
+								loadTestData.hdr = hdr.build({
+									bitBucketSize: 32,                // may be 8, 16, 32, 64 or 'packed'
+								    autoResize: true,                 // default value is true
+								    lowestDiscernibleValue: 1,        // default value is also 1
+								    highestTrackableValue: Number.MAX_SAFE_INTEGER,  // can increase up to Number.MAX_SAFE_INTEGER
+								    numberOfSignificantValueDigits: 3,// Number between 1 and 5 (inclusive)
+								    useWebAssembly: false              // default value is false, see WebAssembly section for details
+								});
+								loadTestData.points = [];
+								//$('#lol_tblcu').parent().append('<div class="canvas-container cf"> <p class="tolerance-container"><input id="tolerance" type="text" value="0.8" /></p> <canvas id="canvas" width="800" height="400"></canvas> </div>');
+								$('<br/><div id="div_g" style="width:97%; height:400px;"></div><br/>').insertBefore('#lol_tblcu');
+								//loadsimplify(true);
+								//simplifyInterval = setInterval(loadsimplify, 2000);
+								if(loadTestData.dyg) {
+									loadTestData.dyg.destroy();
+								}
+								loadTestData.dyg = new Dygraph(document.getElementById("div_g"), loadTestData.points, {
+		                            drawPoints: true,
+		                            showRoller: true,
+		                            labels: ['Time', 'ExecutionTime']
+		                        });
+							}
 							currltsnum = 0;
 							$("#image_status").attr("src", "resources/red_anime.gif");
 							setTimeout(function(pluginType) {
@@ -1413,52 +1525,38 @@
 			}
 
 			var currltsnum = 0;
-			function loadStatisticsInTable(data)
+			function loadStatisticsInTable(ldata)
 			{
-				currltsnum ++;
-				if(data.hasOwnProperty('stats')) 
+				if(!ldata || ldata.length==0) return;
+				var htm = '';
+				for(var i=0;i<ldata.length;i++) 
 				{
-					/*if(execTimes.hasOwnProperty(data.runNo))
-					{
-						if(execTimes[data.runNo]<data.stats.executionTime)
-							execTimes[data.runNo] = data.stats.executionTime;
+					var data = ldata[ldata.length-i-1];
+					if(loadTestData.hdr) {
+						loadTestData.hdr.recordValue(data[5][3]);
+						//loadTestData.points.push({x:loadtestingdatatablecnt-1, data[5][3]});
+						loadTestData.points.push([new Date(data[4]), data[5][3]]);
 					}
-					else
-					{
-						execTimes[data.runNo] = data.stats.executionTime;
-					}*/
-					var url = loadtestingdatatablecnt++;
-					if(data.node==null)
+				}
+				loadTestData.dyg.updateOptions( { 'file': loadTestData.points } );
+				loadtestingdatatablecnt += ldata.length;
+				$('#hdrstats').html();
+				var len = ldata.length>100?100:ldata.length;
+				for(var i=0;i<len;i++)
+				{
+					var data = ldata[ldata.length-i-1];
+					var url = loadtestingdatatablecnt-i;
+					if(data[3]==null)
 						url = 'L#' + url;
 					else
-						url = data.node + '#' + url;
+						url = data[3] + '#' + url;
 					if(data.url!=null)
-						url = '<a href="/reports/'+data.url+'" onclick="window.open(this.href,\'_blank\');return false;">'+url+'</a>';
-					/*loadtestingdatatable.fnAddData( [
-						 url,  
-						 data.stats.totalTestCount,  
-						 data.stats.failedTestCount,  
-						 data.stats.skippedTestCount,  
-						 data.stats.executionTime], true);
-					loadtestingdatatable.fnSort([[ 0, "desc" ]]);*/
-					$('#lol_tblcu').find('tbody').prepend(')<tr><td style="color:black">'+url+'</td><td style="color:black">'+data.stats.totalTestCount+'</td><td style="color:black">'+data.stats.failedTestCount+'</td><td style="color:black">'+data.stats.skippedTestCount+'</td><td style="color:black">'+data.stats.executionTime+'</td></tr/>');
+						url = '<a href="/reports/'+data[2]+'" onclick="window.open(this.href,\'_blank\');return false;">'+url+'</a>';
+					htm += '<tr><td style="color:black">'+url+'</td><td style="color:black">'+data[5][0]+'</td><td style="color:black">'+data[5][1]+'</td><td style="color:black">'+data[5][2]+'</td><td style="color:black">'+data[5][3]+'</td></tr/>';
+					currltsnum++;
 				}
-				if(data.hasOwnProperty('tstats')) 
-				{
-					$('#lol_tr').html(data.tstats.totalSuiteRuns);
-					$('#lol_tt').html(data.tstats.totalTestCount);
-					$('#lol_ft').html(data.tstats.failedTestCount);
-					$('#lol_st').html(data.tstats.skippedTestCount);
-					$('#lol_tti').html(data.tstats.executionTime);
-					$('#lol_eti').html(data.tstats.actualExecutionTime);
-					/*var exectimestot = 0;
-					for (var k in execTimes)
-					{
-						exectimestot += execTimes[k];
-					}
-					$('#lol_eti').html(exectimestot);*/
-				}
-				if(currltsnum>100) {				
+				$('#lol_tblcu').find('tbody').prepend(htm);
+				if(currltsnum>100) {
 					for(var i=0;i<currltsnum-100;i++) {
 						$('#lol_tblcu').find('tbody tr').last().remove();
 					}
@@ -1521,10 +1619,10 @@
 
 			function manageTcFileHandler(method, tcFileName, tcFileNameTo)
 			{
-				ajaxCall(true, method, "testcasefiles?testcaseFileName="+tcFileName+"&testcaseFileNameTo="+tcFileNameTo, "", "", {}, function(data){
+				ajaxCall(true, method, "testcasefiles?testcaseFileName="+tcFileName+"&testcaseFileNameTo="+tcFileNameTo, "", "", {}, function(data) {
 					alert(data);
 					startInitConfigTool(addTcFileHTml);
-				}, function(data){
+				}, function(data) {
 					alert(data);
 					startInitConfigTool(addTcFileHTml);
 				});
@@ -1533,7 +1631,7 @@
 
 			function testcasesHandler(method, index)
 			{
-				ajaxCall(true, method, "testcases?testcaseFileName="+currtestcasefile, "", "", {"testcasename": currtestcases[index+1]}, function(data){
+				ajaxCall(true, method, "testcases?testcaseFileName="+currtestcasefile, "", "", {"testcasename": currtestcases[index+1]}, function(data) {
 					alert(data);
 					startInitConfigTool(testcasefileView);
 				}, null);
@@ -1553,7 +1651,7 @@
 
 			function startInitConfigTool(func)
 			{
-				ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func){
+				ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func) {
 					return function(data) {
 						alltestcasefiles = data;
 						$('#testcasefile-holder').html('');
@@ -1588,7 +1686,7 @@
 									var fid = 'folder_'+tind;
 									$('#testcasefile-holder').append('<a status="hide" id="'+fid+'" href="#" class="list-group-item asideLink">&nbsp;<u>'+folder+'</u></a>');
 									$('#'+fid).attr('folder', folder);	
-									$('#'+fid).click(function(){
+									$('#'+fid).click(function() {
 										var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/-/g, '').replace(/\./g, '');
 										if($(this).attr('status')=="show")
 										{
@@ -1621,18 +1719,18 @@
 										$('#testcasefile-holder').append('<a id="'+id+'" href="#" class="list-group-item asideLink">&nbsp;'+testFileName+'</a>');
 									}
 									$('#'+id).attr('tcfname', testFileName);								
-									$('#'+id).click(function(){
+									$('#'+id).click(function() {
 										$('#heading_main').html('Manage Tests');
 										currtestcasefile = $(this).attr('tcfname');
 										currtestcases = [''];
-										ajaxCall(true, "GET", "testcases?testcaseFileName="+currtestcasefile, "", "", {}, function(data1){
+										ajaxCall(true, "GET", "testcases?testcaseFileName="+currtestcasefile, "", "", {}, function(data1) {
 											var htmm = '<button class="plusminuslist" onclick=\"addTestCase(true, null, \'\', null, false, false);\">Add New Testcase</button><br/></br/>';
 											if(currtestcasefile.toLowerCase().endsWith(".sel")) {
 												htmm= "";
 												$('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=30 style="width:90%">'+data1+'</textarea>');
 												prepareForm("testcases?testcaseFileName="+currtestcasefile+"&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
 												$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
-												$('#play_test_case').click(function(){
+												$('#play_test_case').click(function() {
 													playTest(currtestcasefile, "", false, false);
 													return false;
 												});
@@ -1654,7 +1752,7 @@
 													var tcid = 'tc_'+t1;
 													$('#'+tcid).attr('tcfname', currtestcasefile);
 													document.getElementById(tcid).data = data1[t1];
-													$('#'+tcid).click(function(){
+													$('#'+tcid).click(function() {
 														addTestCase(false, this.data, '', $('#'+tcid).attr('tcfname'), false, false);
 														return false;
 													});
@@ -1702,7 +1800,7 @@
 					if(tcfname!=null && data!=null)
 					{
 						$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
-						$('#play_test_case').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi){
+						$('#play_test_case').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
 							return function() {
 								playTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
 								return false;
@@ -1716,7 +1814,7 @@
 			{
 				var isserverlogfile = isServerLogsApi?"&isServerLogsApi=true":"";
 				isserverlogfile += isExternalLogsApi?"&isExternalLogsApi=true":"";
-				ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName="+tcf+"&testCaseName="+tc+isserverlogfile, "", "", {}, function(tcf){
+				ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName="+tcf+"&testCaseName="+tc+isserverlogfile, "", "", {}, function(tcf) {
 					return function(data) {
 						if(tcf.toLowerCase().endsWith(".sel")) {
 							$("#myModalB").html('Test Report for script ' + tcf);
@@ -1732,7 +1830,7 @@
 
 			function initiateDownloads()
 			{
-				ajaxCall(true, "GET", "/projectZip", "", "", {}, function(data){
+				ajaxCall(true, "GET", "/projectZip", "", "", {}, function(data) {
 					var content = "<br/>";
 					if(data[0]=="binary")
 						content += "<a href=\"/gatf-test-bin.zip\"><h3>Binary Project</h3></a><br/><br/>";
@@ -1741,7 +1839,7 @@
 					if(data.length>1)
 						content += "<a href=\"/gatf-test-mvn.zip\"><h3>Maven Project</h3></a><br/><br/>";
 					$('#ExampleBeanServiceImpl_form').html(content);
-				}, function(data){
+				}, function(data) {
 					var content = "<p>Error while generating projects..\n" + data+"</p><br/><br/>";
 					$('#ExampleBeanServiceImpl_form').html(content);
 				});
@@ -1851,7 +1949,7 @@
 			{
 				$('#heading_main').html('Generator Configurationuration');
 				var configschema = JSON.parse('{"type":"object","properties":{"testPaths":{"type":"array","items":{"nolabel":true,"type":"string"}},"soapWsdlKeyPairs":{"type":"array","items":{"nolabel":true,"type":"string"}},"urlPrefix":{"type":"string"},"requestDataType":{"type":"string"},"responseDataType":{"type":"string"},"resourcepath":{"type":"string"},"enabled":{"type":"boolean","required":true},"overrideSecure":{"type":"boolean","required":true},"useSoapClient":{"type":"boolean","required":true},"urlSuffix":{"type":"string"},"postmanCollectionVersion":{"type":"integer"},"testCaseFormat":{"type":"string"}}}');
-				ajaxCall(true, "GET", "configure?configType=generator", "", "", {}, function(configschema){
+				ajaxCall(true, "GET", "configure?configType=generator", "", "", {}, function(configschema) {
 					return function(data) {
 						countMap = {};
 						$('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '',data, false, true, true, ''));
@@ -1972,6 +2070,10 @@
 							"type": "boolean",
 							"required": false
 						},
+						"isSeleniumModuleTests": {
+							"type": "boolean",
+							"required": false
+						},
 						"seleniumScripts": {
 							"type": "array",
 							"items": {
@@ -1983,6 +2085,9 @@
 							"type": "string"
 						},
 						"javaHome": {
+							"type": "string"
+						},
+						"gatfJarPath": {
 							"type": "string"
 						},
 						"seleniumDriverConfigs": {
@@ -2013,6 +2118,21 @@
 										"label": {
 											"type": "section",
 											"value": "Capabilities"
+										},
+										"type": "map",
+										"types": {
+											"key": {
+												"type": "string"
+											},
+											"value": {
+												"type": "string"
+											}
+										}
+									},
+									"properties": {
+										"label": {
+											"type": "section",
+											"value": "Properties"
 										},
 										"type": "map",
 										"types": {
@@ -2268,7 +2388,7 @@
 						}
 					}
 				};
-				ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema){
+				ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema) {
 					return function(data) {
 						countMap = {};
 						isSeleniumExecutor = data.isSeleniumExecutor;
@@ -2436,9 +2556,9 @@
 			
 			function getReports()
 			{
-				ajaxCall(true, "GET", "reports/index.html", "", "", {}, function(data){
+				ajaxCall(true, "GET", "reports/index.html", "", "", {}, function(data) {
 					document.location = "reports/index.html";
-				}, function(data){
+				}, function(data) {
 					alert("No Reports found...");
 				});
 				return false;
@@ -2446,9 +2566,9 @@
 			
 			function getSeleniumReports()
 			{
-				ajaxCall(true, "GET", "reports/selenium-index.html", "", "", {}, function(data){
+				ajaxCall(true, "GET", "reports/selenium-index.html", "", "", {}, function(data) {
 					document.location = "reports/selenium-index.html";
-				}, function(data){
+				}, function(data) {
 					alert("No Reports found...");
 				});
 				return false;

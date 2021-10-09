@@ -128,6 +128,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private boolean isSeleniumExecutor = false;
 	
+	private boolean isSeleniumModuleTests = false;
+	
 	private String[] seleniumScripts;
 	
 	private SeleniumDriverConfig[] seleniumDriverConfigs;
@@ -518,6 +520,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.isSeleniumExecutor = isSeleniumExecutor;
 	}
 
+	public boolean isSeleniumModuleTests() {
+		return isSeleniumModuleTests;
+	}
+
+	public void setSeleniumModuleTests(boolean isSeleniumModuleTests) {
+		this.isSeleniumModuleTests = isSeleniumModuleTests;
+	}
+
 	public String[] getSeleniumScripts() {
 		return seleniumScripts;
 	}
@@ -557,7 +567,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     }
 
     public boolean isValidSeleniumRequest() {
-		return isSeleniumExecutor && seleniumScripts!=null && seleniumScripts.length>0 && 
+		return isSeleniumExecutor && /*seleniumScripts!=null && seleniumScripts.length>0 && */
 		        seleniumDriverConfigs!=null && seleniumDriverConfigs.length>0 &&
 		        StringUtils.isNotEmpty(seleniumDriverConfigs[0].getName()) && StringUtils.isNotEmpty(seleniumDriverConfigs[0].getPath());
 	}

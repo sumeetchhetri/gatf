@@ -4,7 +4,7 @@
     <formats>
         <format>zip</format>
     </formats>
-    <baseDirectory>gatf-resources</baseDirectory>
+    <includeBaseDirectory>false</includeBaseDirectory>
     <fileSets>
         <fileSet>
             <directory>${project.basedir}/gatf-resources</directory>

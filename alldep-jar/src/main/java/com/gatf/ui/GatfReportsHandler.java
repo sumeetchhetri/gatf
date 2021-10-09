@@ -173,6 +173,7 @@ public class GatfReportsHandler extends HttpHandler {
                 authTestCase = executorMojo.getAuthTestCase();
                 
                 TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
+                testCaseExecutorUtil.setSingleExecutionContext(true);
                 
                 boolean isAuthExec = false;
                 
@@ -514,6 +515,7 @@ public class GatfReportsHandler extends HttpHandler {
                     authTestCase = executorMojo.getAuthTestCase();
                     
                     TestCaseExecutorUtil testCaseExecutorUtil = TestCaseExecutorUtil.getSingleConnection(context);
+                    testCaseExecutorUtil.setSingleExecutionContext(true);
                     
                     boolean isAuthExec = false;
                     TestCase found = new TestCase(origfound);

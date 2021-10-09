@@ -6,13 +6,9 @@
 
 		<title>GATF - Test Reports</title>
 		<link href="css/bootstrap.min.css" rel="stylesheet">
-
-		<!-- Page-Level Plugin CSS - Tables -->
-		<link href="css/plugins/dataTables/dataTables.bootstrap.css" rel="stylesheet">
-		<link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet">
 		
 		<!-- Core Scripts - Include with every page -->
-		<script src="js/jquery-2.1.0.min.js"></script>
+		<script src="js/jquery-3.6.0.min.js"></script>
 		<script src="js/bootstrap.min.js"></script>
 
 		<script type="text/javascript" src="js/prettify.js"></script>
@@ -55,7 +51,7 @@
 
 			pre {
 				background-color: white;
-				width;auto;
+				width:auto;
 			}
 
 			handcursor {

@@ -17,6 +17,7 @@ package com.gatf.ui;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
@@ -43,6 +44,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
 	
 	private AtomicBoolean isDone = new AtomicBoolean(false);
+	
+	private AtomicReference<String> leftOver = new AtomicReference<String>();
 	
 	private Thread _executorThread = null;
 	
@@ -96,11 +99,12 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
 				}
 			}
-			else if(request.getMethod().equals(Method.PUT) ) {
+			else if(request.getMethod().equals(Method.PUT)) {
 				final List<String> files = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
 						TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
 				
 				if(!isStarted.get() && !isDone.get()) {
+					leftOver.set(null);
 					isStarted.set(true);
 					if(pluginType.equals("executor")) {
 						RuntimeReportUtil.registerConfigUI();
@@ -134,6 +138,10 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							isStarted.set(false);
 
 							if(pluginType.equals("executor")) {
+								String status = RuntimeReportUtil.getEntry();
+								if(status!=null && !status.isEmpty()) {
+									leftOver.set(status);
+								}
 								RuntimeReportUtil.unRegisterConfigUI();
 							}
 						}
@@ -145,8 +153,13 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							}
 						}
 					});
+					boolean isLoadTestingEnabled = false;
+					if(config instanceof GatfExecutorConfig) {
+						GatfExecutorConfig econfig = (GatfExecutorConfig)config;
+						isLoadTestingEnabled = econfig.isLoadTestingEnabled() && econfig.getLoadTestingTime() > 10000 && !econfig.isCompareEnabled();
+					}
 					_executorThread.start();
-					String text = "{\"error\": \"Execution Started\"}";
+					String text = "{\"error\": \"Execution Started\", \"loadTestingEnabled\": "+isLoadTestingEnabled+"}";
         			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);
@@ -161,6 +174,9 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
 					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
+					if(leftOver.get()!=null) {
+						text = leftOver.get().replaceFirst("Execution already in progress..", "Execution completed, check Reports Section");
+					}
         			response.setContentType(MediaType.APPLICATION_XML);
 		            response.setContentLength(text.length());
 		            response.getWriter().write(text);

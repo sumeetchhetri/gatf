@@ -466,7 +466,8 @@ public class AcceptanceTestContext {
 					File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 					if(flag)
-					{	removeFolder(resource);
+					{
+						removeFolder(resource);
 						File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 						nresource.mkdirs();
 						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
@@ -477,7 +478,7 @@ public class AcceptanceTestContext {
 					File resource = new File(System.getProperty("user.dir"));
 					File file = new File(resource, gatfExecutorConfig.getOutFilesDir());
 					if(flag)
-					{	
+					{
 						removeFolder(file);
 						File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
 						nresource.mkdir();
