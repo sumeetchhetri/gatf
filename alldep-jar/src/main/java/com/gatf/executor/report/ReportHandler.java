@@ -123,9 +123,7 @@ public class ReportHandler {
 	public static void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
 			List<String> nodes, List<String> nodeurls, List<LoadTestResource> loadTestResources)
 	{
-		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		VelocityContext context = new VelocityContext();
-		
 		try
 		{
 			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testSuiteStats);
@@ -148,15 +146,7 @@ public class ReportHandler {
 		
 		try
 		{
-			File basePath = null;
-        	if(config.getOutFilesBasePath()!=null)
-        		basePath = new File(config.getOutFilesBasePath());
-        	else
-        	{
-        		basePath = new File(System.getProperty("user.dir"));
-        	}
-        	File resource = new File(basePath, config.getOutFilesDir());
-			
+        	File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
             engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
@@ -185,7 +175,6 @@ public class ReportHandler {
 	public void doFinalDistributedLoadTestReport(AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
 			List<List<LoadTestResource>> loadTestResources, List<String> nodes)
 	{
-		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		VelocityContext context = new VelocityContext();
 		context.put("suiteStats", suiteStats);
 		context.put("loadTestResources", loadTestResources);
@@ -193,15 +182,7 @@ public class ReportHandler {
 		
 		try
 		{
-			File basePath = null;
-        	if(config.getOutFilesBasePath()!=null)
-        		basePath = new File(config.getOutFilesBasePath());
-        	else
-        	{
-        		basePath = new File(System.getProperty("user.dir"));
-        	}
-        	File resource = new File(basePath, config.getOutFilesDir());
-			
+			File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
             engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
@@ -452,28 +433,6 @@ public class ReportHandler {
         }
     }
 	
-	public void writeToReportFile(String fileName, String contents, GatfExecutorConfig config)
-	{
-		try
-		{
-			File basePath = null;
-        	if(config.getOutFilesBasePath()!=null)
-        		basePath = new File(config.getOutFilesBasePath());
-        	else
-        	{
-        		basePath = new File(System.getProperty("user.dir"));
-        	}
-        	File resource = new File(basePath, config.getOutFilesDir());
-			
-        	String filenm = resource.getAbsolutePath() + File.separator + fileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
-            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
-            fwriter.write(contents);
-            fwriter.close();
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
-	
 	private boolean compareText(String type, String lhs, String rhs)
 	{
 		if(TestCaseResponseHandler.isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, type))
@@ -651,14 +610,7 @@ public class ReportHandler {
 			            if (resourcesIS != null)
 			            {
 			            	
-			            	File basePath = null;
-			            	if(config.getOutFilesBasePath()!=null)
-			            		basePath = new File(config.getOutFilesBasePath());
-			            	else
-			            	{
-			            		basePath = new File(System.getProperty("user.dir"));
-			            	}
-			            	File resource = new File(basePath, config.getOutFilesDir());
+			            	File resource = acontext.getOutDir();
 			                if(runNumber==1 && unzipFile)
 			                	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
 			                
@@ -779,16 +731,7 @@ public class ReportHandler {
 			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
-            	
-            	File basePath = null;
-            	if(config.getOutFilesBasePath()!=null)
-            		basePath = new File(config.getOutFilesBasePath());
-            	else
-            	{
-            		basePath = new File(System.getProperty("user.dir"));
-            	}
-            	File resource = new File(basePath, config.getOutFilesDir());
-                
+            	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
                 engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
@@ -1025,14 +968,7 @@ public class ReportHandler {
             if (resourcesIS != null)
             {
             	
-            	File basePath = null;
-            	if(config.getOutFilesBasePath()!=null)
-            		basePath = new File(config.getOutFilesBasePath());
-            	else
-            	{
-            		basePath = new File(System.getProperty("user.dir"));
-            	}
-            	File resource = new File(basePath, config.getOutFilesDir());
+            	File resource = acontext.getOutDir();
                 if(!unzipped)
                 	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
                 
@@ -1072,12 +1008,8 @@ public class ReportHandler {
 
 	public static void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled,
 			TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
-		
 		Map<String, List<Long>> testPercentileValues = testPercentiles.getPercentileTimes();
 		Map<String, List<Long>> runPercentileValues = runPercentiles.getPercentileTimes();
-		
-		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
-		
 		VelocityContext context = new VelocityContext();
 		
 		try
@@ -1124,16 +1056,7 @@ public class ReportHandler {
 			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
-            	
-            	File basePath = null;
-            	if(config.getOutFilesBasePath()!=null)
-            		basePath = new File(config.getOutFilesBasePath());
-            	else
-            	{
-            		basePath = new File(System.getProperty("user.dir"));
-            	}
-            	File resource = new File(basePath, config.getOutFilesDir());
-                
+            	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
                 engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
@@ -1163,22 +1086,12 @@ public class ReportHandler {
 	
 	public static void doSeleniumSummaryTestReport(Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
     {
-        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();
-        
         try
         {
             context.put("testsMap", summLstMap);
             
-            File basePath = null;
-            if(config.getOutFilesBasePath()!=null)
-                basePath = new File(config.getOutFilesBasePath());
-            else
-            {
-                basePath = new File(System.getProperty("user.dir"));
-            }
-            File resource = new File(basePath, config.getOutFilesDir());
-            
+            File resource = acontext.getOutDir();
             InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
             {
@@ -1204,21 +1117,11 @@ public class ReportHandler {
 	
 	public static void doSeleniumFinalTestReport(Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext)
     {
-        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();
-        
         try
         {
             context.put("indexes", indexes);
-            
-            File basePath = null;
-            if(config.getOutFilesBasePath()!=null)
-                basePath = new File(config.getOutFilesBasePath());
-            else
-            {
-                basePath = new File(System.getProperty("user.dir"));
-            }
-            File resource = new File(basePath, config.getOutFilesDir());
+            File resource = acontext.getOutDir();
             
             InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
             if (resourcesIS != null)
@@ -1251,9 +1154,7 @@ public class ReportHandler {
     
     public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
     {
-        GatfExecutorConfig config = acontext.getGatfExecutorConfig();
         VelocityContext context = new VelocityContext();
-        
         try
         {
             context.put("selFileName", StringEscapeUtils.escapeHtml4((String)retvals[0]));
@@ -1264,17 +1165,7 @@ public class ReportHandler {
             context.put("succFail", result.isStatus()?"SUCCESS":"FAILED");
             context.put("StringEscapeUtils", StringEscapeUtils.class);
             
-            File basePath = null;
-            if(config.getOutFilesBasePath()!=null)
-            {
-                basePath = new File(config.getOutFilesBasePath());
-            }
-            else
-            {
-                basePath = new File(System.getProperty("user.dir"));
-            }
-            File resource = new File(basePath, config.getOutFilesDir());
-            
+            File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
             engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());

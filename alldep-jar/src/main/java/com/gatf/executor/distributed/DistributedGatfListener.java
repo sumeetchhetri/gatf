@@ -189,9 +189,7 @@ public class DistributedGatfListener {
 					        context.getConfig().setJavaHome(localConfig.getJavaHome());
 					    }
                         if(localConfig.getTestCasesBasePath()!=null) {
-                            if(new File(localConfig.getTestCasesBasePath()).exists()) {
-                                context.getConfig().setTestCasesBasePath(localConfig.getTestCasesBasePath());
-                            }
+                        	context.getConfig().setTestCasesBasePath(localConfig.getTestCasesBasePath());
                         }
 					}
 					

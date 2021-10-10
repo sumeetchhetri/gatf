@@ -16,15 +16,11 @@
 package com.gatf.selenium;
 
 import java.awt.event.KeyEvent;
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.InputStreamReader;
 import java.lang.reflect.Method;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Enumeration;
@@ -41,10 +37,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.FalseFileFilter;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.Keys;
@@ -6330,20 +6323,6 @@ public class Command {
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
-    	File mdir = new File("/Users/sumeetc/Projects/GitHub/gatf");
-    	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
-    	List<String> modules = new ArrayList<String>();
-    	for (File f : dirs) {
-			if(new File(f, "main.sel").exists()) {
-				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), "");
-				modules.add(sfpath);
-			}
-		}
-    	System.out.println(modules);
-    	System.exit(0);
-    	
-    	
-    	
     	System.out.println(UUID.randomUUID().toString());
     	Reflections r = new Reflections("com.gatf.selenium");
     	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);
@@ -6516,78 +6495,5 @@ public class Command {
         Map<String, Object> _mt = new HashMap<String, Object>();
         _mt.put("a", "test");
         c.getWorkflowContextHandler().templatize(_mt, "dsadasd ${a} $v{f}");
-
     }
-    
-    public static void getSeleniumTest(File file, AcceptanceTestContext context) throws Exception
-	{
-	    List<String> commands = new ArrayList<String>();
-		Command cmd = Command.read(file, commands, context);
-		String sourceCode =  cmd.javacode();
-		
-        List<String> optionList = new ArrayList<String>();
-        optionList.add("-classpath");
-        
-        File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
-        File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
-        
-        File srcfile = new File(dir, cmd.getClassName()+".java");
-        FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
-        
-        /*DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        if(compiler!=null && false) {
-	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
-	        JavaCompiler.CompilationTask task = compiler.getTask(
-	            null, 
-	            fileManager, 
-	            diagnostics, 
-	            optionList, 
-	            null, 
-	            compilationUnit);
-	        if (task.call()) {
-	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-	                System.out.format("Error on line %d in %s%n",
-	                        diagnostic.getLineNumber(),
-	                        diagnostic.getSource().toUri());
-	                System.out.println(diagnostic.toString());
-	            }
-	        	
-	        	URL[] urls = new URL[1];
-	            urls[0] = gcdir.toURI().toURL();
-	            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName());
-	            loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
-	        }
-	        return;
-        }*/
-        
-        String javaHome = "/Library/Java/JavaVirtualMachines/jdk1.8.0_201.jdk/Contents/Home";
-        String gatfJarPath = "/Users/sumeetc/Projects/home/.m2/repository/com/github/sumeetchhetri/gatf/gatf-alldep-jar/1.0.6/gatf-alldep-jar-1.0.6.jar";
-        boolean isWindows = SystemUtils.IS_OS_WINDOWS;
-        ProcessBuilder pb = new ProcessBuilder((isWindows?"\"":"") + javaHome + "/bin/javac" + (isWindows?"\"":""), "-classpath", 
-                (gatfJarPath), 
-                (isWindows?"\"":"") + srcfile.getAbsolutePath() + (isWindows?"\"":""));
-        System.out.println(String.join(" ", pb.command()));
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-        BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
-
-        boolean errd = false;
-        String err = null;
-        while((err = inStreamReader.readLine()) != null) {
-        	System.out.println(err);
-            errd |= err.indexOf("error:")!=-1;
-        }
-        if(errd) {
-            
-        } else {
-            URL[] urls = new URL[1];
-            urls[0] = gcdir.toURI().toURL();
-            @SuppressWarnings("unchecked")
-			Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName());
-            //Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-            loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
-        }
-	}
 }

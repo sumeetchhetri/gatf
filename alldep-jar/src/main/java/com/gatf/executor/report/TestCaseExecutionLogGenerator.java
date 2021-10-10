@@ -49,14 +49,8 @@ public class TestCaseExecutionLogGenerator implements Runnable {
 
 	public void run() {
 		try {
-			File basePath = null;
-        	if(config.getOutFilesBasePath()!=null)
-        		basePath = new File(config.getOutFilesBasePath());
-        	else
-        	{
-        		basePath = new File(System.getProperty("user.dir"));
-        	}
-        	File resource = new File(basePath, config.getOutFilesDir());
+			File basePath = new File(config.getOutFilesBasePath());
+			File resource = new File(basePath, config.getOutFilesDir());
 			writer = new BufferedWriter(new FileWriter(new File(resource.getAbsolutePath()
                     + File.separator + UUID.randomUUID().toString() + ".csv")));
 		} catch (IOException e) {

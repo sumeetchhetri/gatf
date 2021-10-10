@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,6 +69,16 @@ public class SeleniumCodeGeneratorAndUtil {
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
 		String sourceCode =  cmd.javacode();
 		
+		String gatfJarPath = "gatf-alldep-jar.jar";
+        try {
+        	gatfJarPath = SeleniumCodeGeneratorAndUtil.class.getProtectionDomain().getCodeSource().getLocation().toURI().getPath();
+		} catch (Throwable e) {
+		}
+        
+        if(StringUtils.isNotBlank(config.getGatfJarPath())) {
+        	gatfJarPath = config.getGatfJarPath().trim();
+        }
+		
 		if(isLog) {
 			String jc = cmd.javacode();
 			System.out.println(jc);
@@ -78,20 +89,6 @@ public class SeleniumCodeGeneratorAndUtil {
 		retvals[1] = StringUtils.join(commands, '\n');
 		retvals[3] = sourceCode;
 	    
-        List<String> optionList = new ArrayList<String>();
-        optionList.add("-classpath");
-        
-        if(loader instanceof URLClassLoader) {
-        	URL[] urls = ((URLClassLoader)loader).getURLs();
-        	String cp = "";
-        	for (URL url : urls) {
-        		cp += url.getPath() + File.separator;
-			}
-        	optionList.add(cp);
-        } else {
-        	optionList.add(StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep.jar");
-        }
-        
         File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
         File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
         
@@ -99,12 +96,25 @@ public class SeleniumCodeGeneratorAndUtil {
         retvals[2] = srcfile.getAbsolutePath();
         FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
         
-        DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-        
         if(retvals.length==5) retvals[4] += "";
         
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if(compiler!=null) {
+        	List<String> optionList = new ArrayList<String>();
+            optionList.add("-classpath");
+            
+            if(loader instanceof URLClassLoader) {
+            	URL[] urls = ((URLClassLoader)loader).getURLs();
+            	String cp = "";
+            	for (URL url : urls) {
+            		cp += url.getPath() + File.separator;
+    			}
+            	optionList.add(cp);
+            } else {
+            	optionList.add(gatfJarPath);
+            }
+        	
+        	DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
 	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
 	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
 	        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit);
@@ -136,9 +146,15 @@ public class SeleniumCodeGeneratorAndUtil {
         }
         
         boolean isWindows = SystemUtils.IS_OS_WINDOWS;
-        ProcessBuilder pb = new ProcessBuilder((isWindows?"\"":"") + config.getJavaHome() + "/bin/javac" + (isWindows?"\"":""), "-classpath", 
-                (StringUtils.isNoneBlank(config.getGatfJarPath())?config.getGatfJarPath().trim():"gatf-alldep-jar.jar"), 
-                (isWindows?"\"":"") + retvals[2].toString() + (isWindows?"\"":""));
+        
+        List<String> builderList = new ArrayList<>();
+        String javacPath = Paths.get(config.getJavaHome(), "bin", "javac").toString();
+        builderList.add((isWindows?"\"":"") + javacPath + (isWindows?"\"":""));
+        builderList.add("-classpath");
+        builderList.add((isWindows?"\"":"") + gatfJarPath + (isWindows?"\"":""));
+        builderList.add((isWindows?"\"":"") + retvals[2].toString() + (isWindows?"\"":""));
+        
+        ProcessBuilder pb = new ProcessBuilder(builderList);
         pb.redirectErrorStream(true);
         Process process = pb.start();
         BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 

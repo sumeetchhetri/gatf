@@ -650,6 +650,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
         if (loadTestingReportSamplesNum < 3)
             loadTestingReportSamplesNum = 3;
+        if (loadTestingReportSamplesNum > 100)
+        	loadTestingReportSamplesNum = 100;
 
         List<FutureTask<Object>> distTasks = new ArrayList<FutureTask<Object>>();
         List<String> taskNodes = new ArrayList<String>();
@@ -1055,6 +1057,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
         if (loadTestingReportSamplesNum < 3)
             loadTestingReportSamplesNum = 3;
+        if (loadTestingReportSamplesNum > 100)
+        	loadTestingReportSamplesNum = 100;
 
         validateTestCases(allTestCases, testCaseExecutorUtil);
 
@@ -1514,7 +1518,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     reportHandler.addTestCaseReport(testCaseReport);
                 }
 
-                if (context.getGatfExecutorConfig().isGenerateExecutionLogs() && ((isPerfTest && index > 0) || !isPerfTest)) {
+                if (context.getGatfExecutorConfig().isGenerateExecutionLogs() && !context.getGatfExecutorConfig().isSeleniumExecutor() && ((isPerfTest && index > 0) || !isPerfTest)) {
                     TestCaseExecutionLogGenerator.log(testCaseReport);
                 }
 
@@ -1788,7 +1792,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         GatfExecutorConfig configuration = context.getGatfExecutorConfig();
 
-        if (configuration.isGenerateExecutionLogs()) {
+        if (configuration.isGenerateExecutionLogs() && !configuration.isSeleniumExecutor()) {
             tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
             tclgenerator.start();
         }
@@ -1802,6 +1806,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
         if (loadTestingReportSamplesNum < 3)
             loadTestingReportSamplesNum = 3;
+        if (loadTestingReportSamplesNum > 100)
+        	loadTestingReportSamplesNum = 100;
 
         int numberOfRuns = tContext.getNumberOfRuns();
 
@@ -1983,6 +1989,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         int loadTestingReportSamplesNum = dContext.getConfig().getLoadTestingReportSamples();
         if (loadTestingReportSamplesNum < 3)
             loadTestingReportSamplesNum = 3;
+        if (loadTestingReportSamplesNum > 100)
+        	loadTestingReportSamplesNum = 100;
 
         int numberOfRuns = tContext.getNumberOfRuns();
 

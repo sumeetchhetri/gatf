@@ -119,24 +119,13 @@ public class DistributedAcceptanceContext implements Serializable {
 	}
 	
 	public File getResourceFile(String filename) {
-        try {
-            if(new File(filename).exists())return new File(filename); 
-            if(config.getTestCasesBasePath()!=null)
-            {
-                File basePath = new File(config.getTestCasesBasePath());
-                File resource = null;
-                if(config.getTestCaseDir()!=null) {
-                    File testPath = new File(basePath, config.getTestCaseDir());
-                    resource = new File(testPath, filename);
-                    if(!resource.exists()) {
-                        resource = new File(basePath, filename);
-                    }
-                }
-                return resource;
-            }
-        } catch (Exception e) {
+		File basePath = new File(config.getTestCasesBasePath());
+	    File testPath = new File(basePath, config.getTestCaseDir());
+	    File resource = new File(testPath, filename);
+        if(!resource.exists()) {
+            resource = new File(basePath, filename);
         }
-        return null;
+		return resource;
     }
 
     public List<Object[]> getSelTestdata() {

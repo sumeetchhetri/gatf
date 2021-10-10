@@ -352,7 +352,6 @@ public class AcceptanceTestContext {
 	}
 	
 	public List<Method> getPrePostHook(TestCase testCase, boolean isPreHook) {
-		
 		List<Method> methods = new ArrayList<Method>();
 		String hookKey = (isPreHook?"pre":"post") + testCase.getName();
 		Method meth = prePostTestCaseExecHooks.get(hookKey);
@@ -365,72 +364,38 @@ public class AcceptanceTestContext {
 	}
 	
 	public File getResourceFile(String filename) {
-		try {
-		    if(new File(filename).exists())return new File(filename); 
-			if(gatfExecutorConfig.getTestCasesBasePath()!=null)
-			{
-				File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
-				File resource = null;
-				if(gatfExecutorConfig.getTestCaseDir()!=null) {
-				    File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
-                    resource = new File(testPath, filename);
-                    if(!resource.exists()) {
-                        resource = new File(basePath, filename);
-                    }
-                }
-				return resource;
-			}
-			else
-			{
-				File basePath = new File(System.getProperty("user.dir"));
-				File resource = new File(basePath, gatfExecutorConfig.getTestCaseDir());
-				return resource;
-			}
-		} catch (Exception e) {
-			return null;
-		}
+		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+	    File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
+	    File resource = new File(testPath, filename);
+        if(!resource.exists()) {
+            resource = new File(basePath, filename);
+        }
+		return resource;
 	}
 	
 	public File getNewOutResourceFile(String filename) {
-		try {
-			if(gatfExecutorConfig.getOutFilesBasePath()!=null)
-			{
-				File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
-				File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-				File file = new File(resource, filename);
-				if(!file.exists())
-					file.createNewFile();
-				return file;
+		File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
+		File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+		File file = new File(resource, filename);
+		if(!file.exists()) {
+			try {
+				file.createNewFile();
+			} catch (IOException e) {
 			}
-			else
-			{
-
-				File basePath = new File(System.getProperty("user.dir"));
-				File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-				File file = new File(resource, filename);
-				if(!file.exists())
-					file.createNewFile();
-				return file;
-			}
-		} catch (Exception e) {
-			return null;
 		}
+		return file;
+	}
+	
+	public File getOutDir() {
+		File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
+		File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+		return resource;
 	}
 	
 	public String getOutDirPath() {
-		if(gatfExecutorConfig.getOutFilesBasePath()!=null)
-		{
-			File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
-			File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-			return resource.getAbsolutePath();
-		}
-		else
-		{
-
-			File basePath = new File(System.getProperty("user.dir"));
-			File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-			return resource.getAbsolutePath();
-		}
+		File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
+		File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+		return resource.getAbsolutePath();
 	}
 	
 	public Map<String, List<TestCase>> getRelatedTestCases() {
@@ -449,6 +414,30 @@ public class AcceptanceTestContext {
 	public void validateAndInit(boolean flag) throws Exception
 	{
 		gatfExecutorConfig.validate();
+		
+		if(gatfExecutorConfig.getOutFilesBasePath()!=null)
+		{
+			File basePath = new File(gatfExecutorConfig.getOutFilesBasePath().trim());
+			Assert.assertTrue("Invalid out files base path..", basePath.exists());
+			gatfExecutorConfig.setOutFilesBasePath(basePath.getAbsolutePath());
+		}
+		else
+		{
+			File basePath = new File(System.getProperty("user.dir"));
+			gatfExecutorConfig.setOutFilesBasePath(basePath.getAbsolutePath());
+		}
+		
+		if(gatfExecutorConfig.getTestCasesBasePath()!=null)
+		{
+			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+			Assert.assertTrue("Invalid test cases base path..", basePath.exists());
+			gatfExecutorConfig.setTestCasesBasePath(basePath.getAbsolutePath());
+		}
+		else
+		{
+			File basePath = new File(System.getProperty("user.dir"));
+			gatfExecutorConfig.setTestCasesBasePath(basePath.getAbsolutePath());
+		}
 		
 		Assert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
 		
