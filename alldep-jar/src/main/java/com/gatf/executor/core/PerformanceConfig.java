@@ -24,11 +24,13 @@ public class PerformanceConfig implements Serializable {
     
     private int rate = 0;
     
-    private String scriptPath;
+    private String filePath;
     
     private int timeout;
     
     private boolean latency;
+    
+    private String extras;
     
 	public String getType() {
 		return type;
@@ -70,12 +72,12 @@ public class PerformanceConfig implements Serializable {
 		this.threads = threads;
 	}
 
-	public String getScriptPath() {
-		return scriptPath;
+	public String getFilePath() {
+		return filePath;
 	}
 
-	public void setScriptPath(String scriptPath) {
-		this.scriptPath = scriptPath;
+	public void setFilePath(String filePath) {
+		this.filePath = filePath;
 	}
 
 	public boolean isLatency() {
@@ -84,6 +86,14 @@ public class PerformanceConfig implements Serializable {
 
 	public void setLatency(boolean latency) {
 		this.latency = latency;
+	}
+
+	public String getExtras() {
+		return extras;
+	}
+
+	public void setExtras(String extras) {
+		this.extras = extras;
 	}
 
 	public int getTimeout() {

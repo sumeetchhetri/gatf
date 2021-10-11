@@ -733,7 +733,7 @@
   						"properties": {
   							"type": {
   								"type": "string",
-      							"enum": ["none", "wrk", "wrk2", "autocannon"]
+      							"enum": ["none", "wrk", "wrk2", "vegata", "autocannon"]
   							},
   							"connections": {
   								"type": "number"
@@ -747,7 +747,7 @@
   							"rate": {
   								"type": "number"
   							},
-  							"scriptPath": {
+  							"filePath": {
   								"type": "string"
   							},
   							"timeout": {
@@ -755,6 +755,9 @@
   							},
   							"latency": {
   								"type": "boolean"
+  							},
+  							"extras": {
+  								"type": "string"
   							}
   						}
        				}
@@ -2381,6 +2384,9 @@
 							"type": "string"
 						},
 						"wrk2Path": {
+							"type": "string"
+						},
+						"vegataPath": {
 							"type": "string"
 						},
 						"autocannonPath": {

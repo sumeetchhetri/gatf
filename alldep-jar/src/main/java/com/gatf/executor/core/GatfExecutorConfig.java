@@ -148,6 +148,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String wrk2Path;
     
+    private String vegataPath;
+    
     private String autocannonPath;
 	
 	public String getBaseUrl() {
@@ -620,6 +622,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setWrk2Path(String wrk2Path) {
 		this.wrk2Path = wrk2Path;
+	}
+
+	public String getVegataPath() {
+		return vegataPath;
+	}
+
+	public void setVegataPath(String vegataPath) {
+		this.vegataPath = vegataPath;
 	}
 
 	public String getAutocannonPath() {

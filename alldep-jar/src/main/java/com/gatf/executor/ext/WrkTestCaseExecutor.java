@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
@@ -291,7 +292,7 @@ public class WrkTestCaseExecutor {
 			
 			Integer to = tc.getPerfConfig().getTimeout();
 			if(to>0) {
-				builderList.add("--timeout ");
+				builderList.add("--timeout");
 				builderList.add(to+"s");
 			}
 			
@@ -304,25 +305,43 @@ public class WrkTestCaseExecutor {
 			}
 			
 			File script = null;
-			if(!tc.getMethod().equalsIgnoreCase("GET")) {
-				StringBuilder prog = new StringBuilder();
-				prog.append("wrk.method = \"");
-				prog.append(tc.getMethod().toUpperCase());
-				prog.append("\"\n");
-				for (String hdr : tc.getHeaders().keySet()) {
-					prog.append("wrk.headers[\""+hdr+"] = \"");
-					prog.append(tc.getHeaders().get(hdr));
-					prog.append("\"\n");
-				}
-				prog.append("wrk.body = [====================[\n");
-				prog.append(tc.getContent());
-				prog.append("\n]====================]\n");
-				
-				script = File.createTempFile(UUID.randomUUID().toString(), ".lua");
-				FileUtils.write(script, prog.toString(), "UTF-8");
-				
+			
+			if(StringUtils.isNotBlank(tc.getPerfConfig().getFilePath()) && context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).exists()) {
+				script = context.getResourceFile(tc.getPerfConfig().getFilePath().trim());
 				builderList.add("-s ");
-				builderList.add(script.getAbsolutePath());
+				builderList.add(context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).getAbsolutePath());
+			}
+			
+			if(script==null) {
+				if(tc.getHeaders()!=null && tc.getHeaders().size()>0) {
+					StringBuilder prog = new StringBuilder();
+					prog.append("wrk.method = \"");
+					prog.append(tc.getMethod().toUpperCase());
+					prog.append("\"\n");
+					for (String hdr : tc.getHeaders().keySet()) {
+						prog.append("wrk.headers[\""+hdr+"] = \"");
+						prog.append(tc.getHeaders().get(hdr));
+						prog.append("\"\n");
+					}
+					prog.append("wrk.body = [====================[\n");
+					String content = tc.getContent();
+					if(StringUtils.isBlank(content) && tc.getContentFile()!=null) {
+						if(context.getResourceFile(tc.getContentFile().trim()).exists()) {
+							content = FileUtils.readFileToString(context.getResourceFile(tc.getContentFile().trim()), "UTF-8");
+						}
+					}
+					if(content==null) {
+						content = "";
+					}
+					prog.append(content);
+					prog.append("\n]====================]\n");
+					
+					script = File.createTempFile(UUID.randomUUID().toString(), ".lua");
+					FileUtils.write(script, prog.toString(), "UTF-8");
+					
+					builderList.add("-s");
+					builderList.add(script.getAbsolutePath());
+				}
 			}
 			
 			builderList.add(tc.getAurl());
@@ -380,7 +399,7 @@ public class WrkTestCaseExecutor {
 			out.append("\n\n");
 		}
 		if(err1.length()>0) {
-			err1.append(String.join(" ", builderList)+"\n\n");
+			err.append(String.join(" ", builderList)+"\n\n");
 			err.append("Error for ");
 			err.append(baseUrl);
 			err.append("\n");
