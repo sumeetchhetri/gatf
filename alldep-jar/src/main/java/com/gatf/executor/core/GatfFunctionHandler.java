@@ -18,7 +18,6 @@ package com.gatf.executor.core;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
@@ -28,6 +27,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.RandomUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
 
 /**
@@ -200,23 +200,20 @@ public class GatfFunctionHandler {
 		return null;
 	}
 	
-	public static void executeCmd(List<String> inpBl, StringBuilder out, StringBuilder err) {
+	public static void executeCmd(List<String> inpBl, StringBuilder out, StringBuilder err, boolean withBash) {
 		if(inpBl!=null && inpBl.size()>0) {
-			List<String> builderList = new ArrayList<>();
 			ProcessBuilder processBuilder = new ProcessBuilder();
-
-			if(SystemUtils.IS_OS_WINDOWS) {
-				//builderList.add("cmd.exe");
-				//builderList.add("/C");
-			} else {
-				//builderList.add("sh");
-				//builderList.add("-c");
-			}
-
-			builderList.addAll(inpBl);
 			
 			try {
-				processBuilder.command(builderList);
+				if(withBash) {
+					if(SystemUtils.IS_OS_WINDOWS) {
+						processBuilder.command("cmd.exe", "/C", StringUtils.join(inpBl, " "));
+					} else {
+						processBuilder.command("bash", "-c", StringUtils.join(inpBl, " "));
+					}
+				} else {
+					processBuilder.command(inpBl);
+				}
 				Process process = processBuilder.start();
 
 				BufferedReader outreader = new BufferedReader(new InputStreamReader(process.getInputStream()));

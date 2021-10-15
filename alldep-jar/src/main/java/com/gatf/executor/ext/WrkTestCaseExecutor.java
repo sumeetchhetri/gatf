@@ -273,7 +273,7 @@ public class WrkTestCaseExecutor {
 					r = 1000;
 				}
 				builderList.add("-R");
-				builderList.add(c.toString());
+				builderList.add(r.toString());
 			}
 			
 			Integer d = tc.getPerfConfig().getDurationSeconds();
@@ -387,7 +387,7 @@ public class WrkTestCaseExecutor {
 	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl) {
 		StringBuilder out1 = new StringBuilder();
 		StringBuilder err1 = new StringBuilder();
-		GatfFunctionHandler.executeCmd(builderList, out1, err1);
+		GatfFunctionHandler.executeCmd(builderList, out1, err1, false);
 		if(out1.length()>0) {
 			Map<String, Object> retval = parse_wrk_output(out1);
 			tcr.getPerfResult().add(retval);

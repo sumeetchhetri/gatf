@@ -27,7 +27,7 @@
   </gatfTestDataConfig>
   <enabled>true</enabled>
   <testCaseHooksPaths>
-    <autocannonPath>com.*</autocannonPath>
+    <testCaseHooksPath>com.*</testCaseHooksPath>
   </testCaseHooksPaths>
   <loadTestingEnabled>false</loadTestingEnabled>
   <loadTestingTime>40000</loadTestingTime>

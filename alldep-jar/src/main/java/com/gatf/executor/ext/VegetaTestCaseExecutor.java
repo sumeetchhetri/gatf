@@ -16,14 +16,14 @@ import com.gatf.executor.core.TestCase;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
-public class VegataTestCaseExecutor {
+public class VegetaTestCaseExecutor {
 
 	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {
 		GatfExecutorConfig config = context.getGatfExecutorConfig();
 
-		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("vegata")) {
+		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("vegeta")) {
 			List<String> builderList = new ArrayList<>();
-			builderList.add(config.getVegataPath());
+			builderList.add(config.getVegetaPath());
 			builderList.add("attack");
 			
 			Integer c = tc.getPerfConfig().getConnections();
@@ -85,13 +85,13 @@ public class VegataTestCaseExecutor {
  				tcr.setTestCase(tc);
  			}
  			
-			execCmd(config.getVegataPath(), out, err, tcr, tc, script, builderList, tc.getAurl(), tc.getBaseUrl(), isPlot);
+			execCmd(config.getVegetaPath(), out, err, tcr, tc, script, builderList, tc.getAurl(), tc.getBaseUrl(), isPlot);
 			
 			if(isSingleExecutionContext) {
 				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
 					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
 						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-						execCmd(config.getVegataPath(), out, err, tcr, tc, script, builderList, aurl, burl, isPlot);
+						execCmd(config.getVegetaPath(), out, err, tcr, tc, script, builderList, aurl, burl, isPlot);
 					}
 				}
 			}
@@ -115,7 +115,7 @@ public class VegataTestCaseExecutor {
 	}
 	
 	@SuppressWarnings("unchecked")
-	private static void execCmd(String vegataPath, StringBuilder out, StringBuilder err, TestCaseReport tcr, TestCase tc, File script, List<String> bl, String url, String baseUrl, boolean isPlot) throws Exception {
+	private static void execCmd(String vegetaPath, StringBuilder out, StringBuilder err, TestCaseReport tcr, TestCase tc, File script, List<String> bl, String url, String baseUrl, boolean isPlot) throws Exception {
 		File results = File.createTempFile(UUID.randomUUID().toString(), ".bin");
 		File target = null;
 		List<String> builderList = new ArrayList<>();
@@ -142,32 +142,30 @@ public class VegataTestCaseExecutor {
 			builderList = bl;
 		} else {
 			builderList.add("echo");
-			builderList.add("\"");
-			builderList.add("GET ");
+			builderList.add("'GET");
 			builderList.add(tc.getAurl());
-			builderList.add("\"");
-			builderList.add("|");
+			builderList.add("'|");
 			builderList.addAll(bl);
 		}
 		
 		builderList.add("|");
-		builderList.add("tee ");
+		builderList.add("tee");
 		builderList.add(results.getAbsolutePath());
 		builderList.add("|");
-		builderList.add(vegataPath);
+		builderList.add(vegetaPath);
 		builderList.add("report");
 		
 		StringBuilder out1 = new StringBuilder();
 		StringBuilder err1 = new StringBuilder();
-		GatfFunctionHandler.executeCmd(builderList, out1, err1);
+		GatfFunctionHandler.executeCmd(builderList, out1, err1, true);
 		if(out1.length()>0) {
 			List<String> rbl = new ArrayList<>();
-			rbl.add(vegataPath);
+			rbl.add(vegetaPath);
 			rbl.add("report");
 			rbl.add("-type=json");
 			rbl.add(results.getAbsolutePath());
 			StringBuilder out2 = new StringBuilder();
-			GatfFunctionHandler.executeCmd(rbl, out2, null);
+			GatfFunctionHandler.executeCmd(rbl, out2, null, true);
 			Map<String, Object> retval = new ObjectMapper().readValue(out2.toString(), Map.class);
 			tcr.getPerfResult().add(retval);
 			
@@ -177,13 +175,13 @@ public class VegataTestCaseExecutor {
 				rbl.add("cat");
 				rbl.add(results.getAbsolutePath());
 				rbl.add("|");
-				rbl.add(vegataPath);
+				rbl.add(vegetaPath);
 				rbl.add("plot");
 				rbl.add(">");
 				rbl.add(plothtml.getAbsolutePath());
 				
 				if(retval!=null) {
-					GatfFunctionHandler.executeCmd(rbl, null, null);
+					GatfFunctionHandler.executeCmd(rbl, null, null, true);
 					retval.put("_plot_html_", plothtml.getAbsolutePath());
 				}
 			}

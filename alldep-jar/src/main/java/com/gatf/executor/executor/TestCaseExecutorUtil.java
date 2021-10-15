@@ -56,7 +56,7 @@ import org.w3c.dom.Document;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.ext.AutocannonTestCaseExecutor;
-import com.gatf.executor.ext.VegataTestCaseExecutor;
+import com.gatf.executor.ext.VegetaTestCaseExecutor;
 import com.gatf.executor.ext.WrkTestCaseExecutor;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
@@ -536,8 +536,8 @@ public class TestCaseExecutorUtil {
 				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
 				if(testCase.getPerfConfig().getType().startsWith("wrk")) {
 					WrkTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
-				} else if(testCase.getPerfConfig().getType().equals("vegata")) {
-					VegataTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
+				} else if(testCase.getPerfConfig().getType().equals("vegeta")) {
+					VegetaTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
 				} else {
 					AutocannonTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
 				}

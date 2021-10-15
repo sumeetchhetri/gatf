@@ -148,7 +148,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String wrk2Path;
     
-    private String vegataPath;
+    private String vegetaPath;
     
     private String autocannonPath;
 	
@@ -624,12 +624,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.wrk2Path = wrk2Path;
 	}
 
-	public String getVegataPath() {
-		return vegataPath;
+	public String getVegetaPath() {
+		return vegetaPath;
 	}
 
-	public void setVegataPath(String vegataPath) {
-		this.vegataPath = vegataPath;
+	public void setVegetaPath(String vegetaPath) {
+		this.vegetaPath = vegetaPath;
 	}
 
 	public String getAutocannonPath() {

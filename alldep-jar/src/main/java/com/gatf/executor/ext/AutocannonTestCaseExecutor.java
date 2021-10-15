@@ -41,7 +41,7 @@ public class AutocannonTestCaseExecutor {
 				builderList.add(c.toString());
 			}
 			
-			builderList.add("-n");
+			builderList.add("--no-progress");
 			
 			Integer d = tc.getPerfConfig().getDurationSeconds();
 			if(d<=0) {
@@ -132,24 +132,26 @@ public class AutocannonTestCaseExecutor {
 	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl) {
 		StringBuilder out1 = new StringBuilder();
 		StringBuilder err1 = new StringBuilder();
-		GatfFunctionHandler.executeCmd(builderList, out1, err1);
-		if(out1.length()>0) {
+		GatfFunctionHandler.executeCmd(builderList, out1, err1, true);
+		if(err1.length()>0) {
 			//Map<String, Object> retval = parse_autocannon_output(out1);
 			//tcr.getPerfResult().add(retval);
 			out.append(String.join(" ", builderList)+"\n\n");
 			out.append("Result for ");
 			out.append(baseUrl);
 			out.append("\n");
-			out.append(out1.toString());
+			String errd = err1.toString();
+			errd = errd.replace('?', '*');
+			out.append(errd);
 			out.append("\n\n");
 		}
-		if(err1.length()>0) {
+		/*if(err1.length()>0) {
 			err.append(String.join(" ", builderList)+"\n\n");
 			err.append("Error for ");
 			err.append(baseUrl);
 			err.append("\n");
 			err.append(err1.toString());
 			err.append("\n\n");
-		}
+		}*/
 	}
 }
