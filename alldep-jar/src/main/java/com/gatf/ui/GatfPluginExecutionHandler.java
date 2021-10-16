@@ -36,6 +36,7 @@ import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
 
@@ -45,7 +46,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	
 	private AtomicBoolean isDone = new AtomicBoolean(false);
 	
-	private AtomicReference<String> leftOver = new AtomicReference<String>();
+	private AtomicReference<byte[]> leftOver = new AtomicReference<byte[]>();
 	
 	private Thread _executorThread = null;
 	
@@ -72,11 +73,11 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 			if(request.getMethod().equals(Method.GET) ) {
 				if(isStarted.get()) {
 					if(pluginType.equals("executor")) {
-						String status = RuntimeReportUtil.getEntry();
+						byte[] status = RuntimeReportUtil.getEntry();
 						if(status==null)
 							throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
 						else
-							throw new RuntimeException(status);
+							throw new RuntimeException(new String(status, "UTF-8"));
 					}
 					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
 				} else if(isDone.get()) {
@@ -100,7 +101,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				}
 			}
 			else if(request.getMethod().equals(Method.PUT)) {
-				final List<String> files = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
+				final List<String> files = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
 						TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
 				
 				if(!isStarted.get() && !isDone.get()) {
@@ -138,8 +139,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 							isStarted.set(false);
 
 							if(pluginType.equals("executor")) {
-								String status = RuntimeReportUtil.getEntry();
-								if(status!=null && !status.isEmpty()) {
+								byte[] status = RuntimeReportUtil.getEntry();
+								if(status!=null && status.length>0) {
 									leftOver.set(status);
 								}
 								RuntimeReportUtil.unRegisterConfigUI();
@@ -173,13 +174,13 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
-					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
+					byte[] text = "{\"error\": \"Execution completed, check Reports Section\"}".getBytes("UTF-8");
 					if(leftOver.get()!=null) {
-						text = leftOver.get().replaceFirst("Execution already in progress..", "Execution completed, check Reports Section");
+						text = new String(leftOver.get(), "UTF-8").replaceFirst("Execution already in progress..", "Execution completed, check Reports Section").getBytes("UTF-8");
 					}
         			response.setContentType(MediaType.APPLICATION_XML);
-		            response.setContentLength(text.length());
-		            response.getWriter().write(text);
+		            response.setContentLength(text.length);
+		            response.getOutputStream().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(isStarted.get()) {
 					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");

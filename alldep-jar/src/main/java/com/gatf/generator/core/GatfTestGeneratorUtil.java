@@ -49,25 +49,27 @@ import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.logging.Logger;
+
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
+
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.distributed.DistributedGatfListener;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
@@ -553,11 +555,11 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	                            	if(contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.map.annotate.JsonSerialize.class)
                             				|| contentvf.getValue().getClass().isAnnotationPresent(org.codehaus.jackson.annotate.JsonAutoDetect.class))
                             		{
-	                            		content = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+	                            		content = WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
                             		}
                                 	else
                                 	{
-                                		content = new com.fasterxml.jackson.databind.ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
+                                		content = WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValueAsString(contentvf.getValue());
                                 	}
 	                            	consumes = MediaType.APPLICATION_JSON;
 	                            }
@@ -628,7 +630,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                     	
                     	if("json".equalsIgnoreCase(getTestCaseFormat()))
                     	{
-                    		String postManJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(tcases);
+                    		String postManJson = WorkflowContextHandler.OM.writeValueAsString(tcases);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -673,7 +675,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                 				postmanCollection.addTestCase(testCase, getPostmanCollectionVersion());
 							}
                 			
-                			String postManJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(postmanCollection);
+                			String postManJson = WorkflowContextHandler.OM.writeValueAsString(postmanCollection);
                 			String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_postman.json";
                     		BufferedWriter bw = new BufferedWriter(new FileWriter(file));
                     		bw.write(postManJson);
@@ -1177,7 +1179,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 		    		config = (GatfConfiguration)xstream.fromXML(io);
     			} else if(args[1].trim().endsWith(".json")) {
     				InputStream io = new FileInputStream(args[1]);
-    				config = new ObjectMapper().readValue(io, GatfConfiguration.class);
+    				config = WorkflowContextHandler.OM.readValue(io, GatfConfiguration.class);
     			} else {
     				showHelp = true;
     			}
@@ -1274,7 +1276,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 		    		config = (GatfConfiguration)xstream.fromXML(io);
 				} else if(configFile.trim().endsWith(".json")) {
     				InputStream io = new FileInputStream(configFile);
-    				config = new ObjectMapper().readValue(io, GatfConfiguration.class);
+    				config = WorkflowContextHandler.OM.readValue(io, GatfConfiguration.class);
     			}
 	    		
 	    		setDebugEnabled(config.isDebugEnabled());

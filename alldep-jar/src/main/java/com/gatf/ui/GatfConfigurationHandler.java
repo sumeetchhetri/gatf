@@ -29,6 +29,7 @@ import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.generator.core.GatfConfiguration;
 
 public class GatfConfigurationHandler extends HttpHandler {
@@ -55,11 +56,11 @@ public class GatfConfigurationHandler extends HttpHandler {
     			if(configType.equalsIgnoreCase("executor")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, true, null);
     				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
-        			configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(gatfConfig);
+        			configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, false, null);
     				GatfConfiguration gatfConfig = GatfConfigToolUtil.getGatfConfiguration(mojo, null);
-        			configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(gatfConfig);
+        			configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
     			}
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(configJson.length());
@@ -71,7 +72,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     	} else if(request.getMethod().equals(Method.POST) ) {
     		try {
     			if(configType.equalsIgnoreCase("executor")) {
-    				GatfExecutorConfig gatfConfig = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
+    				GatfExecutorConfig gatfConfig = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
         					GatfExecutorConfig.class);
     				GatfConfigToolUtil.getGatfExecutorConfig(mojo, gatfConfig);
     				GatfPlugin executorMojo = f.apply(configType);
@@ -87,7 +88,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     					}
         			}
     			} else if(configType.equalsIgnoreCase("generator")) {
-    				GatfConfiguration gatfConfig = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
+    				GatfConfiguration gatfConfig = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
         					GatfConfiguration.class);
     				GatfConfigToolUtil.getGatfConfiguration(mojo, gatfConfig);
     			}

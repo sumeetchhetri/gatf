@@ -31,6 +31,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.DataSourceProfiler;
 
 /**
@@ -65,7 +66,7 @@ public class GatfProfileHandler  extends HttpHandler {
 					executorMojo.initilaizeContext(gatfConfig, true);
 					DataSourceProfiler profiler = new DataSourceProfiler(executorMojo.getContext());
 					Map<String, List<List<String>>> retval = profiler.getProfileStats(dsnames);
-					String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(retval);
+					String configJson = WorkflowContextHandler.OM.writeValueAsString(retval);
 	    			response.setContentType(MediaType.APPLICATION_JSON);
 		            response.setContentLength(configJson.length());
 		            response.getWriter().write(configJson);

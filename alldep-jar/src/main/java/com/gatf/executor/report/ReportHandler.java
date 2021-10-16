@@ -61,6 +61,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
@@ -126,12 +127,12 @@ public class ReportHandler {
 		VelocityContext context = new VelocityContext();
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 			
 			if(nodes==null)
 			{
-				reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(loadTestResources);
+				reportingJson = WorkflowContextHandler.OM.writeValueAsString(loadTestResources);
 				context.put("loadTestResources", reportingJson);
 			}
 			else
@@ -485,7 +486,7 @@ public class ReportHandler {
 		VelocityContext context = new VelocityContext();
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(allTestCases);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(allTestCases);
 			context.put("testcaseReports", reportingJson);
 			
 			context.put("userSimulation", false);
@@ -602,7 +603,7 @@ public class ReportHandler {
 				if(firstCompareCopy==null) {
 					try
 					{
-						String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(allTestCases);
+						String reportingJson = WorkflowContextHandler.OM.writeValueAsString(allTestCases);
 						context.put("testcaseReports", reportingJson);
 						allTestCases.clear();
 						context.put("compareStats", "{}");
@@ -703,7 +704,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testCaseStats);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testCaseStats);
 			context.put("testcaseStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -713,7 +714,7 @@ public class ReportHandler {
 		{
 			testSuiteStats.setTotalUserSuiteRuns(numberOfRuns);
 			testSuiteStats.setExecutionTime(System.currentTimeMillis() - suiteStartTime);
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -929,7 +930,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(allTestCases);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(allTestCases);
 			context.put("testcaseReports", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -939,7 +940,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testCaseStats);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testCaseStats);
 			context.put("testcaseStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -948,7 +949,7 @@ public class ReportHandler {
 		try
 		{
 			testSuiteStats.setExecutionTime(endTime - startTime);
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testSuiteStats);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testSuiteStats);
 			context.put("suiteStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -956,7 +957,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(compareStatuses);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(compareStatuses);
 			context.put("compareStats", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -1014,7 +1015,7 @@ public class ReportHandler {
 		
 		try
 		{
-			String reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(testPercentileValues);
+			String reportingJson = WorkflowContextHandler.OM.writeValueAsString(testPercentileValues);
 			context.put("testcaseTAReports", reportingJson);
 			
 			if(testPercentileValues.size()>0)
@@ -1045,7 +1046,7 @@ public class ReportHandler {
 				times90.add(time);
 			}
 			
-			reportingJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(runPercentileValues);
+			reportingJson = WorkflowContextHandler.OM.writeValueAsString(runPercentileValues);
 			context.put("runTAReports", reportingJson);
 		} catch (Exception e) {
 			e.printStackTrace();

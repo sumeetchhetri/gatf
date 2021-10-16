@@ -45,7 +45,6 @@ import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 import org.w3c.dom.Document;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
@@ -538,7 +537,7 @@ public class AcceptanceTestContext {
 				xstream.alias("arg", String.class);
 				gatfTestDataConfig = (GatfTestDataConfig)xstream.fromXML(file);
 			} else  {
-				gatfTestDataConfig = new ObjectMapper().readValue(file, GatfTestDataConfig.class);
+				gatfTestDataConfig = WorkflowContextHandler.OM.readValue(file, GatfTestDataConfig.class);
 			}
 			gatfExecutorConfig.setGatfTestDataConfig(gatfTestDataConfig);
 		} else {

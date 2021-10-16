@@ -9,7 +9,7 @@ import java.util.Map;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gatf.executor.core.WorkflowContextHandler;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -87,7 +87,7 @@ public class CurlPlugin {
         resp.put("headers", headers);
         resp.put("cookies", cookies);
         
-        return new ObjectMapper().writeValueAsString(resp);
+        return WorkflowContextHandler.OM.writeValueAsString(resp);
     }
     
     public static String[] toSampleSelCmd() {

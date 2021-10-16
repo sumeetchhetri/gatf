@@ -43,9 +43,9 @@ import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.Keys;
 import org.reflections.Reflections;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -6305,19 +6305,19 @@ public class Command {
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", retvals[4].toString());
-            return new ObjectMapper().writeValueAsString(mpe);
+            return WorkflowContextHandler.OM.writeValueAsString(mpe);
         } catch (GatfSelCodeParseError e) {
         	e.printStackTrace();
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", e.getMessage());
-            return new ObjectMapper().writeValueAsString(mpe);
+            return WorkflowContextHandler.OM.writeValueAsString(mpe);
         } catch (Throwable e) {
         	e.printStackTrace();
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", "Unable to compile seleasy script " + args[1]);
-            return new ObjectMapper().writeValueAsString(mpe);
+            return WorkflowContextHandler.OM.writeValueAsString(mpe);
         }
     }
 
@@ -6441,7 +6441,7 @@ public class Command {
 	                    
 	                    configuration = (GatfExecutorConfig)xstream.fromXML(resource);
                 	} else if(configFile.trim().endsWith(".json")) {
-                		configuration = new ObjectMapper().readValue(resource, GatfExecutorConfig.class);
+                		configuration = WorkflowContextHandler.OM.readValue(resource, GatfExecutorConfig.class);
                 	} else {
                 		throw new RuntimeException("Invalid Config file, please provide either an xml or a json config file");
                 	}

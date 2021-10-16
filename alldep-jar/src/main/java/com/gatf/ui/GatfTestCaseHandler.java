@@ -37,6 +37,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
@@ -135,7 +136,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     		        fos.close();
     		    } else {
         		    String testCaseName = request.getParameter("tcName");
-        			TestCase testCase = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), 
+        			TestCase testCase = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
         					TestCase.class);
         			if(testCase.getName()==null) {
         				throw new RuntimeException("Testcase does not specify name");
@@ -273,7 +274,7 @@ public class GatfTestCaseHandler extends HttpHandler {
                     		xstream.toXML(tcsn, new FileOutputStream(filePath));
         				}
         			}
-        			String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(tcsn);
+        			String json = WorkflowContextHandler.OM.writeValueAsString(tcsn);
         			response.setContentType(MediaType.APPLICATION_JSON);
     	            response.setContentLength(json.length());
     	            response.getWriter().write(json);

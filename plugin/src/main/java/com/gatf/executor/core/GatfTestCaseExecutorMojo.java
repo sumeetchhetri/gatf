@@ -406,7 +406,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
 	                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
 	                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-	                    xstream.alias("testCaseHooksPaths", String[].class);
+	                    /*xstream.alias("testCaseHooksPaths", String[].class);
 	                    xstream.alias("testCaseHooksPath", String.class);
 	                    xstream.alias("args", String[].class);
 	                    xstream.alias("arg", String.class);
@@ -420,7 +420,7 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	                    xstream.alias("orderedFiles", String[].class);
 	                    xstream.alias("string", String.class);
 	                    xstream.alias("seleniumScripts", String[].class);
-	                    xstream.alias("seleniumScript", String.class);
+	                    xstream.alias("seleniumScript", String.class);*/
 	
 	                    configuration = (GatfExecutorConfig) xstream.fromXML(resource);
                 	} else if(configFile.trim().endsWith(".json")) {

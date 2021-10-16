@@ -34,6 +34,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.TestCaseFinder;
 
 public class GatfTestCaseFilesHandler extends HttpHandler {
@@ -206,7 +207,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     				fileNames.add(TestCaseFinder.getRelativePath(file, dirFPath));
 				}
     			
-    			String json = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(fileNames);
+    			String json = WorkflowContextHandler.OM.writeValueAsString(fileNames);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(json.length());
 	            response.getWriter().write(json);

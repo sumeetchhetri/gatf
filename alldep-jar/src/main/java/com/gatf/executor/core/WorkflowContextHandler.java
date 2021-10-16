@@ -30,6 +30,7 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.validator.XMLResponseValidator;
 
 import okhttp3.Cookie;
@@ -40,6 +41,8 @@ import okhttp3.HttpUrl;
  * Holds global/suite level workflow variable/values
  */
 public class WorkflowContextHandler {
+	
+	public static final ObjectMapper OM = new ObjectMapper();
 
 	private final VelocityEngine engine = new VelocityEngine();
 	

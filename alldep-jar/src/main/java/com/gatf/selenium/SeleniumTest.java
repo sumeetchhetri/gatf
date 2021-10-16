@@ -72,8 +72,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.google.common.io.Resources;
@@ -460,7 +460,7 @@ public abstract class SeleniumTest {
 	{
 		try
 		{
-			System.out.println(new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(getAllProviderData(getPn(name))));
+			System.out.println(WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValueAsString(getAllProviderData(getPn(name))));
 		}
 		catch (Exception e)
 		{

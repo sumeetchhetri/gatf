@@ -37,6 +37,7 @@ import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.ReportHandler;
@@ -93,14 +94,14 @@ public class GatfReportsHandler extends HttpHandler {
 			    }
 			    else if(action.equals("replayTest"))
 			    { 
-			        tcReport = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
+			        tcReport = WorkflowContextHandler.OM.readValue(request.getInputStream(), TestCaseReport.class);
 			        if(tcReport == null) {
 			            throw new RuntimeException("Invalid testcase report details provided");
 			        }
 			    } 
 			    else if(isExternalLogsApi && !action.equals("playTest"))
 			    {
-			        tcReport = new com.fasterxml.jackson.databind.ObjectMapper().readValue(request.getInputStream(), TestCaseReport.class);
+			        tcReport = WorkflowContextHandler.OM.readValue(request.getInputStream(), TestCaseReport.class);
 			    }
 			    else if(!action.equals("playTest"))
 			    {
@@ -109,8 +110,8 @@ public class GatfReportsHandler extends HttpHandler {
 			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false);
 			    if(out[1]!=null) {
 			        response.setContentType(out[2].toString());
-			        response.setContentLength(((String)out[1]).length());
-			        response.getWriter().write((String)out[1]);
+			        response.setContentLength(((byte[])out[1]).length);
+			        response.getOutputStream().write((byte[])out[1]);
 			    }
 			    response.setStatus((HttpStatus)out[0]);
 			}
@@ -409,7 +410,7 @@ public class GatfReportsHandler extends HttpHandler {
                         nrep.setUrl(url);
                         nrep.setRequestContent(content);
                         
-                        String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(nrep);
+                        String configJson = WorkflowContextHandler.OM.writeValueAsString(nrep);
                         return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, nrep};
                     }
                 }
@@ -615,7 +616,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 TestCaseReport report = reports.get(0);
                 ReportHandler.populateRequestResponseHeaders(report);
-                String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(report);
+                byte[] configJson = WorkflowContextHandler.OM.writeValueAsBytes(report);
                 return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, report};
             }
         }

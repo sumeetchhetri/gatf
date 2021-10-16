@@ -35,9 +35,9 @@ import org.apache.commons.io.IOUtils;
 
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -482,7 +482,7 @@ public class DistributedGatfListener {
 	                    
 	                    configuration = (GatfExecutorConfig)xstream.fromXML(resource);
                 	} else if(configFile.trim().endsWith(".json")) {
-                		configuration = new ObjectMapper().readValue(resource, GatfExecutorConfig.class);
+                		configuration = WorkflowContextHandler.OM.readValue(resource, GatfExecutorConfig.class);
                 	} else {
                 		throw new RuntimeException("Invalid Config file, please provide either an xml or a json config file");
                 	}

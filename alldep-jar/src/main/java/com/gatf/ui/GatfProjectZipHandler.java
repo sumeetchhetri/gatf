@@ -28,6 +28,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 import org.zeroturnaround.zip.ZipUtil;
 
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.TestCaseFinder;
 
 public class GatfProjectZipHandler extends HttpHandler {
@@ -59,14 +60,14 @@ public class GatfProjectZipHandler extends HttpHandler {
     	else err.add(resStr);
     	if(res.size()>0)
     	{
-    		String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(res);
+    		String configJson = WorkflowContextHandler.OM.writeValueAsString(res);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.OK_200);
     	}
     	else
     	{
-    		String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(err);
+    		String configJson = WorkflowContextHandler.OM.writeValueAsString(err);
         	response.setContentLength(configJson.length());
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR_500);

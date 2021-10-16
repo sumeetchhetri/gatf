@@ -5,14 +5,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+
 import javax.ws.rs.core.MediaType;
+
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfFunctionHandler;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
@@ -166,7 +169,7 @@ public class VegetaTestCaseExecutor {
 			rbl.add(results.getAbsolutePath());
 			StringBuilder out2 = new StringBuilder();
 			GatfFunctionHandler.executeCmd(rbl, out2, null, true);
-			Map<String, Object> retval = new ObjectMapper().readValue(out2.toString(), Map.class);
+			Map<String, Object> retval = WorkflowContextHandler.OM.readValue(out2.toString(), Map.class);
 			tcr.getPerfResult().add(retval);
 			
 			if(isPlot) {

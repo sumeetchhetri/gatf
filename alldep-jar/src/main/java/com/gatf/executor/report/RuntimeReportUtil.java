@@ -15,6 +15,7 @@
 */
 package com.gatf.executor.report;
 
+import java.io.ByteArrayOutputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
@@ -22,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gatf.executor.core.WorkflowContextHandler;
 
 /**
  * @author Sumeet Chhetri
@@ -220,7 +221,7 @@ public class RuntimeReportUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-    public static String getEntry()
+    public static byte[] getEntry()
 	{
 	    try {
     	    List<List<Object>> st = new ArrayList<List<Object>>();
@@ -236,18 +237,27 @@ public class RuntimeReportUtil {
     	        }
     	        if(st.size()>=1000 || sst.size()>=1000)break;
     	    }
-    	    String gstats = "";
+    	    //synchronized (gloadStats) {
+    	    //	gstats = ",\"gstats\":" + WorkflowContextHandler.OM.writeValueAsString(gloadStats);
+    	    //}
+    	    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    	    baos.write("{\"error\":\"Execution already in progress..\",\"lstats\":".getBytes("UTF-8"));
+    	    baos.write(WorkflowContextHandler.OM.writeValueAsBytes(st));
+    	    baos.write(",\"sstats\":".getBytes("UTF-8"));
+    	    baos.write(WorkflowContextHandler.OM.writeValueAsBytes(sst));
+	    	baos.write(",\"gstats\":".getBytes("UTF-8"));
     	    synchronized (gloadStats) {
-    	    	gstats = ",\"gstats\":" + new ObjectMapper().writeValueAsString(gloadStats);
+        	    baos.write(WorkflowContextHandler.OM.writeValueAsBytes(gloadStats));
     	    }
-            String arr = "{\"error\":\"Execution already in progress..\",\"lstats\":" + 
-                    new ObjectMapper().writeValueAsString(st) + ",\"sstats\":" + 
-                    new ObjectMapper().writeValueAsString(sst) + gstats + "}";
-            return arr;
+    	    baos.write("}".getBytes("UTF-8"));
+            //String arr = "{\"error\":\"Execution already in progress..\",\"lstats\":" + 
+            //        WorkflowContextHandler.OM.writeValueAsString(st) + ",\"sstats\":" + 
+            //        WorkflowContextHandler.OM.writeValueAsString(sst) + gstats + "}";
+            return baos.toByteArray();
 	    } catch (Exception e) {
             e.printStackTrace();
         }
-	    return "";
+	    return new byte[] {};
 	}
 	
 	public static Object getDLEntry()

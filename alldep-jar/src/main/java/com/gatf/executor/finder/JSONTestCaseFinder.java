@@ -17,7 +17,9 @@ package com.gatf.executor.finder;
 
 import java.io.File;
 import java.util.List;
+
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 
 /**
  * @author Sumeet Chhetri
@@ -30,7 +32,7 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 	}
 
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		com.fasterxml.jackson.databind.ObjectMapper jsonMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+		com.fasterxml.jackson.databind.ObjectMapper jsonMapper = WorkflowContextHandler.OM;
 		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new com.fasterxml.jackson.core.type.TypeReference<List<TestCase>>(){});
 		return jsonTestCases;
 	}

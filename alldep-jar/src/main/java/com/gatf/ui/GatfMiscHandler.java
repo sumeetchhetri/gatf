@@ -30,6 +30,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.GatfTestDataSource;
@@ -97,7 +98,7 @@ public class GatfMiscHandler extends HttpHandler {
 				dataLst.add(RandomValueTestDataProvider.class.getName());
 				miscMap.put("providercls", dataLst);
     			
-    			String configJson = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(miscMap);
+    			String configJson = WorkflowContextHandler.OM.writeValueAsString(miscMap);
     			response.setContentType(MediaType.APPLICATION_JSON);
 	            response.setContentLength(configJson.length());
 	            response.getWriter().write(configJson);
