@@ -55,7 +55,7 @@ function getTestResultContent(report, index)
 	if(report.status=='Failed')
 	{
 		var trid = '#tr_report_'+index;
-		content += '<p><button onclick="getIssueDetails(\''+trid+'\',\''+index+'\')">Create Issue</button></p>';
+		content += '<p><button click-event="getIssueDetails(\''+trid+'\',\''+index+'\')">Create Issue</button></p>';
 	}
 	content += '<p>Request:</p><pre>Actual Url: '+report.actualUrl+'</pre><pre>Template Url: '+report.url+'</pre><pre>'+reqhdrsVal+'</pre>';
 	content += '<pre>'+getData(report.requestContent, reqcnttyp)+'</pre></div>';
@@ -83,6 +83,40 @@ function getTestResultContent(report, index)
 		content += '<pre>'+escapeHtml(getData(report.errorText, 'text/plain'))+'</pre></div>';
 	}
 	return content;
+}
+
+function execFunction1(evt) {
+	evt = evt.trim();
+	var fnm = evt.substring(0, evt.indexOf("("));
+	var argss = evt.substring(evt.indexOf("(")+1, evt.length-1);
+	argss = argss.split(',');
+	var args = [];
+	for(var i=0;i<argss.length;i++) {
+		var tmp = argss[i].trim();
+		if(tmp) {
+			if(tmp.charAt(0)=="'" && tmp.charAt(tmp.length-1)=="'") {
+				tmp = tmp.substring(1, tmp.length-1);
+				args.push(tmp);
+			} else if(tmp.charAt(0)=='"' && tmp.charAt(tmp.length-1)=='"') {
+				tmp = tmp.substring(1, tmp.length-1);
+				args.push(tmp);
+			} else if(tmp=="this") {
+				args.push($(e.target));
+			} else if(tmp=="event") {
+				args.push($(e));
+			} else if(tmp=='true' || tmp=='false') {
+				args.push(tmp=='true');
+			} else if(!isNaN(tmp)) {
+				args.push(tmp*1);
+			} else if(tmp.startsWith("$(")) {
+				tmp = tmp.substring(2, tmp.lastIndexOf(")"));
+				args.push($(tmp.substring(1, tmp.length-1)));
+			}
+		}
+	}
+	if(window[fnm]) {
+		window[fnm].apply(null, args);
+	}
 }
 
 var dtdatatable = null;
@@ -126,29 +160,6 @@ function showTable(reportType, type, perfType)
 		}
 
 		var content = '<div id="tddatah-'+i+'">Request, Response Details...</div><div id="tddata-'+i+'" style="display:none">'+perfcont;
-		/*content += '<div><p><a href="#" onclick="">Replay</a></p><p>Request:</p><pre>Actual Url: '+reports[i].actualUrl+'</pre><pre>Template Url: '+reports[i].url+'</pre><pre>'+reqhdrsVal+'</pre>';
-		content += '<pre>'+getData(reports[i].requestContent, reqcnttyp)+'</pre></div>';
-		content += '<div><p>Response:</p><pre>'+responseHeaders+'</pre>';
-		content += '<pre>'+getData(reports[i].responseContent, rescnttyp)+'</pre></div>';
-
-		var error = getData(reports[i].error, 'text/plain');
-		if(undefined!=reports[i].errors && reports[i].errors!=null)
-		{
-			var err = '';
-			for (var key in reports[i].errors) {
-				if (reports[i].errors.hasOwnProperty(key)) {
-					err += ('Run ' + key + "\n" + reports[i].errors[key] + "\n\n");
-				}
-			}
-			if(err!='')
-				error = err;
-		}
-		if(error!='NA')
-		{
-			error = escapeHtml(error);
-			content += '<div><p>Errors:</p><pre>'+error+'</pre>';
-			content += '<pre>'+escapeHtml(getData(reports[i].errorText, 'text/plain'))+'</pre></div>';
-		}*/
 		content += getTestResultContent(reports[i], i);
 		content += '</div>';
 
@@ -194,7 +205,11 @@ function showTable(reportType, type, perfType)
 		}	
 		$('#dataTables-example tbody').append($(tr));
 		$('#tr_report_'+i).html(
-		"<td>" + identi + "</td><td><p><a href=\"#\" onclick=\"replayTest('"+trid+"',"+i+")\">Replay</a></p>"+reports[i].method+"</td><td><span class=\""+glyph+"\"></span>"+reasonCd+"</td><td>" + execTimedis + "</td><td data-id=\"tddata-"+i+"\" data-hid=\"tddatah-"+i+"\" style=\"cursor:pointer;cursor:hand;\" onclick=\"openTestCaseDetails(event, this);return false;\">"+content+"</td>");
+		"<td>" + identi + "</td><td><p><a href=\"#\" click-event=\"replayTest('"+trid+"',"+i+")\">Replay</a></p>"+reports[i].method+"</td><td><span class=\""+glyph+"\"></span>"+reasonCd+"</td><td>" + execTimedis + "</td><td data-id=\"tddata-"+i+"\" data-hid=\"tddatah-"+i+"\" style=\"cursor:pointer;cursor:hand;\" click-event=\"openTestCaseDetails(event, this)\">"+content+"</td>");
+		$('#tr_report_'+i).find('[click-event]').off().on('click', function() {
+			var evt = $(e.target).attr('click-event');
+			execFunction1(evt);
+		});
 		$(trid).data('tcf', tcf);
 		$(trid).data('tc', tc);
 		$(trid).data('actualRequest', actualRequest);
@@ -310,6 +325,7 @@ function openTestCaseDetails(e, ele)
 		window.parent.postMessage(["setHeight", panelHeight], "*");
 	}
 	e.stopImmediatePropagation();
+  return false;
 }
 
 function shortHandHeaderTxt(txt, limit) {
@@ -1643,6 +1659,10 @@ function replayTest(trid, index)
 	ajaxCall(true, "PUT", "/reports?action=replayTest&testcaseFileName="+tcf+"&testCaseName="+tc, "", actualRequest, {}, function(data){
 		var content = getTestResultContent(data);
 		$('#tddata-'+index).html(content);
+		$('#tddata-'+index).find('[click-event]').off().on('click', function() {
+			var evt = $(e.target).attr('click-event');
+			execFunction1(evt);
+		});
 	}, null);
 	return false;
 }
@@ -1656,7 +1676,7 @@ function getIssueDetails(trid, index)
 	ajaxCall(true, "PUT", "/reports?action=getContent&testcaseFileName=gatf-issuetracking-api-int.xml&testCaseName=targetapi&isExternalLogsApi=true", "", actualRequest, {}, function(data){
 		if(data.requestContent!='')
 		{
-			$('<div id="popup_wrapper" style="background:#FFFFFF;-moz-box-shadow: 0 0 5px #ff0000;-webkit-box-shadow: 0 0 5px #ff0000;box-shadow: 0 0 5px #ff0000;border:2px solid #fff000;position:fixed;z-index:2;left:300px;top:100px;padding:40px;width:600px;"><center><b style="font-size:25px">Issue Details</b></center><p>URL</p><input id="popup_url" type="text" style="width:100%"/><br/><br/><p>Content</p><textarea style="width:100%;height:200px" id="popup_cont"></textarea><br/><br/><button onclick="createIssue()">Create Issue</button>&nbsp;&nbsp;<button onclick="$(\'#popup_wrapper\').remove();return false;">Close</button></div>').prependTo('body'); 
+			$('<div id="popup_wrapper" style="background:#FFFFFF;-moz-box-shadow: 0 0 5px #ff0000;-webkit-box-shadow: 0 0 5px #ff0000;box-shadow: 0 0 5px #ff0000;border:2px solid #fff000;position:fixed;z-index:2;left:300px;top:100px;padding:40px;width:600px;"><center><b style="font-size:25px">Issue Details</b></center><p>URL</p><input id="popup_url" type="text" style="width:100%"/><br/><br/><p>Content</p><textarea style="width:100%;height:200px" id="popup_cont"></textarea><br/><br/><button click-event="createIssue()">Create Issue</button>&nbsp;&nbsp;<button click-event="removePw()">Close</button></div>').prependTo('body'); 
 			$('#popup_url').val(data.url);
 			$('#popup_cont').val(data.requestContent);
 		}
@@ -1664,6 +1684,11 @@ function getIssueDetails(trid, index)
 			alert("Issue could not be created");
 	}, null);
 	return false;
+}
+
+function removePw() {
+  $('#popup_wrapper').remove();
+  return false;
 }
 
 function createIssue()

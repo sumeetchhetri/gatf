@@ -127,7 +127,8 @@ public class AcceptanceTestContext {
 	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
 	
 	public static void setCorsHeaders(Response response) {
-		if(Boolean.TRUE.toString().equalsIgnoreCase(System.getenv("cor.enabled")) || Boolean.TRUE.toString().equalsIgnoreCase(System.getProperty("cor.enabled"))) {
+		if(Boolean.FALSE.toString().equalsIgnoreCase(System.getenv("cors.enabled")) || Boolean.FALSE.toString().equalsIgnoreCase(System.getProperty("cors.enabled"))) {
+		} else {
 			response.setHeader("Access-Control-Allow-Origin", "*");
 			response.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, PUT");
 			response.setHeader("Access-Control-Allow-Headers", "*");
