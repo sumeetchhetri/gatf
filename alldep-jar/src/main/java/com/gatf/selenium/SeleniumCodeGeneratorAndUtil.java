@@ -66,7 +66,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
-		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
+		Command cmd = Command.read(new File(fileName), commands, context);
 		String sourceCode =  cmd.javacode();
 		
 		String gatfJarPath = "gatf-alldep-jar.jar";

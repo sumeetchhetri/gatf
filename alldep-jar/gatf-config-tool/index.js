@@ -1775,7 +1775,7 @@ function configuration() {
             countMap = {};
             isSeleniumExecutor = data.isSeleniumExecutor;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
-            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', startInitConfigTool, null);
+            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', "startInitConfigTool", null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);

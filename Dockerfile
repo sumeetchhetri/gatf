@@ -30,6 +30,6 @@ COPY plugin /tmp/gatf/plugin
 COPY sample /tmp/gatf/sample
 COPY pom.xml /tmp/gatf/
 COPY plugins.txt /tmp/gatf/
-RUN cd gatf && mvn package
+RUN cd gatf && mvn install
 
 RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-1.0.6.jar /gatf-alldep.jar

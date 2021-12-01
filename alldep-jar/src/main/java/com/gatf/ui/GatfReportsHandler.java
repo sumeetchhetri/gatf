@@ -490,7 +490,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
                     executorMojo.initilaizeContext(gatfConfig, true);
-                    gatfConfig.setSeleniumScripts(new String[]{filePath});
+                    gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
                     executorMojo.doSeleniumTest(gatfConfig, null);
                     String cont = "Please check Reports section for the selenium test results";
                     return new Object[]{HttpStatus.OK_200, cont, MediaType.TEXT_PLAIN, null};
