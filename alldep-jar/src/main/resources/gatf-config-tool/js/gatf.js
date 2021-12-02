@@ -85,7 +85,7 @@ function getTestResultContent(report, index)
 	return content;
 }
 
-function execFunction1(evt) {
+function execFunction1(evt, ths) {
 	evt = evt.trim();
 	var fnm = evt.substring(0, evt.indexOf("("));
 	var argss = evt.substring(evt.indexOf("(")+1, evt.length-1);
@@ -101,7 +101,7 @@ function execFunction1(evt) {
 				tmp = tmp.substring(1, tmp.length-1);
 				args.push(tmp);
 			} else if(tmp=="this") {
-				args.push($(e.target));
+				args.push(ths);
 			} else if(tmp=="event") {
 				args.push($(e));
 			} else if(tmp=='true' || tmp=='false') {
@@ -206,9 +206,9 @@ function showTable(reportType, type, perfType)
 		$('#dataTables-example tbody').append($(tr));
 		$('#tr_report_'+i).html(
 		"<td>" + identi + "</td><td><p><a href=\"#\" click-event=\"replayTest('"+trid+"',"+i+")\">Replay</a></p>"+reports[i].method+"</td><td><span class=\""+glyph+"\"></span>"+reasonCd+"</td><td>" + execTimedis + "</td><td data-id=\"tddata-"+i+"\" data-hid=\"tddatah-"+i+"\" style=\"cursor:pointer;cursor:hand;\" click-event=\"openTestCaseDetails(event, this)\">"+content+"</td>");
-		$('#tr_report_'+i).find('[click-event]').off().on('click', function() {
-			var evt = $(e.target).attr('click-event');
-			execFunction1(evt);
+		$('#tr_report_'+i).find('[click-event]').off('click').on('click', function() {
+			var evt = $(this).attr('click-event');
+			execFunction1(evt, $(this));
 		});
 		$(trid).data('tcf', tcf);
 		$(trid).data('tc', tc);
@@ -1659,9 +1659,9 @@ function replayTest(trid, index)
 	ajaxCall(true, "PUT", "/reports?action=replayTest&testcaseFileName="+tcf+"&testCaseName="+tc, "", actualRequest, {}, function(data){
 		var content = getTestResultContent(data);
 		$('#tddata-'+index).html(content);
-		$('#tddata-'+index).find('[click-event]').off().on('click', function() {
-			var evt = $(e.target).attr('click-event');
-			execFunction1(evt);
+		$('#tddata-'+index).find('[click-event]').off('click').on('click', function() {
+			var evt = $(this).attr('click-event');
+			execFunction1(evt, $(this));
 		});
 	}, null);
 	return false;

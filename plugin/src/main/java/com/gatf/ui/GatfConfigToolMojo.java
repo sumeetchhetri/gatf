@@ -16,12 +16,8 @@
 package com.gatf.ui;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.util.UUID;
 import java.util.function.Function;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
 import org.apache.maven.plugin.MojoFailureException;
@@ -37,7 +33,7 @@ import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfTestCaseExecutorMojo;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.report.ReportHandler;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.generator.core.GatfTestGeneratorMojo;
 
 /**
@@ -80,20 +76,7 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 		HttpServer server = new HttpServer();
 
 		final String mainDir = rootDir + File.separator + "gatf-config-tool";
-		InputStream resourcesIS = GatfConfigToolMojo.class.getResourceAsStream("/gatf-config-tool.zip");
-        if (resourcesIS != null)
-        {
-        	try {
-        		File gctzip = File.createTempFile("gatf-config-tool_" + UUID.randomUUID().toString(), ".zip");
-        		FileOutputStream fos = new FileOutputStream(gctzip);
-        		IOUtils.copy(resourcesIS, fos);
-        		fos.close();
-            	ReportHandler.unzipZipFile(gctzip, rootDir);
-            	gctzip.delete();
-        	} catch (Exception e) {
-        		throw new RuntimeException(e);
-        	}
-        }
+		WorkflowContextHandler.copyResourcesToDirectory("gatf-config-tool", mainDir);
         
         final GatfConfigToolMojo mojo = this;
         

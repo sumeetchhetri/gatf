@@ -15,15 +15,21 @@
 */
 package com.gatf.executor.core;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.StringWriter;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.jar.JarFile;
 
 import org.apache.commons.collections.MapUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.w3c.dom.Attr;
@@ -31,6 +37,7 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gatf.ResourceCopy;
 import com.gatf.executor.validator.XMLResponseValidator;
 
 import okhttp3.Cookie;
@@ -453,5 +460,32 @@ public class WorkflowContextHandler {
 			}
 		}
 		return nodeValues;
+	}
+	
+	public static void copyResourcesToDirectory(String resPath, String directory) {
+		if(new File(directory).exists()) {
+			try {
+				FileUtils.deleteDirectory(new File(directory));
+			} catch (IOException e) {
+			}
+		}
+		Optional<JarFile> jarFile = ResourceCopy.jar(WorkflowContextHandler.class);
+		if(jarFile.isPresent()) {
+			try {
+				ResourceCopy.copyResourceDirectory(jarFile.get(), resPath, new File(directory));
+			} catch (IOException e1) {
+				e1.printStackTrace();
+			}
+		} else {
+			URL resourcesUrl = WorkflowContextHandler.class.getResource("/" + resPath);
+	        if (resourcesUrl != null)
+	        {
+	        	try {
+	        		FileUtils.copyDirectory(new File(resourcesUrl.getPath()), new File(directory));
+	        	} catch (Exception e) {
+	        		throw new RuntimeException(e);
+	        	}
+	        }
+		}
 	}
 }

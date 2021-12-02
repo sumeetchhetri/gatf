@@ -32,7 +32,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.logging.Logger;
@@ -43,7 +42,6 @@ import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.PrefixFileFilter;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
@@ -607,13 +605,16 @@ public class ReportHandler {
 						context.put("testcaseReports", reportingJson);
 						allTestCases.clear();
 						context.put("compareStats", "{}");
-						InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+						
+						InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
 			            if (resourcesIS != null)
 			            {
 			            	
 			            	File resource = acontext.getOutDir();
-			                if(runNumber==1 && unzipFile)
-			                	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+			                if(runNumber==1 && unzipFile) {
+			                	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+			                	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+			                }
 			                
 			                VelocityEngine engine = new VelocityEngine();
 			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -729,7 +730,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
@@ -965,13 +966,14 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
             if (resourcesIS != null)
             {
-            	
             	File resource = acontext.getOutDir();
-                if(!unzipped)
-                	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+                if(!unzipped) {
+                	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+                	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+                }
                 
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1054,7 +1056,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
@@ -1093,10 +1095,11 @@ public class ReportHandler {
             context.put("testsMap", summLstMap);
             
             File resource = acontext.getOutDir();
-            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
             if (resourcesIS != null)
             {
-            	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+            	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+            	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
             }
             
             VelocityEngine engine = new VelocityEngine();
@@ -1124,10 +1127,11 @@ public class ReportHandler {
             context.put("indexes", indexes);
             File resource = acontext.getOutDir();
             
-            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources.zip");
+            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
             if (resourcesIS != null)
             {
-            	unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+            	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+            	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
             }
             
             VelocityEngine engine = new VelocityEngine();
@@ -1147,11 +1151,11 @@ public class ReportHandler {
         }
     }
 	
-	private static void unzipGatfResources(InputStream resourcesIS, String path) throws IOException {
+	/*private static void unzipGatfResources(InputStream resourcesIS, String path) throws IOException {
 		File gctzip = File.createTempFile("gatf-resources-"+UUID.randomUUID(), ".zip");
 		IOUtils.copy(resourcesIS, new FileOutputStream(gctzip));
     	unzipZipFile(gctzip, path);
-	}
+	}*/
     
     public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
     {

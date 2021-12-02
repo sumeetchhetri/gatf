@@ -410,7 +410,7 @@ public class GatfReportsHandler extends HttpHandler {
                         nrep.setUrl(url);
                         nrep.setRequestContent(content);
                         
-                        String configJson = WorkflowContextHandler.OM.writeValueAsString(nrep);
+                        byte[] configJson = WorkflowContextHandler.OM.writeValueAsBytes(nrep);
                         return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, nrep};
                     }
                 }
@@ -493,11 +493,10 @@ public class GatfReportsHandler extends HttpHandler {
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
                     executorMojo.doSeleniumTest(gatfConfig, null);
                     String cont = "Please check Reports section for the selenium test results";
-                    return new Object[]{HttpStatus.OK_200, cont, MediaType.TEXT_PLAIN, null};
+                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
                 }
                 
                 if(!testcaseFileName.toLowerCase().endsWith(".sel")) {
-                    
                     if(mojo!=null && mojo.getContext()!=null) {
                         context = mojo.getContext();
                     } else if(context==null) {

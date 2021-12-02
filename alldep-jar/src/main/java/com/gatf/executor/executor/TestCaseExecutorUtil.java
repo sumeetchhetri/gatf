@@ -715,7 +715,7 @@ public class TestCaseExecutorUtil {
 		fullUrl = fullUrl.trim() + "/" + urlPart.trim();
 		String parturl = fullUrl.substring(fullUrl.indexOf("://")+3);
 		fullUrl = fullUrl.substring(0, fullUrl.indexOf("://")+3) + parturl.replace("//", "/");
-		Assert.assertTrue("Testcase URL is not valid " + fullUrl, AcceptanceTestContext.URL_VALIDATOR.isValid(fullUrl));
+		Assert.assertTrue("Testcase URL is not valid " + fullUrl,AcceptanceTestContext.isValidUrl(fullUrl));
 		return fullUrl;
 	}
 	

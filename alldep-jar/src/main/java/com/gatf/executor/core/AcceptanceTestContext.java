@@ -126,6 +126,26 @@ public class AcceptanceTestContext {
 	
 	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
 	
+	public static boolean isValidUrl(String url) {
+		if(!URL_VALIDATOR.isValid(url)) {
+			if(url.startsWith("host.docker.internal")) {
+				url = url.replace("host.docker.internal", "");
+				if(url.length()>0 && url.charAt(0)==':') {
+					url = url.substring(1);
+				}
+				if(url.indexOf("/")!=-1) {
+					url = url.substring(0, url.indexOf("/"));
+				}
+				try {
+					Integer.parseInt(url);
+				} catch (Exception e) {
+					return false;
+				}
+			}
+		}
+		return true;
+	}
+	
 	public static void setCorsHeaders(Response response) {
 		if(Boolean.FALSE.toString().equalsIgnoreCase(System.getenv("cors.enabled")) || Boolean.FALSE.toString().equalsIgnoreCase(System.getProperty("cors.enabled"))) {
 		} else {
@@ -443,7 +463,7 @@ public class AcceptanceTestContext {
 		
 		if(StringUtils.isNotBlank(gatfExecutorConfig.getBaseUrl()))
 		{
-			Assert.assertTrue("Base URL is not valid", URL_VALIDATOR.isValid(gatfExecutorConfig.getBaseUrl()));
+			Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(gatfExecutorConfig.getBaseUrl()));
 		}
 		
 		if(gatfExecutorConfig.getOutFilesDir()!=null && !gatfExecutorConfig.getOutFilesDir().trim().isEmpty())

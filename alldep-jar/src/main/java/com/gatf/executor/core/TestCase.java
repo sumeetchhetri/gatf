@@ -1007,7 +1007,7 @@ public class TestCase implements Serializable {
 				throw new RuntimeException("No Base URL specified");
 				
 			if(StringUtils.isNotBlank(getBaseUrl()))
-				Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.URL_VALIDATOR.isValid(getBaseUrl()));
+				Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(getBaseUrl()));
 			
 			String fullUrl = StringUtils.isBlank(getBaseUrl())?baseUrl:getBaseUrl();
 			fullUrl = fullUrl.trim() + "/" + getUrl().trim();

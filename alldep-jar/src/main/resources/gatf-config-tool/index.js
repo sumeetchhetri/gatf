@@ -527,16 +527,16 @@ var alltestcasefiles = [];
 
 		$('#srch-term').on('keydown', searchLeftNavs);
 
-		$(document).off().on('click', function(e) {
+		$(document).off('click').on('click', function(e) {
 		    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON') && $(e.target).attr('click-event')) {
 		        var evt = $(e.target).attr('click-event');
-				execFunction(evt);
+				execFunction(evt, $(e.target));
 		    }
 		});
     });
 })();
 
-function execFunction(evt) {
+function execFunction(evt, ths) {
 	evt = evt.trim();
 	var fnm = evt.substring(0, evt.indexOf("("));
 	var argss = evt.substring(evt.indexOf("(")+1, evt.length-1);
@@ -552,7 +552,7 @@ function execFunction(evt) {
 				tmp = tmp.substring(1, tmp.length-1);
 				args.push(tmp);
 			} else if(tmp=="this") {
-				args.push($(e.target));
+				args.push(ths);
 			} else if(tmp=="event") {
 				args.push($(e));
 			} else if(tmp=='true' || tmp=='false') {
@@ -562,7 +562,13 @@ function execFunction(evt) {
 			} else if(tmp.startsWith("$(")) {
 				tmp = tmp.substring(2, tmp.lastIndexOf(")"));
 				args.push($(tmp.substring(1, tmp.length-1)));
-			}
+			} else if(window[tmp]) {
+		       	args.push(window[tmp]);
+		    } else if(tmp=="null") {
+		       	args.push(null);
+		    } else if(tmp=="undefined") {
+		       	args.push(undefined);
+		    }
 		}
 	}
 	if(window[fnm]) {
@@ -2005,17 +2011,17 @@ function handleChgEvent() {
 }
 
 function initEvents(par) {
-	par.find('input[mo-event],textarea[mo-event],select[mo-event]').off().on('mouseover', function() {
-		var evt = $(e.target).attr('mo-event');
-		execFunction(evt);
+	par.find('input[mo-event],textarea[mo-event],select[mo-event]').off('mouseover').on('mouseover', function() {
+		var evt = $(this).attr('mo-event');
+		execFunction(evt, $(this));
 	});
-	par.find('input[blur-event],textarea[blur-event],select[blur-event]').off().on('blur', function() {
-		var evt = $(e.target).attr('blur-event');
-		execFunction(evt);
+	par.find('input[blur-event],textarea[blur-event],select[blur-event]').off('blur').on('blur', function() {
+		var evt = $(this).attr('blur-event');
+		execFunction(evt, $(this));
 	});
-	par.find('input[change-event],textarea[change-event],select[change-event]').off().on('blur', function() {
-		var evt = $(e.target).attr('change-event');
-		execFunction(evt);
+	par.find('input[change-event],textarea[change-event],select[change-event]').off('change').on('change', function() {
+		var evt = $(this).attr('change-event');
+		execFunction(evt, $(this));
 	});
 }
 

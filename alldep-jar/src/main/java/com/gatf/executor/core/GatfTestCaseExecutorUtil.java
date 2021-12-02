@@ -589,19 +589,22 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         if (files != null && files.size() > 0) {
             configuration.setSeleniumScripts(files.toArray(new String[files.size()]));
-        }
-        
-        if(configuration.isSeleniumModuleTests()) {
-        	File mdir = context.getResourceFile(configuration.getTestCaseDir());
-        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
-        	List<String> modules = new ArrayList<String>();
-        	for (File f : dirs) {
-    			if(new File(f, "main.sel").exists()) {
-    				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
-    				modules.add(sfpath);
-    			}
-    		}
-        	configuration.setSeleniumScripts(modules.toArray(new String[modules.size()]));;
+        } else {
+        	if(configuration.isSeleniumModuleTests()) {
+            	File mdir = context.getResourceFile(configuration.getTestCaseDir());
+            	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
+            	List<String> modules = new ArrayList<String>();
+            	for (File f : dirs) {
+        			if(new File(f, "main.sel").exists()) {
+        				String sfpath = new File(f, "main.sel").getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
+        				if(sfpath.charAt(0)==File.separatorChar) {
+        					sfpath = sfpath.substring(1);
+        				}
+        				modules.add(sfpath);
+        			}
+        		}
+            	configuration.setSeleniumScripts(modules.toArray(new String[modules.size()]));;
+            }
         }
         
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
@@ -1729,7 +1732,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     public static void main(String[] args) throws Exception {
-
         if (args.length > 1 && args[0].equals("-executor") && !args[1].trim().isEmpty()) {
             GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
             mojo.setConfigFile(args[1]);
@@ -1744,8 +1746,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             mojo.setLoadTestingReportSamples(3);
             mojo.setConcurrentUserRampUpTime(0L);
             mojo.setEnabled(true);
-            mojo.setTestCasesBasePath(System.getProperty("user.dir"));
-            mojo.setOutFilesBasePath(System.getProperty("user.dir"));
+            String cwd = System.getProperty("user.dir");
+			if(!new File(cwd).isAbsolute()) {
+				throw new RuntimeException("Invalid root dir, current Working directory should be an absolute path");
+			}
+            mojo.setTestCasesBasePath(cwd);
+            mojo.setOutFilesBasePath(cwd);
             mojo.execute();
         } else if (args.length > 1 && args[0].startsWith("-selenium") && !args[1].trim().isEmpty()) {
             GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
@@ -1762,8 +1768,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             mojo.setLoadTestingReportSamples(3);
             mojo.setConcurrentUserRampUpTime(0L);
             mojo.setEnabled(true);
-            mojo.setTestCasesBasePath(System.getProperty("user.dir"));
-            mojo.setOutFilesBasePath(System.getProperty("user.dir"));
+            String cwd = System.getProperty("user.dir");
+			if(!new File(cwd).isAbsolute()) {
+				throw new RuntimeException("Invalid root dir, current Working directory should be an absolute path");
+			}
+            mojo.setTestCasesBasePath(cwd);
+            mojo.setOutFilesBasePath(cwd);
             mojo.execute();
         }
         else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
@@ -2014,7 +2024,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         indexes.put(dContext.getNode(), new HashMap<Integer, String>());
         
         if (dContext.getConfig().isSeleniumExecutor()) {
-
             for (SeleniumDriverConfig selConf : dContext.getConfig().getSeleniumDriverConfigs()) {
                 if (selConf != null && selConf.getDriverName() != null) {
                     System.setProperty(selConf.getDriverName(), selConf.getPath());
@@ -2036,7 +2045,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             	List<String> modules = new ArrayList<String>();
             	for (File f : dirs) {
         			if(new File(f, "main.sel").exists()) {
-        				String sfpath = f.getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
+        				String sfpath = new File(f, "main.sel").getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
+        				if(sfpath.charAt(0)==File.separatorChar) {
+        					sfpath = sfpath.substring(1);
+        				}
         				modules.add(sfpath);
         			}
         		}

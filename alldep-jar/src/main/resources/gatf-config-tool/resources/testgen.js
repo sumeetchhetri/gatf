@@ -688,6 +688,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 	}
 	
 	$(formName).attr('action', url);
+	$(formName).off().on('submit', function (evt) {
+	    evt.preventDefault();
+	});
 		
 	var content = "";
 	var vheaders = {};
@@ -1077,12 +1080,12 @@ var nums='0123456789';
 function isInteger(value) { return value==parseInt(value); } // isInteger  
 function isFloat(value)
 { 
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	return value==parseFloat(value);
 }
 function isStrictAlpha(value) 
 {  
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	value=value.toLowerCase();  
 	for(var i=0;i<value.length;i++)
 	{
@@ -1096,7 +1099,7 @@ function isStrictAlpha(value)
 }
 function isAlpha(value) 
 {  
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	value=value.toLowerCase();  
 	for(var i=0;i<value.length;i++)
 	{
@@ -1109,7 +1112,7 @@ function isAlpha(value)
 }
 function isNumber(value) 
 {  
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	value=value.toLowerCase();  
 	for(var i=0;i<value.length;i++)
 	{
@@ -1122,7 +1125,7 @@ function isNumber(value)
 }
 function isAlphaNumeric(value) 
 {  
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	value=value.toLowerCase();  
 	for(var i=0;i<value.length;i++)
 	{
@@ -1135,7 +1138,7 @@ function isAlphaNumeric(value)
 }
 function isBoolean(value)
 {
-	if(value=='')return true;
+	if(value===undefined || value=='')return true;
 	if((typeof value=='string' && 
 		(value.toLowerCase()=='true' || value.toLowerCase()=='yes' || value=='1'
 		 || value.toLowerCase()=='false' || value.toLowerCase()=='no' || value=='0'))
@@ -1147,7 +1150,7 @@ function validate(element, type)
 {
 	if(type=='boolean')
 	{
-		if(!isBoolean(element.value))
+		if(!isBoolean(element.val()))
 		{
 			if(debugEnabled)alert('A Boolean value was expected..');
 			element.value='';
@@ -1155,7 +1158,7 @@ function validate(element, type)
 	}
 	else if(type=='number' || type=='integer')
 	{
-		if(!isNumber(element.value))
+		if(!isNumber(element.val()))
 		{
 			if(debugEnabled)alert('A Numeric value was expected..');
 			element.value='';
@@ -1163,7 +1166,7 @@ function validate(element, type)
 	}
 	else if(type=='aplha-strict')
 	{
-		if(!isStrictAlpha(element.value))
+		if(!isStrictAlpha(element.val()))
 		{
 			if(debugEnabled)alert('A Strict alphabetical value was expected..');
 			element.value='';
@@ -1171,7 +1174,7 @@ function validate(element, type)
 	}
 	else if(type=='alpha')
 	{
-		if(!isAlpha(element.value))
+		if(!isAlpha(element.val()))
 		{
 			if(debugEnabled)alert('A Alphabetical value was expected..');
 			element.value='';
@@ -1179,7 +1182,7 @@ function validate(element, type)
 	}
 	else if(type=='alpha-numeric')
 	{
-		if(!isAlphaNumeric(element.value))
+		if(!isAlphaNumeric(element.val()))
 		{
 			if(debugEnabled)alert('An Alphanumeric value was expected..');
 			element.value='';
@@ -1187,7 +1190,7 @@ function validate(element, type)
 	}
 	else if(type=='float' || type=='double')
 	{
-		if(!isFloat(element.value))
+		if(!isFloat(element.val()))
 		{
 			if(debugEnabled)alert('A Float value was expected..');
 			element.value='';

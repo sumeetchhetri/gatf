@@ -20,14 +20,11 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.util.UUID;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.glassfish.grizzly.http.server.HttpHandler;
@@ -42,7 +39,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
-import com.gatf.executor.report.ReportHandler;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
@@ -71,20 +68,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		HttpServer server = new HttpServer();
 
 		final String mainDir = rootDir + File.separator + "gatf-config-tool";
-		InputStream resourcesIS = GatfConfigToolUtil.class.getResourceAsStream("/gatf-config-tool.zip");
-        if (resourcesIS != null)
-        {
-        	try {
-        		File gctzip = File.createTempFile("gatf-config-tool_" + UUID.randomUUID().toString(), ".zip");
-        		FileOutputStream fos = new FileOutputStream(gctzip);
-        		IOUtils.copy(resourcesIS, fos);
-        		fos.close();
-            	ReportHandler.unzipZipFile(gctzip, rootDir);
-            	gctzip.delete();
-        	} catch (Exception e) {
-        		throw new RuntimeException(e);
-        	}
-        }
+		WorkflowContextHandler.copyResourcesToDirectory("gatf-config-tool", mainDir);
         
         final GatfConfigToolUtil mojo = this;
         
@@ -308,7 +292,6 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	}
 	
 	public static void main(String[] args) throws Exception {
-		
 		if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
 				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty()) {
 			GatfConfigToolUtil mojo = new GatfConfigToolUtil();
@@ -318,16 +301,23 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			} catch (Exception e) {
 			}
 			mojo.ipAddress = args[2].trim();
-			if(new File(args[3].trim()).exists()) {
+			String cwd = System.getProperty("user.dir");
+			if(!new File(cwd).isAbsolute()) {
+				throw new RuntimeException("Invalid root dir, current Working directory should be an absolute path");
+			}
+			if(args[3].trim().equals(".")) {
+				mojo.setRootDir(cwd);
+			} else if(new File(args[3].trim()).exists()) {
 				mojo.setRootDir(new File(args[3].trim()).getAbsolutePath());
-			} else if(args[3].trim().equals(".")) {
-				mojo.setRootDir(System.getProperty("user.dir"));
 			} else {
-				if(new File(System.getProperty("user.dir") + File.separatorChar + args[3].trim()).exists()) {
-					mojo.setRootDir(System.getProperty("user.dir") + File.separatorChar + args[3].trim());
+				if(new File(cwd + File.separatorChar + args[3].trim()).exists()) {
+					mojo.setRootDir(new File(cwd + File.separatorChar + args[3].trim()).getAbsolutePath());
 				} else {
 					throw new RuntimeException("Invalid root dir");
 				}
+			}
+			if(mojo.getRootDir().charAt(mojo.getRootDir().length()-1)=='/') {
+				mojo.setRootDir(mojo.getRootDir().substring(0, mojo.getRootDir().length()-1));
 			}
 			mojo.execute();
 		}
