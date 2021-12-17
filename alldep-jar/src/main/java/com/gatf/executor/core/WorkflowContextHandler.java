@@ -465,6 +465,21 @@ public class WorkflowContextHandler {
 	public static void copyResourcesToDirectory(String resPath, String directory) {
 		if(new File(directory).exists()) {
 			try {
+				/*if(persistHtmlFiles) {
+					File tmpfolder = new File(FileUtils.getTempDirectory(), "out");
+					if(tmpfolder.exists()) {
+						FileUtils.deleteDirectory(tmpfolder);
+					}
+					tmpfolder.mkdir();
+					File[] existingFiles = new File(directory).listFiles(new FilenameFilter() {
+						public boolean accept(File folder, String name) {
+							return name.endsWith(".html");
+						}
+					});
+					for (File file : existingFiles) {
+						FileUtils.moveFile(file, new File(tmpfolder, file.getName()));
+					}
+				}*/
 				FileUtils.deleteDirectory(new File(directory));
 			} catch (IOException e) {
 			}
@@ -487,5 +502,24 @@ public class WorkflowContextHandler {
 	        	}
 	        }
 		}
+		
+		/*if(persistHtmlFiles) {
+			File tmpfolder = new File(FileUtils.getTempDirectory(), "out");
+			File[] existingFiles = tmpfolder.listFiles(new FilenameFilter() {
+				public boolean accept(File folder, String name) {
+					return name.endsWith(".html");
+				}
+			});
+			for (File file : existingFiles) {
+				try {
+					FileUtils.moveFile(file, new File(directory));
+				} catch (IOException e) {
+				}
+			}
+			try {
+				FileUtils.deleteDirectory(tmpfolder);
+			} catch (IOException e) {
+			}
+		}*/
 	}
 }

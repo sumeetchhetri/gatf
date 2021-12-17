@@ -80,7 +80,7 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 			
 			//Load the driver first
 			try {
-				Driver driver = (Driver)getProjectClassLoader().loadClass(jdbcDriver).newInstance();
+				Driver driver = (Driver)getProjectClassLoader().loadClass(jdbcDriver).getDeclaredConstructor().newInstance();
 				CustomDriverManager.registerDriver(driver);
 			} catch (Exception e) {
 				throw new AssertionError(String.format("Driver class %s not found", jdbcDriver));

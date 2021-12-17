@@ -25,8 +25,9 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<manifold.version>2021.1.33</manifold.version>
 	</properties>
-
+	
 	<repositories>
 		<repository>
 			<id>jitpack.io</id>
@@ -100,6 +101,26 @@
 				<exclusion>
 					<artifactId>guava-osgi</artifactId>
 					<groupId>com.googlecode.guava-osgi</groupId>
+				</exclusion>
+				<exclusion>
+					<groupId>xml-apis</groupId>
+					<artifactId>xml-apis</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>stax</groupId>
+					<artifactId>stax-api</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.xmlgraphics</groupId>
+					<artifactId>batik-ext</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>xmlbeans</groupId>
+					<artifactId>xbean</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>javax.xml</groupId>
+					<artifactId>jsr173</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -309,6 +330,12 @@
 			<artifactId>kryo</artifactId>
 			<version>5.1.1</version>
 		</dependency>
+		
+		<dependency>
+		    <groupId>org.jdiscript</groupId>
+		    <artifactId>jdiscript</artifactId>
+		    <version>0.9.0</version>
+		</dependency>
 	</dependencies>
 
 	<modules>
@@ -322,9 +349,16 @@
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
+					<version>3.8.0</version>
 					<configuration>
-						<source>1.8</source>
-						<target>1.8</target>
+						<source>11</source>
+						<target>11</target>
+						<compilerArgs>
+							<arg>--add-modules</arg>
+							<arg>java.xml</arg>
+							<arg>--add-modules</arg>
+							<arg>jadk.compiler</arg>
+						</compilerArgs>
 					</configuration>
 				</plugin>
 			</plugins>

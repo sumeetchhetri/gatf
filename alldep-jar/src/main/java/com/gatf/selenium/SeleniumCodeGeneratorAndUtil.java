@@ -24,7 +24,9 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -63,7 +65,7 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog, Map<Integer, Object[]> selToJavaLineMap) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
@@ -88,6 +90,24 @@ public class SeleniumCodeGeneratorAndUtil {
 		retvals[0] = fileName;
 		retvals[1] = StringUtils.join(commands, '\n');
 		retvals[3] = sourceCode;
+		
+		if(selToJavaLineMap!=null) {
+			final AtomicInteger cl = new AtomicInteger(1);
+			String sellineident = "/*GATF_ST_LINE@";
+			sourceCode.lines().forEach(line -> {
+				if(line.trim().startsWith(sellineident)) {
+					boolean addOne = line.indexOf("_*/")!=-1;
+					int indx = addOne?line.indexOf("_*/"):line.indexOf("*/");
+					String fld = line.substring(line.indexOf(sellineident)+sellineident.length(), indx);
+					String sflnm = fld.substring(0, fld.indexOf(":"));
+					int sln = Integer.parseInt(fld.substring(fld.indexOf(":")+1));
+					selToJavaLineMap.put(sln, new Object[] {sflnm, cl.get() + (addOne?1:0)});
+				} else if(line.trim().startsWith("/*GATF_ST_START_*/")) {
+					selToJavaLineMap.put(0, new Object[] {null, cl.get()});
+				}
+				cl.incrementAndGet();
+			});
+		}
 	    
         File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
         File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
@@ -101,6 +121,7 @@ public class SeleniumCodeGeneratorAndUtil {
         JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
         if(compiler!=null) {
         	List<String> optionList = new ArrayList<String>();
+            optionList.add("-g");
             optionList.add("-classpath");
             
             if(loader instanceof URLClassLoader) {
@@ -154,6 +175,7 @@ public class SeleniumCodeGeneratorAndUtil {
         List<String> builderList = new ArrayList<>();
         String javacPath = Paths.get(config.getJavaHome(), "bin", "javac").toString();
         builderList.add((isWindows?"\"":"") + javacPath + (isWindows?"\"":""));
+        builderList.add("-g");
         builderList.add("-classpath");
         builderList.add((isWindows?"\"":"") + gatfJarPath + (isWindows?"\"":""));
         builderList.add((isWindows?"\"":"") + retvals[2].toString() + (isWindows?"\"":""));

@@ -44,6 +44,7 @@ import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.selenium.Command;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 
 public class GatfReportsHandler extends HttpHandler {
 
@@ -56,6 +57,10 @@ public class GatfReportsHandler extends HttpHandler {
 	private TestCase authTestCase = null;
 	
 	private ReentrantLock lock = new ReentrantLock();
+	
+	//Only one debug session per instance allowed for now, later we can support multiple as well
+	//but for now lets keep it simple
+	private GatfSelDebugger dbgSession = null;
 	
 	public GatfReportsHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
@@ -82,6 +87,8 @@ public class GatfReportsHandler extends HttpHandler {
 			    String testCaseName = request.getParameter("testCaseName");
 			    boolean isServerLogsApi = request.getParameter("isServerLogsApi")!=null;
 			    boolean isExternalLogsApi = request.getParameter("isExternalLogsApi")!=null;
+			    int selDbgline = -1;
+			    boolean selDbgBrkRemove = false;
 			    TestCaseReport tcReport = null;
 			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
@@ -103,11 +110,20 @@ public class GatfReportsHandler extends HttpHandler {
 			    {
 			        tcReport = WorkflowContextHandler.OM.readValue(request.getInputStream(), TestCaseReport.class);
 			    }
+			    else if(action.equals("debug") && testcaseFileName.endsWith(".sel"))
+			    {
+			    	String linenum = request.getParameter("line");
+			    	if(linenum.startsWith("r")) {
+			    		selDbgBrkRemove = true;
+			    		linenum = linenum.substring(1);
+			    	}
+			    	selDbgline = Integer.parseInt(linenum);
+			    }
 			    else if(!action.equals("playTest"))
 			    {
 			    	throw new RuntimeException("Invalid action specified..");
 			    }
-			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false);
+			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false, selDbgline, selDbgBrkRemove);
 			    if(out[1]!=null) {
 			        response.setContentType(out[2].toString());
 			        response.setContentLength(((byte[])out[1]).length);
@@ -125,9 +141,10 @@ public class GatfReportsHandler extends HttpHandler {
     }
 
 	public Object[] executeTest(GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
-	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin) throws Exception {
+	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin, int selDbgline, 
+	        boolean selDbgBrkRemove) throws Exception {
 	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent"))
+	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent") || action.equals("debug"))
         {
             boolean isReplay = action.equals("replayTest");
             List<TestCaseReport> reports = null;
@@ -491,9 +508,86 @@ public class GatfReportsHandler extends HttpHandler {
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
                     executorMojo.initilaizeContext(gatfConfig, true);
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
-                    executorMojo.doSeleniumTest(gatfConfig, null);
-                    String cont = "Please check Reports section for the selenium test results";
-                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    if(action.equals("debug")) {
+                    	if(selDbgline<-5) {
+                    		String cont = "Fail: Invalid debug command";
+    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    	}
+                    	if(selDbgline==0) {
+                    		if(dbgSession!=null) {
+                    			dbgSession.destroy();
+                    			dbgSession = null;
+                        	}
+                    		String configPath = null;
+    	                    synchronized (mojo) {
+    	        				if(new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
+    	        					configPath = new File(mojo.getRootDir(), "gatf-config.xml").getAbsolutePath();
+    	        				} else {
+    	        					configPath = new File(mojo.getRootDir(), "gatf-config.json").getAbsolutePath();
+    	        				}
+    	        			}
+    	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
+    	                    String cont = "Success: Debug Session started for script " + dbgSession.getSelscript();
+    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    	} else {
+                    		if(dbgSession==null) {
+                        		String cont = "Fail: No Debug session running for script " + testcaseFileName;
+        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                        	}
+                    		switch (selDbgline) {
+								case -1: {
+									//F6 Step over
+									if(!dbgSession.enableStepRequest()) {
+										String cont = "Fail: Please suspend the debugger first";
+		        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+									}
+									break;
+								}
+								case -2: {
+									//F8 Continue
+									dbgSession.resume();
+									break;
+								}
+								case -3: {
+									// Ctrl C
+									dbgSession.suspend();
+									break;
+								}
+								case -4: {
+									// Ctrl X
+									dbgSession.destroy();
+									break;
+								}
+								case -5: {
+									//Status check call 1 - running, 0 - stopped
+									String cont = "Success: " + dbgSession.getRunning();
+		    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+								}
+								default: {
+									if(selDbgBrkRemove) {
+										//Click on line number in script (remove breakpoint)
+										if(!dbgSession.unsetBreakPoint(selDbgline)) {
+											String cont = "Fail: Invalid line number for debugger";
+			        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+										}
+									} else {
+										//Click on line number in script (add breakpoint)
+										if(!dbgSession.setBreakPoint(selDbgline)) {
+											String cont = "Fail: Invalid line number for debugger";
+			        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+										}
+									}
+									break;
+								}
+							}
+                    		String cont = "Success: " + dbgSession.getNextLine();
+    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    	}
+                    } else {
+                    	executorMojo.doSeleniumTest(gatfConfig, null);
+                    	String cont = "Please check Reports section for the selenium test results";
+                        return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    }
                 }
                 
                 if(!testcaseFileName.toLowerCase().endsWith(".sel")) {

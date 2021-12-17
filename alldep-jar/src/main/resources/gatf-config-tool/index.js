@@ -1137,8 +1137,13 @@ function startInitConfigTool(func) {
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", onsucctcnmupdt, null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
 									$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+                                    $('#ExampleBeanServiceImpl_form').append('<button id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
                                     $('#play_test_case').click(function() {
                                         playTest(currtestcasefile, "", false, false);
+                                        return false;
+                                    });
+                                    $('#debug_test_case').click(function() {
+                                        debugTest(currtestcasefile, "", false, false);
                                         return false;
                                     });
                                     return;
@@ -1202,7 +1207,16 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
                     playTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
                     return false;
                 }
-            }(tcfname, data["name"], isServerLogsApi, isExternalLogsApi));
+            } (tcfname, data["name"], isServerLogsApi, isExternalLogsApi));
+            if (tcfname.toLowerCase().endsWith(".sel"))  {
+            	$('#ExampleBeanServiceImpl_form').append('<button id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
+	            $('#debug_test_case').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
+	                return function() {
+	                    debugTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
+	                    return false;
+	                }
+	            } (tcfname, data["name"], isServerLogsApi, isExternalLogsApi));
+	        }
         }
     }
 }
@@ -1220,6 +1234,192 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             }
             var content = getTestResultContent1(data);
             $('#play_result_area').html(content);
+        };
+    }(tcf), null);
+}
+
+var ceeditor, prevline, chkIntv;
+function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
+	var isserverlogfile = "";
+	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
+		lineNumbers: true,
+		tabSize: 4,
+		matchBrackets: true,
+		mode: 'text/x-perl',
+		gutters: ["CodeMirror-linenumbers", "breakpoints"]
+	});
+	ceeditor.on("gutterClick", function(cm, n) {
+		function makeMarker() {
+			var marker = document.createElement("div");
+			marker.style.color = "#822";
+			marker.innerHTML = "●";
+			return marker;
+		}
+		var info = cm.lineInfo(n);
+		if(info.gutterMarkers) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=r"+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+		        	}
+		        };
+		    }(tcf), null);
+		} else {
+			ajaxCall(true, "PUT", "/reports?action=debug&line="+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+		        	}
+		        };
+		    }(tcf), null);
+		}
+	});
+	ceeditor.setOption("extraKeys", {
+		F6: function(cm) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		line = data.replace("Success: ", "")*1;
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = line-1;
+		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        	}
+		        };
+		    }(tcf), null);
+	  	},
+	  	F8: function(cm) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		line = data.replace("Success: ", "")*1;
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = line-1;
+		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        	}
+		        };
+		    }(tcf), null);
+	  	},
+	  	'Ctrl-C': function(cm) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		line = data.replace("Success: ", "")*1;
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = line-1;
+		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        	}
+		        };
+		    }(tcf), null);
+	  	},
+	  	'Ctrl-X': function(cm) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = 0;
+		        	}
+		        };
+		    }(tcf), null);
+	  	}
+	});
+	function cmkp() {
+		if(!ceeditor) return;
+	    var key = event.keyCode;
+	    if(key == 117) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		line = data.replace("Success: ", "")*1;
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = line-1;
+		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        	}
+		        };
+		    }(tcf), null);
+	    } else if(key == 119) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data.startsWith("Fail: ")) {
+		        		alert(data);
+		        	} else {
+		        		line = data.replace("Success: ", "")*1;
+		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		prevline = line-1;
+		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        	}
+		        };
+		    }(tcf), null);
+	    } else if (event.ctrlKey) {
+	    	if (key === ('C').charCodeAt(0) - 64) {
+	    		ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			        return function(data) {
+			        	if(data.startsWith("Fail: ")) {
+			        		alert(data);
+			        	} else {
+			        		line = data.replace("Success: ", "")*1;
+			        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+			        		prevline = line-1;
+			        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+			        	}
+			        };
+			    }(tcf), null);
+	    	}
+	        if (key === ('X').charCodeAt(0) - 64) {
+	        	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			        return function(data) {
+			        	if(data.startsWith("Fail: ")) {
+			        		alert(data);
+			        	} else {
+			        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+			        		prevline = 0;
+			        	}
+			        };
+			    }(tcf), null);
+	        }
+	    }
+	}
+	document.onkeypress = cmkp;
+	ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+        return function(data) {
+        	if(data.startsWith("Fail: ")) {
+        		alert(data);
+        	} else {
+        		prevline = 0;
+        		ceeditor.addLineClass(0, 'wrap', 'CodeMirror-activeline-background');
+        		chkIntv = setInterval(function(){
+			    	ajaxCall(false, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+				        return function(data) {
+				        	if(data.startsWith("Fail: ")) {
+				        		alert(data);
+				        		clearInterval(chkIntv);
+				        		ceeditor = undefined;
+				        	} else {
+				        		if(data=="Success: 0") {
+				        			alert("Debug session completed");
+									clearInterval(chkIntv);
+									$('a.asideLink[tcfname="'+tcf+'"]').trigger('click');
+				        			ceeditor = undefined;
+				        			document.removeEventListener('keypress',  cmkp);
+				        		}
+				        	}
+				        };
+				    }(tcf), null);
+			    }, 1000);
+        	}
         };
     }(tcf), null);
 }

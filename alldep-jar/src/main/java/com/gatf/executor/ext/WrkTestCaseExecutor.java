@@ -2,6 +2,7 @@ package com.gatf.executor.ext;
 
 import java.io.File;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,17 +34,17 @@ public class WrkTestCaseExecutor {
 			float size = Float.valueOf(m.group(1)).floatValue();
 			String suffix = m.group(2).toLowerCase();
 			if(suffix.equals("b"))
-		        return new BigDecimal(size).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("kb") || suffix.equals("kib"))
-		        return new BigDecimal(size * 1024).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1024).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("mb") || suffix.equals("mib"))
-		        return new BigDecimal(size * 1024 * 1024).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1024 * 1024).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("gb") || suffix.equals("gib"))
-		        return new BigDecimal(size * 1024 * 1024 * 1024).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1024 * 1024 * 1024).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("tb") || suffix.equals("tib"))
-		        return new BigDecimal(size * 1024 * 1024 * 1024 * 1024).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1024 * 1024 * 1024 * 1024).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("pb") || suffix.equals("pib"))
-		        return new BigDecimal(size * 1024 * 1024 * 1024 * 1024 * 1024).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1024 * 1024 * 1024 * 1024 * 1024).setScale(2, RoundingMode.HALF_DOWN);
 		}
 	    return BigDecimal.ZERO;
 	}
@@ -56,17 +57,17 @@ public class WrkTestCaseExecutor {
 			float size = Float.valueOf(m.group(1)).floatValue();
 			String suffix = m.group(2).toLowerCase();
 			if(suffix.equals("k"))
-		        return new BigDecimal(size * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("m"))
-		        return new BigDecimal(size * 1000 * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("g"))
-		        return new BigDecimal(size * 1000 * 1000 * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 1000 * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("t"))
-		        return new BigDecimal(size * 1000 * 1000 * 1000 * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 1000 * 1000 * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("p"))
-		        return new BigDecimal(size * 1000 * 1000 * 1000 * 1000 * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 1000 * 1000 * 1000 * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else
-		        return new BigDecimal(size).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size).setScale(2, RoundingMode.HALF_DOWN);
 		}
 	    return BigDecimal.ZERO;
 	}
@@ -77,17 +78,17 @@ public class WrkTestCaseExecutor {
 			float size = Float.valueOf(m.group(1)).floatValue();
 			String suffix = m.group(2).toLowerCase();
 			if(suffix.equals("us"))
-		        return new BigDecimal(size / 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size / 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("ms"))
-		        return new BigDecimal(size).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("s"))
-		        return new BigDecimal(size * 1000).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("m"))
-		        return new BigDecimal(size * 1000 * 60).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 60).setScale(2, RoundingMode.HALF_DOWN);
 		    else if(suffix.equals("h"))
-		        return new BigDecimal(size * 1000 * 60 * 60).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size * 1000 * 60 * 60).setScale(2, RoundingMode.HALF_DOWN);
 		    else
-		        return new BigDecimal(size).setScale(2, BigDecimal.ROUND_HALF_DOWN);
+		        return new BigDecimal(size).setScale(2, RoundingMode.HALF_DOWN);
 		}
 	    return BigDecimal.ZERO;
 	}
@@ -156,10 +157,10 @@ public class WrkTestCaseExecutor {
 					m = LPER_PAT2.matcher(line);
 					if(m.matches()) {
 						String vals = "";
-						BigDecimal val = new BigDecimal(m.group(1)).setScale(3, BigDecimal.ROUND_UNNECESSARY);
+						BigDecimal val = new BigDecimal(m.group(1)).setScale(3, RoundingMode.UNNECESSARY);
 						BigDecimal frc = val.remainder(BigDecimal.ONE);
 						if(frc.floatValue()>0) {
-							frc = frc.multiply(new BigDecimal(1000)).setScale(0, BigDecimal.ROUND_UNNECESSARY);
+							frc = frc.multiply(new BigDecimal(1000)).setScale(0, RoundingMode.UNNECESSARY);
 							vals = val.intValue() + "_" +frc.toPlainString();
 						} else {
 							vals = val.intValue() + "";

@@ -18,6 +18,20 @@
 			</resource>
 		</resources>
 		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>11</source>
+					<target>11</target>
+					<compilerArgs>
+						<arg>--add-modules</arg>
+						<arg>java.xml</arg>
+						<arg>--add-modules</arg>
+						<arg>jdk.compiler</arg>
+					</compilerArgs>
+				</configuration>
+			</plugin>
 			<!--  plugin>
 	            <groupId>org.apache.maven.plugins</groupId>
 	            <artifactId>maven-assembly-plugin</artifactId>

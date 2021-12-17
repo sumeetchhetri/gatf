@@ -82,6 +82,7 @@ import com.gatf.selenium.SeleniumTest;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 import com.gatf.selenium.SeleniumTestSession;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.gatf.ui.GatfConfigToolUtil;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
@@ -362,7 +363,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         Collections.sort(posttestcases, new Comparator<TestCase>() {
             public int compare(TestCase o1, TestCase o2) {
-                return o1 == null ? (o2 == null ? 0 : Integer.MIN_VALUE) : (o2 == null ? Integer.MAX_VALUE : new Integer(o1.getSequence()).compareTo(o2.getSequence()));
+                return o1 == null ? (o2 == null ? 0 : Integer.MIN_VALUE) : (o2 == null ? Integer.MAX_VALUE : Integer.valueOf(o1.getSequence()).compareTo(o2.getSequence()));
             }
         });
 
@@ -565,6 +566,54 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             shutdown();
         }
     }
+    
+    public GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath) {
+        for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs()) {
+            if (selConf != null && selConf.getDriverName() != null) {
+                System.setProperty(selConf.getDriverName(), selConf.getPath());
+            }
+        }
+        //System.setProperty("java.home", configuration.getJavaHome());
+        System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+        Security.setProperty("crypto.policy", "unlimited");
+
+        try {
+            SeleniumCodeGeneratorAndUtil.clean();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        configuration.setSeleniumScripts(new String[] {selscript});
+        
+        if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
+        	throw new RuntimeException("Please provide Selenium scripts for execution");
+        }
+        
+        File resource = context.getOutDir();
+        InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        if (resourcesIS != null)
+        {
+        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+        }
+        
+        GatfSelDebugger session = null;
+    	try {
+    		selscript = context.getWorkflowContextHandler().templatize(selscript);
+    		Object[] retvals = new Object[4];
+    		Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
+    		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, selToJavaLineMap);
+    		String[] args = new String[] {dyn.getClass().getName(), configPath};
+    		session = GatfSelDebugger.debugSession(dyn.getClass(), args, selToJavaLineMap);
+    		session.setSelscript(selscript);
+    	} catch (GatfSelCodeParseError e) {
+    		e.printStackTrace();
+    		throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
+    	} catch (Exception e) {
+    		e.printStackTrace();
+    		throw new RuntimeException("Unable to compile seleasy script " + selscript);
+    	}
+    	return session;
+    }
 
     public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
 
@@ -610,6 +659,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
         	throw new RuntimeException("Please provide Selenium scripts for execution");
         }
+        
+        File resource = context.getOutDir();
+        InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        if (resourcesIS != null)
+        {
+        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+        }
 
         final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
         final List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
@@ -619,7 +675,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         	try {
         		selscript = context.getWorkflowContextHandler().templatize(selscript);
         		Object[] retvals = new Object[4];
-        		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false);
+        		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, null);
         		tests.add(dyn);
         		testdata.add(retvals);
         		testClassNames.add(dyn.getClass().getName());
@@ -986,6 +1042,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 throw new RuntimeException("Please provide valid Selenium driver configuration");
             }
             return;
+        }
+        
+        File resource = context.getOutDir();
+        InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        if (resourcesIS != null)
+        {
+        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
         }
 
         distributedGatfTester = new DistributedGatfTester();
@@ -1866,6 +1929,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
             isLoadTestingEnabled = true;
+        
+        File resource = context.getOutDir();
+        InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        if (resourcesIS != null)
+        {
+        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+        }
 
         while (tContext.getSimTestCases().size() > 0) {
             ReportHandler reportHandler = new ReportHandler(dContext.getNode(), runPrefix);
@@ -2015,7 +2085,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
             isLoadTestingEnabled = true;
 
-
         int loadTestRunNum = 1;
 
         long reportSampleTimeMs = dContext.getConfig().getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
@@ -2078,6 +2147,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
             if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
                 isLoadTestingEnabled = true;
+            
+            File resource = context.getOutDir();
+            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+            if (resourcesIS != null)
+            {
+            	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+            }
 
             int runNum = 0;
             while (tests.size() > 0) {

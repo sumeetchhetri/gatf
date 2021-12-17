@@ -76,6 +76,7 @@ import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.generator.postman.PostmanCollection;
 import com.gatf.selenium.Command;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.gatf.ui.GatfConfigToolUtil;
 import com.gatf.xstream.GatfPrettyPrintWriter;
 import com.thoughtworks.xstream.XStream;
@@ -898,7 +899,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     		if (Modifier.isStatic(field.getModifiers()))
     			continue;
     			
-			if(!field.isAccessible())
+			//if(!field.isAccessible())
 			{
 				field.setAccessible(true);
 			}
@@ -994,10 +995,10 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     			 return RandomStringUtils.randomAlphabetic(10);
     		 } else if(claz.equals(Long.class) || claz.equals(long.class) || claz.equals(Number.class)) {
     			 Random rand = new Random();
-    			 return new Long(rand.nextInt(123));
+    			 return Long.valueOf(rand.nextInt(123));
     		 } else if(claz.equals(Integer.class) || claz.equals(int.class)) {
     			 Random rand = new Random();
-    			 return new Integer(rand.nextInt(123));
+    			 return Integer.valueOf(rand.nextInt(123));
     		 } else if(claz.equals(BigInteger.class)) {
     			 Random rand = new Random();
     			 return new BigInteger(new BigInteger("1234567890123456789").bitLength(), rand);
@@ -1006,7 +1007,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     			 return new BigDecimal(rand.nextInt(123));
     		 } else if(claz.equals(Short.class) || claz.equals(short.class)) {
     			 Random rand = new Random();
-    			 return new Short((short)rand.nextInt(123));
+    			 return Short.valueOf((short)rand.nextInt(123));
     		 }
     	 }
     	 return null;
@@ -1549,5 +1550,10 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 
 	@Override
 	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+	}
+
+	@Override
+	public GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath) {
+		return null;
 	}
 }

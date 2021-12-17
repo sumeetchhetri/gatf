@@ -295,3 +295,7 @@ table tr.alt td
 .key { color: red; }
 .asideLink {word-wrap: break-word;}
 .asideLink1 {word-wrap: break-word;}
+
+.breakpoints {width: .8em;}
+.breakpoint { color: #822; }
+.CodeMirror {border: 1px solid #aaa;}

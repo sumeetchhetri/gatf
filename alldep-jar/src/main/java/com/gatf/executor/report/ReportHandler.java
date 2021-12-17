@@ -509,7 +509,7 @@ public class ReportHandler {
 					public int compare(TestCaseReport o1, TestCaseReport o2) {
 						 return o1==null ?
 						         (o2==null ? 0 : Integer.MIN_VALUE) :
-						         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
+						         (o2==null ? Integer.MAX_VALUE : Integer.valueOf(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
 					}
 				});
 				
@@ -611,10 +611,10 @@ public class ReportHandler {
 			            {
 			            	
 			            	File resource = acontext.getOutDir();
-			                if(runNumber==1 && unzipFile) {
+			                /*if(runNumber==1 && unzipFile) {
 			                	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
 			                	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
-			                }
+			                }*/
 			                
 			                VelocityEngine engine = new VelocityEngine();
 			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -804,7 +804,7 @@ public class ReportHandler {
 			e.printStackTrace();
 		}
 		
-		boolean unzipped = false;
+		//boolean unzipped = false;
 		String orf = reportFileName;
 		for (Map.Entry<String, ConcurrentLinkedQueue<TestCaseReport>> entry :  tempMap.entrySet()) {
 			reportFileName = orf;
@@ -814,7 +814,7 @@ public class ReportHandler {
 					public int compare(TestCaseReport o1, TestCaseReport o2) {
 						 return o1==null ?
 						         (o2==null ? 0 : Integer.MIN_VALUE) :
-						         (o2==null ? Integer.MAX_VALUE : new Integer(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
+						         (o2==null ? Integer.MAX_VALUE : Integer.valueOf(o1.getTestCase().getSequence()).compareTo(o2.getTestCase().getSequence()));
 					}
 				});
 				
@@ -970,10 +970,10 @@ public class ReportHandler {
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
-                if(!unzipped) {
+                /*if(!unzipped) {
                 	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
                 	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
-                }
+                }*/
                 
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1095,12 +1095,12 @@ public class ReportHandler {
             context.put("testsMap", summLstMap);
             
             File resource = acontext.getOutDir();
-            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
-            if (resourcesIS != null)
+            //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+            /*if (resourcesIS != null)
             {
             	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
             	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
-            }
+            }*/
             
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1126,13 +1126,6 @@ public class ReportHandler {
         {
             context.put("indexes", indexes);
             File resource = acontext.getOutDir();
-            
-            InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
-            if (resourcesIS != null)
-            {
-            	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
-            	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
-            }
             
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
@@ -1160,6 +1153,15 @@ public class ReportHandler {
     public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
     {
         VelocityContext context = new VelocityContext();
+        File resource = acontext.getOutDir();
+        
+        //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        /*if (resourcesIS != null)
+        {
+        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
+        	//unzipGatfResources(resourcesIS, resource.getAbsolutePath());
+        }*/
+        
         try
         {
             context.put("selFileName", StringEscapeUtils.escapeHtml4((String)retvals[0]));
@@ -1170,7 +1172,6 @@ public class ReportHandler {
             context.put("succFail", result.isStatus()?"SUCCESS":"FAILED");
             context.put("StringEscapeUtils", StringEscapeUtils.class);
             
-            File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
             engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());

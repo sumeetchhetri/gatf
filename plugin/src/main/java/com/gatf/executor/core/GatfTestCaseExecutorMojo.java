@@ -19,6 +19,7 @@ import java.net.URLClassLoader;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
+
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
@@ -38,15 +39,25 @@ import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.selenium.SeleniumDriverConfig;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri The maven plugin main class for the Test case Executor/Workflow engine
  */
-@Mojo(name = "gatf-executor", aggregator = false, executionStrategy = "always", inheritByDefault = true, instantiationStrategy = InstantiationStrategy.PER_LOOKUP,
-        defaultPhase = LifecyclePhase.INTEGRATION_TEST, requiresDependencyResolution = ResolutionScope.TEST, requiresDirectInvocation = false, requiresOnline = false, requiresProject = true,
-        threadSafe = true)
+@Mojo(
+		name = "gatf-executor", 
+		aggregator = false, 
+		executionStrategy = "always", 
+		inheritByDefault = true, 
+		instantiationStrategy = InstantiationStrategy.PER_LOOKUP, 
+		defaultPhase = LifecyclePhase.INTEGRATION_TEST, 
+		requiresDependencyResolution = ResolutionScope.TEST, 
+		requiresDirectInvocation = false, 
+		requiresOnline = false, 
+		requiresProject = true, 
+		threadSafe = true)
 public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin {
 
     @Parameter( defaultValue = "${project}", readonly = true )
@@ -520,5 +531,11 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
 		util.setFcl(fcl);
 		util.doSeleniumTest(configuration, files);
+	}
+
+	@Override
+	public GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath) {
+		util.setFcl(fcl);
+		return util.debugSeleniumTest(configuration, selscript, configPath);
 	}
 }

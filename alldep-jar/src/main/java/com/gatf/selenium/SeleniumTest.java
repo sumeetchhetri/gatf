@@ -25,6 +25,7 @@ import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -73,8 +74,10 @@ import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.WebDriverWait;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.google.common.io.Resources;
 
@@ -1115,6 +1118,13 @@ public abstract class SeleniumTest {
 				blur(we);
 				break;
 			}
+		} else if(action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb")) {
+			for(final WebElement we: ret) {
+				System.out.println("Type => " + tvalue);
+				we.sendKeys(tvalue);
+				//blur(we);
+				break;
+			}
 		} else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(ret, tvalue);
 		} else if(action.equalsIgnoreCase("select")) {
@@ -1123,6 +1133,12 @@ public abstract class SeleniumTest {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
 				blur(we);
+				break;
+			}
+		} else if(action.equalsIgnoreCase("chordnb")) {
+			for(final WebElement we: ret) {
+				we.sendKeys(Keys.chord(tvalue));
+				//blur(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
@@ -1164,7 +1180,10 @@ public abstract class SeleniumTest {
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
-				if(action!=null && (action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
+				if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") 
+						|| action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord") 
+						|| action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb") 
+						|| action.equalsIgnoreCase("chordnb"))) {
 					enabledCheck = true;
 				}
 
@@ -1185,7 +1204,10 @@ public abstract class SeleniumTest {
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
-							if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord"))) {
+							if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") 
+									|| action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord") 
+									|| action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb") 
+									|| action.equalsIgnoreCase("chordnb"))) {
 								enabledCheck = true;
 							}
 
@@ -1684,4 +1706,40 @@ public abstract class SeleniumTest {
 	protected String getOutDir() {
 		return ___cxt___.getOutDirPath();
 	}
+	
+	public static void main(String[] args) throws Exception {
+        GatfExecutorConfig config = Command.getConfig(args[1].trim(), null);
+        config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
+        for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
+        {
+            if(selConf.getDriverName()!=null) {
+                System.setProperty(selConf.getDriverName(), selConf.getPath());
+            }
+        }
+        
+        System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+        Security.setProperty("crypto.policy", "unlimited");
+        
+        AcceptanceTestContext c = new AcceptanceTestContext();
+        c.setGatfExecutorConfig(config);
+        c.validateAndInit(true);
+        c.getWorkflowContextHandler().initializeSuiteContext(1);
+    	
+        try {
+        	final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(config);
+        	SeleniumTest dyn = (SeleniumTest)Class.forName(args[0]).getDeclaredConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {c, 0});
+        	System.out.println(dyn!=null?"SUCCESS":"FAILURE");
+            if(dyn!=null) {
+            	try {
+                    dyn.execute(lp);
+                } catch (Throwable e) {
+                }
+                dyn.quitAll();
+            }
+        } catch (GatfSelCodeParseError e) {
+        	e.printStackTrace();
+        } catch (Throwable e) {
+        	e.printStackTrace();
+        }
+    }
 }

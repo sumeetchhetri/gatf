@@ -24,6 +24,7 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 
 public interface GatfPlugin {
 	void doExecute(GatfPluginConfig configuration, List<String> files) throws Exception;
@@ -36,4 +37,5 @@ public interface GatfPlugin {
 	TestCase getAuthTestCase();
 	void invokeServerLogApi(boolean success, TestCaseReport testCaseReport, TestCaseExecutorUtil testCaseExecutorUtil, boolean isFetchFailureLogs);
 	void doSeleniumTest(GatfExecutorConfig configuration, List<String> files);
+	GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath);
 }

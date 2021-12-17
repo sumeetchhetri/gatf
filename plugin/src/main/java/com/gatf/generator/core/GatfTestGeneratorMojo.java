@@ -22,6 +22,7 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoFailureException;
 import org.apache.maven.plugins.annotations.InstantiationStrategy;
@@ -41,6 +42,7 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
 
@@ -510,5 +512,10 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
 
 	@Override
 	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+	}
+
+	@Override
+	public GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath) {
+		return null;
 	}
 }

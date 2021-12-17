@@ -739,7 +739,8 @@ public class AcceptanceTestContext {
 						}
 					}
 					Assert.assertTrue("DataSource class should extend the TestDataSource class", validProvider);
-					Object providerInstance = claz.newInstance();
+					@SuppressWarnings("unchecked")
+					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataSource = (TestDataSource)providerInstance;
 				} catch (Throwable e) {
 					throw new AssertionError(e);
@@ -774,7 +775,7 @@ public class AcceptanceTestContext {
 		return dataSourceMapForProfiling;
 	}
 	
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void handleHooks(List<GatfTestDataSourceHook> dataSourceHooks)
 	{
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooks) {
@@ -814,7 +815,7 @@ public class AcceptanceTestContext {
 						}
 					}
 					Assert.assertTrue("Hook class should implement the TestDataHook class", validProvider);
-					Object providerInstance = claz.newInstance();
+					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataHook = (TestDataHook)providerInstance;
 				} catch (Throwable e) {
 					throw new AssertionError(e);
@@ -944,7 +945,7 @@ public class AcceptanceTestContext {
 		}
 	}
 	
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private List<Map<String, String>> getProviderData(GatfTestDataProvider provider, TestCase testCase) {
 		
 		TestDataSource dataSource = dataSourceMap.get(provider.getDataSourceName());
@@ -972,7 +973,7 @@ public class AcceptanceTestContext {
 						}
 					}
 					Assert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
-					Object providerInstance = claz.newInstance();
+					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataProvider = (TestDataProvider)providerInstance;
 				} catch (Throwable e) {
 					throw new AssertionError(e);
