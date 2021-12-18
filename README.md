@@ -13,8 +13,8 @@ Important features
 2. Comparative Env Testing
 3. Concurrent User Testing
 4. Performance Testing
-5. Load Testing (API and UI both)
-6. UI Testing
+5. Load Testing (API and UI both) [wrk, wrk2, vegeta, autocannon, embedded]
+6. UI Testing with seleasy language + seleasy debugger
 7. Reporting Engine
 8. Remote Agent for Distributed Load Testing
 9. Workflow Testing

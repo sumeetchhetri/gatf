@@ -1238,9 +1238,16 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), null);
 }
 
-var ceeditor, prevline, chkIntv;
+const uid = function() {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+var ceeditor, prevline, chkIntv, sessionId;
 function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
-	var isserverlogfile = "";
+	var dbgctrl = $('#req-txtarea').width() + $('#req-txtarea').offset().left - 100;
+	if(!sessionId) sessionId = uid();
+	var isserverlogfile = "&sessionId="+sessionId;
+	$('#req-txtarea').data('tcf', tcf);
 	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 		lineNumbers: true,
 		tabSize: 4,
@@ -1334,7 +1341,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		    }(tcf), null);
 	  	}
 	});
-	function cmkp() {
+	/*function cmkp() {
 		if(!ceeditor) return;
 	    var key = event.keyCode;
 	    if(key == 117) {
@@ -1392,33 +1399,56 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        }
 	    }
 	}
-	document.onkeypress = cmkp;
+	document.onkeypress = cmkp;*/
 	ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
         return function(data) {
         	if(data.startsWith("Fail: ")) {
         		alert(data);
         	} else {
+        		$('#debug-controls').css('left', dbgctrl + 'px');
+        		$('#debug-controls').removeClass('hidden');
+        		$('#debug-controls').html('<i key="F8" class="glyphicon glyphicon-play"></i><i key="Ctrl-C" class="glyphicon glyphicon-stop"></i><i key="F6" class="glyphicon glyphicon-step-forward"></i><i key="Ctrl-X" class="glyphicon glyphicon-remove-circle"></i>');
+        		$('#debug-controls').find('i').css('width', '25px');
+        		$('#debug-controls').find('i').css('font-size', 'large');
+        		$('#debug-controls').find('i').css('color', 'indianred');
+        		$('#debug-controls').find('i').on('click', function() {
+        			ceeditor.options.extraKeys[$(this).attr('key')]();
+        		});
+        		ceeditor.getDoc().setValue(data.replace("Success: ", ""));
         		prevline = 0;
         		ceeditor.addLineClass(0, 'wrap', 'CodeMirror-activeline-background');
-        		chkIntv = setInterval(function(){
+        		chkIntv = setInterval(function() {
+        			if(!$('#req-txtarea').data('tcf')) {
+        				clearInterval(chkIntv);
+        				ceeditor = undefined;
+        				$('#debug-controls').addClass('hidden');
+				        //document.removeEventListener('keypress',  cmkp);
+        			}
 			    	ajaxCall(false, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 				        return function(data) {
 				        	if(data.startsWith("Fail: ")) {
 				        		alert(data);
+				        		$('#debug-controls').addClass('hidden');
 				        		clearInterval(chkIntv);
 				        		ceeditor = undefined;
 				        	} else {
 				        		if(data=="Success: 0") {
 				        			alert("Debug session completed");
+				        			$('#debug-controls').addClass('hidden');
 									clearInterval(chkIntv);
 									$('a.asideLink[tcfname="'+tcf+'"]').trigger('click');
 				        			ceeditor = undefined;
-				        			document.removeEventListener('keypress',  cmkp);
+				        			//document.removeEventListener('keypress',  cmkp);
+				        		} else {
+					        		line = data.replace("Success: ", "")*1;
+					        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+					        		prevline = line-1;
+					        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
 				        		}
 				        	}
 				        };
 				    }(tcf), null);
-			    }, 1000);
+			    }, 5000);
         	}
         };
     }(tcf), null);

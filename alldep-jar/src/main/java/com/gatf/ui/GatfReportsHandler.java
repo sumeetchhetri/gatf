@@ -20,6 +20,7 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
 
@@ -60,7 +61,7 @@ public class GatfReportsHandler extends HttpHandler {
 	
 	//Only one debug session per instance allowed for now, later we can support multiple as well
 	//but for now lets keep it simple
-	private GatfSelDebugger dbgSession = null;
+	private Map<String, GatfSelDebugger> dbgSessions = new HashMap<String, GatfSelDebugger>();
 	
 	public GatfReportsHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
@@ -83,6 +84,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    new CacheLessStaticHttpHandler(dirPath).service(request, response);
 			} else if(request.getMethod().equals(Method.PUT) ) {
 			    String action = request.getParameter("action");
+			    String sessionId = request.getParameter("sessionId");
 			    String testcaseFileName = request.getParameter("testcaseFileName");
 			    String testCaseName = request.getParameter("testCaseName");
 			    boolean isServerLogsApi = request.getParameter("isServerLogsApi")!=null;
@@ -123,7 +125,8 @@ public class GatfReportsHandler extends HttpHandler {
 			    {
 			    	throw new RuntimeException("Invalid action specified..");
 			    }
-			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 0, false, selDbgline, selDbgBrkRemove);
+			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 
+			    		0, false, selDbgline, selDbgBrkRemove, sessionId);
 			    if(out[1]!=null) {
 			        response.setContentType(out[2].toString());
 			        response.setContentLength(((byte[])out[1]).length);
@@ -142,7 +145,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	public Object[] executeTest(GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
 	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin, int selDbgline, 
-	        boolean selDbgBrkRemove) throws Exception {
+	        boolean selDbgBrkRemove, String sessionId) throws Exception {
 	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent") || action.equals("debug"))
         {
@@ -513,9 +516,15 @@ public class GatfReportsHandler extends HttpHandler {
                     		String cont = "Fail: Invalid debug command";
     	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
                     	}
+                    	if(StringUtils.isBlank(sessionId)) {
+                    		String cont = "Fail: Invalid sessionId";
+    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+                    	}
+                    	GatfSelDebugger dbgSession = dbgSessions.get(sessionId);
                     	if(selDbgline==0) {
                     		if(dbgSession!=null) {
-                    			dbgSession.destroy();
+                    			dbgSessions.get(sessionId).destroy();
+                    			dbgSessions.remove(sessionId);
                     			dbgSession = null;
                         	}
                     		String configPath = null;
@@ -527,7 +536,8 @@ public class GatfReportsHandler extends HttpHandler {
     	        				}
     	        			}
     	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
-    	                    String cont = "Success: Debug Session started for script " + dbgSession.getSelscript();
+    	                    dbgSessions.put(sessionId, dbgSession);
+    	                    String cont = "Success: " + dbgSession.getSrcCode();
     	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
                     	} else {
                     		if(dbgSession==null) {
@@ -714,5 +724,16 @@ public class GatfReportsHandler extends HttpHandler {
             }
         }
 	    return new Object[]{HttpStatus.NOT_FOUND_404, null, null, null};
+	}
+
+	public void clearInactiveDebugSessions() {
+		Set<String> sessIds = dbgSessions.keySet();
+		for (String sessId : sessIds) {
+			if(!dbgSessions.get(sessId).isActivityObserved()) {
+				GatfSelDebugger dbgSession = dbgSessions.get(sessId);
+				dbgSessions.remove(sessId);
+				dbgSession.destroy();
+			}
+		}	
 	}
 }

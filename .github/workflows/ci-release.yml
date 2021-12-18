@@ -1,0 +1,45 @@
+name: Build, Create and Release jar file
+
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+env:
+  JAR_IMAGE: sumeetchhetri/gatf-jar:1.0
+
+jobs:
+  ubuntu:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Extract branch name
+      shell: bash
+      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/tags/})"
+      id: extract_branch
+    - name: Build gatf jar
+      run: |
+        docker build -f Dockerfile -t $JAR_IMAGE .
+        docker create -ti --name gatf $JAR_IMAGE bash
+        docker cp gatf:/gatf-alldep.jar /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
+
+    - name: Create Release
+      uses: actions/create-release@latest
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        draft: false
+        prerelease: false
+        release_name: Release ${{ steps.extract_branch.outputs.branch }}
+        tag_name: ${{ github.ref }}
+
+    - name: upload jar file
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
+        asset_name: gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
+        asset_content_type: application/java-archive

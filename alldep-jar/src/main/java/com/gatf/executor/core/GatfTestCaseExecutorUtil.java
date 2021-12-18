@@ -605,6 +605,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     		String[] args = new String[] {dyn.getClass().getName(), configPath};
     		session = GatfSelDebugger.debugSession(dyn.getClass(), args, selToJavaLineMap);
     		session.setSelscript(selscript);
+    		session.setSrcCode(retvals[1].toString());
     	} catch (GatfSelCodeParseError e) {
     		e.printStackTrace();
     		throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());

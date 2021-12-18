@@ -100,7 +100,8 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         
         server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, f), "/configure");
         
-        server.getServerConfiguration().addHttpHandler(new GatfReportsHandler(mojo, f), "/reports");
+        GatfReportsHandler repHandler = new GatfReportsHandler(mojo, f);
+        server.getServerConfiguration().addHttpHandler(repHandler, "/reports");
         
         server.getServerConfiguration().addHttpHandler(new GatfMiscHandler(mojo), "/misc");
         
@@ -117,6 +118,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		    new File("gatf.ctrl").createNewFile();
 		    while(new File("gatf.ctrl").exists()) {
 				Thread.sleep(10000);
+				repHandler.clearInactiveDebugSessions();
 		    }
 		} catch (Exception e) {
 		    System.err.println(e);

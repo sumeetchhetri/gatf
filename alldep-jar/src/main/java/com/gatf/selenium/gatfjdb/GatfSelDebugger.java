@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -39,6 +40,7 @@ import com.sun.jdi.request.ClassPrepareRequest;
 @SuppressWarnings("rawtypes")
 public class GatfSelDebugger {
 	private String selscript;
+	private String srcCode;
 	private BreakpointEvent cbe;
 	private Class debugClass; 
 	private VirtualMachine dvm;
@@ -47,8 +49,26 @@ public class GatfSelDebugger {
 	private Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
 	private Thread eventThr = null;
 	private volatile int running = 1;
+	private volatile AtomicInteger activity = new AtomicInteger(0);
 	
-    public String getSelscript() {
+	public boolean isActivityObserved() {
+		int actCount = activity.get();
+		activity.set(0);
+		if(actCount>0) {
+			return true;
+		}
+		return false;
+	}
+	
+    public String getSrcCode() {
+		return srcCode;
+	}
+
+	public void setSrcCode(String srcCode) {
+		this.srcCode = srcCode;
+	}
+
+	public String getSelscript() {
 		return selscript;
 	}
 
@@ -60,7 +80,7 @@ public class GatfSelDebugger {
 		return selToJavaLineMap.keySet();
 	}
 	
-	public int getCurrentLine() {
+	/*public int getCurrentLine() {
 		if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
 			for (Integer selln : selToJavaLineMap.keySet()) {
 				int lineNumber = (Integer)selToJavaLineMap.get(selln)[1];
@@ -70,9 +90,10 @@ public class GatfSelDebugger {
 			}
 		}
 		return 0;
-	}
+	}*/
 	
 	public int getNextLine() {
+		activity.incrementAndGet();
 		if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
 			boolean found = false;
 			for (Integer selln : selToJavaLineMap.keySet()) {
@@ -88,18 +109,21 @@ public class GatfSelDebugger {
 	}
 
 	public void connectAndLaunchVM(String[] args) throws IOException, IllegalConnectorArgumentsException, VMStartException {
+		activity.incrementAndGet();
     	File dir = new File(FileUtils.getTempDirectory(), "gatf-code/");
     	String cp = System.getProperty("java.class.path") + File.pathSeparatorChar + dir.getAbsolutePath();
     	dvm = new VMLauncher("-cp "+cp, debugClass.getName() + " " + StringUtils.join(args, " ")).start();
     }
 
     public void enableClassPrepareRequest() {
+    	activity.incrementAndGet();
         ClassPrepareRequest classPrepareRequest = dvm.eventRequestManager().createClassPrepareRequest();
         classPrepareRequest.addClassFilter(debugClass.getName());
         classPrepareRequest.enable();
     }
 
     public boolean unsetBreakPoint(int selLineNum) throws AbsentInformationException {
+    	activity.incrementAndGet();
     	if(!selToJavaLineMap.containsKey(selLineNum) || !breaks.contains(selLineNum)) {
     		return false;
     	}
@@ -117,6 +141,7 @@ public class GatfSelDebugger {
     }
 
     public boolean setBreakPoint(int selLineNum) throws AbsentInformationException {
+    	activity.incrementAndGet();
     	if(!selToJavaLineMap.containsKey(selLineNum)) {
     		return false;
     	}
@@ -132,6 +157,7 @@ public class GatfSelDebugger {
     }
 
     public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
+    	activity.incrementAndGet();
         StackFrame stackFrame = event.thread().frame(0);
         if(stackFrame.location().toString().contains(debugClass.getName())) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
@@ -143,6 +169,7 @@ public class GatfSelDebugger {
     }
 
     public boolean enableStepRequest() throws AbsentInformationException {
+    	activity.incrementAndGet();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
         	setBreakPoint(getNextLine());
             return true;
@@ -151,28 +178,31 @@ public class GatfSelDebugger {
     }
     
     public void suspend() {
+    	activity.incrementAndGet();
     	dvm.suspend();
     }
     
     public void resume() {
+    	activity.incrementAndGet();
     	dvm.resume();
     }
     
     public int getRunning() {
-    	return running;
+    	activity.incrementAndGet();
+    	if(running==1) {
+    		return getNextLine();
+    	}
+    	return 0;
     }
     
     public void destroy() {
-    	if(eventThr!=null) {
-    		eventThr.interrupt();
-    	}
+    	dvm.exit(0);
     	while(running==1) {
     		try {
-				Thread.sleep(100);
+				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 			}
     	}
-    	dvm.eventRequestManager().createVMDeathRequest();
     }
 
     public static GatfSelDebugger debugSession(Class<? extends SeleniumTest> testClass, String[] args, Map<Integer, Object[]> selToJavaLineMap) throws Exception {
