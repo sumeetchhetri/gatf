@@ -213,7 +213,9 @@ public class SeleniumCodeGeneratorAndUtil {
 		String fileName = UUID.randomUUID().toString()+".zip";
 		File zipFile = new File(System.getProperty("java.io.tmpdir"), fileName);
 		try {
-			new ZipFile(zipFile).addFolder(gcdir);
+			ZipFile zf = new ZipFile(zipFile);
+        	zf.addFolder(gcdir);
+        	zf.close();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}

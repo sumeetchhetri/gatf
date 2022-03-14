@@ -345,7 +345,9 @@ public class ReportHandler {
     {
         try
         {
-        	new ZipFile(zipFile).extractAll(directoryToExtractTo);
+        	ZipFile zf = new ZipFile(zipFile);
+        	zf.extractAll(directoryToExtractTo);
+        	zf.close();
         }
         catch (IOException ioe)
         {
