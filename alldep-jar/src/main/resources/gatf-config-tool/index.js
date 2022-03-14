@@ -1145,7 +1145,7 @@ function startInitConfigTool(func) {
                                 if (currtestcasefile.toLowerCase().endsWith(".sel")) {
                                     htmm = "";
                                     $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=30 style="width:90%">' + data1 + '</textarea>');
-                                    prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", onsucctcnmupdt, null, true, "sel_test_case");
+                                    prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
 									$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
                                     $('#ExampleBeanServiceImpl_form').append('<button id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
@@ -1205,11 +1205,11 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
         tcfname = currtestcasefile;
     if (isNew) {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
-        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType, 'POST', 'Add', onsucctcnmupdt, null);
+        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType, 'POST', 'Add', "onsucctcnmupdt", null);
 		initEvents($('#ExampleBeanServiceImpl_form'));
     } else {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
-        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', 'Update', onsucctcnmupdt, null);
+        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', 'Update', "onsucctcnmupdt", null);
         initEvents($('#ExampleBeanServiceImpl_form'));
         if (tcfname != null && data != null) {
             $('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
