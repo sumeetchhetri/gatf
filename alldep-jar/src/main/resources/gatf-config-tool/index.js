@@ -537,6 +537,7 @@ var alltestcasefiles = [];
 })();
 
 function execFunction(evt, ths) {
+	ths = ths[0];
 	evt = evt.trim();
 	var fnm = evt.substring(0, evt.indexOf("("));
 	var argss = evt.substring(evt.indexOf("(")+1, evt.length-1);
@@ -551,24 +552,34 @@ function execFunction(evt, ths) {
 			} else if(tmp.charAt(0)=='"' && tmp.charAt(tmp.length-1)=='"') {
 				tmp = tmp.substring(1, tmp.length-1);
 				args.push(tmp);
-			} else if(tmp=="this") {
-				args.push(ths);
+			} else if(tmp=="this" || tmp.startsWith("this")) {
+				if(tmp=="this") {
+					args.push(ths);
+				} else {
+					var tmp1 = tmp.substring(5);
+					if(tmp1=="value") {
+						args.push(ths.value);
+					} else if(tmp1=="html") {
+						args.push(ths.html);
+					} else if(tmp1=="text") {
+						args.push(ths.text);
+					}
+				}
 			} else if(tmp=="event") {
-				args.push($(e));
+				args.push($(event)[0]);
 			} else if(tmp=='true' || tmp=='false') {
 				args.push(tmp=='true');
 			} else if(!isNaN(tmp)) {
 				args.push(tmp*1);
-			} else if(tmp.startsWith("$(")) {
-				tmp = tmp.substring(2, tmp.lastIndexOf(")"));
-				args.push($(tmp.substring(1, tmp.length-1)));
-			} else if(window[tmp]) {
-		       	args.push(window[tmp]);
-		    } else if(tmp=="null") {
+			} else if(tmp=="null") {
 		       	args.push(null);
 		    } else if(tmp=="undefined") {
 		       	args.push(undefined);
-		    }
+		    } else if(window[tmp]) {
+		       	args.push(window[tmp]);
+		    } else {
+				args.push(eval(tmp));
+			}
 		}
 	}
 	if(window[fnm]) {

@@ -148,7 +148,7 @@ public class ReportHandler {
         	File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
@@ -184,7 +184,7 @@ public class ReportHandler {
 			File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
@@ -618,7 +618,7 @@ public class ReportHandler {
 			                
 			                VelocityEngine engine = new VelocityEngine();
 			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-			                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+			                engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
 			                engine.init();
 			                
 			                StringWriter writer = new StringWriter();
@@ -736,7 +736,7 @@ public class ReportHandler {
             	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
                 if(reportFileName==null)
@@ -977,7 +977,7 @@ public class ReportHandler {
                 
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
                 if(orf==null)
@@ -1062,7 +1062,7 @@ public class ReportHandler {
             	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
                 engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-                engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+                engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
                 context.put("isLoadTestingEnabled", isLoadTestingEnabled);
@@ -1104,7 +1104,7 @@ public class ReportHandler {
             
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
@@ -1129,7 +1129,7 @@ public class ReportHandler {
             
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
@@ -1174,7 +1174,7 @@ public class ReportHandler {
             
             VelocityEngine engine = new VelocityEngine();
             engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
-            engine.setProperty("classpath.resource.loader.class", ClasspathResourceLoader.class.getName());
+            engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
