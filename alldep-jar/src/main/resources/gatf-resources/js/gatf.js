@@ -17,6 +17,21 @@ function syntaxHighlight(json) {
 	});
 }
 
+function initEvents(par) {
+	par.find('input[mo-event],textarea[mo-event],select[mo-event]').off('mouseover').on('mouseover', function() {
+		var evt = $(this).attr('mo-event');
+		execFunction1(evt, $(this));
+	});
+	par.find('input[blur-event],textarea[blur-event],select[blur-event]').off('blur').on('blur', function() {
+		var evt = $(this).attr('blur-event');
+		execFunction1(evt, $(this));
+	});
+	par.find('input[change-event],textarea[change-event],select[change-event]').off('change').on('change', function() {
+		var evt = $(this).attr('change-event');
+		execFunction1(evt, $(this));
+	});
+}
+
 function execFunction1(evt, ths) {
 	ths = ths[0];
 	evt = evt.trim();

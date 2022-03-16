@@ -105,9 +105,9 @@
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
-									<input type="radio" checked name="chartType" value="line" onclick="reloadCharts(this.value)">Line Chart<br>
-									<input type="radio" name="chartType" value="bar" onclick="reloadCharts(this.value)">Bar Chart<br/><br/>
-									<select id="groupFilesSelect" width="80%" style="width: 80%" onchange="loadStats(this.value)"><option value="All">All</option></select>
+									<input type="radio" checked name="chartType" value="line" click-event="reloadCharts(this.value)">Line Chart<br>
+									<input type="radio" name="chartType" value="bar" click-event="reloadCharts(this.value)">Bar Chart<br/><br/>
+									<select id="groupFilesSelect" width="80%" style="width: 80%"><option value="All">All</option></select>
 									<br/><br/><br/>
 									<ul style="margin-left:50px" id="stats-pre-ele">
 									</ul>
@@ -118,7 +118,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default">
 								<div class="panel-heading">
-									Overall Test Success/Failures<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechart.getCanvas(), 300, 300)">Save</button>
+									Overall Test Success/Failures<span style="float:right"><button click-event="Canvas2Image.saveAsPNG(flotpiechart.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -129,7 +129,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default" id="secondpie" style="display:none;">
 								<div class="panel-heading">
-									Overall Success/Failures - Multiple Test Runs<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechart2.getCanvas(), 300, 300)">Save</button>
+									Overall Success/Failures - Multiple Test Runs<span style="float:right"><button click-event="Canvas2Image.saveAsPNG(flotpiechart2.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -159,11 +159,11 @@
 												
 						<div class="panel panel-default">
 							<div class="panel-heading">
-								Testcase Execution Time Graph<span style="float:right"><button onclick="saveSingleMultiLineGraphs()">Save</button>
+								Testcase Execution Time Graph<span style="float:right"><button click-event="saveSingleMultiLineGraphs()">Save</button>
 							</div>
 							<!-- /.panel-heading -->
 							<div class="panel-body" style="height:auto;overflow:scroll;overflow-y:hidden">  
-								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" onclick="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" onclick="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;(Values<input id="valuelcheck" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(Labels<input id="labelcheck" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" onclick="showHide('legend-cont')">Legend</span>&nbsp;&nbsp;(90%<input id="ninetyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(50%<input id="fiftyperchk" type="checkbox" onclick="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp</div><br/>
+								<div><span class="glyphicon glyphicon-plus" style="cursor:pointer;cursor:hand;" click-event="magnify(true,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;<span class="glyphicon glyphicon-minus" style="cursor:pointer;cursor:hand;" click-event="magnify(false,'flot-line-chart',1.5,false)"></span>&nbsp;&nbsp;(Values<input id="valuelcheck" type="checkbox" click-event="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(Labels<input id="labelcheck" type="checkbox" click-event="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;<span style="cursor:pointer;cursor:hand;background-color:#cccccc" click-event="showHide('legend-cont')">Legend</span>&nbsp;&nbsp;(90%<input id="ninetyperchk" type="checkbox" click-event="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp;(50%<input id="fiftyperchk" type="checkbox" click-event="showOnlyLineMultiGraph()"/>)&nbsp;&nbsp</div><br/>
 								<div class="flot-chart-content" id="flot-line-chart" style="width:auto;height:500px"></div>
 							 </div>
 						</div>
@@ -180,7 +180,7 @@
 						<div class="col-lg-4">
 							<div class="panel panel-default">
 								<div class="panel-heading">
-									Comparison Success/Failures<span style="float:right"><button onclick="Canvas2Image.saveAsPNG(flotpiechartcomp.getCanvas(), 300, 300)">Save</button>
+									Comparison Success/Failures<span style="float:right"><button click-event="Canvas2Image.saveAsPNG(flotpiechartcomp.getCanvas(), 300, 300)">Save</button>
 								</div>
 								<!-- /.panel-heading -->
 								<div class="panel-body">        
@@ -273,6 +273,18 @@
 			var runPrefix = "$runPrefix";
 			
 			var isShowTAFrame = true;	
+			
+			$(document).ready(function() {
+				$('#groupFilesSelect').on('change', function() {
+					loadStats($(this).val());
+				});
+				$(document).off('click').on('click', function(e) {
+				    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON') && $(e.target).attr('click-event')) {
+				        var evt = $(e.target).attr('click-event');
+						execFunction1(evt, $(e.target));
+				    }
+				});
+		    });
 			
 		</script>
 	</body>

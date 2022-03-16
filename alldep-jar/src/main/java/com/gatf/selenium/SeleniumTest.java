@@ -1103,7 +1103,7 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
 				we.clear();
-				blur(we);
+				change(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
@@ -1115,14 +1115,14 @@ public abstract class SeleniumTest {
 			for(final WebElement we: ret) {
 				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
-				blur(we);
+				change(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb")) {
 			for(final WebElement we: ret) {
 				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
-				//blur(we);
+				//change(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("upload")) {
@@ -1132,13 +1132,13 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				blur(we);
+				change(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("chordnb")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				//blur(we);
+				//change(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
@@ -1148,6 +1148,11 @@ public abstract class SeleniumTest {
 				break;
 			}
 		}
+	}
+	
+	protected void change(WebElement we) {
+		//get___d___().findElement(By.tagName("body"))
+		((JavascriptExecutor)get___d___()).executeScript("arguments[0].dispatchEvent(new Event('change'));", we);
 	}
 	
 	protected void blur(WebElement we) {
@@ -1436,6 +1441,7 @@ public abstract class SeleniumTest {
 								Thread.sleep(1000);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
 								elementAction(ret, action, tvalue);
+								resp = ret;
 								lastException = null;
 								break;
 							} catch (Exception e1) {
@@ -1477,6 +1483,7 @@ public abstract class SeleniumTest {
 								Thread.sleep(1000);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
 								elementAction(ret, action, tvalue);
+								resp = ret;
 								lastException = null;
 								break;
 							} catch (Exception e1) {
@@ -1591,6 +1598,9 @@ public abstract class SeleniumTest {
 			public WebElement apply(WebDriver driver) {
 				try {
 					WebElement telement = ExpectedConditions.elementToBeClickable(element).apply(driver);
+					if(telement==null && isJsVisible(driver, element)) {
+						return element;
+					}
 					//element.isDisplayed() && (!enabledCheck || (enabledCheck && element.isEnabled()));
 					if(telement!=null && layers!=null && layers.length>0) {
 						int tzl = getZIndex(telement);
@@ -1617,6 +1627,11 @@ public abstract class SeleniumTest {
 				}
 			}
 		};
+	}
+	
+	private static boolean isJsVisible(WebDriver driver, WebElement element) {
+		return Boolean.TRUE.equals(((JavascriptExecutor)driver)
+				.executeScript("return arguments[0].offsetParent!==undefined && arguments[0].offsetParent!==null", element));
 	}
 
 	protected void initStateFulProvider(String name) {
@@ -1708,7 +1723,7 @@ public abstract class SeleniumTest {
 	}
 	
 	public static void main(String[] args) throws Exception {
-        GatfExecutorConfig config = Command.getConfig(args[1].trim(), null);
+        GatfExecutorConfig config = Command.getConfig(args[1].trim(), args.length>2?args[2].trim():null);
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
