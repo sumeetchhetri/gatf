@@ -1082,7 +1082,7 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	private void elementAction(List<WebElement> ret, String action, String tvalue) {
+	private void elementAction(List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(action.equalsIgnoreCase("click")) {
 			for(final WebElement we: ret) {
 				we.click();
@@ -1128,7 +1128,18 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(ret, tvalue);
 		} else if(action.equalsIgnoreCase("select")) {
-
+			Select s = new Select(ret.get(0));
+			if(selSubsel.equalsIgnoreCase("text")) {
+				s.selectByVisibleText(selValue);
+            } else if(selSubsel.equalsIgnoreCase("index")) {
+            	s.selectByIndex(Integer.parseInt(selValue));
+            } else if(selSubsel.equalsIgnoreCase("value")) {
+            	s.selectByValue(selValue);
+            } else if(selSubsel.equalsIgnoreCase("first")) {
+            	s.selectByIndex(0);
+            } else if(selSubsel.equalsIgnoreCase("last")) {
+            	s.selectByIndex(s.getOptions().size()-1);
+            }
 		} else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
@@ -1238,7 +1249,7 @@ public abstract class SeleniumTest {
 		Object resp = ret;
 		boolean flag = true;
 		if(ret!=null) {
-			if((StringUtils.isNotBlank(value) || (values!=null && values.length>0)) && subselector!=null && !subselector.isEmpty()) {
+			if(action==null && (StringUtils.isNotBlank(value) || (values!=null && values.length>0)) && subselector!=null && !subselector.isEmpty()) {
 				if(value!=null)
 				{
 					if(byselsame)
@@ -1422,7 +1433,7 @@ public abstract class SeleniumTest {
 				}
 			} else if(action!=null) {
 				try {
-					elementAction(ret, action, tvalue);
+					elementAction(ret, action, tvalue, value, subselector);
 				} catch (WebDriverException e) {
 					String exMsg = ExceptionUtils.getStackTrace(e);
 					boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
@@ -1440,7 +1451,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(1000);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(ret, action, tvalue);
+								elementAction(ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -1463,6 +1474,10 @@ public abstract class SeleniumTest {
 							lastException.printStackTrace();
 						}
 					} else {
+						//This means this has come from WaitTillElementVisibleOrInvisibleCommand
+						if(timeoutRemaining==0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
+							return null;
+						}
 						e.printStackTrace();
 					}
 				} catch (Exception e) {
@@ -1482,7 +1497,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(1000);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(ret, action, tvalue);
+								elementAction(ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -1505,6 +1520,10 @@ public abstract class SeleniumTest {
 							lastException.printStackTrace();
 						}
 					} else {
+						//This means this has come from WaitTillElementVisibleOrInvisibleCommand
+						if(timeoutRemaining==0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
+							return null;
+						}
 						e.printStackTrace();
 					}
 				}

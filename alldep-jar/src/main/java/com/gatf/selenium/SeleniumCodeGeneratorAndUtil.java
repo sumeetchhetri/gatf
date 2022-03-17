@@ -82,9 +82,8 @@ public class SeleniumCodeGeneratorAndUtil {
         }
 		
 		if(isLog) {
-			String jc = cmd.javacode();
-			System.out.println(jc);
-	        System.out.println(new Formatter().formatSource(jc));
+			System.out.println(sourceCode);
+	        System.out.println(new Formatter().formatSource(sourceCode));
 		}
 		
 		retvals[0] = fileName;

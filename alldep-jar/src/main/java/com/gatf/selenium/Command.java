@@ -64,8 +64,11 @@ public class Command {
         String basePath = "";
         String testcaseDir = "";
         int concExec = 0;
-        
-        int modeSet = 0;
+       
+        int timeout = 60;
+       
+        int modeExecType = 0;
+        boolean modeEnableGlobalTimeouts = true;
 
         int NUMBER = 1;
         int NUMBER_COND = 1;
@@ -380,7 +383,7 @@ public class Command {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
         } else if(cmd.startsWith("??+")) {
-        	String time = "0";
+        	String time = state.timeout+"";
             Matcher m = WAIT_IF.matcher(cmd);
             int start = 3;
             if(m.find()) {
@@ -388,9 +391,9 @@ public class Command {
                 start = m.end(2) + 1;
             }
             cmd = cmd.substring(start).trim();
-            comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, true);
+            comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, true, false);
         } else if(cmd.startsWith("??-")) {
-        	String time = "0";
+        	String time = state.timeout+"";
         	Matcher m = WAIT_IF.matcher(cmd);
         	int start = 3;
         	if(m.find()) {
@@ -398,9 +401,9 @@ public class Command {
         		start = m.end(2) + 1;
         	}
         	cmd = cmd.substring(start).trim();
-        	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false);
+        	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false, false);
         } else if(cmd.startsWith("??")) {
-        	String time = "0";
+        	String time = state.timeout+"";
         	Matcher m = WAIT.matcher(cmd);
         	int start = 2;
         	if(m.find()) {
@@ -578,6 +581,10 @@ public class Command {
             }
             comd = new GotoCommand(cmdDetails, state);
             ((GotoCommand)comd).url = url;
+        } else if (cmd.toLowerCase().startsWith("timeout ")) {
+        	String time = cmd.substring(8).trim();
+        	state.timeout = Integer.parseInt(time);
+        	comd = new TimeoutCommand(time, cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("layer ")) {
             comd = new LayerCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("break")) {
@@ -615,9 +622,13 @@ public class Command {
                 || cmd.toLowerCase().startsWith("randomize ") || cmd.toLowerCase().startsWith("actions ")
                 || cmd.toLowerCase().startsWith("robot ") ||  cmd.toLowerCase().equals("scrollup") 
                 || cmd.toLowerCase().equals("scrolldown") || cmd.toLowerCase().equals("scrollpageup") 
-                || cmd.toLowerCase().equals("scrollpagedown")
-                || cmd.toLowerCase().startsWith("upload ")) {
-            comd = handleActions(cmd, null, cmdDetails, state);
+                || cmd.toLowerCase().equals("scrollpagedown") || cmd.toLowerCase().startsWith("typenb ")
+                || cmd.toLowerCase().startsWith("upload ") || cmd.toLowerCase().startsWith("chordnb ")) {
+        	if(state.modeEnableGlobalTimeouts) {
+        		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeout+"", cmd, cmdDetails, state, false, true);
+        	} else {
+        		comd = handleActions(cmd, null, cmdDetails, state);
+        	}
         } else if (cmd.toLowerCase().startsWith("var ")) {
             comd = new VarCommand(cmd.substring(4).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("jsvar ")) {
@@ -929,20 +940,22 @@ public class Command {
                 } else if(tmp instanceof BrowserCommand) {
                     state.started = true;
                     isValid = true;
-                    if(state.modeSet==0) {
-                        state.modeSet = 1;
+                    if(state.modeExecType==0) {
+                        state.modeExecType = 1;
                     }
                     parent.children.add(tmp);
                 } else if(tmp instanceof ModeCommand) {
                     isValid = true;
-                    if(state.modeSet!=0) {
+                    if(state.modeExecType!=0) {
                         throwParseErrorS(o, new RuntimeException("mode if provided should be the first execution command in a test script"));
                     } else {
                         if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
                             throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
                         }
-                        state.modeSet = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
-                        state.modeSet = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeSet;
+                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
+                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeExecType;
+                        
+                        state.modeEnableGlobalTimeouts = ((ModeCommand)tmp).enableGlobalTimeouts;
                     }
                     parent.children.add(tmp);
                 } else if(tmp instanceof SleepCommand) {
@@ -1212,7 +1225,7 @@ public class Command {
         int lastSessionId = 0;
         for (Command c : children) {
             if(c instanceof BrowserCommand) {
-                if(state.modeSet==2 && ((BrowserCommand)c).sessionName!=null && sessDups.contains(((BrowserCommand)c).sessionName)) {
+                if(state.modeExecType==2 && ((BrowserCommand)c).sessionName!=null && sessDups.contains(((BrowserCommand)c).sessionName)) {
                     throwError(c.fileLineDetails, new RuntimeException("In integration mode duplicate session names are not allowed " + c.name + "/" + ((BrowserCommand)c).sessionName));
                 }
                 if(((BrowserCommand)c).sessionName!=null) {
@@ -1282,7 +1295,7 @@ public class Command {
         }
         b.append("\n\n");
         
-        if(state.modeSet==2) {
+        if(state.modeExecType==2) {
             if(bn.size()>1 && state.subtestDetails.size()==0) {
                 throw new RuntimeException("In integration mode subtests are required per browser session");
             }
@@ -1820,7 +1833,7 @@ public class Command {
         }
         String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(state.modeSet==2) {
+            if(state.modeExecType==2) {
                 if(sessionName!=null) {
                     b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
                 } else if(sessionId>0) {
@@ -1836,7 +1849,7 @@ public class Command {
                 b.append("___ocw___ = ___cw___;\n");
             }
             b.append("___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(state.modeSet!=2) {
+            if(state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -1852,7 +1865,12 @@ public class Command {
                 b.append("\ntry {\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
-                    b.append(c.javacode());
+                    try {
+                    	b.append(c.javacode());
+					} catch (Exception e) {
+						e.printStackTrace();
+						throwParseError(c.fileLineDetails);
+					}
                     b.append("\n");
                 }
                 b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
@@ -2260,8 +2278,8 @@ public class Command {
 
     public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
-        int counter = 60;
-        WaitTillElementVisibleOrInvisibleCommand(String time, String val, Object[] cmdDetails, CommandState state, boolean isVisible) {
+        int counter = state.timeout;
+        WaitTillElementVisibleOrInvisibleCommand(String time, String val, Object[] cmdDetails, CommandState state, boolean isVisible, boolean forced) {
             super(cmdDetails, state);
             try {
 				if(Integer.valueOf(time)>0) {
@@ -2270,6 +2288,17 @@ public class Command {
 			} catch (Exception e) {
 			}
             String[] parts = val.trim().split("[\t ]+");
+            if(forced) {
+            	String[] parts1 = Arrays.asList(parts).toArray(new String[parts.length]);
+            	if(parts1.length>2) {
+	            	parts[0] = parts1[2];
+	            	parts[1] = parts1[0];
+	            	parts[2] = parts1[1];
+            	} else if(parts1.length>1) {
+	            	parts[0] = parts1[1];
+	            	parts[1] = parts1[0];
+            	}
+            }
             String cmd = parts[0];
             if(parts.length>1) {
                 if (parts[1].toLowerCase().equals("type") || parts[1].toLowerCase().equals("typenb") 
@@ -2325,7 +2354,7 @@ public class Command {
             b.append(cond.javacodeonlyNoAssert(children, true));
             b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;\n");
             b.append("sleep(1000);\n");
-            b.append("if("+cntvar+"++=="+counter+")break;\n");
+            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
             b.append("}\n");
             /*for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
@@ -3376,12 +3405,35 @@ public class Command {
         }
     }
 
+    public static class TimeoutCommand extends Command {
+    	TimeoutCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            this.name = val;
+        }
+        String toCmd() {
+            return "timeout " + name;
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Define Global timeout",
+        		"\ttimeout {timeout-secs}",
+				"Examples :-",
+				"\ttimeout 100",
+            };
+        }
+        public String javacode() {
+            return "";
+        }
+    }
+
     public static class ModeCommand extends Command {
+    	boolean enableGlobalTimeouts = true;
         ModeCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
                 name = state.unsanitize(parts[0].trim());
+                enableGlobalTimeouts = (parts.length>1 && parts[1].equalsIgnoreCase("true"));
             } else {
                 //excep
             }
@@ -3389,9 +3441,12 @@ public class Command {
         String name() {
             return name;
         }
+        boolean getEnableGlobalTimeouts() {
+            return enableGlobalTimeouts;
+        }
 
         String toCmd() {
-            return "mode " + name;
+            return "mode " + name + (enableGlobalTimeouts?"true":"false");
         }
         int weight() {
             return 2;
@@ -3399,7 +3454,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Define test mode",
-        		"\tmode {normal|integration}",
+        		"\tmode {normal|integration} {true|false}",
 				"Examples :-",
 				"\tmode normal",
 				"\tmode integration",
@@ -3525,12 +3580,17 @@ public class Command {
             if(name.trim().isEmpty() || name.equalsIgnoreCase("main") || name.equalsIgnoreCase("0")) {
                 return "___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
             } else {
+            	StringBuilder b = new StringBuilder();
+                String cntvar = state.varnamerandom();
+                b.append("int "+cntvar+" = 0;\n");
+                b.append("\nwhile(true) {\n");
+                b.append("\ntry {\n");
                 try {
                     int index = Integer.parseInt(name);
                     String acvn = state.varname();
                     String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n"
                             + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
-                    return whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n}\n___sc___1 = ___cw___;";
+                    b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;\nbreak;}");
                 } catch (Exception e) {
                     name = state.unsanitize(name);
                     if(name.charAt(0)==name.charAt(name.length()-1)) {
@@ -3538,8 +3598,13 @@ public class Command {
                             name = name.substring(1, name.length()-1);
                         }
                     }
-                    return "___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
+                    b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
                 }
+                b.append("\n} catch(Exception e){}\n");
+                b.append("sleep(1000);\n");
+                b.append("if("+cntvar+"++=="+state.timeout+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
+                b.append("}\n");
+                return b.toString();
             }
         }
         public static String[] toSampleSelCmd() {
@@ -4036,16 +4101,16 @@ public class Command {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
-                        }/* else if(c instanceof SelectCommand) {
+                        } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
-                        }*/
+                        }
                     }
                 }
             }
             if(ssubselector!=null) {
-                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+                ssubselector = "evaluate(\""+esc(ssubselector)+"\")";
             }
             if(soper!=null) {
                 soper = "\""+soper+"\"";
@@ -4082,16 +4147,16 @@ public class Command {
                             tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
-                        }/* else if(c instanceof SelectCommand) {
+                        } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
-                        }*/
+                        }
                     }
                 }
             }
-            if(subselector!=null) {
-                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+            if(ssubselector!=null) {
+                ssubselector = "evaluate(\""+esc(ssubselector)+"\")";
             }
             if(soper!=null) {
                 soper = "\""+soper+"\"";
