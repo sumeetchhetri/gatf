@@ -65,7 +65,8 @@ public class Command {
         String testcaseDir = "";
         int concExec = 0;
        
-        int timeout = 60;
+        int timeoutNum = 60;
+        long timeoutSleepGranularity = 1000;
        
         int modeExecType = 0;
         boolean modeEnableGlobalTimeouts = true;
@@ -132,7 +133,11 @@ public class Command {
             }
             subtestDups.add(st.name);
             allSubTests.add(st);
-            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails});
+            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true});
+        }
+        
+        void addSubtest(ExecSubTestCommand st) {
+            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false});
         }
         Map<String, String> qss = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
@@ -383,7 +388,7 @@ public class Command {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
         } else if(cmd.startsWith("??+")) {
-        	String time = state.timeout+"";
+        	String time = state.timeoutNum+"";
             Matcher m = WAIT_IF.matcher(cmd);
             int start = 3;
             if(m.find()) {
@@ -393,7 +398,7 @@ public class Command {
             cmd = cmd.substring(start).trim();
             comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, true, false);
         } else if(cmd.startsWith("??-")) {
-        	String time = state.timeout+"";
+        	String time = state.timeoutNum+"";
         	Matcher m = WAIT_IF.matcher(cmd);
         	int start = 3;
         	if(m.find()) {
@@ -403,7 +408,7 @@ public class Command {
         	cmd = cmd.substring(start).trim();
         	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false, false);
         } else if(cmd.startsWith("??")) {
-        	String time = state.timeout+"";
+        	String time = state.timeoutNum+"";
         	Matcher m = WAIT.matcher(cmd);
         	int start = 2;
         	if(m.find()) {
@@ -582,9 +587,9 @@ public class Command {
             comd = new GotoCommand(cmdDetails, state);
             ((GotoCommand)comd).url = url;
         } else if (cmd.toLowerCase().startsWith("timeout ")) {
-        	String time = cmd.substring(8).trim();
-        	state.timeout = Integer.parseInt(time);
-        	comd = new TimeoutCommand(time, cmdDetails, state);
+        	comd = new TimeoutCommand(cmd.substring(8), cmdDetails, state);
+        	state.timeoutNum = ((TimeoutCommand)comd).counter;
+        	state.timeoutSleepGranularity = ((TimeoutCommand)comd).sleepGranularity;
         } else if (cmd.toLowerCase().startsWith("layer ")) {
             comd = new LayerCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("break")) {
@@ -625,7 +630,7 @@ public class Command {
                 || cmd.toLowerCase().equals("scrollpagedown") || cmd.toLowerCase().startsWith("typenb ")
                 || cmd.toLowerCase().startsWith("upload ") || cmd.toLowerCase().startsWith("chordnb ")) {
         	if(state.modeEnableGlobalTimeouts) {
-        		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeout+"", cmd, cmdDetails, state, false, true);
+        		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeoutNum+"", cmd, cmdDetails, state, false, true);
         	} else {
         		comd = handleActions(cmd, null, cmdDetails, state);
         	}
@@ -643,6 +648,8 @@ public class Command {
             comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("subtest ")) {
             comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("@subtest ")) {
+            comd = new ExecSubTestCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("require ")) {
             comd = new RequireCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
@@ -1286,9 +1293,11 @@ public class Command {
                 //            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
                 //            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
                 if(((bsessionName!=null && bsessionName.equals(sessionName)) || bsessionId.equals(sessionId)) || (sessionName==null && sessionId==null)) {
-	                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
-	                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
-	                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\");\n\n");
+                	if((Boolean)st[5]) {
+		                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
+		                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
+		                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\");\n\n");
+                	}
                 }
                 //b.append("}\n");
             }
@@ -1337,6 +1346,9 @@ public class Command {
             String cc = null;
             if(c instanceof SubTestCommand) {
                 cc = ((SubTestCommand)c).javacodesubtest(subtestcount>0);
+                subtestcount++;
+            } else if(c instanceof ExecSubTestCommand) {
+                cc = ((ExecSubTestCommand)c).javacodesubtest(subtestcount>0);
                 subtestcount++;
             } else {
             	cc = genDebugInfo(c);
@@ -1785,10 +1797,129 @@ public class Command {
             };
         }
     }
+    
+    public static class ExecSubTestCommand extends Command {
+    	SubTestCommand subt = null;
+    	String sessionName;
+        Integer sessionId = null;
+        Map<String, String> params = new HashMap<String, String>();
+    	ExecSubTestCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length==0) {
+            	throwError(fileLineDetails, new RuntimeException("Please specify a subtest name to execute"));
+            }
+            name = unSantizedUnQuoted(parts[0].trim(), state);
+            String pstr = "";
+            if(parts.length>1) {
+            	if(parts[1].startsWith("(")) {
+            		pstr += parts[1].substring(1) + " ";
+            		boolean pvalid = false;
+            		int counter = 2;
+            		for (;counter < parts.length;counter++) {
+            			if(parts[counter].endsWith(")")) {
+            				pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+            				pvalid = true;
+            				break;
+            			} else {
+            				pstr += parts[counter].substring(1) + " ";
+            			}
+            		}
+            		if(!pvalid) {
+            			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+            		} else {
+            			String[] nparts = pstr.trim().split("[\t ]+");
+            			for (int i = 0; i < nparts.length; i++) {
+    						String param = unSantizedUnQuoted(nparts[i].trim(), state);
+    						if(StringUtils.isNotBlank(param)) {
+    							String[] pdet = param.split(":");
+    							if(pdet.length!=2) {
+    								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+    							}
+    							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
+    								params.put(pdet[0].trim(), pdet[1]);
+    							} else {
+    								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name"));
+    							}
+    						}
+    					}
+            		}
+            		counter++;
+            		if(counter<parts.length) {
+            			if(parts[counter].trim().matches("@[0-9]+")) {
+                            sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
+                            if(sessionId<0) {
+                            	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                            }
+                        } else {
+                            sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
+                        }
+            		}
+            	} else {
+            		if(parts[1].trim().matches("@[0-9]+")) {
+                        sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
+                        if(sessionId<0) {
+                        	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                        }
+                    } else {
+                        sessionName = unSantizedUnQuoted(parts[1].trim(), state);
+                    }
+            	}
+            }
+            for (Command c : state.allSubTests) {
+            	SubTestCommand st = (SubTestCommand)c;
+				if(st.name.equals(name)) {
+					Map<String, String> nparams = new HashMap<String, String>(st.params);
+					nparams.putAll(params);
+					subt = st;
+					if(StringUtils.isBlank(sessionName)) {
+						sessionName = subt.sessionName;
+					}
+					if(sessionId==null) {
+						sessionId = subt.sessionId;
+					}
+					break;
+				}
+			}
+            if(subt==null) {
+            	throwError(fileLineDetails, new RuntimeException("Subtest with name \""+name+"\" not found."));
+            }
+            state.addSubtest(this);
+        }
+    	
+        String javacodesubtest(boolean initvars) {
+            StringBuilder b = new StringBuilder();
+            if(state.modeExecType==2) {
+                if(sessionName!=null) {
+                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
+                } else if(sessionId>0) {
+                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
+                }
+            } else {
+                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
+            }
+            if(initvars) {
+                b.append("___sc___1 = get___d___();\n");
+                b.append("___cw___ = get___d___();\n");
+                b.append("___ocw___ = ___cw___;\n");
+            }
+            for (String pn : params.keySet()) {
+				b.append("___add_var__(\""+pn+"\", \""+esc(params.get(pn))+"\");\n");
+			}
+            b.append(genDebugInfo(this));
+            b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            if(state.modeExecType!=2) {
+                b.append("}\n");
+            }
+            return b.toString();
+        }
+    }
 
     public static class SubTestCommand extends Command {
         String sessionName;
         Integer sessionId = null;
+        Map<String, String> params = new HashMap<String, String>();
         String fName = "__st__" + state.NUMBER_ST++;
         SubTestCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -1799,15 +1930,61 @@ public class Command {
                 } else {
                     name = "Subtest " + (state.NUMBER_ST - 1);
                 }
+                String pstr = "";
                 if(parts.length>1) {
-                    if(parts[1].trim().matches("@[0-9]+")) {
-                        sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
-                        if(sessionId<0) {
-                        	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                	if(parts[1].startsWith("(")) {
+                		pstr += parts[1].substring(1) + " ";
+                		boolean pvalid = false;
+                		int counter = 2;
+                		for (;counter < parts.length;counter++) {
+                			if(parts[counter].endsWith(")")) {
+                				pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+                				pvalid = true;
+                				break;
+                			} else {
+                				pstr += parts[counter].substring(1) + " ";
+                			}
+                		}
+                		if(!pvalid) {
+                			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+                		} else {
+                			String[] nparts = pstr.trim().split("[\t ]+");
+                			for (int i = 0; i < nparts.length; i++) {
+        						String param = unSantizedUnQuoted(nparts[i].trim(), state);
+        						if(StringUtils.isNotBlank(param)) {
+        							String[] pdet = param.split(":");
+        							if(pdet.length!=2) {
+        								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+        							}
+        							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
+        								params.put(pdet[0].trim(), pdet[1]);
+        							} else {
+        								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name"));
+        							}
+        						}
+        					}
+                		}
+                		counter++;
+                		if(counter<parts.length) {
+                			if(parts[counter].trim().matches("@[0-9]+")) {
+                                sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
+                                if(sessionId<0) {
+                                	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                                }
+                            } else {
+                                sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
+                            }
+                		}
+                	} else {
+                		if(parts[1].trim().matches("@[0-9]+")) {
+                            sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
+                            if(sessionId<0) {
+                            	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                            }
+                        } else {
+                            sessionName = unSantizedUnQuoted(parts[1].trim(), state);
                         }
-                    } else {
-                        sessionName = unSantizedUnQuoted(parts[1].trim(), state);
-                    }
+                	}
                 }
             } else {
                 name = "Subtest " + (state.NUMBER_ST - 1);
@@ -1848,6 +2025,10 @@ public class Command {
                 b.append("___cw___ = get___d___();\n");
                 b.append("___ocw___ = ___cw___;\n");
             }
+            for (String pn : params.keySet()) {
+				b.append("___add_var__(\""+pn+"\", \""+esc(params.get(pn))+"\");\n");
+			}
+            b.append(genDebugInfo(this));
             b.append("___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
             if(state.modeExecType!=2) {
                 b.append("}\n");
@@ -2278,12 +2459,13 @@ public class Command {
 
     public static class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
-        int counter = state.timeout;
+        int counter = state.timeoutNum;
         WaitTillElementVisibleOrInvisibleCommand(String time, String val, Object[] cmdDetails, CommandState state, boolean isVisible, boolean forced) {
             super(cmdDetails, state);
             try {
 				if(Integer.valueOf(time)>0) {
 					counter = Integer.valueOf(time);
+					counter = (int)(counter*1000/state.timeoutSleepGranularity);
 				}
 			} catch (Exception e) {
 			}
@@ -2353,7 +2535,7 @@ public class Command {
             b.append("\nwhile(true) {\n");
             b.append(cond.javacodeonlyNoAssert(children, true));
             b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;\n");
-            b.append("sleep(1000);\n");
+            b.append("sleep("+state.timeoutSleepGranularity+");\n");
             b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
             b.append("}\n");
             /*for (Command command : children) {
@@ -3406,19 +3588,48 @@ public class Command {
     }
 
     public static class TimeoutCommand extends Command {
+    	int counter = 60;
+    	long sleepGranularity = 1000;
     	TimeoutCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            this.name = val;
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length==0) {
+            	throwParseError(null, new RuntimeException("Please specify timeout in seconds"));
+            }
+            if(parts.length>0) {
+            	if(StringUtils.isBlank(parts[0])) {
+            		throwParseError(null, new RuntimeException("Please specify timeout in seconds"));
+            	}
+            	try {
+            		counter = Integer.valueOf(parts[0]);
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Please specify timeout in seconds"));
+				}
+            }
+            if(counter<10) {
+            	throwParseError(null, new RuntimeException("Timeout should be more than or equal to 10"));
+            }
+            if(parts.length>1 && StringUtils.isNotBlank(parts[1])) {
+            	try {
+            		sleepGranularity = Long.valueOf(parts[1]);
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Please specify proper sleep granularity (should be in milliseconds)"));
+				}
+            }
+            
+            if(sleepGranularity!=1000) {
+            	counter = (int)(counter*1000/sleepGranularity);
+            }
         }
         String toCmd() {
-            return "timeout " + name;
+            return "timeout " + counter + " " + sleepGranularity;
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Define Global timeout",
-        		"\ttimeout {timeout-secs}",
+        		"\ttimeout {timeout-secs} {sleep-granularity-millis}",
 				"Examples :-",
-				"\ttimeout 100",
+				"\ttimeout 100 1000",
             };
         }
         public String javacode() {
@@ -3428,12 +3639,15 @@ public class Command {
 
     public static class ModeCommand extends Command {
     	boolean enableGlobalTimeouts = true;
+    	long sleepGranularity = 1000;
         ModeCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
                 name = state.unsanitize(parts[0].trim());
-                enableGlobalTimeouts = (parts.length>1 && parts[1].equalsIgnoreCase("true"));
+                if(parts.length>1 && !parts[1].toLowerCase().matches("true|1|yes")) {
+                	enableGlobalTimeouts = false;
+                }
             } else {
                 //excep
             }
@@ -3601,8 +3815,8 @@ public class Command {
                     b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
                 }
                 b.append("\n} catch(Exception e){}\n");
-                b.append("sleep(1000);\n");
-                b.append("if("+cntvar+"++=="+state.timeout+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
+                b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
                 b.append("}\n");
                 return b.toString();
             }

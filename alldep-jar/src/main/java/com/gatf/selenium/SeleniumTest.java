@@ -114,6 +114,8 @@ public abstract class SeleniumTest {
 		add(LogType.PROFILER);
 		add(LogType.SERVER);
 	}};
+	
+	private long timeoutSleepGranularity = 1000;
 
 	private static final String TOP_LEVEL_PROV_NAME = UUID.randomUUID().toString();
 
@@ -126,6 +128,10 @@ public abstract class SeleniumTest {
 	protected transient int sessionNum = -1;
 
 	protected int index;
+	
+	protected void setSleepGranularity(long timeoutSleepGranularity) {
+		this.timeoutSleepGranularity = timeoutSleepGranularity; 
+	}
 
 	protected void nextSession() {
 		if(sessions.size()>sessionNum+1) {
@@ -380,7 +386,7 @@ public abstract class SeleniumTest {
 
 	protected void ___add_var__(String name, Object val) {
 		if(getSession().__vars__.containsKey(name)) {
-			throw new RuntimeException("Variable " + name + " redefined");
+			//throw new RuntimeException("Variable " + name + " redefined");
 		}
 		getSession().__vars__.put(name, val);
 	}
@@ -1103,7 +1109,7 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
 				we.clear();
-				change(we);
+				jsChange(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
@@ -1115,14 +1121,14 @@ public abstract class SeleniumTest {
 			for(final WebElement we: ret) {
 				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
-				change(we);
+				jsChange(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb")) {
 			for(final WebElement we: ret) {
 				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
-				//change(we);
+				//jsChange(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("upload")) {
@@ -1143,13 +1149,13 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				change(we);
+				jsChange(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("chordnb")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				//change(we);
+				//jsChange(we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
@@ -1161,14 +1167,21 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void change(WebElement we) {
-		//get___d___().findElement(By.tagName("body"))
+	protected void jsChange(WebElement we) {
 		((JavascriptExecutor)get___d___()).executeScript("arguments[0].dispatchEvent(new Event('change'));", we);
 	}
 	
-	protected void blur(WebElement we) {
-		//get___d___().findElement(By.tagName("body"))
+	protected void jsBlur(WebElement we) {
 		((JavascriptExecutor)get___d___()).executeScript("arguments[0].blur();", we);
+	}
+	
+	protected void jsFocus(WebElement we) {
+		((JavascriptExecutor)get___d___()).executeScript("arguments[0].focus();", we);
+	}
+	
+	protected void jsKeyEvent(WebElement we, String type, char key) {
+		jsFocus(we);
+		((JavascriptExecutor)get___d___()).executeScript("arguments[0].dispatchEvent(new KeyboardEvent('"+type+"', {'key': '"+key+"'}));", we);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1242,7 +1255,7 @@ public abstract class SeleniumTest {
 			} catch (org.openqa.selenium.TimeoutException e) {
 				throw new RuntimeException(exmsg, e);
 			}
-			timeoutRemaining = timeOutInSeconds - (System.currentTimeMillis() - start)/1000;
+			timeoutRemaining = timeOutInSeconds - (System.currentTimeMillis() - start)/timeoutSleepGranularity;
 			//System.out.println("Timeout remaining = " + timeoutRemaining);
 		}
 		List<WebElement> ret = (List<WebElement>)o[0];
@@ -1449,7 +1462,7 @@ public abstract class SeleniumTest {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
 							try {
-								Thread.sleep(1000);
+								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
 								elementAction(ret, action, tvalue, value, subselector);
 								resp = ret;
@@ -1495,7 +1508,7 @@ public abstract class SeleniumTest {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
 							try {
-								Thread.sleep(1000);
+								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
 								elementAction(ret, action, tvalue, value, subselector);
 								resp = ret;
