@@ -479,6 +479,8 @@ public class AcceptanceTestContext {
 						removeFolder(resource);
 						File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 						nresource.mkdirs();
+						nresource.setReadable(true, false);
+						nresource.setWritable(true, false);
 						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
 					}
 				}
@@ -491,6 +493,8 @@ public class AcceptanceTestContext {
 						removeFolder(file);
 						File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
 						nresource.mkdir();
+						nresource.setReadable(true, false);
+						nresource.setWritable(true, false);
 						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
 					}
 				}
@@ -507,6 +511,8 @@ public class AcceptanceTestContext {
 				removeFolder(resource);
 				File nresource = new File(System.getProperty("user.dir"), "out");
 				nresource.mkdir();
+				nresource.setReadable(true, false);
+				nresource.setWritable(true, false);
 			}
 			gatfExecutorConfig.setOutFilesDir("out");
 			gatfExecutorConfig.setOutFilesBasePath(System.getProperty("user.dir"));

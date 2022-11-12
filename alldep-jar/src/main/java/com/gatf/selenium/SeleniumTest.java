@@ -1059,7 +1059,7 @@ public abstract class SeleniumTest {
 		} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
 			el = By.cssSelector(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("text")) {
-			el = By.xpath("//*[contains(text(), '" + classifier+"']").findElements(sc);
+			el = By.xpath("//*[contains(text(), '" + classifier+"')]").findElements(sc);
 		} else if(by.equalsIgnoreCase("linkText")) {
 			el = By.linkText(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("partialLinkText")) {
