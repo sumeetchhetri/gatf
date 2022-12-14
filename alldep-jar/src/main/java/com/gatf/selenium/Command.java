@@ -41,6 +41,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.logging.LoggingPreferences;
 import org.reflections.Reflections;
 
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -56,6 +57,9 @@ import com.gatf.selenium.plugins.JsonPlugin;
 import com.gatf.selenium.plugins.XmlPlugin;
 import com.thoughtworks.xstream.XStream;
 import com.thoughtworks.xstream.io.xml.DomDriver;
+
+//https://www.autoitscript.com/site/autoit/
+//http://sikulix.com/
 
 public class Command {
 	
@@ -109,6 +113,7 @@ public class Command {
         
         Properties configProps = null;
         Map<String, String> dynProps = null;
+        Map<String, String> aliases = new HashMap<>();
         
         String getLayers() {
             if(layerStr==null) {
@@ -129,7 +134,7 @@ public class Command {
         
         void addSubtest(SubTestCommand st) {
             if(subtestDups.contains(st.name)) {
-                throwError(st.fileLineDetails, new RuntimeException("Duplicate subtest defined"));
+                throwError(st.fileLineDetails, new RuntimeException("Duplicate "+(st.isAnAlias?"alias":"subtest")+" defined"));
             }
             subtestDups.add(st.name);
             allSubTests.add(st);
@@ -614,6 +619,12 @@ public class Command {
             comd = new TabCommand(cmd.substring(4).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("window ")) {
             comd = new WindowCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("frame ")) {
+            comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("printpdf ")) {
+            comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("wopensave ")) {
+            comd = new WindowOpenSaveInterceptJsCommand(cmd.substring(10).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
@@ -647,9 +658,13 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("canvas ")) {
             comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("subtest ")) {
-            comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state);
+            comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state, false);
+        } else if (cmd.toLowerCase().startsWith("alias ")) {
+            comd = new SubTestCommand(cmd.substring(6).trim(), cmdDetails, state, true);
         } else if (cmd.toLowerCase().startsWith("@subtest ")) {
-            comd = new ExecSubTestCommand(cmd.substring(9).trim(), cmdDetails, state);
+            comd = new ExecSubTestCommand(cmd.substring(9).trim(), cmdDetails, state, false);
+        } else if (cmd.toLowerCase().startsWith("@")) {
+            comd = new ExecSubTestCommand(cmd.substring(1).trim(), cmdDetails, state, true);
         } else if (cmd.toLowerCase().startsWith("require ")) {
             comd = new RequireCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
@@ -1802,14 +1817,28 @@ public class Command {
     	SubTestCommand subt = null;
     	String sessionName;
         Integer sessionId = null;
+        boolean isAnAlias = false;
         Map<String, String> params = new HashMap<String, String>();
-    	ExecSubTestCommand(String val, Object[] cmdDetails, CommandState state) {
+    	ExecSubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAnAlias) {
             super(cmdDetails, state);
+            this.isAnAlias = isAnAlias;
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length==0) {
             	throwError(fileLineDetails, new RuntimeException("Please specify a subtest name to execute"));
             }
             name = unSantizedUnQuoted(parts[0].trim(), state);
+            if(isAnAlias) {
+	            for (Command c : state.allSubTests) {
+	            	SubTestCommand st = (SubTestCommand)c;
+					if(st.name.equals(name) && st.isAnAlias) {
+						subt = st;
+						break;
+					}
+	            }
+	            if(subt==null) {
+	            	throwError(fileLineDetails, new RuntimeException("No alias with that name found - " + name));
+	            }
+            }
             String pstr = "";
             if(parts.length>1) {
             	if(parts[1].startsWith("(")) {
@@ -1826,7 +1855,7 @@ public class Command {
             			}
             		}
             		if(!pvalid) {
-            			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+            			throwError(fileLineDetails, new RuntimeException("Invalid "+(isAnAlias?"alias":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
             		} else {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
@@ -1839,13 +1868,13 @@ public class Command {
     							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
     								params.put(pdet[0].trim(), pdet[1]);
     							} else {
-    								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name"));
+    								throwError(fileLineDetails, new RuntimeException("Invalid "+(isAnAlias?"alias":"subtest")+" parameter name"));
     							}
     						}
     					}
             		}
             		counter++;
-            		if(counter<parts.length) {
+            		if(counter<parts.length && !isAnAlias) {
             			if(parts[counter].trim().matches("@[0-9]+")) {
                             sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
                             if(sessionId<0) {
@@ -1855,7 +1884,7 @@ public class Command {
                             sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
                         }
             		}
-            	} else {
+            	} else if(!isAnAlias) {
             		if(parts[1].trim().matches("@[0-9]+")) {
                         sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
                         if(sessionId<0) {
@@ -1866,50 +1895,56 @@ public class Command {
                     }
             	}
             }
-            for (Command c : state.allSubTests) {
-            	SubTestCommand st = (SubTestCommand)c;
-				if(st.name.equals(name)) {
-					Map<String, String> nparams = new HashMap<String, String>(st.params);
-					nparams.putAll(params);
-					subt = st;
-					if(StringUtils.isBlank(sessionName)) {
-						sessionName = subt.sessionName;
+            if(!isAnAlias) {
+	            for (Command c : state.allSubTests) {
+	            	SubTestCommand st = (SubTestCommand)c;
+					if(st.name.equals(name) && !st.isAnAlias) {
+						Map<String, String> nparams = new HashMap<String, String>(st.params);
+						nparams.putAll(params);
+						subt = st;
+						if(StringUtils.isBlank(sessionName)) {
+							sessionName = subt.sessionName;
+						}
+						if(sessionId==null) {
+							sessionId = subt.sessionId;
+						}
+						break;
 					}
-					if(sessionId==null) {
-						sessionId = subt.sessionId;
-					}
-					break;
 				}
-			}
-            if(subt==null) {
-            	throwError(fileLineDetails, new RuntimeException("Subtest with name \""+name+"\" not found."));
+	            if(subt==null) {
+	            	throwError(fileLineDetails, new RuntimeException("Subtest with name \""+name+"\" not found."));
+	            }
+	            state.addSubtest(this);
             }
-            state.addSubtest(this);
         }
-    	
+        String javacode() {
+            return javacodesubtest(false);
+        }
         String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(state.modeExecType==2) {
-                if(sessionName!=null) {
-                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
-                } else if(sessionId>0) {
-                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
-                }
-            } else {
-                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
-            }
-            if(initvars) {
-                b.append("___sc___1 = get___d___();\n");
-                b.append("___cw___ = get___d___();\n");
-                b.append("___ocw___ = ___cw___;\n");
+            if(!isAnAlias) {
+	            if(state.modeExecType==2) {
+	                if(sessionName!=null) {
+	                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
+	                } else if(sessionId>0) {
+	                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
+	                }
+	            } else {
+	                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+	                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
+	            }
+	            if(initvars) {
+	                b.append("___sc___1 = get___d___();\n");
+	                b.append("___cw___ = get___d___();\n");
+	                b.append("___ocw___ = ___cw___;\n");
+	            }
             }
             for (String pn : params.keySet()) {
 				b.append("___add_var__(\""+pn+"\", \""+esc(params.get(pn))+"\");\n");
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(state.modeExecType!=2) {
+            if(!isAnAlias && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -1919,10 +1954,12 @@ public class Command {
     public static class SubTestCommand extends Command {
         String sessionName;
         Integer sessionId = null;
+        boolean isAnAlias = false;
         Map<String, String> params = new HashMap<String, String>();
         String fName = "__st__" + state.NUMBER_ST++;
-        SubTestCommand(String val, Object[] cmdDetails, CommandState state) {
+        SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAnAlias) {
             super(cmdDetails, state);
+            this.isAnAlias = isAnAlias;
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
                 name = unSantizedUnQuoted(parts[0].trim(), state);
@@ -1993,7 +2030,7 @@ public class Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append("subtest");
+            b.append(isAnAlias?"alias":"subtest");
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -2010,27 +2047,29 @@ public class Command {
         }
         String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(state.modeExecType==2) {
-                if(sessionName!=null) {
-                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
-                } else if(sessionId>0) {
-                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
-                }
-            } else {
-                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
-            }
-            if(initvars) {
-                b.append("___sc___1 = get___d___();\n");
-                b.append("___cw___ = get___d___();\n");
-                b.append("___ocw___ = ___cw___;\n");
+            if(!isAnAlias) {
+	            if(state.modeExecType==2) {
+	                if(sessionName!=null) {
+	                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
+	                } else if(sessionId>0) {
+	                    b.append("setSession(null, "+(sessionId-1)+", true);\n"); 
+	                }
+	            } else {
+	                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
+	                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
+	            }
+	            if(initvars) {
+	                b.append("___sc___1 = get___d___();\n");
+	                b.append("___cw___ = get___d___();\n");
+	                b.append("___ocw___ = ___cw___;\n");
+	            }
             }
             for (String pn : params.keySet()) {
 				b.append("___add_var__(\""+pn+"\", \""+esc(params.get(pn))+"\");\n");
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(state.modeExecType!=2) {
+            if(!isAnAlias && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -2042,7 +2081,9 @@ public class Command {
             if(!children.isEmpty())
             {
             	b.append(genDebugInfo(this));
-                b.append("set__subtestname__(\""+esc(name)+"\");");
+            	if(!isAnAlias) {
+            		b.append("set__subtestname__(\""+esc(name)+"\");");
+            	}
                 b.append("\ntry {\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
@@ -2054,16 +2095,25 @@ public class Command {
 					}
                     b.append("\n");
                 }
-                b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
+                if(!isAnAlias) {
+                	b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
+                }
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
                 b.append(ex+".printStackTrace();\n");
-                String img = "\"_st_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
+                String img = "\"_"+(!isAnAlias?"st":"al")+"_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
                 b.append("java.lang.System.out.println("+img+");");
                 ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
                 b.append(tm.javacode());
-                b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
-                b.append("\n}\nfinally {\nset__subtestname__(null);\n}");
+                b.append("}catch(java.io.IOException _ioe){}");
+                if(!isAnAlias) {
+                	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
+                }
+                b.append("\n}\nfinally {\n");
+                if(!isAnAlias) {
+                	b.append("set__subtestname__(null);");
+                }
+                b.append("\n}");
             }
             b.append("return ___ce___;\n}\n");
             return b.toString();
@@ -2071,13 +2121,20 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Subtest definition",
-				"\tsubtest \"name\" session-name|@session-id\n\t{\n\t\tcode\n\t}",
+				"\tsubtest \"name\" session-name|@session-id (args)\n\t{\n\t\tcode\n\t}",
 				"where",
 				"\tsession-name - the browser session name for which to run this sub test",
 				"\tsession-id - the browser session id prefixed with @ for which to run this sub test",
+				"\targs - the arguments passed to the subtest",
 				"Examples :-",
 				"\tsubtest \"sb1\" \"bs1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
 				"\tsubtest \"sb1\" @1\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
+				"Alias definition",
+				"\talias \"name\" (args)\n\t{\n\t\tcode\n\t}",
+				"where",
+				"\targs - the arguments passed to the alias",
+				"Examples :-",
+				"\talias \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}"
         	};
         }
     }
@@ -2490,7 +2547,7 @@ public class Command {
                         || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
                         || parts[1].toLowerCase().equals("chord") || parts[1].toLowerCase().equals("randomize")
                         || parts[1].toLowerCase().equals("chordnb") || parts[1].toLowerCase().equals("sendkeysnb")
-                        || parts[1].toLowerCase().equals("randomizenb")) {
+                        || parts[1].toLowerCase().equals("randomizenb") || parts[1].toLowerCase().equals("upload")) {
                     cmd = "";
                     for (int i = 1; i < parts.length; i++)
                     {
@@ -2506,7 +2563,7 @@ public class Command {
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
                                 || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("randomize ")
                                 || cmd.toLowerCase().startsWith("chordnb ") || cmd.toLowerCase().startsWith("randomizenb ")
-                                || parts[1].toLowerCase().startsWith("sendkeysnb ")) {
+                                || cmd.toLowerCase().startsWith("sendkeysnb ") || cmd.toLowerCase().startsWith("upload ")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, cmdDetails, state);
                             children.add(comd);
@@ -3279,7 +3336,7 @@ public class Command {
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             if(config.getName().equalsIgnoreCase("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                b.append("___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3287,7 +3344,7 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 if(StringUtils.isNotBlank(config.getArguments()))
                 {
                 	b.append("___dc___.addArguments(\""+esc(config.getArguments())+" --ignore-certificate-errors\".split(\"\\\\s+\"));\n");
@@ -3309,7 +3366,7 @@ public class Command {
             } else if(config.getName().equalsIgnoreCase("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3319,7 +3376,7 @@ public class Command {
                 }
                 b.append("___dc___.getProfile().setAcceptUntrustedCertificates(true);\n");
                 b.append("___dc___.getProfile().setAssumeUntrustedCertificateIssuer(true);\n");
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 if(StringUtils.isNotBlank(config.getArguments()))
                 {
                 	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
@@ -3335,7 +3392,7 @@ public class Command {
                 b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("ie")) {
                 b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3347,11 +3404,11 @@ public class Command {
                 {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("safari")) {
                 b.append("org.openqa.selenium.safari.SafariOptions ___dc___ = new org.openqa.selenium.safari.SafariOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3359,11 +3416,11 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("opera")) {
                 b.append("org.openqa.selenium.opera.OperaOptions ___dc___ = new org.openqa.selenium.opera.OperaOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3375,11 +3432,11 @@ public class Command {
                 {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("edge")) {
                 b.append("org.openqa.selenium.edge.EdgeOptions ___dc___ = new org.openqa.selenium.edge.EdgeOptions();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                b.append("___dc___.setCapability(org.openqa.selenium.edge.EdgeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3387,11 +3444,11 @@ public class Command {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_SSL_CERTS, true);\n");
+                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("remote-chrome")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                b.append("___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3402,7 +3459,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             }  else if(config.getName().equalsIgnoreCase("remote-firefox")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.firefox();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3413,7 +3470,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("remote-ie")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.internetExplorer();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3424,7 +3481,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("remote-edge")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.edge();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                b.append("___dc___.setCapability(org.openqa.selenium.edge.EdgeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3435,7 +3492,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("remote-opera")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.operaBlink();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3446,7 +3503,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             }  else if(config.getName().equalsIgnoreCase("remote-safari")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.safari();\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3457,7 +3514,7 @@ public class Command {
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-android")) {
                 b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+config.getVersion()+"\", org.openqa.selenium.Platform.ANDROID);\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3468,7 +3525,7 @@ public class Command {
                 b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("appium-ios")) {
                 b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(\"ios\", \""+config.getVersion()+"\", org.openqa.selenium.Platform.MAC);\n");
-                b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
@@ -3477,7 +3534,7 @@ public class Command {
                     }
                 }
                 b.append("set___d___(new io.appium.java_client.ios.IOSDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
-            } else if(config.getName().equalsIgnoreCase("selendroid")) {
+            } /*else if(config.getName().equalsIgnoreCase("selendroid")) {
                 b.append("SelendroidCapabilities  ___dc___ = new SelendroidCapabilities(\"\");\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
@@ -3488,7 +3545,7 @@ public class Command {
                     }
                 }
                 b.append("set___d___(new io.selendroid.client.SelendroidDriver(___dc___));\n");
-            } else if(config.getName().equalsIgnoreCase("ios-driver")) {
+            }*/ //else if(config.getName().equalsIgnoreCase("ios-driver")) {
                 //b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+version+"\", org.openqa.selenium.Platform.ANDROID);\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
                 //if(config.getCapabilities()!=null)
@@ -3499,7 +3556,7 @@ public class Command {
                 //    }
                 //}
                 //b.append("get___d___() = new org.openqa.selenium.remote.RemoteWebDriver(\""+rUrl+"\", ___dc___);\n");
-            }
+            //}
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
             }
@@ -3554,7 +3611,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Open Browser",
-        		"\topen {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios|selendroid|ios-driver..} {optional session-name}",
+        		"\topen {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}",
 				"Examples :-",
 				"\topen chrome",
 				"\topen firefox \"my-ff-sess\"",
@@ -3677,7 +3734,6 @@ public class Command {
     }
 
     public static class FrameCommand extends Command {
-        String name;
         FrameCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = cmd;
@@ -3704,12 +3760,12 @@ public class Command {
                     int index = Integer.parseInt(name);
                     return "___cw___ = ___ocw___.switchTo().frame("+index+")!=null?___ocw___.switchTo().frame("+index+"):___ocw___.switchTo().frame(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
                 } catch (Exception e) {
-                    name = state.unsanitize(name);
+                    /*name = state.unsanitize(name);
                     if(name.charAt(0)==name.charAt(name.length()-1)) {
                         if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
                             name = name.substring(1, name.length()-1);
                         }
-                    }
+                    }*/
                     return "___cw___ = ___ocw___.switchTo().frame(\""+esc(name)+"\");\n___sc___1 = ___cw___;";
                 }
             }
@@ -3728,7 +3784,6 @@ public class Command {
     }
 
     public static class WindowCommand extends Command {
-        String name;
         WindowCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = cmd;
@@ -3773,7 +3828,6 @@ public class Command {
     }
 
     public static class TabCommand extends Command {
-        String name;
         TabCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = cmd;
@@ -3783,6 +3837,9 @@ public class Command {
                     name = name.substring(1, name.length()-1);
                 }
             }
+            if("main".equalsIgnoreCase(name)) {
+            	name = "0";
+            }
         }
         String name() {
             return name;
@@ -3791,7 +3848,7 @@ public class Command {
             return "tab " + name;
         }
         String javacode() {
-            if(name.trim().isEmpty() || name.equalsIgnoreCase("main") || name.equalsIgnoreCase("0")) {
+            if(name.trim().isEmpty() || name.equalsIgnoreCase("0")) {
                 return "___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
             } else {
             	StringBuilder b = new StringBuilder();
@@ -3806,12 +3863,12 @@ public class Command {
                             + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
                     b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;\nbreak;}");
                 } catch (Exception e) {
-                    name = state.unsanitize(name);
+                    /*name = state.unsanitize(name);
                     if(name.charAt(0)==name.charAt(name.length()-1)) {
                         if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
                             name = name.substring(1, name.length()-1);
                         }
-                    }
+                    }*/
                     b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
                 }
                 b.append("\n} catch(Exception e){}\n");
@@ -4669,7 +4726,7 @@ public class Command {
             }
             return b.toString();*/
         	if(action.equalsIgnoreCase("upload")) {
-        		return "\nuploadFile(___ce___, "+post+")";
+        		return "\nuploadFile(___ce___, "+post+", 1)";
         	}
             if(actionsVar!=null) {
                 return "\n"+actionsVar+".moveToElement(___ce___.get(0))."+action+"(" + (post!=null?post:"") + ").perform();";
@@ -4833,6 +4890,7 @@ public class Command {
     
     public static class UploadCommand extends FindCommandImpl {
         String value;
+        int count = 1;
         UploadCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
@@ -4845,8 +4903,15 @@ public class Command {
                         value = value.substring(1, value.length()-1);
                     }
                 }
-                if(parts.length>1){
+                if(parts.length>1) {
                     cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
+                }
+                if(parts.length>2) {
+                	try {
+                		count = Integer.parseInt(parts[2].trim());
+					} catch (Exception e) {
+						throwParseError(null, new RuntimeException("Upload multi command expects the number of uploads to be specified as a numeric value eg:- [upload ]"));
+					}
                 }
             } else {
                 //excep
@@ -4861,7 +4926,7 @@ public class Command {
                 b.append(cond.javacodeonly(children));
                 b.append(cond.getActionable("uploadFile", "evaluate(\""+esc(value)+"\")", null));
             } else {
-                b.append("\nuploadFile("+state.currvarname()+", evaluate(\""+esc(value)+"\"));");
+                b.append("\nuploadFile("+state.currvarname()+", evaluate(\""+esc(value)+"\"), "+count+");");
             }
             return b.toString();
         }
@@ -4869,7 +4934,7 @@ public class Command {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\nuploadFile("+varnm+", evaluate(\""+esc(value)+"\"));";
+            return "\nuploadFile("+varnm+", evaluate(\""+esc(value)+"\"), "+count+");";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -4877,6 +4942,73 @@ public class Command {
         		"\tupload {filepath} {find-expr}",
         		"Examples :-",
         		"\tupload '/path/to/file.txt' id@'ele1'",
+            };
+        }
+    }
+    
+    public static class PrintPDFCommand extends Command {
+        boolean extractText = false;
+        PrintPDFCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = cmd.trim().split("[\t ]+");
+            this.extractText = parts.length>1 && parts[1].trim().equalsIgnoreCase("text")?true:false;
+            name = unSantizedUnQuoted(parts[0].trim(), state);
+            if(StringUtils.isBlank(name)) {
+            	throwParseError(null, new RuntimeException("Print pdf command needs a file path argument"));
+            }
+        }
+        String toCmd() {
+            return "printpdf \"" + name + "\"" + (extractText?" text":"");
+        }
+        String javacode() {
+            return "\nprintToPdf(get___d___(), evaluate(\""+esc(name)+"\"), "+extractText+");\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Print pdf of the page to file",
+        		"\tprintpdf {filepath} {text?}",
+        		"Examples :-",
+        		"\tprintpdf '/path/to/file.txt'",
+        		"\tprintpdf '/path/to/file.txt' text",
+            };
+        }
+    }
+    
+    public static class WindowOpenSaveInterceptJsCommand extends Command {
+    	boolean start = true;
+    	boolean extractText = false;
+    	WindowOpenSaveInterceptJsCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = cmd.trim().split("[\t ]+");
+            String mode = unSantizedUnQuoted(parts[0].trim(), state);
+            if(StringUtils.isBlank(mode) || !mode.toLowerCase().matches("on|off")) {
+            	throwParseError(null, new RuntimeException("window.open save intercept command needs to be enabled/disabled, valid values on|off"));
+            }
+            start = !mode.equalsIgnoreCase("off");
+            if(mode.equalsIgnoreCase("off") && parts.length<2) {
+            	throwParseError(null, new RuntimeException("window.open save disable command needs a file name to store the result into"));
+            }
+            if(mode.equalsIgnoreCase("off")) {
+            	name = unSantizedUnQuoted(parts[1].trim(), state);
+            }
+            if(!start && parts.length>2) {
+            	this.extractText = parts.length>2 && parts[2].trim().equalsIgnoreCase("text")?true:false;
+            }
+        }
+        String toCmd() {
+            return "wopensave \"" + (start?"on":"off") + "\"" + (start?"":" \"" +name+ "\"") + (!start && extractText?" text":"");
+        }
+        String javacode() {
+        	if(start) return "\nwindowOpenSaveJsPre();\n";
+        	else return "\nwindowOpenSaveJsPost(evaluate(\""+esc(name)+"\"), "+extractText+");\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Save URL passed to window.open",
+        		"\twopensave {on|off} {filepath}? {text}?",
+        		"Examples :-",
+        		"\twopensave on",
+        		"\twopensave off '/path/to/file.txt' text",
             };
         }
     }
@@ -6626,7 +6758,7 @@ public class Command {
         }
     }
     
-    public static String validateSel(String[] args) throws Exception {
+    public static String validateSel(String[] args, String className, boolean testExecution) throws Exception {
         GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():"gatf-config.xml", args.length>3?args[3].trim():"/workdir");
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
@@ -6648,9 +6780,22 @@ public class Command {
         Object[] retvals = new Object[5];
         try {
         	Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
-            SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>4?args[4].trim().equalsIgnoreCase("true"):false, selToJavaLineMap);
+        	SeleniumTest dyn = null;
+        	if(className!=null) {
+        		dyn = (SeleniumTest)Class.forName(className).getConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {c, 0});
+        	} else {
+        		dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>4?args[4].trim().equalsIgnoreCase("true"):false, selToJavaLineMap);
+        	}
             System.out.println(dyn!=null?"SUCCESS":"FAILURE");
             if(dyn!=null) {
+            	if(testExecution) {
+            		try {
+            			final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(config);
+						dyn.execute(lp);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+            	}
             	return "{\"status\": \"SUCCESS\"}";
             }
         	Map<String, String> mpe = new HashMap<String, String>();
@@ -6674,7 +6819,7 @@ public class Command {
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
-    	System.out.println(UUID.randomUUID().toString());
+    	System.out.println(Command.toSampleSelCmd());
     	Reflections r = new Reflections("com.gatf.selenium");
     	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);
     	Set<Class<?>> pclasses = new HashSet<Class<?>>();
@@ -6707,9 +6852,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "data/test.sel", 
+        validateSel(new String[] {"-validate-sel", "data/clinical.sel", 
         		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample/gatf-config.xml", 
-        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample", "true"});
+        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample", "true"}, "com.Test", true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");

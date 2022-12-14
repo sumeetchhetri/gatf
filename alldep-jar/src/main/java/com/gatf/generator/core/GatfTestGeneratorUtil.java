@@ -1223,7 +1223,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     		}
     		else if(args[0].equals("-validate-sel"))
     		{
-    			Command.validateSel(args);
+    			Command.validateSel(args, null, false);
     		}
     		else
     		{

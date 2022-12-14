@@ -102,7 +102,7 @@ public class TestCaseExecutorUtil {
 	
 	private boolean singleExecutionContext  = false;
 	
-    private void trustAllCertificates(OkHttpClient.Builder builder) {
+    private static void trustAllCertificates(OkHttpClient.Builder builder) {
     	final TrustManager[] trustAllCerts = new TrustManager[] {
     			new X509TrustManager() {
 		            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
@@ -156,9 +156,17 @@ public class TestCaseExecutorUtil {
 	public static TestCaseExecutorUtil getSingleConnection(AcceptanceTestContext context)
 	{
 		TestCaseExecutorUtil util = new TestCaseExecutorUtil();
-		util.client = new OkHttpClient.Builder().build();
+		OkHttpClient.Builder builder = new OkHttpClient.Builder();
+		trustAllCertificates(builder);
+		util.client = builder.build();
 		util.context = context;
 		return util;
+	}
+	
+	public static OkHttpClient getClient() {
+		OkHttpClient.Builder builder = new OkHttpClient.Builder();
+		trustAllCertificates(builder);
+		return builder.build();
 	}
 	
 	public AcceptanceTestContext getContext() {
