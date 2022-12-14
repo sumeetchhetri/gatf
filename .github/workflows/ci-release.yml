@@ -1,4 +1,4 @@
-name: Build, Create and Release jar file
+name: Build, Create and Release jar file + Push all images to docker hub
 
 on:
   push:
@@ -6,21 +6,117 @@ on:
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
 env:
-  JAR_IMAGE: sumeetchhetri/gatf-jar:1.0
+  JAR_IMAGE: sumeetchhetri/gatf-jar
+  BIN_IMAGE: sumeetchhetri/gatf-bin
+  BIN_FF_IMAGE: sumeetchhetri/gatf-bin-ff
+  BIN_VNC_IMAGE: sumeetchhetri/gatf-bin-vnc
 
 jobs:
   ubuntu:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
+
+    - name: Build gatf jar
+      run: |
+        docker build . --file Dockerfile --tag $JAR_IMAGE
+    - name: Login to the registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Push gatf jar image
+      run: |
+        IMAGE_ID=$JAR_IMAGE
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        # Strip "v" prefix from tag name
+        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+        docker tag $JAR_IMAGE $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
+
+    - name: Build gatf chrome
+      run: |
+        docker build . --file Dockerfile-Gatf-Chrome --tag $BIN_IMAGE
+        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh gatf-bin
+    - name: Login to the registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Push gatf chrome image
+      run: |
+        IMAGE_ID=$BIN_IMAGE
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        # Strip "v" prefix from tag name
+        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+        docker tag $BIN_IMAGE $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
+
+    - name: Build gatf firefox
+      run: |
+        docker build . --file Dockerfile-Gatf-FF --tag $BIN_FF_IMAGE
+        chmod +x ./ci-test-bin.sh && ./ci-test-bin.sh gatf-bin-ff
+    - name: Login to the registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Push gatf firefox image
+      run: |
+        IMAGE_ID=$BIN_FF_IMAGE
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        # Strip "v" prefix from tag name
+        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+        docker tag $BIN_FF_IMAGE $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
+
+    - name: Build gatf vnc
+      run: |
+        docker build . --file Dockerfile-Gatf-FF-Chrome-VNC --tag $BIN_VNC_IMAGE
+        chmod +x ./ci-test-bin-vnc.sh && ./ci-test-bin-vnc.sh
+    - name: Login to the registry
+      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+
+    - name: Push gatf vnc image
+      run: |
+        IMAGE_ID=$BIN_VNC_IMAGE
+        # Change all uppercase to lowercase
+        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+        # Strip git ref prefix from version
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        # Strip "v" prefix from tag name
+        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+        # Use Docker `latest` tag convention
+        [ "$VERSION" == "master" ] && VERSION=latest
+        echo IMAGE_ID=$IMAGE_ID
+        echo VERSION=$VERSION
+        docker tag $BIN_VNC_IMAGE $IMAGE_ID:$VERSION
+        docker push $IMAGE_ID:$VERSION
+        
     - name: Extract branch name
       shell: bash
       run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/tags/})"
       id: extract_branch
     - name: Build gatf jar
       run: |
-        docker build -f Dockerfile -t $JAR_IMAGE .
-        docker create -ti --name gatf $JAR_IMAGE bash
+        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+        docker build -f Dockerfile -t $JAR_IMAGE:$VERSION .
+        docker create -ti --name gatf $JAR_IMAGE:$VERSION bash
         docker cp gatf:/gatf-alldep.jar /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
 
     - name: Create Release
