@@ -49,4 +49,4 @@ RUN git clone https://github.com/sumeetchhetri/gatf
 #COPY plugins.txt /tmp/gatf/
 RUN cd gatf && mvn --quiet install
 
-RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-1.0.6.jar /gatf-alldep.jar
+RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-1.1.0.jar /gatf-alldep.jar

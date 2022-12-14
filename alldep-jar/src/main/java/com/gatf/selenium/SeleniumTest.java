@@ -17,17 +17,23 @@ package com.gatf.selenium;
 
 import java.awt.AWTException;
 import java.awt.image.BufferedImage;
+import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
 import java.io.Serializable;
+import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.Security;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -37,7 +43,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -47,13 +53,18 @@ import javax.imageio.ImageIO;
 
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.openjdk.jol.vm.VM;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
+import org.openqa.selenium.Pdf;
 import org.openqa.selenium.Point;
 import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.SearchContext;
@@ -62,12 +73,16 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriver.TargetLocator;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
+import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.interactions.Pause;
+import org.openqa.selenium.interactions.PointerInput;
+import org.openqa.selenium.interactions.Sequence;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.print.PrintOptions;
 import org.openqa.selenium.remote.Augmenter;
-import org.openqa.selenium.remote.RemoteWebElement;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
@@ -76,18 +91,19 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.google.common.io.Resources;
 
 import io.appium.java_client.AppiumDriver;
-import io.appium.java_client.MobileDriver;
-import io.appium.java_client.MultiTouchAction;
-import io.appium.java_client.TouchAction;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
-import io.selendroid.client.SelendroidDriver;
+import okhttp3.Call;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.Screenshot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -418,7 +434,7 @@ public abstract class SeleniumTest {
 
 	protected void set___d___(WebDriver ___d___)
 	{
-		___d___.manage().timeouts().pageLoadTimeout(100, TimeUnit.SECONDS);
+		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
 	}
 
@@ -534,7 +550,6 @@ public abstract class SeleniumTest {
 		return getSession().___d___.get(getSession().__wpos__);
 	}
 
-	@SuppressWarnings("rawtypes")
 	protected AndroidDriver getAndroidDriver() {
 		if(getSession().___d___ instanceof AndroidDriver) {
 			return (AndroidDriver)getSession().___d___;
@@ -542,7 +557,6 @@ public abstract class SeleniumTest {
 		return null;
 	}
 
-	@SuppressWarnings("rawtypes")
 	protected IOSDriver getIOSDriver() {
 		if(getSession().___d___ instanceof IOSDriver) {
 			return (IOSDriver)getSession().___d___;
@@ -550,12 +564,12 @@ public abstract class SeleniumTest {
 		return null;
 	}
 
-	protected SelendroidDriver getSelendroidDriver() {
+	/*protected SelendroidDriver getSelendroidDriver() {
 		if(getSession().___d___ instanceof SelendroidDriver) {
 			return (SelendroidDriver)getSession().___d___;
 		}
 		return null;
-	}
+	}*/
 
 	public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
 		this.name = name;
@@ -759,13 +773,108 @@ public abstract class SeleniumTest {
 			throw new RuntimeException("Invalid browser name specified");
 		}
 	}
+	
+	
+	//THE BELOW Code excerpt has been copy pasted shamelessly from https://www.headspin.io/blog/generating-touch-gestures-to-zoom-in-and-out-on-google-maps
+	//START ZOOM IN/OUT Code
+	/*
+    locus: the center of the touch gesture, the point that fingers are pinching away from or towards. They won't actually touch this point though
+    startRadius: distance from center that fingers begin at
+    endRadius: distance from center that fingers end at
+    pinchAngle: at what angle the fingers pinch around the locus, in degrees. 0 for vertical pinch, 90 for horizontal pinch
+    duration: the total amount of time the pinch gesture will take
+	*/
+	private Collection<Sequence> zoom(Point locus, int startRadius, int endRadius, int pinchAngle, Duration duration) {
+	    // convert degree angle into radians. 0/360 is top (12 O'clock).
+	    double angle = Math.PI / 2 - (2 * Math.PI / 360 * pinchAngle);
+	
+	    // create the gesture for one finger
+	    Sequence fingerAPath = zoomSinglefinger("fingerA", locus, startRadius, endRadius, angle, duration);
+	
+	    // flip the angle around to the other side of the locus and get the gesture for the second finger
+	    angle = angle + Math.PI;
+	    Sequence fingerBPath = zoomSinglefinger("fingerB", locus, startRadius, endRadius, angle, duration);
+	
+	    return Arrays.asList(fingerAPath, fingerBPath);
+	}
+	
+	/*
+	    Used by the `zoom` method, for creating one half of a zooming pinch gesture.
+	    This will return the tough gesture for a single finger, to be put together with
+	    another finger action to complete the gesture.
+	    fingerName: name of this input finger for the gesture. Used by automation system to tell inputs apart
+	    locus: the center of the touch gesture, the point that fingers are pinching away from or towards. They won't actually touch this point though
+	    startRadius: distance from center that fingers begin at
+	    endRadius: distance from center that fingers end at
+	    angle: at what angle the fingers pinch around the locus, in radians.
+	    duration: the total amount of time the pinch gesture will take
+	 */
+	private Sequence zoomSinglefinger(String fingerName, Point locus, int startRadius, int endRadius, double angle, Duration duration) {
+	    PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, fingerName);
+	    Sequence fingerPath = new Sequence(finger, 0);
+	
+	    double midpointRadius = startRadius + (endRadius > startRadius ? 1 : -1) * 20;
+	
+	    // find coordinates for starting point of action (converting from polar coordinates to cartesian)
+	    int fingerStartx = (int)Math.floor(locus.x + startRadius * Math.cos(angle));
+	    int fingerStarty = (int)Math.floor(locus.y - startRadius * Math.sin(angle));
+	
+	    // find coordinates for first point that pingers move quickly to
+	    int fingerMidx = (int)Math.floor(locus.x + (midpointRadius * Math.cos(angle)));
+	    int fingerMidy = (int)Math.floor(locus.y - (midpointRadius * Math.sin(angle)));
+	
+	    // find coordinates for ending point of action (converting from polar coordinates to cartesian)
+	    int fingerEndx = (int)Math.floor(locus.x + endRadius * Math.cos(angle));
+	    int fingerEndy = (int)Math.floor(locus.y - endRadius * Math.sin(angle));
+	
+	    // move finger into start position
+	    fingerPath.addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), fingerStartx, fingerStarty));
+	    // finger comes down into contact with screen
+	    fingerPath.addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()));
+	    // finger moves a small amount very quickly
+	    fingerPath.addAction(finger.createPointerMove(Duration.ofMillis(1), PointerInput.Origin.viewport(), fingerMidx, fingerMidy));
+	    // pause for a little bit
+	    fingerPath.addAction(new Pause(finger, Duration.ofMillis(100)));
+	    // finger moves to end position
+	    fingerPath.addAction(finger.createPointerMove(duration, PointerInput.Origin.viewport(), fingerEndx, fingerEndy));
+	    // finger lets up, off the screen
+	    fingerPath.addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+	
+	    return fingerPath;
+	}
+	
+	/*
+	Simplified method for zooming in.
+	Defaults to a 45 degree angle for the pinch gesture.
+	Defaults to a duration of half a second
+	Fingers start 50px from locus
+	
+	locus: the center of the pinch action, fingers move away from here
+	distance: how far fingers move outwards, starting 100px from the locus
+	 */
+	private Collection<Sequence> zoomIn(Point locus, int distance) {
+	    return zoom(locus, 200, 200 + distance, 45, Duration.ofMillis(25));
+	}
+	
+	/*
+	Simplified method for zooming out.
+	Defaults to a 45 degree angle for the pinch gesture.
+	Defaults to a duration of half a second
+	Fingers finish 50px from locus
+	
+	locus: the center of the pinch action, fingers move towards here
+	distance: how far fingers move inwards, they will end 100px from the locus
+	 */
+	private Collection<Sequence> zoomOut(Point locus, int distance) {
+	    return zoom(locus, 200 + distance, 200, 45, Duration.ofMillis(25));
+	}
+	//END ZOOM IN/OUT Code
 
-	@SuppressWarnings("rawtypes")
 	protected void mzoompinch(Object ele, int x, int y, boolean isZoom) {
 		try
 		{
 			if(ele==null) {
-				int leftX = x;
+				/*int leftX = x;
 				int rightX = get___d___().manage().window().getSize().getWidth() + leftX;
 				int midX = (leftX + rightX) / 2;
 
@@ -784,20 +893,22 @@ public abstract class SeleniumTest {
 				int dY = (int) (midY * 0.8);
 
 				TouchAction action0 = new TouchAction((MobileDriver)get___d___());
-				TouchAction action1 = new TouchAction((MobileDriver)get___d___());
+				TouchAction action1 = new TouchAction((MobileDriver)get___d___());*/
 
 				if(isZoom) {
-					action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
-					action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
+			        ((AppiumDriver)get___d___()).perform(zoomIn(new Point(x, y), 450));
+					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
+					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
 				} else {
-					action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
-					action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
+					((AppiumDriver)get___d___()).perform(zoomOut(new Point(x, y), 450));
+					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
+					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
 				}
 
-				MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
-				mAction.add(action0).add(action1).perform();
+				//MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
+				//mAction.add(action0).add(action1).perform();
 			} else if(ele instanceof WebElement) {
-				int leftX = ((WebElement)ele).getLocation().getX();
+				/*int leftX = ((WebElement)ele).getLocation().getX();
 				int rightX = ((WebElement)ele).getSize().getWidth() + leftX;
 				int midX = (leftX + rightX) / 2;
 
@@ -816,18 +927,23 @@ public abstract class SeleniumTest {
 				int dY = (int) (midY * 0.8);
 
 				TouchAction action0 = new TouchAction((MobileDriver)get___d___());
-				TouchAction action1 = new TouchAction((MobileDriver)get___d___());
+				TouchAction action1 = new TouchAction((MobileDriver)get___d___());*/
+				
+				Rectangle rect = ((WebElement)ele).getRect();
+				Point from = new Point(rect.x + rect.getWidth() / 2, rect.y + rect.getHeight() / 2);
 
 				if(isZoom) {
-					action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
-					action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
+					((AppiumDriver)get___d___()).perform(zoomIn(from, 450));
+					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
+					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
 				} else {
-					action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
-					action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
+					((AppiumDriver)get___d___()).perform(zoomOut(from, 450));
+					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
+					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
 				}
 
-				MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
-				mAction.add(action0).add(action1).perform();
+				//MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
+				//mAction.add(action0).add(action1).perform();
 			}
 		}
 		catch (Exception e)
@@ -1069,22 +1185,130 @@ public abstract class SeleniumTest {
 		}
 		return el;
 	}
-
-	protected void uploadFile(List<WebElement> ret, String filePath) {
-		ret.get(0).click();
-		java.awt.datatransfer.StringSelection ss = new java.awt.datatransfer.StringSelection(filePath);
-		java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+	
+	
+	private static final Map<Long, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
+	
+	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText) {
 		try {
-			java.awt.Robot robot21 = new java.awt.Robot();
-			robot21.keyPress(java.awt.event.KeyEvent.VK_CONTROL);
-			robot21.keyPress(java.awt.event.KeyEvent.VK_V);
-			robot21.keyRelease(java.awt.event.KeyEvent.VK_V);
-			robot21.keyRelease(java.awt.event.KeyEvent.VK_CONTROL);
-			Thread.sleep(1000);
-			robot21.keyPress(java.awt.event.KeyEvent.VK_ENTER);
-			robot21.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
-		} catch (AWTException e) {
-		} catch (InterruptedException e) {
+			PrintOptions po = new PrintOptions();
+			Pdf pdf = ((org.openqa.selenium.chrome.ChromeDriver)pdr).print(po);
+			IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
+			/*Map<String, Object> ppdfArgs = new HashMap<>();
+			ppdfArgs.put("printBackground", false);
+			ppdfArgs.put("landscape", false);
+			ppdfArgs.put("displayHeaderFooter", false);
+			ppdfArgs.put("preferCSSPageSize", false);
+			ppdfArgs.put("scale", 1);
+			ppdfArgs.put("marginTop", 0);
+			ppdfArgs.put("marginBottom", 0);
+			ppdfArgs.put("marginLeft", 0);
+			ppdfArgs.put("marginRight", 0);
+			Map<String, Object> ppdfo = ((org.openqa.selenium.chrome.ChromeDriver)pdr).executeCdpCommand("Page.printToPDF", ppdfArgs);
+			IOUtils.write(Base64.getDecoder().decode(ppdfo.get("data").toString()), new FileOutputStream(filePath));*/
+			if(extractText && new File(filePath).exists()) {
+				extractTextFromPdf(filePath);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+	
+	private void extractTextFromPdf(String filePath) {
+		try {
+			PDDocument doc = PDDocument.load(new File(filePath));
+			System.out.println(doc.getNumberOfPages());
+			System.out.println(doc.isEncrypted());
+			PDFTextStripper stripper = new PDFTextStripper();
+			stripper.setStartPage(1);
+			//stripper.setEndPage(1);
+			Writer wr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath+".txt")));
+			stripper.writeText(doc, wr);
+			if (doc != null) {
+				doc.close();
+			}
+			wr.close();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	protected void windowOpenSaveJsPre() {
+		try {
+			((JavascriptExecutor)get___d___()).executeScript("window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);window.open=__owo__;console.log(a);}");
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	protected void windowOpenSaveJsPost(String filePath, boolean extractText) {
+		OkHttpClient client = null;
+		try {
+			String url = (String)((JavascriptExecutor)get___d___()).executeScript("return window.__wosjp__[0]");
+			client = TestCaseExecutorUtil.getClient();
+			Call call = client.newCall(new Request.Builder().url(url).build());
+			Response res = call.execute();
+			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
+			res.close();
+			if(extractText && new File(filePath).exists()) {
+				extractTextFromPdf(filePath);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		} finally {
+			if(client!=null) {
+				client.connectionPool().evictAll();
+			}
+		}
+	}
+
+	@SuppressWarnings("unchecked")
+	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
+		if(get___d___() instanceof ChromeDriver) {
+			try {
+				if(!jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
+					((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
+					jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
+				}
+				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
+				Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
+				Map<String, Object> domqaArgs = new HashMap<>();
+				domqaArgs.put("nodeId", ((Map<String, Object>)dom.get("root")).get("nodeId"));
+				domqaArgs.put("selector", cssSelctor);
+				Map<String, Object> domqs = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.querySelector", domqaArgs);
+				Map<String, Object> setIfArgs = new HashMap<>();
+				setIfArgs.put("nodeId", domqs.get("nodeId"));
+				List<String> files = new ArrayList<String>();
+				files.add(filePath);
+				for(int i=0;i<count-1;i++) {
+					files.add(filePath);
+				}
+				setIfArgs.put("files", files);
+				((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.setFileInputFiles", setIfArgs);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} else {
+			if(count>0) {
+				throw new RuntimeException("Multi File uploads only supported with chrome for now");
+			}
+			ret.get(0).click();
+			java.awt.datatransfer.StringSelection ss = new java.awt.datatransfer.StringSelection(filePath);
+			java.awt.Toolkit.getDefaultToolkit().getSystemClipboard().setContents(ss, null);
+			try {
+				java.awt.Robot robot21 = new java.awt.Robot();
+				//robot21.keyPress(java.awt.event.KeyEvent.VK_ENTER);
+				//robot21.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
+				robot21.keyPress(java.awt.event.KeyEvent.VK_CONTROL);
+				robot21.keyPress(java.awt.event.KeyEvent.VK_V);
+				robot21.keyRelease(java.awt.event.KeyEvent.VK_V);
+				robot21.keyRelease(java.awt.event.KeyEvent.VK_CONTROL);
+				robot21.delay(1000);
+				robot21.keyPress(java.awt.event.KeyEvent.VK_ENTER);
+				robot21.delay(200);
+				robot21.keyRelease(java.awt.event.KeyEvent.VK_ENTER);
+			} catch (AWTException e) {
+			}
 		}
 	}
 
@@ -1132,7 +1356,7 @@ public abstract class SeleniumTest {
 				break;
 			}
 		} else if(action.equalsIgnoreCase("upload")) {
-			uploadFile(ret, tvalue);
+			uploadFile(ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
 			Select s = new Select(ret.get(0));
 			if(selSubsel.equalsIgnoreCase("text")) {
@@ -1225,7 +1449,7 @@ public abstract class SeleniumTest {
 		} else {
 			long start = System.currentTimeMillis();
 			try {
-				(new WebDriverWait(wsc, timeOutInSeconds)).until(new Function<WebDriver, Boolean>() {
+				(new WebDriverWait(wsc, Duration.ofSeconds(timeOutInSeconds))).until(new Function<WebDriver, Boolean>() {
 					public Boolean apply(WebDriver input) {
 						List<WebElement> ___ce___ = ce;
 						try {
@@ -1740,8 +1964,9 @@ public abstract class SeleniumTest {
 	}
 
 	protected void elementScreenshotAsFile(WebDriver webDriver, WebElement element, String filepath) throws IOException {
-		if(webDriver instanceof AppiumDriver && element instanceof RemoteWebElement) {
-			File sc = ((TakesScreenshot)new Augmenter().augment((RemoteWebElement)element)).getScreenshotAs(OutputType.FILE);
+		if(webDriver instanceof AppiumDriver) {
+			File sc = element.getScreenshotAs(OutputType.FILE);
+			//File sc = ((TakesScreenshot)new Augmenter().augment(element)).getScreenshotAs(OutputType.FILE);
 			FileUtils.copyFile(sc, new File(filepath));
 		} else {
 			Screenshot fpScreenshot = new AShot().takeScreenshot(webDriver, element);

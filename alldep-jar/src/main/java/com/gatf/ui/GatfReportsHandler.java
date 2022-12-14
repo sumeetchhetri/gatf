@@ -94,7 +94,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    TestCaseReport tcReport = null;
 			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
-			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()});
+			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
 			    	response.setContentType(MediaType.APPLICATION_JSON);
 			        response.setContentLength(status.length());
 			        response.getWriter().write(status);
