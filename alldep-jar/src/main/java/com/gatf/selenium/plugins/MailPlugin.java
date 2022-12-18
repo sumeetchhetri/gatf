@@ -15,6 +15,7 @@ import org.simplejavamail.mailer.MailerBuilder;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.executor.TestCaseExecutorUtil;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -43,7 +44,7 @@ public class MailPlugin {
         String method = args[0].toString();
         String url = args[1].toString();
         
-        OkHttpClient client = new OkHttpClient.Builder().build();
+        OkHttpClient client = TestCaseExecutorUtil.getClient();
         Request.Builder rbuilder = new Request.Builder();
         rbuilder.url(url);
         
@@ -102,10 +103,10 @@ public class MailPlugin {
     public static String[] toSampleSelCmd() {
     	return new String[] {
     		"Curl Plugin",
-    		"\tplugin mail get|put|post|delete {url}\n\t{\n\t\t[\n\t\t\theader=value\n\t\t]\n\t\tcontent-body\n\t}",
+    		"\tmail get|put|post|delete {url}\n\t{\n\t\t[\n\t\t\theader=value\n\t\t]\n\t\tcontent-body\n\t}",
     		"Examples :-",
-    		"\tplugin mail get http://abc.com",
-    		"\tplugin mail post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
+    		"\tmail get http://abc.com",
+    		"\tmail post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
         };
     }
 }

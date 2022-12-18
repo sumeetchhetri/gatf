@@ -82,8 +82,11 @@ public class SeleniumCodeGeneratorAndUtil {
         }
 		
 		if(isLog) {
-			System.out.println(sourceCode);
-	        System.out.println(new Formatter().formatSource(sourceCode));
+			try {
+				System.out.println(new Formatter().formatSource(sourceCode));
+			} catch (Exception e) {
+				System.out.println(sourceCode);
+			}
 		}
 		
 		retvals[0] = fileName;

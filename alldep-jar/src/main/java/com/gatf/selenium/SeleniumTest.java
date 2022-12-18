@@ -70,7 +70,6 @@ import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebDriver.TargetLocator;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -205,6 +204,9 @@ public abstract class SeleniumTest {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
 			RuntimeReportUtil.addEntry(index, result.status);
 		}
+		if(result!=null && !result.isStatus()) {
+			quit();
+		}
 	}
 
 	protected void newTopLevelProvider() {
@@ -217,6 +219,12 @@ public abstract class SeleniumTest {
 	protected void newProvider(String name) {
 		if(!getSession().providerTestDataMap.containsKey(name)) {
 			getSession().providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
+		}
+	}
+
+	protected void delProvider(String name) {
+		if(getSession().providerTestDataMap.containsKey(name)) {
+			getSession().providerTestDataMap.remove(name);
 		}
 	}
 
@@ -339,6 +347,16 @@ public abstract class SeleniumTest {
 		}
 		return tmpl;
 	}
+	
+	protected boolean doEvalIf(String eval) {
+		Map<String, Object> _mt = new HashMap<String, Object>();
+		try {
+			String ret = ___cxt___.getWorkflowContextHandler().templatize(_mt, "#if("+evaluate(eval) + ") true #else false #end");
+			return ret.toLowerCase().trim().equals("true");
+		} catch (Exception e) {
+		}
+		return false;
+	}
 
 	protected String getProviderDataValue(String key, boolean isVar) {
 		if(isVar) {
@@ -401,9 +419,6 @@ public abstract class SeleniumTest {
 	}
 
 	protected void ___add_var__(String name, Object val) {
-		if(getSession().__vars__.containsKey(name)) {
-			//throw new RuntimeException("Variable " + name + " redefined");
-		}
 		getSession().__vars__.put(name, val);
 	}
 
@@ -412,6 +427,16 @@ public abstract class SeleniumTest {
 			throw new RuntimeException("Variable " + name + " not defined");
 		}
 		return getSession().__vars__.get(name);
+	}
+
+	protected Object ___get_var_nex__(String name) {
+		return getSession().__vars__.get(name);
+	}
+
+	protected void ___del_var__(String name) {
+		if(getSession().__vars__.containsKey(name)) {
+			getSession().__vars__.remove(name);
+		}
 	}
 
 	protected void addSubTest(String browserName, String stname) {
@@ -431,11 +456,20 @@ public abstract class SeleniumTest {
 		if(getSession().___d___.size()==0)return null;
 		return getSession().___d___.get(getSession().__wpos__);
 	}
+	
+	private static final Map<Long, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
 
 	protected void set___d___(WebDriver ___d___)
 	{
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
+		try {
+			if(___d___ instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
+				((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
+				jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
+			}
+		} catch (Exception e) {
+		}
 	}
 
 	protected class PrettyPrintingMap<K, V> {
@@ -595,6 +629,9 @@ public abstract class SeleniumTest {
 			for (WebDriver d : getSession().___d___)
 			{
 				d.quit();
+				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(VM.current().addressOf(d))) {
+					jsUtilStatusMap.remove(VM.current().addressOf(d));
+				}
 			}
 		}
 	}
@@ -605,6 +642,9 @@ public abstract class SeleniumTest {
 				for (WebDriver d : s.___d___)
 				{
 					d.quit();
+					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(VM.current().addressOf(d))) {
+						jsUtilStatusMap.remove(VM.current().addressOf(d));
+					}
 				}
 			}
 		}
@@ -634,7 +674,7 @@ public abstract class SeleniumTest {
 
 		private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
 
-		public Map<String,SerializableLogEntries> getLogs()
+		public Map<String, SerializableLogEntries> getLogs()
 		{
 			return logs;
 		}
@@ -654,16 +694,8 @@ public abstract class SeleniumTest {
 		{
 			this.status = true;
 			this.internalTestRes = test.getSession().internalTestRs;
-			/*Logs logs = d.manage().logs();
-            for (String s : LOG_TYPES_SET) {
-                if(!logs.getAvailableLogTypes().contains(s))continue;
-                LogEntries logEntries = logs.get(s);
-                if(logEntries!=null && !logEntries.getAll().isEmpty()) {
-                    this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
-                }
-            }*/
 		}
-		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, LoggingPreferences ___lp___) {
+		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, String img, LoggingPreferences ___lp___) {
 			this.status = false;
 			this.internalTestRes = test.getSession().internalTestRs;
 			/*Logs logs = d.manage().logs();
@@ -674,10 +706,24 @@ public abstract class SeleniumTest {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }*/
-			List<LogEntry> entries = new ArrayList<LogEntry>();
-			entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
-			entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
-			this.logs.put("gatf", new SerializableLogEntries(entries));
+			if(!(cause instanceof PassSubTestException)) {
+				try {
+					cause.printStackTrace();
+					java.lang.System.out.println(img);
+					screenshotAsFile(d, img);
+				} catch (Exception e) {
+				}
+				List<LogEntry> entries = new ArrayList<LogEntry>();
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+				this.logs.put("gatf", new SerializableLogEntries(entries));
+				if(cause instanceof FailSubTestException) {
+					System.out.println(cause.getMessage());
+				}
+			} else {
+				this.status = true;
+				System.out.println(cause.getMessage());
+			}
 		}
 		public SeleniumTestResult(SeleniumTest test, Throwable cause) {
 			this.status = false;
@@ -1146,16 +1192,26 @@ public abstract class SeleniumTest {
 			return null;
 		}
 	}
+	
+	@SuppressWarnings("unchecked")
+	protected static List<WebElement> ByJquerySelector(WebDriver d, String finder) {
+		if (d instanceof JavascriptExecutor) {
+		    return (List<WebElement>)((JavascriptExecutor)d).executeScript("return $(arguments[0]).get()", finder);
+		} else {
+		    throw new IllegalStateException("This driver cannot run JavaScript.");
+		}
+	}
 
 	@SuppressWarnings("serial")
-	private static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder) {
-		String by = finder.substring(0, finder.indexOf("@")).trim();
+	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder) {
+		finder = finder.trim();
+		String by = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(0, finder.indexOf("@")).trim();
 		if(by.charAt(0)==by.charAt(by.length()-1)) {
 			if(by.charAt(0)=='"' || by.charAt(0)=='\'') {
 				by = by.substring(1, by.length()-1);
 			}
 		}
-		String classifier = finder.substring(finder.indexOf("@")+1).trim();
+		String classifier = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(finder.indexOf("@")+1).trim();
 		if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
 			if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
 				classifier = classifier.substring(1, classifier.length()-1);
@@ -1181,13 +1237,12 @@ public abstract class SeleniumTest {
 		} else if(by.equalsIgnoreCase("partialLinkText")) {
 			el = By.partialLinkText(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("active")) {
-			el = new ArrayList<WebElement>(){{add(((TargetLocator)d).activeElement());}};
+			el = new ArrayList<WebElement>(){{add(d.switchTo().activeElement());}};
+		} else if(by.equalsIgnoreCase("jq") || by.equalsIgnoreCase("jquery") || by.equalsIgnoreCase("$")) {
+			el = ByJquerySelector(d, classifier);
 		}
 		return el;
 	}
-	
-	
-	private static final Map<Long, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
 	
 	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText) {
 		try {
@@ -1266,10 +1321,6 @@ public abstract class SeleniumTest {
 	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
 		if(get___d___() instanceof ChromeDriver) {
 			try {
-				if(!jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
-					((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-					jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
-				}
 				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
 				Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
 				Map<String, Object> domqaArgs = new HashMap<>();
@@ -1952,7 +2003,7 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void screenshotAsFile(WebDriver webDriver, String filepath) throws IOException {
+	protected static void screenshotAsFile(WebDriver webDriver, String filepath) throws IOException {
 		if(webDriver instanceof AppiumDriver) {
 			File sc = ((TakesScreenshot)new Augmenter().augment(webDriver)).getScreenshotAs(OutputType.FILE);
 			FileUtils.copyFile(sc, new File(filepath));
@@ -2014,4 +2065,18 @@ public abstract class SeleniumTest {
         	e.printStackTrace();
         }
     }
+	
+	@SuppressWarnings("serial")
+	public static class PassSubTestException extends RuntimeException {
+		public PassSubTestException(String msg) {
+			super(msg);
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class FailSubTestException extends RuntimeException {
+		public FailSubTestException(String msg) {
+			super(msg);
+		}
+	}
 }

@@ -60,6 +60,10 @@ window.GatfUtil = new function() {
 	            .replace(/\[(\d+)\]/g, ':nth-of-type($1)')
 	            .replace(/^\s+/, '');
 	}
+	
+	this.find = function(expr) {
+		return $(expr).get();
+	}
 	return this;
 };
 window.GatfUtil.init();

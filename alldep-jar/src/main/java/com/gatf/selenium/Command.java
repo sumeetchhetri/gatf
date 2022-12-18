@@ -64,7 +64,7 @@ import com.thoughtworks.xstream.io.xml.DomDriver;
 public class Command {
 	
     protected static class CommandState {
-        boolean commentStart = false, codeStart = false, started = false, pluginstart = false;
+        boolean commentStart = false, codeStart = false, started = false;
         String basePath = "";
         String testcaseDir = "";
         int concExec = 0;
@@ -485,8 +485,8 @@ public class Command {
             comd = new ElseCommand(cmdDetails, state);
         } else if (cmd.startsWith("#j")) {
             cmd = cmd.substring(2).trim();
-            if(!cmd.matches("(if|else|else if|while|for|continue|break|\\{|\\}|synchronized).*")) {
-            	throwParseErrorS(cmdDetails, new RuntimeException("Only following java control statements allowed - if|else|else if|while|for|continue|break|\\{|\\}|synchronized"));
+            if(!cmd.matches("(if|try|catch|finally|else|else if|while|for|continue|break|\\{|\\}|synchronized).*")) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Only following java control statements allowed - if|try|catch|finally|else|else if|while|for|continue|break|\\{|\\}|synchronized"));
             }
             comd = new JavaControlCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("#provider ")) {
@@ -530,14 +530,14 @@ public class Command {
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state);
         } else if (cmd.startsWith("#tp ")) {
             cmd = cmd.substring(3).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
-            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, false);
-        } else if (cmd.startsWith("#transient-suite-provider ")) {
+            comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state);
+        } /*else if (cmd.startsWith("#transient-suite-provider ")) {
             cmd = cmd.substring(25).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
@@ -549,7 +549,7 @@ public class Command {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
-        } else if (cmd.startsWith("## ")) {
+        }*/ else if (cmd.startsWith("## ")) {
             cmd = cmd.substring(2).trim();
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
@@ -557,6 +557,8 @@ public class Command {
             cmd = cmd.substring(1).trim();
             comd = new ScopedLoopCommand(cmdDetails, state);
             ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
+        } else if (cmd.startsWith("readfile ")) {
+            comd = new ReadFileCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.startsWith("[")) {
             comd = new ValueListCommand(cmdDetails, state);
             ((ValueListCommand)comd).type = "[";
@@ -808,16 +810,26 @@ public class Command {
             {
                 throwParseErrorS(o, e);
             }
+            
+            if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
+            	throwParseErrorS(o, new RuntimeException("Nested subtests/aliases not allowed"));
+            }
 
             boolean isValid = state.started;
-            boolean isPlugin = prev instanceof PluginCommand || (prev instanceof VarCommand && ((VarCommand)prev).pcomd!=null&& ((VarCommand)prev).pcomd instanceof PluginCommand);
-            if(isPlugin && state.pluginstart && (!(tmp instanceof StartCommand) && !(tmp instanceof EndCommand) 
-                    && !(tmp instanceof ValueCommand) && !(tmp instanceof ValueListCommand) && !(tmp instanceof CommentCommand) 
-                    && !(tmp instanceof EndCommentCommand))) {
-                throwParseErrorS(o, new RuntimeException("Plugins can have only values, valuelists and comments along-with blocks"));
-            } else if(tmp instanceof IfCommand || tmp instanceof ElseCommand || tmp instanceof ElseIfCommand 
-                    || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand) {
+            if(tmp instanceof IfCommand || tmp instanceof ElseCommand || tmp instanceof ElseIfCommand 
+                    || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
+                    || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
+                    || tmp instanceof VarCommand) {
                 get(tmp, iter, state);
+                if(tmp.children.size()==0 || !(tmp.children.get(0) instanceof StartCommand)) {
+                	if(!(tmp instanceof TransientProviderCommand) || (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy)) {
+                		throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
+                	}
+                } else if(tmp instanceof PluginCommand) {
+                    ((PluginCommand)tmp).reconcile();
+                } else if(tmp instanceof VarCommand) {
+                	((VarCommand)tmp).reconcile();
+                }
                 isValid = true;
                 parent.children.add(tmp);
             } else if(tmp instanceof ValueListCommand) {
@@ -829,16 +841,8 @@ public class Command {
                     parent.children.add(tmp);
                 }
             } else if(tmp instanceof StartCommand) {
-                if(isPlugin) {
-                    state.pluginstart = true;
-                    if(prev instanceof VarCommand) {
-                        prev = ((VarCommand)prev).pcomd;
-                        get(prev, iter, state);
-                    }
-                    get(parent, iter, state);
-                } else {
-                    get(parent, iter, state);
-                }
+                parent.children.add(tmp);
+                get(parent, iter, state);
                 if(!isValid)isValid = false;
                 return;
             } else if((tmp instanceof CommentCommand && state.commentStart) || tmp instanceof CodeCommand) {
@@ -854,10 +858,7 @@ public class Command {
                 }
                 return;
             } else if(tmp instanceof EndCommand) {
-                if(parent instanceof PluginCommand) {
-                    ((PluginCommand)parent).reconcile();
-                    state.pluginstart = false;
-                }
+                parent.children.add(tmp);
                 return;
             } else if(tmp instanceof ImportCommand) {
                 String parentPath = state.basePath;
@@ -1076,83 +1077,88 @@ public class Command {
     }
 
     static void loadPlugins(CommandState state, AcceptanceTestContext cntxt) throws Exception {
+    	List<String> lines = new ArrayList<>();
+    	lines.add("jsonread=com.gatf.selenium.plugins.JsonPlugin@read");
+    	lines.add("jsonwrite=com.gatf.selenium.plugins.JsonPlugin@write");
+    	lines.add("jsonpath=com.gatf.selenium.plugins.JsonPlugin@path");
+    	lines.add("xmlread=com.gatf.selenium.plugins.XmlPlugin@read");
+    	lines.add("xmlwrite=com.gatf.selenium.plugins.XmlPlugin@write");
+    	lines.add("xmlpath=com.gatf.selenium.plugins.XmlPlugin@path");
+    	lines.add("api=com.gatf.selenium.plugins.ApiPlugin@api");
+    	lines.add("curl=com.gatf.selenium.plugins.CurlPlugin@execute");
+    	//lines.add("mail=com.gatf.selenium.plugins.MailPlugin@execute");
         if(cntxt.getResourceFile("plugins.txt").exists()) {
-            List<String> lines = FileUtils.readLines(cntxt.getResourceFile("plugins.txt"), "UTF-8");
-            for (String plg : lines) {
-                if(plg.indexOf("=")!=-1) {
-                    String name = plg.substring(0, plg.indexOf("="));
-                    String signature = plg.substring(plg.indexOf("=")+1);
-                    if(!name.trim().isEmpty() && !plugins.containsKey(name.toLowerCase())) {
-                        String clsname = signature;
-                        String method = "execute";
-                        if(clsname.indexOf("@")!=-1) {
-                            String[] parts = clsname.split("@");
-                            clsname = parts[0].trim();
-                            method = parts[1].trim();
-                        }
+        	lines.addAll(FileUtils.readLines(cntxt.getResourceFile("plugins.txt"), "UTF-8"));
+        }
+        for (String plg : lines) {
+            if(plg.indexOf("=")!=-1) {
+                String name = plg.substring(0, plg.indexOf("="));
+                String signature = plg.substring(plg.indexOf("=")+1);
+                if(!name.trim().isEmpty() && !plugins.containsKey(name.toLowerCase())) {
+                    String clsname = signature;
+                    String method = "execute";
+                    if(clsname.indexOf("@")!=-1) {
+                        String[] parts = clsname.split("@");
+                        clsname = parts[0].trim();
+                        method = parts[1].trim();
+                    }
 
-                        try {
-                            Class.forName(clsname);
-                        } catch (Exception e) {
-                            System.out.println("Invalid Plugin specified, Plugin class not found - " + clsname);
+                    try {
+                        Class.forName(clsname);
+                    } catch (Exception e) {
+                        System.out.println("Invalid Plugin specified, Plugin class not found - " + clsname);
+                        continue;
+                    }
+
+                    try {
+                        Class<?> cls = Class.forName(clsname);
+                        Method meth = cls.getMethod(method, new Class[]{Object[].class});
+                        if(meth.getReturnType().equals(Void.class)) {
+                            System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
+                                    + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
                             continue;
                         }
-
+                        plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
+                    } catch (Exception e) {
                         try {
                             Class<?> cls = Class.forName(clsname);
-                            Method meth = cls.getMethod(method, new Class[]{Object[].class});
+                            Method meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
                             if(meth.getReturnType().equals(Void.class)) {
                                 System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
                                         + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
                                 continue;
                             }
                             plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
-                        } catch (Exception e) {
-                            try {
-                                Class<?> cls = Class.forName(clsname);
-                                Method meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
-                                if(meth.getReturnType().equals(Void.class)) {
-                                    System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
-                                            + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
-                                    continue;
-                                }
-                                plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
-                            } catch (Exception e1) {
-                                System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
-                                        + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
-                                continue;
-                            }
+                        } catch (Exception e1) {
+                            System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
+                                    + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
+                            continue;
                         }
+                    }
+                } else {
+                    if(name.trim().isEmpty()) {
+                        System.out.println("Invalid Plugin name specified");
                     } else {
-                        if(name.trim().isEmpty()) {
-                            System.out.println("Invalid Plugin name specified");
-                        } else {
-                            System.out.println("Plugin already defined " + name); 
-                        }
+                        System.out.println("Plugin already defined " + name); 
                     }
                 }
             }
-            for (String name : plugins.keySet()) {
-            	String signature = plugins.get(name);
-		        try
-		        {
-		            String[] parts = signature.split("@");
-		            String clsname = parts[0].trim();
-
-		            Class<?> cls = Class.forName(clsname);
-		            Method meth = cls.getMethod("init", new Class[]{AcceptanceTestContext.class});
-		            
-		            meth.invoke(null, new Object[] {cntxt});
-		        }
-		        catch (NoSuchMethodException e)
-		        {
-		        }
-		        catch (Exception e)
-		        {
-		        	System.out.println("Exception during initilization of plugin \n" + ExceptionUtils.getStackTrace(e));
-		        }
-			}
         }
+        for (String name : plugins.keySet()) {
+        	String signature = plugins.get(name);
+	        try {
+	            String[] parts = signature.split("@");
+	            String clsname = parts[0].trim();
+
+	            Class<?> cls = Class.forName(clsname);
+	            Method meth = cls.getMethod("init", new Class[]{AcceptanceTestContext.class});
+	            
+	            meth.invoke(null, new Object[] {cntxt});
+	        } catch (NoSuchMethodException e) {
+	        } catch (Exception e) {
+	        	System.out.println("Exception during initilization of plugin \n" + ExceptionUtils.getStackTrace(e));
+	        }
+		}
     }
 
     public static String[] toSampleSelCmd() {
@@ -1261,7 +1267,6 @@ public class Command {
                 }
                 lastSessionId++;
             } else if(c instanceof SubTestCommand) {
-                
             }
         }
         for (Object[] st : state.subtestDetails)
@@ -1376,12 +1381,14 @@ public class Command {
         }
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
-        b.append("}\ncatch(Throwable "+ex+")\n{\ntry{");
-        b.append(ex+".printStackTrace();\n");
-        b.append("java.lang.System.out.println(\"_main_exec.png\");");
-        ScreenshotCommand tm = new ScreenshotCommand("_main_exec.png", new Object[] {}, state, true);
-        b.append(tm.javacode());
-        b.append("}catch(java.io.IOException _ioe){}pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));\n}");
+        b.append("}\ncatch(Throwable "+ex+")\n{");
+        //b.append("\ntry{");
+        //b.append(ex+".printStackTrace();\n");
+        //b.append("java.lang.System.out.println(\"_main_exec.png\");");
+        //ScreenshotCommand tm = new ScreenshotCommand("_main_exec.png", new Object[] {}, state, true);
+        //b.append(tm.javacode());
+        //b.append("}catch(java.io.IOException _ioe){}");
+        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \"_main_exec.png\", ___lp___));\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
@@ -1423,6 +1430,8 @@ public class Command {
             code = code.replace("@printProv", "___cxt___print_provider__");
             code = code.replace("@print", "System.out.println");
             code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
+            code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1)");
             Matcher m = p.matcher(code);
             String fcode = "";
             int start = 0;
@@ -1446,7 +1455,7 @@ public class Command {
 				"\t5. @printProvJson - Print Provider data as json",
 				"\t6. @printProv - Print Provider data",
 				"\t7. @print - System.out.println",
-				"\t8. @index - Current provider index under interation",
+				"\t8. @index - Current provider index under iteration",
 				"Examples :-",
 	    		"\texec @driver.refresh()",
 	    		"\texec @window.back()",
@@ -1486,6 +1495,7 @@ public class Command {
     public static class CodeCommand extends Command {
         static Pattern p = Pattern.compile("\\$([v|V]*)\\{([a-zA-Z0-9_]+)\\}");
         static Pattern p1 = Pattern.compile("@cntxtParam\\([a-zA-Z0-9_]+\\)");
+        //For the code command there are only value childrens which are directly appended to the builder
         StringBuilder b = new StringBuilder();
         String lang = "java";
         String[] arglist = new String[]{};
@@ -1518,7 +1528,7 @@ public class Command {
 				"\t5. @printProvJson - Print Provider data as json (Java only)",
 				"\t6. @printProv - Print Provider data (Java only)",
 				"\t7. @print - System.out.println (Java only)",
-				"\t8. @index - Current provider index under interation (Java only)",
+				"\t8. @index - Current provider index under iteration (Java only)",
 				"\t9. @cntxtParam - Add variable to current context",
 				"Examples :-",
 				"\t<<<(java) a,b,c\n\tSystem.out.println(a);\n\t>>>",
@@ -1530,12 +1540,13 @@ public class Command {
         }
         String javacode() {
             String code = b.toString();
+            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
             if(lang.equals("java")) {
                 code = code.replace("@driver", "___cw___");
                 code = code.replace("@window", "___ocw___");
                 code = code.replace("@element", "___ce___.get(0)");
                 code = code.replace("@sc", state.currvarnamesc());
-                code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
                 code = code.replace("@printProvJson", "___cxt___print_provider__json");
                 code = code.replace("@printProv", "___cxt___print_provider__");
                 code = code.replace("@print", "System.out.println");
@@ -1709,6 +1720,15 @@ public class Command {
             return "#j" + code;
         }
         String javacode() {
+            code = code.replace("@driver", "___cw___");
+            code = code.replace("@window", "___ocw___");
+            code = code.replace("@element", "___ce___.get(0)");
+            code = code.replace("@sc", state.currvarnamesc());
+            code = code.replace("@printProvJson", "___cxt___print_provider__json");
+            code = code.replace("@printProv", "___cxt___print_provider__");
+            code = code.replace("@print", "System.out.println");
+            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
         	Matcher m = CodeCommand.p.matcher(code);
             while(m.find()) {
             	code = code.replaceFirst("\\$"+m.group(1)+"\\{"+m.group(2)+"\\}", "getProviderDataValueO(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")");
@@ -1719,10 +1739,10 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Execute java code",
-				"\t#j{if|else|else if|while|for|continue|break|\\{|\\}|synchronized} {java statement}",
+				"\t#j{if|try|catch|finally|else|else if|while|for|continue|break|\\{|\\}|synchronized} {java statement}",
 				"Examples :-",
-	    		"\tjif(1==1) {} else {}",
-	    		"\tfor(int i=0;i<10;i++){}"
+	    		"\t#jif(1==1) {} else {}",
+	    		"\t#jfor(int i=0;i<10;i++){}"
             };
         }
     }
@@ -1743,6 +1763,7 @@ public class Command {
             return "execjs \"" + code + "\"";
         }
         String javacode() {
+            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
             return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(code)+"\"));\n}";
         }
         public static String[] toSampleSelCmd() {
@@ -2099,16 +2120,18 @@ public class Command {
                 	b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 }
                 String ex = state.evarname();
-                b.append("\n}\ncatch(Throwable "+ex+")\n{\ntry{");
-                b.append(ex+".printStackTrace();\n");
-                String img = "\"_"+(!isAnAlias?"st":"al")+"_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
-                b.append("java.lang.System.out.println("+img+");");
-                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
-                b.append(tm.javacode());
-                b.append("}catch(java.io.IOException _ioe){}");
+                b.append("\n}\ncatch(Throwable "+ex+")\n{");
                 if(!isAnAlias) {
-                	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", ___lp___));");
+	                /*b.append("\ntry{");
+	                b.append(ex+".printStackTrace();\n");*/
+	                String img = "getOutDir() + java.io.File.separator + \"_"+(!isAnAlias?"st":"al")+"_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
+	                /*b.append("java.lang.System.out.println("+img+");");
+	                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
+	                b.append(tm.javacode());
+	                b.append("}catch(java.io.IOException _ioe){}");*/
+                	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
                 }
+                b.append("throw "+ex+";\n");
                 b.append("\n}\nfinally {\n");
                 if(!isAnAlias) {
                 	b.append("set__subtestname__(null);");
@@ -2163,6 +2186,12 @@ public class Command {
             } else {
                 //excep
             }
+        }
+        public void reconcile() {
+        	if(pcomd!=null && children.size()>0) {
+        		pcomd.children.addAll(children);
+        		pcomd.reconcile();
+        	}
         }
         String toCmd() {
             if(cond!=null) {
@@ -2365,7 +2394,9 @@ public class Command {
         List<String> getValues() {
             List<String> s = new ArrayList<String>();
             for (Command c : children) {
-                s.add(((ValueCommand)c).value);
+            	if(c instanceof ValueCommand) {
+            		s.add(((ValueCommand)c).value);
+            	}
             }
             return s;
         }
@@ -2471,7 +2502,7 @@ public class Command {
             while (enums.hasMoreElements()) {
             	String key = enums.nextElement();
                 String value = state.configProps.getProperty(key);
-                b.append("addToTopLevelProviderTestDataMap(\""+key+"\", \""+value+"\");\n"); 
+                b.append("addToTopLevelProviderTestDataMap(\""+esc(key)+"\", \""+esc(value)+"\");\n"); 
             }
             return b.toString();
         }
@@ -2980,9 +3011,13 @@ public class Command {
                 state.pushParc();
                 state.pushItr();
                 state.loopCounter++;
+                String vrn = state.varname();
+                b.append("\nObject "+vrn+"=null;\n");
+                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
                 b.append("\nif("+cond.condition()+") {\n");
                 b.append("\nint "+state.currvarnameitr() + " = 0;");
                 b.append("\nfor(final WebElement " + state.varname() + " : " + cvarname + ") {\n");
+                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
                 b.append("final SearchContext "+state.currvarnameparc()+" = "+state.currvarname()+";");
                 String vr = state.currvarname();
                 b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ state.varname()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
@@ -2992,6 +3027,7 @@ public class Command {
                     b.append("\n");
                 }
                 b.append(state.currvarnameitr()+"++;\n}\n}");
+                b.append("\n___add_var__(\"@index\","+vrn+");\n");
                 //prevvarnamesc();
                 state.prevvarnameparc();
                 state.prevvarnameitr();
@@ -3114,26 +3150,42 @@ public class Command {
             if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end)
             {
                 state.loopCounter++;
-                String loopname = state.varname();
-                b.append("\nfor(long " + loopname + "="+index+";"+loopname+"<" + end + ";"+loopname+"++) {\n");
+                state.pushItr();
+                String loopname = state.currvarnameitr();
+                String vrn = state.varname();
+                b.append("\nObject "+vrn+"=null;\n");
+                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+                b.append("\nfor(int " + loopname + "="+index+";"+loopname+"<" + end + ";"+loopname+"++) {\n");
+                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
                 b.append("}");
+                b.append("\n___add_var__(\"@index\","+vrn+");\n");
+                state.prevvarnameitr();
                 state.loopCounter--;
             }
             else if(index>=0)
             {
                 b.append("set__provname__(\"" + name + "\");\n");
                 b.append("set__provpos__(\"" + name + "\", " + index + ");\n{\n");
+                String vrn = state.varname();
+                b.append("\nObject "+vrn+"=null;\n");
+                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+                state.pushItr();
+                String loopname = state.currvarnameitr();
+                b.append("int "+loopname + " = " + index +";\n");
+                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
+                b.append("\n___add_var__(\"@index\","+vrn+");\n");
                 b.append("}");
+                state.prevvarnameitr();
                 b.append("rem__provname__(\"" + name + "\");\n");
             }
             else if(!children.isEmpty())
@@ -3141,16 +3193,21 @@ public class Command {
                 state.loopCounter++;
                 b.append("int "+state.varname()+" = getProviderTestDataMap(\""+name+"\").size();\n");
                 b.append("set__provname__(\"" + name + "\");\n");
-                String provname = state.currvarname();
-                String loopname = state.varname();
+                String provLength = state.currvarname();
+                state.pushItr();
+                String loopname = state.currvarnameitr();
                 if(isStateFul) {
                 	b.append("initStateFulProvider(\""+name+"\");");
                 }
+                String vrn = state.varname();
+                b.append("\nObject "+vrn+"=null;\n");
+                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
                 if(isStateFul) {
-                	b.append("\nfor(int " + loopname + "=preStateFulProvider(\""+name+"\", 0);"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                	b.append("\nfor(int " + loopname + "=preStateFulProvider(\""+name+"\", 0);"+loopname+"<" + provLength + ";"+loopname+"++) {\n");
                 } else {
-                	b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ";"+loopname+"++) {\n");
+                	b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provLength + ";"+loopname+"++) {\n");
                 }
+                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
                 b.append("set__provpos__(\"" + name + "\", " + loopname + ");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
@@ -3161,6 +3218,8 @@ public class Command {
                 	b.append("postStateFulProvider(\""+name+"\", "+loopname+");\n");
                 }
                 b.append("}");
+                b.append("\n___add_var__(\"@index\","+vrn+");\n");
+                state.prevvarnameitr();
                 b.append("rem__provname__(\"" + name + "\");\n");
                 state.loopCounter--;
             }
@@ -3186,6 +3245,83 @@ public class Command {
 				"\t#counter 5\n\t{\n\t\texec @print(@index)\n\t}",
 				"\t#c 0 5\n\t{\n\t\texec @print(@index)\n\t}",
 				"\t#c 5\n\t{\n\t\texec @print(@index)\n\t}",
+            };
+        }
+    }
+
+    public static class ReadFileCommand extends Command {
+        String name;
+        boolean isBinary = false;
+        ReadFileCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            name = state.unsanitize(parts[0].trim());
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
+            if(parts.length>1) {
+            	isBinary = "binary".equalsIgnoreCase(parts[1].trim());
+            }
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("#readfile ");
+            b.append(name);
+            b.append(isBinary?" binary":"");
+            if(!children.isEmpty())
+            {
+                b.append("\n{\n");
+                for (Command c : children) {
+                    b.append(c.toCmd());
+                    b.append("\n");
+                }
+                b.append("}");
+            }
+            return b.toString();
+        }
+        String javacode() {
+            StringBuilder b = new StringBuilder();
+            b.append("\ntry (java.io.BufferedReader _br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(\""+esc(name)+"\")))) {");
+            state.pushItr();
+            String loopname = state.currvarnameitr();
+            String vrn = state.varname();
+            b.append("\nObject "+vrn+"=null;\n");
+            b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+            if(isBinary) {
+            	b.append("\nbyte[] "+state.varname()+" = null;");
+            	b.append("\nint "+loopname+"=0;");
+            	b.append("\n"+state.currvarname()+"=org.apache.commons.io.FileUtils.readFileToByteArray(new java.io.File(\""+esc(name)+"\"));");
+                for (Command c : children) {
+                	b.append(genDebugInfo(c));
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+            	
+            } else {
+            	b.append("\nString "+state.varname()+" = null;");
+            	b.append("\nint "+loopname+"=0;");
+	            b.append("\nwhile (("+state.currvarname()+" = _br.readLine()) != null) {");
+                for (Command c : children) {
+                	b.append(genDebugInfo(c));
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+	            b.append("\n"+loopname+"++;");
+	            b.append("\n}");
+            }
+            b.append("\n___add_var__(\"@index\","+vrn+");\n");
+            b.append("\n}");
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Read File line by line",
+        		"\t#readfile {file-path} {binary}?\n\t{\n\t\tcode\n\t}",
+				"Examples :-",
+				"\t#readfile \"/path/to/file.txt\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@line)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+				"\t#readfile \"/path/to/file.bin\" \"binary\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@line)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
             };
         }
     }
@@ -3251,8 +3387,8 @@ public class Command {
     public static class TransientProviderCommand extends Command {
         FindCommand cond;
         String varname, value;
-        boolean isSuiteLevel;
-        TransientProviderCommand(String val, Object[] cmdDetails, CommandState state, boolean isSuiteLevel) {
+        boolean isLazy;
+        TransientProviderCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=4) {
@@ -3272,15 +3408,19 @@ public class Command {
                     }
                 }
                 cond = new FindCommand(parts[2].trim() + " " + parts[3].trim(), fileLineDetails, state);
+                if(parts.length>4 && parts[3].trim().equals("lazy")) {
+                	isLazy = true;
+                }
             } else {
                 //excep
             }
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append(isSuiteLevel?"#transient-suite-provider ":"#transient-provider ");
+            b.append("#transient-provider ");
             b.append(name);
             b.append(cond.toCmd());
+            b.append(isLazy?" lazy":"");
             return b.toString();
         }
         String javacode() {
@@ -3298,12 +3438,15 @@ public class Command {
             }
             b.append("getProviderTestDataMap(\""+value+"\").add(__mp);\n");
             b.append("}");
+            ProviderLoopCommand plc = new ProviderLoopCommand(value, fileLineDetails, state, false, false);
+            plc.children = children;
+            b.append(plc.javacode());
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Transient Provider definition",
-        		"\t#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN}",
+        		"\t#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN} {lazy}?",
 				"Examples :-",
 				"\t#transient-provider prov1 var1,var2 id@'abc' text,attr@abc",
 				"\t#tp prov1 var1,var2 id@'abc' text,attr@abc",
@@ -4011,7 +4154,7 @@ public class Command {
             return "fail \"" + value + "\"";
         }
         String javacode() {
-            return "if(true)\n{\nthrow new RuntimeException(\""+esc(value)+"\");\n}";
+            return "if(true)\n{\nthrow new FailSubTestException(\""+esc(value)+"\");\n}";
         }
         FailCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -4038,7 +4181,7 @@ public class Command {
             return "pass \"" + value + "\"";
         }
         String javacode() {
-            return "if(true)\n{\nthrow new RuntimeException(\""+esc(value)+"\");\n}";
+            return "if(true)\n{\nthrow new PassSubTestException(\""+esc(value)+"\");\n}";
         }
         PassCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -4153,7 +4296,7 @@ public class Command {
     }
 
     public static class FindCommand extends Command {
-        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null;
+        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, eval = null;
         boolean suppressErr = false, byselsame = false;
         String by() {
             return by;
@@ -4170,127 +4313,131 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Find Expression",
-        		"\t{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\t{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
             };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
-            if(parts.length>=1) {
-                parts[0] = parts[0].trim();
-                if(parts[0].indexOf("@")!=-1) {
-                    by = parts[0].substring(0, parts[0].indexOf("@")).trim();
-                    classifier = parts[0].substring(parts[0].indexOf("@")+1).trim();
-                    classifier = state.unsanitize(classifier);
-                    if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
-                        if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
-                            classifier = classifier.substring(1, classifier.length()-1);
-                        }
-                    }
-
-                    if(parts.length>1) {
-                        subselector = parts[1].trim();
-                        subselector = state.unsanitize(subselector);
-                    }
-                    if(parts.length>2) {
-                        oper = parts[2].trim();
-                        oper = state.unsanitize(oper);
-                        String cval = oper;
-                        if(oper.startsWith("<=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = "<=0";
-                        } else if(oper.startsWith(">=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = ">=0";
-                        } else if(oper.startsWith("=")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = "==0";
-                        } else if(oper.startsWith("<")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = "<0";
-                        } else if(oper.startsWith(">")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = ">0";
-                        } else if(oper.startsWith("!=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = "!=0";
-                        } else if(oper.startsWith("%") && oper.endsWith("%")) {
-                            cval = oper.substring(1, oper.length()-1);
-                            precond = "contains";
-                        } else if(oper.startsWith("%")) {
-                            cval = oper.substring(1);
-                            precond = "startsWith";
-                        } else if(oper.endsWith("%")) {
-                            cval = oper.substring(0, oper.length()-1);
-                            precond = "endsWith";
-                        }
-                        ValueCommand vc = new ValueCommand(cmdDetails, state);
-                        vc.value = cval;
-                        if(vc.value.charAt(0)=='"' || vc.value.charAt(0)=='\'') {
-                            vc.value = vc.value.substring(1, vc.value.length()-1);
-                        }
-                        children.add(vc);
-                    }
-                    by = state.unsanitize(by);
-                } else {
-                    by = parts[0];
-                    subselector = state.unsanitize(by);
-                    by = subselector;
-                    byselsame = true;
-                    /*if(parts.length>1) {
-					    String oper = parts[2].trim();
-                        oper = state.unsanitize(oper);
-                        String cval = oper;
-                        if(oper.startsWith("<=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = "<=0";
-                        } else if(oper.startsWith(">=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = ">=0";
-                        } else if(oper.startsWith("=")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = "==0";
-                        } else if(oper.startsWith("<")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = "<0";
-                        } else if(oper.startsWith(">")) {
-                            cval = oper.substring(1);
-                            precond = "compareTo";
-                            postcond = ">0";
-                        } else if(oper.startsWith("!=")) {
-                            cval = oper.substring(2);
-                            precond = "compareTo";
-                            postcond = "!=0";
-                        } else if(oper.startsWith("%") && oper.endsWith("%")) {
-                            cval = oper.substring(1, oper.length()-1);
-                            precond = "contains";
-                        } else if(oper.startsWith("%")) {
-                            cval = oper.substring(1);
-                            precond = "startsWith";
-                        } else if(oper.endsWith("%")) {
-                            cval = oper.substring(0, oper.length()-1);
-                            precond = "endsWith";
-                        }
-                        ValueCommand vc = new ValueCommand(cmdDetails, state);
-                        vc.value = cval;
-                        if(vc.value.charAt(0)=='"' || vc.value.charAt(0)=='\'') {
-                            vc.value = vc.value.substring(1, vc.value.length()-1);
-                        }
-		        		children.add(vc);
-					}*/
-                }
+            if(val.trim().startsWith("eval ")) {
+            	eval = val.trim().substring(5).trim();
             } else {
-                //excep
+	            if(parts.length>=1) {
+	                parts[0] = parts[0].trim();
+	                if(parts[0].indexOf("@")!=-1) {
+	                    by = parts[0].substring(0, parts[0].indexOf("@")).trim();
+	                    classifier = parts[0].substring(parts[0].indexOf("@")+1).trim();
+	                    classifier = state.unsanitize(classifier);
+	                    if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
+	                        if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
+	                            classifier = classifier.substring(1, classifier.length()-1);
+	                        }
+	                    }
+	
+	                    if(parts.length>1) {
+	                        subselector = parts[1].trim();
+	                        subselector = state.unsanitize(subselector);
+	                    }
+	                    if(parts.length>2) {
+	                        oper = parts[2].trim();
+	                        oper = state.unsanitize(oper);
+	                        String cval = oper;
+	                        if(oper.startsWith("<=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = "<=0";
+	                        } else if(oper.startsWith(">=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = ">=0";
+	                        } else if(oper.startsWith("=")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = "==0";
+	                        } else if(oper.startsWith("<")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = "<0";
+	                        } else if(oper.startsWith(">")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = ">0";
+	                        } else if(oper.startsWith("!=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = "!=0";
+	                        } else if(oper.startsWith("%") && oper.endsWith("%")) {
+	                            cval = oper.substring(1, oper.length()-1);
+	                            precond = "contains";
+	                        } else if(oper.startsWith("%")) {
+	                            cval = oper.substring(1);
+	                            precond = "startsWith";
+	                        } else if(oper.endsWith("%")) {
+	                            cval = oper.substring(0, oper.length()-1);
+	                            precond = "endsWith";
+	                        }
+	                        ValueCommand vc = new ValueCommand(cmdDetails, state);
+	                        vc.value = cval;
+	                        if(vc.value.charAt(0)=='"' || vc.value.charAt(0)=='\'') {
+	                            vc.value = vc.value.substring(1, vc.value.length()-1);
+	                        }
+	                        children.add(vc);
+	                    }
+	                    by = state.unsanitize(by);
+	                } else {
+	                    by = parts[0];
+	                    subselector = state.unsanitize(by);
+	                    by = subselector;
+	                    byselsame = true;
+	                    /*if(parts.length>1) {
+						    String oper = parts[2].trim();
+	                        oper = state.unsanitize(oper);
+	                        String cval = oper;
+	                        if(oper.startsWith("<=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = "<=0";
+	                        } else if(oper.startsWith(">=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = ">=0";
+	                        } else if(oper.startsWith("=")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = "==0";
+	                        } else if(oper.startsWith("<")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = "<0";
+	                        } else if(oper.startsWith(">")) {
+	                            cval = oper.substring(1);
+	                            precond = "compareTo";
+	                            postcond = ">0";
+	                        } else if(oper.startsWith("!=")) {
+	                            cval = oper.substring(2);
+	                            precond = "compareTo";
+	                            postcond = "!=0";
+	                        } else if(oper.startsWith("%") && oper.endsWith("%")) {
+	                            cval = oper.substring(1, oper.length()-1);
+	                            precond = "contains";
+	                        } else if(oper.startsWith("%")) {
+	                            cval = oper.substring(1);
+	                            precond = "startsWith";
+	                        } else if(oper.endsWith("%")) {
+	                            cval = oper.substring(0, oper.length()-1);
+	                            precond = "endsWith";
+	                        }
+	                        ValueCommand vc = new ValueCommand(cmdDetails, state);
+	                        vc.value = cval;
+	                        if(vc.value.charAt(0)=='"' || vc.value.charAt(0)=='\'') {
+	                            vc.value = vc.value.substring(1, vc.value.length()-1);
+	                        }
+			        		children.add(vc);
+						}*/
+	                }
+	            } else {
+	                //excep
+	            }
             }
         }
         String toCmd() {
@@ -4344,6 +4491,9 @@ public class Command {
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
         }
         String javacodeonly(List<Command> children) {
+        	if(eval!=null) {
+        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", doEvalIf(\""+esc(state.unsanitize(eval))+"\"));";
+        	}
             return javacodeonlyNoAssert(children, false)
                     + "\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
                     + "' at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
@@ -4484,7 +4634,9 @@ public class Command {
                 } else if(by.equalsIgnoreCase("active")) {
                     b.append("\n@SuppressWarnings(\"serial\")");
                     b.append("List<WebElement>  " + topele + " = new ArrayList<WebElement>(){{add(___cw___.activeElement());}};");
-                } else if(!byselsame) {
+                } else if(by.equalsIgnoreCase("jq") || by.equalsIgnoreCase("jquery") || by.equalsIgnoreCase("$")) {
+                	b.append("List<WebElement>  " + topele + " = ByJquerySelector(___cw___, evaluate(\""+esc(classifier)+"\"));");
+        		} else if(!byselsame) {
                     throwParseError(null);
                 } else {
                     condvar = state.condvarname();
@@ -4773,6 +4925,9 @@ public class Command {
         String toCmd() {
             return type;
         }
+        String javacode() {
+            return "";
+        }
 		public static String[] toSampleSelCmd() {
 			return null;
 		}
@@ -4803,6 +4958,9 @@ public class Command {
         }
         String toCmd() {
             return type;
+        }
+        String javacode() {
+            return "";
         }
 		public static String[] toSampleSelCmd() {
 			return null;
@@ -6706,14 +6864,16 @@ public class Command {
                 for (int i = 0; i < children.size(); i++) {
                     if(children.get(i) instanceof ValueListCommand) {
                         ValueListCommand vlc = (ValueListCommand)children.get(i);
-                        String[] tm = new String[vlc.children.size()];
+                        String[] tm = new String[vlc.children.size()-1];
                         int c = 0;
-                        for (Command vc : vlc.children) {
-                            tm[c++] = unSantizedUnQuoted(((ValueCommand)vc).value, state); 
+                        for (String vc : vlc.getValues()) {
+                        	tm[c++] = unSantizedUnQuoted(vc, state);
                         }
                         in1.add(tm);
                     } else {
-                        in1.add(new String[]{unSantizedUnQuoted(((ValueCommand)children.get(i)).value, state)});
+                    	if(children.get(i) instanceof ValueCommand) {
+                    		in1.add(new String[]{unSantizedUnQuoted(((ValueCommand)children.get(i)).value, state)});
+                    	}
                     }
                 }
             } else {
@@ -6724,14 +6884,16 @@ public class Command {
             for (int i = 0; i < children.size(); i++) {
                 if(children.get(i) instanceof ValueListCommand) {
                     ValueListCommand vlc = (ValueListCommand)children.get(i);
-                    String[] tm = new String[vlc.children.size()];
+                    String[] tm = new String[vlc.children.size()-1];
                     int c = 0;
-                    for (Command vc : vlc.children) {
-                        tm[c++] = unSantizedUnQuoted(((ValueCommand)vc).value, state); 
+                    for (String vc : vlc.getValues()) {
+                    	tm[c++] = unSantizedUnQuoted(vc, state);
                     }
                     in1.add(tm);
                 } else {
-                    in1.add(new String[]{unSantizedUnQuoted(((ValueCommand)children.get(i)).value, state)});
+                	if(children.get(i) instanceof ValueCommand) {
+                		in1.add(new String[]{unSantizedUnQuoted(((ValueCommand)children.get(i)).value, state)});
+                	}
                 }
             }
         }
@@ -6794,6 +6956,8 @@ public class Command {
 						dyn.execute(lp);
 					} catch (Exception e) {
 						e.printStackTrace();
+					} finally {
+						dyn.quitAll();
 					}
             	}
             	return "{\"status\": \"SUCCESS\"}";
@@ -6852,9 +7016,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "data/clinical.sel", 
-        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample/gatf-config.xml", 
-        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample", "true"}, "com.Test", true);
+        validateSel(new String[] {"-validate-sel", "data/test.sel", 
+        		"/path/to/project/gatf-config.xml", 
+        		"/path/to/project", "true"}, null, true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");

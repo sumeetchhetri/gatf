@@ -1,34 +1,127 @@
 open chrome
-open chrome "abc"
-open chrome "xyz"
-config labels.properties
-dynprops dynprops.properties
-click !selector!@"$var1"
-goto https://abc.com
-select index@4 id@"Location"
-select index@4 id@"Location"
-subtest "sb1"
+dynprops env.props
+maximize
+alias "waitldr"
 {
-	select index@4 id@"Location"
-	#provider "abc"
-	{
-		??30 id@"$user" type "$abc.someval"
-	}
+	??+ id@"some-element"
 }
-subtest "sb2" "abc"
+subtest "login into Application"
 {
-	select index@4 id@"Location"
-	#provider "abc"
-	{
-		??30 id@"$user" type "$userval"
-	}
+  goto https://example.com/url/
+  ??- xpath@"//*[@id="usernameId"]" type "abc"
+  @waitldr
+  ? xpath@"//*[@id="passwordId"]"
+  {
+	  ??- id@usernameId
+	  ??- class@userNameTxt
+	  ??- className@userNameTxt
+	  ??- name@username
+	  ??- tag@input
+	  ??- tagname@input
+	  ??- xpath@"//*[@id="usernameId"]"
+	  ??- xpath@"//*[text()='Login']"
+	  ??- xpath@"//*[contains(text(), 'Login')]"
+	  ??- xpath@"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]"
+	  ??- xpath@"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input"
+	  ??- cssselector@"input#usernameId"
+	  ??- cssselector@"input.userNameTxt"
+	  ??- cssselector@"input[name=username]"
+	  ??- css@"input.userNameTxt[name=username]"
+	  ??- text@"User Name"
+	  ??- linkText@"Forgot Password?"
+	  ??- partialLinkText@"Forgot"
+	  ??- jq@input[name=username]
+	  ??- jquery@.form-control.userNameTxt.enterme[name=username]
+	  ??- $@body
+	  //wopensave on
+	  //??- xpath@"/html/body/div[3]/div/div[2]/div/div[1]/div[4]/div/div/div[2]/div/div/div/div/div[2]/table/tbody/tr[1]/td[8]/div[1]/ul/li[1]" click
+	  //wopensave off "/tmp/pag.pdf" text
+	  //tab 1
+	  ? xpath@"//*[@id="passwordIdInnerIf"]"
+	  {
+	      @waitldr
+	      ? xpath@"//*[@id="passwordIdInnerInnerIf"]"
+		  {
+		      @waitldr
+		      pass "Test Passed"
+		  }
+	  }
+	  :? xpath@"//*[@id="passwordIdInnerElseIf"]"
+	  {
+	  	  @waitldr
+	  }
+	  :
+	  {
+	  	  @waitldr
+	  	  fail "Test Failed"
+	  }
+  }
+  :? xpath@"//*[@id="passwordId1"]"
+  {
+  	  @waitldr
+  }
+  :
+  {
+  	  @waitldr
+  }
 }
-subtest "sb3" @3
+@subtest "login into Application"
+#provider "aad" 1 10
 {
-	select index@4 id@"Location"
-	#provider "abc"
-	{
-		??30 id@"$user" type "$userval"
-	}
+	sleep 10
+	??- xpath@"//*[@id="usernameId"]" type "${abc}@index"
+<<<(java)
+	Thread.sleep(@index);
+>>>
 }
-screenshot "!filepath!"
+#provider "aads" 1
+{
+	sleep 20
+<<<(java)
+	Thread.sleep(@index);
+>>>
+}
+#provider-sf "aads"
+{
+	sleep 30
+<<<(java)
+	Thread.sleep(@index);
+>>>
+}
+readfile /tmp/test.txt
+{
+	exec @print(@index)
+	exec @print(@line)
+}
+readfile /tmp/test.png binary
+{
+	exec @print(@index)
+	exec @print(@line)
+}
+#transient-provider prov1 var1,var2 class@'userNameTxt' attr@id,attr@name
+{
+	exec @print(${var1})
+	exec @print(${var2})
+	? eval "${var1}"=="usernameId"
+	{
+		exec @print("variable 1-----if native")
+	}
+	#jif(${var1}.equals("usernameId")) {
+		exec @print("variable 1-----if java")
+	#j}
+}
+curl post http://abc.com
+{
+	[
+		Content-Type=application/xml
+	]
+	<abc>abc</abc>
+}
+
+var curl_val plugin curl post http://abc.com
+{
+	[
+		Content-Type=application/xml
+	]
+	<abc>abc</abc>
+}

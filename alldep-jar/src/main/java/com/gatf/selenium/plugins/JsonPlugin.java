@@ -16,7 +16,7 @@ public class JsonPlugin {
 
     public static Object read(Object[] args) throws Exception {
         if(args.length>0 && args[0] instanceof String) {
-            return WorkflowContextHandler.OM.readTree(args[0].toString());
+            return WorkflowContextHandler.OM.readValue(args[0].toString(), Map.class);
         }
         return null;
     }
