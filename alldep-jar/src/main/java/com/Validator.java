@@ -51,7 +51,7 @@ implements Serializable {
 	}
 
 	public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
-		return new Test(ctx, index);
+		return new Validator(ctx, index);
 	}
 
 	public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
