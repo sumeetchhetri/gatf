@@ -463,13 +463,7 @@ public abstract class SeleniumTest {
 	{
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
-		try {
-			if(___d___ instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
-				((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-				jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
-			}
-		} catch (Exception e) {
-		}
+		VM.current().addressOf(get___d___());
 	}
 
 	protected class PrettyPrintingMap<K, V> {
@@ -707,18 +701,25 @@ public abstract class SeleniumTest {
                 }
             }*/
 			if(!(cause instanceof PassSubTestException)) {
-				try {
-					cause.printStackTrace();
-					java.lang.System.out.println(img);
-					screenshotAsFile(d, img);
-				} catch (Exception e) {
-				}
-				List<LogEntry> entries = new ArrayList<LogEntry>();
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
-				this.logs.put("gatf", new SerializableLogEntries(entries));
-				if(cause instanceof FailSubTestException) {
-					System.out.println(cause.getMessage());
+				if(!(cause instanceof SubTestException)) {
+					try {
+						cause.printStackTrace();
+						java.lang.System.out.println(img);
+						screenshotAsFile(d, img);
+					} catch (Exception e) {
+					}
+					List<LogEntry> entries = new ArrayList<LogEntry>();
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+					this.logs.put("gatf", new SerializableLogEntries(entries));
+					if(cause instanceof FailSubTestException) {
+						System.out.println(cause.getMessage());
+					}
+				} else {
+					List<LogEntry> entries = new ArrayList<LogEntry>();
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ((SubTestException)cause).stname + " execution failed"));
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ""));
+					this.logs.put("gatf", new SerializableLogEntries(entries));
 				}
 			} else {
 				this.status = true;
@@ -996,6 +997,29 @@ public abstract class SeleniumTest {
 		{
 		}
 	}
+	
+	protected void doSwipe(Point start, Point end, int duration) {
+		PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "fingerA");
+        Sequence swipe = new Sequence(finger, 1)
+                .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), start.getX(), start.getY()))
+                .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
+                .addAction(finger.createPointerMove(Duration.ofMillis(duration), PointerInput.Origin.viewport(), end.getX(), end.getY()))
+                .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+        ((AppiumDriver)get___d___()).perform(Arrays.asList(swipe));
+    }
+
+	protected void doTap(WebElement e, Point point, int duration) {
+		if(e!=null) {
+			point = getCenter(e);
+		}
+		PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "fingerA");
+        Sequence tap = new Sequence(finger, 1)
+                .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), point.getX(), point.getY()))
+                .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
+                .addAction(new Pause(finger, Duration.ofMillis(duration)))
+                .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
+        ((AppiumDriver)get___d___()).perform(Arrays.asList(tap));
+    }
 
 	protected static void randomizeSelect(List<WebElement> le) {
 		try
@@ -1300,6 +1324,9 @@ public abstract class SeleniumTest {
 		OkHttpClient client = null;
 		try {
 			String url = (String)((JavascriptExecutor)get___d___()).executeScript("return window.__wosjp__[0]");
+			if(StringUtils.isBlank(url)) {
+				throw new RuntimeException("Invalid window.open url found");
+			}
 			client = TestCaseExecutorUtil.getClient();
 			Call call = client.newCall(new Request.Builder().url(url).build());
 			Response res = call.execute();
@@ -1319,6 +1346,18 @@ public abstract class SeleniumTest {
 
 	@SuppressWarnings("unchecked")
 	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
+		try {
+			if(get___d___() instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
+				((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
+				jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
+			}
+		} catch (Exception e) {
+		}
+		
+		if(!new File(filePath).exists()) {
+			throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
+		}
+		
 		if(get___d___() instanceof ChromeDriver) {
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
@@ -1895,8 +1934,14 @@ public abstract class SeleniumTest {
 		return tmid.getX()>orec.getX() && tmid.getX()<(orec.getX()+orec.getWidth()) && tmid.getY()>orec.getY() && tmid.getY()<(orec.getY()+orec.getHeight());
 	}
 
-	private static Rectangle getRect(WebElement e) {
+	protected static Rectangle getRect(WebElement e) {
 		return new Rectangle(e.getLocation().getX(), e.getLocation().getY(), e.getSize().getWidth(), e.getSize().getHeight());
+	}
+	
+	protected static Point getCenter(WebElement e) {
+		Rectangle rect = ((WebElement)e).getRect();
+		Point from = new Point(rect.x + rect.getWidth() / 2, rect.y + rect.getHeight() / 2);
+		return from;
 	}
 
 	public static ExpectedCondition<WebElement> elementInteractable(SeleniumTest test, WebElement element, boolean enabledCheck, String ... layers) {
@@ -2077,6 +2122,15 @@ public abstract class SeleniumTest {
 	public static class FailSubTestException extends RuntimeException {
 		public FailSubTestException(String msg) {
 			super(msg);
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class SubTestException extends RuntimeException {
+		String stname;
+		public SubTestException(String stname, Throwable cause) {
+			super(cause.getMessage());
+			this.stname = stname;
 		}
 	}
 }

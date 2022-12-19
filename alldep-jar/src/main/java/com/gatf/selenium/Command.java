@@ -821,9 +821,21 @@ public class Command {
                     || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
                     || tmp instanceof VarCommand) {
                 get(tmp, iter, state);
+                parent.children.add(tmp);
                 if(tmp.children.size()==0 || !(tmp.children.get(0) instanceof StartCommand)) {
                 	if(!(tmp instanceof TransientProviderCommand) || (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy)) {
-                		throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
+                		if(!(tmp instanceof VarCommand)) {
+                			throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
+                		}
+                	}
+                	if(tmp.children.size()>0 && !(tmp.children.get(0) instanceof StartCommand)) {
+                		if(tmp instanceof VarCommand) {
+                			parent.children.addAll(tmp.children);
+                			tmp.children.clear();
+                		} else if(tmp instanceof TransientProviderCommand && ((TransientProviderCommand)tmp).isLazy) {
+                			parent.children.addAll(tmp.children);
+                			tmp.children.clear();
+                		}
                 	}
                 } else if(tmp instanceof PluginCommand) {
                     ((PluginCommand)tmp).reconcile();
@@ -831,7 +843,6 @@ public class Command {
                 	((VarCommand)tmp).reconcile();
                 }
                 isValid = true;
-                parent.children.add(tmp);
             } else if(tmp instanceof ValueListCommand) {
                 get(tmp, iter, state);
                 if(!isValid)isValid = false;
@@ -2130,8 +2141,10 @@ public class Command {
 	                b.append(tm.javacode());
 	                b.append("}catch(java.io.IOException _ioe){}");*/
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
+                	b.append("throw new SubTestException(\""+name+"\", "+ex+");\n");
+                } else {
+                	b.append("throw "+ex+";\n");
                 }
-                b.append("throw "+ex+";\n");
                 b.append("\n}\nfinally {\n");
                 if(!isAnAlias) {
                 	b.append("set__subtestname__(null);");
@@ -2167,6 +2180,7 @@ public class Command {
         boolean isCntxtVar = false;
         PluginCommand pcomd;
         String val = "";
+        String type = "";
         VarCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             if(val.indexOf(" ")!=-1) {
@@ -2174,9 +2188,12 @@ public class Command {
                 if(name.startsWith("@")) {
                     isCntxtVar = true;
                     name = name.substring(1);
+                } else if(name.indexOf("@")!=-1) {
+                	type = name.substring(name.indexOf("@")+1);
+                	name = name.substring(0, name.indexOf("@"));
                 }
                 val = val.substring(val.indexOf(" ")+1).trim();
-                if(val.indexOf("@")!=-1) {
+                if(!val.startsWith("@") && val.indexOf("@")!=-1) {
                     cond = new FindCommand(val, fileLineDetails, state);
                 } else if(val.startsWith("plugin ")) {
                     pcomd = new PluginCommand(val.substring(7), cmdDetails, state);
@@ -2204,7 +2221,7 @@ public class Command {
         }
         String javacode() {
             if(cond!=null) {
-                return cond.javacodeonly(null) + "\nList<WebElement> " + name + " = " + state.currvarname() + ";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
+                return cond.javacodevaronly() + "\n" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+state.currvarname()+".get(0)[0]);":"\n___add_var__(\""+name+"\", "+state.currvarname()+".get(0)[0]);");
             } else if(pcomd!=null) {
                 return "\nObject " + name + " = null;\n"+pcomd.javacodev(name)+";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             } else {
@@ -3283,7 +3300,9 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            b.append("\ntry (java.io.BufferedReader _br = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(\""+esc(name)+"\")))) {");
+            String brl = state.varname();
+            if(!isBinary) b.append("\njava.io.BufferedReader "+brl+" = null;");
+            b.append("\ntry {\n");
             state.pushItr();
             String loopname = state.currvarnameitr();
             String vrn = state.varname();
@@ -3300,9 +3319,10 @@ public class Command {
                 }
             	
             } else {
+            	b.append(brl+" = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(\""+esc(name)+"\")));");
             	b.append("\nString "+state.varname()+" = null;");
             	b.append("\nint "+loopname+"=0;");
-	            b.append("\nwhile (("+state.currvarname()+" = _br.readLine()) != null) {");
+	            b.append("\nwhile (("+state.currvarname()+" = "+brl+".readLine()) != null) {");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
@@ -3312,7 +3332,8 @@ public class Command {
 	            b.append("\n}");
             }
             b.append("\n___add_var__(\"@index\","+vrn+");\n");
-            b.append("\n}");
+            b.append("\n} catch(Exception e) {throw new RuntimeException(\"Unable to read file\");}");
+            if(!isBinary) b.append("finally {if("+brl+"!=null) {try{"+brl+".close();}catch(Exception e){}}}");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -4490,6 +4511,49 @@ public class Command {
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
         }
+        String javacodevaronly() {
+            String sc = state.currvarnamesc();
+            String value = null, values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ValueCommand) {
+                   value = "evaluate(\"" + esc(((ValueCommand)c).value) + "\")";
+                } else if(c instanceof ValueListCommand) {
+                } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
+                        || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
+                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
+                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
+                        action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
+                        if(c instanceof TypeCommand) {
+                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
+                            if(((TypeCommand)c).noblur) {
+                            	action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "nb") + "\"";
+                            }
+                        } else if(c instanceof ChordCommand) {
+                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                        } else if(c instanceof UploadCommand) {
+                            tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
+                        }
+                    }
+                }
+            }
+            if(ssubselector!=null) {
+                ssubselector = "evaluate(\""+esc(subselector)+"\")";
+            }
+            if(soper!=null) {
+                soper = "\""+soper+"\"";
+            }
+            if(sclassifier!=null) {
+                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            }
+            String var = state.varname();
+            rtl = var;
+            return "List<String[]> " + var + " = transientProviderData("+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+                    + ssubselector + ", "+byselsame+", "+value+", "+values+", "
+                    + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
+                    + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
+        }
         String javacodeonly(List<Command> children) {
         	if(eval!=null) {
         		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", doEvalIf(\""+esc(state.unsanitize(eval))+"\"));";
@@ -5303,13 +5367,11 @@ public class Command {
                     }
                 }
                 String temp = StringEscapeUtils.unescapeJava(value);
-                try
-                {
+                try {
                     if(parts.length>1) {
                         cond = new FindCommand(parts[1], fileLineDetails, state);
                     }
-                    for (char c : temp.toCharArray())
-                    {
+                    for (char c : temp.toCharArray()) {
                         Keys kys = Keys.getKeyFromUnicode(c);
                         if(kys!=null) {
                             values.add("Keys." + kys.name());
@@ -5321,10 +5383,7 @@ public class Command {
                             }
                         }
                     }
-                }
-                catch (Exception e)
-                {
-                    // TODO: handle exception
+                } catch (Exception e) {
                 }
             } else {
                 //excep
@@ -6323,17 +6382,17 @@ public class Command {
     }
 
     public static class MSwipeCommand extends FindCommandImpl {
-        int sx, sy, ex, ey, d;
+        int sx, sy, ex, ey, d = 1000;
         String toCmd() {
             return "";
         }
         String javacode() {
-            return "\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).press("+sx+", "+sy+").waitAction(java.time.Duration.ofMillis("+d+")).moveTo("+ex+", "+ey+").release().perform();";
+            return "\ndoSwipe(new org.openqa.selenium.Point("+sx+", "+sy+"), new org.openqa.selenium.Point("+ex+", "+ey+"), "+d+");";
         }
         public MSwipeCommand(String info, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] t = info.trim().split("[\t ]+");
-            if(t.length<5)
+            if(t.length<4)
             {
                 throwParseError(null, new RuntimeException("swipe command needs valid start(x/y) and end(x/y) co-ordinates"));
             }
@@ -6366,39 +6425,19 @@ public class Command {
     }
 
     public static class MTapCommand extends FindCommandImpl {
-        int x = Integer.MAX_VALUE , y = Integer.MAX_VALUE, d = Integer.MAX_VALUE;
+        int x = Integer.MAX_VALUE , y = Integer.MAX_VALUE, d = 500;
         String toCmd() {
             return "";
         }
         String javacode() {
-            StringBuilder b = new StringBuilder();
-            if(cond!=null) {
-                b.append(cond.javacodeonly(children));
-                if(d!=Integer.MAX_VALUE) {
-                    if(x!=Integer.MAX_VALUE && y!=Integer.MAX_VALUE) {
-                        b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).waitAction(java.time.Duration.ofMillis("+d+")).tap("+state.currvarname()+".get(0), "+x+", "+y+").perform();");
-                    } else {
-                        b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).waitAction(java.time.Duration.ofMillis("+d+")).tap("+state.currvarname()+".get(0)).perform();");
-                    }
-                } else if(x!=Integer.MAX_VALUE && y!=Integer.MAX_VALUE) {
-                    b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).tap("+state.currvarname()+".get(0), "+x+", "+y+").perform();");
-                } else {
-                    b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).tap("+state.currvarname()+".get(0)).perform();");
-                }
-            } else if(x!=Integer.MAX_VALUE && y!=Integer.MAX_VALUE) {
-                if(d!=Integer.MAX_VALUE) {
-                    b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).waitAction(java.time.Duration.ofMillis("+d+")).tap("+x+", "+y+").perform();");
-                } else {
-                    b.append("\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).tap("+x+", "+y+").perform();");
-                }
-            }
-            return b.toString();
+            return "\ndoTap(null, new org.openqa.selenium.Point("+x+", "+y+"), "+d+");";
         }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).tap("+varnm+".get(0)).perform();";
+            return "\ndoTap("+varnm+".get(0), null, "+d+")";
+            //return "\nnew io.appium.java_client.TouchAction((io.appium.java_client.MobileDriver) get___d___()).tap("+varnm+".get(0)).perform();";
         }
         public MTapCommand(String info, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -6490,9 +6529,9 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String vn = state.varname();
-            b.append("org.openqa.selenium.ScreenOrientation "+vn+" = ((org.openqa.selenium.Rotatable)get___d___()).getOrientation();\n");
-            b.append("if("+vn+".value().equals(org.openqa.selenium.ScreenOrientation.LANDSCAPE.value())){((org.openqa.selenium.Rotatable)get___d___()).rotate(org.openqa.selenium.ScreenOrientation.PORTRAIT);}");
-            b.append("else{((org.openqa.selenium.Rotatable)get___d___()).rotate(org.openqa.selenium.ScreenOrientation.LANDSCAPE);}");
+            b.append("org.openqa.selenium.ScreenOrientation "+vn+" = ((io.appium.java_client.remote.SupportsRotation)get___d___()).getOrientation();\n");
+            b.append("if("+vn+".value().equals(org.openqa.selenium.ScreenOrientation.LANDSCAPE.value())){((io.appium.java_client.remote.SupportsRotation)get___d___()).rotate(org.openqa.selenium.ScreenOrientation.PORTRAIT);}");
+            b.append("else{((io.appium.java_client.remote.SupportsRotation)get___d___()).rotate(org.openqa.selenium.ScreenOrientation.LANDSCAPE);}");
             return b.toString();
         }
         public MRotateCommand(Object[] cmdDetails, CommandState state) {
@@ -6512,7 +6551,7 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            b.append("try{Thread.sleep(200);((io.appium.java_client.MobileDriver) get___d___()).hideKeyboard();}catch(Exception e){}");
+            b.append("try{Thread.sleep(200);if(get___d___() instanceof io.appium.java_client.HidesKeyboard) ((io.appium.java_client.HidesKeyboard) get___d___()).hideKeyboard();}catch(Exception e){}");
             return b.toString();
         }
         public MHideKeyPadCommand(Object[] cmdDetails, CommandState state) {
