@@ -2578,9 +2578,21 @@ public class Command {
             if(forced) {
             	String[] parts1 = Arrays.asList(parts).toArray(new String[parts.length]);
             	if(parts1.length>2) {
-	            	parts[0] = parts1[2];
-	            	parts[1] = parts1[0];
-	            	parts[2] = parts1[1];
+            		if(parts[0].toLowerCase().equals("randomize") || parts[0].toLowerCase().equals("randomizenb")) {
+    	            	parts[0] = parts1[1];
+    	            	parts[1] = parts1[0];
+    	            	parts[2] = parts1[2];
+    	            	if(parts.length>3) {
+    	            		parts[3] = parts1[3];
+    	            	}
+    	            	if(parts.length>4) {
+    	            		parts[4] = parts1[4];
+        	            }
+            		} else {
+    	            	parts[0] = parts1[2];
+    	            	parts[1] = parts1[0];
+    	            	parts[2] = parts1[1];
+            		}
             	} else if(parts1.length>1) {
 	            	parts[0] = parts1[1];
 	            	parts[1] = parts1[0];
@@ -2600,6 +2612,9 @@ public class Command {
                     for (int i = 1; i < parts.length; i++)
                     {
                         cmd += parts[i] + " ";
+                    }
+                    if(parts[0].indexOf("@")==-1) {
+                    	throwParseError(null, new RuntimeException("No selector condition specified"));
                     }
                     cond = new FindCommand(parts[0], cmdDetails, state);
                     cmd = cmd.trim();
@@ -4590,6 +4605,11 @@ public class Command {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        } else if(c instanceof RandomizeCommand) {
+                        	RandomizeCommand scc = (RandomizeCommand)c;
+                        	tvalue = "evaluate(\"" + esc(scc.v1) + "\")" + "+ \" \"";
+                        	if(scc.v2!=null) tvalue += " + evaluate(\"" + esc(scc.v2) + "\")" + " + \" \"";
+                        	if(scc.v3!=null) tvalue += " + evaluate(\"" + esc(scc.v3) + "\")";
                         }
                     }
                 }
@@ -7055,9 +7075,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "data/test.sel", 
+        validateSel(new String[] {"-validate-sel", "data/clinical.sel", 
         		"/path/to/project/gatf-config.xml", 
-        		"/path/to/project", "true"}, null, true);
+        		"/path/to/project", "true"}, "com.Test", true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");

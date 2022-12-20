@@ -1445,6 +1445,9 @@ public abstract class SeleniumTest {
 				//jsChange(we);
 				break;
 			}
+		} else if(action.equalsIgnoreCase("randomize") || action.equalsIgnoreCase("randomizenb")) {
+			String[] parts = tvalue.split("\\s+");
+			randomize(ret, parts[0], parts.length>1?parts[1]:null, parts.length>2?parts[2]:null);
 		} else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
