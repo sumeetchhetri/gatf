@@ -1137,14 +1137,14 @@ function startInitConfigTool(func) {
                         }
                         $('#' + id).attr('tcfname', testFileName);
                         $('#' + id).click(function() {
-                            $('#heading_main').html('Manage Tests');
                             currtestcasefile = $(this).attr('tcfname');
+                            $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
                             currtestcases = [''];
                             ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(data1) {
                                 var htmm = '<button class="plusminuslist" click-event=\"addTestCase(true, null, \'\', null, false, false)\">Add New Testcase</button><br/></br/>';
                                 if (currtestcasefile.toLowerCase().endsWith(".sel")) {
                                     htmm = "";
-                                    $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=30 style="width:90%">' + data1 + '</textarea>');
+                                    $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
 									$('#ExampleBeanServiceImpl_form').append('<button id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
@@ -1157,6 +1157,14 @@ function startInitConfigTool(func) {
                                         debugTest(currtestcasefile, "", false, false);
                                         return false;
                                     });
+                                    ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
+										lineNumbers: true,
+										tabSize: 4,
+										matchBrackets: true,
+										mode: 'text/x-perl',
+										gutters: ["CodeMirror-linenumbers", "breakpoints"],
+										viewportMargin: Infinity
+									});
                                     return;
                                 }
                                 if (data1 != null && data1.length > 0) {
@@ -1264,7 +1272,8 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		tabSize: 4,
 		matchBrackets: true,
 		mode: 'text/x-perl',
-		gutters: ["CodeMirror-linenumbers", "breakpoints"]
+		gutters: ["CodeMirror-linenumbers", "breakpoints"],
+		viewportMargin: Infinity
 	});
 	ceeditor.on("gutterClick", function(cm, n) {
 		function makeMarker() {

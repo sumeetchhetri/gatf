@@ -638,15 +638,17 @@ public class Command {
                 || cmd.toLowerCase().startsWith("clear ") || cmd.toLowerCase().equals("clear")
                 || cmd.toLowerCase().startsWith("submit ") || cmd.toLowerCase().equals("submit")
                 || cmd.toLowerCase().startsWith("randomize ") || cmd.toLowerCase().startsWith("actions ")
-                || cmd.toLowerCase().startsWith("robot ") ||  cmd.toLowerCase().equals("scrollup") 
-                || cmd.toLowerCase().equals("scrolldown") || cmd.toLowerCase().equals("scrollpageup") 
-                || cmd.toLowerCase().equals("scrollpagedown") || cmd.toLowerCase().startsWith("typenb ")
+                 || cmd.toLowerCase().startsWith("typenb ")
                 || cmd.toLowerCase().startsWith("upload ") || cmd.toLowerCase().startsWith("chordnb ")) {
         	if(state.modeEnableGlobalTimeouts) {
         		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeoutNum+"", cmd, cmdDetails, state, false, true);
         	} else {
         		comd = handleActions(cmd, null, cmdDetails, state);
         	}
+        } else if(cmd.toLowerCase().startsWith("robot ") ||  cmd.toLowerCase().equals("scrollup") 
+                || cmd.toLowerCase().equals("scrolldown") || cmd.toLowerCase().equals("scrollpageup") 
+                || cmd.toLowerCase().equals("scrollpagedown")) {
+        	comd = new RobotCommand(cmd.substring(cmd.toLowerCase().startsWith("robot ")?6:0), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("var ")) {
             comd = new VarCommand(cmd.substring(4).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("jsvar ")) {
@@ -781,7 +783,7 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("robot ") ||  cmd.toLowerCase().equals("scrollup") 
                 || cmd.toLowerCase().equals("scrolldown") || cmd.toLowerCase().equals("scrollpageup") 
                 || cmd.toLowerCase().equals("scrollpagedown")) {
-            comd = new RobotCommand(cmd.substring(cmd.toLowerCase().startsWith("robot ")?6:0), fcmd, cmdDetails, state);
+            comd = new RobotCommand(cmd.substring(cmd.toLowerCase().startsWith("robot ")?6:0), cmdDetails, state);
         }
         return comd;
     }
@@ -2820,6 +2822,7 @@ public class Command {
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
             }
+            b.append("\n"+vrd+"=true;\n");
             if(!negation)
             {
                 if(!children.isEmpty())
@@ -2832,7 +2835,6 @@ public class Command {
                     }
                 }
             }
-            b.append("\n"+vrd+"=true;\n");
             b.append("\n}\ncatch(AssertionError "+state.evarname()+"){");
             if(negation)
             {
@@ -2851,7 +2853,7 @@ public class Command {
             {
                 b.append("\n"+vrd+"=false;\n");
             }
-            b.append("}\ncatch(Exception "+ex+"){\nSystem.out.println("+ex+".getMessage());}\n");
+            b.append("}\ncatch(Exception "+ex+"){\nSystem.out.println("+ex+".getMessage());throw "+ex+";}\n");
             return b.toString();
         }
         String javacode() {
@@ -4612,6 +4614,8 @@ public class Command {
                         	if(scc.v3!=null) tvalue += " + evaluate(\"" + esc(scc.v3) + "\")";
                         }
                     }
+                } else if(c instanceof RobotCommand) {
+                	return c.javacode();
                 }
             }
             if(ssubselector!=null) {
@@ -5872,7 +5876,7 @@ public class Command {
         public RobotCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
-        RobotCommand(String val, FindCommand fcmd, Object[] cmdDetails, CommandState state) {
+        RobotCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             if(val.equals("scrollup")) {
                 val = "keypress " + KeyEvent.VK_UP;
@@ -5886,25 +5890,26 @@ public class Command {
             String[] t = val.trim().split("[\t ]+");
             int tl = t.length, counter = 0;
             RobotCommand cmd = this;
-            this.cond = fcmd;
             while(counter<tl) {
-                if(t[counter].toLowerCase().matches("keydown|keyup|keypress")) {
+                if(t[counter].toLowerCase().matches("keydown|keyup|keypress|keyRelease|key")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(cmd.action.equals("keydown")) {
+                    boolean flag = true;
+                    if(cmd.action.equalsIgnoreCase("keydown") || cmd.action.equalsIgnoreCase("keypress")) {
                         cmd.action = "keyPress";
-                    } else if(cmd.action.equals("keyup")) {
+                    } else if(cmd.action.equalsIgnoreCase("keyup") || cmd.action.equalsIgnoreCase("keyRelease")) {
+                    	//flag = false;
                         cmd.action = "keyRelease";
-                    } else if(cmd.action.equals("keypress")) {
+                    } else if(cmd.action.equals("key")) {
                         cmd.action = "key";
                     }
-                    if(tl>counter+1) {
+                    if(flag && tl>counter+1) {
                         cmd.expr1 = state.unsanitize(t[++counter]);
                         if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
                             if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
                                 cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
                             }
                         }
-                    } else {
+                    } else if(flag) {
                         throwParseError(null, new RuntimeException("Expression expected after actions (keydown|keyup)"));
                     }
                 } else {
@@ -5929,7 +5934,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Send keys using Robot",
-        		"\trobot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress {key-codeN}",
+        		"\trobot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress|keyrelease|key {key-codeN}",
         		"\tscrollup",
         		"\tscrolldown",
         		"\tscrollpageup",
@@ -7075,9 +7080,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "data/clinical.sel", 
+        validateSel(new String[] {"-validate-sel", "data/test.sel", 
         		"/path/to/project/gatf-config.xml", 
-        		"/path/to/project", "true"}, "com.Test", true);
+        		"/path/to/project", "true"}, null, true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
