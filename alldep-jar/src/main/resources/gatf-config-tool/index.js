@@ -2338,3 +2338,32 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
 			<label>Response Headers:&nbsp;</label><div><pre id="reshdrs" style="word-wrap:break"></pre></div> \
 			<label style="word-wrap:break-word;margin-left:50px;width:auto;background-color: #ebf4fb;border:none;"></label><div><br/><pre id="status" class="prettyprint" style="word-wrap:break-word;margin-left:50px;width:auto;border:none;"></pre></div><br/></div>');
 }
+
+function gatfHLCodeMirror() {
+    $('.CodeMirror-line').each(handleCommand);
+}
+
+function handleCommandCodeMirror() {
+    const presentation = $(this).find('span[role="presentation"]');
+    const contents = presentation.contents();
+    let first = contents.eq(0);
+    let c = 0;
+    if(first.length>0 && first.hasClass('cm-tab')) {
+        while(first.length>0 && first.hasClass('cm-tab') && c<contents.length) {
+            first = contents.eq(c++);
+        }
+    }
+    if(first.length>0 && first[0].nodeName=="#text" && first[0].data.trim()=="") {
+        while(first.length>0 && first[0].nodeName=="#text" && first[0].data.trim()=="" && c<contents.length) {
+            first = contents.eq(c++);
+        }
+    }
+    if(!first.hasClass('cm-tab') && !(first[0].nodeName=="#text" && first[0].data.trim()=="")) {
+        //console.log(contents);
+        let cmd = "";
+        for(let i=c;i<contents.length;i++) {
+            cmd += contents.eq(i)[0].nodeName=="#text"?contents.eq(i)[0].data.trim():contents.eq(i).text();
+        }
+        console.log(cmd);
+    }
+}

@@ -737,7 +737,7 @@ public abstract class SeleniumTest {
 	}
 
 	protected static void randomize(List<WebElement> le, String v1, String v2, String v3) {
-		if ((le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden"))
+		if ((le.get(0).getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
 				|| (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
 			int count = 10, totalcount = 1;
 			if(StringUtils.isNotBlank(v3)) {
@@ -767,12 +767,29 @@ public abstract class SeleniumTest {
 						fv = "1";
 					}
 					vals.add(fv);
+				} else if(v1.toLowerCase().equals("range")) {
+					long min = 0;
+					long max = 99999;
+					if(StringUtils.isNotBlank(v1)) {
+						try {
+							min = Long.parseLong(v1);
+						} catch (Exception e) {
+						}
+					}
+					if(StringUtils.isNotBlank(v2)) {
+						try {
+							max = Long.parseLong(v2);
+						} catch (Exception e) {
+						}
+					}
+					long num = (long)(min + (Math.random() * (max - min)));
+					vals.add(num+"");
 				} else if(v1.toLowerCase().equals("value") && v2!=null) {
 					vals.add(v2);
 				}
 			}
 			le.get(0).sendKeys(StringUtils.join(vals, " "));
-		} else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
+		} /*else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
 			long min = 0;
 			long max = 99999;
 			if(StringUtils.isNotBlank(v1)) {
@@ -789,7 +806,7 @@ public abstract class SeleniumTest {
 			}
 			long num = (long)(min + (Math.random() * (max - min)));
 			le.get(0).sendKeys(num+"");
-		} else if (le.get(0).getTagName().toLowerCase().matches("select")) {
+		}*/ else if (le.get(0).getTagName().toLowerCase().matches("select")) {
 			randomizeSelect(le);
 		} else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("checkbox")) {
 			le.get(0).click();

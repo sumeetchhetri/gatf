@@ -537,6 +537,63 @@ Seleasy Syntax Reference
 ---------------------
 
 ```
+Fail test/sub-test
+	fail {error string}
+Examples :-
+	fail "Test failed"
+	fail "Sub-Test failed"
+
+
+Hover over an element and click some other element
+	hoverclick {find-expr} {find-expr}
+Examples :-
+	hoverclick id@'hoverele' id@'clickele'
+
+
+Multiple Chained Actions
+	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
+Examples :-
+	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
+	actions movetoelement id@'ele' sendkeys 'abc'
+
+
+Save URL passed to window.open
+	wopensave {on|off} {filepath}? {text}?
+Examples :-
+	wopensave on
+	wopensave off '/path/to/file.txt' text
+
+
+Define Global timeout
+	timeout {timeout-secs} {sleep-granularity-millis}
+Examples :-
+	timeout 100 1000
+
+
+Wait for element to be visible/invisible
+	??(+|-) {find-expr}
+	'+' - wait till element is visible
+	'-' - wait till element is not visible
+Examples :-
+	??+ id@'eleid'
+	??- id@'eleid'
+
+
+Refresh window
+	refresh
+
+
+Take element screenshot
+	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
+Examples :-
+	ele-screenshot id@'eleid'
+	ele-screenshot id@'eleid' '/path/to/image/file/file.png'
+
+
+Break from loop
+	break
+
+
 Variable definition
 	var name @{another-variable-name}|plugin ...|{primitive-value}
 Examples :-
@@ -547,187 +604,6 @@ Examples :-
 	var var1 123.455
 	var var1 true
 	var var1 new java.util.Date()
-
-
-Continue in loop
-	continue
-
-
-
-
-Hover over an element
-	hover {find-expr}
-Examples :-
-	hover id@'abc'
-
-
-Send keys using Robot
-	robot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress {key-codeN}
-	scrollup
-	scrolldown
-	scrollpageup
-	scrollpagedown
-Examples :-
-	robot keydown 1
-	robot keyup 1
-	robot keypress 1
-	robot keypress 1 keydown 2 keyup 
-	scrollup
-	scrolldown
-	scrollpageup
-	scrollpagedown
-
-
-Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
-
-
-Refresh window
-	refresh
-
-
-Fail test/sub-test
-	fail {error string}
-Examples :-
-	fail "Test failed"
-	fail "Sub-Test failed"
-
-
-Import other seleasy scripts
-	import {script-path}
-Examples :-
-	import a/b/c/t1.sel
-	import t2.sel
-
-
-Select/Open Window
-	window {optional main|0}
-Examples :-
-	window
-	window 0
-	window main
-
-
-Type UTF-8 or normal ASCII characters in input/textarea elements
-	chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
-Examples :-
-	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
-
-
-Draw a circle in a canvas element
-	canvas {canvas-id}
-Examples :-
-	canvas 'somecanvasele'
-
-
-Open Browser
-	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}
-Examples :-
-	open chrome
-	open firefox "my-ff-sess"
-
-
-Mobile Swipe
-	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
-Examples :-
-	swipe 123 234 200 300
-
-
-Break from loop
-	break
-
-
-Loop block
-	## {find-expr}
-	{
-		code
-	}
-Examples :-
-	## class@"ddd"
-	{
-		exec @print(@index)
-		click xpath@"ddd-@index"
-	}
-
-
-Import dynamic (code vars) properties file
-	dynprops {file-path}
-Examples :-
-	dynprops a/b/c/t1.props
-	dynprops t2.props
-
-
-Wait till an element is found and optionally execute actions on it
-	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
-Examples :-
-	??10 id@'eleid'
-	??20 id@'eleid' click
-	??20 class@'eleid' type 'abc'
-
-
-Type Value in input/textarea elements
-	type {text} {find-expr}
-Examples :-
-	type 'abc' id@'ele1'
-
-
-Handle Confirm Dialog
-	confirm ok|cancel|yes|no {optional button-text-to-check}
-Examples :-
-	confirm ok
-	confirm yes
-	confirm cancel
-	confirm no
-	confirm yes 'Confirm'
-
-
-Hover over an element and click some other element
-	hoverclick {find-expr} {find-expr}
-Examples :-
-	hoverclick id@'hoverele' id@'clickele'
-
-
-Upload file
-	upload {filepath} {find-expr}
-Examples :-
-	upload '/path/to/file.txt' id@'ele1'
-
-
-Navigate Forward/Next
-	forward
-
-
-Execute javascript code in the browser
-	execjs {javascript statement}
-Examples :-
-	execjs 'console.log("Hello");'
-	execjs '$("#elid").click();'
-
-
-Take screenshot
-	screenshot {image-file-path-to-save-screenshot-to}
-Examples :-
-	screenshot
-	screenshot "/path/to/image/file/file.png"
-
-
-Double Click element
-	doubleclick {find-expr}
-	dblclick {find-expr}
-Examples :-
-	doubleclick id@'ele1'
-
-
-Sleep for milliseconds
-	sleep {time-in-ms}
-Examples :-
-	sleep 10000
-
-
-Show alert with message
-	alert {value}
-Examples :-
-	alert('Hello')
 
 
 Subtest definition
@@ -762,11 +638,266 @@ Examples :-
 	}
 
 
-Take element screenshot
-	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
+Else-If block, needs to be superseded by an If block
+	:? {find-expr}
+	{
+		code
+	}
 Examples :-
-	ele-screenshot id@'eleid'
-	ele-screenshot id@'eleid' '/path/to/image/file/file.png'
+	:? xpath@"ddd"
+	{
+		exec @print("else-if")
+	}
+
+
+Show alert with message
+	alert {value}
+Examples :-
+	alert('Hello')
+
+
+Navigate Back/Previous
+	back
+
+
+Transient Provider definition
+	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN} {lazy}?
+Examples :-
+	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
+	#tp prov1 var1,var2 id@'abc' text,attr@abc
+
+
+Handle Confirm Dialog
+	confirm ok|cancel|yes|no {optional button-text-to-check}
+Examples :-
+	confirm ok
+	confirm yes
+	confirm cancel
+	confirm no
+	confirm yes 'Confirm'
+
+
+Type UTF-8 or normal ASCII characters in input/textarea elements
+	chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
+Examples :-
+	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
+
+
+Mobile shake
+	shake
+
+
+Mobile Pinch
+	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
+Examples :-
+	pinch 123 234
+	pinch id@'ele'
+
+
+Send keys using Robot
+	robot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress|keyrelease|key {key-codeN}
+	scrollup
+	scrolldown
+	scrollpageup
+	scrollpagedown
+Examples :-
+	robot keydown 1
+	robot keyup 1
+	robot keypress 1
+	robot keypress 1 keydown 2 keyup 
+	scrollup
+	scrolldown
+	scrollpageup
+	scrollpagedown
+
+
+Type random values in input/textarea elements
+	randomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}
+Examples :-
+	randomize id@'ele1' alphanumeric 12
+	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
+	randomize id@'ele1' numeric 5
+	randomize id@'ele1' range 9999 99999
+	randomize id@'ele1' value 'abcd'
+
+
+Wait till an element is found and optionally execute actions on it
+	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
+Examples :-
+	??10 id@'eleid'
+	??20 id@'eleid' click
+	??20 class@'eleid' type 'abc'
+
+
+Maximize window
+	maximize
+
+
+Read File line by line
+	#readfile {file-path} {binary}?
+	{
+		code
+	}
+Examples :-
+	#readfile "/path/to/file.txt"
+	{
+		exec @print(@index)
+		exec @print(@line)
+		click xpath@'$provider-variable-1'
+	}
+	#readfile "/path/to/file.bin" "binary"
+	{
+		exec @print(@index)
+		exec @print(@line)
+		click xpath@'$provider-variable-1'
+	}
+
+
+Execute javascript code from file in the browser
+	execjsfile {javascript file path}
+Examples :-
+	execjsfile 'file.js'
+
+
+Take screenshot
+	screenshot {image-file-path-to-save-screenshot-to}
+Examples :-
+	screenshot
+	screenshot "/path/to/image/file/file.png"
+
+
+Type Value in input/textarea elements
+	type {text} {find-expr}
+Examples :-
+	type 'abc' id@'ele1'
+
+
+Submit element
+	submit {find-expr}
+Examples :-
+	submit id@'ele1'
+
+
+Hover over an element
+	hover {find-expr}
+Examples :-
+	hover id@'abc'
+
+
+Select/Open Window
+	window {optional main|0}
+Examples :-
+	window
+	window 0
+	window main
+
+
+Set Window Properties
+	window_set {width|height|posx|posy} {value}
+Examples :-
+	window_set width 100
+	window_set height 100
+	window_set posx 100
+	window_set posy 100
+
+
+Mobile Tap
+	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
+Examples :-
+	tap id@'ele'
+	tap id@'ele' 2000
+	tap id@'ele' 123 234
+	tap id@'ele' 123 234 2000
+	tap 123 234
+	tap 123 234 2000
+
+
+Import dynamic (code vars) properties file
+	dynprops {file-path}
+Examples :-
+	dynprops a/b/c/t1.props
+	dynprops t2.props
+
+
+Mobile hide keypad
+	hidekeypad
+
+
+Js Variable definition
+	jsvar {javascript statement returning value}
+Examples :-
+	jsvar var1 'return "123"'
+	jsvar var1 'return $("#elid").val()'
+
+
+Mobile Touch
+	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
+Examples :-
+	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
+	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
+
+
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+
+
+Mobile Swipe
+	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
+Examples :-
+	swipe 123 234 200 300
+
+
+Single line comment or Block level comment
+	//... | /*...*/
+
+
+Execute javascript code in the browser
+	execjs {javascript statement}
+Examples :-
+	execjs 'console.log("Hello");'
+	execjs '$("#elid").click();'
+
+
+Value
+	{primtive-value}
+Examples :-
+	'abc'
+	123
+	true
+
+
+
+
+Pass test/sub-test
+	pass {error string}
+Examples :-
+	pass "Test passed"
+	pass "Sub-Test passed"
+
+
+Print pdf of the page to file
+	printpdf {filepath} {text?}
+Examples :-
+	printpdf '/path/to/file.txt'
+	printpdf '/path/to/file.txt' text
+
+
+Sleep for milliseconds
+	sleep {time-in-ms}
+Examples :-
+	sleep 10000
+
+
+If block
+	? {find-expr}
+	{
+		code
+	}
+Examples :-
+	? xpath@"ddd"
+	{
+		exec @print("if")
+	}
 
 
 Transient Variable definition
@@ -780,87 +911,21 @@ Examples :-
 	#tv var1 id@'abc' attr@data-prop
 
 
-Select frame
-	frame main|parent|1..N|{some-name}
+Define Screen No-activity layers
+	layer {find-expr}
 Examples :-
-	frame main
-	frame parent
-	frame 2
-	frame "my-frame"
+	layer id@"loader-icon"
+	layer id@"overlay-div"
 
 
-Pass test/sub-test
-	pass {error string}
+Select value from dropdown element
+	select {text|index|value|first|last}@{value} {find-expr}
 Examples :-
-	pass "Test passed"
-	pass "Sub-Test passed"
-
-
-Set Window Properties
-	window_set {width|height|posx|posy} {value}
-Examples :-
-	window_set width 100
-	window_set height 100
-	window_set posx 100
-	window_set posy 100
-
-
-Mobile Zoom
-	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
-Examples :-
-	zoom 123 234
-	zoom id@'ele'
-
-
-Value
-	{primtive-value}
-Examples :-
-	'abc'
-	123
-	true
-
-
-Click element
-	click {find-expr}
-Examples :-
-	click id@'ele1'
-
-
-Js Variable definition
-	jsvar {javascript statement returning value}
-Examples :-
-	jsvar var1 'return "123"'
-	jsvar var1 'return $("#elid").val()'
-
-
-Maximize window
-	maximize
-
-
-Print pdf of the page to file
-	printpdf {filepath} {text?}
-Examples :-
-	printpdf '/path/to/file.txt'
-	printpdf '/path/to/file.txt' text
-
-
-Multiple Chained Actions
-	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
-Examples :-
-	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
-	actions movetoelement id@'ele' sendkeys 'abc'
-
-
-Else-If block, needs to be superseded by an If block
-	:? {find-expr}
-	{
-		code
-	}
-Examples :-
-	:? xpath@"ddd"
-	{
-		exec @print("else-if")
-	}
+	select text@'first' id@'abc'
+	select index@2 id@'abc'
+	select value@'second' id@'abc'
+	select first id@'abc'
+	select last id@'abc'
 
 
 Else block, needs to be superseded by an If or Else-If block
@@ -875,18 +940,82 @@ Examples :-
 	}
 
 
-Save URL passed to window.open
-	wopensave {on|off} {filepath}? {text}?
-Examples :-
-	wopensave on
-	wopensave off '/path/to/file.txt' text
+Continue in loop
+	continue
 
 
-Execute java code
-	#j{if|else|else if|while|for|continue|break|\{|\}|synchronized} {java statement}
+Open Browser
+	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}
 Examples :-
-	jif(1==1) {} else {}
-	for(int i=0;i<10;i++){}
+	open chrome
+	open firefox "my-ff-sess"
+
+
+Loop block
+	## {find-expr}
+	{
+		code
+	}
+Examples :-
+	## class@"ddd"
+	{
+		exec @print(@index)
+		click xpath@"ddd-@index"
+	}
+
+
+Navigate Forward/Next
+	forward
+
+
+Value List
+	[{primtive-value},...,{primtive-value}]
+Examples :-
+	['abc', 'sss']
+	[123, 234]
+	[true, false]
+
+
+Double Click element
+	doubleclick {find-expr}
+	dblclick {find-expr}
+Examples :-
+	doubleclick id@'ele1'
+
+
+Import other seleasy scripts
+	import {script-path}
+Examples :-
+	import a/b/c/t1.sel
+	import t2.sel
+
+
+Import config properties file
+	config {file-path}
+Examples :-
+	config a/b/c/t1.props
+	config t2.props
+
+
+Select frame
+	frame main|parent|1..N|{some-name}
+Examples :-
+	frame main
+	frame parent
+	frame 2
+	frame "my-frame"
+
+
+Draw a circle in a canvas element
+	canvas {canvas-id}
+Examples :-
+	canvas 'somecanvasele'
+
+
+Open URL in window
+	goto {url}
+Examples :-
+	goto http://abc.com/testpage.html
 
 
 Execute embedded code in java/js/ruby/groovy/python
@@ -901,7 +1030,7 @@ Available variables in context -
 	5. @printProvJson - Print Provider data as json (Java only)
 	6. @printProv - Print Provider data (Java only)
 	7. @print - System.out.println (Java only)
-	8. @index - Current provider index under interation (Java only)
+	8. @index - Current provider index under iteration (Java only)
 	9. @cntxtParam - Add variable to current context
 Examples :-
 	<<<(java) a,b,c
@@ -919,6 +1048,88 @@ Examples :-
 	<<<(python) a,b,c
 	print(a)
 	>>>
+
+
+Clear element value
+	clear {find-expr}
+Examples :-
+	clear id@'ele1'
+
+
+Define test mode
+	mode {normal|integration} {true|false}
+Examples :-
+	mode normal
+	mode integration
+
+
+Upload file
+	upload {filepath} {find-expr}
+Examples :-
+	upload '/path/to/file.txt' id@'ele1'
+
+
+Click element
+	click {find-expr}
+Examples :-
+	click id@'ele1'
+
+
+Execute java code
+	#j{if|try|catch|finally|else|else if|while|for|continue|break|\{|\}|synchronized} {java statement}
+Examples :-
+	#jif(1==1) {} else {}
+	#jfor(int i=0;i<10;i++){}
+
+
+Mobile rotate
+	rotate
+
+
+Mobile Zoom
+	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
+Examples :-
+	zoom 123 234
+	zoom id@'ele'
+
+
+Close window
+	close
+
+
+Select frame
+	tab main|0..N|{some-name}
+Examples :-
+	tab main
+	tab 0
+	tab 2
+	tab "my-frame"
+
+
+Execute java code
+	exec {java statement}
+Available variables in context -
+	1. @driver - WebDriver instance
+	2. @window - WebDriver instance
+	3. @element - Currently selected WebElement instance
+	4. @sc - Currently selected SearchContext instance
+	5. @printProvJson - Print Provider data as json
+	6. @printProv - Print Provider data
+	7. @print - System.out.println
+	8. @index - Current provider index under iteration
+Examples :-
+	exec @driver.refresh()
+	exec @window.back()
+	exec @element.click()
+	exec @sc.findElement(org.openqa.selenium.By.id("id")
+	exec @printProvJson("provider-name")
+	exec @printProv("provider-name")
+	exec @print("something-to-console")
+	exec @print(@index)
+
+
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
 
 
 Provider Loop block
@@ -995,13 +1206,6 @@ Examples :-
 	}
 
 
-Mobile Pinch
-	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
-Examples :-
-	pinch 123 234
-	pinch id@'ele'
-
-
 Specify Java Imports
 	require [{classname1},..{classnameN}]
 Examples :-
@@ -1009,191 +1213,18 @@ Examples :-
 	require [java.util.List, java.math.BigDecimal]
 
 
-Mobile rotate
-	rotate
-
-
-Clear element value
-	clear {find-expr}
+JSON Plugin
+	jsonread {json-text}
+	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
+	jsonpath {json-text} {json-path-string}
 Examples :-
-	clear id@'ele1'
-
-
-Submit element
-	submit {find-expr}
-Examples :-
-	submit id@'ele1'
-
-
-Type random values in input/textarea elements
-	randomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}
-Examples :-
-	randomize id@'ele1' alphanumeric 12
-	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
-	randomize id@'ele1' numeric 5
-	randomize id@'ele1' value 'abcd'
-
-
-Wait for element to be visible/invisible
-	??(+|-) {find-expr}
-	'+' - wait till element is visible
-	'-' - wait till element is not visible
-Examples :-
-	??+ id@'eleid'
-	??- id@'eleid'
-
-
-Execute java code
-	exec {java statement}
-Available variables in context -
-	1. @driver - WebDriver instance
-	2. @window - WebDriver instance
-	3. @element - Currently selected WebElement instance
-	4. @sc - Currently selected SearchContext instance
-	5. @printProvJson - Print Provider data as json
-	6. @printProv - Print Provider data
-	7. @print - System.out.println
-	8. @index - Current provider index under interation
-Examples :-
-	exec @driver.refresh()
-	exec @window.back()
-	exec @element.click()
-	exec @sc.findElement(org.openqa.selenium.By.id("id")
-	exec @printProvJson("provider-name")
-	exec @printProv("provider-name")
-	exec @print("something-to-console")
-	exec @print(@index)
-
-
-Mobile Tap
-	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
-Examples :-
-	tap id@'ele'
-	tap id@'ele' 2000
-	tap id@'ele' 123 234
-	tap id@'ele' 123 234 2000
-	tap 123 234
-	tap 123 234 2000
-
-
-Select value from dropdown element
-	select {text|index|value|first|last}@{value} {find-expr}
-Examples :-
-	select text@'first' id@'abc'
-	select index@2 id@'abc'
-	select value@'second' id@'abc'
-	select first id@'abc'
-	select last id@'abc'
-
-
-Define Global timeout
-	timeout {timeout-secs} {sleep-granularity-millis}
-Examples :-
-	timeout 100 1000
-
-
-Execute javascript code from file in the browser
-	execjsfile {javascript file path}
-Examples :-
-	execjsfile 'file.js'
-
-
-Define Screen No-activity layers
-	layer {find-expr}
-Examples :-
-	layer id@"loader-icon"
-	layer id@"overlay-div"
-
-
-Select frame
-	tab main|0..N|{some-name}
-Examples :-
-	tab main
-	tab 0
-	tab 2
-	tab "my-frame"
-
-
-Transient Provider definition
-	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN}
-Examples :-
-	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
-	#tp prov1 var1,var2 id@'abc' text,attr@abc
-
-
-Open URL in window
-	goto {url}
-Examples :-
-	goto http://abc.com/testpage.html
-
-
-Value List
-	[{primtive-value},...,{primtive-value}]
-Examples :-
-	['abc', 'sss']
-	[123, 234]
-	[true, false]
-
-
-Import config properties file
-	config {file-path}
-Examples :-
-	config a/b/c/t1.props
-	config t2.props
-
-
-If block
-	? {find-expr}
-	{
-		code
-	}
-Examples :-
-	? xpath@"ddd"
-	{
-		exec @print("if")
-	}
-
-
-Single line comment or Block level comment
-	//... | /*...*/
-
-
-Define test mode
-	mode {normal|integration} {true|false}
-Examples :-
-	mode normal
-	mode integration
-
-
-Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
-
-
-Mobile Touch
-	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
-Examples :-
-	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
-	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
-
-
-Close window
-	close
-
-
-Mobile hide keypad
-	hidekeypad
-
-
-Mobile shake
-	shake
-
-
-Navigate Back/Previous
-	back
+	jsonread '{"a": "abc", "b": 1}'
+	jsonwrite '/path/to/file.json' $jsonObjectVar
+	jsonpath '{"a": "abc", "b": 1}' '$.a'
 
 
 Curl Plugin
-	plugin curl get|put|post|delete {url}
+	curl get|put|post|delete {url}
 	{
 		[
 			header=value
@@ -1201,21 +1232,14 @@ Curl Plugin
 		content-body
 	}
 Examples :-
-	plugin curl get http://abc.com
-	plugin curl post http://abc.com
+	curl get http://abc.com
+	curl post http://abc.com
 	{
 		[
 			Content-Type=application/xml
 		]
 		<abc>abc</abc>
 	}
-
-
-API Plugin
-	plugin api {test-name}@{optional test-case-file-name}
-Examples :-
-	plugin api api-name
-	plugin api api-name@test-case-file-path
 
 
 XML Plugin
@@ -1228,14 +1252,11 @@ Examples :-
 	xmlpath '<o><a>abc</a><b>1</b></o>' '/o/a'
 
 
-JSON Plugin
-	jsonread {json-text}
-	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
-	jsonpath {json-text} {json-path-string}
+API Plugin
+	api {test-name}@{optional test-case-file-name}
 Examples :-
-	jsonread '{"a": "abc", "b": 1}'
-	jsonwrite '/path/to/file.json' $jsonObjectVar
-	jsonpath '{"a": "abc", "b": 1}' '$.a'
+	api api-name
+	api api-name@test-case-file-path
 ```
 
 GATF Executor Configuration File

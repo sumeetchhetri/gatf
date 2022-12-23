@@ -844,6 +844,9 @@ public class Command {
                 } else if(tmp instanceof VarCommand) {
                 	((VarCommand)tmp).reconcile();
                 }
+            	if(tmp.children.size()>0 && !(tmp.children.get(tmp.children.size()-1) instanceof EndCommand)) {
+            		throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " does not have a closing block"));
+            	}
                 isValid = true;
             } else if(tmp instanceof ValueListCommand) {
                 get(tmp, iter, state);
@@ -5365,6 +5368,7 @@ public class Command {
         		"\trandomize id@'ele1' alphanumeric 12",
         		"\trandomize id@'ele1' alpha 8 3 (first-name middle-name last-name)",
         		"\trandomize id@'ele1' numeric 5",
+        		"\trandomize id@'ele1' range 9999 99999",
         		"\trandomize id@'ele1' value 'abcd'",
             };
         }
@@ -7081,8 +7085,8 @@ public class Command {
 		}
 
         validateSel(new String[] {"-validate-sel", "data/test.sel", 
-        		"/path/to/project/gatf-config.xml", 
-        		"/path/to/project", "true"}, null, true);
+        		"/path/to/project//gatf-config.xml", 
+        		"/path/to/project/", "true"}, null, true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
