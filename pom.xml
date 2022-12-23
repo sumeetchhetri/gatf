@@ -32,7 +32,7 @@
 		<repository>
 			<id>soap-ws-repo</id>
 			<name>Soap WS Repository</name>
-			<url>https://maven.pkg.github.com/sumeetchhetri/soap-ws</url>
+			<url>https://sumeetchhetri-maven:&#103;hp_0b99TU2RP0dl1AmxPEBjzSm2eHBNGf20E54X@maven.pkg.github.com/sumeetchhetri-maven/soap-ws</url>
 			<releases>
 				<enabled>true</enabled>
 				<updatePolicy>never</updatePolicy>
