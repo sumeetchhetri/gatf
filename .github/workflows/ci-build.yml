@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - master
+env:
+  GITHUB_USER_REF: "sumeetchhetri-maven"
+  GITHUB_TOKEN_REF: ${{ secrets.GH_PUBLIC_MAVEN_PAT }}
 
 jobs:
   push:
@@ -11,12 +14,13 @@ jobs:
     #if: contains(github.event.head_commit.message, '[docker_push]') && github.event_name == 'push'
     steps:
     - uses: actions/checkout@v2
-    
-    - name: maven-settings
-      uses: s4u/maven-settings-action@v2
+    - name: Set up JDK 11.0.2
+      uses: actions/setup-java@v1
       with:
-        servers: '[{"id": "github", "username": "sumeetchhetri-maven", "password": "${GH_PUBLIC_MAVEN_PAT}"}]'
-        githubServer: false
+        java-version: 11.0
+        server-id: github # value of repository/id field of the pom.xml
+        server-username: GITHUB_USER_REF  # env variable name for username
+        server-password: GITHUB_TOKEN_REF # env variable name for GitHub Personal Access Token
 
     - name: Build gatf jar
       run: |
