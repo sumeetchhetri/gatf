@@ -30,8 +30,16 @@
 	
 	<repositories>
 		<repository>
-			<id>jitpack.io</id>
-			<url>https://jitpack.io</url>
+			<id>soap-ws-repo</id>
+			<name>Soap WS Repository</name>
+			<url>https://maven.pkg.github.com/sumeetchhetri/soap-ws</url>
+			<releases>
+				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
+			</releases>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
 		</repository>
 	</repositories>
 
@@ -94,7 +102,7 @@
 
 		<!-- WSDL/SOAP Builder Refer: https://github.com/reficio/soap-ws -->
 		<dependency>
-			<groupId>com.github.sumeetchhetri.soap-ws</groupId>
+			<groupId>com.github.sumeetchhetri</groupId>
 			<artifactId>soap-builder</artifactId>
 			<version>1.0.0-SNAPSHOT</version>
 			<exclusions>
