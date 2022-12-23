@@ -11,6 +11,12 @@ jobs:
     #if: contains(github.event.head_commit.message, '[docker_push]') && github.event_name == 'push'
     steps:
     - uses: actions/checkout@v2
+    
+    - name: maven-settings
+      uses: s4u/maven-settings-action@v2
+      with:
+        servers: '[{"id": "github", "username": "dummy", "password": "${GH_PUBLIC_MAVEN_PAT}"}]'
+        githubServer: false
 
     - name: Build gatf jar
       run: |
