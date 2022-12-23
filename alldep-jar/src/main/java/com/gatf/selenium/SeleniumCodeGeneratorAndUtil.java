@@ -69,6 +69,9 @@ public class SeleniumCodeGeneratorAndUtil {
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
+		if(cmd.children.size()>0 && cmd.children.get(0) instanceof Command.BrowserCommand) {
+			throw new RuntimeException("open should be the first execution command in a test script");
+		}
 		String sourceCode =  cmd.javacode();
 		
 		String gatfJarPath = "gatf-alldep-jar.jar";

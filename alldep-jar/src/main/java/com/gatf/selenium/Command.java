@@ -665,14 +665,16 @@ public class Command {
             comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("alias ")) {
             comd = new SubTestCommand(cmd.substring(6).trim(), cmdDetails, state, true);
-        } else if (cmd.toLowerCase().startsWith("@subtest ")) {
-            comd = new ExecSubTestCommand(cmd.substring(9).trim(), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("@")) {
+        } else if (cmd.toLowerCase().startsWith("@call ")) {
+            comd = new ExecSubTestCommand(cmd.substring(6).trim(), cmdDetails, state);
+        } /*else if (cmd.toLowerCase().startsWith("@")) {
             comd = new ExecSubTestCommand(cmd.substring(1).trim(), cmdDetails, state, true);
-        } else if (cmd.toLowerCase().startsWith("require ")) {
+        }*/ else if (cmd.toLowerCase().startsWith("require ")) {
             comd = new RequireCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("import ")) {
             comd = new ImportCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("include ")) {
+            comd = new IncludeCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("config ")) {
             comd = new ConfigPropsCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("dynprops ")) {
@@ -877,7 +879,7 @@ public class Command {
                 parent.children.add(tmp);
                 return;
             } else if(tmp instanceof ImportCommand) {
-                String parentPath = state.basePath;
+            	String parentPath = state.basePath;
                 if(StringUtils.isNotBlank(o[3].toString())) {
                     parentPath = o[3].toString();
                 }
@@ -889,14 +891,45 @@ public class Command {
                     }
                 }
                 if(!f.exists()) {
-                    throwParseErrorS(o, new RuntimeException("Import script not found in any of the search paths"));
+                    throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
                 }
                 if(state.visitedFiles.contains(f.getAbsolutePath())) {
-                    throwParseErrorS(o, new RuntimeException("Possible import script recursion observed"));
+                    throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
+                }
+                Command imported = Command.read(f.getAbsolutePath());
+                for (Command cmd : imported.children) {
+					if(cmd instanceof SubTestCommand) {
+						parent.children.add(cmd);
+						SubTestCommand st = (SubTestCommand)cmd;
+						st.state = state;
+						st.fName = "__st__" + state.NUMBER_ST++;
+						if(!st.hasName) {
+					        st.name = "Subtest " + (state.NUMBER_ST - 1);
+						}
+						state.addSubtest((SubTestCommand)cmd);
+					}
+				}
+            } else if(tmp instanceof IncludeCommand) {
+                String parentPath = state.basePath;
+                if(StringUtils.isNotBlank(o[3].toString())) {
+                    parentPath = o[3].toString();
+                }
+                File f = new File(parentPath + File.separator + ((IncludeCommand)tmp).name);
+                if(!f.exists()) {
+                    f = new File(state.basePath + File.separator + ((IncludeCommand)tmp).name);
+                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((IncludeCommand)tmp).name);
+                    }
+                }
+                if(!f.exists()) {
+                    throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
+                }
+                if(state.visitedFiles.contains(f.getAbsolutePath())) {
+                    throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
                 }
                 List<String> commands = FileUtils.readLines(f, "UTF-8");
                 int cnt = 1;
-                String fnm = ((ImportCommand)tmp).name;
+                String fnm = ((IncludeCommand)tmp).name;
                 if(fnm.lastIndexOf("\\")!=-1) {
                     fnm = fnm.substring(0, fnm.lastIndexOf("\\")+1);
                 } else if(fnm.lastIndexOf("/")!=-1) {
@@ -1010,7 +1043,7 @@ public class Command {
             }
             prev = tmp;
             if(!isValid) {
-                throwParseErrorS(o, new RuntimeException("open should be the first execution command in a test script"));
+                //throwParseErrorS(o, new RuntimeException("open should be the first execution command in a test script"));
             }
         }
     }
@@ -1376,14 +1409,14 @@ public class Command {
         b.append("List<WebElement> ___ce___ = null;\n");
         int subtestcount = 0;
         for (Command c : children) {
-            if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand) || (c instanceof ConfigPropsCommand)) {
+            if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand) || (c instanceof ConfigPropsCommand) || (c instanceof SubTestCommand)) {
                 continue;
             }
             String cc = null;
-            if(c instanceof SubTestCommand) {
+            /*if(c instanceof SubTestCommand) {
                 cc = ((SubTestCommand)c).javacodesubtest(subtestcount>0);
                 subtestcount++;
-            } else if(c instanceof ExecSubTestCommand) {
+            } else*/ if(c instanceof ExecSubTestCommand) {
                 cc = ((ExecSubTestCommand)c).javacodesubtest(subtestcount>0);
                 subtestcount++;
             } else {
@@ -1409,7 +1442,7 @@ public class Command {
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
                 SubTestCommand st = (SubTestCommand)c;
-                b.append(st.javacodeint());
+                b.append(st.javacode());
             }
         }
         b.append("}\n");
@@ -1854,27 +1887,29 @@ public class Command {
     	SubTestCommand subt = null;
     	String sessionName;
         Integer sessionId = null;
-        boolean isAnAlias = false;
         Map<String, String> params = new HashMap<String, String>();
-    	ExecSubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAnAlias) {
+    	ExecSubTestCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            this.isAnAlias = isAnAlias;
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length==0) {
             	throwError(fileLineDetails, new RuntimeException("Please specify a subtest name to execute"));
             }
             name = unSantizedUnQuoted(parts[0].trim(), state);
-            if(isAnAlias) {
-	            for (Command c : state.allSubTests) {
-	            	SubTestCommand st = (SubTestCommand)c;
-					if(st.name.equals(name) && st.isAnAlias) {
-						subt = st;
-						break;
+            for (Command c : state.allSubTests) {
+            	SubTestCommand st = (SubTestCommand)c;
+				if(st.name.equals(name)) {
+					subt = st;
+					if(StringUtils.isBlank(sessionName)) {
+						sessionName = subt.sessionName;
 					}
-	            }
-	            if(subt==null) {
-	            	throwError(fileLineDetails, new RuntimeException("No alias with that name found - " + name));
-	            }
+					if(sessionId==null) {
+						sessionId = subt.sessionId;
+					}
+					break;
+				}
+            }
+            if(subt==null) {
+            	throwError(fileLineDetails, new RuntimeException("No alias/subtest with that name found - " + name));
             }
             String pstr = "";
             if(parts.length>1) {
@@ -1892,7 +1927,7 @@ public class Command {
             			}
             		}
             		if(!pvalid) {
-            			throwError(fileLineDetails, new RuntimeException("Invalid "+(isAnAlias?"alias":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+            			throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAnAlias?"alias":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
             		} else {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
@@ -1905,13 +1940,13 @@ public class Command {
     							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
     								params.put(pdet[0].trim(), pdet[1]);
     							} else {
-    								throwError(fileLineDetails, new RuntimeException("Invalid "+(isAnAlias?"alias":"subtest")+" parameter name"));
+    								throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAnAlias?"alias":"subtest")+" parameter name"));
     							}
     						}
     					}
             		}
             		counter++;
-            		if(counter<parts.length && !isAnAlias) {
+            		if(counter<parts.length && !subt.isAnAlias) {
             			if(parts[counter].trim().matches("@[0-9]+")) {
                             sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
                             if(sessionId<0) {
@@ -1921,7 +1956,7 @@ public class Command {
                             sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
                         }
             		}
-            	} else if(!isAnAlias) {
+            	} else if(!subt.isAnAlias) {
             		if(parts[1].trim().matches("@[0-9]+")) {
                         sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
                         if(sessionId<0) {
@@ -1932,8 +1967,8 @@ public class Command {
                     }
             	}
             }
-            if(!isAnAlias) {
-	            for (Command c : state.allSubTests) {
+            if(!subt.isAnAlias) {
+	            /*for (Command c : state.allSubTests) {
 	            	SubTestCommand st = (SubTestCommand)c;
 					if(st.name.equals(name) && !st.isAnAlias) {
 						Map<String, String> nparams = new HashMap<String, String>(st.params);
@@ -1949,8 +1984,8 @@ public class Command {
 					}
 				}
 	            if(subt==null) {
-	            	throwError(fileLineDetails, new RuntimeException("Subtest with name \""+name+"\" not found."));
-	            }
+	            	throwError(fileLineDetails, new RuntimeException("Subtest with name \""+name+"\" not found"));
+	            }*/
 	            state.addSubtest(this);
             }
         }
@@ -1959,7 +1994,7 @@ public class Command {
         }
         String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(!isAnAlias) {
+            if(!subt.isAnAlias) {
 	            if(state.modeExecType==2) {
 	                if(sessionName!=null) {
 	                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
@@ -1981,7 +2016,7 @@ public class Command {
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(!isAnAlias && state.modeExecType!=2) {
+            if(!subt.isAnAlias && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -1992,6 +2027,7 @@ public class Command {
         String sessionName;
         Integer sessionId = null;
         boolean isAnAlias = false;
+        boolean hasName = true;
         Map<String, String> params = new HashMap<String, String>();
         String fName = "__st__" + state.NUMBER_ST++;
         SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAnAlias) {
@@ -2002,6 +2038,7 @@ public class Command {
                 name = unSantizedUnQuoted(parts[0].trim(), state);
                 if(name.length()>0) {
                 } else {
+                	hasName = false;
                     name = "Subtest " + (state.NUMBER_ST - 1);
                 }
                 String pstr = "";
@@ -2061,6 +2098,7 @@ public class Command {
                 	}
                 }
             } else {
+            	hasName = false;
                 name = "Subtest " + (state.NUMBER_ST - 1);
             }
             state.addSubtest(this);
@@ -2080,9 +2118,9 @@ public class Command {
             return b.toString();
         }
         String javacode() {
-            return javacodesubtest(false);
+            return javacodeint();
         }
-        String javacodesubtest(boolean initvars) {
+        /*String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
             if(!isAnAlias) {
 	            if(state.modeExecType==2) {
@@ -2110,7 +2148,7 @@ public class Command {
                 b.append("}\n");
             }
             return b.toString();
-        }
+        }*/
         String javacodeint() {
             StringBuilder b = new StringBuilder();
             b.append("List<WebElement> " + fName + "(WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) {\n");
@@ -2474,6 +2512,34 @@ public class Command {
         }
     }
 
+    public static class IncludeCommand extends Command {
+        String name;
+        IncludeCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            name = state.unsanitize(cmd);
+            if(name.charAt(0)==name.charAt(name.length()-1)) {
+                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
+                    name = name.substring(1, name.length()-1);
+                }
+            }
+        }
+        String toCmd() {
+            return "include " + name;
+        }
+        String javacode() {
+            return "";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Include other seleasy scripts completely",
+				"\tinclude {script-path}",
+				"Examples :-",
+	    		"\tinclude a/b/c/t1.sel",
+	    		"\tinclude t2.sel"
+            };
+        }
+    }
+
     public static class ImportCommand extends Command {
         String name;
         ImportCommand(String cmd, Object[] cmdDetails, CommandState state) {
@@ -2493,7 +2559,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Import other seleasy scripts",
+				"Import only subtests/aliases from other seleasy scripts",
 				"\timport {script-path}",
 				"Examples :-",
 	    		"\timport a/b/c/t1.sel",
@@ -7085,8 +7151,8 @@ public class Command {
 		}
 
         validateSel(new String[] {"-validate-sel", "data/test.sel", 
-        		"/path/to/project//gatf-config.xml", 
-        		"/path/to/project/", "true"}, null, true);
+        		"/path/to/project/gatf-config.xml", 
+        		"/path/to/project", "true"}, null, true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");

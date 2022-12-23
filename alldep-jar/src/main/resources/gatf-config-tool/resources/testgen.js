@@ -746,7 +746,7 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 	if($('#req-txtarea').length>0)
 	{
 		content = $('#req-txtarea').val();
-		if(urild=="#93be7b20299b11e281c10800200c9a66_URL" && document.querySelector('.CodeMirror') && document.querySelector('.CodeMirror').CodeMirror.getValue()) {
+		if(urlid=="#93be7b20299b11e281c10800200c9a66_URL" && document.querySelector('.CodeMirror') && document.querySelector('.CodeMirror').CodeMirror.getValue()) {
 			content = document.querySelector('.CodeMirror').CodeMirror.getValue();
 		}
 	}
