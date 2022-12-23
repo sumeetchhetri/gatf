@@ -39,7 +39,7 @@ jobs:
     - name: maven-settings
       uses: s4u/maven-settings-action@v2
       with:
-        servers: '[{"id": "github", "username": "dummy", "password": "${GH_PUBLIC_MAVEN_PAT}"}]'
+        servers: '[{"id": "github", "username": "sumeetchhetri-maven", "password": "${GH_PUBLIC_MAVEN_PAT}"}]'
         githubServer: false
 
     # If this run was triggered by a pull request event, then checkout
