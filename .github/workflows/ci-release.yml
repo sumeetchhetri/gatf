@@ -16,12 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
-    
-    - name: maven-settings
-      uses: s4u/maven-settings-action@v2
-      with:
-        servers: '[{"id": "github", "username": "sumeetchhetri-maven", "password": "${GH_PUBLIC_MAVEN_PAT}"}]'
-        githubServer: false
 
     - name: Build gatf jar
       run: |
