@@ -5,7 +5,7 @@ on:
     branches:
       - master
 env:
-  GITHUB_USER_REF: "sumeetchhetri-maven"
+  GITHUB_USER_REF: ${{ secrets.GH_PUBLIC_MAVEN_USER }}
   GITHUB_TOKEN_REF: ${{ secrets.GH_PUBLIC_MAVEN_PAT }}
 
 jobs:
