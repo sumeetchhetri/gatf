@@ -836,9 +836,11 @@ public class Command {
                 		if(tmp instanceof VarCommand) {
                 			parent.children.addAll(tmp.children);
                 			tmp.children.clear();
+                			return;
                 		} else if(tmp instanceof TransientProviderCommand && ((TransientProviderCommand)tmp).isLazy) {
                 			parent.children.addAll(tmp.children);
                 			tmp.children.clear();
+                			return;
                 		}
                 	}
                 } else if(tmp instanceof PluginCommand) {
