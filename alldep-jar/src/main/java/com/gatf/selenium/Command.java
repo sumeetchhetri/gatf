@@ -1318,6 +1318,9 @@ public class Command {
             } else if(c instanceof SubTestCommand) {
             }
         }
+        if(bn.size()==0) {
+        	throw new RuntimeException("No open command found...");
+        }
         for (Object[] st : state.subtestDetails)
         {
         	String stsessionName = StringUtils.isNotBlank((String)st[1])?(String)st[1]:null;
@@ -7150,7 +7153,7 @@ public class Command {
     		System.out.println("\n");
 		}
 
-        validateSel(new String[] {"-validate-sel", "data/test.sel", 
+    	validateSel(new String[] {"-validate-sel", "data/test.sel", 
         		"/path/to/project/gatf-config.xml", 
         		"/path/to/project", "true"}, null, true);
 
