@@ -770,15 +770,15 @@ public abstract class SeleniumTest {
 				} else if(v1.toLowerCase().equals("range")) {
 					long min = 0;
 					long max = 99999;
-					if(StringUtils.isNotBlank(v1)) {
+					if(StringUtils.isNotBlank(v2)) {
 						try {
-							min = Long.parseLong(v1);
+							min = Long.parseLong(v2);
 						} catch (Exception e) {
 						}
 					}
-					if(StringUtils.isNotBlank(v2)) {
+					if(StringUtils.isNotBlank(v3)) {
 						try {
-							max = Long.parseLong(v2);
+							max = Long.parseLong(v3);
 						} catch (Exception e) {
 						}
 					}
@@ -2151,6 +2151,18 @@ public abstract class SeleniumTest {
 		public SubTestException(String stname, Throwable cause) {
 			super(cause.getMessage());
 			this.stname = stname;
+		}
+	}
+	
+	protected void initChrome(ChromeDriver driver) {
+		if(driver instanceof ChromeDriver) {
+			try {
+				Map<String, Object> domqaArgs = new HashMap<>();
+				domqaArgs.put("cacheDisabled", true);
+				driver.executeCdpCommand("Network.setCacheDisabled", domqaArgs);
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
 		}
 	}
 }

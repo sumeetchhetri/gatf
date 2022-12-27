@@ -2397,7 +2397,7 @@ public class Command {
             b.append(cond.javacodeonly(children));
             b.append("\nif("+cond.condition()+")");
             b.append("\n{");
-            b.append("\nWebElement ele = " +state.currvarname() + ".get(0);");
+            b.append("\nWebElement ele = ___ce___.get(0);");
             b.append("elementScreenshotAsFile(get___d___(), ele, "+filepath+");\n");
             b.append("\n}");
             return b.toString();
@@ -3617,7 +3617,7 @@ public class Command {
                     }
                 	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
                 }
-                b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
+                b.append("org.openqa.selenium.chrome.ChromeDriver ___cdr____ = new org.openqa.selenium.chrome.ChromeDriver(___dc___);\nset___d___(___cdr____);\ninitChrome(___cdr____);\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
