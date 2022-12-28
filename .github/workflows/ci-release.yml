@@ -118,6 +118,7 @@ jobs:
         docker build -f Dockerfile -t $JAR_IMAGE:$VERSION .
         docker create -ti --name gatf $JAR_IMAGE:$VERSION bash
         docker cp gatf:/gatf-alldep.jar /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
+        cp run_gatf /tmp/
 
     - name: Create Release
       uses: actions/create-release@latest
@@ -139,3 +140,13 @@ jobs:
         asset_path: /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
         asset_name: gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
         asset_content_type: application/java-archive
+
+    - name: upload script file
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: /tmp/run_gatf.sh
+        asset_name: run_gatf.sh
+        asset_content_type: application/x-shellscript

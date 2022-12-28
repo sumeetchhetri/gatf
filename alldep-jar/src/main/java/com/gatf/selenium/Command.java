@@ -627,6 +627,8 @@ public class Command {
             comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("wopensave ")) {
             comd = new WindowOpenSaveInterceptJsCommand(cmd.substring(10).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("netapix ")) {
+            comd = new NetworkAPIInterceptCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
@@ -898,19 +900,22 @@ public class Command {
                 if(state.visitedFiles.contains(f.getAbsolutePath())) {
                     throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
                 }
-                Command imported = Command.read(f.getAbsolutePath());
+                String currBasePath = state.basePath;
+                state.basePath = f.getParent();
+                Command imported = Command.read(f.getAbsolutePath(), state);
                 for (Command cmd : imported.children) {
 					if(cmd instanceof SubTestCommand) {
 						parent.children.add(cmd);
-						SubTestCommand st = (SubTestCommand)cmd;
-						st.state = state;
-						st.fName = "__st__" + state.NUMBER_ST++;
-						if(!st.hasName) {
-					        st.name = "Subtest " + (state.NUMBER_ST - 1);
-						}
-						state.addSubtest((SubTestCommand)cmd);
+						//SubTestCommand st = (SubTestCommand)cmd;
+						//st.state = state;
+						//st.fName = "__st__" + state.NUMBER_ST++;
+						//if(!st.hasName) {
+					    //    st.name = "Subtest " + (state.NUMBER_ST - 1);
+						//}
+						//state.addSubtest((SubTestCommand)cmd);
 					}
 				}
+                state.basePath = currBasePath;
             } else if(tmp instanceof IncludeCommand) {
                 String parentPath = state.basePath;
                 if(StringUtils.isNotBlank(o[3].toString())) {
@@ -1097,6 +1102,14 @@ public class Command {
         });
 
         return tcmd;
+    }
+
+    static Command read(String filename, CommandState state) throws Exception {
+        List<String> commands = FileUtils.readLines(new File(filename), "UTF-8");
+        state.basePath = new File(filename).getParent();
+        state.visitedFiles.add(new File(filename).getAbsolutePath());
+        Command cmd = Command.getAll(commands, new File(filename), state);
+        return cmd;
     }
 
     static Command read(String filename) throws Exception {
@@ -3588,6 +3601,7 @@ public class Command {
             	rUrl = "http://127.0.0.1:4723/wd/hub";
             }
             
+            b.append("boolean logconsole = false, interceptApiCall = false;\n");
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             if(config.getName().equalsIgnoreCase("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
@@ -3617,7 +3631,7 @@ public class Command {
                     }
                 	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
                 }
-                b.append("org.openqa.selenium.chrome.ChromeDriver ___cdr____ = new org.openqa.selenium.chrome.ChromeDriver(___dc___);\nset___d___(___cdr____);\ninitChrome(___cdr____);\n");
+                b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             } else if(config.getName().equalsIgnoreCase("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
@@ -3815,6 +3829,15 @@ public class Command {
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
             }
+            for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+            {
+            	if(e.getKey().equalsIgnoreCase("logconsole") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\nlogconsole = true;\n");
+            	} else if(e.getKey().equalsIgnoreCase("interceptApiCall") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\ninterceptApiCall = true;\n");
+                }
+            }
+            b.append("initBrowser(get___d___(), logconsole, interceptApiCall);\n");
             
             boolean isDocker = "true".equalsIgnoreCase(System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER"));
             if(isDocker) {
@@ -5316,7 +5339,7 @@ public class Command {
             }
         }
         String toCmd() {
-            return "wopensave \"" + (start?"on":"off") + "\"" + (start?"":" \"" +name+ "\"") + (!start && extractText?" text":"");
+            return "wopensave " + (start?"on":"off") + (start?"":" \"" +name+ "\"") + (!start && extractText?" text":"");
         }
         String javacode() {
         	if(start) return "\nwindowOpenSaveJsPre();\n";
@@ -5329,6 +5352,56 @@ public class Command {
         		"Examples :-",
         		"\twopensave on",
         		"\twopensave off '/path/to/file.txt' text",
+            };
+        }
+    }
+    
+    public static class NetworkAPIInterceptCommand extends Command {
+    	boolean start = true;
+    	String apiMethod = "GET";
+    	String apiUrl = null;
+    	String resSel = null;
+    	String resSubSel = null;
+    	NetworkAPIInterceptCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = cmd.trim().split("[\t ]+");
+            String mode = unSantizedUnQuoted(parts[0].trim(), state);
+            if(StringUtils.isBlank(mode) || !mode.toLowerCase().matches("on|off")) {
+            	throwParseError(null, new RuntimeException("window.open save intercept command needs to be enabled/disabled, valid values on|off"));
+            }
+            start = !mode.equalsIgnoreCase("off");
+            if(mode.equalsIgnoreCase("on") && parts.length<2) {
+            	throwParseError(null, new RuntimeException("netapix start command needs the api methdod and url parameters"));
+            }
+            if(mode.equalsIgnoreCase("on")) {
+            	apiMethod = unSantizedUnQuoted(parts[1].trim(), state);
+            	apiUrl = unSantizedUnQuoted(parts[2].trim(), state);
+            }
+            if(mode.equalsIgnoreCase("off") && parts.length<2) {
+            	throwParseError(null, new RuntimeException("netapix stop command needs the response selector (status,header,json)and response sub selector (header-name, json path for body)"));
+            }
+            if(mode.equalsIgnoreCase("off")) {
+            	resSel = unSantizedUnQuoted(parts[1].trim(), state);
+            	resSubSel = unSantizedUnQuoted(parts[2].trim(), state);
+            }
+        }
+        String toCmd() {
+            return "netapix " + (start?"on":"off") + (start?"":" \"" +apiMethod+ "\"") + (start?"":" \"" +apiUrl+ "\"") + (!start?"":" \"" +resSel+ "\"") + (!start?"":" \"" +resSubSel+ "\"");
+        }
+        String javacode() {
+        	if(start) return "\nnetworkApiInspectPre(evaluate(\""+esc(apiMethod)+"\"), evaluate(\""+esc(apiUrl)+"\"));\n";
+        	else return "\nnetworkApiInspectPost(evaluate(\""+esc(resSel)+"\"), evaluate(\""+esc(resSubSel)+"\"));\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Save URL passed to window.open",
+        		"\tnetapix on {api-method} {api-url}",
+        		"\tnetapix off {status|header|json} {header-name|json-path}?",
+        		"Examples :-",
+        		"\tnetapix on GET http://abc.com/api/person",
+        		"\tnetapix off status --> creates context parameter by name ${apiStatus}=200",
+        		"\tnetapix off header token --> creates context parameter by name ${apiHeader}=some-token",
+        		"\tnetapix off json $.store.book[0].title --> creates context parameter by name ${apiJson}=some-value",
             };
         }
     }

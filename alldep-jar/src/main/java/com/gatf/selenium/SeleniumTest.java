@@ -41,6 +41,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -73,6 +74,9 @@ import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.openqa.selenium.devtools.DevTools;
+import org.openqa.selenium.devtools.v107.log.Log;
+import org.openqa.selenium.devtools.v107.network.Network;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -95,6 +99,7 @@ import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.google.common.io.Resources;
+import com.jayway.jsonpath.JsonPath;
 
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
@@ -147,6 +152,8 @@ public abstract class SeleniumTest {
 	protected void setSleepGranularity(long timeoutSleepGranularity) {
 		this.timeoutSleepGranularity = timeoutSleepGranularity; 
 	}
+	
+	private static final Map<String, Boolean> BROWSER_FEATURES = new ConcurrentHashMap<String, Boolean>();
 
 	protected void nextSession() {
 		if(sessions.size()>sessionNum+1) {
@@ -456,6 +463,7 @@ public abstract class SeleniumTest {
 		if(getSession().___d___.size()==0)return null;
 		return getSession().___d___.get(getSession().__wpos__);
 	}
+
 	
 	private static final Map<Long, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
 
@@ -740,6 +748,27 @@ public abstract class SeleniumTest {
 		if ((le.get(0).getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
 				|| (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
 			int count = 10, totalcount = 1;
+			
+			if(v1.toLowerCase().equals("range")) {
+				long min = 0;
+				long max = 99999;
+				if(StringUtils.isNotBlank(v2)) {
+					try {
+						min = Long.parseLong(v2);
+					} catch (Exception e) {
+					}
+				}
+				if(StringUtils.isNotBlank(v3)) {
+					try {
+						max = Long.parseLong(v3);
+					} catch (Exception e) {
+					}
+				}
+				long num = (long)(min + (Math.random() * (max - min)));
+				le.get(0).sendKeys(num+"");
+				return;
+			}
+			
 			if(StringUtils.isNotBlank(v3)) {
 				try {
 					totalcount = Integer.parseInt(v3);
@@ -767,23 +796,6 @@ public abstract class SeleniumTest {
 						fv = "1";
 					}
 					vals.add(fv);
-				} else if(v1.toLowerCase().equals("range")) {
-					long min = 0;
-					long max = 99999;
-					if(StringUtils.isNotBlank(v2)) {
-						try {
-							min = Long.parseLong(v2);
-						} catch (Exception e) {
-						}
-					}
-					if(StringUtils.isNotBlank(v3)) {
-						try {
-							max = Long.parseLong(v3);
-						} catch (Exception e) {
-						}
-					}
-					long num = (long)(min + (Math.random() * (max - min)));
-					vals.add(num+"");
 				} else if(v1.toLowerCase().equals("value") && v2!=null) {
 					vals.add(v2);
 				}
@@ -1341,6 +1353,14 @@ public abstract class SeleniumTest {
 		OkHttpClient client = null;
 		try {
 			String url = (String)((JavascriptExecutor)get___d___()).executeScript("return window.__wosjp__[0]");
+			int counter = 0;
+			while(StringUtils.isBlank(url) && counter++<60) {
+				System.out.println("Waiting for download URL... attempt " + counter);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+				}
+			}
 			if(StringUtils.isBlank(url)) {
 				throw new RuntimeException("Invalid window.open url found");
 			}
@@ -2154,14 +2174,125 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void initChrome(ChromeDriver driver) {
+	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
 		if(driver instanceof ChromeDriver) {
-			try {
+			ChromeDriver cdr = ((ChromeDriver)driver);
+			/*try {
 				Map<String, Object> domqaArgs = new HashMap<>();
 				domqaArgs.put("cacheDisabled", true);
-				driver.executeCdpCommand("Network.setCacheDisabled", domqaArgs);
+				cdr.executeCdpCommand("Network.setCacheDisabled", domqaArgs);
 			} catch (Exception e) {
 				e.printStackTrace();
+			}*/
+
+			DevTools devTools = cdr.getDevTools();
+			devTools.createSession();
+			Network.setCacheDisabled(true);
+
+			String driverId = String.valueOf(VM.current().addressOf(driver));
+			if(!BROWSER_FEATURES.containsKey(driverId+".SECURITY")) {
+				org.openqa.selenium.devtools.v107.security.Security.setIgnoreCertificateErrors(true);
+				BROWSER_FEATURES.put(driverId+".SECURITY", true);
+			}
+
+			if(interceptApiCall) {
+				if(!BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES")) {
+					BROWSER_FEATURES.put(driverId+".NETWORK_RES", true);
+				}
+				
+				devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
+				devTools.addListener(Network.requestWillBeSent(), requestSent -> {
+					System.out.println(requestSent.getRequestId().toString());
+					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) && 
+							NETWORK_INSPECTION.get(driverId)[0].toString().equalsIgnoreCase(requestSent.getRequest().getMethod()) &&
+							NETWORK_INSPECTION.get(driverId)[1].toString().equalsIgnoreCase(requestSent.getRequest().getUrl())) {
+						NETWORK_INSPECTION.get(driverId)[2] = requestSent.getRequestId().toString();
+					}
+					/*System.out.println("Request URL => " + requestSent.getRequest().getUrl());
+					System.out.println("Request Method => " + requestSent.getRequest().getMethod());
+					System.out.println("Request Headers => " + requestSent.getRequest().getHeaders().toString());
+					System.out.println("------------------------------------------------------");*/
+				});
+				devTools.addListener(Network.responseReceived(), response -> {
+					System.out.println(response.getRequestId().toString());
+					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) &&
+							response.getRequestId().toString().equals(NETWORK_INSPECTION.get(driverId)[2])) {
+						NETWORK_INSPECTION.get(driverId)[3] = new Object[] {response.getResponse().getStatus(), 
+								response.getResponse().getHeaders(), response.getResponse().getMimeType().toString(), 
+								devTools.send(Network.getResponseBody(response.getRequestId())).getBody()};
+					}
+					/*System.out.println("Response Url => " + response.getResponse().getUrl());
+					System.out.println("Response Status => " + response.getResponse().getStatus());
+					System.out.println("Response Headers => " + response.getResponse().getHeaders().toString());
+					System.out.println("Response MIME Type => " + response.getResponse().getMimeType().toString());
+					System.out.println("------------------------------------------------------");*/
+				});
+			}
+
+			if(logconsole) {
+				devTools.send(Log.enable());
+				devTools.addListener(Log.entryAdded(), logEntry -> {
+					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
+				});
+			}
+		}
+	}
+
+	private static final Map<String, Object[]> NETWORK_INSPECTION = new ConcurrentHashMap<>();
+	
+	protected void networkApiInspectPre(String method, String url) {
+		String driverId = String.valueOf(VM.current().addressOf(get___d___()));
+		if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && !NETWORK_INSPECTION.containsKey(driverId)) {
+			NETWORK_INSPECTION.put(driverId, new Object[] {method, url, null, null});
+		} else {
+			if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES")) {
+				throw new RuntimeException("Only one inspection allowed at a time, no nested or simultaneous interceptions allowed.");
+			} else {
+				throw new RuntimeException("Network inspection should be enabled by passing interceptApiCall=true in the capabilities for the driver configuration");
+			}
+		}
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected void networkApiInspectPost(String v1, String v2) {
+		String driverId = String.valueOf(VM.current().addressOf(get___d___()));
+		if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId)) {
+			int counter = 0;
+			while(NETWORK_INSPECTION.get(driverId)[3]==null && counter++<60) {
+				System.out.println("Waiting for network API response for ["+NETWORK_INSPECTION.get(driverId)[0].toString() 
+						+  "->" + NETWORK_INSPECTION.get(driverId)[1].toString() + "]... attempt " + counter);
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+				}
+			}
+			if(NETWORK_INSPECTION.get(driverId)[3]==null) {
+				throw new RuntimeException("No valid API response detected for ["+NETWORK_INSPECTION.get(driverId)[0].toString() 
+						+  "->" + NETWORK_INSPECTION.get(driverId)[1].toString() + "]");
+			}
+			if(NETWORK_INSPECTION.get(driverId)[3]!=null) {
+				Object[] res = (Object[])NETWORK_INSPECTION.get(driverId)[3];
+				int status = (Integer)res[0];
+				Map<String, Object> headers = (Map<String, Object>)res[1];
+				String mimeType = (String)res[2];
+				String body = (String)res[3];
+				switch (v1) {
+					case "status":
+						___cxt___add_param__("apiStatus", status);
+						break;
+					case "header":
+						if(v2!=null && headers.containsKey(v2)) {
+							___cxt___add_param__("apiHeader", headers.get(v2).toString());
+						}
+						break;
+					case "json":
+						if(v2!=null && mimeType!=null && mimeType.toLowerCase().startsWith("application/json")) {
+							___cxt___add_param__("apiJson", JsonPath.read(body, v2));
+						}
+						break;
+					default:
+						break;
+				}
 			}
 		}
 	}
