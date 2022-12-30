@@ -63,7 +63,6 @@ import org.apache.pdfbox.text.PDFTextStripper;
 import org.openjdk.jol.vm.VM;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Pdf;
 import org.openqa.selenium.Point;
@@ -743,87 +742,105 @@ public abstract class SeleniumTest {
 			this.logs.put("gatf", new SerializableLogEntries(entries));
 		}
 	}
+	
+	protected void sendKeys(WebElement le, String type, String qualifier, String tvalue) {
+		sendKeys(type, qualifier, get___d___(), le, tvalue);
+	}
+	
+	protected static String randomize(String tvalue) {
+		String[] parts = tvalue.split("\\s+");
+		String v1 = parts[0];
+		String v2 = parts.length>1?parts[1]:null;
+		String v3 = parts.length>2?parts[2]:null;
+		int count = 10, totalcount = 1;
+		
+		if(v1.toLowerCase().equals("range")) {
+			long min = 0;
+			long max = 99999;
+			if(StringUtils.isNotBlank(v2)) {
+				try {
+					min = Long.parseLong(v2);
+				} catch (Exception e) {
+				}
+			}
+			if(StringUtils.isNotBlank(v3)) {
+				try {
+					max = Long.parseLong(v3);
+				} catch (Exception e) {
+				}
+			}
+			long num = (long)(min + (Math.random() * (max - min)));
+			return num+"";
+		}
+		
+		if(StringUtils.isNotBlank(v3)) {
+			try {
+				totalcount = Integer.parseInt(v3);
+			} catch (Exception e) {
+			}
+		}
+		if(v1.toLowerCase().equals("alpha") || v1.toLowerCase().equals("alphanumeric") || v1.toLowerCase().equals("numeric")) {
+			if(StringUtils.isNotBlank(v2)) {
+				try {
+					count = Integer.parseInt(v2);
+				} catch (Exception e) {
+				}
+			}
+		}
+		List<String> vals = new ArrayList<>();
+		for(int i=0;i<totalcount;i++) {
+			if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
+				vals.add(RandomStringUtils.randomAlphabetic(count));
+			} else if(v1.toLowerCase().equals("alphanumeric")) {
+				vals.add(RandomStringUtils.randomAlphanumeric(count));
+			} else if(v1.toLowerCase().equals("numeric")) {
+				String fv = RandomStringUtils.randomNumeric(count);
+				long v = Long.parseLong(fv);
+				if(v==0) {
+					fv = "1";
+				}
+				vals.add(fv);
+			} else if(v1.toLowerCase().equals("value") && v2!=null) {
+				vals.add(v2);
+			}
+		}
+		return StringUtils.join(vals, " ");
+	}
 
-	protected static void randomize(List<WebElement> le, String v1, String v2, String v3) {
-		if ((le.get(0).getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
-				|| (le.get(0).getTagName().toLowerCase().matches("textarea"))) {
-			int count = 10, totalcount = 1;
-			
-			if(v1.toLowerCase().equals("range")) {
+	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue) {
+		if(type.equalsIgnoreCase("randomize")) {
+			if ((le.getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
+					|| (le.getTagName().toLowerCase().matches("textarea"))) {
+				String randomVal = randomize(tvalue);
+				le.sendKeys(randomVal);
+				jsEvent(wd, le, qualifier);
+			} /*else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
 				long min = 0;
 				long max = 99999;
-				if(StringUtils.isNotBlank(v2)) {
+				if(StringUtils.isNotBlank(v1)) {
 					try {
-						min = Long.parseLong(v2);
+						min = Long.parseLong(v1);
 					} catch (Exception e) {
 					}
 				}
-				if(StringUtils.isNotBlank(v3)) {
+				if(StringUtils.isNotBlank(v2)) {
 					try {
-						max = Long.parseLong(v3);
+						max = Long.parseLong(v2);
 					} catch (Exception e) {
 					}
 				}
 				long num = (long)(min + (Math.random() * (max - min)));
 				le.get(0).sendKeys(num+"");
-				return;
+			}*/ else if (le.getTagName().toLowerCase().matches("select")) {
+				randomizeSelect(le);
+			} else if (le.getTagName().toLowerCase().matches("input") && le.getAttribute("type").toLowerCase().matches("checkbox")) {
+				le.click();
+			} else if (le.getTagName().toLowerCase().matches("input") && le.getAttribute("type").toLowerCase().matches("radio")) {
+				le.click();
 			}
-			
-			if(StringUtils.isNotBlank(v3)) {
-				try {
-					totalcount = Integer.parseInt(v3);
-				} catch (Exception e) {
-				}
-			}
-			if(v1.toLowerCase().equals("alpha") || v1.toLowerCase().equals("alphanumeric") || v1.toLowerCase().equals("numeric")) {
-				if(StringUtils.isNotBlank(v2)) {
-					try {
-						count = Integer.parseInt(v2);
-					} catch (Exception e) {
-					}
-				}
-			}
-			List<String> vals = new ArrayList<>();
-			for(int i=0;i<totalcount;i++) {
-				if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
-					vals.add(RandomStringUtils.randomAlphabetic(count));
-				} else if(v1.toLowerCase().equals("alphanumeric")) {
-					vals.add(RandomStringUtils.randomAlphanumeric(count));
-				} else if(v1.toLowerCase().equals("numeric")) {
-					String fv = RandomStringUtils.randomNumeric(count);
-					long v = Long.parseLong(fv);
-					if(v==0) {
-						fv = "1";
-					}
-					vals.add(fv);
-				} else if(v1.toLowerCase().equals("value") && v2!=null) {
-					vals.add(v2);
-				}
-			}
-			le.get(0).sendKeys(StringUtils.join(vals, " "));
-		} /*else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
-			long min = 0;
-			long max = 99999;
-			if(StringUtils.isNotBlank(v1)) {
-				try {
-					min = Long.parseLong(v1);
-				} catch (Exception e) {
-				}
-			}
-			if(StringUtils.isNotBlank(v2)) {
-				try {
-					max = Long.parseLong(v2);
-				} catch (Exception e) {
-				}
-			}
-			long num = (long)(min + (Math.random() * (max - min)));
-			le.get(0).sendKeys(num+"");
-		}*/ else if (le.get(0).getTagName().toLowerCase().matches("select")) {
-			randomizeSelect(le);
-		} else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("checkbox")) {
-			le.get(0).click();
-		} else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("radio")) {
-			le.get(0).click();
+		} else {
+			le.sendKeys(tvalue);
+			jsEvent(wd, le, qualifier);
 		}
 	}
 
@@ -1050,10 +1067,10 @@ public abstract class SeleniumTest {
         ((AppiumDriver)get___d___()).perform(Arrays.asList(tap));
     }
 
-	protected static void randomizeSelect(List<WebElement> le) {
+	protected static void randomizeSelect(WebElement le) {
 		try
 		{
-			Select s = new Select(le.get(0));
+			Select s = new Select(le);
 			if(s.getOptions().size()>0) {
 				List<Integer> li = new ArrayList<Integer>();
 				for (WebElement o : s.getOptions())
@@ -1439,7 +1456,7 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	private void elementAction(List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
+	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(action.equalsIgnoreCase("click")) {
 			for(final WebElement we: ret) {
 				we.click();
@@ -1460,7 +1477,7 @@ public abstract class SeleniumTest {
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
 				we.clear();
-				jsChange(we);
+				jsChange(wd, we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
@@ -1468,24 +1485,29 @@ public abstract class SeleniumTest {
 				we.submit();
 				break;
 			}
-		} else if(action.equalsIgnoreCase("type") || action.equalsIgnoreCase("sendkeys")) {
+		} else if(action.toLowerCase().matches(Command.typeExStr)) {
+			Matcher m = Command.typeEx.matcher(action.toLowerCase());
+        	m.matches();
+        	String type = m.group(1);
+        	String qualifier = m.group(2);
 			for(final WebElement we: ret) {
-				System.out.println("Type => " + tvalue);
-				we.sendKeys(tvalue);
-				jsChange(we);
+				System.out.println(type + " => " + tvalue);
+				sendKeys(type, qualifier, wd, we, tvalue);
+				//we.sendKeys(tvalue);
+				//jsEvent(wd, we, qualifier);
 				break;
 			}
-		} else if(action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb")) {
+		} /*else if(action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb")) {
 			for(final WebElement we: ret) {
 				System.out.println("Type => " + tvalue);
 				we.sendKeys(tvalue);
-				//jsChange(we);
+				//jsChange(wd, we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("randomize") || action.equalsIgnoreCase("randomizenb")) {
 			String[] parts = tvalue.split("\\s+");
-			randomize(ret, parts[0], parts.length>1?parts[1]:null, parts.length>2?parts[2]:null);
-		} else if(action.equalsIgnoreCase("upload")) {
+			sendKeys("randomize", qualifier, wd, ret, parts[0], parts.length>1?parts[1]:null, parts.length>2?parts[2]:null);
+		}*/ else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
 			Select s = new Select(ret.get(0));
@@ -1500,19 +1522,19 @@ public abstract class SeleniumTest {
             } else if(selSubsel.equalsIgnoreCase("last")) {
             	s.selectByIndex(s.getOptions().size()-1);
             }
-		} else if(action.equalsIgnoreCase("chord")) {
+		} /*else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				jsChange(we);
+				jsChange(wd, we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("chordnb")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
-				//jsChange(we);
+				//jsChange(wd, we);
 				break;
 			}
-		} else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
+		}*/ else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
 			for(final WebElement we: ret) {
 				Actions ac = new Actions(get___d___());
 				ac.moveToElement(we).doubleClick().perform();
@@ -1521,21 +1543,51 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void jsChange(WebElement we) {
-		((JavascriptExecutor)get___d___()).executeScript("arguments[0].dispatchEvent(new Event('change'));", we);
+	protected static void jsEvent(WebDriver wd, WebElement we, String qualifier) {
+		if(StringUtils.isBlank(qualifier)) return;
+		switch (qualifier) {
+			case "bl":
+				jsBlur(wd, we);
+				break;
+			case "ch":
+				jsChange(wd, we);
+				break;
+			case "fo":
+				we.click();
+				jsFocus(wd, we);
+				break;
+			case "bk":
+				try {
+					we.click();
+					java.awt.Robot rbt = new java.awt.Robot();
+					rbt.keyPress(java.awt.event.KeyEvent.VK_BACK_SPACE);
+					rbt.keyRelease(java.awt.event.KeyEvent.VK_BACK_SPACE);
+				} catch (AWTException e) {
+				}
+				break;
+			case "cl":
+				we.click();
+				break;
+			default:
+				break;
+		}
 	}
 	
-	protected void jsBlur(WebElement we) {
-		((JavascriptExecutor)get___d___()).executeScript("arguments[0].blur();", we);
+	protected static void jsChange(WebDriver wd, WebElement we) {
+		((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new Event('change'));", we);
 	}
 	
-	protected void jsFocus(WebElement we) {
-		((JavascriptExecutor)get___d___()).executeScript("arguments[0].focus();", we);
+	protected static void jsBlur(WebDriver wd, WebElement we) {
+		((JavascriptExecutor)wd).executeScript("arguments[0].blur();", we);
 	}
 	
-	protected void jsKeyEvent(WebElement we, String type, char key) {
-		jsFocus(we);
-		((JavascriptExecutor)get___d___()).executeScript("arguments[0].dispatchEvent(new KeyboardEvent('"+type+"', {'key': '"+key+"'}));", we);
+	protected static void jsFocus(WebDriver wd, WebElement we) {
+		((JavascriptExecutor)wd).executeScript("arguments[0].focus();", we);
+	}
+	
+	protected static void jsKeyEvent(WebDriver wd, WebElement we, String type, char key) {
+		jsFocus(wd, we);
+		((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new KeyboardEvent('"+type+"', {'key': '"+key+"'}));", we);
 	}
 
 	@SuppressWarnings("unchecked")
@@ -1563,10 +1615,7 @@ public abstract class SeleniumTest {
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
-				if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") 
-						|| action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord") 
-						|| action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb") 
-						|| action.equalsIgnoreCase("chordnb"))) {
+				if(action!=null && (action.equalsIgnoreCase("click") || action.toLowerCase().matches(Command.typeExStr))) {
 					enabledCheck = true;
 				}
 
@@ -1587,10 +1636,7 @@ public abstract class SeleniumTest {
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
-							if(action!=null && (action.equalsIgnoreCase("click") || action.equalsIgnoreCase("type") 
-									|| action.equalsIgnoreCase("sendkeys") || action.equalsIgnoreCase("chord") 
-									|| action.equalsIgnoreCase("typenb") || action.equalsIgnoreCase("sendkeysnb") 
-									|| action.equalsIgnoreCase("chordnb"))) {
+							if(action!=null && (action.equalsIgnoreCase("click") || action.toLowerCase().matches(Command.typeExStr))) {
 								enabledCheck = true;
 							}
 
@@ -1800,7 +1846,7 @@ public abstract class SeleniumTest {
 				}
 			} else if(action!=null) {
 				try {
-					elementAction(ret, action, tvalue, value, subselector);
+					elementAction(get___d___(), ret, action, tvalue, value, subselector);
 				} catch (WebDriverException e) {
 					String exMsg = ExceptionUtils.getStackTrace(e);
 					boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
@@ -1818,7 +1864,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(ret, action, tvalue, value, subselector);
+								elementAction(get___d___(), ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -1864,7 +1910,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(ret, action, tvalue, value, subselector);
+								elementAction(get___d___(), ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -2202,10 +2248,11 @@ public abstract class SeleniumTest {
 				
 				devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
 				devTools.addListener(Network.requestWillBeSent(), requestSent -> {
-					System.out.println(requestSent.getRequestId().toString());
 					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) && 
 							NETWORK_INSPECTION.get(driverId)[0].toString().equalsIgnoreCase(requestSent.getRequest().getMethod()) &&
 							NETWORK_INSPECTION.get(driverId)[1].toString().equalsIgnoreCase(requestSent.getRequest().getUrl())) {
+						System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
+								requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
 						NETWORK_INSPECTION.get(driverId)[2] = requestSent.getRequestId().toString();
 					}
 					/*System.out.println("Request URL => " + requestSent.getRequest().getUrl());
@@ -2214,9 +2261,11 @@ public abstract class SeleniumTest {
 					System.out.println("------------------------------------------------------");*/
 				});
 				devTools.addListener(Network.responseReceived(), response -> {
-					System.out.println(response.getRequestId().toString());
+					//System.out.println(response.getRequestId().toString());
 					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) &&
 							response.getRequestId().toString().equals(NETWORK_INSPECTION.get(driverId)[2])) {
+						System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
+								response.getResponse().getStatus()));
 						NETWORK_INSPECTION.get(driverId)[3] = new Object[] {response.getResponse().getStatus(), 
 								response.getResponse().getHeaders(), response.getResponse().getMimeType().toString(), 
 								devTools.send(Network.getResponseBody(response.getRequestId())).getBody()};

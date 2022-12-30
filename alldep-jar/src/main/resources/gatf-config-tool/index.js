@@ -145,7 +145,7 @@ var schema = {
         "repeatScenarioProviderName": {
             "type": "string",
             "defaultIndex": 0,
-            "enumVar": "miscMap['providers']"
+            "enumVar": "miscMap.providers"
         },
         "numberOfExecutions": {
             "type": "integer"
@@ -174,12 +174,12 @@ var schema = {
         "preExecutionDataSourceHookName": {
             "type": "string",
             "defaultIndex": 0,
-            "enumVar": "miscMap['hooks']"
+            "enumVar": "miscMap.hooks"
         },
         "postExecutionDataSourceHookName": {
             "type": "string",
             "defaultIndex": 0,
-            "enumVar": "miscMap['hooks']"
+            "enumVar": "miscMap.hooks"
         },
         "abortOnInvalidStatusCode": {
             "type": "boolean",
@@ -329,7 +329,11 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
         } else if (schema.hasOwnProperty('enum') && schema.enum.length > 0) {
             return decorateList(schema, schema.enum, ovalut, isAttr + " " + labinpdet, nmdef, addclas + "" + dtcls, label, divstyle, width);
         } else if (schema.hasOwnProperty('enumVar')) {
-            return decorateList(schema, schema.enumVar, ovalut, isAttr + " " + labinpdet, nmdef, addclas + "" + dtcls, label, divstyle, width);
+			let obj = schema.enumVar;
+			if(typeof obj == 'string') {
+				obj = schema.enumVar.split('.').reduce((a, b) => a[b], window);
+			}
+            return decorateList(schema, obj, ovalut, isAttr + " " + labinpdet, nmdef, addclas + "" + dtcls, label, divstyle, width);
         } else {
             var sp1 = isAttr + " " + labinpdet;
             var sp2 = addclas + "" + dtcls;
@@ -1665,7 +1669,7 @@ function configuration() {
             "authDataProvider": {
                 "type": "string",
                 "defaultIndex": 1,
-                "enumVar": "miscMap['providers']"
+                "enumVar": "miscMap.providers"
             },
             "compareEnabled": {
                 "type": "boolean",
@@ -1877,7 +1881,7 @@ function configuration() {
                                 },
                                 "dataSourceClass": {
                                     "type": "string",
-                                    "enumVar": "miscMap['datasourcecls']"
+                                    "enumVar": "miscMap.datasourcecls"
                                 },
                                 "poolSize": {
                                     "type": "integer"
@@ -1909,7 +1913,7 @@ function configuration() {
                                 },
                                 "dataSourceClass": {
                                     "type": "string",
-                                    "enumVar": "miscMap['datasourcecls']"
+                                    "enumVar": "miscMap.datasourcecls"
                                 },
                                 "poolSize": {
                                     "type": "integer"
@@ -1938,14 +1942,14 @@ function configuration() {
                             "properties": {
                                 "dataSourceName": {
                                     "type": "string",
-                                    "enumVar": "miscMap['datasources']"
+                                    "enumVar": "miscMap.datasources"
                                 },
                                 "providerName": {
                                     "type": "string"
                                 },
                                 "providerClass": {
                                     "type": "string",
-                                    "enumVar": "miscMap['providercls']"
+                                    "enumVar": "miscMap.providercls"
                                 },
                                 "sourceProperties": {
                                     "type": "string"
@@ -1989,7 +1993,7 @@ function configuration() {
                                 },
                                 "dataSourceName": {
                                     "type": "string",
-                                    "enumVar": "miscMap['datasources']"
+                                    "enumVar": "miscMap.datasources"
                                 },
                                 "queryStrs": {
                                     "type": "array",

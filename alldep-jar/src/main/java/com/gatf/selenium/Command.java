@@ -324,7 +324,7 @@ public class Command {
     protected List<Command> children = new ArrayList<Command>();
 
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
-    static Pattern WAIT = Pattern.compile("^\\?\\?[\t ]*([0-9]+)");
+    static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
     static Pattern CONCNUM = Pattern.compile("^\\^[\t ]*([0-9]+)");
 
@@ -421,7 +421,7 @@ public class Command {
         		start = m.end(1) + 1;
         	}
         	cmd = cmd.substring(start).trim();
-        	comd = new ValidateCommand(time, cmd, cmdDetails, state);
+        	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false, false);
         } else if (cmd.startsWith("//")) {
             cmd = cmd.substring(2);
             comd = new CommentCommand(false, cmdDetails, state);
@@ -631,17 +631,15 @@ public class Command {
             comd = new NetworkAPIInterceptCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("type ") || cmd.toLowerCase().startsWith("select ") 
+        } else if (cmd.toLowerCase().matches(typeSwStr) || cmd.toLowerCase().matches(typeExStr) ||cmd.toLowerCase().startsWith("select ") 
                 || cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")
                 || cmd.toLowerCase().startsWith("doubleclick ") || cmd.toLowerCase().equals("doubleclick")
                 || cmd.toLowerCase().startsWith("dblclick ") || cmd.toLowerCase().equals("dblclick")
                 || cmd.toLowerCase().startsWith("hover ") || cmd.toLowerCase().equals("hover")
-                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("hoverclick ") 
+                || cmd.toLowerCase().startsWith("actions ") || cmd.toLowerCase().startsWith("hoverclick ") 
                 || cmd.toLowerCase().startsWith("clear ") || cmd.toLowerCase().equals("clear")
                 || cmd.toLowerCase().startsWith("submit ") || cmd.toLowerCase().equals("submit")
-                || cmd.toLowerCase().startsWith("randomize ") || cmd.toLowerCase().startsWith("actions ")
-                 || cmd.toLowerCase().startsWith("typenb ")
-                || cmd.toLowerCase().startsWith("upload ") || cmd.toLowerCase().startsWith("chordnb ")) {
+                || cmd.toLowerCase().startsWith("upload ")) {
         	if(state.modeEnableGlobalTimeouts) {
         		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeoutNum+"", cmd, cmdDetails, state, false, true);
         	} else {
@@ -728,19 +726,28 @@ public class Command {
         return comd;
     }
 
+    protected static String typeExStr = "^(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo)?";
+    protected static String typeSwStr = "^(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo)?\\s+(.*)";
+    protected static Pattern typeEx = Pattern.compile(typeExStr);
+    protected static Pattern typeSw = Pattern.compile(typeSwStr);
     static Command handleActions(String cmd, FindCommand fcmd, Object[] cmdDetails, CommandState state) {
         Command comd = null;
-        if (cmd.toLowerCase().startsWith("type ")) {
+        /*if (cmd.toLowerCase().startsWith("type ")) {
             comd = new TypeCommand(cmd.substring(5), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("typenb ")) {
-            comd = new TypeCommand(cmd.substring(7), cmdDetails, state, true);
-        } else if (cmd.toLowerCase().startsWith("sendkeys ")) {
+        } else*/ if (cmd.toLowerCase().matches(typeSwStr)) {
+        	Matcher m = typeSw.matcher(cmd.toLowerCase());
+        	m.matches();
+        	String type = m.group(1);
+        	String qualifier = m.group(2);
+        	cmd = m.group(3);
+            comd = new TypeCommand(cmd, cmdDetails, state, fcmd, type, qualifier);
+        } /*else if (cmd.toLowerCase().startsWith("sendkeys ")) {
             comd = new TypeCommand(cmd.substring(9), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("sendkeysnb ")) {
             comd = new TypeCommand(cmd.substring(11), cmdDetails, state, true);
-        } else if (cmd.toLowerCase().startsWith("upload ")) {
+        }*/ else if (cmd.toLowerCase().startsWith("upload ")) {
             comd = new UploadCommand(cmd.substring(7), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("randomize ")) {
+        }/* else if (cmd.toLowerCase().startsWith("randomize ")) {
             comd = new RandomizeCommand(cmd.substring(10), cmdDetails, state, fcmd, false);
         } else if (cmd.toLowerCase().startsWith("randomizenb ")) {
             comd = new RandomizeCommand(cmd.substring(12), cmdDetails, state, fcmd, true);
@@ -748,7 +755,7 @@ public class Command {
             comd = new ChordCommand(cmd.substring(6), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("chordnb ")) {
             comd = new ChordCommand(cmd.substring(8), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("select ")) {
+        }*/ else if (cmd.toLowerCase().startsWith("select ")) {
             comd = new SelectCommand(cmd.substring(7), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")) {
             comd = new ClickCommand(cmdDetails, state);
@@ -1352,7 +1359,7 @@ public class Command {
 	                String sessionName = brn[1];
 	                String sessionId = brn[2];
 	                
-	                flag |= (sessionName!=null && sessionName.equals(stsessionName)) || sessionId.equals(stsessionId);
+	                flag |= (sessionName!=null && sessionName.equalsIgnoreCase(stsessionName)) || sessionId.equalsIgnoreCase(stsessionId);
 	            }
 	        	if(!flag) {
 	        		throwError((Object[])st[3], new RuntimeException("Session Details not found for \"" + (stsessionName!=null?stsessionName:stsessionId+1) + "\""));
@@ -1379,7 +1386,7 @@ public class Command {
                 //b.append("if(checkifSessionIdExistsInSet("+state.currvarnameat()+", "
                 //            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
                 //            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
-                if(((bsessionName!=null && bsessionName.equals(sessionName)) || bsessionId.equals(sessionId)) || (sessionName==null && sessionId==null)) {
+                if(((bsessionName!=null && bsessionName.equalsIgnoreCase(sessionName)) || bsessionId.equalsIgnoreCase(sessionId)) || (sessionName==null && sessionId==null)) {
                 	if((Boolean)st[5]) {
 		                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
 		                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
@@ -1915,7 +1922,7 @@ public class Command {
             name = unSantizedUnQuoted(parts[0].trim(), state);
             for (Command c : state.allSubTests) {
             	SubTestCommand st = (SubTestCommand)c;
-				if(st.name.equals(name)) {
+				if(st.name.equalsIgnoreCase(name)) {
 					subt = st;
 					if(StringUtils.isBlank(sessionName)) {
 						sessionName = subt.sessionName;
@@ -2667,7 +2674,7 @@ public class Command {
             if(forced) {
             	String[] parts1 = Arrays.asList(parts).toArray(new String[parts.length]);
             	if(parts1.length>2) {
-            		if(parts[0].toLowerCase().equals("randomize") || parts[0].toLowerCase().equals("randomizenb")) {
+            		if(parts[0].toLowerCase().startsWith("randomize")) {
     	            	parts[0] = parts1[1];
     	            	parts[1] = parts1[0];
     	            	parts[2] = parts1[2];
@@ -2689,14 +2696,11 @@ public class Command {
             }
             String cmd = parts[0];
             if(parts.length>1) {
-                if (parts[1].toLowerCase().equals("type") || parts[1].toLowerCase().equals("typenb") 
-                		|| parts[1].toLowerCase().equals("sendkeys") || parts[1].toLowerCase().equals("select") 
+                if (parts[1].toLowerCase().matches(typeExStr) || parts[1].toLowerCase().equals("select") 
                         || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
                         || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
                         || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
-                        || parts[1].toLowerCase().equals("chord") || parts[1].toLowerCase().equals("randomize")
-                        || parts[1].toLowerCase().equals("chordnb") || parts[1].toLowerCase().equals("sendkeysnb")
-                        || parts[1].toLowerCase().equals("randomizenb") || parts[1].toLowerCase().equals("upload")) {
+                        || parts[1].toLowerCase().equals("upload")) {
                     cmd = "";
                     for (int i = 1; i < parts.length; i++)
                     {
@@ -2708,14 +2712,11 @@ public class Command {
                     cond = new FindCommand(parts[0], cmdDetails, state);
                     cmd = cmd.trim();
                     if(!cmd.isEmpty()) {
-                        if (cmd.toLowerCase().startsWith("type ") || parts[1].toLowerCase().startsWith("sendkeys ") 
-                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().startsWith("typenb ")
-                                || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
+                        if (cmd.toLowerCase().toLowerCase().matches(typeSwStr)
+                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
                                 || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
-                                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("randomize ")
-                                || cmd.toLowerCase().startsWith("chordnb ") || cmd.toLowerCase().startsWith("randomizenb ")
-                                || cmd.toLowerCase().startsWith("sendkeysnb ") || cmd.toLowerCase().startsWith("upload ")) {
+                                || cmd.toLowerCase().startsWith("upload ")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, cmdDetails, state);
                             children.add(comd);
@@ -2747,6 +2748,14 @@ public class Command {
             b.append("sleep("+state.timeoutSleepGranularity+");\n");
             b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
             b.append("}\n");
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ActionsCommand || c instanceof RobotCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && c instanceof ActionsCommand) {
+                    	b.append(((ActionsCommand)c).javacode());
+                    }
+                }
+            }
             /*for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
                     b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
@@ -2779,47 +2788,40 @@ public class Command {
     }
     
     public static class ValidateCommand extends FindCommandImpl {
-        ValidateCommand(String time, String val, Object[] lineNumber, CommandState state) {
-            super(lineNumber, state);
+        ValidateCommand(String time, String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             String cmd = parts[0];
             if(parts.length>1) {
-                if (parts[1].toLowerCase().equals("type") || parts[1].toLowerCase().equals("typenb") 
-                		|| parts[1].toLowerCase().equals("sendkeys") || parts[1].toLowerCase().equals("select") 
+                if (parts[1].toLowerCase().matches(typeExStr) || parts[1].toLowerCase().equals("select") 
                         || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
                         || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
-                        || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
-                        || parts[1].toLowerCase().equals("chord") || parts[1].toLowerCase().equals("randomize")
-                        || parts[1].toLowerCase().equals("chordnb") || parts[1].toLowerCase().equals("sendkeysnb")
-                        || parts[1].toLowerCase().equals("randomizenb")) {
+                        || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")) {
                     cmd = "";
                     for (int i = 1; i < parts.length; i++)
                     {
                         cmd += parts[i] + " ";
                     }
-                    cond = time.equals("0")?new FindCommand(parts[0], lineNumber, state):new WaitAndFindCommand(parts[0], Long.valueOf(time), lineNumber, state);
+                    cond = time.equals("0")?new FindCommand(parts[0], cmdDetails, state):new WaitAndFindCommand(parts[0], Long.valueOf(time), cmdDetails, state);
                     cmd = cmd.trim();
                     if(!cmd.isEmpty()) {
-                        if (cmd.toLowerCase().startsWith("type ") || parts[1].toLowerCase().startsWith("sendkeys ") 
-                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().startsWith("typenb ")
+                        if (cmd.toLowerCase().matches(typeSwStr)
+                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().startsWith("actions")
                                 || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
                                 || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
-                                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
-                                || cmd.toLowerCase().startsWith("chord ") || cmd.toLowerCase().startsWith("randomize ")
-                                || cmd.toLowerCase().startsWith("chordnb ") || cmd.toLowerCase().startsWith("randomizenb ")
-                                || parts[1].toLowerCase().startsWith("sendkeysnb ")) {
+                                || cmd.toLowerCase().equals("submit")) {
                             //cmd = unsanitize(cmd);
-                            Command comd = handleActions(cmd, cond, lineNumber, state);
+                            Command comd = handleActions(cmd, cond, cmdDetails, state);
                             children.add(comd);
                         }
                     }
                 } else {
                     cmd = val;
-                    cond = time.equals("0")?new FindCommand(cmd, lineNumber, state):new WaitAndFindCommand(cmd, Long.valueOf(time), lineNumber, state);
+                    cond = time.equals("0")?new FindCommand(cmd, cmdDetails, state):new WaitAndFindCommand(cmd, Long.valueOf(time), cmdDetails, state);
                 }
             } else {
                 cmd = val;
-                cond = time.equals("0")?new FindCommand(cmd, lineNumber, state):new WaitAndFindCommand(cmd, Long.valueOf(time), lineNumber, state);
+                cond = time.equals("0")?new FindCommand(cmd, cmdDetails, state):new WaitAndFindCommand(cmd, Long.valueOf(time), cmdDetails, state);
             }
         }
         String toCmd() {
@@ -3533,7 +3535,7 @@ public class Command {
                     }
                 }
                 cond = new FindCommand(parts[2].trim() + " " + parts[3].trim(), fileLineDetails, state);
-                if(parts.length>4 && parts[3].trim().equals("lazy")) {
+                if(parts.length>4 && parts[3].trim().equalsIgnoreCase("lazy")) {
                 	isLazy = true;
                 }
             } else {
@@ -4029,7 +4031,7 @@ public class Command {
             return "frame " + name;
         }
         String javacode() {
-            if(name.equals("") || name.equalsIgnoreCase("main")) {
+            if(name.isEmpty() || name.equalsIgnoreCase("main")) {
                 return "___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
             } else if(name.equalsIgnoreCase("parent")) {
                 return "___cw___ = ___cw___.parentFrame();\n___sc___1 = ___cw___;";
@@ -4592,19 +4594,29 @@ public class Command {
                 } else if(c instanceof ValueListCommand) {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
+                        || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
-                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
-                            if(((TypeCommand)c).noblur) {
-                            	action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "nb") + "\"";
+                        	TypeCommand typ = (TypeCommand)c;
+                            if(StringUtils.isNotBlank(typ.qualifier)) {
+                            	action = "\"" + typ.type  + typ.qualifier + "\"";
                             }
-                        } else if(c instanceof ChordCommand) {
-                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                            if(typ.type.equalsIgnoreCase("type") || typ.type.equalsIgnoreCase("sendkeys")) {
+                            	tvalue = "evaluate(\"" + typ.value + "\")";
+                            } else if(typ.type.equalsIgnoreCase("chord")) {
+                            	tvalue = "Keys.chord(\"" + typ.value + "\")";
+                            } else {
+                            	tvalue = "evaluate(\"" + esc(typ.v1) + "\")" + "+ \" \"";
+                            	if(typ.v2!=null) tvalue += " + evaluate(\"" + esc(typ.v2) + "\")" + " + \" \"";
+                            	if(typ.v3!=null) tvalue += " + evaluate(\"" + esc(typ.v3) + "\")";
+                            }
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
+                        } else if(c instanceof SelectCommand) {
+                        	SelectCommand scc = (SelectCommand)c;
+                        	ssubselector = scc.by;
+                        	value = "evaluate(\"" + esc(scc.value) + "\")";
                         }
                     }
                 }
@@ -4635,19 +4647,29 @@ public class Command {
                 } else if(c instanceof ValueListCommand) {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
+                        || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
-                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
-                            if(((TypeCommand)c).noblur) {
-                            	action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "nb") + "\"";
+                        	TypeCommand typ = (TypeCommand)c;
+                            if(StringUtils.isNotBlank(typ.qualifier)) {
+                            	action = "\"" + typ.type  + typ.qualifier + "\"";
                             }
-                        } else if(c instanceof ChordCommand) {
-                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                            if(typ.type.equalsIgnoreCase("type") || typ.type.equalsIgnoreCase("sendkeys")) {
+                            	tvalue = "evaluate(\"" + typ.value + "\")";
+                            } else if(typ.type.equalsIgnoreCase("chord")) {
+                            	tvalue = "Keys.chord(\"" + typ.value + "\")";
+                            } else {
+                            	tvalue = "evaluate(\"" + esc(typ.v1) + "\")" + "+ \" \"";
+                            	if(typ.v2!=null) tvalue += " + evaluate(\"" + esc(typ.v2) + "\")" + " + \" \"";
+                            	if(typ.v3!=null) tvalue += " + evaluate(\"" + esc(typ.v3) + "\")";
+                            }
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
+                        } else if(c instanceof SelectCommand) {
+                        	SelectCommand scc = (SelectCommand)c;
+                        	ssubselector = scc.by;
+                        	value = "evaluate(\"" + esc(scc.value) + "\")";
                         }
                     }
                 }
@@ -4687,28 +4709,27 @@ public class Command {
                 } else if(c instanceof ValueListCommand) {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
+                        || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
-                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
-                            if(((TypeCommand)c).noblur) {
-                            	action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "nb") + "\"";
+                        	TypeCommand typ = (TypeCommand)c;
+                            action = "\"" + typ.type  + typ.qualifier + "\"";
+                            if(typ.type.equalsIgnoreCase("type") || typ.type.equalsIgnoreCase("sendkeys")) {
+                            	tvalue = "evaluate(\"" + typ.value + "\")";
+                            } else if(typ.type.equalsIgnoreCase("chord")) {
+                            	tvalue = "Keys.chord(\"" + typ.value + "\")";
+                            } else {
+                            	tvalue = "evaluate(\"" + esc(typ.v1) + "\")" + "+ \" \"";
+                            	if(typ.v2!=null) tvalue += " + evaluate(\"" + esc(typ.v2) + "\")" + " + \" \"";
+                            	if(typ.v3!=null) tvalue += " + evaluate(\"" + esc(typ.v3) + "\")";
                             }
-                        } else if(c instanceof ChordCommand) {
-                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
                         } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
-                        } else if(c instanceof RandomizeCommand) {
-                        	RandomizeCommand scc = (RandomizeCommand)c;
-                        	tvalue = "evaluate(\"" + esc(scc.v1) + "\")" + "+ \" \"";
-                        	if(scc.v2!=null) tvalue += " + evaluate(\"" + esc(scc.v2) + "\")" + " + \" \"";
-                        	if(scc.v3!=null) tvalue += " + evaluate(\"" + esc(scc.v3) + "\")";
                         }
                     }
                 } else if(c instanceof RobotCommand) {
@@ -4724,10 +4745,11 @@ public class Command {
             if(sclassifier!=null) {
                 sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
             }
-            return "___ce___ = handleWaitFunc("+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+            String b = "___ce___ = handleWaitFunc("+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", "+noexcep+", "+state.getLayers()+");\n";
+            return b;
         }
         String javacodeonly(List<Command> children, long waitTime) {
             javacodeonlyint(children);
@@ -4740,17 +4762,23 @@ public class Command {
                 } else if(c instanceof ValueListCommand) {
                 } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                         || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                        || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                        || c instanceof RandomizeCommand || c instanceof UploadCommand) {
+                        || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
                     if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                         action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "") + "\"";
                         if(c instanceof TypeCommand) {
-                            tvalue = "evaluate(\"" + ((TypeCommand)c).value + "\")";
-                            if(((TypeCommand)c).noblur) {
-                            	action = "\"" + c.getClass().getSimpleName().toLowerCase().replace("command", "nb") + "\"";
+                        	TypeCommand typ = (TypeCommand)c;
+                            if(StringUtils.isNotBlank(typ.qualifier)) {
+                            	action = "\"" + typ.type  + typ.qualifier + "\"";
                             }
-                        } else if(c instanceof ChordCommand) {
-                            tvalue = "evaluate(\"" + ((ChordCommand)c).value + "\")";
+                            if(typ.type.equalsIgnoreCase("type") || typ.type.equalsIgnoreCase("sendkeys")) {
+                            	tvalue = "evaluate(\"" + typ.value + "\")";
+                            } else if(typ.type.equalsIgnoreCase("chord")) {
+                            	tvalue = "Keys.chord(\"" + typ.value + "\")";
+                            } else {
+                            	tvalue = "evaluate(\"" + esc(typ.v1) + "\")" + "+ \" \"";
+                            	if(typ.v2!=null) tvalue += " + evaluate(\"" + esc(typ.v2) + "\")" + " + \" \"";
+                            	if(typ.v3!=null) tvalue += " + evaluate(\"" + esc(typ.v3) + "\")";
+                            }
                         } else if(c instanceof UploadCommand) {
                             tvalue = "evaluate(\"" + ((UploadCommand)c).value + "\")";
                         } else if(c instanceof SelectCommand) {
@@ -4951,8 +4979,7 @@ public class Command {
                     Command c = children.get(0);
                     if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
                             || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
-                            || c instanceof SelectCommand || c instanceof ChordCommand || c instanceof DoubleClickCommand
-                            || c instanceof UploadCommand) {
+                            || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
                         if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
                             b.append(c.selcode(topele));
                         }
@@ -5169,64 +5196,171 @@ public class Command {
     }
 
     public static class TypeCommand extends FindCommandImpl {
+    	String type = "";
         String value;
-        boolean noblur = false;
-        TypeCommand(String val, Object[] cmdDetails, CommandState state, boolean noblur) {
+        String qualifier = "";
+        String chs = "";
+        String v1, v2, v3;
+        TypeCommand(String val, Object[] cmdDetails, CommandState state, FindCommand cond, String type, String qualifier) {
             super(cmdDetails, state);
-            this.noblur = noblur;
+            //this.cond = fcmd;
+            this.type = type;
+            if(qualifier!=null) {
+            	this.qualifier = qualifier;
+            }
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>0) {
-                parts[0] = parts[0].trim();
-                value = parts[0];
-                value = state.unsanitize(value);
-                if(value.charAt(0)==value.charAt(value.length()-1)) {
-                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                        value = value.substring(1, value.length()-1);
+            	if(type.equalsIgnoreCase("chord")) {
+                    parts[0] = state.unsanitize(parts[0].trim());
+                    value = parts[0];
+                    if(value.charAt(0)==value.charAt(value.length()-1)) {
+                        if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+                            value = value.substring(1, value.length()-1);
+                        }
                     }
-                }
-                if(parts.length>1){
-                    cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
+                    String temp = StringEscapeUtils.unescapeJava(value);
+                    try {
+                        if(cond==null) {
+                            cond = new FindCommand(parts[1], fileLineDetails, state);
+                        }
+                        List<String> values = new ArrayList<String>();
+                        for (char c : temp.toCharArray()) {
+                            Keys kys = Keys.getKeyFromUnicode(c);
+                            if(kys!=null) {
+                                values.add("Keys." + kys.name());
+                            } else {
+                                if(c=='"') {
+                                    values.add("\"\\"+c+"\"");
+                                } else {
+                                    values.add("\""+c+"\""); 
+                                }
+                            }
+                        }
+                        if(values!=null && !values.isEmpty()) {
+        	                for (int i=0;i<values.size();i++) {
+        	                    chs += values.get(i);
+        	                    chs += (i!=values.size()-1)?", ":"";
+        	                }
+                        }
+                    } catch (Exception e) {
+                    }
+                } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
+                	parts[0] = parts[0].trim();
+                    value = parts[0];
+                    value = state.unsanitize(value);
+                    if(value.charAt(0)==value.charAt(value.length()-1)) {
+                        if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+                            value = value.substring(1, value.length()-1);
+                        }
+                    }
+                    if(cond==null) {
+                        cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
+                    }
+                } else {
+                	int c = 1, t = 1;
+                    if(cond!=null) {
+                        c = 0;
+                        t = 0;
+                    } else {
+                        this.cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+                    }
+                    if(parts.length>t) {
+                        v1 = parts[c];
+                        v1 = state.unsanitize(v1);
+                        if(v1.charAt(0)==v1.charAt(v1.length()-1)) {
+                            if(v1.charAt(0)=='"' || v1.charAt(0)=='\'') {
+                                v1 = v1.substring(1, v1.length()-1);
+                            }
+                        }
+                    }
+                    if(parts.length>t+1) {
+                        v2 = parts[c+1];
+                        v2 = state.unsanitize(v2);
+                        if(v2.charAt(0)==v2.charAt(v2.length()-1)) {
+                            if(v2.charAt(0)=='"' || v2.charAt(0)=='\'') {
+                                v2 = v2.substring(1, v2.length()-1);
+                            }
+                        }
+                    }
+                    if(parts.length>t+2) {
+                        v3 = parts[c+2];
+                        v3 = state.unsanitize(v3);
+                        if(v3.charAt(0)==v3.charAt(v3.length()-1)) {
+                            if(v3.charAt(0)=='"' || v3.charAt(0)=='\'') {
+                                v3 = v3.substring(1, v3.length()-1);
+                            }
+                        }
+                    }
                 }
             } else {
                 //excep
             }
         }
         String toCmd() {
-            return "type" + (!noblur?"":"nb") + " \"" + value + "\"" + (cond!=null?cond.toCmd():"");
+            return type + (qualifier!=null?qualifier:"") + " \"" + value + "\"" + (cond!=null?cond.toCmd():"");
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
+            
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
-                b.append(cond.getActionable("sendKeys", "evaluate(\""+esc(value)+"\")", null));
+            }
+            
+            if(type.equalsIgnoreCase("chord")) {
+                //if(cond!=null) {
+                //    b.append(cond.getActionable("sendKeys", "Keys.chord("+chs+")", null));
+                //} else {
+                	b.append("\nsendKeys("+state.currvarname()+".get(0), \""+type+"\", \""+qualifier+"\", Keys.chord((\""+chs+"\"));\n");
+                //}
+            } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
+            	//if(cond!=null) {
+                //    b.append(cond.getActionable("sendKeys", "evaluate(\""+esc(value)+"\")", null));
+                //} else {
+                    //b.append("\n"+state.currvarname()+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
+                    b.append("\nsendKeys("+state.currvarname()+".get(0), \""+type+"\", \""+qualifier+"\", evaluate(\""+esc(value)+"\"));\n");
+                //}
             } else {
-                b.append("\n"+state.currvarname()+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
-                if(!noblur) {
-                	b.append("\nblur("+state.currvarname()+".get(0));\n");
-                }
+            	//if(cond!=null) {
+            	//	b.append(cond.getActionable("randomize", "\""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\"", null));
+            	//} else {
+            		b.append("\nsendKeys("+state.currvarname()+", \""+type+"\", \""+qualifier+"\", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+            	//}
             }
             return b.toString();
         }
         String javacodeonly(String cvarnm) {
         	StringBuilder b = new StringBuilder();
-        	b.append("\n"+cvarnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
-        	if(!noblur) {
-        		b.append("\nblur("+cvarnm+".get(0));\n");
-        	}
+        	if(type.equalsIgnoreCase("chord")) {
+	            b.append("\nsendKeys("+cvarnm+".get(0), \""+type+"\", \""+qualifier+"\", Keys.chord((\""+chs+"\"));\n");
+            } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
+                b.append("\nsendKeys("+cvarnm+".get(0), \""+type+"\", \""+qualifier+"\", evaluate(\""+esc(value)+"\"));\n");
+            } else {
+            	b.append("\nsendKeys("+cvarnm+", \""+type+"\", \""+qualifier+"\", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+            }
             return b.toString();
         }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\n"+varnm+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));\n" + (!noblur?"":"blur("+varnm+".get(0));\n");
+        	if(type.equalsIgnoreCase("chord")) {
+	            return ("\nsendKeys("+varnm+".get(0), \""+type+"\", \""+qualifier+"\", Keys.chord((\""+chs+"\"));\n");
+            } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
+            	return ("\nsendKeys("+varnm+".get(0), \""+type+"\", \""+qualifier+"\", evaluate(\""+esc(value)+"\"));\n");
+            } else {
+            	return ("\nsendKeys("+varnm+", \""+type+"\", \""+qualifier+"\", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+            }
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type Value in input/textarea elements",
-        		"\ttype {text} {find-expr}",
+        		"\t(type|sendkeys)(bl|ch|bk|cl|fo) {text} {find-expr}",
+        		"\twhere \n\t\tbl->Trigger Blur\n\t\tch->Trigger Change\n\t\tbk->Trigger Backspace\n\t\tcl->Trigger Click\n\t\tfo->Trigger Focus",
         		"Examples :-",
         		"\ttype 'abc' id@'ele1'",
+        		"\tsendkeys 'abc' id@'ele1'",
+        		"\ttypebl 'abc' id@'ele1'",
+        		"\tsendkeyscl 'abc' id@'ele1'",
             };
         }
     }
@@ -5430,6 +5564,9 @@ public class Command {
                             v1 = v1.substring(1, v1.length()-1);
                         }
                     }
+                    if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range")) {
+                    	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range"));
+                    }
                 }
                 if(parts.length>t+1) {
                     v2 = parts[c+1];
@@ -5449,6 +5586,22 @@ public class Command {
                         }
                     }
                 }
+                
+                try {
+    				Integer.parseInt(v2);
+    			} catch (Exception e) {
+    				if(v2!=null && !v1.equalsIgnoreCase("value")) {
+    					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+    				}
+    			}
+                
+                try {
+    				Integer.parseInt(v3);
+    			} catch (Exception e) {
+    				if(v3!=null) {
+    					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+    				}
+    			}
             } else {
                 //excep
             }
@@ -5507,7 +5660,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type random values in input/textarea elements",
-        		"\trandomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}",
+        		"\trandomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|numeric|alpha|value|range {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}",
         		"Examples :-",
         		"\trandomize id@'ele1' alphanumeric 12",
         		"\trandomize id@'ele1' alpha 8 3 (first-name middle-name last-name)",
@@ -5604,7 +5757,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type UTF-8 or normal ASCII characters in input/textarea elements",
-        		"\tchord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}",
+        		"\tchord(bl|ch|bk|cl|fo) {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}",
         		"Examples :-",
         		"\tchord \\u0048\\u0065\\u006c\\u006c\\u006f\\u0020\\u0057\\u006f\\u0072\\u006c\\u0064 id@'abc'",
             };
@@ -5822,8 +5975,9 @@ public class Command {
         String action;
         String expr1;
         String expr2;
+        String expr3;
         static final String ALLCMDS = "click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick|movetoelement|moveto|keydown|keyup"
-                + "|sendkeys|sendkeysnb|type|typenb|chord|chordnb|draganddrop|movebyoffset|moveby|dragdrop|";
+                + "|sendkeys|type|chord|randomize|draganddrop|movebyoffset|moveby|dragdrop|";
         public ActionsCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
@@ -5832,6 +5986,7 @@ public class Command {
         		"Multiple Chained Actions",
         		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|"
         		+ "{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|"
+        		+ "randomize {alpha|alphanumeric|numeric|value|range} {arg1} {arg2} {arg3}?}|"
         		+ "{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...",
         		"Examples :-",
         		"\tactions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'",
@@ -5848,16 +6003,16 @@ public class Command {
             while(counter<tl) {
                 if(t[counter].toLowerCase().matches("click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(cmd.action.equals("clickhold") || cmd.action.equals("clickandhold")) {
+                    if(cmd.action.equalsIgnoreCase("clickhold") || cmd.action.equalsIgnoreCase("clickandhold")) {
                         cmd.action = "clickAndHold";
-                    } else if(cmd.action.equals("rightclick") || cmd.action.equals("contextclick")) {
+                    } else if(cmd.action.equalsIgnoreCase("rightclick") || cmd.action.equalsIgnoreCase("contextclick")) {
                         cmd.action = "contextClick";
-                    } else if(cmd.action.equals("doubleclick") || cmd.action.equals("dblclick")) {
+                    } else if(cmd.action.equalsIgnoreCase("doubleclick") || cmd.action.equalsIgnoreCase("dblclick")) {
                         cmd.action = "doubleClick";
                     }
                 } else if(t[counter].toLowerCase().matches("movetoelement|moveto")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(cmd.action.equals("moveto") || cmd.action.equals("movetoelement")) {
+                    if(cmd.action.equalsIgnoreCase("moveto") || cmd.action.equalsIgnoreCase("movetoelement")) {
                         cmd.action = "moveToElement";
                     }
                     if(!moveDone && cond!=null && ((tl>counter+1 && t[counter+1].toLowerCase().matches(ALLCMDS)) || tl==counter+1)) {
@@ -5870,19 +6025,15 @@ public class Command {
                             }
                         }
                     } else {
-                        throwParseError(null, new RuntimeException("Expression expected after actions (keyDown|keyUp|sendKeys|moveToElement)"));
+                        throwParseError(null, new RuntimeException("Expression expected after actions (movetoelement|moveto)"));
                     }
-                } else if(t[counter].toLowerCase().matches("keydown|keyup|sendkeys|type|chord|sendkeysnb|typenb|chordnb")) {
+                } else if(t[counter].toLowerCase().matches("keydown|keyup|sendkeys|type|chord")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(cmd.action.equals("type") || cmd.action.equals("sendkeys") || cmd.action.equals("chord")) {
+                    if(cmd.action.equalsIgnoreCase("type") || cmd.action.equalsIgnoreCase("sendkeys") || cmd.action.equalsIgnoreCase("chord")) {
                         cmd.action = "sendKeys";
-                    } else if(cmd.action.equals("typenb") || cmd.action.equals("sendkeysnb") || cmd.action.equals("chordnb")) {
-                        cmd.action = "sendKeysnb";
-                    } else if(cmd.action.equals("moveto") || cmd.action.equals("movetoelement")) {
-                        cmd.action = "moveToElement";
-                    } else if(cmd.action.equals("keydown")) {
+                    } else if(cmd.action.equalsIgnoreCase("keydown")) {
                         cmd.action = "keyDown";
-                    } else if(cmd.action.equals("keyup")) {
+                    } else if(cmd.action.equalsIgnoreCase("keyup")) {
                         cmd.action = "keyUp";
                     }
                     if(tl>counter+1) {
@@ -5893,13 +6044,13 @@ public class Command {
                             }
                         }
                     } else {
-                        throwParseError(null, new RuntimeException("Expression expected after actions (keyDown|keyUp|sendKeys|moveToElement)"));
+                        throwParseError(null, new RuntimeException("Expression expected after actions (keydown|keyup|sendkeys|type|chord)"));
                     }
                 } else if(t[counter].toLowerCase().matches("draganddrop|movebyoffset|moveby|dragdrop")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(cmd.action.equals("moveby") || cmd.action.equals("movebyoffset")) {
+                    if(cmd.action.equalsIgnoreCase("moveby") || cmd.action.equalsIgnoreCase("movebyoffset")) {
                         cmd.action = "moveByOffset";
-                    } else if(cmd.action.equals("dragdrop") || cmd.action.equals("draganddrop")) {
+                    } else if(cmd.action.equalsIgnoreCase("dragdrop") || cmd.action.equalsIgnoreCase("draganddrop")) {
                         cmd.action = "dragAndDrop";
                     }
                     int fc = 0;
@@ -5927,8 +6078,51 @@ public class Command {
                     } else {
                         throwParseError(null, new RuntimeException("Expressions(2) expected after actions (dragAndDrop|moveByOffset)"));
                     }
+                } else if(t[counter].toLowerCase().equals("randomize")) {
+                    cmd.action = t[counter].toLowerCase();
+                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|numeric|alpha|value|range")) {
+                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|numeric|alpha|value|range"));
+                    }
+                    
+                    cmd.expr1 = state.unsanitize(t[++counter]);
+                    if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
+                        if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
+                            cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
+                        }
+                    }
+                    
+                    try {
+                    	cmd.expr2 = state.unsanitize(t[counter+1]);
+                        if(cmd.expr2.charAt(0)==cmd.expr2.charAt(cmd.expr2.length()-1)) {
+                            if(cmd.expr2.charAt(0)=='"' || cmd.expr2.charAt(0)=='\'') {
+                                cmd.expr2 = cmd.expr2.substring(1, cmd.expr2.length()-1);
+                            }
+                        }
+                        ++counter;
+        				Integer.parseInt(cmd.expr2);
+        			} catch (Exception e) {
+        				if(cmd.expr2!=null && !cmd.expr1.equalsIgnoreCase("value")) {
+        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+        				}
+        			}
+                    
+                    try {
+                    	cmd.expr3 = state.unsanitize(t[counter+1]);
+                        if(cmd.expr3.charAt(0)==cmd.expr3.charAt(cmd.expr3.length()-1)) {
+                            if(cmd.expr3.charAt(0)=='"' || cmd.expr3.charAt(0)=='\'') {
+                                cmd.expr3 = cmd.expr3.substring(1, cmd.expr3.length()-1);
+                            }
+                        }
+        				Integer.parseInt(cmd.expr3);
+        				++counter;
+        			} catch (Exception e) {
+        				if(cmd.expr3!=null && !cmd.expr3.matches(ALLCMDS)) {
+        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+        				}
+        				cmd.expr3 = null;
+        			}
                 } else {
-                    throwParseError(null, new RuntimeException("Invalid action specified, should be one of (click|clickhold|clickAndHold|release|doubleClick|dblclick|contextClick|rightclick|keyDown|keyUp|sendKeys|moveToElement|dragAndDrop|dragdrop|moveByOffset|moveby)"));
+                    throwParseError(null, new RuntimeException("Invalid action ["+t[counter]+"] specified, should be one of (click|clickhold|clickAndHold|release|doubleClick|dblclick|contextClick|rightclick|keyDown|keyUp|sendKeys|type|randomize|moveToElement|dragAndDrop|dragdrop|moveByOffset|moveby)"));
                 }
                 ++counter;
                 cmd.children.add(new ActionsCommand(cmdDetails, state));
@@ -5956,16 +6150,30 @@ public class Command {
             } else if(action.toLowerCase().matches("sendkeys") || action.toLowerCase().matches("type") || action.toLowerCase().matches("chord")) {
                 String ck = state.unsanitize(expr1);
                 b.append("\n"+acnm+".sendKeys(evaluate(\""+ck+"\"));");
-            } else if(action.toLowerCase().matches("sendkeysnb") || action.toLowerCase().matches("typenb") || action.toLowerCase().matches("chordnb")) {
-                String ck = state.unsanitize(expr1);
-                b.append("\n"+acnm+".sendKeys(evaluate(\""+ck+"\"));");
+            } else if(action.toLowerCase().matches("randomize")) {
+                String v1 = state.unsanitize(expr1);
+                String v2 = expr2!= null?state.unsanitize(expr2):"";
+                String v3 = expr3!= null?state.unsanitize(expr3):"";
+                v1 = esc(v1) + " " + esc(v2) + " " + esc(v3);
+                b.append("\n"+acnm+".sendKeys(randomize(\""+v1.trim()+"\"));");
             } else if(action.toLowerCase().matches("movetoelement")) {
                 if(cond!=null && expr1==null) {
                     b.append("\n"+acnm+"."+action+"("+cond.getActionableVar()+".get(0));");
                 } else {
                     String ck = state.unsanitize(expr1);
                     FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-                    b.append("\n"+fc.javacodeonly(null));
+                    
+                    int counter = state.timeoutNum;
+                    String cntvar = state.varnamerandom();
+                    b.append("int "+cntvar+" = 0;\n");
+                    b.append("\nwhile(true) {\n");
+                    b.append(fc.javacodeonlyNoAssert(children, true));
+                    b.append("if("+fc.getActionableVar()+"!=null)break;\n");
+                    b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                    b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
+                    b.append("}\n");
+                    
+                    //b.append("\n"+fc.javacodeonly(null));
                     b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
                 }
             } else if(action.toLowerCase().matches("draganddrop")) {

@@ -235,7 +235,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*browser\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*browser\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
 				        && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.BROWSER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
@@ -243,7 +243,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*client\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*client\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.CLIENT, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
@@ -251,7 +251,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*driver\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*driver\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.DRIVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
@@ -259,7 +259,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*performance\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*performance\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.PERFORMANCE, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
@@ -267,7 +267,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*profiler\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*profiler\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.PROFILER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
@@ -275,7 +275,7 @@ public class SeleniumCodeGeneratorAndUtil {
 			if(slp.matches(".*server\\(([a-zA-Z]+)\\).*")) {
 				Matcher m = Pattern.compile(".*server\\(([a-zA-Z]+)\\).*").matcher(slp);
 				m.find();
-				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("off")
+				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
 					lp.enable(LogType.SERVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}

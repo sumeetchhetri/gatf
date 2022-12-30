@@ -1,54 +1,78 @@
 
+OS="$(uname)"
 SELGRP=seluser
 SELUSR=seluser
-if ! [ $(getent group $SELGRP) ]; then
-	groupadd -g 1201 $SELGRP
-	echo "$SELGRP group created"
-fi
 
-if getent passwd $SELUSR > /dev/null 2>&1; then
-	:
+if id -g "$SELGRP" &>/dev/null; then
+    :
 else
-    useradd -g $SELUSR -u 1200 -M -N $SELUSR
-    usermod -L $SELUSR
+    if [ "$OS" == "Darwin" ]; then
+    	sudo dscl . -create /groups/$SELGRP gid 1201
+		#Delete group
+		#sudo dscl . -delete /Groups/seluser
+		echo "$SELGRP group created"
+    else
+		groupadd -g 1201 $SELGRP
+		echo "$SELGRP group created"
+    fi
 fi
 
-if ! [ $# -eq 2 ]; then
+if id "$SELUSR" &>/dev/null; then
+    :
+else
+    if [ "$OS" == "Darwin" ]; then
+    	 sudo /usr/sbin/sysadminctl -addUser $SELUSR -UID 1200 -GID 1201 -shell /var/empty
+    	 #Delete user
+    	 #sudo /usr/sbin/sysadminctl -deleteUser $SELUSR
+    else
+    	useradd -g $SELUSR -u 1200 -M -N $SELUSR
+    	usermod -L $SELUSR
+    fi
+    echo "$SELUSR group created"
+fi
+
+if [ "$#" -lt 2 ]; then
     echo "Please provide gatf image name (chrome, firefox, vnc) and the gatf home directory, optionally the tmp directory as well"
+    exit 1
 fi
 
 HOMEDIR=.
 TMPDIR=/tmp
 IMG=gatf-bin:1.1.0
-if [ ! -z "$1" ]; then
-	if ! [ "$1" = "chrome" ] && ! [ "$1" = "firefox" ] && ! [ "$1" = "vnc" ] ; then
-		echo "Please provide a valid gatf image namely, chrome, firefox or vnc"
-	fi
-	if [ "$1" = "chrome" ]; then
-		IMG="gatf-bin:1.1.0"
-	elif if [ "$1" = "firefox" ]; then
-		IMG="gatf-bin-ff:1.1.0"
-	elif if [ "$1" = "vnc" ]; then
-		IMG="gatf-bin-vnc:1.1.0"
-	fi
+
+if ! [ "$1" = "chrome" ] && ! [ "$1" = "firefox" ] && ! [ "$1" = "vnc" ] ; then
+	echo "Please provide a valid gatf image namely, chrome, firefox or vnc"
+	exit 1
+fi
+if [ "$1" = "chrome" ]; then
+	IMG="gatf-bin:1.1.0"
+elif [ "$1" = "firefox" ]; then
+	IMG="gatf-bin-ff:1.1.0"
+elif [ "$1" = "vnc" ]; then
+	IMG="gatf-bin-vnc:1.1.0"
 fi
 
-if [ ! -z "$2" ]; then
-	if [ -d "$2" ]; then
-		echo "Please provide a valid gatf home directory path"
-	fi
-	HOMEDIR="$1"
-	chown -R 1200:1201 $HOMEDIR
-	chmod -R 777 $HOMEDIR
+if ! [ -d "$2" ]; then
+	echo "Please provide a valid gatf home directory path"
+	exit 1
 fi
 
-if [ ! -z "$3" ]; then
-	if [ -d "$3" ]; then
+HOMEDIR="$2"
+
+if ! [ -z "$3" ]; then
+	if ! [ -d "$3" ]; then
 		echo "Please provide a valid gatf tmp directory path (this will be used to read the downloaded files as well as the screenshots)"
+		exit 1
 	fi
-	TMPDIR="$1"
-	chown -R 1200:1201 $TMPDIR
-	chmod -R 777 $TMPDIR
+	TMPDIR="$3"
 fi
 
-docker run -v /dev/shm:/dev/shm -v $HOMEDIR:/workdir -v $TMPDIR:/tmp -e TZ=Asia/Kolkata -it sumeetchhetri/$IMG
+echo "Home Directory is $HOMEDIR, temp directory is $TMPDIR and Image is $IMG"
+
+#chown -R 1200:1201 $HOMEDIR
+chmod -R 777 $HOMEDIR
+
+#chown -R 1200:1201 $TMPDIR
+chmod -R 777 $TMPDIR
+
+docker run -v /dev/shm:/dev/shm -v $HOMEDIR:/workdir -v $TMPDIR:/tmp -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/$IMG
