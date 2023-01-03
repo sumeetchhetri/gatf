@@ -64,8 +64,6 @@ import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -213,7 +211,9 @@ public class AcceptanceTestContext {
 		return performanceTestCaseExecutor;
 	}
 
-	public AcceptanceTestContext(){}
+	public AcceptanceTestContext(){
+		projectClassLoader = getClass().getClassLoader();
+	}
 	
 	public AcceptanceTestContext(GatfExecutorConfig gatfExecutorConfig, ClassLoader projectClassLoader)
 	{
@@ -390,6 +390,9 @@ public class AcceptanceTestContext {
         if(!resource.exists()) {
             resource = new File(basePath, filename);
         }
+        if(!resource.exists()) {
+            resource = new File(filename);
+        }
 		return resource;
 	}
 	
@@ -449,7 +452,7 @@ public class AcceptanceTestContext {
 		
 		if(gatfExecutorConfig.getTestCasesBasePath()!=null)
 		{
-			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath().trim());
 			Assert.assertTrue("Invalid test cases base path..", basePath.exists());
 			gatfExecutorConfig.setTestCasesBasePath(basePath.getAbsolutePath());
 		}
@@ -555,14 +558,7 @@ public class AcceptanceTestContext {
 			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
 			if(gatfExecutorConfig.getTestDataConfigFile().trim().endsWith(".xml")) {
-				XStream xstream = new XStream(new DomDriver("UTF-8"));
-		       
-		        xstream.allowTypes(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
-				xstream.processAnnotations(new Class[]{GatfTestDataConfig.class, GatfTestDataProvider.class});
-				xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-				xstream.alias("args", String[].class);
-				xstream.alias("arg", String.class);
-				gatfTestDataConfig = (GatfTestDataConfig)xstream.fromXML(file);
+				gatfTestDataConfig = WorkflowContextHandler.XOM.readValue(file, GatfTestDataConfig.class);
 			} else  {
 				gatfTestDataConfig = WorkflowContextHandler.OM.readValue(file, GatfTestDataConfig.class);
 			}

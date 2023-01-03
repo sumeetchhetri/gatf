@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.sumeetchhetri.gatf</groupId>
 	<artifactId>gatf-parent</artifactId>
-	<version>1.1.0</version>
+	<version>1.1.1</version>
 	<packaging>pom</packaging>
 	<name>gatf</name>
 	<description>Generic Automated Test Framework For API/UI Testing</description>
@@ -73,11 +73,6 @@
 			<version>3.12.0</version>
 		</dependency>
 		<dependency>
-			<groupId>com.thoughtworks.xstream</groupId>
-			<artifactId>xstream</artifactId>
-			<version>1.4.19</version>
-		</dependency>
-		<dependency>
 			<groupId>com.squareup.okhttp3</groupId>
 			<artifactId>okhttp</artifactId>
 			<version>4.9.1</version>
@@ -129,6 +124,10 @@
 				<exclusion>
 					<groupId>javax.xml</groupId>
 					<artifactId>jsr173</artifactId>
+				</exclusion>
+				<exclusion>
+					<groupId>org.apache.xmlbeans</groupId>
+					<artifactId>xmlbeans-xmlpublic</artifactId>
 				</exclusion>
 			</exclusions>
 		</dependency>
@@ -220,25 +219,25 @@
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi</artifactId>
-			<version>4.1.1</version>
+			<version>5.2.3</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.poi</groupId>
 			<artifactId>poi-ooxml</artifactId>
-			<version>3.17</version>
+			<version>5.2.3</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.poi</groupId>
-			<artifactId>poi-ooxml-schemas</artifactId>
-			<version>3.17</version>
+			<artifactId>poi-ooxml-full</artifactId>
+			<version>5.2.3</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.xmlbeans</groupId>
 			<artifactId>xmlbeans</artifactId>
-			<version>3.0.0</version>
+			<version>5.1.1</version>
 		</dependency>
 
 		<dependency>
@@ -375,6 +374,27 @@
 		    <groupId>io.github.jonathanlink</groupId>
 		    <artifactId>PDFLayoutTextStripper</artifactId>
 		    <version>2.2.4</version>
+		</dependency>
+		
+		<dependency>
+		    <groupId>org.postgresql</groupId>
+		    <artifactId>postgresql</artifactId>
+		    <version>42.5.1</version>
+		</dependency>
+		<dependency>
+		    <groupId>mysql</groupId>
+		    <artifactId>mysql-connector-java</artifactId>
+		    <version>8.0.31</version>
+		</dependency>
+		<dependency>
+		    <groupId>com.oracle.database.jdbc</groupId>
+		    <artifactId>ojdbc8</artifactId>
+		    <version>21.8.0.0</version>
+		</dependency>
+		<dependency>
+		    <groupId>com.microsoft.sqlserver</groupId>
+		    <artifactId>mssql-jdbc</artifactId>
+		    <version>11.2.2.jre11</version>
 		</dependency>
 	</dependencies>
 

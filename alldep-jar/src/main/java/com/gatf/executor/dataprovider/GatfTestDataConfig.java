@@ -24,22 +24,19 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-import com.gatf.executor.core.MapKeyValueCustomXstreamConverter;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamConverter;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 /**
  * @author Sumeet Chhetri
  * The Test data configuration properties
  */
-@XStreamAlias("gatf-testdata-config")
+@JacksonXmlRootElement(localName = "gatf-testdata-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonInclude(value = Include.NON_NULL)
 public class GatfTestDataConfig implements Serializable {
 
 	private static final long serialVersionUID = 1L;
 	
-	@XStreamConverter(value=MapKeyValueCustomXstreamConverter.class)
 	private Map<String, String> globalVariables;
 	
 	private List<String> compareEnvBaseUrls;

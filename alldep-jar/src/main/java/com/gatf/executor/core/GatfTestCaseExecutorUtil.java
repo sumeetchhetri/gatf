@@ -45,12 +45,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openqa.selenium.logging.LoggingPreferences;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
-import com.gatf.executor.dataprovider.GatfTestDataProvider;
-import com.gatf.executor.dataprovider.GatfTestDataSource;
-import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.executor.distributed.DistributedAcceptanceContext;
 import com.gatf.executor.distributed.DistributedGatfListener;
 import com.gatf.executor.distributed.DistributedGatfTester;
@@ -84,8 +82,6 @@ import com.gatf.selenium.SeleniumTestSession;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.gatf.ui.GatfConfigToolUtil;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri The maven plugin main class for the Test case Executor/Workflow engine
@@ -477,38 +473,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 resource = new File(basePath, configFile);
                 if (resource.exists()) {
                 	if(configFile.trim().endsWith(".xml")) {
-	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-	                   
-	                    xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-	                    xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-	                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
-	                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-	                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
-	                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-	                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-	                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-	                    /*xstream.alias("testCaseHooksPaths", String[].class);
-	                    xstream.alias("testCaseHooksPath", String.class);
-	                    xstream.alias("args", String[].class);
-	                    xstream.alias("arg", String.class);
-	                    xstream.alias("testCaseHooksPaths", String[].class);
-	                    xstream.alias("testCaseHooksPath", String.class);
-	                    xstream.alias("queryStrs", String[].class);
-	                    xstream.alias("queryStr", String.class);
-	                    xstream.alias("distributedNodes", String[].class);
-	                    xstream.alias("distributedNode", String.class);
-	                    xstream.alias("ignoreFiles", String[].class);
-	                    xstream.alias("orderedFiles", String[].class);
-	                    xstream.alias("string", String.class);
-	                    xstream.alias("seleniumScripts", String[].class);
-	                    xstream.alias("seleniumScript", String.class);
-	                    xstream.alias("wrkPath", String.class);
-	                    xstream.alias("wrk2Path", String.class);
-	                    xstream.alias("autocannonPath", String.class);
-	                    xstream.alias("arg", String.class);*/
-	                    configuration = (GatfExecutorConfig) xstream.fromXML(resource);
+	                    configuration = WorkflowContextHandler.XOM.readValue(resource, GatfExecutorConfig.class);
                 	} else if(configFile.trim().endsWith(".json")) {
                 		configuration = WorkflowContextHandler.OM.readValue(resource, GatfExecutorConfig.class);
                 	} else {
@@ -2379,37 +2344,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     public static GatfExecutorConfig getConfig(InputStream resource, boolean isXml) throws Exception {
     	GatfExecutorConfig configuration = null;
     	if(isXml) {
-	        XStream xstream = new XStream(new DomDriver("UTF-8"));
-	       
-	        xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-	                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-	        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-	                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-	        xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
-	        xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-	        xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
-	        xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-	        xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-	        xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-	        /*xstream.alias("args", String[].class);
-	        xstream.alias("arg", String.class);
-	        xstream.alias("testCaseHooksPaths", String[].class);
-	        xstream.alias("testCaseHooksPath", String.class);
-	        xstream.alias("queryStrs", String[].class);
-	        xstream.alias("queryStr", String.class);
-	        xstream.alias("distributedNodes", String[].class);
-	        xstream.alias("distributedNode", String.class);
-	        xstream.alias("ignoreFiles", String[].class);
-	        xstream.alias("ignoreFile", String.class);
-	        xstream.alias("orderedFiles", String[].class);
-	        xstream.alias("orderedFile", String.class);
-	        xstream.alias("string", String.class);
-	        xstream.alias("seleniumScripts", String[].class);
-	        xstream.alias("seleniumScript", String.class);
-	        xstream.alias("wrkPath", String.class);
-	        xstream.alias("wrk2Path", String.class);
-	        xstream.alias("autocannonPath", String.class);*/
-	        configuration = (GatfExecutorConfig) xstream.fromXML(resource);
+	        configuration = WorkflowContextHandler.XOM.readValue(resource, GatfExecutorConfig.class);
     	} else {
     		configuration = WorkflowContextHandler.OM.readValue(resource, GatfExecutorConfig.class);
     	}
@@ -2418,40 +2353,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     public static String getConfigStrJson(GatfExecutorConfig configuration) throws Exception {
-    	return WorkflowContextHandler.OM.writeValueAsString(configuration);
+    	return WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValueAsString(configuration);
     }
 
-    public static String getConfigStrXml(GatfExecutorConfig configuration) {
-        XStream xstream = new XStream(new DomDriver("UTF-8"));
-       
-        xstream.allowTypes(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-        xstream.processAnnotations(new Class[] {GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-                SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-        xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
-        xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-        xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
-        xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-        xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-        xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-        /*xstream.alias("args", String[].class);
-        xstream.alias("arg", String.class);
-        xstream.alias("testCaseHooksPaths", String[].class);
-        xstream.alias("testCaseHooksPath", String.class);
-        xstream.alias("queryStrs", String[].class);
-        xstream.alias("queryStr", String.class);
-        xstream.alias("distributedNodes", String[].class);
-        xstream.alias("distributedNode", String.class);
-        xstream.alias("ignoreFiles", String[].class);
-        xstream.alias("orderedFiles", String[].class);
-        xstream.alias("string", String.class);
-        xstream.alias("seleniumScripts", String[].class);
-        xstream.alias("seleniumScript", String.class);
-        xstream.alias("wrkPath", String.class);
-        xstream.alias("wrk2Path", String.class);
-        xstream.alias("autocannonPath", String.class);*/
-
-        return xstream.toXML(configuration);
+    public static String getConfigStrXml(GatfExecutorConfig configuration) throws JsonProcessingException {
+        return WorkflowContextHandler.XOM.writeValueAsString(configuration);
     }
 
     public AcceptanceTestContext getContext() {

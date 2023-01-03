@@ -40,11 +40,10 @@ import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri<br/>
@@ -336,17 +335,7 @@ public class GatfTestGeneratorMojo extends AbstractMojo implements GatfPlugin {
     			
     			if(configFile.trim().endsWith(".xml")) {
 					InputStream io = new FileInputStream(configFile);
-		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		           
-		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-		    		xstream.alias("testPaths", String[].class);
-		    		xstream.alias("testPath", String.class);
-		    		xstream.alias("soapWsdlKeyPairs", String[].class);
-		    		xstream.alias("soapWsdlKeyPair", String.class);
-		    		xstream.alias("string", String.class);
-		    		
-		    		config = (GatfConfiguration)xstream.fromXML(io);
+		    		config = WorkflowContextHandler.XOM.readValue(io, GatfConfiguration.class);
     			} else if(configFile.trim().endsWith(".json")) {
     				InputStream io = new FileInputStream(configFile);
     				config = new ObjectMapper().readValue(io, GatfConfiguration.class);

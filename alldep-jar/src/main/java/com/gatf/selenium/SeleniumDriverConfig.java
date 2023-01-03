@@ -9,16 +9,14 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 
-import com.gatf.executor.core.MapKeyValueAttributeXstreamConverter;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamConverter;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 /**
  * @author Sumeet Chhetri
  * The Selenium Driver configuration properties
  */
 
-@XStreamAlias("seleniumDriverConfig")
+@JacksonXmlRootElement(localName = "seleniumDriverConfig")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonInclude(value = Include.NON_NULL)
 public class SeleniumDriverConfig implements Serializable {
@@ -39,10 +37,8 @@ public class SeleniumDriverConfig implements Serializable {
 
     private String url;
 
-    @XStreamConverter(value=MapKeyValueAttributeXstreamConverter.class)
     private Map<String, String> capabilities = new HashMap<String, String>();
 
-    @XStreamConverter(value=MapKeyValueAttributeXstreamConverter.class)
     private Map<String, String> properties = new HashMap<String, String>();  
 
     public String getName()

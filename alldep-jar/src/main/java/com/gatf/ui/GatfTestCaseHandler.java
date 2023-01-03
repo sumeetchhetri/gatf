@@ -17,7 +17,6 @@ package com.gatf.ui;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -39,10 +38,6 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.XMLTestCaseFinder;
-import com.gatf.xstream.GatfPrettyPrintWriter;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-import com.thoughtworks.xstream.io.xml.XppDriver;
 
 public class GatfTestCaseHandler extends HttpHandler {
 
@@ -110,21 +105,8 @@ public class GatfTestCaseHandler extends HttpHandler {
     				throw new RuntimeException("Testcase does not exist");
     			}
     			tcs.remove(found);
-    			
-    			    XStream xstream = new XStream(
-            			new XppDriver() {
-            				public HierarchicalStreamWriter createWriter(Writer out) {
-            					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-            				}
-            			}
-            		);
-    			   
-    			    xstream.allowTypes(new Class[]{TestCase.class});
-            		xstream.processAnnotations(new Class[]{TestCase.class});
-            		xstream.alias("TestCases", List.class);
-            		xstream.toXML(tcs, new FileOutputStream(filePath));
-        			
-        			response.setStatus(HttpStatus.OK_200);
+        		WorkflowContextHandler.XOM.writeValue(new FileOutputStream(filePath), tcs);
+    			response.setStatus(HttpStatus.OK_200);
     		} catch (Exception e) {
     			GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
@@ -189,16 +171,7 @@ public class GatfTestCaseHandler extends HttpHandler {
         				tcs = ttcs;
         			}
         			
-        			XStream xstream = new XStream(
-            			new XppDriver() {
-            				public HierarchicalStreamWriter createWriter(Writer out) {
-            					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-            				}
-            			}
-            		);
-            		xstream.processAnnotations(new Class[]{TestCase.class});
-            		xstream.alias("TestCases", List.class);
-            		xstream.toXML(tcs, new FileOutputStream(filePath));
+            		WorkflowContextHandler.XOM.writeValue(new FileOutputStream(filePath), tcs);
     		    }
     			
     			response.setStatus(HttpStatus.OK_200);
@@ -262,16 +235,7 @@ public class GatfTestCaseHandler extends HttpHandler {
         				}
         				if(changed)
         				{
-        					XStream xstream = new XStream(
-                    			new XppDriver() {
-                    				public HierarchicalStreamWriter createWriter(Writer out) {
-                    					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-                    				}
-                    			}
-                    		);
-                    		xstream.processAnnotations(new Class[]{TestCase.class});
-                    		xstream.alias("TestCases", List.class);
-                    		xstream.toXML(tcsn, new FileOutputStream(filePath));
+                    		WorkflowContextHandler.XOM.writeValue(new FileOutputStream(filePath), tcsn);
         				}
         			}
         			String json = WorkflowContextHandler.OM.writeValueAsString(tcsn);

@@ -15,7 +15,9 @@
 */
 package com.gatf.executor.core;
 
+import java.io.IOException;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -31,20 +33,27 @@ import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response.Status;
+import javax.xml.bind.annotation.XmlTransient;
+import javax.xml.namespace.QName;
 
-import org.apache.commons.text.StringEscapeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringEscapeUtils;
 import org.apache.log4j.Logger;
+import org.junit.Assert;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-import org.junit.Assert;
-
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamAsAttribute;
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlCData;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlProperty;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
+import com.fasterxml.jackson.dataformat.xml.ser.ToXmlGenerator;
 
 
 /**
@@ -53,7 +62,8 @@ import com.thoughtworks.xstream.annotations.XStreamOmitField;
  * Also defines json/xml level node validation assertion steps
  * Defines the workflow parameter mappings and repeat scenario parameters/provider
  */
-@XStreamAlias("TestCase")
+@JsonSerialize(using = com.gatf.executor.core.TestCase.TestCaseSerializer.class)
+@JacksonXmlRootElement(localName = "TestCase")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonInclude(value = Include.NON_NULL)
 public class TestCase implements Serializable {
@@ -74,40 +84,42 @@ public class TestCase implements Serializable {
 	
 	private String name;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private String method;
 	
 	private String description;
 	
+	@JacksonXmlCData
 	private String content;
 	
 	private String contentFile;
 	
 	private Map<String, String> headers = new HashMap<String, String>();
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private String exQueryPart;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private int expectedResCode;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private String expectedResContentType;
 	
+	@JacksonXmlCData
 	private String expectedResContent;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean skipTest;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean detailedLog;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean secure;
 	
 	private List<String> expectedNodes = new ArrayList<String>();
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean soapBase;
 	
 	private String wsdlKey;
@@ -118,7 +130,7 @@ public class TestCase implements Serializable {
 	
 	private Map<String, String> workflowContextParameterMap = new HashMap<String, String>();
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private int sequence = 0;
 	
 	private List<String> multipartContent = new ArrayList<String>();
@@ -127,75 +139,75 @@ public class TestCase implements Serializable {
 	
 	private List<Map<String, String>> repeatScenarios = new ArrayList<Map<String,String>>();
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private List<Map<String, String>> repeatScenariosOrig = new ArrayList<Map<String,String>>();
 	
 	private String repeatScenarioProviderName;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private String sourcefileName;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private String aurl;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private String aexQueryPart;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private String acontent;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private List<String> aexpectedNodes = new ArrayList<String>();
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private Integer numberOfExecutions = 1;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean repeatScenariosConcurrentExecution;
 	
-	@XStreamAsAttribute	
+	@JacksonXmlProperty(isAttribute = true)	
 	private boolean stopOnFirstFailureForPerfTest;
 
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private volatile boolean failed;
 	
-	@XStreamOmitField
+	@XmlTransient
 	private Integer simulationNumber;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private Long preWaitMs;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private Long postWaitMs;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private Boolean reportResponseContent = true;
 	
 	private String preExecutionDataSourceHookName;
 	
 	private String postExecutionDataSourceHookName;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean abortOnInvalidStatusCode;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean abortOnInvalidContentType;
 	
 	private String relatedTestName;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	//Parameters carried over from related testcases
 	private Map<String, String> carriedOverVariables;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private String identifierPrefix =  "Run";
 	
@@ -203,25 +215,25 @@ public class TestCase implements Serializable {
 	
 	private List<String> logicalValidations;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean disablePreHooks = false;
 	
-	@XStreamAsAttribute
+	@JacksonXmlProperty(isAttribute = true)
 	private boolean disablePostHooks = false;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private Map<String, String> currentScenarioVariables;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private boolean isServerApiAuth = false;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private boolean isServerApiTarget = false;
 	
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private boolean isExternalApi = false;
 	
@@ -1708,5 +1720,63 @@ public class TestCase implements Serializable {
 				|| value.trim().equalsIgnoreCase("0"))
 			return false;
 		return Boolean.valueOf(value);
+	}
+	
+	public static class TestCaseSerializer extends JsonSerializer<TestCase> {
+
+	    @Override
+	    public void serialize(TestCase test, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+	    	if (gen instanceof ToXmlGenerator) {
+		        ToXmlGenerator xmlGen = (ToXmlGenerator) gen;
+		        // set desired name
+		        xmlGen.setNextName(new QName("TestCase"));
+		        xmlGen.writeStartObject();
+	
+		        // serialise fields
+		        Field[] fields = TestCase.class.getDeclaredFields();
+		        for (Field field : fields) {
+		        	if(field.isAnnotationPresent(XmlTransient.class) || field.isAnnotationPresent(JsonIgnore.class) || java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+		        	field.setAccessible(true);
+			        try {
+			        	if(field.get(test)!=null && field.isAnnotationPresent(JacksonXmlProperty.class) && field.getAnnotation(JacksonXmlProperty.class).isAttribute()) {
+			        		xmlGen.getStaxWriter().writeAttribute(field.getName(), field.get(test).toString());
+			        	}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+		        for (Field field : fields) {
+		        	if(field.isAnnotationPresent(XmlTransient.class) || field.isAnnotationPresent(JsonIgnore.class) || java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+		        	field.setAccessible(true);
+			        try {
+			        	if(field.get(test)!=null && !(field.isAnnotationPresent(JacksonXmlProperty.class) && field.getAnnotation(JacksonXmlProperty.class).isAttribute())) {
+			        		if(field.isAnnotationPresent(JacksonXmlCData.class)) {
+					        	xmlGen.setNextIsCData(true);
+					        }
+					        xmlGen.writeObjectField(field.getName(), field.get(test));
+			        	}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+	
+		        gen.writeEndObject();
+	    	} else {
+	    		gen.writeStartObject();
+	    		Field[] fields = TestCase.class.getDeclaredFields();
+		        for (Field field : fields) {
+		        	field.setAccessible(true);
+		        	if(field.isAnnotationPresent(XmlTransient.class) || field.isAnnotationPresent(JsonIgnore.class) || java.lang.reflect.Modifier.isStatic(field.getModifiers())) continue;
+			        try {
+			        	if(field.get(test)!=null) {
+			        		gen.writeObjectField(field.getName(), field.get(test));
+			        	}
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+	    		gen.writeEndObject();
+	    	}
+	    }
 	}
 }

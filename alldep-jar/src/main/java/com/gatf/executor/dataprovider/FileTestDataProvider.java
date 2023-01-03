@@ -153,7 +153,7 @@ public class FileTestDataProvider implements TestDataProvider {
 			
 			int counter = 1;
 			for (String[] parts : list) {
-				if(parts.length!=variableNamesArr.size()) {
+				if(parts.length<variableNamesArr.size()) {
 					throw new AssertionError("The number of columns in the file record do not match the " +
 							"variable Names provided at position " + counter++);
 				}

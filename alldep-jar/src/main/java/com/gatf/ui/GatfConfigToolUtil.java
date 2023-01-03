@@ -159,18 +159,26 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(gatfConfig.getTestCasesBasePath()==null) {
 			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.getRootDir());
+		} else {
+			gatfConfig.setTestCasesBasePath(gatfConfig.getTestCasesBasePath().trim());
 		}
 		if(gatfConfig.getOutFilesBasePath()==null) {
 			isChanged = true;
 			gatfConfig.setOutFilesBasePath(mojo.getRootDir());
+		} else {
+			gatfConfig.setOutFilesBasePath(gatfConfig.getOutFilesBasePath().trim());
 		}
 		if(gatfConfig.getTestCaseDir()==null) {
 			isChanged = true;
 			gatfConfig.setTestCaseDir("data");
+		} else {
+			gatfConfig.setTestCaseDir(gatfConfig.getTestCaseDir().trim());
 		}
 		if(gatfConfig.getOutFilesDir()==null) {
 			isChanged = true;
 			gatfConfig.setOutFilesDir("out");
+		} else {
+			gatfConfig.setOutFilesDir(gatfConfig.getOutFilesDir().trim());
 		}
 		if(gatfConfig.isEnabled()==null) {
 			isChanged = true;

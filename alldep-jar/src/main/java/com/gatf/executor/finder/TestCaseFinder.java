@@ -292,6 +292,7 @@ public abstract class TestCaseFinder {
 				new XMLTestCaseFinder().resolveTestCases(file);
 				allFiles.add(file);
 			} catch (Exception e) {
+				e.printStackTrace();
 			}
 		}
 		return allFiles;

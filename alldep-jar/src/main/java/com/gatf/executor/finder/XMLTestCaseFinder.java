@@ -18,9 +18,9 @@ package com.gatf.executor.finder;
 import java.io.File;
 import java.util.List;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.gatf.executor.core.TestCase;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
+import com.gatf.executor.core.WorkflowContextHandler;
 
 /**
  * @author Sumeet Chhetri
@@ -32,14 +32,8 @@ public class XMLTestCaseFinder extends TestCaseFinder {
 		return TestCaseFileType.XML;
 	}
 
-	@SuppressWarnings("unchecked")
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		XStream xstream = new XStream(new DomDriver("UTF-8"));
-       
-        xstream.allowTypes(new Class[]{TestCase.class});
-		xstream.processAnnotations(new Class[]{TestCase.class});
-		xstream.alias("TestCases", List.class);
-		List<TestCase> xmlTestCases = (List<TestCase>)xstream.fromXML(testCaseFile);
+		List<TestCase> xmlTestCases = (List<TestCase>)WorkflowContextHandler.XOM.readValue(testCaseFile, new TypeReference<List<TestCase>>() {});
 		return xmlTestCases;
 	}
 }

@@ -37,6 +37,8 @@ import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.gatf.ResourceCopy;
 import com.gatf.executor.validator.XMLResponseValidator;
 
@@ -50,6 +52,11 @@ import okhttp3.HttpUrl;
 public class WorkflowContextHandler {
 	
 	public static final ObjectMapper OM = new ObjectMapper();
+	public static final XmlMapper XOM = new XmlMapper();
+	
+	static {
+		XOM.enable(SerializationFeature.INDENT_OUTPUT);
+	}
 
 	private final VelocityEngine engine = new VelocityEngine();
 	

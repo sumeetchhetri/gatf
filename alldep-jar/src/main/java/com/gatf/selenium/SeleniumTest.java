@@ -243,7 +243,7 @@ public abstract class SeleniumTest {
 	}
 
 	protected String getFileProviderHash(String name) {
-		return getFileProviderHash(name);
+		return ___cxt___.getFileProviderHash(name);
 	}
 
 	private SeleniumTestSession getSession() {
@@ -753,6 +753,12 @@ public abstract class SeleniumTest {
 		String v2 = parts.length>1?parts[1]:null;
 		String v3 = parts.length>2?parts[2]:null;
 		int count = 10, totalcount = 1;
+		
+		if(v1.toLowerCase().equals("prefixed")) {
+			return tvalue+System.currentTimeMillis();
+		} else if(v1.toLowerCase().equals("prefixed_")) {
+			return tvalue+"_"+System.currentTimeMillis();
+		}
 		
 		if(v1.toLowerCase().equals("range")) {
 			long min = 0;
@@ -1272,7 +1278,7 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	@SuppressWarnings("serial")
+	@SuppressWarnings({ "serial", "unchecked" })
 	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder) {
 		finder = finder.trim();
 		String by = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(0, finder.indexOf("@")).trim();
@@ -1298,6 +1304,13 @@ public abstract class SeleniumTest {
 			el = By.tagName(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("xpath")) {
 			el = By.xpath(classifier).findElements(sc);
+			if(el==null || el.size()==0) {
+				Object ctxt = null;
+				if(sc instanceof WebElement) {
+					ctxt = sc;
+				}
+				el = (List<WebElement>)((JavascriptExecutor)d).executeScript("return window.GatfUtil.findByXpath(arguments[0], arguments[1])", classifier, ctxt);
+			}
 		} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
 			el = By.cssSelector(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("text")) {
@@ -1400,14 +1413,7 @@ public abstract class SeleniumTest {
 
 	@SuppressWarnings("unchecked")
 	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
-		try {
-			if(get___d___() instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(get___d___()))) {
-				((JavascriptExecutor)get___d___()).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-				jsUtilStatusMap.put(VM.current().addressOf(get___d___()), true);
-			}
-		} catch (Exception e) {
-		}
-		
+		initJs(get___d___());
 		if(!new File(filePath).exists()) {
 			throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
 		}
@@ -1609,6 +1615,7 @@ public abstract class SeleniumTest {
 		final Object[] o = new Object[2];
 		final SeleniumTest test = this;
 		long timeoutRemaining = 0;
+		initJs(get___d___());
 		System.out.println("Searching element => " + by+"@"+classifier);
 		if(timeOutInSeconds<=0) {
 			List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
@@ -2030,7 +2037,7 @@ public abstract class SeleniumTest {
 		return from;
 	}
 
-	public static ExpectedCondition<WebElement> elementInteractable(SeleniumTest test, WebElement element, boolean enabledCheck, String ... layers) {
+	private static ExpectedCondition<WebElement> elementInteractable(SeleniumTest test, WebElement element, boolean enabledCheck, String ... layers) {
 		return new ExpectedCondition<WebElement>() {
 			@Override
 			public WebElement apply(WebDriver driver) {
@@ -2284,6 +2291,17 @@ public abstract class SeleniumTest {
 					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
 				});
 			}
+		}
+	}
+	
+	protected void initJs(WebDriver driver) {
+		try {
+			if(get___d___() instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(driver))) {
+				((JavascriptExecutor)driver).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
+				jsUtilStatusMap.put(VM.current().addressOf(driver), true);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 

@@ -25,12 +25,11 @@ import org.apache.commons.collections.MultiMap;
 import org.apache.commons.collections.map.MultiValueMap;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.TestDataSource;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
 
 /**
  * @author Sumeet Chhetri
@@ -43,24 +42,15 @@ public class DataSourceProfiler {
 	MultiMap dsprofileMap;
 	
 	@SuppressWarnings("unchecked")
-	public DataSourceProfiler(AcceptanceTestContext context) {
+	public DataSourceProfiler(AcceptanceTestContext context) throws Exception {
 		
 		if(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml")!=null)
 		{
 			this.context = context;
 			
-			XStream xstream = new XStream(new DomDriver("UTF-8"));
-           
-            xstream.allowTypes(new Class[]{GatfTestDataProvider.class});
-			xstream.processAnnotations(new Class[]{GatfTestDataProvider.class});
-			xstream.alias("profile-providers", List.class);
-			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-			xstream.alias("args", String[].class);
-			xstream.alias("arg", String.class);
-			
 			dsprofileMap = new MultiValueMap();
 			
-			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)xstream.fromXML(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml"));
+			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml"), List.class);
 			for (GatfTestDataProvider gatfTestDataProvider : provs) {
 				dsprofileMap.put(gatfTestDataProvider.getProviderName(), gatfTestDataProvider);
 			}
@@ -68,16 +58,7 @@ public class DataSourceProfiler {
 		
 		if(context.getResourceFile("profile-providers.xml")!=null && context.getResourceFile("profile-providers.xml").exists())
 		{
-			XStream xstream = new XStream(new DomDriver("UTF-8"));
-           
-            xstream.allowTypes(new Class[]{GatfTestDataProvider.class});
-			xstream.processAnnotations(new Class[]{GatfTestDataProvider.class});
-			xstream.alias("profile-providers", List.class);
-			xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-			xstream.alias("args", String[].class);
-			xstream.alias("arg", String.class);
-			
-			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)xstream.fromXML(context.getResourceFile("profile-providers.xml"));
+			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(context.getResourceFile("profile-providers.xml"), List.class);
 			for (GatfTestDataProvider gatfTestDataProvider : provs) {
 				if(dsprofileMap.containsKey(gatfTestDataProvider.getProviderName()))
 					dsprofileMap.remove(gatfTestDataProvider.getProviderName());

@@ -1157,7 +1157,7 @@ function validate(element, type)
 {
 	if(type=='boolean')
 	{
-		if(!isBoolean(element.val()))
+		if(!isBoolean(element.value))
 		{
 			if(debugEnabled)alert('A Boolean value was expected..');
 			element.value='';
@@ -1165,7 +1165,7 @@ function validate(element, type)
 	}
 	else if(type=='number' || type=='integer')
 	{
-		if(!isNumber(element.val()))
+		if(!isNumber(element.value))
 		{
 			if(debugEnabled)alert('A Numeric value was expected..');
 			element.value='';
@@ -1173,7 +1173,7 @@ function validate(element, type)
 	}
 	else if(type=='aplha-strict')
 	{
-		if(!isStrictAlpha(element.val()))
+		if(!isStrictAlpha(element.value))
 		{
 			if(debugEnabled)alert('A Strict alphabetical value was expected..');
 			element.value='';
@@ -1181,7 +1181,7 @@ function validate(element, type)
 	}
 	else if(type=='alpha')
 	{
-		if(!isAlpha(element.val()))
+		if(!isAlpha(element.value))
 		{
 			if(debugEnabled)alert('A Alphabetical value was expected..');
 			element.value='';
@@ -1189,7 +1189,7 @@ function validate(element, type)
 	}
 	else if(type=='alpha-numeric')
 	{
-		if(!isAlphaNumeric(element.val()))
+		if(!isAlphaNumeric(element.value))
 		{
 			if(debugEnabled)alert('An Alphanumeric value was expected..');
 			element.value='';
@@ -1197,7 +1197,7 @@ function validate(element, type)
 	}
 	else if(type=='float' || type=='double')
 	{
-		if(!isFloat(element.val()))
+		if(!isFloat(element.value))
 		{
 			if(debugEnabled)alert('A Float value was expected..');
 			element.value='';

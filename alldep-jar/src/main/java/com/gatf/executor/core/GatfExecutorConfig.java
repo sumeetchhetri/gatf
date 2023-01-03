@@ -19,9 +19,12 @@ import java.io.Serializable;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.xml.bind.annotation.XmlTransient;
+
 import org.apache.commons.lang3.StringUtils;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import org.junit.Assert;
@@ -29,14 +32,13 @@ import org.junit.Assert;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.selenium.SeleniumDriverConfig;
-import com.thoughtworks.xstream.annotations.XStreamAlias;
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 /**
  * @author Sumeet Chhetri
  * The properties required to control the test suite execution
  */
-@XStreamAlias("gatf-execute-config")
+@JacksonXmlRootElement(localName = "gatf-execute-config")
 @JsonAutoDetect(getterVisibility=Visibility.NONE, fieldVisibility=Visibility.ANY, isGetterVisibility=Visibility.NONE)
 @JsonInclude(value = Include.NON_NULL)
 public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
@@ -101,7 +103,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private String[] distributedNodes;
 	
-	@XStreamOmitField
+	@JsonIgnore
+	@XmlTransient
 	private Integer compareBaseUrlsNum;
 	
 	private Long concurrentUserRampUpTime;

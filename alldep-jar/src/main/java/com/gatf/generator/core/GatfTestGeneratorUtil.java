@@ -63,6 +63,7 @@ import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -78,11 +79,6 @@ import com.gatf.generator.postman.PostmanCollection;
 import com.gatf.selenium.Command;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.gatf.ui.GatfConfigToolUtil;
-import com.gatf.xstream.GatfPrettyPrintWriter;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.HierarchicalStreamWriter;
-import com.thoughtworks.xstream.io.xml.DomDriver;
-import com.thoughtworks.xstream.io.xml.XppDriver;
 
 /**
  * @author Sumeet Chhetri<br/>
@@ -651,20 +647,8 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                     	}
                     	else
                     	{
-	                    	XStream xstream = new XStream(
-	                			new XppDriver() {
-	                				public HierarchicalStreamWriter createWriter(Writer out) {
-	                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-		                			}
-	                			}
-	                		);
-	                       
-	                        xstream.allowTypes(new Class[]{TestCase.class});
-	                		xstream.processAnnotations(new Class[]{TestCase.class});
-	                		xstream.alias("TestCases", List.class);
-	                		
 	                		String file = getResourcepath() + File.separator + claz.getName().replaceAll("\\.", "_") + "_testcases_rest.xml";
-	                		xstream.toXML(tcases, new FileOutputStream(file));
+	                		WorkflowContextHandler.XOM.writeValue(new FileOutputStream(file), tcases);
                     	}
                 		
                 		if(getPostmanCollectionVersion()>0)
@@ -1168,16 +1152,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     			
     			if(args[1].trim().endsWith(".xml")) {
     				InputStream io = new FileInputStream(args[1]);
-		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		           
-		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-		    		xstream.alias("testPaths", String[].class);
-		    		xstream.alias("testPath", String.class);
-		    		xstream.alias("soapWsdlKeyPairs", String[].class);
-		    		xstream.alias("soapWsdlKeyPair", String.class);
-		    		xstream.alias("string", String.class);
-		    		config = (GatfConfiguration)xstream.fromXML(io);
+		    		config = (GatfConfiguration) WorkflowContextHandler.XOM.readValue(io, GatfConfiguration.class);
     			} else if(args[1].trim().endsWith(".json")) {
     				InputStream io = new FileInputStream(args[1]);
     				config = WorkflowContextHandler.OM.readValue(io, GatfConfiguration.class);
@@ -1265,16 +1240,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 				GatfConfiguration config = null;
 				if(configFile.trim().endsWith(".xml")) {
 					InputStream io = new FileInputStream(configFile);
-		    		XStream xstream = new XStream(new DomDriver("UTF-8"));
-		           
-		            xstream.allowTypes(new Class[]{GatfConfiguration.class});
-		    		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-		    		xstream.alias("testPaths", String[].class);
-		    		xstream.alias("testPath", String.class);
-		    		xstream.alias("soapWsdlKeyPairs", String[].class);
-		    		xstream.alias("soapWsdlKeyPair", String.class);
-		    		xstream.alias("string", String.class);
-		    		config = (GatfConfiguration)xstream.fromXML(io);
+		    		config = WorkflowContextHandler.XOM.readValue(io, GatfConfiguration.class);
 				} else if(configFile.trim().endsWith(".json")) {
     				InputStream io = new FileInputStream(configFile);
     				config = WorkflowContextHandler.OM.readValue(io, GatfConfiguration.class);
@@ -1433,20 +1399,8 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                             tcases.add(tcase);
                             if(!tcases.isEmpty()) 
                             {
-                            	XStream xstream = new XStream(
-                        			new XppDriver() {
-                        				public HierarchicalStreamWriter createWriter(Writer out) {
-		                					return new GatfPrettyPrintWriter(out, TestCase.CDATA_NODES);
-			                			}
-                        			}
-                        		);
-                               
-                                xstream.allowTypes(new Class[]{TestCase.class});
-                        		xstream.processAnnotations(new Class[]{TestCase.class});
-                        		xstream.alias("TestCases", List.class);
-                        		
                         		String file = getResourcepath() + File.separator + wsdlLocParts[0] + "_testcases_soap.xml";
-                        		xstream.toXML(tcases, new FileOutputStream(file));
+                        		WorkflowContextHandler.XOM.writeValue(new FileOutputStream(file), tcases);
                             }
 							logger.info("Adding message for SOAP operation - " + operation.getOperationName());
 						}
@@ -1465,35 +1419,15 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 		}
 	}
 	
-	public static GatfConfiguration getConfig(InputStream resource)
+	public static GatfConfiguration getConfig(InputStream resource) throws Exception
 	{
-		XStream xstream = new XStream(new DomDriver("UTF-8"));
-       
-        xstream.allowTypes(new Class[]{GatfConfiguration.class});
-		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-		xstream.alias("testPaths", String[].class);
-		xstream.alias("testPath", String.class);
-		xstream.alias("soapWsdlKeyPairs", String[].class);
-		xstream.alias("soapWsdlKeyPair", String.class);
-		xstream.alias("string", String.class);
-		
-		GatfConfiguration config = (GatfConfiguration)xstream.fromXML(resource);
+		GatfConfiguration config = WorkflowContextHandler.XOM.readValue(resource, GatfConfiguration.class);
 		return config;
 	}
 	
-	public static String getConfigStr(GatfConfiguration configuration)
+	public static String getConfigStr(GatfConfiguration configuration) throws JsonProcessingException
 	{
-		XStream xstream = new XStream(new DomDriver("UTF-8"));
-       
-        xstream.allowTypes(new Class[]{GatfConfiguration.class});
-		xstream.processAnnotations(new Class[]{GatfConfiguration.class});
-		xstream.alias("testPaths", String[].class);
-		xstream.alias("testPath", String.class);
-		xstream.alias("soapWsdlKeyPairs", String[].class);
-		xstream.alias("soapWsdlKeyPair", String.class);
-		xstream.alias("string", String.class);
-		
-		return xstream.toXML(configuration);
+		return WorkflowContextHandler.XOM.writeValueAsString(configuration);
 	}
 
 	public void doExecute(GatfPluginConfig configuration, List<String> files) throws Exception {

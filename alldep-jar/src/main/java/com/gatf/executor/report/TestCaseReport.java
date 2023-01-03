@@ -23,14 +23,14 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import javax.xml.bind.annotation.XmlTransient;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonInclude.Include;
-
 import com.gatf.executor.core.TestCase;
-import com.thoughtworks.xstream.annotations.XStreamOmitField;
 
 
 /**
@@ -92,7 +92,7 @@ public class TestCaseReport implements Serializable {
 	
 	private String serverLogs;
 
-	@XStreamOmitField
+	@XmlTransient
 	@JsonIgnore
 	private Map<String, List<String>> resHeaders;
 	

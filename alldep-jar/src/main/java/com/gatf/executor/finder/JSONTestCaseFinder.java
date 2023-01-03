@@ -32,8 +32,7 @@ public class JSONTestCaseFinder extends TestCaseFinder {
 	}
 
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		com.fasterxml.jackson.databind.ObjectMapper jsonMapper = WorkflowContextHandler.OM;
-		List<TestCase> jsonTestCases = (List<TestCase>)jsonMapper.readValue(testCaseFile, new com.fasterxml.jackson.core.type.TypeReference<List<TestCase>>(){});
+		List<TestCase> jsonTestCases = (List<TestCase>)WorkflowContextHandler.OM.readValue(testCaseFile, new com.fasterxml.jackson.core.type.TypeReference<List<TestCase>>(){});
 		return jsonTestCases;
 	}
 }

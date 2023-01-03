@@ -47,16 +47,10 @@ import org.reflections.Reflections;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
-import com.gatf.executor.dataprovider.GatfTestDataConfig;
-import com.gatf.executor.dataprovider.GatfTestDataProvider;
-import com.gatf.executor.dataprovider.GatfTestDataSource;
-import com.gatf.executor.dataprovider.GatfTestDataSourceHook;
 import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
 import com.gatf.selenium.plugins.XmlPlugin;
-import com.thoughtworks.xstream.XStream;
-import com.thoughtworks.xstream.io.xml.DomDriver;
 
 //https://www.autoitscript.com/site/autoit/
 //http://sikulix.com/
@@ -1879,31 +1873,28 @@ public class Command {
         }
     }
 
-    public static class CanvasCommand extends Command {
-        String code;
-        CanvasCommand(String code, Object[] cmdDetails, CommandState state) {
+    public static class CanvasCommand extends FindCommandImpl {
+        CanvasCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            code = state.unsanitize(code);
-            if(code.charAt(0)==code.charAt(code.length()-1)) {
-                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
-                    code = code.substring(1, code.length()-1);
-                }
-            }
-            this.code = code;
+            try {
+                cond = new FindCommand(cmd.substring(6), cmdDetails, state);
+			} catch (Exception e) {
+				throwParseErrorS(cmdDetails, e);
+			}
         }
         String toCmd() {
-            return "canvas \"" + code + "\"";
+            return "canvas " + cond.toCmd();
         }
         String javacode() {
-            return "if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript(\"var c = document.getElementById('"+esc(code)+"');var ctx = c.getContext(\\\"2d\\\");" + 
-            		"ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();\");}";
+            return "if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript(\"var c = arguments[0];var ctx = c.getContext(\\\"2d\\\");" + 
+            		"ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();\", "+state.currvarname()+".get(0));}";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Draw a circle in a canvas element",
-				"\tcanvas {canvas-id}",
+				"\tcanvas {find-expr}",
 				"Examples :-",
-	    		"\tcanvas 'somecanvasele'",
+	    		"\tcanvas xpath@\"asds\"",
             };
         }
     }
@@ -5272,6 +5263,9 @@ public class Command {
                                 v1 = v1.substring(1, v1.length()-1);
                             }
                         }
+                        if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
+                        	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
+                        }
                     }
                     if(parts.length>t+1) {
                         v2 = parts[c+1];
@@ -5291,6 +5285,22 @@ public class Command {
                             }
                         }
                     }
+                    
+                    try {
+        				Integer.parseInt(v2);
+        			} catch (Exception e) {
+        				if(v2!=null && !v1.equalsIgnoreCase("value")) {
+        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+        				}
+        			}
+                    
+                    try {
+        				Integer.parseInt(v3);
+        			} catch (Exception e) {
+        				if(v3!=null) {
+        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+        				}
+        			}
                 }
             } else {
                 //excep
@@ -5564,8 +5574,8 @@ public class Command {
                             v1 = v1.substring(1, v1.length()-1);
                         }
                     }
-                    if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range")) {
-                    	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range"));
+                    if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
+                    	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
                     }
                 }
                 if(parts.length>t+1) {
@@ -5660,7 +5670,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type random values in input/textarea elements",
-        		"\trandomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|numeric|alpha|value|range {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}",
+        		"\trandomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|numeric|alpha|value|range|prefixed|prefixed_ {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}",
         		"Examples :-",
         		"\trandomize id@'ele1' alphanumeric 12",
         		"\trandomize id@'ele1' alpha 8 3 (first-name middle-name last-name)",
@@ -5889,7 +5899,7 @@ public class Command {
                 cvarnm = state.currvarname();
             }
             String hvvrnm = state.varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+cvarnm+".get(0)).perform();");
             return b.toString();
         }
@@ -5899,7 +5909,7 @@ public class Command {
             }
             String hvvrnm = state.varname();
             StringBuilder b = new StringBuilder();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+varnm+".get(0)).perform();");
             return b.toString();
         }
@@ -5947,7 +5957,7 @@ public class Command {
             }
             String cevarnm = condCe.topele();
             String hvvrnm = state.varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).click(((List<WebElement>)"+cevarnm+"[0]).get(0)).perform();");
             return b.toString();
         }
@@ -5957,7 +5967,7 @@ public class Command {
             }
             String hvvrnm = state.varname();
             StringBuilder b = new StringBuilder();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append("\n"+hvvrnm+".moveToElement("+varnm+".get(0)).click().perform();");
             return b.toString();
         }
@@ -5986,7 +5996,7 @@ public class Command {
         		"Multiple Chained Actions",
         		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|"
         		+ "{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|"
-        		+ "randomize {alpha|alphanumeric|numeric|value|range} {arg1} {arg2} {arg3}?}|"
+        		+ "randomize {alpha|alphanumeric|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|"
         		+ "{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...",
         		"Examples :-",
         		"\tactions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'",
@@ -6080,8 +6090,8 @@ public class Command {
                     }
                 } else if(t[counter].toLowerCase().equals("randomize")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|numeric|alpha|value|range")) {
-                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|numeric|alpha|value|range"));
+                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
+                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
                     }
                     
                     cmd.expr1 = state.unsanitize(t[++counter]);
@@ -6204,7 +6214,7 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String acnm = state.varname();
-            b.append("\nActions "+acnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+acnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             if(cond!=null) {
                 b.append("\n"+acnm+".moveToElement("+cond.getActionableVar()+".get(0));");
             }
@@ -6215,7 +6225,7 @@ public class Command {
         String javacode(String elnm, boolean a) {
             StringBuilder b = new StringBuilder();
             String acnm = state.varname();
-            b.append("\nActions "+acnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+acnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             if(cond!=null) {
                 b.append("\n"+acnm+".moveToElement("+elnm+".get(0));");
             }
@@ -6460,7 +6470,7 @@ public class Command {
                 //b.append("\nAssert.assertTrue("+cond.condition()+");");
             }
             String hvvrnm = state.varname();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append(cond.getActionable("doubleClick", null, hvvrnm));
             return b.toString();
         }
@@ -6470,7 +6480,7 @@ public class Command {
             }
             String hvvrnm = state.varname();
             StringBuilder b = new StringBuilder();
-            b.append("\nActions "+hvvrnm+" = new Actions(get___d___());");
+            b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(get___d___());");
             b.append(cond.getActionable("doubleClick", null, hvvrnm));
             return b.toString();
         }
@@ -7350,7 +7360,7 @@ public class Command {
             }
         }
         
-        AcceptanceTestContext c = new AcceptanceTestContext();
+        AcceptanceTestContext c = new AcceptanceTestContext(); 
         c.setGatfExecutorConfig(config);
         c.validateAndInit(true);
         c.getWorkflowContextHandler().initializeSuiteContext(1);
@@ -7491,35 +7501,7 @@ public class Command {
                 }
                 if(resource.exists()) {
                 	if(configFile.trim().endsWith(".xml")) {
-	                    XStream xstream = new XStream(new DomDriver("UTF-8"));
-	                   
-	                    xstream.allowTypes(new Class[]{GatfExecutorConfig.class, GatfTestDataSourceHook.class, SeleniumDriverConfig.class,
-	                            GatfTestDataConfig.class, GatfTestDataProvider.class, GatfTestDataSource.class});
-	                    xstream.processAnnotations(new Class[]{GatfExecutorConfig.class, GatfTestDataConfig.class, GatfTestDataProvider.class, 
-	                            SeleniumDriverConfig.class, GatfTestDataSourceHook.class, GatfTestDataSource.class});
-	                    xstream.alias("gatf-testdata-provider", GatfTestDataProvider.class);
-	                    xstream.alias("gatfTestDataConfig", GatfTestDataConfig.class);
-	                    xstream.alias("gatf-testdata-source", GatfTestDataSource.class);
-	                    xstream.alias("gatf-testdata-source-hook", GatfTestDataSourceHook.class);
-	                    xstream.alias("seleniumDriverConfigs", SeleniumDriverConfig[].class);
-	                    xstream.alias("seleniumDriverConfig", SeleniumDriverConfig.class);
-	                    xstream.alias("testCaseHooksPaths", String[].class);
-	                    xstream.alias("testCaseHooksPath", String.class);
-	                    xstream.alias("args", String[].class);
-	                    xstream.alias("arg", String.class);
-	                    xstream.alias("testCaseHooksPaths", String[].class);
-	                    xstream.alias("testCaseHooksPath", String.class);
-	                    xstream.alias("queryStrs", String[].class);
-	                    xstream.alias("queryStr", String.class);
-	                    xstream.alias("distributedNodes", String[].class);
-	                    xstream.alias("distributedNode", String.class);
-	                    xstream.alias("ignoreFiles", String[].class);
-	                    xstream.alias("orderedFiles", String[].class);
-	                    xstream.alias("string", String.class);
-	                    xstream.alias("seleniumScripts", String[].class);
-	                    xstream.alias("seleniumScript", String.class);
-	                    
-	                    configuration = (GatfExecutorConfig)xstream.fromXML(resource);
+	                    configuration = WorkflowContextHandler.XOM.readValue(resource, GatfExecutorConfig.class);
                 	} else if(configFile.trim().endsWith(".json")) {
                 		configuration = WorkflowContextHandler.OM.readValue(resource, GatfExecutorConfig.class);
                 	} else {
