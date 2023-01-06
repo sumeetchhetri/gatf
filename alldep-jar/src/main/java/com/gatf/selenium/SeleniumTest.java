@@ -24,6 +24,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URL;
@@ -60,22 +61,32 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
-import org.openjdk.jol.vm.VM;
 import org.openqa.selenium.By;
+import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Pdf;
 import org.openqa.selenium.Point;
+import org.openqa.selenium.PrintsPage;
 import org.openqa.selenium.Rectangle;
 import org.openqa.selenium.SearchContext;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
-import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.devtools.DevTools;
-import org.openqa.selenium.devtools.v107.log.Log;
-import org.openqa.selenium.devtools.v107.network.Network;
+import org.openqa.selenium.devtools.HasDevTools;
+import org.openqa.selenium.devtools.v108.dom.DOM;
+import org.openqa.selenium.devtools.v108.dom.model.Node;
+import org.openqa.selenium.devtools.v108.dom.model.NodeId;
+import org.openqa.selenium.devtools.v108.fetch.Fetch;
+import org.openqa.selenium.devtools.v108.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v108.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v108.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v108.log.Log;
+import org.openqa.selenium.devtools.v108.network.Network;
+import org.openqa.selenium.devtools.v108.network.model.ResourceType;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -85,6 +96,7 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.print.PrintOptions;
 import org.openqa.selenium.remote.Augmenter;
+import org.openqa.selenium.remote.RemoteWebDriver;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
@@ -103,6 +115,7 @@ import com.jayway.jsonpath.JsonPath;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
+import io.github.bonigarcia.wdm.WebDriverManager;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -139,6 +152,8 @@ public abstract class SeleniumTest {
 	private static final String TOP_LEVEL_PROV_NAME = UUID.randomUUID().toString();
 
 	private transient AcceptanceTestContext ___cxt___ = null;
+	
+    protected transient Map<String, WebDriverManager> wdmMgs = new ConcurrentHashMap<>();
 
 	List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
 
@@ -147,6 +162,79 @@ public abstract class SeleniumTest {
 	protected transient int sessionNum = -1;
 
 	protected int index;
+	
+	protected void addWdm(String browserName, Capabilities capabilities) {
+		boolean isDocker = false;
+		boolean isRecording = false;
+		if(browserName.endsWith("-rec")) {
+			isDocker = true;
+			isRecording = true;
+			browserName= browserName.replaceFirst("-rec", "");
+		} else if(browserName.endsWith("-dkr")) {
+			isDocker = true;
+			browserName= browserName.replaceFirst("-dkr", "");
+		}
+		if(wdmMgs.containsKey(browserName) && !isDocker) {
+			return;
+		}
+		WebDriverManager wdm = null;
+		switch(browserName) {
+			case "chrome": {
+				wdm = WebDriverManager.chromedriver();
+				break;
+			}
+			case "firefox": {
+				wdm = WebDriverManager.firefoxdriver();
+				break;
+			}
+			case "ie": {
+				wdm = WebDriverManager.iedriver();
+				break;
+			}
+			case "edge": {
+				wdm = WebDriverManager.edgedriver();
+				break;
+			}
+			case "safari": {
+				wdm = WebDriverManager.safaridriver();
+				break;
+			}
+			case "opera": {
+				wdm = WebDriverManager.operadriver();
+				break;
+			}
+			default: {
+				throw new RuntimeException("Invalid browser name specified for browser");
+			}
+		}
+		
+		if(isDocker) {
+			wdm.capabilities(capabilities).browserInDocker();
+			if(isRecording) {
+				wdm.enableRecording().enableVnc();
+				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdm.getDockerNoVncUrl(), wdm.getDockerRecordingPath()));
+			}
+			wdmMgs.put(UUID.randomUUID().toString(), wdm);
+		} else {
+			wdm.setup();
+			wdmMgs.put(browserName, wdm);
+		}
+	}
+	
+	protected WebDriver getDockerDriver(String browserName) {
+		boolean isDocker = false;
+		if(browserName.endsWith("-rec")) {
+			isDocker = true;
+			browserName= browserName.replaceFirst("-rec", "");
+		} else if(browserName.endsWith("-dkr")) {
+			isDocker = true;
+			browserName= browserName.replaceFirst("-dkr", "");
+		}
+		if(wdmMgs.containsKey(browserName) && isDocker) {
+			return new Augmenter().augment(wdmMgs.get(browserName).create());
+		}
+		throw new RuntimeException("No driver found for remote docker");
+	}
 	
 	protected void setSleepGranularity(long timeoutSleepGranularity) {
 		this.timeoutSleepGranularity = timeoutSleepGranularity; 
@@ -464,13 +552,12 @@ public abstract class SeleniumTest {
 	}
 
 	
-	private static final Map<Long, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
+	private static final Map<String, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
 
 	protected void set___d___(WebDriver ___d___)
 	{
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
-		VM.current().addressOf(get___d___());
 	}
 
 	protected class PrettyPrintingMap<K, V> {
@@ -629,10 +716,11 @@ public abstract class SeleniumTest {
 		if(getSession().___d___.size()>0) {
 			for (WebDriver d : getSession().___d___)
 			{
-				d.quit();
-				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(VM.current().addressOf(d))) {
-					jsUtilStatusMap.remove(VM.current().addressOf(d));
+				String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
+					jsUtilStatusMap.remove(sessionId);
 				}
+				d.quit();
 			}
 		}
 	}
@@ -642,12 +730,16 @@ public abstract class SeleniumTest {
 			if(s.___d___.size()>0) {
 				for (WebDriver d : s.___d___)
 				{
-					d.quit();
-					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(VM.current().addressOf(d))) {
-						jsUtilStatusMap.remove(VM.current().addressOf(d));
+					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
+						jsUtilStatusMap.remove(sessionId);
 					}
+					d.quit();
 				}
 			}
+		}
+		for(WebDriverManager wdm: wdmMgs.values()) {
+			wdm.quit();
 		}
 	}
 
@@ -1309,7 +1401,9 @@ public abstract class SeleniumTest {
 				if(sc instanceof WebElement) {
 					ctxt = sc;
 				}
-				el = (List<WebElement>)((JavascriptExecutor)d).executeScript("return window.GatfUtil.findByXpath(arguments[0], arguments[1])", classifier, ctxt);
+				if (d instanceof JavascriptExecutor) {
+					el = (List<WebElement>)((JavascriptExecutor)d).executeScript("return window.GatfUtil.findByXpath(arguments[0], arguments[1])", classifier, ctxt);
+				}
 			}
 		} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
 			el = By.cssSelector(classifier).findElements(sc);
@@ -1328,27 +1422,17 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText) {
-		try {
-			PrintOptions po = new PrintOptions();
-			Pdf pdf = ((org.openqa.selenium.chrome.ChromeDriver)pdr).print(po);
-			IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
-			/*Map<String, Object> ppdfArgs = new HashMap<>();
-			ppdfArgs.put("printBackground", false);
-			ppdfArgs.put("landscape", false);
-			ppdfArgs.put("displayHeaderFooter", false);
-			ppdfArgs.put("preferCSSPageSize", false);
-			ppdfArgs.put("scale", 1);
-			ppdfArgs.put("marginTop", 0);
-			ppdfArgs.put("marginBottom", 0);
-			ppdfArgs.put("marginLeft", 0);
-			ppdfArgs.put("marginRight", 0);
-			Map<String, Object> ppdfo = ((org.openqa.selenium.chrome.ChromeDriver)pdr).executeCdpCommand("Page.printToPDF", ppdfArgs);
-			IOUtils.write(Base64.getDecoder().decode(ppdfo.get("data").toString()), new FileOutputStream(filePath));*/
-			if(extractText && new File(filePath).exists()) {
-				extractTextFromPdf(filePath);
+		if(pdr instanceof PrintsPage) {
+			try {
+				PrintOptions po = new PrintOptions();
+				Pdf pdf = ((PrintsPage)pdr).print(po);
+				IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
+				if(extractText && new File(filePath).exists()) {
+					extractTextFromPdf(filePath);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
 			}
-		} catch (Exception e) {
-			e.printStackTrace();
 		}
 	}
 	
@@ -1372,6 +1456,9 @@ public abstract class SeleniumTest {
 	}
 
 	protected void windowOpenSaveJsPre() {
+		if (!(get___d___() instanceof JavascriptExecutor)) {
+		    throw new IllegalStateException("This driver cannot run JavaScript.");
+		}
 		try {
 			((JavascriptExecutor)get___d___()).executeScript("window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);window.open=__owo__;console.log(a);}");
 		} catch (Exception e) {
@@ -1380,6 +1467,9 @@ public abstract class SeleniumTest {
 	}
 
 	protected void windowOpenSaveJsPost(String filePath, boolean extractText) {
+		if (!(get___d___() instanceof JavascriptExecutor)) {
+		    throw new IllegalStateException("This driver cannot run JavaScript.");
+		}
 		OkHttpClient client = null;
 		try {
 			String url = (String)((JavascriptExecutor)get___d___()).executeScript("return window.__wosjp__[0]");
@@ -1411,21 +1501,29 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	@SuppressWarnings("unchecked")
 	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
 		initJs(get___d___());
 		if(!new File(filePath).exists()) {
 			throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
 		}
 		
-		if(get___d___() instanceof ChromeDriver) {
+		if(get___d___() instanceof HasDevTools && get___d___() instanceof JavascriptExecutor) {
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
-				Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
+				DevTools devTools = ((HasDevTools) get___d___()).getDevTools();
+				Node node = devTools.send(DOM.getDocument(Optional.empty(), Optional.empty()));
+				NodeId nodeId = devTools.send(DOM.querySelector(node.getNodeId(), cssSelctor));
+				List<String> files = new ArrayList<String>();
+				files.add(filePath);
+				for(int i=0;i<count-1;i++) {
+					files.add(filePath);
+				}
+				devTools.send(DOM.setFileInputFiles(files, Optional.of(nodeId), Optional.empty(), Optional.empty()));
+				/*Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
 				Map<String, Object> domqaArgs = new HashMap<>();
 				domqaArgs.put("nodeId", ((Map<String, Object>)dom.get("root")).get("nodeId"));
 				domqaArgs.put("selector", cssSelctor);
-				Map<String, Object> domqs = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.querySelector", domqaArgs);
+				Map<String, Object> domqs = ((HasDevTools)get___d___()).executeCdpCommand("DOM.querySelector", domqaArgs);
 				Map<String, Object> setIfArgs = new HashMap<>();
 				setIfArgs.put("nodeId", domqs.get("nodeId"));
 				List<String> files = new ArrayList<String>();
@@ -1434,7 +1532,7 @@ public abstract class SeleniumTest {
 					files.add(filePath);
 				}
 				setIfArgs.put("files", files);
-				((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.setFileInputFiles", setIfArgs);
+				((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.setFileInputFiles", setIfArgs);*/
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -1470,13 +1568,13 @@ public abstract class SeleniumTest {
 			}
 		} else if(action.equalsIgnoreCase("hover")) {
 			for(final WebElement we: ret) {
-				Actions ac = new Actions(get___d___());
+				Actions ac = new Actions(wd);
 				ac.moveToElement(we).perform();
 				break;
 			}
 		} else if(action.equalsIgnoreCase("hoverandclick")) {
 			for(final WebElement we: ret) {
-				Actions ac = new Actions(get___d___());
+				Actions ac = new Actions(wd);
 				ac.moveToElement(we).click().perform();
 				break;
 			}
@@ -1542,7 +1640,7 @@ public abstract class SeleniumTest {
 			}
 		}*/ else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
 			for(final WebElement we: ret) {
-				Actions ac = new Actions(get___d___());
+				Actions ac = new Actions(wd);
 				ac.moveToElement(we).doubleClick().perform();
 				break;
 			}
@@ -1563,13 +1661,14 @@ public abstract class SeleniumTest {
 				jsFocus(wd, we);
 				break;
 			case "bk":
-				try {
-					we.click();
+				we.sendKeys(Keys.chord("\ue003"));
+				we.click();
+				/*try {
 					java.awt.Robot rbt = new java.awt.Robot();
 					rbt.keyPress(java.awt.event.KeyEvent.VK_BACK_SPACE);
 					rbt.keyRelease(java.awt.event.KeyEvent.VK_BACK_SPACE);
 				} catch (AWTException e) {
-				}
+				}*/
 				break;
 			case "cl":
 				we.click();
@@ -1580,20 +1679,34 @@ public abstract class SeleniumTest {
 	}
 	
 	protected static void jsChange(WebDriver wd, WebElement we) {
-		((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new Event('change'));", we);
+		if (wd instanceof JavascriptExecutor) {
+			((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new Event('change', {bubbles: true}));", we);
+		}
 	}
 	
 	protected static void jsBlur(WebDriver wd, WebElement we) {
-		((JavascriptExecutor)wd).executeScript("arguments[0].blur();", we);
+		if (wd instanceof JavascriptExecutor) {
+			((JavascriptExecutor)wd).executeScript("arguments[0].blur();", we);
+		}
 	}
 	
 	protected static void jsFocus(WebDriver wd, WebElement we) {
-		((JavascriptExecutor)wd).executeScript("arguments[0].focus();", we);
+		if (wd instanceof JavascriptExecutor) {
+			((JavascriptExecutor)wd).executeScript("arguments[0].focus();", we);
+		}
 	}
 	
 	protected static void jsKeyEvent(WebDriver wd, WebElement we, String type, char key) {
 		jsFocus(wd, we);
-		((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new KeyboardEvent('"+type+"', {'key': '"+key+"'}));", we);
+		if (wd instanceof JavascriptExecutor) {
+			((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new KeyboardEvent('"+type+"', {'key': '"+key+"'}));", we);
+		}
+	}
+	
+	protected static void jsClick(WebDriver wd, WebElement we) {
+		if (wd instanceof JavascriptExecutor) {
+			((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new MouseEvent('click', {bubbles: true}));", we);
+		}
 	}
 
 	@SuppressWarnings("unchecked")
@@ -2075,8 +2188,11 @@ public abstract class SeleniumTest {
 	}
 	
 	private static boolean isJsVisible(WebDriver driver, WebElement element) {
-		return Boolean.TRUE.equals(((JavascriptExecutor)driver)
-				.executeScript("return arguments[0].offsetParent!==undefined && arguments[0].offsetParent!==null", element));
+		if (driver instanceof JavascriptExecutor) {
+			return Boolean.TRUE.equals(((JavascriptExecutor)driver)
+					.executeScript("return arguments[0].offsetParent!==undefined && arguments[0].offsetParent!==null", element));
+		}
+		return true;
 	}
 
 	protected void initStateFulProvider(String name) {
@@ -2173,7 +2289,7 @@ public abstract class SeleniumTest {
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
-            if(selConf.getDriverName()!=null) {
+            if(selConf.getDriverName() != null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
@@ -2227,78 +2343,62 @@ public abstract class SeleniumTest {
 		}
 	}
 	
+	protected void navigateTo(WebDriver d, String url) {
+		String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+		jsUtilStatusMap.remove(sessionId);
+		d.navigate().to(url);
+		initCdp(d);
+	}
+	
 	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
-		if(driver instanceof ChromeDriver) {
-			ChromeDriver cdr = ((ChromeDriver)driver);
-			/*try {
-				Map<String, Object> domqaArgs = new HashMap<>();
-				domqaArgs.put("cacheDisabled", true);
-				cdr.executeCdpCommand("Network.setCacheDisabled", domqaArgs);
-			} catch (Exception e) {
-				e.printStackTrace();
-			}*/
-
-			DevTools devTools = cdr.getDevTools();
-			devTools.createSession();
+		if(driver instanceof HasDevTools) {
+			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
+			org.openqa.selenium.devtools.v107.security.Security.setIgnoreCertificateErrors(true);
+			BROWSER_FEATURES.put(sessionId+".SECURITY", true);
+			BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
+			BROWSER_FEATURES.put(sessionId+".NETWORK_RES", interceptApiCall);
+			BROWSER_FEATURES.put(sessionId+".LOGCONSOLE", logconsole);
 			Network.setCacheDisabled(true);
+		}
+	}
+	
+	protected void waitForReady(WebDriver driver) {
+		if (!(driver instanceof JavascriptExecutor)) {
+		    throw new IllegalStateException("This driver cannot run JavaScript.");
+		}
+		int counter = 0;
+		while(counter++<60) {
+			String status = (String)((JavascriptExecutor)driver).executeScript("return document.readyState");
+			if(status.equalsIgnoreCase("complete")) break;
+		}
+	}
+	
+	protected void initCdp(WebDriver driver) {
+		if(driver instanceof HasDevTools) {
+			DevTools devTools = ((HasDevTools)driver).getDevTools();
+			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 
-			String driverId = String.valueOf(VM.current().addressOf(driver));
-			if(!BROWSER_FEATURES.containsKey(driverId+".SECURITY")) {
-				org.openqa.selenium.devtools.v107.security.Security.setIgnoreCertificateErrors(true);
-				BROWSER_FEATURES.put(driverId+".SECURITY", true);
-			}
-
-			if(interceptApiCall) {
-				if(!BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES")) {
-					BROWSER_FEATURES.put(driverId+".NETWORK_RES", true);
-				}
-				
-				devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
-				devTools.addListener(Network.requestWillBeSent(), requestSent -> {
-					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) && 
-							NETWORK_INSPECTION.get(driverId)[0].toString().equalsIgnoreCase(requestSent.getRequest().getMethod()) &&
-							NETWORK_INSPECTION.get(driverId)[1].toString().equalsIgnoreCase(requestSent.getRequest().getUrl())) {
-						System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
-								requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
-						NETWORK_INSPECTION.get(driverId)[2] = requestSent.getRequestId().toString();
-					}
-					/*System.out.println("Request URL => " + requestSent.getRequest().getUrl());
-					System.out.println("Request Method => " + requestSent.getRequest().getMethod());
-					System.out.println("Request Headers => " + requestSent.getRequest().getHeaders().toString());
-					System.out.println("------------------------------------------------------");*/
-				});
-				devTools.addListener(Network.responseReceived(), response -> {
-					//System.out.println(response.getRequestId().toString());
-					if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId) &&
-							response.getRequestId().toString().equals(NETWORK_INSPECTION.get(driverId)[2])) {
-						System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
-								response.getResponse().getStatus()));
-						NETWORK_INSPECTION.get(driverId)[3] = new Object[] {response.getResponse().getStatus(), 
-								response.getResponse().getHeaders(), response.getResponse().getMimeType().toString(), 
-								devTools.send(Network.getResponseBody(response.getRequestId())).getBody()};
-					}
-					/*System.out.println("Response Url => " + response.getResponse().getUrl());
-					System.out.println("Response Status => " + response.getResponse().getStatus());
-					System.out.println("Response Headers => " + response.getResponse().getHeaders().toString());
-					System.out.println("Response MIME Type => " + response.getResponse().getMimeType().toString());
-					System.out.println("------------------------------------------------------");*/
-				});
-			}
-
-			if(logconsole) {
+			waitForReady(driver);
+			
+			devTools.createSession();
+			
+			if(BROWSER_FEATURES.get(sessionId+".LOGCONSOLE")) {
 				devTools.send(Log.enable());
 				devTools.addListener(Log.entryAdded(), logEntry -> {
 					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
 				});
 			}
+			
+			devTools.disconnectSession();
 		}
 	}
 	
 	protected void initJs(WebDriver driver) {
 		try {
-			if(get___d___() instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(VM.current().addressOf(driver))) {
+			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
+			if(driver instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(sessionId)) {
 				((JavascriptExecutor)driver).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-				jsUtilStatusMap.put(VM.current().addressOf(driver), true);
+				jsUtilStatusMap.put(sessionId, true);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -2308,37 +2408,108 @@ public abstract class SeleniumTest {
 	private static final Map<String, Object[]> NETWORK_INSPECTION = new ConcurrentHashMap<>();
 	
 	protected void networkApiInspectPre(String method, String url) {
-		String driverId = String.valueOf(VM.current().addressOf(get___d___()));
-		if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && !NETWORK_INSPECTION.containsKey(driverId)) {
-			NETWORK_INSPECTION.put(driverId, new Object[] {method, url, null, null});
+		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
+		if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && !NETWORK_INSPECTION.containsKey(sessionId)) {
+			NETWORK_INSPECTION.put(sessionId, new Object[] {method, url, null, null});
 		} else {
-			if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES")) {
+			if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES")) {
 				throw new RuntimeException("Only one inspection allowed at a time, no nested or simultaneous interceptions allowed.");
 			} else {
 				throw new RuntimeException("Network inspection should be enabled by passing interceptApiCall=true in the capabilities for the driver configuration");
 			}
 		}
+		
+		final String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
+		if(get___d___() instanceof HasDevTools) {
+			DevTools devTools = ((HasDevTools)get___d___()).getDevTools();
+			
+			devTools.createSession();
+		
+			RequestPattern rp = new RequestPattern(Optional.of("*"), Optional.of(ResourceType.XHR), Optional.of(RequestStage.RESPONSE));
+			List<RequestPattern> lrp = new ArrayList<>();
+			lrp.add(rp);
+			devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
+			
+			devTools.addListener(Fetch.requestPaused(), requestPaused -> {
+				System.out.println(String.format("Captured Network Response for [%s] -> %d", requestPaused.getRequestId().toString(), 
+						requestPaused.getResponseStatusCode().get()));
+				//requestPaused.getRequestId()
+				String rurl = requestPaused.getRequest().getUrl();
+				rurl = rurl.indexOf("?")!=-1?rurl.substring(0, rurl.indexOf("?")):rurl;
+				if(requestPaused.getRequest().getMethod().equalsIgnoreCase(method) && rurl.equalsIgnoreCase(murl)) {
+					List<HeaderEntry> headers = requestPaused.getResponseHeaders().get();
+					String mimeType = null;
+					Map<String, Object> headerMap = new HashMap<>();
+					for(HeaderEntry he: headers) {
+						if(he.getName().equalsIgnoreCase("content-type")) {
+							mimeType = he.getValue();
+							if(mimeType.indexOf(";")!=-1) {
+								mimeType = mimeType.substring(0, mimeType.indexOf(";"));
+							}
+						}
+						headerMap.put(he.getName(), he.getValue());
+					}
+					org.openqa.selenium.devtools.v108.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+					String body = firsb.getBody();
+					if(firsb.getBase64Encoded()) {
+						try {
+							body = new String(org.apache.commons.codec.binary.Base64.decodeBase64(body), "UTF-8");
+						} catch (UnsupportedEncodingException e) {
+						}
+					}
+					NETWORK_INSPECTION.get(sessionId)[2] = requestPaused.getRequestId().toString();
+					NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {requestPaused.getResponseStatusCode().get(), headerMap, mimeType, body};
+				}
+				devTools.send(Fetch.continueResponse(requestPaused.getRequestId(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+			});
+			
+			/*devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
+			devTools.addListener(Network.requestWillBeSent(), requestSent -> {
+				System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
+						requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
+				if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId) && 
+						NETWORK_INSPECTION.get(sessionId)[0].toString().equalsIgnoreCase(requestSent.getRequest().getMethod()) &&
+						NETWORK_INSPECTION.get(sessionId)[1].toString().equalsIgnoreCase(requestSent.getRequest().getUrl())) {
+					System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
+							requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
+					NETWORK_INSPECTION.get(sessionId)[2] = requestSent.getRequestId().toString();
+				}
+			});
+			devTools.addListener(Network.responseReceived(), response -> {
+				//System.out.println(response.getRequestId().toString());
+				System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
+						response.getResponse().getStatus()));
+				if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId) &&
+						response.getRequestId().toString().equals(NETWORK_INSPECTION.get(sessionId)[2])) {
+					System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
+							response.getResponse().getStatus()));
+					NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {response.getResponse().getStatus(), 
+							response.getResponse().getHeaders(), response.getResponse().getMimeType().toString(), 
+							devTools.send(Network.getResponseBody(response.getRequestId())).getBody()};
+				}
+			});*/
+		}
 	}
 	
 	@SuppressWarnings("unchecked")
 	protected void networkApiInspectPost(String v1, String v2) {
-		String driverId = String.valueOf(VM.current().addressOf(get___d___()));
-		if(BROWSER_FEATURES.containsKey(driverId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(driverId)) {
+		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
+		if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId)) {
 			int counter = 0;
-			while(NETWORK_INSPECTION.get(driverId)[3]==null && counter++<60) {
-				System.out.println("Waiting for network API response for ["+NETWORK_INSPECTION.get(driverId)[0].toString() 
-						+  "->" + NETWORK_INSPECTION.get(driverId)[1].toString() + "]... attempt " + counter);
+			while(NETWORK_INSPECTION.get(sessionId)[3]==null && counter++<60) {
+				System.out.println("Waiting for network API response for ["+NETWORK_INSPECTION.get(sessionId)[0].toString() 
+						+  "->" + NETWORK_INSPECTION.get(sessionId)[1].toString() + "]... attempt " + counter);
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 				}
 			}
-			if(NETWORK_INSPECTION.get(driverId)[3]==null) {
-				throw new RuntimeException("No valid API response detected for ["+NETWORK_INSPECTION.get(driverId)[0].toString() 
-						+  "->" + NETWORK_INSPECTION.get(driverId)[1].toString() + "]");
+			if(NETWORK_INSPECTION.get(sessionId)[3]==null) {
+				throw new RuntimeException("No valid API response detected for ["+NETWORK_INSPECTION.get(sessionId)[0].toString() 
+						+  "->" + NETWORK_INSPECTION.get(sessionId)[1].toString() + "]");
 			}
-			if(NETWORK_INSPECTION.get(driverId)[3]!=null) {
-				Object[] res = (Object[])NETWORK_INSPECTION.get(driverId)[3];
+			if(NETWORK_INSPECTION.get(sessionId)[3]!=null) {
+				Object[] res = (Object[])NETWORK_INSPECTION.get(sessionId)[3];
 				int status = (Integer)res[0];
 				Map<String, Object> headers = (Map<String, Object>)res[1];
 				String mimeType = (String)res[2];
@@ -2361,6 +2532,14 @@ public abstract class SeleniumTest {
 						break;
 				}
 			}
+			
+			if(get___d___() instanceof HasDevTools) {
+				DevTools devTools = ((HasDevTools)get___d___()).getDevTools();
+				devTools.send(Fetch.disable());
+				devTools.disconnectSession();
+			}
+			
+			NETWORK_INSPECTION.remove(sessionId);
 		}
 	}
 }

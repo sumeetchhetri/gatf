@@ -75,10 +75,6 @@
   </build>
   <repositories>
     <repository>
-      <id>reficio</id>
-      <url>http://repo.reficio.org/maven/</url>
-    </repository>
-    <repository>
       <releases />
       <snapshots>
         <enabled>false</enabled>

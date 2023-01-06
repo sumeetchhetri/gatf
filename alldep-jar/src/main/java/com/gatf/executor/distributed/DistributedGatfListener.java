@@ -310,7 +310,7 @@ public class DistributedGatfListener {
                         for (int i=0;i<rconfigs.length;i++) {
                             SeleniumDriverConfig rseleniumDriverConfig = rconfigs[i];
                             for (SeleniumDriverConfig lseleniumDriverConfig : lconfigs) {
-                                if(rseleniumDriverConfig.getDriverName().equals(lseleniumDriverConfig.getDriverName()) && lseleniumDriverConfig.getPath()!=null) {
+                                if(rseleniumDriverConfig.getDriverName().equals(lseleniumDriverConfig.getDriverName())) {
                                     rconfigs[i] = lseleniumDriverConfig;
                                     break;
                                 }

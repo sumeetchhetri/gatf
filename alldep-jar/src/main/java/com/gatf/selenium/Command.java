@@ -106,7 +106,7 @@ public class Command {
         String layerStr = null;
         
         Properties configProps = null;
-        Map<String, String> dynProps = null;
+        Map<String, String> dynProps = new HashMap<String, String>();
         Map<String, String> aliases = new HashMap<>();
         
         String getLayers() {
@@ -593,19 +593,21 @@ public class Command {
         	state.timeoutSleepGranularity = ((TimeoutCommand)comd).sleepGranularity;
         } else if (cmd.toLowerCase().startsWith("layer ")) {
             comd = new LayerCommand(cmd.substring(6).trim(), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("break")) {
+        } else if (cmd.toLowerCase().equals("break")) {
             comd = new BreakCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("continue")) {
+        } else if (cmd.toLowerCase().equals("continue")) {
             comd = new ContinueCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("back")) {
+        } else if (cmd.toLowerCase().equals("back")) {
             comd = new BackCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("forward")) {
+        } else if (cmd.toLowerCase().equals("forward")) {
             comd = new ForwardCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("refresh")) {
+        } else if (cmd.toLowerCase().equals("refresh")) {
             comd = new RefreshCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("close")) {
+        } else if (cmd.toLowerCase().equals("close")) {
             comd = new CloseCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("maximize")) {
+        } else if (cmd.toLowerCase().equals("waitready")) {
+            comd = new WaitForReady(cmdDetails, state);
+        } else if (cmd.toLowerCase().equals("maximize")) {
             comd = new MaximizeCommand(cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("window_set ")) {
             comd = new WindowSetPropertyCommand(cmd.substring(11).trim(), cmdDetails, state);
@@ -993,7 +995,6 @@ public class Command {
                 try {
 					tprops.load(new FileInputStream(f));
 					if(tprops.size()>0) {
-						state.dynProps = new HashMap<String, String>();
 						@SuppressWarnings("unchecked")
 		                Enumeration<String> enums = (Enumeration<String>) tprops.propertyNames();
 		                while (enums.hasMoreElements()) {
@@ -1297,6 +1298,7 @@ public class Command {
         b.append("public "+className+"(AcceptanceTestContext ___cxt___, int index) {\n/*GATF_ST_CLASS_INIT_*/super(\""+esc(name)+"\", ___cxt___, index);\n}\n");
         b.append("public void close() {\n/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();\n}\n");
         b.append("public SeleniumTest copy(AcceptanceTestContext ctx, int index) {\nreturn new "+className+"(ctx, index);}\n");
+        List<ConfigPropsCommand> cmds = new ArrayList<>();
         for (SeleniumDriverConfig driverConfig : mp.values())
         {
             b.append("public void setupDriver"+driverConfig.getName().toLowerCase().replaceAll("[^0-9A-Za-z]+", "")+"(LoggingPreferences ___lp___) throws Exception {\n");
@@ -1308,6 +1310,7 @@ public class Command {
             }
             for (Command c : children) {
             	if(c instanceof ConfigPropsCommand) {
+            		cmds.add((ConfigPropsCommand)c);
             		b.append(c.javacode());
             	}
             }
@@ -1328,7 +1331,22 @@ public class Command {
                 if(mp.containsKey(c.name)) {
                     bn.add(new String[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+""});
                 } else {
-                    throwError(c.fileLineDetails, new RuntimeException("Driver configuration not found for " + c.name));
+                	b.append("public void setupDriver"+c.name.toLowerCase().replaceAll("[^0-9A-Za-z]+", "")+"(LoggingPreferences ___lp___) throws Exception {\n");
+                	SeleniumDriverConfig sd = new SeleniumDriverConfig();
+                	sd.setName(c.name);
+                	sd.setArguments("");
+                    DriverCommand cmd = new DriverCommand(sd, new Object[]{}, state);
+                    String cc = cmd.javacode();
+                    b.append(cc);
+                    if(!cc.isEmpty()) {
+                        b.append("\n");
+                    }
+                    for (ConfigPropsCommand cfp : cmds) {
+                    	b.append(cfp.javacode());
+                    }
+                    b.append("}\n");
+                    bn.add(new String[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+""});
+                    //throwError(c.fileLineDetails, new RuntimeException("Driver configuration not found for " + c.name));
                 }
                 lastSessionId++;
             } else if(c instanceof SubTestCommand) {
@@ -3596,7 +3614,7 @@ public class Command {
             
             b.append("boolean logconsole = false, interceptApiCall = false;\n");
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
-            if(config.getName().equalsIgnoreCase("chrome")) {
+            if(config.getName().startsWith("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
                 b.append("___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
@@ -3624,8 +3642,13 @@ public class Command {
                     }
                 	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
                 }
-                b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
-            } else if(config.getName().equalsIgnoreCase("firefox")) {
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("chrome")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
+            	}
+            } else if(config.getName().startsWith("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
                 b.append("org.openqa.selenium.firefox.FirefoxOptions ___dc___ = new org.openqa.selenium.firefox.FirefoxOptions();\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3651,7 +3674,12 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setProfile(___dcprf___);\n");
-                b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("firefox")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+            	}
             } else if(config.getName().equalsIgnoreCase("ie")) {
                 b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3667,7 +3695,12 @@ public class Command {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("ie")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
+            	}
             } else if(config.getName().equalsIgnoreCase("safari")) {
                 b.append("org.openqa.selenium.safari.SafariOptions ___dc___ = new org.openqa.selenium.safari.SafariOptions();\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3679,7 +3712,12 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("safari")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
+            	}
             } else if(config.getName().equalsIgnoreCase("opera")) {
                 b.append("org.openqa.selenium.opera.OperaOptions ___dc___ = new org.openqa.selenium.opera.OperaOptions();\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -3695,8 +3733,14 @@ public class Command {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("opera")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
+            	}
             } else if(config.getName().equalsIgnoreCase("edge")) {
+            	b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\");\n");
                 b.append("org.openqa.selenium.edge.EdgeOptions ___dc___ = new org.openqa.selenium.edge.EdgeOptions();\n");
                 b.append("___dc___.setCapability(org.openqa.selenium.edge.EdgeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
@@ -3707,7 +3751,12 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
+                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+            	if(!config.getName().equals("edge")) {
+            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            	} else {
+            		b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
+            	}
             } else if(config.getName().equalsIgnoreCase("remote-chrome")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();\n");
                 b.append("___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);\n");
@@ -4234,6 +4283,24 @@ public class Command {
         }
     }
 
+    public static class WaitForReady extends Command {
+        String toCmd() {
+            return "waitready";
+        }
+        String javacode() {
+            return "waitForReady(get___d___();";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Wait Till Browser/Dowument is ready",
+        		"\twaitready",
+            };
+        }
+        WaitForReady(Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+        }
+    }
+
     public static class MaximizeCommand extends Command {
         String toCmd() {
             return "maximize";
@@ -4261,8 +4328,8 @@ public class Command {
             return "goto " + url;
         }
         String javacode() {
-            String exnm = state.evarname();
-            return "try{\n___cw___.navigate().to(evaluate(\""+state.sanitize(url).replace("\\", "\\\\")+"\"));\n} catch (org.openqa.selenium.TimeoutException "+exnm+") {\n___cw___.navigate().refresh();\n}";
+            //String exnm = state.evarname();
+            return "navigateTo(___cw___, evaluate(\""+state.sanitize(url).replace("\\", "\\\\")+"\"));\n";
         }
         GotoCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -7355,7 +7422,7 @@ public class Command {
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
-            if(selConf.getDriverName()!=null) {
+            if(selConf.getDriverName()!=null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
@@ -7448,7 +7515,7 @@ public class Command {
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel", 
         		"/path/to/project/gatf-config.xml", 
-        		"/path/to/project", "true"}, null, true);
+        		"/path/to/project/", "true"}, null, true);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");

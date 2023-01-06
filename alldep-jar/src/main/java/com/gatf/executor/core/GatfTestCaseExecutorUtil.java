@@ -534,7 +534,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     
     public GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath) {
         for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs()) {
-            if (selConf != null && selConf.getDriverName() != null) {
+            if (selConf != null && selConf.getDriverName() != null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
@@ -588,7 +588,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         distributedGatfTester = new DistributedGatfTester();
 
         for (SeleniumDriverConfig selConf : configuration.getSeleniumDriverConfigs()) {
-            if (selConf != null && selConf.getDriverName() != null) {
+            if (selConf != null && selConf.getDriverName() != null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
@@ -2060,7 +2060,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         
         if (dContext.getConfig().isSeleniumExecutor()) {
             for (SeleniumDriverConfig selConf : dContext.getConfig().getSeleniumDriverConfigs()) {
-                if (selConf != null && selConf.getDriverName() != null) {
+                if (selConf != null && selConf.getDriverName() != null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                     System.setProperty(selConf.getDriverName(), selConf.getPath());
                 }
             }

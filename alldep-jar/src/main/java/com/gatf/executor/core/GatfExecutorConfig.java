@@ -21,18 +21,17 @@ import java.util.Map;
 
 import javax.xml.bind.annotation.XmlTransient;
 
-import org.apache.commons.lang3.StringUtils;
+import org.junit.Assert;
+
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
 import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.annotation.JsonInclude.Include;
 import com.fasterxml.jackson.annotation.JsonInclude;
-import org.junit.Assert;
-
+import com.fasterxml.jackson.annotation.JsonInclude.Include;
+import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.dataprovider.GatfTestDataConfig;
 import com.gatf.selenium.SeleniumDriverConfig;
-import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 
 /**
  * @author Sumeet Chhetri
@@ -135,7 +134,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private String[] seleniumScripts;
 	
-	private SeleniumDriverConfig[] seleniumDriverConfigs;
+	private SeleniumDriverConfig[] seleniumDriverConfigs = new SeleniumDriverConfig[] {};
 	
 	private String seleniumLoggerPreferences;
 	
@@ -572,9 +571,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     }
 
     public boolean isValidSeleniumRequest() {
-		return isSeleniumExecutor && /*seleniumScripts!=null && seleniumScripts.length>0 && */
+		return isSeleniumExecutor /*&& 
 		        seleniumDriverConfigs!=null && seleniumDriverConfigs.length>0 &&
-		        StringUtils.isNotEmpty(seleniumDriverConfigs[0].getName()) && StringUtils.isNotEmpty(seleniumDriverConfigs[0].getPath());
+		        StringUtils.isNotEmpty(seleniumDriverConfigs[0].getName()) && StringUtils.isNotEmpty(seleniumDriverConfigs[0].getPath())*/;
 	}
 
 	public String getJavaHome()
