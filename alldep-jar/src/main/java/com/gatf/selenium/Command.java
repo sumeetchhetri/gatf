@@ -801,11 +801,9 @@ public class Command {
             Command tmp = null;
             Object[] o = iter.next();
             
-            if(state.dynProps!=null && state.dynProps.size()>0) {
-            	for (String dkey : state.dynProps.keySet()) {
-					o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
-				}
-            }
+        	for (String dkey : state.dynProps.keySet()) {
+				o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
+			}
 
             try
             {
@@ -3642,9 +3640,9 @@ public class Command {
                     }
                 	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
                 }
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("chrome")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
             	}
@@ -3674,9 +3672,9 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setProfile(___dcprf___);\n");
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("firefox")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
             	}
@@ -3695,9 +3693,9 @@ public class Command {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("ie")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
             	}
@@ -3712,9 +3710,9 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("safari")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
             	}
@@ -3733,14 +3731,14 @@ public class Command {
                 	b.append("___dc___.addCommandSwitches(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("opera")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
             	}
             } else if(config.getName().equalsIgnoreCase("edge")) {
-            	b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\");\n");
+            	b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\");\n");
                 b.append("org.openqa.selenium.edge.EdgeOptions ___dc___ = new org.openqa.selenium.edge.EdgeOptions();\n");
                 b.append("___dc___.setCapability(org.openqa.selenium.edge.EdgeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
@@ -3751,9 +3749,9 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
-                b.append("addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
+                b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("edge")) {
-            		b.append("set___d___(getDockerDriver(\""+config.getName().toLowerCase().trim()+"\"));\n");
+            		b.append("set___d___(getDockerDriver(__bkey__));\n");
             	} else {
             		b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
             	}
@@ -5354,7 +5352,7 @@ public class Command {
                     }
                     
                     try {
-        				Integer.parseInt(v2);
+        				Long.parseLong(v2);
         			} catch (Exception e) {
         				if(v2!=null && !v1.equalsIgnoreCase("value")) {
         					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
@@ -5362,7 +5360,7 @@ public class Command {
         			}
                     
                     try {
-        				Integer.parseInt(v3);
+                    	Long.parseLong(v3);
         			} catch (Exception e) {
         				if(v3!=null) {
         					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
@@ -5665,7 +5663,7 @@ public class Command {
                 }
                 
                 try {
-    				Integer.parseInt(v2);
+    				Long.parseLong(v2);
     			} catch (Exception e) {
     				if(v2!=null && !v1.equalsIgnoreCase("value")) {
     					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
@@ -5673,7 +5671,7 @@ public class Command {
     			}
                 
                 try {
-    				Integer.parseInt(v3);
+                	Long.parseLong(v3);
     			} catch (Exception e) {
     				if(v3!=null) {
     					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
@@ -6176,7 +6174,7 @@ public class Command {
                             }
                         }
                         ++counter;
-        				Integer.parseInt(cmd.expr2);
+                        Long.parseLong(cmd.expr2);
         			} catch (Exception e) {
         				if(cmd.expr2!=null && !cmd.expr1.equalsIgnoreCase("value")) {
         					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
@@ -6190,7 +6188,7 @@ public class Command {
                                 cmd.expr3 = cmd.expr3.substring(1, cmd.expr3.length()-1);
                             }
                         }
-        				Integer.parseInt(cmd.expr3);
+                        Long.parseLong(cmd.expr3);
         				++counter;
         			} catch (Exception e) {
         				if(cmd.expr3!=null && !cmd.expr3.matches(ALLCMDS)) {

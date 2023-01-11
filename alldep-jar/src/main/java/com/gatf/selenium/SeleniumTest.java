@@ -163,7 +163,7 @@ public abstract class SeleniumTest {
 
 	protected int index;
 	
-	protected void addWdm(String browserName, Capabilities capabilities) {
+	protected String addWdm(String browserName, Capabilities capabilities) {
 		boolean isDocker = false;
 		boolean isRecording = false;
 		if(browserName.endsWith("-rec")) {
@@ -175,7 +175,7 @@ public abstract class SeleniumTest {
 			browserName= browserName.replaceFirst("-dkr", "");
 		}
 		if(wdmMgs.containsKey(browserName) && !isDocker) {
-			return;
+			return browserName;
 		}
 		WebDriverManager wdm = null;
 		switch(browserName) {
@@ -214,21 +214,21 @@ public abstract class SeleniumTest {
 				wdm.enableRecording().enableVnc();
 				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdm.getDockerNoVncUrl(), wdm.getDockerRecordingPath()));
 			}
-			wdmMgs.put(UUID.randomUUID().toString(), wdm);
+			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"")+(isDocker?"dkr":"");
+			wdmMgs.put(browserName, wdm);
 		} else {
 			wdm.setup();
 			wdmMgs.put(browserName, wdm);
 		}
+		return browserName;
 	}
 	
 	protected WebDriver getDockerDriver(String browserName) {
 		boolean isDocker = false;
 		if(browserName.endsWith("-rec")) {
 			isDocker = true;
-			browserName= browserName.replaceFirst("-rec", "");
 		} else if(browserName.endsWith("-dkr")) {
 			isDocker = true;
-			browserName= browserName.replaceFirst("-dkr", "");
 		}
 		if(wdmMgs.containsKey(browserName) && isDocker) {
 			return new Augmenter().augment(wdmMgs.get(browserName).create());
