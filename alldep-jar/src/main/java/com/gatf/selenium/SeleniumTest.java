@@ -59,6 +59,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.openqa.selenium.By;
@@ -163,6 +164,8 @@ public abstract class SeleniumTest {
 
 	protected int index;
 	
+	public static ThreadLocal<ImmutablePair<Boolean, String>> IN_DOCKER = new ThreadLocal<>();
+	
 	protected String addWdm(String browserName, Capabilities capabilities) {
 		boolean isDocker = false;
 		boolean isRecording = false;
@@ -180,26 +183,32 @@ public abstract class SeleniumTest {
 		WebDriverManager wdm = null;
 		switch(browserName) {
 			case "chrome": {
+				if(!isDocker && System.getProperty("webdriver.chrome.driver")!=null) return browserName;
 				wdm = WebDriverManager.chromedriver();
 				break;
 			}
 			case "firefox": {
+				if(!isDocker && System.getProperty("webdriver.gecko.driver")!=null) return browserName;
 				wdm = WebDriverManager.firefoxdriver();
 				break;
 			}
 			case "ie": {
+				if(!isDocker && System.getProperty("webdriver.ie.driver")!=null) return browserName;
 				wdm = WebDriverManager.iedriver();
 				break;
 			}
 			case "edge": {
+				if(!isDocker && System.getProperty("webdriver.edge.driver")!=null) return browserName;
 				wdm = WebDriverManager.edgedriver();
 				break;
 			}
 			case "safari": {
+				if(!isDocker && System.getProperty("webdriver.safari.driver")!=null) return browserName;
 				wdm = WebDriverManager.safaridriver();
 				break;
 			}
 			case "opera": {
+				if(!isDocker && System.getProperty("webdriver.opera.driver")!=null) return browserName;
 				wdm = WebDriverManager.operadriver();
 				break;
 			}
@@ -209,6 +218,8 @@ public abstract class SeleniumTest {
 		}
 		
 		if(isDocker) {
+			IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, null));
+			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			wdm.capabilities(capabilities).browserInDocker();
 			if(isRecording) {
 				wdm.enableRecording().enableVnc();
@@ -217,6 +228,7 @@ public abstract class SeleniumTest {
 			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"")+(isDocker?"dkr":"");
 			wdmMgs.put(browserName, wdm);
 		} else {
+			IN_DOCKER.set(new ImmutablePair<Boolean, String>(false, null));
 			wdm.setup();
 			wdmMgs.put(browserName, wdm);
 		}
@@ -1512,7 +1524,17 @@ public abstract class SeleniumTest {
 	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
 		initJs(get___d___());
 		if(!new File(filePath).exists()) {
-			throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
+			File upfl = ___cxt___.getResourceFile(filePath);
+			if(!upfl.exists()) {
+				upfl = new File(System.getProperty("user.dir"), filePath);
+				if(!upfl.exists()) {
+					throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
+				} else {
+					filePath = upfl.getAbsolutePath();
+				}
+			} else {
+				filePath = upfl.getAbsolutePath();
+			}
 		}
 		
 		if(get___d___() instanceof HasDevTools && get___d___() instanceof JavascriptExecutor) {
@@ -2371,8 +2393,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
 			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 			BROWSER_FEATURES.put(sessionId+".SECURITY", true);
-			BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
-			BROWSER_FEATURES.put(sessionId+".NETWORK_RES", interceptApiCall);
+			//BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
 			BROWSER_FEATURES.put(sessionId+".LOGCONSOLE", logconsole);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
@@ -2382,13 +2403,16 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void waitForReady(WebDriver driver) {
-		if (!(driver instanceof JavascriptExecutor)) {
-		    throw new IllegalStateException("This driver cannot run JavaScript.");
-		}
-		int counter = 0;
-		while(counter++<60) {
-			String status = (String)((JavascriptExecutor)driver).executeScript("return document.readyState");
-			if(status.equalsIgnoreCase("complete")) break;
+		if (driver instanceof JavascriptExecutor) {
+			int counter = 0;
+			while(counter++<60) {
+				String status = (String)((JavascriptExecutor)driver).executeScript("return document.readyState");
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e) {
+				}
+				if(status.equalsIgnoreCase("complete")) break;
+			}
 		}
 	}
 	
@@ -2428,14 +2452,10 @@ public abstract class SeleniumTest {
 	
 	protected void networkApiInspectPre(String method, String url) {
 		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
-		if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && !NETWORK_INSPECTION.containsKey(sessionId)) {
+		if(!NETWORK_INSPECTION.containsKey(sessionId)) {
 			NETWORK_INSPECTION.put(sessionId, new Object[] {method, url, null, null});
 		} else {
-			if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES")) {
-				throw new RuntimeException("Only one inspection allowed at a time, no nested or simultaneous interceptions allowed.");
-			} else {
-				throw new RuntimeException("Network inspection should be enabled by passing interceptApiCall=true in the capabilities for the driver configuration");
-			}
+			throw new RuntimeException("Only one inspection allowed at a time, no nested or simultaneous interceptions allowed.");
 		}
 		
 		final String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
@@ -2513,7 +2533,7 @@ public abstract class SeleniumTest {
 	@SuppressWarnings("unchecked")
 	protected void networkApiInspectPost(String v1, String v2) {
 		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
-		if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId)) {
+		if(/*BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && */NETWORK_INSPECTION.containsKey(sessionId)) {
 			int counter = 0;
 			while(NETWORK_INSPECTION.get(sessionId)[3]==null && counter++<60) {
 				System.out.println("Waiting for network API response for ["+NETWORK_INSPECTION.get(sessionId)[0].toString() 

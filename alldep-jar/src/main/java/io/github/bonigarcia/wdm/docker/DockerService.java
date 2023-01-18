@@ -43,8 +43,10 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 
+import com.gatf.selenium.SeleniumTest;
 import com.github.dockerjava.api.DockerClient;
 import com.github.dockerjava.api.async.ResultCallback.Adapter;
 import com.github.dockerjava.api.command.CreateContainerCmd;
@@ -684,6 +686,9 @@ public class DockerService {
             browserUrlFormat += "wd/hub";
         }
 
+        String cdpProxyPort = getBindPort(containerId,  "8001/tcp");
+        SeleniumTest.IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, cdpProxyPort));
+        
         String browserUrl = format(browserUrlFormat, browserHost, browserPort);
         browserContainer.setContainerUrl(browserUrl);
         String gateway = getGateway(containerId, network);
