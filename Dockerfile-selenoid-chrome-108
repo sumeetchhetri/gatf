@@ -1,0 +1,14 @@
+FROM selenoid/chrome:latest
+
+USER root
+RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && apt-get install -y nodejs
+RUN mkdir /seltest
+COPY dyn-proxy.js /seltest
+COPY entrypoint_so.sh /
+RUN chmod +x entrypoint_so.sh /seltest/dyn-proxy.js
+RUN chmod -R 777 /seltest 
+
+USER selenium
+
+EXPOSE 4444 8001
+ENTRYPOINT ["/entrypoint_so.sh"]

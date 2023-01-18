@@ -132,11 +132,11 @@ public class Command {
             }
             subtestDups.add(st.name);
             allSubTests.add(st);
-            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true});
+            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true, st.isAnAlias});
         }
         
         void addSubtest(ExecSubTestCommand st) {
-            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false});
+            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAnAlias});
         }
         Map<String, String> qss = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
@@ -1400,7 +1400,7 @@ public class Command {
                 	if((Boolean)st[5]) {
 		                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
 		                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
-		                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\");\n\n");
+		                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
                 	}
                 }
                 //b.append("}\n");
@@ -7511,7 +7511,7 @@ public class Command {
     		System.out.println("\n");
 		}
 
-    	validateSel(new String[] {"-validate-sel", "data/test.sel", 
+    	validateSel(new String[] {"-validate-sel", "data/test.sel",
         		"/path/to/project/gatf-config.xml", 
         		"/path/to/project/", "true"}, null, true);
 

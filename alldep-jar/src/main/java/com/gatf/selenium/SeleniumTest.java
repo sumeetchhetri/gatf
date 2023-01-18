@@ -294,12 +294,12 @@ public abstract class SeleniumTest {
 		if(getSession().__subtestname__==null) {
 			result.executionTime = System.nanoTime() - getSession().__teststarttime__;
 			getSession().__result__.get(getSession().browserName).result = result;
+			if(result!=null && !result.isStatus()) {
+				quit();
+			}
 		} else {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
 			RuntimeReportUtil.addEntry(index, result.status);
-		}
-		if(result!=null && !result.isStatus()) {
-			quit();
 		}
 	}
 
@@ -533,7 +533,8 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void addSubTest(String browserName, String stname) {
+	protected void addSubTest(String browserName, String stname, boolean isAnAlias) {
+		if(isAnAlias) return;
 		if(getSession().__result__.containsKey(browserName)) {
 			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
 				getSession().__result__.get(browserName).__cresult__.put(stname, null);
@@ -558,6 +559,7 @@ public abstract class SeleniumTest {
 	{
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
+		getSession().___dqs___.add(false);
 	}
 
 	protected class PrettyPrintingMap<K, V> {
@@ -714,13 +716,16 @@ public abstract class SeleniumTest {
 
 	public void quit() {
 		if(getSession().___d___.size()>0) {
+			int indx = 0;
 			for (WebDriver d : getSession().___d___)
 			{
+				if(getSession().___dqs___.get(indx)) continue;
 				String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
 				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
 					jsUtilStatusMap.remove(sessionId);
 				}
 				d.quit();
+				getSession().___dqs___.set(indx, true);
 			}
 		}
 	}
@@ -728,13 +733,16 @@ public abstract class SeleniumTest {
 	public void quitAll() {
 		for (SeleniumTestSession s : sessions) {
 			if(s.___d___.size()>0) {
+				int indx = 0;
 				for (WebDriver d : s.___d___)
 				{
+					if(s.___dqs___.get(indx)) continue;
 					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
 					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
 						jsUtilStatusMap.remove(sessionId);
 					}
 					d.quit();
+					s.___dqs___.set(indx, true);
 				}
 			}
 		}
@@ -1511,6 +1519,7 @@ public abstract class SeleniumTest {
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
 				DevTools devTools = ((HasDevTools) get___d___()).getDevTools();
+				devTools.createSession();
 				Node node = devTools.send(DOM.getDocument(Optional.empty(), Optional.empty()));
 				NodeId nodeId = devTools.send(DOM.querySelector(node.getNodeId(), cssSelctor));
 				List<String> files = new ArrayList<String>();
@@ -1519,6 +1528,7 @@ public abstract class SeleniumTest {
 					files.add(filePath);
 				}
 				devTools.send(DOM.setFileInputFiles(files, Optional.of(nodeId), Optional.empty(), Optional.empty()));
+				devTools.disconnectSession();
 				/*Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
 				Map<String, Object> domqaArgs = new HashMap<>();
 				domqaArgs.put("nodeId", ((Map<String, Object>)dom.get("root")).get("nodeId"));
@@ -1563,6 +1573,7 @@ public abstract class SeleniumTest {
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(action.equalsIgnoreCase("click")) {
 			for(final WebElement we: ret) {
+				jsEvent(wd, we, "fo");
 				we.click();
 				break;
 			}
@@ -1580,12 +1591,14 @@ public abstract class SeleniumTest {
 			}
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
+				jsEvent(wd, we, "fo");
 				we.clear();
 				jsChange(wd, we);
 				break;
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
 			for(final WebElement we: ret) {
+				jsEvent(wd, we, "fo");
 				we.submit();
 				break;
 			}
@@ -1595,6 +1608,7 @@ public abstract class SeleniumTest {
         	String type = m.group(1);
         	String qualifier = m.group(2);
 			for(final WebElement we: ret) {
+				jsEvent(wd, we, "fo");
 				System.out.println(type + " => " + tvalue);
 				sendKeys(type, qualifier, wd, we, tvalue);
 				//we.sendKeys(tvalue);
@@ -1614,6 +1628,7 @@ public abstract class SeleniumTest {
 		}*/ else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
+			jsEvent(wd, ret.get(0), "fo");
 			Select s = new Select(ret.get(0));
 			if(selSubsel.equalsIgnoreCase("text")) {
 				s.selectByVisibleText(selValue);
@@ -1640,6 +1655,7 @@ public abstract class SeleniumTest {
 			}
 		}*/ else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
 			for(final WebElement we: ret) {
+				jsEvent(wd, we, "fo");
 				Actions ac = new Actions(wd);
 				ac.moveToElement(we).doubleClick().perform();
 				break;
@@ -2352,13 +2368,16 @@ public abstract class SeleniumTest {
 	
 	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
 		if(driver instanceof HasDevTools) {
+			DevTools devTools = ((HasDevTools)driver).getDevTools();
 			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
-			org.openqa.selenium.devtools.v107.security.Security.setIgnoreCertificateErrors(true);
 			BROWSER_FEATURES.put(sessionId+".SECURITY", true);
 			BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
 			BROWSER_FEATURES.put(sessionId+".NETWORK_RES", interceptApiCall);
 			BROWSER_FEATURES.put(sessionId+".LOGCONSOLE", logconsole);
-			Network.setCacheDisabled(true);
+			devTools.createSession();
+			devTools.send(Network.setCacheDisabled(true));
+			devTools.send(org.openqa.selenium.devtools.v108.security.Security.setIgnoreCertificateErrors(true));
+			devTools.disconnectSession();
 		}
 	}
 	

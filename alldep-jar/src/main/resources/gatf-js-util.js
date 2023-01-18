@@ -50,7 +50,7 @@ window.GatfUtil = new function() {
 	            .replace(/@/g, '')
 	            .replace(/\[(\d+)\]/g, ':nth-of-type($1)')
 	            .replace(/^\s+/, '');
-	}
+	},
 	
 	this.getCssSelector = function(node) {
 	    return this.getXpath(node)
@@ -60,11 +60,11 @@ window.GatfUtil = new function() {
 	            .replace(/@/g, '')
 	            .replace(/\[(\d+)\]/g, ':nth-of-type($1)')
 	            .replace(/^\s+/, '');
-	}
+	},
 	
 	this.find = function(expr) {
 		return $(expr).get();
-	}
+	},
 	
 	this.findByXpath = function(expr, cntxt) {
 		if(typeof $x === 'function')

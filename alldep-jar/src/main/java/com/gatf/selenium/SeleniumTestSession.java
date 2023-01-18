@@ -19,6 +19,7 @@ public class SeleniumTestSession implements Serializable {
     private static final long serialVersionUID = 1L;
     
     protected transient List<WebDriver> ___d___ = new ArrayList<WebDriver>();
+    protected transient List<Boolean> ___dqs___ = new ArrayList<Boolean>();
     protected transient int __wpos__ = 0;
     protected final Map<String, SeleniumResult> __result__ = new HashMap<String, SeleniumResult>();
     
