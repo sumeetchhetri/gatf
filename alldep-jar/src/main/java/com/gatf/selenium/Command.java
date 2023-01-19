@@ -3623,6 +3623,9 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
+                if(!config.getName().equals("chrome")) {
+                	config.setArguments(config.getArguments()+ " --disable-dev-shm-usage");
+                }
                 if(StringUtils.isNotBlank(config.getArguments()))
                 {
                 	b.append("___dc___.addArguments(\""+esc(config.getArguments())+" --ignore-certificate-errors\".split(\"\\\\s+\"));\n");
@@ -3660,6 +3663,9 @@ public class Command {
                 b.append("___dc___.getProfile().setAcceptUntrustedCertificates(true);\n");
                 b.append("___dc___.getProfile().setAssumeUntrustedCertificateIssuer(true);\n");
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
+                if(!config.getName().equals("firefox")) {
+                	config.setArguments(config.getArguments()+ " --disable-dev-shm-usage");
+                }
                 if(StringUtils.isNotBlank(config.getArguments()))
                 {
                 	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
@@ -4250,7 +4256,7 @@ public class Command {
             return "refresh";
         }
         String javacode() {
-            return "___cw___.navigate().refresh();";
+            return "refresh(___cw___);\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -4286,11 +4292,11 @@ public class Command {
             return "waitready";
         }
         String javacode() {
-            return "waitForReady(get___d___();";
+            return "waitForReady(get___d___());\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-        		"Wait Till Browser/Dowument is ready",
+        		"Wait Till Browser/Dowument is ready, called after application level logouts or reloads",
         		"\twaitready",
             };
         }

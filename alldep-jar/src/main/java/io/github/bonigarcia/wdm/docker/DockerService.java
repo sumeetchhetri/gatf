@@ -611,9 +611,9 @@ public class DockerService {
 
     public DockerContainer startBrowserContainer(String dockerImage,
             String cacheKey, String browserVersion, boolean androidEnabled) {
-        dockerImage = "sumeetchhetri/selendroid-chrome:108";//getPrefixedDockerImage(dockerImage);
+        dockerImage = getPrefixedDockerImage(dockerImage);
         // pull image
-        //pullImageIfNecessary(cacheKey, dockerImage, browserVersion);
+        pullImageIfNecessary(cacheKey, dockerImage, browserVersion);
 
         // exposed ports
         List<String> exposedPorts = new ArrayList<>();

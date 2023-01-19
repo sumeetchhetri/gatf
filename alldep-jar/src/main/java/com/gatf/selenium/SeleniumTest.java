@@ -31,6 +31,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.security.Security;
 import java.time.Duration;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -177,6 +178,13 @@ public abstract class SeleniumTest {
 			isDocker = true;
 			browserName= browserName.replaceFirst("-dkr", "");
 		}
+		
+		if(isDocker) {
+			IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, null));
+		} else {
+			IN_DOCKER.set(new ImmutablePair<Boolean, String>(false, null));
+		}
+		
 		if(wdmMgs.containsKey(browserName) && !isDocker) {
 			return browserName;
 		}
@@ -218,17 +226,15 @@ public abstract class SeleniumTest {
 		}
 		
 		if(isDocker) {
-			IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, null));
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
+			wdm.config().setDockerTimezone(ZoneId.systemDefault().toString());
 			wdm.capabilities(capabilities).browserInDocker();
 			if(isRecording) {
 				wdm.enableRecording().enableVnc();
-				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdm.getDockerNoVncUrl(), wdm.getDockerRecordingPath()));
 			}
-			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"")+(isDocker?"dkr":"");
+			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":(isDocker?"dkr":""));
 			wdmMgs.put(browserName, wdm);
 		} else {
-			IN_DOCKER.set(new ImmutablePair<Boolean, String>(false, null));
 			wdm.setup();
 			wdmMgs.put(browserName, wdm);
 		}
@@ -237,13 +243,19 @@ public abstract class SeleniumTest {
 	
 	protected WebDriver getDockerDriver(String browserName) {
 		boolean isDocker = false;
+		boolean isRecording = false;
 		if(browserName.endsWith("-rec")) {
 			isDocker = true;
+			isRecording = true;
 		} else if(browserName.endsWith("-dkr")) {
 			isDocker = true;
 		}
 		if(wdmMgs.containsKey(browserName) && isDocker) {
-			return new Augmenter().augment(wdmMgs.get(browserName).create());
+			WebDriver wd = wdmMgs.get(browserName).create();
+			if(isRecording) {
+				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl(), wdmMgs.get(browserName).getDockerRecordingPath()));
+			}
+			return new Augmenter().augment(wd);
 		}
 		throw new RuntimeException("No driver found for remote docker");
 	}
@@ -1595,7 +1607,7 @@ public abstract class SeleniumTest {
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(action.equalsIgnoreCase("click")) {
 			for(final WebElement we: ret) {
-				jsEvent(wd, we, "fo");
+				jsFocus(wd, we);
 				we.click();
 				break;
 			}
@@ -2382,10 +2394,13 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void navigateTo(WebDriver d, String url) {
-		String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
-		jsUtilStatusMap.remove(sessionId);
 		d.navigate().to(url);
-		initCdp(d);
+		waitForReady(d);
+	}
+	
+	protected void refresh(WebDriver d) {
+		d.navigate().refresh();
+		waitForReady(d);
 	}
 	
 	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
@@ -2398,11 +2413,20 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
 			devTools.send(org.openqa.selenium.devtools.v108.security.Security.setIgnoreCertificateErrors(true));
+			if(logconsole) {
+				devTools.send(Log.enable());
+				devTools.addListener(Log.entryAdded(), logEntry -> {
+					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
+				});
+			}
 			devTools.disconnectSession();
 		}
 	}
 	
 	protected void waitForReady(WebDriver driver) {
+		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
+		jsUtilStatusMap.remove(sessionId);
+		
 		if (driver instanceof JavascriptExecutor) {
 			int counter = 0;
 			while(counter++<60) {
@@ -2416,7 +2440,7 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void initCdp(WebDriver driver) {
+	/*protected void initCdp(WebDriver driver) {
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
 			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
@@ -2434,7 +2458,7 @@ public abstract class SeleniumTest {
 			
 			devTools.disconnectSession();
 		}
-	}
+	}*/
 	
 	protected void initJs(WebDriver driver) {
 		try {
