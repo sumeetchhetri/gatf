@@ -611,8 +611,8 @@ public class Command {
             comd = new WaitForReady(cmdDetails, state);
         } else if (cmd.toLowerCase().equals("maximize")) {
             comd = new MaximizeCommand(cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("window_set ")) {
-            comd = new WindowSetPropertyCommand(cmd.substring(11).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("setting ")) {
+            comd = new SettingCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("frame ")) {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("tab ")) {
@@ -3902,8 +3902,8 @@ public class Command {
             	String tmp1 = System.getProperty("SCREEN_HEIGHT")!=null?System.getProperty("SCREEN_HEIGHT"):System.getenv("SCREEN_HEIGHT");
             	if(StringUtils.isNotBlank(tmp) && StringUtils.isNotBlank(tmp1)) {
             		try {
-						WindowSetPropertyCommand ws = new WindowSetPropertyCommand("width "+Integer.valueOf(tmp.trim()), new Object[] {}, state);
-						WindowSetPropertyCommand wh = new WindowSetPropertyCommand("height "+Integer.valueOf(tmp1.trim()), new Object[] {}, state);
+						SettingCommand ws = new SettingCommand("width "+Integer.valueOf(tmp.trim()), new Object[] {}, state);
+						SettingCommand wh = new SettingCommand("height "+Integer.valueOf(tmp1.trim()), new Object[] {}, state);
 						b.append("WebDriver ___cw___ = get___d___();");
 						b.append(ws.javacode());
 						b.append(wh.javacode());
@@ -4413,25 +4413,32 @@ public class Command {
         }
     }
 
-    public static class WindowSetPropertyCommand extends Command {
+    public static class SettingCommand extends Command {
         String type;
-        int value;
-        WindowSetPropertyCommand(String val, Object[] cmdDetails, CommandState state) {
+        String value;
+        SettingCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>1) {
                 parts[0] = parts[0].trim();
                 type = parts[0];
-                value = Integer.valueOf(state.unsanitize(parts[1].trim()));
+                value = state.unsanitize(parts[1].trim());
+                if(type.equalsIgnoreCase("width") || type.equalsIgnoreCase("height") || type.equalsIgnoreCase("posx") || type.equalsIgnoreCase("posy")) {
+                	try {
+                		Integer.parseInt(value);
+					} catch (Exception e) {
+						throwParseError(cmdDetails, new RuntimeException("Value needs to be an integer for (width|height|posx|posy) settings"));
+					}
+                }
             } else {
                 //excep
             }
         }
         String value() {
-            return String.valueOf(value);
+            return value;
         }
         String toCmd() {
-            return "window_set "+type+" " + value;
+            return "setting " + type + " " + value;
         }
         String javacode() {
             String cvn = state.varname();
@@ -4443,18 +4450,21 @@ public class Command {
                 return "Point "+cvn+" = ___cw___.manage().window().getPosition();\n___cw___.manage().window().setPosition(new Point("+value+", "+cvn+".getY()));";
             } else if(type.equalsIgnoreCase("posy")) {
                 return "Point "+cvn+" = ___cw___.manage().window().getPosition();\n___cw___.manage().window().setPosition(new Point("+cvn+".getX(), "+value+"));";
+            } else if(type.equalsIgnoreCase("clk_nofocus")) {
+                return "addSettingVal(___cw___, \""+esc(type)+"\", \""+esc(value)+"\");";
             }
             return "";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-        		"Set Window Properties",
-        		"\twindow_set {width|height|posx|posy} {value}",
+        		"Add Settings",
+        		"\tsetting {width|height|posx|posy|clk_nofocus} {value} {value}?",
         		"Examples :-",
-        		"\twindow_set width 100",
-        		"\twindow_set height 100",
-        		"\twindow_set posx 100",
-        		"\twindow_set posy 100",
+        		"\tsetting width 100",
+        		"\tsetting height 100",
+        		"\tsetting posx 100",
+        		"\tsetting posy 100",
+        		"\tsetting clk_nofocus true",
             };
         }
     }
@@ -6636,15 +6646,25 @@ public class Command {
             		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollTo(0,0)\");\n";
             	case "bottom":
             		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollTo(0,document.body.scrollHeight)\");\n";
-            	default:
-            		return "";
+            	default: {
+            		StringBuilder b = new StringBuilder();
+            		b.append(cond.javacodeonly(children));
+            		b.append("if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"arguments[0].scrollIntoView(true)\", ___ce___.get(0));\nsleep(1000);\n");
+            		return b.toString();
+            	}
             }
         }
         ScrollCommand(String type, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = type;
             if(!name.toLowerCase().trim().matches("up|down|pageup|pagedown|top|bottom")) {
-                throwParseError(null, new RuntimeException("scroll with one of (up|down|pageup|pagedown|top|bottom) types allowed"));
+            	try {
+            		cond = new FindCommand(name, cmdDetails, state);
+				} catch (Exception e) {
+				}
+            	if(cond==null || cond.by==null || cond.classifier==null) {
+            		throwParseError(null, new RuntimeException("scroll with one of (up|down|pageup|pagedown|top|bottom|find-expr) types allowed"));
+            	}
             }
         }
         public static String[] toSampleSelCmd() {
@@ -6653,6 +6673,7 @@ public class Command {
         		"\tscroll {up|down|pageup|pagedown|top|bottom}",
         		"Examples :-",
         		"\tscroll up",
+        		"\tscroll id@dsdsd",
             };
         }
     }

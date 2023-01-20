@@ -165,6 +165,8 @@ public abstract class SeleniumTest {
 
 	protected int index;
 	
+	public static Map<String, Map<String, String>> DRV_FEATURES = new ConcurrentHashMap<String, Map<String,String>>();
+	
 	public static ThreadLocal<ImmutablePair<Boolean, String>> IN_DOCKER = new ThreadLocal<>();
 	
 	protected String addWdm(String browserName, Capabilities capabilities) {
@@ -746,6 +748,7 @@ public abstract class SeleniumTest {
 			{
 				if(getSession().___dqs___.get(indx)) continue;
 				String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+				DRV_FEATURES.remove(sessionId);
 				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
 					jsUtilStatusMap.remove(sessionId);
 				}
@@ -763,6 +766,7 @@ public abstract class SeleniumTest {
 				{
 					if(s.___dqs___.get(indx)) continue;
 					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+					DRV_FEATURES.remove(sessionId);
 					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
 						jsUtilStatusMap.remove(sessionId);
 					}
@@ -1582,8 +1586,8 @@ public abstract class SeleniumTest {
 				e.printStackTrace();
 			}
 		} else {
-			if(count>0) {
-				throw new RuntimeException("Multi File uploads only supported with chrome for now");
+			if(count>1) {
+				throw new RuntimeException("Multi File uploads only supported with devtools supported browsers for now");
 			}
 			ret.get(0).click();
 			java.awt.datatransfer.StringSelection ss = new java.awt.datatransfer.StringSelection(filePath);
@@ -1604,11 +1608,42 @@ public abstract class SeleniumTest {
 			}
 		}
 	}
+	
+	private static String getSettingVal(String sessionId, String name) {
+		if(DRV_FEATURES.containsKey(sessionId)) {
+			if(DRV_FEATURES.get(sessionId).containsKey(name) && DRV_FEATURES.get(sessionId).get(name)!=null) {
+				return DRV_FEATURES.get(sessionId).get(name).trim();
+			}
+		}
+		return null;
+	}
+	
+	protected static void addSettingVal(WebDriver wd, String key, String val) {
+		String sessionId = getSessionId(wd);
+		if(DRV_FEATURES.containsKey(sessionId)) {
+			DRV_FEATURES.get(sessionId).put(key, val);
+		}
+	}
+	
+	private static boolean isSettingDisabled(String sessionId, String name) {
+		return getSettingVal(sessionId, name)==null || !"true".equalsIgnoreCase(getSettingVal(sessionId, name));
+	}
+	
+	private static String getSessionId(WebDriver wd) {
+		String sessionId = "";
+		if(wd instanceof RemoteWebDriver) {
+			sessionId = ((RemoteWebDriver)wd).getSessionId().toString();
+		}
+		return sessionId;
+	}
 
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(action.equalsIgnoreCase("click")) {
 			for(final WebElement we: ret) {
-				jsFocus(wd, we);
+				String sessionId = getSessionId(wd);
+				if(isSettingDisabled(sessionId, "clk_nofocus")) {
+					jsFocus(wd, we);
+				}
 				we.click();
 				break;
 			}
@@ -2405,9 +2440,9 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
+		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
-			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 			BROWSER_FEATURES.put(sessionId+".SECURITY", true);
 			//BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
 			BROWSER_FEATURES.put(sessionId+".LOGCONSOLE", logconsole);
@@ -2422,6 +2457,8 @@ public abstract class SeleniumTest {
 			}
 			devTools.disconnectSession();
 		}
+		
+		DRV_FEATURES.put(sessionId, new ConcurrentHashMap<String, String>());
 	}
 	
 	protected void waitForReady(WebDriver driver) {
