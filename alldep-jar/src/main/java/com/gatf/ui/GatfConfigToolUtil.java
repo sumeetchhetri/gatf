@@ -236,10 +236,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 						isChanged = true;
 						sc.setPath(tmp);
 						if(isDocker) {
-							String args = "--whitelisted-ips --no-sandbox";
+							String args = "--no-sandbox";
 							if(StringUtils.isNotBlank(sc.getArguments())) {
 								String cargs = sc.getArguments().trim();
-								cargs = cargs.replace("--whitelisted-ips", "").replace("--no-sandbox", "");
+								cargs = cargs.replace("--no-sandbox", "");
 								args += " " + cargs;
 							}
 							args = args.replaceAll("\\s+", " ");

@@ -43,6 +43,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.slf4j.Logger;
 
@@ -631,7 +632,7 @@ public class DockerService {
                         .getDockerMemSizeBytes(config.getDockerTmpfsSize())))
                 .withTarget(config.getDockerTmpfsMount());
         mounts.add(tmpfsMount);
-
+        
         // binds
         List<String> binds = new ArrayList<>();
         String dockerVolumes = config.getDockerVolumes();
@@ -639,6 +640,11 @@ public class DockerService {
             List<String> volumeList = Arrays.asList(dockerVolumes.split(","));
             log.trace("Using custom volumes: {}", volumeList);
             binds.addAll(volumeList);
+        }
+        
+        if(SystemUtils.IS_OS_LINUX || SystemUtils.IS_OS_MAC) {
+        	binds.add("/dev/shm:/dev/shm");
+            shmSize = -1;
         }
 
         // envs
@@ -669,8 +675,11 @@ public class DockerService {
         // builder
         DockerBuilder dockerBuilder = DockerContainer.dockerBuilder(dockerImage)
                 .exposedPorts(exposedPorts).network(network).mounts(mounts)
-                .binds(binds).shmSize(shmSize).envs(envs).extraHosts(extraHosts)
+                .binds(binds).envs(envs).extraHosts(extraHosts)
                 .sysadmin();
+        if(shmSize!=-1) {
+        	dockerBuilder.shmSize(shmSize);
+        }
         if (androidEnabled) {
             dockerBuilder = dockerBuilder.privileged();
         }

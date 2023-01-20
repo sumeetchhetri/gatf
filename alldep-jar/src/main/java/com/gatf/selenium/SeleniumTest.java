@@ -228,6 +228,7 @@ public abstract class SeleniumTest {
 		if(isDocker) {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			wdm.config().setDockerTimezone(ZoneId.systemDefault().toString());
+			//wdm.config().setDockerShmSize("2g");
 			wdm.capabilities(capabilities).browserInDocker();
 			if(isRecording) {
 				wdm.enableRecording().enableVnc();
@@ -2588,7 +2589,21 @@ public abstract class SeleniumTest {
 						break;
 					case "json":
 						if(v2!=null && mimeType!=null && mimeType.toLowerCase().startsWith("application/json")) {
-							___cxt___add_param__("apiJson", JsonPath.read(body, v2));
+							String[] params = v2.split(",");
+							int cindex = 1;
+							for (String param : params) {
+								String[] det = param.split("@");
+								String vname = null;
+								String path = null;
+								if(det.length==1) {
+									vname = "apiJson" + cindex++;
+									path = det[0].trim();
+								} else {
+									vname = det[0].trim();
+									path = det[1].trim();
+								}
+								___cxt___add_param__(vname, JsonPath.read(body, path));
+							}
 						}
 						break;
 					default:

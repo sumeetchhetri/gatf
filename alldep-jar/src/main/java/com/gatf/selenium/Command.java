@@ -605,6 +605,8 @@ public class Command {
             comd = new RefreshCommand(cmdDetails, state);
         } else if (cmd.toLowerCase().equals("close")) {
             comd = new CloseCommand(cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("scroll ")) {
+            comd = new ScrollCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().equals("waitready")) {
             comd = new WaitForReady(cmdDetails, state);
         } else if (cmd.toLowerCase().equals("maximize")) {
@@ -3623,17 +3625,26 @@ public class Command {
                     }
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
+                
+                if(StringUtils.isBlank(config.getArguments())) {
+                	config.setArguments("");
+                } else {
+					String cargs = config.getArguments().trim();
+					cargs = cargs.replace("--ignore-certificate-errors", "");
+					cargs = cargs.replaceAll("\\s+", " ");
+					config.setArguments(cargs);
+                }
+                config.setArguments(config.getArguments()+ " --ignore-certificate-errors");
                 if(!config.getName().equals("chrome")) {
-                	config.setArguments(config.getArguments()+ " --disable-dev-shm-usage");
+                	String cargs = config.getArguments();
+					cargs = cargs.replace("--no-sandbox", "").replace("--disable-dev-shm-usage", "");
+					cargs += " --disable-dev-shm-usage --no-sandbox";
+					cargs = cargs.replaceAll("\\s+", " ");
+					config.setArguments(cargs);
                 }
-                if(StringUtils.isNotBlank(config.getArguments()))
-                {
-                	b.append("___dc___.addArguments(\""+esc(config.getArguments())+" --ignore-certificate-errors\".split(\"\\\\s+\"));\n");
-                }
-                else
-                {
-                	b.append("___dc___.addArguments(\"--ignore-certificate-errors\");\n");
-                }
+                b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".trim());\n");
+                
+                
                 if(config.getProperties()!=null)
                 {
                 	b.append("Map<String, Object> __prefs = new java.util.HashMap<String, Object>();\n");
@@ -3668,7 +3679,7 @@ public class Command {
                 }
                 if(StringUtils.isNotBlank(config.getArguments()))
                 {
-                	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".split(\"\\\\s+\"));\n");
+                	b.append("___dc___.addArguments(\""+esc(config.getArguments())+"\".trim());\n");
                 }
                 if(config.getProperties()!=null)
                 {
@@ -6603,6 +6614,45 @@ public class Command {
         		"\tclear {find-expr}",
         		"Examples :-",
         		"\tclear id@'ele1'",
+            };
+        }
+    }
+
+    public static class ScrollCommand extends FindCommandImpl {
+        String toCmd() {
+            return "scroll " + name;
+        }
+        String javacode() {
+            switch(name) {
+            	case "up":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollBy(0,-20)\");\n";
+            	case "down":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollBy(0,20)\");\n";
+            	case "pageup":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollBy(0,-200)\");\n";
+            	case "pagedown":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollBy(0,200)\");\n";
+            	case "top":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollTo(0,0)\");\n";
+            	case "bottom":
+            		return "if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript(\"window.scrollTo(0,document.body.scrollHeight)\");\n";
+            	default:
+            		return "";
+            }
+        }
+        ScrollCommand(String type, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            name = type;
+            if(!name.toLowerCase().trim().matches("up|down|pageup|pagedown|top|bottom")) {
+                throwParseError(null, new RuntimeException("scroll with one of (up|down|pageup|pagedown|top|bottom) types allowed"));
+            }
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Scroll [Javascript based]",
+        		"\tscroll {up|down|pageup|pagedown|top|bottom}",
+        		"Examples :-",
+        		"\tscroll up",
             };
         }
     }
