@@ -630,7 +630,7 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().matches(typeSwStr) || cmd.toLowerCase().matches(typeExStr) ||cmd.toLowerCase().startsWith("select ") 
-                || cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")
+                || cmd.toLowerCase().matches(clickSwStr) || cmd.toLowerCase().matches(clickExStr)
                 || cmd.toLowerCase().startsWith("doubleclick ") || cmd.toLowerCase().equals("doubleclick")
                 || cmd.toLowerCase().startsWith("dblclick ") || cmd.toLowerCase().equals("dblclick")
                 || cmd.toLowerCase().startsWith("hover ") || cmd.toLowerCase().equals("hover")
@@ -728,6 +728,12 @@ public class Command {
     protected static String typeSwStr = "^(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo)?\\s+(.*)";
     protected static Pattern typeEx = Pattern.compile(typeExStr);
     protected static Pattern typeSw = Pattern.compile(typeSwStr);
+    
+    protected static String clickExStr = "^click(fo|nf)?";
+    protected static String clickSwStr = "^click(fo|nf)?\\s+(.*)";
+    protected static Pattern clickEx = Pattern.compile(clickExStr);
+    protected static Pattern clickSw = Pattern.compile(clickSwStr);
+    
     static Command handleActions(String cmd, FindCommand fcmd, Object[] cmdDetails, CommandState state) {
         Command comd = null;
         /*if (cmd.toLowerCase().startsWith("type ")) {
@@ -738,6 +744,7 @@ public class Command {
         	String type = m.group(1);
         	String qualifier = m.group(2);
         	cmd = m.group(3);
+        	//cmd = state.unsanitize(cmd);
             comd = new TypeCommand(cmd, cmdDetails, state, fcmd, type, qualifier);
         } /*else if (cmd.toLowerCase().startsWith("sendkeys ")) {
             comd = new TypeCommand(cmd.substring(9), cmdDetails, state, false);
@@ -755,11 +762,20 @@ public class Command {
             comd = new ChordCommand(cmd.substring(8), cmdDetails, state, false);
         }*/ else if (cmd.toLowerCase().startsWith("select ")) {
             comd = new SelectCommand(cmd.substring(7), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("click ") || cmd.toLowerCase().equals("click")) {
-            comd = new ClickCommand(cmdDetails, state);
-            if(!cmd.toLowerCase().equals("click")) {
-                ((ClickCommand)comd).cond = new FindCommand(cmd.substring(6), cmdDetails, state);
+        } else if (cmd.toLowerCase().matches(clickSwStr)) {
+        	Matcher m = clickSw.matcher(cmd.toLowerCase());
+        	m.matches();
+        	String qualifier = m.group(1);
+        	cmd = m.group(2);
+            comd = new ClickCommand(cmdDetails, state, qualifier);
+            if(!cmd.trim().isEmpty()) {
+                ((ClickCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
             }
+        } else if (cmd.toLowerCase().matches(clickExStr)) {
+        	Matcher m = clickEx.matcher(cmd.toLowerCase());
+        	m.matches();
+        	String qualifier = m.group(1);
+            comd = new ClickCommand(cmdDetails, state, qualifier);
         } else if (cmd.toLowerCase().startsWith("doubleclick ") || cmd.toLowerCase().equals("doubleclick")) {
             comd = new DoubleClickCommand(cmdDetails, state);
             if(!cmd.toLowerCase().equals("doubleclick")) {
@@ -2706,7 +2722,7 @@ public class Command {
             String cmd = parts[0];
             if(parts.length>1) {
                 if (parts[1].toLowerCase().matches(typeExStr) || parts[1].toLowerCase().equals("select") 
-                        || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
+                        || parts[1].toLowerCase().matches(clickExStr) || parts[1].toLowerCase().equals("hover")
                         || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
                         || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")
                         || parts[1].toLowerCase().equals("upload")) {
@@ -2721,8 +2737,8 @@ public class Command {
                     cond = new FindCommand(parts[0], cmdDetails, state);
                     cmd = cmd.trim();
                     if(!cmd.isEmpty()) {
-                        if (cmd.toLowerCase().toLowerCase().matches(typeSwStr)
-                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
+                        if (cmd.toLowerCase().toLowerCase().matches(typeSwStr) || cmd.toLowerCase().startsWith("select ") 
+                        		|| cmd.toLowerCase().matches(clickExStr) || cmd.toLowerCase().equals("hover")
                                 || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")
                                 || cmd.toLowerCase().startsWith("upload ")) {
@@ -2803,7 +2819,7 @@ public class Command {
             String cmd = parts[0];
             if(parts.length>1) {
                 if (parts[1].toLowerCase().matches(typeExStr) || parts[1].toLowerCase().equals("select") 
-                        || parts[1].toLowerCase().equals("click") || parts[1].toLowerCase().equals("hover")
+                        || parts[1].toLowerCase().matches(clickExStr) || parts[1].toLowerCase().equals("hover")
                         || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
                         || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("actions")) {
                     cmd = "";
@@ -2814,11 +2830,10 @@ public class Command {
                     cond = time.equals("0")?new FindCommand(parts[0], cmdDetails, state):new WaitAndFindCommand(parts[0], Long.valueOf(time), cmdDetails, state);
                     cmd = cmd.trim();
                     if(!cmd.isEmpty()) {
-                        if (cmd.toLowerCase().matches(typeSwStr)
-                        		|| cmd.toLowerCase().startsWith("select ") || cmd.toLowerCase().startsWith("actions")
-                                || cmd.toLowerCase().equals("click") || cmd.toLowerCase().equals("hover")
+                        if (cmd.toLowerCase().matches(typeSwStr) || cmd.toLowerCase().startsWith("select ") 
+                        		|| cmd.toLowerCase().matches(clickSwStr) || cmd.toLowerCase().equals("hover")
                                 || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
-                                || cmd.toLowerCase().equals("submit")) {
+                                || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("actions")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, cmdDetails, state);
                             children.add(comd);
@@ -4700,6 +4715,11 @@ public class Command {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        } else if(c instanceof ClickCommand) {
+                        	ClickCommand typ = (ClickCommand)c;
+                            if(StringUtils.isNotBlank(typ.name)) {
+                            	action = "\"click"+typ.name+"\"";
+                            }
                         }
                     }
                 }
@@ -4753,6 +4773,11 @@ public class Command {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        } else if(c instanceof ClickCommand) {
+                        	ClickCommand typ = (ClickCommand)c;
+                            if(StringUtils.isNotBlank(typ.name)) {
+                            	action = "\"click"+typ.name+"\"";
+                            }
                         }
                     }
                 }
@@ -4813,6 +4838,11 @@ public class Command {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        } else if(c instanceof ClickCommand) {
+                        	ClickCommand typ = (ClickCommand)c;
+                            if(StringUtils.isNotBlank(typ.name)) {
+                            	action = "\"click"+typ.name+"\"";
+                            }
                         }
                     }
                 } else if(c instanceof RobotCommand) {
@@ -4868,6 +4898,11 @@ public class Command {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
                         	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        } else if(c instanceof ClickCommand) {
+                        	ClickCommand typ = (ClickCommand)c;
+                            if(StringUtils.isNotBlank(typ.name)) {
+                            	action = "\"click"+typ.name+"\"";
+                            }
                         }
                     }
                 }
@@ -5173,7 +5208,7 @@ public class Command {
             }
             return b.toString();*/
         	if(action.equalsIgnoreCase("upload")) {
-        		return "\nuploadFile(___ce___, "+post+", 1)";
+        		return "\nuploadFile(___ocw___, ___ce___, "+post+", 1)";
         	}
             if(actionsVar!=null) {
                 return "\n"+actionsVar+".moveToElement(___ce___.get(0))."+action+"(" + (post!=null?post:"") + ").perform();";
@@ -5284,7 +5319,7 @@ public class Command {
         String qualifier = "";
         String chs = "";
         String v1, v2, v3;
-        TypeCommand(String val, Object[] cmdDetails, CommandState state, FindCommand cond, String type, String qualifier) {
+        TypeCommand(String val, Object[] cmdDetails, CommandState state, FindCommand fcmd, String type, String qualifier) {
             super(cmdDetails, state);
             //this.cond = fcmd;
             this.type = type;
@@ -5303,7 +5338,7 @@ public class Command {
                     }
                     String temp = StringEscapeUtils.unescapeJava(value);
                     try {
-                        if(cond==null) {
+                        if(fcmd==null) {
                             cond = new FindCommand(parts[1], fileLineDetails, state);
                         }
                         List<String> values = new ArrayList<String>();
@@ -5336,12 +5371,12 @@ public class Command {
                             value = value.substring(1, value.length()-1);
                         }
                     }
-                    if(cond==null) {
+                    if(fcmd==null) {
                         cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
                     }
                 } else {
                 	int c = 1, t = 1;
-                    if(cond!=null) {
+                    if(fcmd!=null) {
                         c = 0;
                         t = 0;
                     } else {
@@ -5404,28 +5439,30 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             
+            String wename = state.currvarname();
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
+                wename = "___ce___";
             }
             
             if(type.equalsIgnoreCase("chord")) {
                 //if(cond!=null) {
                 //    b.append(cond.getActionable("sendKeys", "Keys.chord("+chs+")", null));
                 //} else {
-                	b.append("\nsendKeys("+state.currvarname()+".get(0), \""+type+"\", \""+qualifier+"\", Keys.chord((\""+chs+"\"));\n");
+                	b.append("\nsendKeys("+wename+".get(0), \""+type+"\", \""+qualifier+"\", Keys.chord((\""+chs+"\"));\n");
                 //}
             } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
             	//if(cond!=null) {
                 //    b.append(cond.getActionable("sendKeys", "evaluate(\""+esc(value)+"\")", null));
                 //} else {
                     //b.append("\n"+state.currvarname()+".get(0).sendKeys(evaluate(\""+esc(value)+"\"));");
-                    b.append("\nsendKeys("+state.currvarname()+".get(0), \""+type+"\", \""+qualifier+"\", evaluate(\""+esc(value)+"\"));\n");
+                    b.append("\nsendKeys("+wename+".get(0), \""+type+"\", \""+qualifier+"\", evaluate(\""+esc(value)+"\"));\n");
                 //}
             } else {
             	//if(cond!=null) {
             	//	b.append(cond.getActionable("randomize", "\""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\"", null));
             	//} else {
-            		b.append("\nsendKeys("+state.currvarname()+", \""+type+"\", \""+qualifier+"\", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
+            		b.append("\nsendKeys("+wename+", \""+type+"\", \""+qualifier+"\", \""+(v1!=null?esc(v1):"")+"\", \""+(v2!=null?esc(v2):"")+"\", \""+(v3!=null?esc(v3):"")+"\");\n");
             	//}
             }
             return b.toString();
@@ -5456,7 +5493,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type Value in input/textarea elements",
-        		"\t(type|sendkeys)(bl|ch|bk|cl|fo) {text} {find-expr}",
+        		"\t(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo) {text} {find-expr}",
         		"\twhere \n\t\tbl->Trigger Blur\n\t\tch->Trigger Change\n\t\tbk->Trigger Backspace\n\t\tcl->Trigger Click\n\t\tfo->Trigger Focus",
         		"Examples :-",
         		"\ttype 'abc' id@'ele1'",
@@ -5505,7 +5542,7 @@ public class Command {
                 b.append(cond.javacodeonly(children));
                 b.append(cond.getActionable("uploadFile", "evaluate(\""+esc(value)+"\")", null));
             } else {
-                b.append("\nuploadFile("+state.currvarname()+", evaluate(\""+esc(value)+"\"), "+count+");");
+                b.append("\nuploadFile(___ocw___, "+state.currvarname()+", evaluate(\""+esc(value)+"\"), "+count+");");
             }
             return b.toString();
         }
@@ -5513,7 +5550,7 @@ public class Command {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\nuploadFile("+varnm+", evaluate(\""+esc(value)+"\"), "+count+");";
+            return "\nuploadFile(___ocw___, "+varnm+", evaluate(\""+esc(value)+"\"), "+count+");";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -6515,38 +6552,42 @@ public class Command {
 
     public static class ClickCommand extends FindCommandImpl {
         String toCmd() {
-            return "click" + (cond!=null?cond.toCmd():"");
+            return "click" + (name!=null?name:"") + (cond!=null?cond.toCmd():"");
         }
-        ClickCommand(Object[] cmdDetails, CommandState state) {
+        ClickCommand(Object[] cmdDetails, CommandState state, String qualifier) {
             super(cmdDetails, state);
+            name = qualifier;
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly(children));
-                b.append(cond.getActionable("click", null, null));
+                b.append("\nclickAction(___ocw___, ___ce___, "+(name!=null?("\""+name+"\""):null)+");\n");
+                //b.append(cond.getActionable("click", null, null));
             } else {
-                b.append("\n"+state.currvarname()+".get(0).click();");
+                b.append("\nclickAction(___ocw___, "+state.currvarname()+", \""+name+"\");\n");
             }
             return b.toString();
         }
         String javacodeonly(String condvarnm) {
             StringBuilder b = new StringBuilder();
-            b.append("\n"+condvarnm+".get(0).click();");
+            b.append("\nclickAction(___ocw___, "+condvarnm+", \""+name+"\");\n");
             return b.toString();
         }
         String selcode(String varnm) {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\n"+varnm+".get(0).click();";
+            return "\nclickAction(___ocw___, "+varnm+", \""+name+"\");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Click element",
-        		"\tclick {find-expr}",
+        		"\tclick(fo|nf) {find-expr}",
         		"Examples :-",
         		"\tclick id@'ele1'",
+        		"\tclickfo id@'ele1'",
+        		"\tclicknf id@'ele1'",
             };
         }
     }

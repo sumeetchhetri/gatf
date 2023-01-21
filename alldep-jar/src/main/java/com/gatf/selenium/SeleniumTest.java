@@ -60,7 +60,7 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.openqa.selenium.By;
@@ -111,6 +111,7 @@ import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
+import com.github.dockerjava.api.DockerClient;
 import com.google.common.io.Resources;
 import com.jayway.jsonpath.JsonPath;
 
@@ -167,7 +168,7 @@ public abstract class SeleniumTest {
 	
 	public static Map<String, Map<String, String>> DRV_FEATURES = new ConcurrentHashMap<String, Map<String,String>>();
 	
-	public static ThreadLocal<ImmutablePair<Boolean, String>> IN_DOCKER = new ThreadLocal<>();
+	public static ThreadLocal<ImmutableTriple<Boolean, String, String[]>> IN_DOCKER = new ThreadLocal<>();
 	
 	protected String addWdm(String browserName, Capabilities capabilities) {
 		boolean isDocker = false;
@@ -182,9 +183,9 @@ public abstract class SeleniumTest {
 		}
 		
 		if(isDocker) {
-			IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, null));
+			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, null));
 		} else {
-			IN_DOCKER.set(new ImmutablePair<Boolean, String>(false, null));
+			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
 		}
 		
 		if(wdmMgs.containsKey(browserName) && !isDocker) {
@@ -236,10 +237,12 @@ public abstract class SeleniumTest {
 				wdm.enableRecording().enableVnc();
 			}
 			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":(isDocker?"dkr":""));
+			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
 			wdmMgs.put(browserName, wdm);
 		} else {
 			wdm.setup();
 			wdmMgs.put(browserName, wdm);
+			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, new String[] {browserName, null}));
 		}
 		return browserName;
 	}
@@ -1538,8 +1541,8 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void uploadFile(List<WebElement> ret, String filePath, int count) {
-		initJs(get___d___());
+	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
+		initJs(wd);
 		if(!new File(filePath).exists()) {
 			File upfl = ___cxt___.getResourceFile(filePath);
 			if(!upfl.exists()) {
@@ -1554,10 +1557,22 @@ public abstract class SeleniumTest {
 			}
 		}
 		
-		if(get___d___() instanceof HasDevTools && get___d___() instanceof JavascriptExecutor) {
+		if(SeleniumTest.IN_DOCKER.get().getLeft() && wdmMgs.containsKey(SeleniumTest.IN_DOCKER.get().getRight()[0])) {
 			try {
-				String cssSelctor = (String)((JavascriptExecutor)get___d___()).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
-				DevTools devTools = ((HasDevTools) get___d___()).getDevTools();
+				DockerClient dc = wdmMgs.get(SeleniumTest.IN_DOCKER.get().getRight()[0]).getDockerService().getDockerClient();
+				String containerId = SeleniumTest.IN_DOCKER.get().getRight()[1];
+				File to = new File("/home/selenium");
+				dc.copyArchiveToContainerCmd(containerId).withHostResource(filePath).withRemotePath(to.getAbsolutePath()).exec();
+				filePath = new File("/home/selenium", new File(filePath).getName()).getAbsolutePath();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		
+		if(wd instanceof HasDevTools && wd instanceof JavascriptExecutor) {
+			try {
+				String cssSelctor = (String)((JavascriptExecutor)wd).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
+				DevTools devTools = ((HasDevTools)wd).getDevTools();
 				devTools.createSession();
 				Node node = devTools.send(DOM.getDocument(Optional.empty(), Optional.empty()));
 				NodeId nodeId = devTools.send(DOM.querySelector(node.getNodeId(), cssSelctor));
@@ -1626,7 +1641,7 @@ public abstract class SeleniumTest {
 	}
 	
 	private static boolean isSettingDisabled(String sessionId, String name) {
-		return getSettingVal(sessionId, name)==null || !"true".equalsIgnoreCase(getSettingVal(sessionId, name));
+		return getSettingVal(sessionId, name)!=null && !"true".equalsIgnoreCase(getSettingVal(sessionId, name));
 	}
 	
 	private static String getSessionId(WebDriver wd) {
@@ -1636,17 +1651,24 @@ public abstract class SeleniumTest {
 		}
 		return sessionId;
 	}
+	
+	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier) {
+		for(final WebElement we: ret) {
+			String sessionId = getSessionId(wd);
+			if(isSettingDisabled(sessionId, "clk_nofocus") || "fo".equalsIgnoreCase(qualifier)) {
+				jsFocus(wd, we);
+			}
+			we.click();
+			break;
+		}
+	}
 
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
-		if(action.equalsIgnoreCase("click")) {
-			for(final WebElement we: ret) {
-				String sessionId = getSessionId(wd);
-				if(isSettingDisabled(sessionId, "clk_nofocus")) {
-					jsFocus(wd, we);
-				}
-				we.click();
-				break;
-			}
+		if(action.toLowerCase().matches(Command.clickExStr)) {
+			Matcher m = Command.clickEx.matcher(action.toLowerCase());
+        	m.matches();
+        	String qualifier = m.group(1);
+			clickAction(wd, ret, qualifier);
 		} else if(action.equalsIgnoreCase("hover")) {
 			for(final WebElement we: ret) {
 				Actions ac = new Actions(wd);
@@ -1696,7 +1718,7 @@ public abstract class SeleniumTest {
 			String[] parts = tvalue.split("\\s+");
 			sendKeys("randomize", qualifier, wd, ret, parts[0], parts.length>1?parts[1]:null, parts.length>2?parts[2]:null);
 		}*/ else if(action.equalsIgnoreCase("upload")) {
-			uploadFile(ret, tvalue, 1);
+			uploadFile(wd, ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
 			jsEvent(wd, ret.get(0), "fo");
 			Select s = new Select(ret.get(0));
@@ -1821,7 +1843,7 @@ public abstract class SeleniumTest {
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
-				if(action!=null && (action.equalsIgnoreCase("click") || action.toLowerCase().matches(Command.typeExStr))) {
+				if(action!=null && (action.toLowerCase().matches(Command.clickExStr) || action.toLowerCase().matches(Command.typeExStr))) {
 					enabledCheck = true;
 				}
 
@@ -1842,7 +1864,7 @@ public abstract class SeleniumTest {
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
-							if(action!=null && (action.equalsIgnoreCase("click") || action.toLowerCase().matches(Command.typeExStr))) {
+							if(action!=null && (action.toLowerCase().matches(Command.clickExStr) || action.toLowerCase().matches(Command.typeExStr))) {
 								enabledCheck = true;
 							}
 

@@ -44,7 +44,7 @@ import java.util.stream.Collectors;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
-import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.slf4j.Logger;
 
 import com.gatf.selenium.SeleniumTest;
@@ -696,7 +696,7 @@ public class DockerService {
         }
 
         String cdpProxyPort = getBindPort(containerId,  "8001/tcp");
-        SeleniumTest.IN_DOCKER.set(new ImmutablePair<Boolean, String>(true, cdpProxyPort));
+        SeleniumTest.IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, cdpProxyPort, new String[] {SeleniumTest.IN_DOCKER.get().getRight()[0], containerId}));
         
         String browserUrl = format(browserUrlFormat, browserHost, browserPort);
         browserContainer.setContainerUrl(browserUrl);

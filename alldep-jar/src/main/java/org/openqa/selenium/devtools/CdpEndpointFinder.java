@@ -115,7 +115,7 @@ public class CdpEndpointFinder {
 
     try {
     	if(SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:")) {
-    		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + SeleniumTest.IN_DOCKER.get().getRight();
+    		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + SeleniumTest.IN_DOCKER.get().getMiddle();
     		raw = raws;
     	}
       URI uri = new URI(String.format("http://%s", raw));
