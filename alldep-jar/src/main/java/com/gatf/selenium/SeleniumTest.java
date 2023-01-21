@@ -583,8 +583,6 @@ public abstract class SeleniumTest {
 	}
 
 	
-	private static final Map<String, Boolean> jsUtilStatusMap = new ConcurrentHashMap<>();
-
 	protected void set___d___(WebDriver ___d___)
 	{
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
@@ -752,9 +750,6 @@ public abstract class SeleniumTest {
 				if(getSession().___dqs___.get(indx)) continue;
 				String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
 				DRV_FEATURES.remove(sessionId);
-				if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
-					jsUtilStatusMap.remove(sessionId);
-				}
 				d.quit();
 				getSession().___dqs___.set(indx, true);
 			}
@@ -770,9 +765,6 @@ public abstract class SeleniumTest {
 					if(s.___dqs___.get(indx)) continue;
 					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
 					DRV_FEATURES.remove(sessionId);
-					if(d instanceof JavascriptExecutor && jsUtilStatusMap.containsKey(sessionId)) {
-						jsUtilStatusMap.remove(sessionId);
-					}
 					d.quit();
 					s.___dqs___.set(indx, true);
 				}
@@ -875,8 +867,8 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void sendKeys(WebElement le, String type, String qualifier, String tvalue) {
-		sendKeys(type, qualifier, get___d___(), le, tvalue);
+	protected void sendKeys(WebDriver driver, WebElement le, String type, String qualifier, String tvalue) {
+		sendKeys(type, qualifier, driver, le, tvalue);
 	}
 	
 	protected static String randomize(String tvalue) {
@@ -1101,7 +1093,7 @@ public abstract class SeleniumTest {
 	}
 	//END ZOOM IN/OUT Code
 
-	protected void mzoompinch(Object ele, int x, int y, boolean isZoom) {
+	protected void mzoompinch(WebDriver driver, Object ele, int x, int y, boolean isZoom) {
 		try
 		{
 			if(ele==null) {
@@ -1127,11 +1119,11 @@ public abstract class SeleniumTest {
 				TouchAction action1 = new TouchAction((MobileDriver)get___d___());*/
 
 				if(isZoom) {
-			        ((AppiumDriver)get___d___()).perform(zoomIn(new Point(x, y), 450));
+			        ((AppiumDriver)driver).perform(zoomIn(new Point(x, y), 450));
 					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
 					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
 				} else {
-					((AppiumDriver)get___d___()).perform(zoomOut(new Point(x, y), 450));
+					((AppiumDriver)driver).perform(zoomOut(new Point(x, y), 450));
 					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
 					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
 				}
@@ -1164,11 +1156,11 @@ public abstract class SeleniumTest {
 				Point from = new Point(rect.x + rect.getWidth() / 2, rect.y + rect.getHeight() / 2);
 
 				if(isZoom) {
-					((AppiumDriver)get___d___()).perform(zoomIn(from, 450));
+					((AppiumDriver)driver).perform(zoomIn(from, 450));
 					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
 					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
 				} else {
-					((AppiumDriver)get___d___()).perform(zoomOut(from, 450));
+					((AppiumDriver)driver).perform(zoomOut(from, 450));
 					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
 					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
 				}
@@ -1182,17 +1174,17 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void doSwipe(Point start, Point end, int duration) {
+	protected void doSwipe(WebDriver driver, Point start, Point end, int duration) {
 		PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "fingerA");
         Sequence swipe = new Sequence(finger, 1)
                 .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), start.getX(), start.getY()))
                 .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
                 .addAction(finger.createPointerMove(Duration.ofMillis(duration), PointerInput.Origin.viewport(), end.getX(), end.getY()))
                 .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        ((AppiumDriver)get___d___()).perform(Arrays.asList(swipe));
+        ((AppiumDriver)driver).perform(Arrays.asList(swipe));
     }
 
-	protected void doTap(WebElement e, Point point, int duration) {
+	protected void doTap(WebDriver driver, WebElement e, Point point, int duration) {
 		if(e!=null) {
 			point = getCenter(e);
 		}
@@ -1202,7 +1194,7 @@ public abstract class SeleniumTest {
                 .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
                 .addAction(new Pause(finger, Duration.ofMillis(duration)))
                 .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        ((AppiumDriver)get___d___()).perform(Arrays.asList(tap));
+        ((AppiumDriver)driver).perform(Arrays.asList(tap));
     }
 
 	protected static void randomizeSelect(WebElement le) {
@@ -1495,24 +1487,24 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void windowOpenSaveJsPre() {
-		if (!(get___d___() instanceof JavascriptExecutor)) {
+	protected void windowOpenSaveJsPre(WebDriver driver) {
+		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 		try {
-			((JavascriptExecutor)get___d___()).executeScript("window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);window.open=__owo__;console.log(a);}");
+			((JavascriptExecutor)driver).executeScript("window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);window.open=__owo__;console.log(a);}");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	protected void windowOpenSaveJsPost(String filePath, boolean extractText) {
-		if (!(get___d___() instanceof JavascriptExecutor)) {
+	protected void windowOpenSaveJsPost(WebDriver driver, String filePath, boolean extractText) {
+		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 		OkHttpClient client = null;
 		try {
-			String url = (String)((JavascriptExecutor)get___d___()).executeScript("return window.__wosjp__[0]");
+			String url = (String)((JavascriptExecutor)driver).executeScript("return window.__wosjp__[0]");
 			int counter = 0;
 			while(StringUtils.isBlank(url) && counter++<60) {
 				System.out.println("Waiting for download URL... attempt " + counter);
@@ -1543,6 +1535,7 @@ public abstract class SeleniumTest {
 
 	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
 		initJs(wd);
+		jsFocus(wd, ret.get(0));
 		if(!new File(filePath).exists()) {
 			File upfl = ___cxt___.getResourceFile(filePath);
 			if(!upfl.exists()) {
@@ -1570,9 +1563,9 @@ public abstract class SeleniumTest {
 		}
 		
 		if(wd instanceof HasDevTools && wd instanceof JavascriptExecutor) {
+			DevTools devTools = ((HasDevTools)wd).getDevTools();
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)wd).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
-				DevTools devTools = ((HasDevTools)wd).getDevTools();
 				devTools.createSession();
 				Node node = devTools.send(DOM.getDocument(Optional.empty(), Optional.empty()));
 				NodeId nodeId = devTools.send(DOM.querySelector(node.getNodeId(), cssSelctor));
@@ -1582,7 +1575,6 @@ public abstract class SeleniumTest {
 					files.add(filePath);
 				}
 				devTools.send(DOM.setFileInputFiles(files, Optional.of(nodeId), Optional.empty(), Optional.empty()));
-				devTools.disconnectSession();
 				/*Map<String, Object> dom = ((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.getDocument", new HashMap<>());
 				Map<String, Object> domqaArgs = new HashMap<>();
 				domqaArgs.put("nodeId", ((Map<String, Object>)dom.get("root")).get("nodeId"));
@@ -1599,6 +1591,8 @@ public abstract class SeleniumTest {
 				((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.setFileInputFiles", setIfArgs);*/
 			} catch (Exception e) {
 				e.printStackTrace();
+			} finally {
+				devTools.disconnectSession();
 			}
 		} else {
 			if(count>1) {
@@ -1640,8 +1634,8 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	private static boolean isSettingDisabled(String sessionId, String name) {
-		return getSettingVal(sessionId, name)!=null && !"true".equalsIgnoreCase(getSettingVal(sessionId, name));
+	private static boolean isSettingEnabled(String sessionId, String name) {
+		return "true".equalsIgnoreCase(getSettingVal(sessionId, name));
 	}
 	
 	private static String getSessionId(WebDriver wd) {
@@ -1655,7 +1649,7 @@ public abstract class SeleniumTest {
 	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier) {
 		for(final WebElement we: ret) {
 			String sessionId = getSessionId(wd);
-			if(isSettingDisabled(sessionId, "clk_nofocus") || "fo".equalsIgnoreCase(qualifier)) {
+			if(isSettingEnabled(sessionId, "clk_focus") || "fo".equalsIgnoreCase(qualifier)) {
 				jsFocus(wd, we);
 			}
 			we.click();
@@ -1720,7 +1714,7 @@ public abstract class SeleniumTest {
 		}*/ else if(action.equalsIgnoreCase("upload")) {
 			uploadFile(wd, ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
-			jsEvent(wd, ret.get(0), "fo");
+			//jsEvent(wd, ret.get(0), "fo");
 			Select s = new Select(ret.get(0));
 			if(selSubsel.equalsIgnoreCase("text")) {
 				s.selectByVisibleText(selValue);
@@ -1733,6 +1727,7 @@ public abstract class SeleniumTest {
             } else if(selSubsel.equalsIgnoreCase("last")) {
             	s.selectByIndex(s.getOptions().size()-1);
             }
+			jsEvent(wd, ret.get(0), "fo");
 		} /*else if(action.equalsIgnoreCase("chord")) {
 			for(final WebElement we: ret) {
 				we.sendKeys(Keys.chord(tvalue));
@@ -1747,7 +1742,7 @@ public abstract class SeleniumTest {
 			}
 		}*/ else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
 			for(final WebElement we: ret) {
-				jsEvent(wd, we, "fo");
+				//jsEvent(wd, we, "fo");
 				Actions ac = new Actions(wd);
 				ac.moveToElement(we).doubleClick().perform();
 				break;
@@ -1818,28 +1813,27 @@ public abstract class SeleniumTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<WebElement> handleWaitFunc(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	protected List<WebElement> handleWaitFunc(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<WebElement>)handleWaitOrTransientProv(sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<String[]> transientProviderData(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	protected List<String[]> transientProviderData(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<String[]>)handleWaitOrTransientProv(sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+		return (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
 	}
 
 	@SuppressWarnings("unchecked")
-	private Object handleWaitOrTransientProv(final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	private Object handleWaitOrTransientProv(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
 			boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
 		final WebDriver wsc = (WebDriver) sc;
 		final Object[] o = new Object[2];
-		final SeleniumTest test = this;
 		long timeoutRemaining = 0;
-		initJs(get___d___());
+		initJs(driver);
 		System.out.println("Searching element => " + by+"@"+classifier);
 		if(timeOutInSeconds<=0) {
-			List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
+			List<WebElement> el = getElements(driver, wsc, by+"@"+classifier);
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
@@ -1847,7 +1841,7 @@ public abstract class SeleniumTest {
 					enabledCheck = true;
 				}
 
-				WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
+				WebElement elo = elementInteractable(el.get(0), enabledCheck, layers).apply(driver);
 				if(elo!=null) {
 					o[0] = el;
 					o[1] = ce;
@@ -1860,7 +1854,7 @@ public abstract class SeleniumTest {
 					public Boolean apply(WebDriver input) {
 						List<WebElement> ___ce___ = ce;
 						try {
-							List<WebElement> el = getElements(get___d___(), wsc, by+"@"+classifier);
+							List<WebElement> el = getElements(driver, wsc, by+"@"+classifier);
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
@@ -1868,7 +1862,7 @@ public abstract class SeleniumTest {
 								enabledCheck = true;
 							}
 
-							WebElement elo = elementInteractable(test, el.get(0), enabledCheck, layers).apply(get___d___());
+							WebElement elo = elementInteractable(el.get(0), enabledCheck, layers).apply(driver);
 							if(elo!=null) {
 								o[0] = el;
 								o[1] = ___ce___;
@@ -1903,15 +1897,15 @@ public abstract class SeleniumTest {
 						} else if(subselector.equalsIgnoreCase("pageSource")) {
 							rhs = ((WebDriver)sc).getPageSource();
 						} else if(subselector.equalsIgnoreCase("width")) {
-							rhs = String.valueOf(get___d___().manage().window().getSize().getWidth());
+							rhs = String.valueOf(driver.manage().window().getSize().getWidth());
 						} else if(subselector.equalsIgnoreCase("height")) {
-							rhs = String.valueOf(get___d___().manage().window().getSize().getHeight());
+							rhs = String.valueOf(driver.manage().window().getSize().getHeight());
 						} else if(subselector.equalsIgnoreCase("xpos")) {
-							rhs = String.valueOf(get___d___().manage().window().getPosition().getX());
+							rhs = String.valueOf(driver.manage().window().getPosition().getX());
 						} else if(subselector.equalsIgnoreCase("ypos")) {
-							rhs = String.valueOf(get___d___().manage().window().getPosition().getY());
+							rhs = String.valueOf(driver.manage().window().getPosition().getY());
 						} else if(subselector.equalsIgnoreCase("alerttext")) {
-							rhs = String.valueOf(get___d___().switchTo().alert().getText());
+							rhs = String.valueOf(driver.switchTo().alert().getText());
 						}
 
 						if(rhs!=null) {
@@ -2074,7 +2068,7 @@ public abstract class SeleniumTest {
 				}
 			} else if(action!=null) {
 				try {
-					elementAction(get___d___(), ret, action, tvalue, value, subselector);
+					elementAction(driver, ret, action, tvalue, value, subselector);
 				} catch (WebDriverException e) {
 					String exMsg = ExceptionUtils.getStackTrace(e);
 					boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
@@ -2092,7 +2086,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(get___d___(), ret, action, tvalue, value, subselector);
+								elementAction(driver, ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -2138,7 +2132,7 @@ public abstract class SeleniumTest {
 							try {
 								Thread.sleep(timeoutSleepGranularity);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
-								elementAction(get___d___(), ret, action, tvalue, value, subselector);
+								elementAction(driver, ret, action, tvalue, value, subselector);
 								resp = ret;
 								lastException = null;
 								break;
@@ -2258,7 +2252,7 @@ public abstract class SeleniumTest {
 		return from;
 	}
 
-	private static ExpectedCondition<WebElement> elementInteractable(SeleniumTest test, WebElement element, boolean enabledCheck, String ... layers) {
+	private static ExpectedCondition<WebElement> elementInteractable(WebElement element, boolean enabledCheck, String ... layers) {
 		return new ExpectedCondition<WebElement>() {
 			@Override
 			public WebElement apply(WebDriver driver) {
@@ -2273,7 +2267,7 @@ public abstract class SeleniumTest {
 						Rectangle trec = getRect(telement);
 						for (String layer : layers) {
 							try {
-								List<WebElement> el = getElements(test.get___d___(), test.get___d___(), layer);
+								List<WebElement> el = getElements(driver, driver, layer);
 								if(el!=null && el.size()>0 && /*el.get(0).isEnabled() &&*/ el.get(0).isDisplayed()) {
 									int ozl = getZIndex(el.get(0));
 									Rectangle orec = getRect(el.get(0));
@@ -2484,9 +2478,6 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void waitForReady(WebDriver driver) {
-		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
-		jsUtilStatusMap.remove(sessionId);
-		
 		if (driver instanceof JavascriptExecutor) {
 			int counter = 0;
 			while(counter++<60) {
@@ -2522,20 +2513,23 @@ public abstract class SeleniumTest {
 	
 	protected void initJs(WebDriver driver) {
 		try {
-			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
-			if(driver instanceof JavascriptExecutor && !jsUtilStatusMap.containsKey(sessionId)) {
-				((JavascriptExecutor)driver).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-				jsUtilStatusMap.put(sessionId, true);
+			if(driver instanceof JavascriptExecutor) {
+				if("Success".equalsIgnoreCase((String)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.check()"))) {
+					return;
+				}
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
+			try {
+				((JavascriptExecutor)driver).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
+			} catch (IOException e1) {
+			}
 		}
 	}
 
 	private static final Map<String, Object[]> NETWORK_INSPECTION = new ConcurrentHashMap<>();
 	
-	protected void networkApiInspectPre(String method, String url) {
-		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
+	protected void networkApiInspectPre(WebDriver driver, String method, String url) {
+		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(!NETWORK_INSPECTION.containsKey(sessionId)) {
 			NETWORK_INSPECTION.put(sessionId, new Object[] {method, url, null, null});
 		} else {
@@ -2543,8 +2537,8 @@ public abstract class SeleniumTest {
 		}
 		
 		final String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
-		if(get___d___() instanceof HasDevTools) {
-			DevTools devTools = ((HasDevTools)get___d___()).getDevTools();
+		if(driver instanceof HasDevTools) {
+			DevTools devTools = ((HasDevTools)driver).getDevTools();
 			
 			devTools.createSession();
 		
@@ -2585,38 +2579,12 @@ public abstract class SeleniumTest {
 				}
 				devTools.send(Fetch.continueResponse(requestPaused.getRequestId(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
 			});
-			
-			/*devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));
-			devTools.addListener(Network.requestWillBeSent(), requestSent -> {
-				System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
-						requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
-				if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId) && 
-						NETWORK_INSPECTION.get(sessionId)[0].toString().equalsIgnoreCase(requestSent.getRequest().getMethod()) &&
-						NETWORK_INSPECTION.get(sessionId)[1].toString().equalsIgnoreCase(requestSent.getRequest().getUrl())) {
-					System.out.println(String.format("Captured Network Request [%s] for %s-> %s", requestSent.getRequestId().toString(), 
-							requestSent.getRequest().getMethod(), requestSent.getRequest().getUrl()));
-					NETWORK_INSPECTION.get(sessionId)[2] = requestSent.getRequestId().toString();
-				}
-			});
-			devTools.addListener(Network.responseReceived(), response -> {
-				//System.out.println(response.getRequestId().toString());
-				System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
-						response.getResponse().getStatus()));
-				if(BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && NETWORK_INSPECTION.containsKey(sessionId) &&
-						response.getRequestId().toString().equals(NETWORK_INSPECTION.get(sessionId)[2])) {
-					System.out.println(String.format("Captured Network Response for [%s] -> %d", response.getRequestId().toString(), 
-							response.getResponse().getStatus()));
-					NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {response.getResponse().getStatus(), 
-							response.getResponse().getHeaders(), response.getResponse().getMimeType().toString(), 
-							devTools.send(Network.getResponseBody(response.getRequestId())).getBody()};
-				}
-			});*/
 		}
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected void networkApiInspectPost(String v1, String v2) {
-		String sessionId = ((RemoteWebDriver)get___d___()).getSessionId().toString();
+	protected void networkApiInspectPost(WebDriver driver, String v1, String v2) {
+		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(/*BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && */NETWORK_INSPECTION.containsKey(sessionId)) {
 			int counter = 0;
 			while(NETWORK_INSPECTION.get(sessionId)[3]==null && counter++<60) {
@@ -2661,6 +2629,7 @@ public abstract class SeleniumTest {
 									vname = det[0].trim();
 									path = det[1].trim();
 								}
+								System.out.println("Fetching " + path + " from [" + body + "]");
 								___cxt___add_param__(vname, JsonPath.read(body, path));
 							}
 						}
@@ -2670,13 +2639,38 @@ public abstract class SeleniumTest {
 				}
 			}
 			
-			if(get___d___() instanceof HasDevTools) {
-				DevTools devTools = ((HasDevTools)get___d___()).getDevTools();
+			if(driver instanceof HasDevTools) {
+				DevTools devTools = ((HasDevTools)driver).getDevTools();
 				devTools.send(Fetch.disable());
 				devTools.disconnectSession();
 			}
 			
 			NETWORK_INSPECTION.remove(sessionId);
+		}
+	}
+	
+	protected void switchToFrame(WebDriver d, String selector) {
+		if(StringUtils.isBlank(selector) || selector.trim().equalsIgnoreCase("main")) {
+			d.switchTo().defaultContent();
+			return;
+		}
+		
+		if(selector.trim().equalsIgnoreCase("parent")) {
+			d.switchTo().parentFrame();
+			return;
+		}
+		
+		if(selector.indexOf("@")!=-1) {
+			List<WebElement> els = getElements(d, d, selector);
+			if(els.size()>0) {
+				d.switchTo().frame(els.get(0));
+			}
+		}
+		
+		try {
+			d.switchTo().frame(Integer.parseInt(selector));
+		} catch (NumberFormatException e) {
+			d.switchTo().frame(selector);
 		}
 	}
 }

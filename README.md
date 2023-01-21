@@ -417,13 +417,13 @@ Examples :-
 
 
 Add Settings
-	setting {width|height|posx|posy|clk_nofocus} {value} {value}?
+	setting {width|height|posx|posy|clk_focus} {value} {value}?
 Examples :-
 	setting width 100
 	setting height 100
 	setting posx 100
 	setting posy 100
-	setting clk_nofocus true
+	setting clk_focus true
 
 
 Open URL in window
@@ -576,7 +576,11 @@ Examples :-
 
 
 Close window
+	close {tab-index|others}?",
+Examples :-
 	close
+	close 1
+	close others
 
 
 Take element screenshot

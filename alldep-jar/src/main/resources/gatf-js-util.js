@@ -76,6 +76,10 @@ window.GatfUtil = new function() {
 			result.push(nodesSnapshot.snapshotItem(i));
 		}
 		return result;
+	},
+	
+	this.check = function() {
+		return "Success";	
 	}
 	return this;
 };
