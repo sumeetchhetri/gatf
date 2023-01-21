@@ -99,6 +99,7 @@ implements Serializable {
 
 			newProvider("prov1");
 			List<String[]> ___w___2 = transientProviderData(
+					___cw___,
 					___sc___1,
 					___ce___,
 					0L,

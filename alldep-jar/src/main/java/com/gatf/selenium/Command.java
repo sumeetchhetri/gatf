@@ -5410,8 +5410,8 @@ public class Command {
                                 v1 = v1.substring(1, v1.length()-1);
                             }
                         }
-                        if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
-                        	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
+                        if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_")) {
+                        	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_"));
                         }
                     }
                     if(parts.length>t+1) {
@@ -5437,7 +5437,7 @@ public class Command {
         				Long.parseLong(v2);
         			} catch (Exception e) {
         				if(v2!=null && !v1.equalsIgnoreCase("value")) {
-        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
         				}
         			}
                     
@@ -5445,7 +5445,7 @@ public class Command {
                     	Long.parseLong(v3);
         			} catch (Exception e) {
         				if(v3!=null) {
-        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
         				}
         			}
                 }
@@ -5723,8 +5723,8 @@ public class Command {
                             v1 = v1.substring(1, v1.length()-1);
                         }
                     }
-                    if(!v1.toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
-                    	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
+                    if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_")) {
+                    	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_"));
                     }
                 }
                 if(parts.length>t+1) {
@@ -5750,7 +5750,7 @@ public class Command {
     				Long.parseLong(v2);
     			} catch (Exception e) {
     				if(v2!=null && !v1.equalsIgnoreCase("value")) {
-    					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+    					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc"));
     				}
     			}
                 
@@ -5758,7 +5758,7 @@ public class Command {
                 	Long.parseLong(v3);
     			} catch (Exception e) {
     				if(v3!=null) {
-    					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+    					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc"));
     				}
     			}
             } else {
@@ -5819,7 +5819,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Type random values in input/textarea elements",
-        		"\trandomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|numeric|alpha|value|range|prefixed|prefixed_ {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}",
+        		"\trandomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_ {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}",
         		"Examples :-",
         		"\trandomize id@'ele1' alphanumeric 12",
         		"\trandomize id@'ele1' alpha 8 3 (first-name middle-name last-name)",
@@ -6145,7 +6145,7 @@ public class Command {
         		"Multiple Chained Actions",
         		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|"
         		+ "{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|"
-        		+ "randomize {alpha|alphanumeric|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|"
+        		+ "randomize {alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|"
         		+ "{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...",
         		"Examples :-",
         		"\tactions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'",
@@ -6239,8 +6239,8 @@ public class Command {
                     }
                 } else if(t[counter].toLowerCase().equals("randomize")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|numeric|alpha|value|range|prefixed|prefixed_")) {
-                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|numeric|alpha|value|range|prefixed|prefixed_"));
+                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_")) {
+                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_"));
                     }
                     
                     cmd.expr1 = state.unsanitize(t[++counter]);
@@ -6261,7 +6261,7 @@ public class Command {
                         Long.parseLong(cmd.expr2);
         			} catch (Exception e) {
         				if(cmd.expr2!=null && !cmd.expr1.equalsIgnoreCase("value")) {
-        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|numeric|alpha|range"));
+        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
         				}
         			}
                     
@@ -6276,7 +6276,7 @@ public class Command {
         				++counter;
         			} catch (Exception e) {
         				if(cmd.expr3!=null && !cmd.expr3.matches(ALLCMDS)) {
-        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|numeric|alpha|range"));
+        					throwParseError(null, new RuntimeException("Randomize command needs second argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
         				}
         				cmd.expr3 = null;
         			}

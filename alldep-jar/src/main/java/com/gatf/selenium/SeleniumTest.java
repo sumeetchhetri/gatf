@@ -909,7 +909,9 @@ public abstract class SeleniumTest {
 			} catch (Exception e) {
 			}
 		}
-		if(v1.toLowerCase().equals("alpha") || v1.toLowerCase().equals("alphanumeric") || v1.toLowerCase().equals("numeric")) {
+		if(v1.toLowerCase().equals("alpha") || v1.toLowerCase().equals("alphanumeric") || v1.toLowerCase().equals("numeric")
+				|| v1.toLowerCase().equals("alphauc") || v1.toLowerCase().equals("alphanumericuc")
+				|| v1.toLowerCase().equals("alphalc") || v1.toLowerCase().equals("alphanumericlc")) {
 			if(StringUtils.isNotBlank(v2)) {
 				try {
 					count = Integer.parseInt(v2);
@@ -923,6 +925,14 @@ public abstract class SeleniumTest {
 				vals.add(RandomStringUtils.randomAlphabetic(count));
 			} else if(v1.toLowerCase().equals("alphanumeric")) {
 				vals.add(RandomStringUtils.randomAlphanumeric(count));
+			} else if(v1.toLowerCase().equals("alphanumericuc")) {
+				vals.add(RandomStringUtils.randomAlphanumeric(count).toUpperCase());
+			} else if(v1.toLowerCase().equals("alphanumericlc")) {
+				vals.add(RandomStringUtils.randomAlphanumeric(count).toLowerCase());
+			} else if(v1.toLowerCase().equals("alphauc")) {
+				vals.add(RandomStringUtils.randomAlphabetic(count).toUpperCase());
+			} else if(v1.toLowerCase().equals("alphalc")) {
+				vals.add(RandomStringUtils.randomAlphabetic(count).toLowerCase());
 			} else if(v1.toLowerCase().equals("numeric")) {
 				String fv = RandomStringUtils.randomNumeric(count);
 				long v = Long.parseLong(fv);
