@@ -23,223 +23,53 @@ Important features
 	- MongoDB
 	- Files (XML/JSON/CSV/XLS/XLSX/ODT)
 
-Test HTML Generator Plugin
-==========
-You can also refer the [test-html-generator-plugin](https://github.com/sumeetchhetri/test-html-generator-plugin) home page if you want to generate HTML pages for all you REST endpoints automatically.
-
-
-GATF Test Generator
-==============
-The Test Generator plugin is responsible for generating test cases automatically by just looking at either,
-
-1. All your REST-full service classes annotated with JAX RS annotations (@Path...) or spring based Controller annotations (@RequestMapping..)
-2. All your soap based WSDL locations
-
-The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV. Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter. It also generates input request objects based on the API request parameters and also provides default object sets with random values.
-
-Maven Configuration
---------------
-```xml
-<!-- Add jitpack artifact repositories for gatf dependencies -->
-<pluginRepositories>
-	<pluginRepository>
-	    <id>jitpack.io</id>
-	    <url>https://jitpack.io</url>
-	</pluginRepository>
-</pluginRepositories>
-
-<repositories>
-	<repository>
-	    <id>jitpack.io</id>
-	    <url>https://jitpack.io</url>
-	</repository>
-</repositories>
-
-<!-- Add the generator plugin which will be invoked during the test phase -->
-<build>
-	<plugins>
-		<plugin>
-			<groupId>com.github.sumeetchhetri.gatf</groupId>
-			<artifactId>gatf-plugin</artifactId>
-			<version>1.1.0</version>
-			<executions>
-				<execution>
-					<id>gatf-rest-json-xml</id>
-					<configuration>
-						<testPaths>
-							<!-- The package name where all API's will be found -->
-							<testPath>com.pkg.services.*</testPath>
-						</testPaths>
-						<!-- If there is a URL prefix that gatf should know -->
-						<urlPrefix>api/rest</urlPrefix>
-						<!-- The type of input request formats (json/xml) -->
-						<requestDataType>json</requestDataType>
-						<!-- The type of ouput request formats (json/xml) -->
-						<responseDataType>json</responseDataType>
-						<!-- Are all API endpoints proected -->
-						<overrideSecure>true</overrideSecure>
-						<!-- Where do we generate the test cases -->
-						<resourcepath>${project.reporting.outputDirectory}/generated-rest-json-xml</resourcepath>
-						<!-- Do we also generate postman collections for the endpoints -->
-						<postmanCollectionVersion>2</postmanCollectionVersion>
-						<enabled>true</enabled>
-					</configuration>
-					<goals>
-						<goal>gatf-generator</goal>
-					</goals>
-				</execution>
-			</executions>
-		</plugin>
-	</plugins>
-</body>
-```
-
-The generated test cases are outlined below assuming an imaginary Get user API, every API endpoint class will have a corresponding test case file (either json, xml or csv)
-
-Testcase (XML)
---------------
-
-```xml
-<TestCase url="jsonapi/users/1" name="GetUser" method="GET" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="false" soapBase="false">
-    <description>Get a user with id = 1</description>
-    <headers>
-		<entry>
-			<string>someheader</string>
-			<string>value</string>
-		</entry>
-		<entry>
-			<string>anotherheader</string>
-			<string>value</string>
-		</entry>
-	</headers>
-    <expectedNodes>
-		<string>id</string>
-	</expectedNodes>
-</TestCase>
-```
-Best format for specifying all types of test cases
-
-Testcase (JSON)
---------------
-
-```json
- {
-    "url": "\/jsonapi\/users/1",
-    "name": "GetUser",
-    "method": "GET",
-    "description": "Get a user with id = 1",
-    "headers": {
-      "Content-Type": "application\/json"
-    },
-    "expectedResCode": 200,
-    "expectedResContentType": "application\/json",
-    "skipTest": false,
-    "expectedNodes": [
-      "id"
-    ]
-  }
-```
-Better than CSV at represnting data but difficult to represent complex request/response content 
-
-Testcase (CSV)
---------------
-
-```csv
-#URL,NAME,HTTPMETHOD,DESCRIPTION,CONTENT,HEADERS,EXQUERYPART,EXPECTEDSTATUSCODE,EXPECTEDCONTTYPE,EXPECTEDCONT,EXPECTEDNODES,SKIPTEST,LOG,SECURE,SOAPBASE,SOAPPARAMVALUES,WSDLKEY,OPERATIONNM
-jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader:val,,200,application/json,,id,false,false,true
-```
-Simplest data format but cannot be used or complex request/response content
-
-
-Direct Execution
---------------
-For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows,on the command line,
-```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -generator /workdir/path-to-gatf-gen-config.xml-file
-```
-
-Sample config.xml
-```xml
-<configuration>
-    <!--The package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
-    <testPaths>
-        <testPath>com.sample.services.*</testPath>
-    </testPaths>
-    <!-- Whether a soap client/http client is used to execute SOAP tests
-     the useSoapClient, soapWsdlKeyPairs properties in the configuration are only
-     required if we want to generate testcases for SOAP endpoints as well -->
-    <useSoapClient>true</useSoapClient>
-    <!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
-    <soapWsdlKeyPairs>
-        <soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
-        <soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
-    </soapWsdlKeyPairs>
-    <!--The REST API service URL suffix-->   
-    <urlSuffix>_param=value</urlSuffix>
-    <!--The REST API service URL prefix-->
-    <urlPrefix>rest</urlPrefix>
-    <!--The request data type, when generating request entities-->
-    <requestDataType>json</requestDataType>
-    <!--The expected response data type-->
-    <responseDataType>json</responseDataType>
-    <!--The resource path where the testcases and wsdl-locations.csv will be generated-->
-    <resourcepath>src/test/resources/generated</resourcepath>
-    <!-- Generate postman collections for a given Postman Testcase version-->
-    <postmanCollectionVersion>2</postmanCollectionVersion>
-    <!-- The generated testcase format, can be either xml,json or csv -->
-    <testCaseFormat>xml</testCaseFormat>
-    <!--Whether this plugin is enabled-->
-    <enabled>true</enabled>
-</configuration>
-```
-
-Lets see what the GATF Test Executor is,
-
 GATF Test Executor
 ================
+
 The GATF Test Executor module provides a consolidated testing tool for,
 
-1. Single Session Test case execution
-2. Performance Test case execution
-3. Scenario/Workflow based Test case execution
-4. Concurrent User Simulation
-5. Comparative Test case study against multiple environments
-6. Load (Distributed) Testing
+  1. Single Session Test case execution
+  2. Performance Test case execution
+  3. Scenario/Workflow based Test case execution
+  4. Concurrent User Simulation
+  5. Comparative Test case study against multiple environments
+  6. Load (Distributed) Testing
 
-It also provides the following,
+  It also provides the following,
 
-1. Pie charts for overall test status (Success/Failure reports)
-2. Line/Bar charts for overall performance results
-3. Detailed test case reports with comprehensive information about a test execution request/response
-4. Maven/Executable-Jar test case execution options
+  1. Pie charts for overall test status (Success/Failure reports)
+  2. Line/Bar charts for overall performance results
+  3. Detailed test case reports with comprehensive information about a test execution request/response
+  4. Maven/Executable-Jar test case execution options
 
 It uses a highly performant asynchronous http client library - async-http-client and hence achieves very good execution times.
 
 
-GATF Test Data Providers
----------------------------
-The GATF framework provides the option to integrate to multiple data sources for fetching test case data, which include the following,
 
-1. Any SQL compliant database
-2. MongoDB
-3. Files - CSV/JSON/XML
-4. Inline/Value based
-5. Custom Provider
-6. Random Value Provider
+<h3 style="margin-left:20px">GATF Test Data Providers</h3>
+<p style="margin-left:20px">The GATF framework provides the option to integrate to multiple data sources for fetching test case data, which include the following,</p>
 
-The framework provides automatic built-in providers for easy integration to the above mentioned data sources. But we can also define custom providers if required.
+<li style="margin-left:40px">Any SQL compliant database</li>
+<li style="margin-left:40px">MongoDB</li>
+<li style="margin-left:40px">Files - CSV/JSON/XML</li>
+<li style="margin-left:40px">Inline/Value based</li>
+<li style="margin-left:40px">Custom Provider</li>
+<li style="margin-left:40px">Random Value Provider</li>
 
-GATF Pre/Post Test Case Execution Hooks
--------------------------
-The framework also provides the facility to plug in pre/post test case execution logic in order to control the test case execution flow, it provides 2 simple annotations,
+<p style="margin-left:40px">The framework provides automatic built-in providers for easy integration to the above mentioned data sources. But we can also define custom providers if required.</p>
 
-1. @PreTestCaseExecutionHook - Marks a method as a pre-test-case execution hook
-2. @PostTestCaseExecutionHook - Marks a method as a post-test-case execution hook
+<h3 style="margin-left:20px">GATF Pre/Post Test Case Execution Hooks</h3>
+<p style="margin-left:20px">The framework also provides the facility to plug in pre/post test case execution logic in order to control the test case execution flow, it provides 2 simple annotations,</p>
+
+<li style="margin-left:40px">@PreTestCaseExecutionHook - Marks a method as a pre-test-case execution hook</li>
+<li style="margin-left:40px">@PostTestCaseExecutionHook - Marks a method as a post-test-case execution hook</li>
 
 
-GATF Executor Configuration File
---------------
-The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor executable to execute your test cases.
+<p style="margin-left:20px">The complete configuration for the GATF executor framework is listed below, We just need to define a file with the contents below and configure it in maven or provide the path to the file to the executor to execute your test cases.</p>
+
+<details style="margin-left:20px">
+<summary>Sample executor config.xml</summary>
+<br>
 
 ```xml
 <gatf-execute-config>
@@ -439,10 +269,13 @@ The complete configuration for the GATF executor framework is listed below, We j
     </gatfTestDataConfig>
 </gatf-execute-config>
 ```
-Assuming the above configuration is present in a file named gatf-config.xml, the maven configuration required to execute the API testcases would be, 
 
-Maven Configuration
---------------
+</details>
+
+<details style="margin-left:20px">
+<summary>Sample maven configuration</summary>
+<br>
+
 ```xml
 <!-- Add jitpack artifact repositories for gatf dependencies -->
 <pluginRepositories>
@@ -483,24 +316,53 @@ Maven Configuration
 </body>
 ```
 
-Direct Execution
---------------
+</details>
+
+<details style="margin-left:20px" open>
+<summary>Execution</summary>
+<br>
+
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
+
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -executor /workdir/path-to-gatf-executor-config.xml-file
+java -jar gatf-alldep-1.1.1.jar -executor /workdir/path/to/gatf/config.xml
 ```
+
+```sh
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -executor /workdir/path/to/gatf/config.xml
+```
+
 For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
+
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -selenium /workdir/path-to-gatf-executor-config.xml-file
+java -jar gatf-alldep-1.1.1.jar -selenium /workdir/path/to/gatf/config.xml
 ```
+
+```sh
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -selenium /workdir/path/to/gatf/config.xml
+```
+
 For validating test script for RPA (selenium), use the following command,
+
 ```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -validate-sel test-script-name-relative-to-workdir.sel /local/gatf-config-sel.xml
+java -jar gatf-alldep-1.1.1.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
 ```
+
+```sh
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
+```
+
 For running gatf in distributed mode as a listener, use the following command,
+
+```sh
+java -jar gatf-alldep-1.1.1.jar -listener
+```
+
 ```sh
 docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -listener
 ```
+
+</details>
 
 GATF Robotic Process Automation Tool
 ================
@@ -525,10 +387,13 @@ goto http://example.com
 Simplicity lies at the core of the seleasy language which was invented just to ensure that we focus on the problem at hand instead of writing lengthy selenium scripts in java.
 
 To start recording browser actions just type into the Inspect Element -> Console (Chrome)
+
 ```
 Fg.startRecording()
 ```
+
 To stop recording
+
 ```
 Fg.stopRecording()
 ```
@@ -537,134 +402,121 @@ Seleasy Syntax Reference
 ---------------------
 
 ```
-Fail test/sub-test
-	fail {error string}
+Execute java code
+	#j{if|try|catch|finally|else|else if|while|for|continue|break|\{|\}|synchronized} {java statement}
 Examples :-
-	fail "Test failed"
-	fail "Sub-Test failed"
+	#jif(1==1) {} else {}
+	#jfor(int i=0;i<10;i++){}
 
 
-Hover over an element and click some other element
-	hoverclick {find-expr} {find-expr}
+Mobile Touch
+	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
 Examples :-
-	hoverclick id@'hoverele' id@'clickele'
+	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
+	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
 
 
-Multiple Chained Actions
-	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
+Add Settings
+	setting {width|height|posx|posy|clk_nofocus} {value} {value}?
 Examples :-
-	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
-	actions movetoelement id@'ele' sendkeys 'abc'
+	setting width 100
+	setting height 100
+	setting posx 100
+	setting posy 100
+	setting clk_nofocus true
 
 
-Save URL passed to window.open
-	wopensave {on|off} {filepath}? {text}?
+Open URL in window
+	goto {url}
 Examples :-
-	wopensave on
-	wopensave off '/path/to/file.txt' text
-
-
-Define Global timeout
-	timeout {timeout-secs} {sleep-granularity-millis}
-Examples :-
-	timeout 100 1000
-
-
-Wait for element to be visible/invisible
-	??(+|-) {find-expr}
-	'+' - wait till element is visible
-	'-' - wait till element is not visible
-Examples :-
-	??+ id@'eleid'
-	??- id@'eleid'
-
-
-Refresh window
-	refresh
-
-
-Take element screenshot
-	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
-Examples :-
-	ele-screenshot id@'eleid'
-	ele-screenshot id@'eleid' '/path/to/image/file/file.png'
-
-
-Break from loop
-	break
-
-
-Variable definition
-	var name @{another-variable-name}|plugin ...|{primitive-value}
-Examples :-
-	var var0 "Some text"
-	var var1 @var0
-	var var1 plugin jsonpath $v{myvar} out.x.y.z
-	var var1 123455
-	var var1 123.455
-	var var1 true
-	var var1 new java.util.Date()
-
-
-Subtest definition
-	subtest "name" session-name|@session-id (args)
-	{
-		code
-	}
-where
-	session-name - the browser session name for which to run this sub test
-	session-id - the browser session id prefixed with @ for which to run this sub test
-	args - the arguments passed to the subtest
-Examples :-
-	subtest "sb1" "bs1"
-	{
-		select index@4 id@"Location"
-	}
-	subtest "sb1" @1
-	{
-		select index@4 id@"Location"
-	}
-Alias definition
-	alias "name" (args)
-	{
-		code
-	}
-where
-	args - the arguments passed to the alias
-Examples :-
-	alias "cmd1"
-	{
-		select index@4 id@"Location"
-	}
-
-
-Else-If block, needs to be superseded by an If block
-	:? {find-expr}
-	{
-		code
-	}
-Examples :-
-	:? xpath@"ddd"
-	{
-		exec @print("else-if")
-	}
-
-
-Show alert with message
-	alert {value}
-Examples :-
-	alert('Hello')
+	goto http://abc.com/testpage.html
 
 
 Navigate Back/Previous
 	back
 
 
-Transient Provider definition
-	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN} {lazy}?
+Sleep for milliseconds
+	sleep {time-in-ms}
 Examples :-
-	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
-	#tp prov1 var1,var2 id@'abc' text,attr@abc
+	sleep 10000
+
+
+Select frame
+	tab main|0..N|{some-name}
+Examples :-
+	tab main
+	tab 0
+	tab 2
+	tab "my-frame"
+
+
+Maximize window
+	maximize
+
+
+Select value from dropdown element
+	select {text|index|value|first|last}@{value} {find-expr}
+Examples :-
+	select text@'first' id@'abc'
+	select index@2 id@'abc'
+	select value@'second' id@'abc'
+	select first id@'abc'
+	select last id@'abc'
+
+
+Import only subtests/aliases from other seleasy scripts
+	import {script-path}
+Examples :-
+	import a/b/c/t1.sel
+	import t2.sel
+
+
+Loop block
+	## {find-expr}
+	{
+		code
+	}
+Examples :-
+	## class@"ddd"
+	{
+		exec @print(@index)
+		click xpath@"ddd-@index"
+	}
+
+
+Value
+	{primtive-value}
+Examples :-
+	'abc'
+	123
+	true
+
+
+Draw a circle in a canvas element
+	canvas {find-expr}
+Examples :-
+	canvas xpath@"asds"
+
+
+Js Variable definition
+	jsvar {javascript statement returning value}
+Examples :-
+	jsvar var1 'return "123"'
+	jsvar var1 'return $("#elid").val()'
+
+
+Scroll [Javascript based]
+	scroll {up|down|pageup|pagedown|top|bottom|find-expr}
+Examples :-
+	scroll up
+	scroll id@dsdsd
+
+
+Hover over an element and click some other element
+	hoverclick {find-expr} {find-expr}
+Examples :-
+	hoverclick id@'hoverele' id@'clickele'
 
 
 Handle Confirm Dialog
@@ -675,23 +527,6 @@ Examples :-
 	confirm cancel
 	confirm no
 	confirm yes 'Confirm'
-
-
-Type UTF-8 or normal ASCII characters in input/textarea elements
-	chord {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
-Examples :-
-	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
-
-
-Mobile shake
-	shake
-
-
-Mobile Pinch
-	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
-Examples :-
-	pinch 123 234
-	pinch id@'ele'
 
 
 Send keys using Robot
@@ -711,26 +546,13 @@ Examples :-
 	scrollpagedown
 
 
-Type random values in input/textarea elements
-	randomize {find-expr} alphanumeric|numeric|alpha|value {optional character count} {optional random words separated by space (for eg, name of person)}
+Wait for element to be visible/invisible
+	??(+|-) {find-expr}
+	'+' - wait till element is visible
+	'-' - wait till element is not visible
 Examples :-
-	randomize id@'ele1' alphanumeric 12
-	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
-	randomize id@'ele1' numeric 5
-	randomize id@'ele1' range 9999 99999
-	randomize id@'ele1' value 'abcd'
-
-
-Wait till an element is found and optionally execute actions on it
-	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
-Examples :-
-	??10 id@'eleid'
-	??20 id@'eleid' click
-	??20 class@'eleid' type 'abc'
-
-
-Maximize window
-	maximize
+	??+ id@'eleid'
+	??- id@'eleid'
 
 
 Read File line by line
@@ -753,151 +575,30 @@ Examples :-
 	}
 
 
-Execute javascript code from file in the browser
-	execjsfile {javascript file path}
+Close window
+	close
+
+
+Take element screenshot
+	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
 Examples :-
-	execjsfile 'file.js'
+	ele-screenshot id@'eleid'
+	ele-screenshot id@'eleid' '/path/to/image/file/file.png'
 
 
-Take screenshot
-	screenshot {image-file-path-to-save-screenshot-to}
+Click element
+	click(fo|nf) {find-expr}
 Examples :-
-	screenshot
-	screenshot "/path/to/image/file/file.png"
+	click id@'ele1'
+	clickfo id@'ele1'
+	clicknf id@'ele1'
 
 
-Type Value in input/textarea elements
-	type {text} {find-expr}
+Specify Java Imports
+	require [{classname1},..{classnameN}]
 Examples :-
-	type 'abc' id@'ele1'
-
-
-Submit element
-	submit {find-expr}
-Examples :-
-	submit id@'ele1'
-
-
-Hover over an element
-	hover {find-expr}
-Examples :-
-	hover id@'abc'
-
-
-Select/Open Window
-	window {optional main|0}
-Examples :-
-	window
-	window 0
-	window main
-
-
-Set Window Properties
-	window_set {width|height|posx|posy} {value}
-Examples :-
-	window_set width 100
-	window_set height 100
-	window_set posx 100
-	window_set posy 100
-
-
-Mobile Tap
-	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
-Examples :-
-	tap id@'ele'
-	tap id@'ele' 2000
-	tap id@'ele' 123 234
-	tap id@'ele' 123 234 2000
-	tap 123 234
-	tap 123 234 2000
-
-
-Import dynamic (code vars) properties file
-	dynprops {file-path}
-Examples :-
-	dynprops a/b/c/t1.props
-	dynprops t2.props
-
-
-Mobile hide keypad
-	hidekeypad
-
-
-Js Variable definition
-	jsvar {javascript statement returning value}
-Examples :-
-	jsvar var1 'return "123"'
-	jsvar var1 'return $("#elid").val()'
-
-
-Mobile Touch
-	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
-Examples :-
-	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
-	touch moveto id@'ele' longpress id@'ele1' moveto id@'ele2' wait 1000 release
-
-
-Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
-
-
-Mobile Swipe
-	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
-Examples :-
-	swipe 123 234 200 300
-
-
-Single line comment or Block level comment
-	//... | /*...*/
-
-
-Execute javascript code in the browser
-	execjs {javascript statement}
-Examples :-
-	execjs 'console.log("Hello");'
-	execjs '$("#elid").click();'
-
-
-Value
-	{primtive-value}
-Examples :-
-	'abc'
-	123
-	true
-
-
-
-
-Pass test/sub-test
-	pass {error string}
-Examples :-
-	pass "Test passed"
-	pass "Sub-Test passed"
-
-
-Print pdf of the page to file
-	printpdf {filepath} {text?}
-Examples :-
-	printpdf '/path/to/file.txt'
-	printpdf '/path/to/file.txt' text
-
-
-Sleep for milliseconds
-	sleep {time-in-ms}
-Examples :-
-	sleep 10000
-
-
-If block
-	? {find-expr}
-	{
-		code
-	}
-Examples :-
-	? xpath@"ddd"
-	{
-		exec @print("if")
-	}
+	require java.util.Date
+	require [java.util.List, java.math.BigDecimal]
 
 
 Transient Variable definition
@@ -911,69 +612,51 @@ Examples :-
 	#tv var1 id@'abc' attr@data-prop
 
 
-Define Screen No-activity layers
-	layer {find-expr}
+Import dynamic (code vars) properties file
+	dynprops {file-path}
 Examples :-
-	layer id@"loader-icon"
-	layer id@"overlay-div"
+	dynprops a/b/c/t1.props
+	dynprops t2.props
 
 
-Select value from dropdown element
-	select {text|index|value|first|last}@{value} {find-expr}
+Mobile shake
+	shake
+
+
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+
+
+Find Expression
+	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+
+
+Include other seleasy scripts completely
+	include {script-path}
 Examples :-
-	select text@'first' id@'abc'
-	select index@2 id@'abc'
-	select value@'second' id@'abc'
-	select first id@'abc'
-	select last id@'abc'
+	include a/b/c/t1.sel
+	include t2.sel
 
 
-Else block, needs to be superseded by an If or Else-If block
-	:
-	{
-		code
-	}
+Mobile rotate
+	rotate
+
+
+Mobile Swipe
+	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
 Examples :-
-	:
-	{
-		exec @print("else")
-	}
+	swipe 123 234 200 300
 
 
-Continue in loop
-	continue
+Mobile hide keypad
+	hidekeypad
 
 
-Open Browser
-	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}
+Print pdf of the page to file
+	printpdf {filepath} {text?}
 Examples :-
-	open chrome
-	open firefox "my-ff-sess"
-
-
-Loop block
-	## {find-expr}
-	{
-		code
-	}
-Examples :-
-	## class@"ddd"
-	{
-		exec @print(@index)
-		click xpath@"ddd-@index"
-	}
-
-
-Navigate Forward/Next
-	forward
-
-
-Value List
-	[{primtive-value},...,{primtive-value}]
-Examples :-
-	['abc', 'sss']
-	[123, 234]
-	[true, false]
+	printpdf '/path/to/file.txt'
+	printpdf '/path/to/file.txt' text
 
 
 Double Click element
@@ -983,39 +666,52 @@ Examples :-
 	doubleclick id@'ele1'
 
 
-Import other seleasy scripts
-	import {script-path}
+Wait till an element is found and optionally execute actions on it
+	??[:wait-time-in-secs] {find-expr} {optional action type|hover|hoverclick|click|clear|submit}
 Examples :-
-	import a/b/c/t1.sel
-	import t2.sel
+	??10 id@'eleid'
+	??20 id@'eleid' click
+	??20 class@'eleid' type 'abc'
 
 
-Import config properties file
-	config {file-path}
+Save URL passed to window.open
+	netapix on {api-method} {api-url}
+	netapix off {status|header|json} {header-name|json-path}?
 Examples :-
-	config a/b/c/t1.props
-	config t2.props
+	netapix on GET http://abc.com/api/person
+	netapix off status --> creates context parameter by name ${apiStatus}=200
+	netapix off header token --> creates context parameter by name ${apiHeader}=some-token
+	netapix off json $.store.book[0].title --> creates context parameter by name ${apiJson}=some-value
 
 
-Select frame
-	frame main|parent|1..N|{some-name}
+Upload file
+	upload {filepath} {find-expr}
 Examples :-
-	frame main
-	frame parent
-	frame 2
-	frame "my-frame"
+	upload '/path/to/file.txt' id@'ele1'
 
 
-Draw a circle in a canvas element
-	canvas {canvas-id}
+Execute javascript code in the browser
+	execjs {javascript statement}
 Examples :-
-	canvas 'somecanvasele'
+	execjs 'console.log("Hello");'
+	execjs '$("#elid").click();'
 
 
-Open URL in window
-	goto {url}
+Break from loop
+	break
+
+
+Mobile Pinch
+	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
 Examples :-
-	goto http://abc.com/testpage.html
+	pinch 123 234
+	pinch id@'ele'
+
+
+Submit element
+	submit {find-expr}
+Examples :-
+	submit id@'ele1'
 
 
 Execute embedded code in java/js/ruby/groovy/python
@@ -1050,62 +746,6 @@ Examples :-
 	>>>
 
 
-Clear element value
-	clear {find-expr}
-Examples :-
-	clear id@'ele1'
-
-
-Define test mode
-	mode {normal|integration} {true|false}
-Examples :-
-	mode normal
-	mode integration
-
-
-Upload file
-	upload {filepath} {find-expr}
-Examples :-
-	upload '/path/to/file.txt' id@'ele1'
-
-
-Click element
-	click {find-expr}
-Examples :-
-	click id@'ele1'
-
-
-Execute java code
-	#j{if|try|catch|finally|else|else if|while|for|continue|break|\{|\}|synchronized} {java statement}
-Examples :-
-	#jif(1==1) {} else {}
-	#jfor(int i=0;i<10;i++){}
-
-
-Mobile rotate
-	rotate
-
-
-Mobile Zoom
-	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
-Examples :-
-	zoom 123 234
-	zoom id@'ele'
-
-
-Close window
-	close
-
-
-Select frame
-	tab main|0..N|{some-name}
-Examples :-
-	tab main
-	tab 0
-	tab 2
-	tab "my-frame"
-
-
 Execute java code
 	exec {java statement}
 Available variables in context -
@@ -1128,8 +768,223 @@ Examples :-
 	exec @print(@index)
 
 
-Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+Execute javascript code from file in the browser
+	execjsfile {javascript file path}
+Examples :-
+	execjsfile 'file.js'
+
+
+Wait Till Browser/Dowument is ready, called after application level logouts or reloads
+	waitready
+
+
+Define test mode
+	mode {normal|integration} {true|false}
+Examples :-
+	mode normal
+	mode integration
+
+
+Import config properties file
+	config {file-path}
+Examples :-
+	config a/b/c/t1.props
+	config t2.props
+
+
+Refresh window
+	refresh
+
+
+Type UTF-8 or normal ASCII characters in input/textarea elements
+	chord(bl|ch|bk|cl|fo) {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
+Examples :-
+	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
+
+
+Mobile Tap
+	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
+Examples :-
+	tap id@'ele'
+	tap id@'ele' 2000
+	tap id@'ele' 123 234
+	tap id@'ele' 123 234 2000
+	tap 123 234
+	tap 123 234 2000
+
+
+Select frame
+	frame main|parent|1..N|{some-name}
+Examples :-
+	frame main
+	frame parent
+	frame 2
+	frame "my-frame"
+
+
+Single line comment or Block level comment
+	//... | /*...*/
+
+
+Mobile Zoom
+	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
+Examples :-
+	zoom 123 234
+	zoom id@'ele'
+
+
+Define Screen No-activity layers
+	layer {find-expr}
+Examples :-
+	layer id@"loader-icon"
+	layer id@"overlay-div"
+
+
+Pass test/sub-test
+	pass {error string}
+Examples :-
+	pass "Test passed"
+	pass "Sub-Test passed"
+
+
+Else block, needs to be superseded by an If or Else-If block
+	:
+	{
+		code
+	}
+Examples :-
+	:
+	{
+		exec @print("else")
+	}
+
+
+Open Browser
+	open {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}
+Examples :-
+	open chrome
+	open firefox "my-ff-sess"
+
+
+Variable definition
+	var name @{another-variable-name}|plugin ...|{primitive-value}
+Examples :-
+	var var0 "Some text"
+	var var1 @var0
+	var var1 plugin jsonpath $v{myvar} out.x.y.z
+	var var1 123455
+	var var1 123.455
+	var var1 true
+	var var1 new java.util.Date()
+
+
+Hover over an element
+	hover {find-expr}
+Examples :-
+	hover id@'abc'
+
+
+Select/Open Window
+	window {optional main|0}
+Examples :-
+	window
+	window 0
+	window main
+
+
+Transient Provider definition
+	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN} {lazy}?
+Examples :-
+	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
+	#tp prov1 var1,var2 id@'abc' text,attr@abc
+
+
+Type Value in input/textarea elements
+	(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo) {text} {find-expr}
+	where 
+		bl->Trigger Blur
+		ch->Trigger Change
+		bk->Trigger Backspace
+		cl->Trigger Click
+		fo->Trigger Focus
+Examples :-
+	type 'abc' id@'ele1'
+	sendkeys 'abc' id@'ele1'
+	typebl 'abc' id@'ele1'
+	sendkeyscl 'abc' id@'ele1'
+
+
+Define Global timeout
+	timeout {timeout-secs} {sleep-granularity-millis}
+Examples :-
+	timeout 100 1000
+
+
+
+
+Navigate Forward/Next
+	forward
+
+
+If block
+	? {find-expr}
+	{
+		code
+	}
+Examples :-
+	? xpath@"ddd"
+	{
+		exec @print("if")
+	}
+
+
+Take screenshot
+	screenshot {image-file-path-to-save-screenshot-to}
+Examples :-
+	screenshot
+	screenshot "/path/to/image/file/file.png"
+
+
+Type random values in input/textarea elements
+	randomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|numeric|alpha|value|range|prefixed|prefixed_ {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}
+Examples :-
+	randomize id@'ele1' alphanumeric 12
+	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
+	randomize id@'ele1' numeric 5
+	randomize id@'ele1' range 9999 99999
+	randomize id@'ele1' value 'abcd'
+
+
+Subtest definition
+	subtest "name" session-name|@session-id (args)
+	{
+		code
+	}
+where
+	session-name - the browser session name for which to run this sub test
+	session-id - the browser session id prefixed with @ for which to run this sub test
+	args - the arguments passed to the subtest
+Examples :-
+	subtest "sb1" "bs1"
+	{
+		select index@4 id@"Location"
+	}
+	subtest "sb1" @1
+	{
+		select index@4 id@"Location"
+	}
+Alias definition
+	alias "name" (args)
+	{
+		code
+	}
+where
+	args - the arguments passed to the alias
+Examples :-
+	alias "cmd1"
+	{
+		select index@4 id@"Location"
+	}
 
 
 Provider Loop block
@@ -1206,21 +1061,68 @@ Examples :-
 	}
 
 
-Specify Java Imports
-	require [{classname1},..{classnameN}]
-Examples :-
-	require java.util.Date
-	require [java.util.List, java.math.BigDecimal]
+Continue in loop
+	continue
 
 
-JSON Plugin
-	jsonread {json-text}
-	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
-	jsonpath {json-text} {json-path-string}
+Value List
+	[{primtive-value},...,{primtive-value}]
 Examples :-
-	jsonread '{"a": "abc", "b": 1}'
-	jsonwrite '/path/to/file.json' $jsonObjectVar
-	jsonpath '{"a": "abc", "b": 1}' '$.a'
+	['abc', 'sss']
+	[123, 234]
+	[true, false]
+
+
+Else-If block, needs to be superseded by an If block
+	:? {find-expr}
+	{
+		code
+	}
+Examples :-
+	:? xpath@"ddd"
+	{
+		exec @print("else-if")
+	}
+
+
+Multiple Chained Actions
+	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|randomize {alpha|alphanumeric|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
+Examples :-
+	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
+	actions movetoelement id@'ele' sendkeys 'abc'
+
+
+Fail test/sub-test
+	fail {error string}
+Examples :-
+	fail "Test failed"
+	fail "Sub-Test failed"
+
+
+Save URL passed to window.open
+	wopensave {on|off} {filepath}? {text}?
+Examples :-
+	wopensave on
+	wopensave off '/path/to/file.txt' text
+
+
+Clear element value
+	clear {find-expr}
+Examples :-
+	clear id@'ele1'
+
+
+Show alert with message
+	alert {value}
+Examples :-
+	alert('Hello')
+
+
+API Plugin
+	api {test-name}@{optional test-case-file-name}
+Examples :-
+	api api-name
+	api api-name@test-case-file-path
 
 
 Curl Plugin
@@ -1242,6 +1144,16 @@ Examples :-
 	}
 
 
+JSON Plugin
+	jsonread {json-text}
+	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
+	jsonpath {json-text} {json-path-string}
+Examples :-
+	jsonread '{"a": "abc", "b": 1}'
+	jsonwrite '/path/to/file.json' $jsonObjectVar
+	jsonpath '{"a": "abc", "b": 1}' '$.a'
+
+
 XML Plugin
 	xmlread {xml-text}
 	xmlwrite {optional-path-to-file} {xml-object-or-map-list-set}
@@ -1250,106 +1162,92 @@ Examples :-
 	xmlread '<o><a>abc</a><b>1</b></o>'
 	xmlwrite '/path/to/file.xml' $xmlObjectVar
 	xmlpath '<o><a>abc</a><b>1</b></o>' '/o/a'
-
-
-API Plugin
-	api {test-name}@{optional test-case-file-name}
-Examples :-
-	api api-name
-	api api-name@test-case-file-path
 ```
 
-GATF Executor Configuration File
---------------
-```xml
-<gatf-execute-config>
-	<authEnabled>true</authEnabled>
-	<baseUrl>http://localhost:8080/example</baseUrl>
-	<enabled>true</enabled>
-	<outFilesDir>out</outFilesDir>
-	<testCaseDir>data</testCaseDir>
-	<httpRequestTimeout>100000</httpRequestTimeout>
-	<authDataProvider>file-auth-provider</authDataProvider>
-	<gatfTestDataConfig>
-		<providerTestDataList>
-			<gatf-testdata-provider>
-				<providerName>file-auth-provider</providerName>
-				<providerClass>com.gatf.executor.dataprovider.FileTestDataProvider</providerClass>
-				<providerProperties>username,password</providerProperties>
-				<enabled>true</enabled>
-				<args>
-					<seleniumScript>users.csv</seleniumScript>
-					<seleniumScript>csv</seleniumScript>
-				</args>
-			</gatf-testdata-provider>
-		</providerTestDataList>
-	</gatfTestDataConfig>
-	<isSeleniumExecutor>true</isSeleniumExecutor>
-	<javaHome>C:\\Path-to-java\\java-openjdk-1.8.0.191</javaHome>
-	<gatfJarPath>C:\\Path-to-maven-repo\\.m2\\repository\\com\\github\\sumeetchhetri\\gatf\\gatf-alldep-jar\\1.1.0\\gatf-alldep-jar-1.1.0.jar</gatfJarPath>
-	<seleniumDriverConfigs>
-		<seleniumDriverConfig>
-			<name>chrome</name>
-			<driverName>webdriver.chrome.driver</driverName>
-			<path>C:\\Path-to-selenium-drivers\\chromedriver.exe</path>
-		</seleniumDriverConfig>
-	</seleniumDriverConfigs>
-	<seleniumScripts>
-		<seleniumScript>path-relative-to-testCaseDir-above\\test.sel</seleniumScript>
-	</seleniumScripts>
-	<seleniumLoggerPreferences>browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)</seleniumLoggerPreferences>
-</gatf-execute-config>
-```
-
-Maven Configuration
---------------
-```xml
-<!-- Add jitpack artifact repositories for gatf dependencies -->
-<pluginRepositories>
-	<pluginRepository>
-	    <id>jitpack.io</id>
-	    <url>https://jitpack.io</url>
-	</pluginRepository>
-</pluginRepositories>
-
-<repositories>
-	<repository>
-	    <id>jitpack.io</id>
-	    <url>https://jitpack.io</url>
-	</repository>
-</repositories>
-
-<!-- Add the executor plugin which will be invoked during the test phase -->
-<build>
-	<plugins>
-		<plugin>
-			<groupId>com.github.sumeetchhetri.gatf</groupId>
-			<artifactId>gatf-plugin</artifactId>
-			<version>1.1.0</version>
-			<executions>
-				<execution>
-					<id>gatf-execution</id>
-					<configuration>
-						<configFile>gatf-config.xml</configFile>
-					</configuration>
-					<phase>test</phase>
-					<goals>
-						<goal>gatf-executor</goal>
-					</goals>
-				</execution>
-			</executions>
-		</plugin>
-	</plugins>
-</body>
-```
 
 GATF Config Tool
 ================
 
 Gatf also provides with a User Interface for managing and executing test cases online with the help of an embedded Http server which provides for an easy to to use configuration tool to control gatf, It provides real time statistics on test runs in a single or multi node load scenario.
 
-Maven Configuration
---------------
+<details style="margin-left:20px" open>
+<summary>Execution</summary>
+<br>
+
+```sh
+java -jar gatf-alldep-1.1.1.jar -configtool 9080 0.0.0.0 .
+```
+
+```sh
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
+```
+
+```
+0.0.0.0 - ip address for embedded http server
+9080 - port for embedded http server
+. - the current directory where the config file gatf-config.xml and other resource directories and files can be found
+```
+
+</details>
+
+Test HTML Generator Plugin
+==========
+You can also refer the [test-html-generator-plugin](https://github.com/sumeetchhetri/test-html-generator-plugin) home page if you want to generate HTML pages for all you REST endpoints automatically.
+
+
+GATF Test Generator
+==============
+The Test Generator plugin is responsible for generating test cases automatically by just looking at either,
+
+  1. All your REST-full service classes annotated with JAX RS annotations (@Path...) or spring based Controller annotations (@RequestMapping..)
+  2. All your soap based WSDL locations
+
+<p style="margin-left:20px">The default format of the testcases is XML, but this can be overridden in the plugin configuration to either JSON or CSV. Moreover the generator is also able to generate POSTMAN collections while generating test cases with the help of a simple plugin configuration parameter. It also generates input request objects based on the API request parameters and also provides default object sets with random values.</p>
+
+<details style="margin-left:20px">
+<summary>Sample generator config.xml</summary>
+<br>
+
+```xml
+<configuration>
+    <!--The package(s)/classes(s) to be scanned for JAX-RS annotations for generating testcases-->
+    <testPaths>
+        <testPath>com.sample.services.*</testPath>
+    </testPaths>
+    <!-- Whether a soap client/http client is used to execute SOAP tests
+     the useSoapClient, soapWsdlKeyPairs properties in the configuration are only
+     required if we want to generate testcases for SOAP endpoints as well -->
+    <useSoapClient>true</useSoapClient>
+    <!--The WSDL Key/Location pair, the WSDL location will be looked up to generate the possible soap testcases-->
+    <soapWsdlKeyPairs>
+        <soapWsdlKeyPair>AuthService,http://localhost:8080/soap/auth?wsdl</soapWsdlKeyPair>
+        <soapWsdlKeyPair>UserService,http://localhost:8080/soap/users?wsdl</soapWsdlKeyPair>
+    </soapWsdlKeyPairs>
+    <!--The REST API service URL suffix-->   
+    <urlSuffix>_param=value</urlSuffix>
+    <!--The REST API service URL prefix-->
+    <urlPrefix>rest</urlPrefix>
+    <!--The request data type, when generating request entities-->
+    <requestDataType>json</requestDataType>
+    <!--The expected response data type-->
+    <responseDataType>json</responseDataType>
+    <!--The resource path where the testcases and wsdl-locations.csv will be generated-->
+    <resourcepath>src/test/resources/generated</resourcepath>
+    <!-- Generate postman collections for a given Postman Testcase version-->
+    <postmanCollectionVersion>2</postmanCollectionVersion>
+    <!-- The generated testcase format, can be either xml,json or csv -->
+    <testCaseFormat>xml</testCaseFormat>
+    <!--Whether this plugin is enabled-->
+    <enabled>true</enabled>
+</configuration>
+```
+
+</details>
+
+<details style="margin-left:20px">
+<summary>Sample maven configuration</summary>
+<br>
+
 ```xml
 <!-- Add jitpack artifact repositories for gatf dependencies -->
 <pluginRepositories>
@@ -1366,7 +1264,7 @@ Maven Configuration
 	</repository>
 </repositories>
 
-<!-- Add the config plugin which will be invoked during the test phase -->
+<!-- Add the generator plugin which will be invoked during the test phase -->
 <build>
 	<plugins>
 		<plugin>
@@ -1375,10 +1273,28 @@ Maven Configuration
 			<version>1.1.0</version>
 			<executions>
 				<execution>
-					<id>gatf-config</id>
-					<phase>test</phase>
+					<id>gatf-rest-json-xml</id>
+					<configuration>
+						<testPaths>
+							<!-- The package name where all API's will be found -->
+							<testPath>com.pkg.services.*</testPath>
+						</testPaths>
+						<!-- If there is a URL prefix that gatf should know -->
+						<urlPrefix>api/rest</urlPrefix>
+						<!-- The type of input request formats (json/xml) -->
+						<requestDataType>json</requestDataType>
+						<!-- The type of ouput request formats (json/xml) -->
+						<responseDataType>json</responseDataType>
+						<!-- Are all API endpoints proected -->
+						<overrideSecure>true</overrideSecure>
+						<!-- Where do we generate the test cases -->
+						<resourcepath>${project.reporting.outputDirectory}/generated-rest-json-xml</resourcepath>
+						<!-- Do we also generate postman collections for the endpoints -->
+						<postmanCollectionVersion>2</postmanCollectionVersion>
+						<enabled>true</enabled>
+					</configuration>
 					<goals>
-						<goal>gatf-config</goal>
+						<goal>gatf-generator</goal>
 					</goals>
 				</execution>
 			</executions>
@@ -1387,14 +1303,87 @@ Maven Configuration
 </body>
 ```
 
-Direct Execution
---------------
-For direct execution,
-```sh
-docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -p 9080:9080 -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest
+</details>
+
+<p style="margin-left:20px">The generated test cases are outlined below assuming an imaginary Get user API, every API endpoint class will have a corresponding test case file (either json, xml or csv)</p>
+
+<details style="margin-left:20px">
+<summary>Testcase (XML) - Best format for specifying all types of test cases</summary>
+<br>
+
+```xml
+<TestCase url="jsonapi/users/1" name="GetUser" method="GET" expectedResCode="200" expectedResContentType="application/json" skipTest="false" detailedLog="false" secure="false" soapBase="false">
+    <description>Get a user with id = 1</description>
+    <headers>
+		<entry>
+			<string>someheader</string>
+			<string>value</string>
+		</entry>
+		<entry>
+			<string>anotherheader</string>
+			<string>value</string>
+		</entry>
+	</headers>
+    <expectedNodes>
+		<string>id</string>
+	</expectedNodes>
+</TestCase>
 ```
-**0.0.0.0:9080** - ip/port for embedded http server<br>
-**.** - the current directory where the config file gatf-config.xml and other resource directories and files can be found
+
+</details>
+
+
+<details style="margin-left:20px">
+<summary>Testcase (JSON) - Better than CSV at representing data but difficult to represent complex request/response content</summary>
+<br>
+
+```json
+ {
+    "url": "\/jsonapi\/users/1",
+    "name": "GetUser",
+    "method": "GET",
+    "description": "Get a user with id = 1",
+    "headers": {
+      "Content-Type": "application\/json"
+    },
+    "expectedResCode": 200,
+    "expectedResContentType": "application\/json",
+    "skipTest": false,
+    "expectedNodes": [
+      "id"
+    ]
+  }
+```
+
+</details>
+
+
+<details style="margin-left:20px">
+<summary>Testcase (CSV) - Simplest data format but cannot be used or complex request/response content</summary>
+<br>
+
+```csv
+#URL,NAME,HTTPMETHOD,DESCRIPTION,CONTENT,HEADERS,EXQUERYPART,EXPECTEDSTATUSCODE,EXPECTEDCONTTYPE,EXPECTEDCONT,EXPECTEDNODES,SKIPTEST,LOG,SECURE,SOAPBASE,SOAPPARAMVALUES,WSDLKEY,OPERATIONNM
+jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader:val,,200,application/json,,id,false,false,true
+```
+
+</details>
+
+<details style="margin-left:20px;margin-top:20px;" open>
+<summary>Execution</summary>
+<br>
+
+```sh
+java -jar gatf-alldep-1.1.1.jar -generator /workdir/path/to/gatf/config.xml
+```
+
+```sh
+docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it sumeetchhetri/gatf-bin:latest -generator /workdir/path/to/gatf/config.xml
+```
+
+</details>
+
+<br/>
 
 Limitations
 -----

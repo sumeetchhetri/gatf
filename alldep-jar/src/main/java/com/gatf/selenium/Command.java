@@ -1911,7 +1911,7 @@ public class Command {
         CanvasCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             try {
-                cond = new FindCommand(cmd.substring(6), cmdDetails, state);
+                cond = new FindCommand(cmd, cmdDetails, state);
 			} catch (Exception e) {
 				throwParseErrorS(cmdDetails, e);
 			}
@@ -1920,8 +1920,11 @@ public class Command {
             return "canvas " + cond.toCmd();
         }
         String javacode() {
-            return "if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript(\"var c = arguments[0];var ctx = c.getContext(\\\"2d\\\");" + 
-            		"ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();\", "+state.currvarname()+".get(0));}";
+        	StringBuilder b = new StringBuilder();
+            b.append(cond.javacodeonly(children));
+            b.append("if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript(\"var c = arguments[0];var ctx = c.getContext(\\\"2d\\\");" + 
+                		"ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();\", ___ce___.get(0));}");
+            return b.toString();
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -6711,7 +6714,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Scroll [Javascript based]",
-        		"\tscroll {up|down|pageup|pagedown|top|bottom}",
+        		"\tscroll {up|down|pageup|pagedown|top|bottom|find-expr}",
         		"Examples :-",
         		"\tscroll up",
         		"\tscroll id@dsdsd",
@@ -7629,9 +7632,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-    	validateSel(new String[] {"-validate-sel", "data/test.sel",
+    	validateSel(new String[] {"-validate-sel", "data/clinical.sel",
         		"/path/to/project/gatf-config.xml", 
-        		"/path/to/project/", "true"}, null, true);
+        		"/path/to/project/", "true"}, null, false);
 
         /*List<String> ___a___1 = new ArrayList<String>();
         ___a___1.add("{\"a\": 1}");
