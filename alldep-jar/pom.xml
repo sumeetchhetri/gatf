@@ -93,6 +93,8 @@
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
 									<mainClass>com.gatf.generator.core.GatfTestGeneratorUtil</mainClass>
 								</transformer>
+								<!-- https://github.com/SeleniumHQ/selenium/issues/10132 -->
+								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
 							</transformers>
 						</configuration>
 					</execution>

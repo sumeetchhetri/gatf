@@ -2937,7 +2937,6 @@ public class Command {
             this.negation = negation;
             String[] parts = cmd.trim().split("[\t ]+");
             for (String part : parts) {
-            	part = state.unsanitize(part);
             	if(part.charAt(0)==part.charAt(part.length()-1)) {
                     if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
                     	part = part.substring(1, part.length()-1);
@@ -3049,7 +3048,6 @@ public class Command {
             this.negation = negation;
             String[] parts = cmd.trim().split("[\t ]+");
             for (String part : parts) {
-            	part = state.unsanitize(part);
             	if(part.charAt(0)==part.charAt(part.length()-1)) {
                     if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
                     	part = part.substring(1, part.length()-1);
