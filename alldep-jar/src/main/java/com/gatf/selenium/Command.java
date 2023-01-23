@@ -465,15 +465,15 @@ public class Command {
         }*/ else if (cmd.startsWith("?") || cmd.startsWith("?!")) {
             boolean isIfNot = cmd.startsWith("?!");
             cmd = cmd.substring((isIfNot?2:1)).trim();
-            comd = new IfCommand(isIfNot, cmdDetails, state);
-            ((IfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
-            ((IfCommand)comd).cond.suppressErr = true;
+            comd = new IfCommand(cmd, isIfNot, cmdDetails, state);
+            //((IfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
+            //((IfCommand)comd).cond.suppressErr = true;
         } else if (cmd.startsWith(":?") || cmd.startsWith(":?!")) {
             boolean isIfNot = cmd.startsWith(":?!");
             cmd = cmd.substring((isIfNot?3:2)).trim();
-            comd = new ElseIfCommand(isIfNot, cmdDetails, state);
-            ((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
-            ((ElseIfCommand)comd).cond.suppressErr = true;
+            comd = new ElseIfCommand(cmd, isIfNot, cmdDetails, state);
+            //((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
+            //((ElseIfCommand)comd).cond.suppressErr = true;
         } else if (cmd.startsWith(":")) {
             cmd = cmd.substring(1).trim();
             comd = new ElseCommand(cmdDetails, state);
@@ -560,9 +560,15 @@ public class Command {
             comd = new EndCommand(cmdDetails, state);
             ((EndCommand)comd).type = "]";
         } else if (cmd.startsWith("{")) {
+        	if(!cmd.trim().equals("{")) {
+        		throwError(cmdDetails, new RuntimeException("Start command should not have any following statements"));
+        	}
             comd = new StartCommand(cmdDetails, state);
             ((StartCommand)comd).type = "{";
         } else if (cmd.startsWith("}")) {
+        	if(!cmd.trim().equals("}")) {
+        		throwError(cmdDetails, new RuntimeException("End command should not have any following statements"));
+        	}
             comd = new EndCommand(cmdDetails, state);
             ((EndCommand)comd).type = "}";
         } else if (cmd.startsWith("pass ")) {
@@ -839,22 +845,35 @@ public class Command {
             if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
             	throwParseErrorS(o, new RuntimeException("Nested subtests/aliases not allowed"));
             }
+            if(parent instanceof FrameCommand && tmp instanceof FrameCommand) {
+            	//throwParseErrorS(o, new RuntimeException("Nested frame scopes not allowed"));
+            }
+            if(parent instanceof TabCommand && tmp instanceof TabCommand) {
+            	//throwParseErrorS(o, new RuntimeException("Nested tab scopes not allowed"));
+            }
+            if(parent instanceof WindowCommand && tmp instanceof WindowCommand) {
+            	//throwParseErrorS(o, new RuntimeException("Nested window scopes not allowed"));
+            }
 
             boolean isValid = state.started;
             if(tmp instanceof IfCommand || tmp instanceof ElseCommand || tmp instanceof ElseIfCommand 
                     || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
                     || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
-                    || tmp instanceof VarCommand) {
+                    || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
                 get(tmp, iter, state);
                 parent.children.add(tmp);
                 if(tmp.children.size()==0 || !(tmp.children.get(0) instanceof StartCommand)) {
                 	if(!(tmp instanceof TransientProviderCommand) || (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy)) {
-                		if(!(tmp instanceof VarCommand)) {
+                		if(!(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) && !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand)) {
                 			throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
                 		}
                 	}
                 	if(tmp.children.size()>0 && !(tmp.children.get(0) instanceof StartCommand)) {
                 		if(tmp instanceof VarCommand) {
+                			parent.children.addAll(tmp.children);
+                			tmp.children.clear();
+                			return;
+                		} else if(tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
                 			parent.children.addAll(tmp.children);
                 			tmp.children.clear();
                 			return;
@@ -2908,18 +2927,32 @@ public class Command {
 		}
     }
 
-    public static class IfCommand extends FindCommandImpl {
+    public static class IfCommand extends Command {
+    	List<FindCommand> conds = new ArrayList<>();
         List<ElseIfCommand> elseifs = new ArrayList<ElseIfCommand>();
         ElseCommand elsecmd;
         boolean negation;
-        IfCommand(boolean negation, Object[] cmdDetails, CommandState state) {
+        IfCommand(String cmd, boolean negation, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             this.negation = negation;
+            String[] parts = cmd.trim().split("[\t ]+");
+            for (String part : parts) {
+            	part = state.unsanitize(part);
+            	if(part.charAt(0)==part.charAt(part.length()-1)) {
+                    if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
+                    	part = part.substring(1, part.length()-1);
+                    }
+                }
+            	conds.add(new FindCommand(part, cmdDetails, state));
+			}
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
             b.append("?");
-            b.append(cond.toCmd());
+            for (FindCommand fcmd : conds) {
+            	b.append(fcmd.toCmd());
+            	b.append(" ");
+			}
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -2931,12 +2964,14 @@ public class Command {
             }
             return b.toString();
         }
-        static String getFp(FindCommand cond, List<Command> children, boolean negation, CommandState state, String vrd) {
+        static String getFp(List<FindCommand> conds, List<Command> children, boolean negation, CommandState state, String vrd) {
             StringBuilder b = new StringBuilder();
             String ex = state.evarname();
             b.append("try{\n");
-            if(cond!=null) {
-                b.append(cond.javacodeonly(children));
+            if(conds!=null) {
+            	for (FindCommand fcmd : conds) {
+            		b.append(fcmd.javacodeonly(children));
+            	}
             }
             b.append("\n"+vrd+"=true;\n");
             if(!negation)
@@ -2977,7 +3012,7 @@ public class Command {
             state.pushifcnt();
             String vrd = state.currvarnameifcnt();
             b.append("boolean "+vrd+" = false;");
-            b.append(getFp(cond, children, negation, state, vrd));
+            b.append(getFp(conds, children, negation, state, vrd));
             if(elseifs.size()>0)
             {
                 for (int i=0;i<elseifs.size();i++) {
@@ -3007,16 +3042,29 @@ public class Command {
     }
 
     public static class ElseIfCommand extends Command {
-        FindCommand cond;
+    	List<FindCommand> conds = new ArrayList<>();
         boolean negation;
-        ElseIfCommand(boolean negation, Object[] cmdDetails, CommandState state) {
+        ElseIfCommand(String cmd, boolean negation, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             this.negation = negation;
+            String[] parts = cmd.trim().split("[\t ]+");
+            for (String part : parts) {
+            	part = state.unsanitize(part);
+            	if(part.charAt(0)==part.charAt(part.length()-1)) {
+                    if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
+                    	part = part.substring(1, part.length()-1);
+                    }
+                }
+            	conds.add(new FindCommand(part, cmdDetails, state));
+			}
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
             b.append(":?");
-            b.append(cond.toCmd());
+            for (FindCommand fcmd : conds) {
+            	b.append(fcmd.toCmd());
+            	b.append(" ");
+			}
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -3031,7 +3079,7 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String vrd = state.currvarnameifcnt();
-            b.append(IfCommand.getFp(cond, children, negation, state, vrd));
+            b.append(IfCommand.getFp(conds, children, negation, state, vrd));
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -3630,7 +3678,7 @@ public class Command {
             	rUrl = "http://127.0.0.1:4723/wd/hub";
             }
             
-            b.append("boolean logconsole = false, interceptApiCall = false;\n");
+            b.append("boolean logconsole = false, logdebug = false;\n");
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             if(config.getName().startsWith("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
@@ -3908,11 +3956,11 @@ public class Command {
             {
             	if(e.getKey().equalsIgnoreCase("logconsole") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
             		b.append("\nlogconsole = true;\n");
-            	} else if(e.getKey().equalsIgnoreCase("interceptApiCall") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
-            		b.append("\ninterceptApiCall = true;\n");
+            	} else if(e.getKey().equalsIgnoreCase("logdebug") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\nlogdebug = true;\n");
                 }
             }
-            b.append("initBrowser(get___d___(), logconsole, interceptApiCall);\n");
+            b.append("initBrowser(get___d___(), logconsole, logdebug);\n");
             
             boolean isDocker = "true".equalsIgnoreCase(System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER"));
             if(isDocker) {
@@ -4103,6 +4151,25 @@ public class Command {
             return "frame " + name;
         }
         String javacode() {
+        	if(children.size()>0) {
+        		StringBuilder b = new StringBuilder();
+        		String cntvar = state.varnamerandom();
+        		b.append("int "+cntvar+" = 0;\n");
+                b.append("\nwhile(true) {\n");
+        		b.append("\ntry {\n");
+        		b.append("switchToFrame(___ocw___, \""+esc(name)+"\");\n");
+        		for (Command c : children) {
+                	b.append(genDebugInfo(c));
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+        		b.append("\nbreak;\n} catch(Exception e){}\n");
+                b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to frame ("+name+")\");\n");
+                b.append("}\n");
+        		b.append("switchToFrame(___ocw___, \"\");\n");//Switch to main frame
+        		return b.toString();
+        	}
             return "switchToFrame(___ocw___, \""+esc(name)+"\");\n";
         }
         public static String[] toSampleSelCmd() {
@@ -4128,6 +4195,7 @@ public class Command {
                     name = name.substring(1, name.length()-1);
                 }
             }
+            name = name.trim();
         }
         String name() {
             return name;
@@ -4136,18 +4204,34 @@ public class Command {
             return "window " + name;
         }
         String javacode() {
-            if(name.equals("")) {
-                return "newWindow(___lp___);"; 
-            } else if(name.equalsIgnoreCase("main") || name.equalsIgnoreCase("0")) {
+        	if(name.equalsIgnoreCase("main") || name.equalsIgnoreCase("0")) {
                 return "window(0);___cw___ = get___d___();\n___sc___1 = ___cw___;";
             } else {
-                try {
-                    int index = Integer.parseInt(name);
-                    return "window("+index+");___cw___ = get___d___();\n___sc___1 = ___cw___;";
-                } catch (Exception e) {
-                    throwParseError(null, new RuntimeException("Invalid window number specified"));
-                    return null;
+            	StringBuilder b = new StringBuilder();
+        		b.append("\ntry {\n");
+	            if(name.equals("")) {
+	        		b.append("newWindow(___lp___);\n");
+	        		
+	            } else {
+	                try {
+	                    int index = Integer.parseInt(name);
+	                    b.append("window("+index+");___cw___ = get___d___();\n___sc___1 = ___cw___;\n");
+	                } catch (Exception e) {
+	                    throwParseError(null, new RuntimeException("Invalid window number specified"));
+	                    return null;
+	                }
+	            }
+	            for (Command c : children) {
+                	b.append(genDebugInfo(c));
+                    b.append(c.javacode());
+                    b.append("\n");
                 }
+        		b.append("\n\n} finally {\n");
+        		if(children.size()>0) {
+        			b.append("window(0);___cw___ = get___d___();\n___sc___1 = ___cw___;\n");
+        		}
+        		b.append("}\n");
+        		return b.toString();
             }
         }
         public static String[] toSampleSelCmd() {
@@ -4196,7 +4280,7 @@ public class Command {
                     String acvn = state.varname();
                     String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n"
                             + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
-                    b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;\nbreak;}");
+                    b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;}");
                 } catch (Exception e) {
                     /*name = state.unsanitize(name);
                     if(name.charAt(0)==name.charAt(name.length()-1)) {
@@ -4204,12 +4288,21 @@ public class Command {
                             name = name.substring(1, name.length()-1);
                         }
                     }*/
-                    b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
+                    b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\n");
                 }
-                b.append("\n} catch(Exception e){}\n");
+
+            	if(children.size()>0) {
+            		for (Command c : children) {
+                    	b.append(genDebugInfo(c));
+                        b.append(c.javacode());
+                        b.append("\n");
+                    }
+            	}
+                b.append("\nbreak;\n} catch(Exception e){}\n");
                 b.append("sleep("+state.timeoutSleepGranularity+");\n");
                 b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
                 b.append("}\n");
+                b.append("___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
                 return b.toString();
             }
         }

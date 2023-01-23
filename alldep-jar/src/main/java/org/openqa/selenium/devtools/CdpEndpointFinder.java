@@ -54,7 +54,7 @@ public class CdpEndpointFinder {
     try (HttpClient client = clientFactory.createClient(config)) {
       res = client.execute(new HttpRequest(GET, "/json/version"));
     } catch (UncheckedIOException e) {
-      LOG.warning("Unable to connect to determine websocket url: " + e.getMessage());
+      LOG.severe("Unable to connect to determine websocket url: " + e.getMessage());
       return Optional.empty();
     }
     if (res.getStatus() != HTTP_OK) {

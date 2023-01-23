@@ -236,13 +236,13 @@ public abstract class SeleniumTest {
 			if(isRecording) {
 				wdm.enableRecording().enableVnc();
 			}
-			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":(isDocker?"dkr":""));
+			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"dkr");
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
 			wdmMgs.put(browserName, wdm);
 		} else {
 			wdm.setup();
 			wdmMgs.put(browserName, wdm);
-			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, new String[] {browserName, null}));
+			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
 		}
 		return browserName;
 	}
@@ -261,7 +261,24 @@ public abstract class SeleniumTest {
 			if(isRecording) {
 				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl(), wdmMgs.get(browserName).getDockerRecordingPath()));
 			}
-			return new Augmenter().augment(wd);
+			WebDriver augmented = null;
+			int counter = 10;
+			while(counter-->0) {
+				try {
+					Thread.sleep(1000);//Sleep for some time for cdp proxy to be up and running
+				} catch (Exception e) {
+				}
+				try {
+					augmented = new Augmenter().augment(wd);
+					System.out.println("Got augmented docker driver....");
+					break;
+				} catch (Exception e) {
+					System.out.println(SeleniumTest.IN_DOCKER.get());
+					System.out.println(Arrays.asList(SeleniumTest.IN_DOCKER.get()));
+					System.out.println("Getting augmented docker driver.... Attempt " + (10-counter));
+				}
+			}
+			return augmented;
 		}
 		throw new RuntimeException("No driver found for remote docker");
 	}
@@ -773,6 +790,7 @@ public abstract class SeleniumTest {
 		for(WebDriverManager wdm: wdmMgs.values()) {
 			wdm.quit();
 		}
+		IN_DOCKER.remove();
 	}
 
 	public abstract void close();
@@ -2465,7 +2483,7 @@ public abstract class SeleniumTest {
 		waitForReady(d);
 	}
 	
-	protected void initBrowser(WebDriver driver, boolean logconsole, boolean interceptApiCall) {
+	protected void initBrowser(WebDriver driver, boolean logconsole, boolean logdebug) {
 		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
@@ -2482,6 +2500,10 @@ public abstract class SeleniumTest {
 				});
 			}
 			devTools.disconnectSession();
+		}
+		
+		if(logdebug) {
+			java.util.logging.Logger.getGlobal().setLevel(Level.ALL);
 		}
 		
 		DRV_FEATURES.put(sessionId, new ConcurrentHashMap<String, String>());
