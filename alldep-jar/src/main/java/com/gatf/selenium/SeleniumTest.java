@@ -1644,6 +1644,7 @@ public abstract class SeleniumTest {
 			} catch (AWTException e) {
 			}
 		}
+		sleep(1000);
 	}
 	
 	private static String getSettingVal(String sessionId, String name) {
