@@ -4203,7 +4203,14 @@ public class Command {
         }
         String javacode() {
         	if(name.equalsIgnoreCase("main") || name.equalsIgnoreCase("0")) {
-                return "window(0);___cw___ = get___d___();\n___sc___1 = ___cw___;";
+        		StringBuilder b = new StringBuilder();
+        		b.append("window(0);___cw___ = get___d___();\n___sc___1 = ___cw___;");
+	            for (Command c : children) {
+                	b.append(genDebugInfo(c));
+                    b.append(c.javacode());
+                    b.append("\n");
+                }
+	            return b.toString();
             } else {
             	StringBuilder b = new StringBuilder();
         		b.append("\ntry {\n");
@@ -4266,8 +4273,38 @@ public class Command {
         }
         String javacode() {
             if(name.trim().isEmpty() || name.equalsIgnoreCase("0")) {
-                return "___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;";
+            	StringBuilder b = new StringBuilder();
+            	b.append("___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
+            	if(children.size()>0) {
+            		for (Command c : children) {
+                    	b.append(genDebugInfo(c));
+                        b.append(c.javacode());
+                        b.append("\n");
+                    }
+            	}
+            	return b.toString();
             } else {
+            	if(children.size()==0) {
+            		StringBuilder b = new StringBuilder();
+                    String cntvar = state.varnamerandom();
+                    b.append("int "+cntvar+" = 0;\n");
+                    b.append("\nwhile(true) {\n");
+                    b.append("\ntry {\n");
+                    try {
+                        int index = Integer.parseInt(name);
+                        String acvn = state.varname();
+                        String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n"
+                                + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
+                        b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;\nbreak;}");
+                    } catch (Exception e) {
+                        b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
+                    }
+                    b.append("\n} catch(Exception e){}\n");
+                    b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                    b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
+                    b.append("}\n");
+                    return b.toString();
+            	}
             	StringBuilder b = new StringBuilder();
                 String cntvar = state.varnamerandom();
                 b.append("int "+cntvar+" = 0;\n");
@@ -4280,12 +4317,6 @@ public class Command {
                             + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
                     b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;}");
                 } catch (Exception e) {
-                    /*name = state.unsanitize(name);
-                    if(name.charAt(0)==name.charAt(name.length()-1)) {
-                        if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                            name = name.substring(1, name.length()-1);
-                        }
-                    }*/
                     b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\n");
                 }
 
