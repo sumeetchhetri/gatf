@@ -1004,11 +1004,31 @@ function execSelectedFileTests(testfilen) {
     if (testfilen != null) {
         execFiles = new Array();
         execFiles.push(testfilen);
+	    calledbytestfpage = true;
+	    executeHtml('executor');
+	    executionHandler('PUT', true, 'executor');
+	    execFiles = new Array();
     }
-    calledbytestfpage = true;
-    executeHtml('executor');
-    executionHandler('PUT', true, 'executor');
-    execFiles = new Array();
+    return false;
+}
+
+function execSelectedFiles(ele) {debugger;
+	execFiles = new Array();
+	let tests = $(ele).closest('form').find('table').find('tr');
+	let all = $('#select_all_tcs').is(":checked");
+	for(const tr of tests) {
+		if(($(tr).first('td').find('input').is(":checked") || all) && $(tr).find('td>a.asideLink1').length>0) {
+			execFiles.push($(tr).find('td>a.asideLink1').next('input').val());
+		}
+	}
+	if(execFiles.length>0) {
+	    calledbytestfpage = true;
+	    executeHtml('executor');
+	    executionHandler('PUT', true, 'executor');
+	    execFiles = new Array();
+	} else {
+		alert("Please select test case files to execute");
+	}
     return false;
 }
 
@@ -1032,13 +1052,13 @@ function triggerClick(ele) {
 }
 
 function addTcFileHTml() {
-    var htmm = '<input type="text" id="tcfile_name_holder_add">&nbsp;&nbsp;<a href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/></br/>';
+    var htmm = '<input type="text" id="tcfile_name_holder_add">&nbsp;&nbsp;<a href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
     htmm += '<table border="1">';
     for (var i = 0; i < alltestcasefiles.length; i++) {
         var tcid = 'tcf_' + i;
         htmm += '<tr><td><input type="checkbox" click-event="addRemoveExecFile(this,\'' + alltestcasefiles[i] + '\')"></td><td><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i] + '</a><input id="inp_' + tcid + '" type="text" style="display:none" value="' + alltestcasefiles[i] + '" blur-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td><td><a href="#" click-event="manageRenameFile(\'' + tcid + '\')">Rename</a></td><td><a href="#" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">X</a></td><td><center><button click-event="execSelectedFileTests(\'' + alltestcasefiles[i] + '\')">Execute</button></center></td></tr>';
     }
-    htmm += '</table><br/><center><button click-event="execSelectedFileTests(null)">Execute Selected</button></center>';
+    htmm += '</table><br/><center><button click-event="execSelectedFiles(this)">Execute Selected</button></center>';
     $('#ExampleBeanServiceImpl_form').html(htmm);
 	initEvents($('#ExampleBeanServiceImpl_form'));
     $('#heading_main').html('Manage Tests');
@@ -1052,10 +1072,10 @@ function manageRenameFile(tcid) {
 
 function manageTcFileHandler(method, tcFileName, tcFileNameTo) {
     ajaxCall(true, method, "testcasefiles?testcaseFileName=" + tcFileName + "&testcaseFileNameTo=" + tcFileNameTo, "", "", {}, function(data) {
-        alert(data);
+        if(data) alert(data);
         startInitConfigTool(addTcFileHTml);
     }, function(data) {
-        alert(data);
+        if(data) alert(data);
         startInitConfigTool(addTcFileHTml);
     });
     return false;
