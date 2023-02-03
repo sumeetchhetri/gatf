@@ -80,6 +80,7 @@ public class Command {
         int NUMBER_AL = 1;
         int NUMBER_RD = 1;
         int NUMBER_AT = 1;
+        int NUMBER_TH = 1;
         int loopCounter = 0;
 
         int NUMBER_SC = 1;
@@ -199,6 +200,14 @@ public class Command {
 
         String currvarnameat() {
             return "___at___" + (NUMBER_AT-1);
+        }
+
+        String thisat() {
+            return "___th___" + NUMBER_TH++;
+        }
+
+        String currthisat() {
+            return "___th___" + (NUMBER_TH-1);
         }
 
         String prevvarnamesc() {
@@ -544,13 +553,13 @@ public class Command {
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state, true);
         }*/ else if (cmd.startsWith("## ")) {
-            cmd = cmd.substring(2).trim();
-            comd = new ScopedLoopCommand(cmdDetails, state);
-            ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
+            cmd = cmd.substring(3).trim();
+            FindCommand cond = new FindCommand(cmd, cmdDetails, state);
+            comd = new ScopedLoopCommand(cmdDetails, state, cond);
         } else if (cmd.startsWith("# ")) {
-            cmd = cmd.substring(1).trim();
-            comd = new ScopedLoopCommand(cmdDetails, state);
-            ((ScopedLoopCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
+            cmd = cmd.substring(2).trim();
+            FindCommand cond = new FindCommand(cmd, cmdDetails, state);
+            comd = new ScopedLoopCommand(cmdDetails, state, cond);
         } else if (cmd.startsWith("readfile ")) {
             comd = new ReadFileCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.startsWith("[")) {
@@ -2753,7 +2762,7 @@ public class Command {
                     {
                         cmd += parts[i] + " ";
                     }
-                    if(parts[0].indexOf("@")==-1) {
+                    if(!parts[0].equals("this") && parts[0].indexOf("@")==-1) {
                     	throwParseError(null, new RuntimeException("No selector condition specified"));
                     }
                     cond = new FindCommand(parts[0], cmdDetails, state);
@@ -3179,8 +3188,9 @@ public class Command {
 
     public static class ScopedLoopCommand extends Command {
         FindCommand cond;
-        ScopedLoopCommand(Object[] cmdDetails, CommandState state) {
+        ScopedLoopCommand(Object[] cmdDetails, CommandState state, FindCommand cond) {
             super(cmdDetails, state);
+            this.cond = cond;
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
@@ -3216,7 +3226,7 @@ public class Command {
                 b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
                 b.append("final SearchContext "+state.currvarnameparc()+" = "+state.currvarname()+";");
                 String vr = state.currvarname();
-                b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ state.varname()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
+                b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ state.thisat()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
@@ -4763,6 +4773,7 @@ public class Command {
 	                    by = state.unsanitize(by);
 	                } else {
 	                    by = parts[0];
+	                    classifier = by.equalsIgnoreCase("this")?"":null;
 	                    subselector = state.unsanitize(by);
 	                    by = subselector;
 	                    byselsame = true;
@@ -5000,7 +5011,8 @@ public class Command {
             if(sclassifier!=null) {
                 sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
             }
-            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+            String wel = by.equals("this")?state.currthisat():"___ce___";
+            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", "+noexcep+", "+state.getLayers()+");\n";
@@ -5058,7 +5070,8 @@ public class Command {
             if(sclassifier!=null) {
                 sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
             }
-            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", ___ce___, (long)"+waitTime+", "+sclassifier+", \""+by+"\", "
+            String wel = by.equals("this")?state.currthisat():"___ce___";
+            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", (long)"+waitTime+", "+sclassifier+", \""+by+"\", "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n"

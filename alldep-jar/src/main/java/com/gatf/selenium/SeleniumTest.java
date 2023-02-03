@@ -1431,13 +1431,16 @@ public abstract class SeleniumTest {
 	}
 
 	@SuppressWarnings({ "serial", "unchecked" })
-	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder) {
+	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, List<WebElement> ce) {
 		finder = finder.trim();
 		String by = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(0, finder.indexOf("@")).trim();
 		if(by.charAt(0)==by.charAt(by.length()-1)) {
 			if(by.charAt(0)=='"' || by.charAt(0)=='\'') {
 				by = by.substring(1, by.length()-1);
 			}
+		}
+		if(by.equalsIgnoreCase("this")) {
+			return ce;
 		}
 		String classifier = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(finder.indexOf("@")+1).trim();
 		if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
@@ -1862,7 +1865,7 @@ public abstract class SeleniumTest {
 		initJs(driver);
 		System.out.println("Searching element => " + by+"@"+classifier);
 		if(timeOutInSeconds<=0) {
-			List<WebElement> el = getElements(driver, wsc, by+"@"+classifier);
+			List<WebElement> el = getElements(driver, wsc, by+"@"+classifier, ce);
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
@@ -1883,7 +1886,7 @@ public abstract class SeleniumTest {
 					public Boolean apply(WebDriver input) {
 						List<WebElement> ___ce___ = ce;
 						try {
-							List<WebElement> el = getElements(driver, wsc, by+"@"+classifier);
+							List<WebElement> el = getElements(driver, wsc, by+"@"+classifier, ce);
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
@@ -2294,9 +2297,11 @@ public abstract class SeleniumTest {
 					if(telement!=null && layers!=null && layers.length>0) {
 						int tzl = getZIndex(telement);
 						Rectangle trec = getRect(telement);
+						List<WebElement> ce = new ArrayList<WebElement>();
+						ce.add(element);
 						for (String layer : layers) {
 							try {
-								List<WebElement> el = getElements(driver, driver, layer);
+								List<WebElement> el = getElements(driver, driver, layer, ce);
 								if(el!=null && el.size()>0 && /*el.get(0).isEnabled() &&*/ el.get(0).isDisplayed()) {
 									int ozl = getZIndex(el.get(0));
 									Rectangle orec = getRect(el.get(0));
@@ -2694,7 +2699,7 @@ public abstract class SeleniumTest {
 		}
 		
 		if(selector.indexOf("@")!=-1) {
-			List<WebElement> els = getElements(d, d, selector);
+			List<WebElement> els = getElements(d, d, selector, null);
 			if(els.size()>0) {
 				d.switchTo().frame(els.get(0));
 			}

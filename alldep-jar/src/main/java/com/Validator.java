@@ -170,53 +170,53 @@ implements Serializable {
 			List<Map<String, String>> prov1 = getProviderTestDataMap("prov1");
 
 			//id
-			System.out.println(getElements(___cw___, ___sc___1, "id@usernameId"));
+			System.out.println(getElements(___cw___, ___sc___1, "id@usernameId", null));
 
 			//className
-			System.out.println(getElements(___cw___, ___sc___1, "class@userNameTxt"));
-			System.out.println(getElements(___cw___, ___sc___1, "className@userNameTxt"));
+			System.out.println(getElements(___cw___, ___sc___1, "class@userNameTxt", null));
+			System.out.println(getElements(___cw___, ___sc___1, "className@userNameTxt", null));
 
 			//name
-			System.out.println(getElements(___cw___, ___sc___1, "name@username"));
+			System.out.println(getElements(___cw___, ___sc___1, "name@username", null));
 
 			//tagname
-			System.out.println(getElements(___cw___, ___sc___1, "tag@input"));
-			System.out.println(getElements(___cw___, ___sc___1, "tagname@input"));
+			System.out.println(getElements(___cw___, ___sc___1, "tag@input", null));
+			System.out.println(getElements(___cw___, ___sc___1, "tagname@input", null));
 
 			//Xpath
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[@id=\"usernameId\"]\""));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[text()='Login']\""));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[contains(text(), 'Login')]\""));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]\""));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[@id=\"usernameId\"]\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[text()='Login']\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[contains(text(), 'Login')]\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]\"", null));
 			//Full Xpath
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input\""));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input\"", null));
 
 			//cssselector
 			//tag id
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input#usernameId\""));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input#usernameId\"", null));
 			//tag class
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input.userNameTxt\""));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input.userNameTxt\"", null));
 			//tag attribute
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input[name=username]\""));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input[name=username]\"", null));
 			//tag class attribute
-			System.out.println(getElements(___cw___, ___sc___1, "css@\"input.userNameTxt[name=username]\""));
+			System.out.println(getElements(___cw___, ___sc___1, "css@\"input.userNameTxt[name=username]\"", null));
 
 			//text
-			System.out.println(getElements(___cw___, ___sc___1, "text@\"User Name\""));
+			System.out.println(getElements(___cw___, ___sc___1, "text@\"User Name\"", null));
 
 			//linkText
-			System.out.println(getElements(___cw___, ___sc___1, "linkText@\"Forgot Password?\""));
+			System.out.println(getElements(___cw___, ___sc___1, "linkText@\"Forgot Password?\"", null));
 
 			//partialLinkText
-			System.out.println(getElements(___cw___, ___sc___1, "partialLinkText@\"Forgot\""));
+			System.out.println(getElements(___cw___, ___sc___1, "partialLinkText@\"Forgot\"", null));
 
 			//jq
-			System.out.println(getElements(___cw___, ___sc___1, "jq@input[name=username]"));
-			System.out.println(getElements(___cw___, ___sc___1, "jquery@.form-control.userNameTxt.enterme[name=username]"));
-			System.out.println(getElements(___cw___, ___sc___1, "$@body"));
+			System.out.println(getElements(___cw___, ___sc___1, "jq@input[name=username]", null));
+			System.out.println(getElements(___cw___, ___sc___1, "jquery@.form-control.userNameTxt.enterme[name=username]", null));
+			System.out.println(getElements(___cw___, ___sc___1, "$@body", null));
 
 			//active
-			System.out.println(getElements(___cw___, ___sc___1, "active"));
+			System.out.println(getElements(___cw___, ___sc___1, "active", null));
 
 
 			pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
