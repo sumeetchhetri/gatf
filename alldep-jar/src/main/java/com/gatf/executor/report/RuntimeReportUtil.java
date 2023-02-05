@@ -152,6 +152,7 @@ public class RuntimeReportUtil {
 	            parts.add(lentry.time);
 	            parts.add(lentry.currStats.toList());
 	            parts.add(lentry.currSelStats);
+	            parts.add(null);
 	            if(lentry.currStats!=null) {
 	                synchronized (gloadStats) {
 	                    gloadStats.updateStats(lentry.currStats, false);
@@ -184,7 +185,7 @@ public class RuntimeReportUtil {
 		}
 	}
 	
-	public static void addEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats, Date time)
+	public static void addEntry(String node, String prefix, int runNo, String url, TestSuiteStats currStats, Date time, String fname)
 	{
 		if(registered)
 		{
@@ -198,6 +199,7 @@ public class RuntimeReportUtil {
 			parts.add(time.getTime());
 			parts.add(currStats.toList());
 			parts.add(null);
+            parts.add(fname);
 			synchronized (gloadStats) {
 				gloadStats.updateStats(currStats, false);
 				try {

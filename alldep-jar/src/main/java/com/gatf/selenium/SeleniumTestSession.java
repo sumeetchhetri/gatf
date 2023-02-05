@@ -55,7 +55,7 @@ public class SeleniumTestSession implements Serializable {
             return result;
         }
 
-        public Map<String,SeleniumTestResult> getSubTestResults()
+        public Map<String, SeleniumTestResult> getSubTestResults()
         {
             return __cresult__;
         }

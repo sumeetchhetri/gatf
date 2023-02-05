@@ -887,6 +887,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             int tot = 0, fal = 0, succ = 0, skp = 0;
             Date time = new Date();
             for (int i = 0; i < tests.size(); i++) {
+            	TestSuiteStats tstats = new TestSuiteStats();
+                int ttot = 0, tfal = 0, tsucc = 0, tskp = 0;
                 SeleniumTest dyn = tests.get(i).copy(context, index + 1);
                 Object[] retvals = testdata.get(i);
                 List<SeleniumTestSession> sessions = null;
@@ -911,9 +913,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         if (res.getResult() == null) {
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                             skp++;
+                            tskp++;
                         } else {
                             String tim = res.getResult().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                             stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
+                            tstats.setExecutionTime(tstats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
                             if (tim.indexOf(".") != -1) {
                                 String[] parts = tim.split("\\.");
                                 tim = parts[0] + "." + (parts[1].length() > 3 ? parts[1].substring(0, 3) : parts[1]);
@@ -927,20 +931,25 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             }
                             if(res.getResult().isStatus()) {
                                 succ++;
+                                tsucc++;
                             } else {
                                 fal++;
+                                tfal++;
                             }
                         }
                         
                         tot++;
+                        ttot++;
 
                         for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet()) {
                             if (e1.getValue() == null) {
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                                 skp++;
+                                tskp++;
                             } else {
                                 String tim = e1.getValue().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                                 stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
+                                tstats.setExecutionTime(tstats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
                                 if (tim.indexOf(".") != -1) {
                                     String[] parts = tim.split("\\.");
                                     tim = parts[0] + "." + (parts[1].length() > 3 ? parts[1].substring(0, 3) : parts[1]);
@@ -954,15 +963,30 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
                                 }
                             }
-                            if(res.getResult().isStatus()) {
+                            if(e1.getValue().isStatus()) {
                                 succ++;
+                                tsucc++;
                             } else {
                                 fal++;
+                                tfal++;
                             }
                             
                             tot++;
+                            ttot++;
                         }
                     }
+                }
+                
+                if(node.equals("local")) {
+                    tstats.setTotalTestCount(ttot);
+                    tstats.setFailedTestCount(tfal);
+                    tstats.setSkippedTestCount(tskp);
+                    
+                    tstats.setTotalRuns(1);
+                    tstats.setFailedRuns(1);
+                    tstats.setFailedRuns(fal>0?1:0);
+                    tstats.setTotalSuiteRuns(1);
+                    RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", tstats, time, dyn.getName());
                 }
             }
             
@@ -975,8 +999,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             stats.setFailedRuns(fal>0?1:0);
             stats.setTotalSuiteRuns(1);
             
-            if(node.equals("local")) {
-                RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time);
+            if(!node.equals("local")) {
+                RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time, null);
             } else {
                 LoadTestEntry lentry = new LoadTestEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time);
                 RuntimeReportUtil.addLEntry(lentry);
@@ -1372,7 +1396,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     stats.setExecutionTime(suiteExecTime);
                     synchronized (loadStats) {
                         loadStats.copy(stats);
-                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
+                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time, null);
                     }
                 } else if (dorep) {
                     TestSuiteStats stats = null;
@@ -1392,14 +1416,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 stats.setGroupStats(null);
                                 loadStats.updateStats(stats, false);
                             }
-                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
+                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time, null);
                         }
                         reportHandler.clearForLoadTests(context);
                     } else {
                         synchronized (loadStats) {
                             loadStats.copy(stats);
                             loadStats.setTotalUserSuiteRuns(numberOfRuns);
-                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time);
+                            RuntimeReportUtil.addEntry(null, null, loadTestRunNum, fileurl, stats, time, null);
                         }
                     }
                 } else {
@@ -1411,7 +1435,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         } else {
                             loadStats.updateStats(stats, false);
                         }
-                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, null, stats, time);
+                        RuntimeReportUtil.addEntry(null, null, loadTestRunNum, null, stats, time, null);
                     }
                 }
             }

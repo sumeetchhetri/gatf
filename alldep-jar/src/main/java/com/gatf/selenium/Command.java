@@ -47,6 +47,7 @@ import org.reflections.Reflections;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.selenium.SeleniumTest.PassSubTestException;
 import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
@@ -580,8 +581,8 @@ public class Command {
         	}
             comd = new EndCommand(cmdDetails, state);
             ((EndCommand)comd).type = "}";
-        } else if (cmd.startsWith("pass ")) {
-            comd = new PassCommand(cmd.substring(5).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("pass ") || cmd.equalsIgnoreCase("pass")) {
+            comd = new PassCommand(cmd.equalsIgnoreCase("pass")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.startsWith("fail ")) {
             comd = new FailCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("open ")) {
@@ -727,13 +728,14 @@ public class Command {
             try {
                 comd = new PluginCommand(cmd, cmdDetails, state);
             } catch (GatfSelCodeParseError e) {
-                comd = new ValueCommand(cmdDetails, state);
+                //comd = new ValueCommand(cmdDetails, state);
                 if(cmd.charAt(0)==cmd.charAt(cmd.length()-1)) {
                     if(cmd.charAt(0)=='"' || cmd.charAt(0)=='\'') {
                         cmd = cmd.substring(1, cmd.length()-1);
                     }
                 }
-                ((ValueCommand)comd).value = state.unsanitize(cmd);
+                //((ValueCommand)comd).value = state.unsanitize(cmd);*/
+            	throwError(cmdDetails, new RuntimeException("Invalid command found ["+cmd+"]"));
             }
         }
         return comd;
@@ -1129,7 +1131,7 @@ public class Command {
     static Command getAll(List<String> scmds, File fn, CommandState state) throws Exception {
         state.commentStart = false;
         Command tcmd = new Command(null, state);
-        tcmd.name = fn.getName();
+        tcmd.name = fn.getAbsolutePath();
 
         List<Object[]> lio = new ArrayList<Object[]>();
         int cnt = 1;
@@ -2265,7 +2267,7 @@ public class Command {
 	                b.append(tm.javacode());
 	                b.append("}catch(java.io.IOException _ioe){}");*/
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
-                	b.append("throw new SubTestException(\""+name+"\", "+ex+");\n");
+                	b.append("if(!("+ex+" instanceof PassSubTestException)) throw new SubTestException(\""+name+"\", "+ex+");\n");
                 } else {
                 	b.append("throw "+ex+";\n");
                 }
@@ -4563,17 +4565,20 @@ public class Command {
         PassCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             value = state.unsanitize(cmd);
-            if(value.charAt(0)==value.charAt(value.length()-1)) {
-                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                    value = value.substring(1, value.length()-1);
-                }
+            if(!value.trim().isEmpty()) {
+	            if(value.charAt(0)==value.charAt(value.length()-1)) {
+	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+	                    value = value.substring(1, value.length()-1);
+	                }
+	            }
             }
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Pass test/sub-test",
-        		"\tpass {error string}",
+        		"\tpass {some string}?",
         		"Examples :-",
+        		"\tpass",
         		"\tpass \"Test passed\"",
         		"\tpass \"Sub-Test passed\"",
             };

@@ -630,7 +630,7 @@ function getProfiles() {
 }
 
 function executeHtml(pluginType) {
-    var htmm = '<a href="#" class="plusminuslist" click-event=\"executionHandler(\'PUT\', true, \'' + pluginType + '\')\">Start Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'DELETE\', true, \'' + pluginType + '\')\">Stop Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'GET\', true, \'' + pluginType + '\')\">Check Execution Status</a><br/><br/><image id="image_status" src="resources/yellow.png"/>';
+    var htmm = '<a href="#" class="plusminuslist" click-event=\"seltestfailed = false;executionHandler(\'PUT\', true, \'' + pluginType + '\')\">Start Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'DELETE\', true, \'' + pluginType + '\')\">Stop Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'GET\', true, \'' + pluginType + '\')\">Check Execution Status</a><br/><br/><image id="image_status" src="resources/yellow.png"/>';
 
     if (pluginType == 'executor') {
         if (!calledbytestfpage) {
@@ -638,7 +638,7 @@ function executeHtml(pluginType) {
         }
         calledbytestfpage = false;
         //if(!isSeleniumExecutor) {
-        htmm += '<br/><br/><p>Overall Statistics</p><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><br><table id="lol_hdr"><thead><tr><th>Max</th><th>Min</th><th>Std Dev</th><th>Mean</th><th>50%</th><th>75%</th></tr></thead><tbody id="hdr1"></tbody><thead><tr><th>90%</th><th>97.5%</th><th>99%</th><th>99.9%</th><th>99.99%</th><th>99.999%</th></tr></thead><tbody id="hdr2"></tbody></table><div class="hidden"><br/>Subtest Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_sts" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Success Tests</th><th style="color:black">Fail. Tests</th></tr></thead><tbody></tbody></table></div><br/><p>Run-Wise Statistics</p></table><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Failed Tests</th><th style="color:black">Skip. Tests</th><th style="color:black">Time</th></tr></thead><tbody></tbody></table>';
+        htmm += '<br/><br/><p>Overall Statistics</p><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><br><table id="lol_hdr"><thead><tr><th>Max</th><th>Min</th><th>Std Dev</th><th>Mean</th><th>50%</th><th>75%</th></tr></thead><tbody id="hdr1"></tbody><thead><tr><th>90%</th><th>97.5%</th><th>99%</th><th>99.9%</th><th>99.99%</th><th>99.999%</th></tr></thead><tbody id="hdr2"></tbody></table><!--div class="hidden"><br/>Subtest Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_sts" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Success Tests</th><th style="color:black">Fail. Tests</th></tr></thead><tbody></tbody></table></div--><br/><p>Run-Wise Statistics</p></table><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Failed Tests</th><th style="color:black">Skip. Tests</th><th style="color:black">Time</th></tr></thead><tbody></tbody></table>';
         //}
         $('#ExampleBeanServiceImpl_form').html(htmm);
         if (isSeleniumExecutor) {
@@ -782,6 +782,7 @@ function executionHandler(method, shwPp, pluginType) {
                     $('#image_status').off().on('click', function() {
                         saveAsPngFile();
                     });
+                    if(seltestfailed) $("#image_status").attr("src", "resources/red.png");
                 } else {
                     setTimeout(function(pluginType) {
                         return function() {
@@ -860,6 +861,7 @@ function executionHandler(method, shwPp, pluginType) {
                     $('#image_status').off().on('click', function() {
                         saveAsPngFile();
                     });
+                    if(seltestfailed) $("#image_status").attr("src", "resources/red.png");
                 } else {
                     setTimeout(function(pluginType) {
                         return function() {
@@ -929,8 +931,10 @@ function executionHandler(method, shwPp, pluginType) {
     return false;
 }
 
+var seltestfailed = false;
 function loadStatisticsInTable2(data) {
     if (data && data.length > 0) {
+		var isFailed = false;
         for (var i = 0; i < data.length; i++) {
             var dt = data[i].split("|");
             var trid = 'tr_' + dt[0] + '_' + dt[1];
@@ -946,12 +950,16 @@ function loadStatisticsInTable2(data) {
                 $('#' + trid).find('td')[1].innerHTML = (succ + fail);
                 $('#' + trid).find('td')[2].innerHTML = succ;
                 $('#' + trid).find('td')[3].innerHTML = fail;
+                if(fail>0) isFailed = true;
             } else {
                 var succ = dt[2] * 1 == 1 ? 1 : 0;
                 var fail = dt[2] * 1 == 0 ? 1 : 0;
+                if(fail>0) isFailed = true;
                 $('#lol_sts').find('tbody').prepend(')<tr id="' + trid + '" data-succ="' + succ + '" data-fail="' + fail + '"><td style="color:black">' + dt[0] + '-' + dt[1] + '</td><td style="color:black">' + (succ + fail) + '</td><td style="color:black">' + succ + '</td><td style="color:black">' + fail + '</td></tr/>');
             }
         }
+        seltestfailed = isFailed;
+        if(isFailed) $("#image_status").attr("src", "resources/red.png");
     }
 }
 
@@ -968,12 +976,15 @@ function loadStatisticsInTable(ldata) {
             loadTestData.points.push([new Date(data[4]), data[5][3]]);
         }
     }
-    loadTestData.dyg.updateOptions({
-        'file': loadTestData.points
-    });
+    if (loadTestData.dyg) {
+	    loadTestData.dyg.updateOptions({
+	        'file': loadTestData.points
+	    });
+	}
     loadtestingdatatablecnt += ldata.length;
     $('#hdrstats').html();
     var len = ldata.length > 100 ? 100 : ldata.length;
+    var isFailed = false;
     for (var i = 0; i < len; i++) {
         var data = ldata[ldata.length - i - 1];
         var url = loadtestingdatatablecnt - i;
@@ -983,9 +994,15 @@ function loadStatisticsInTable(ldata) {
             url = data[3] + '#' + url;
         if (data.url != null)
             url = '<a href="/reports/' + data[2] + '" click-event="openWind(this)">' + url + '</a>';
+        else if(data[7]) {
+			url = "<b>" + data[7] + "</b></br>" +  url;
+		}
+		if(data[5][1]*1>0) isFailed = true;
         htm += '<tr><td style="color:black">' + url + '</td><td style="color:black">' + data[5][0] + '</td><td style="color:black">' + data[5][1] + '</td><td style="color:black">' + data[5][2] + '</td><td style="color:black">' + data[5][3] + '</td></tr/>';
         currltsnum++;
     }
+    seltestfailed = isFailed;
+    if(isFailed) $("#image_status").attr("src", "resources/red.png");
     $('#lol_tblcu').find('tbody').prepend(htm);
     if (currltsnum > 100) {
         for (var i = 0; i < currltsnum - 100; i++) {
@@ -1009,15 +1026,16 @@ function execSelectedFileTests(testfilen) {
 	    executionHandler('PUT', true, 'executor');
 	    execFiles = new Array();
     }
+    seltestfailed = false;
     return false;
 }
 
-function execSelectedFiles(ele) {debugger;
+function execSelectedFiles(ele) {
 	execFiles = new Array();
 	let tests = $(ele).closest('form').find('table').find('tr');
-	let all = $('#select_all_tcs').is(":checked");
+	//let all = $('#select_all_tcs').is(":checked");
 	for(const tr of tests) {
-		if(($(tr).first('td').find('input').is(":checked") || all) && $(tr).find('td>a.asideLink1').length>0) {
+		if($(tr).first('td').find('input').is(":checked") && $(tr).find('td>a.asideLink1').length>0) {
 			execFiles.push($(tr).find('td>a.asideLink1').next('input').val());
 		}
 	}
@@ -1029,6 +1047,7 @@ function execSelectedFiles(ele) {debugger;
 	} else {
 		alert("Please select test case files to execute");
 	}
+	seltestfailed = false;
     return false;
 }
 
@@ -2296,6 +2315,19 @@ function initEvents(par) {
 	par.find('input[change-event],textarea[change-event],select[change-event]').off('change').on('change', function() {
 		var evt = $(this).attr('change-event');
 		execFunction(evt, $(this));
+	});
+	$('#select_all_tcs').on('click', function() {
+		//let all = $('#select_all_tcs').is(":checked");
+		let tests = $(this).closest('form').find('table').find('tr');
+		if($(this).is(":checked")) {
+			for(const tr of tests) {
+				$(tr).first('td').find('input').prop('checked', true);
+			}
+		} else {
+			for(const tr of tests) {
+				$(tr).first('td').find('input').prop('checked', false);
+			}
+		}
 	});
 }
 

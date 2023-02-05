@@ -108,7 +108,6 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
-import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.github.dockerjava.api.DockerClient;
@@ -346,7 +345,7 @@ public abstract class SeleniumTest {
 			}
 		} else {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
-			RuntimeReportUtil.addEntry(index, result.status);
+			//RuntimeReportUtil.addEntry(index, result.status);
 		}
 	}
 
@@ -741,8 +740,14 @@ public abstract class SeleniumTest {
 	}*/
 
 	public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
-		this.name = name;
 		this.___cxt___ = ___cxt___;
+		try {
+			File basePath = new File(___cxt___.getGatfExecutorConfig().getTestCasesBasePath());
+		    File testPath = new File(basePath, ___cxt___.getGatfExecutorConfig().getTestCaseDir());
+		    this.name = name.replace(testPath.getAbsolutePath(), "").substring(1);
+		} catch (Exception e) {
+			this.name = name;
+		}
 		this.index = index;
 		//this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
 	}
