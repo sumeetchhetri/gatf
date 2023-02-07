@@ -47,7 +47,6 @@ import org.reflections.Reflections;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
-import com.gatf.selenium.SeleniumTest.PassSubTestException;
 import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
@@ -4893,7 +4892,8 @@ public class Command {
             }
             String var = state.varname();
             rtl = var;
-            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+            String wel = by.equals("this")?state.currthisat():"___ce___";
+            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
@@ -4951,7 +4951,8 @@ public class Command {
             }
             String var = state.varname();
             rtl = var;
-            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", ___ce___, 0L, "+sclassifier+", \""+by+"\", "
+            String wel = by.equals("this")?state.currthisat():"___ce___";
+            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
@@ -5096,8 +5097,11 @@ public class Command {
             try {
                 StringBuilder b = new StringBuilder();
                 topele = state.varname();
+                String wel = by.equals("this")?state.currthisat():"___ce___";
                 if(by.equalsIgnoreCase("id")) {
                     b.append("List<WebElement>  " + topele + " = By.id(evaluate(\""+esc(classifier)+"\")).findElements("+state.currvarnamesc()+");");
+                } else if(by.equalsIgnoreCase("this")) {
+                    b.append("List<WebElement>  " + topele + " = "+wel+";");
                 } else if(by.equalsIgnoreCase("name")) {
                     b.append("List<WebElement>  " + topele + " = By.name(evaluate(\""+esc(classifier)+"\")).findElements("+state.currvarnamesc()+");");
                 } else if(by.equalsIgnoreCase("class") || by.equalsIgnoreCase("className")) {

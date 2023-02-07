@@ -1035,7 +1035,7 @@ function execSelectedFiles(ele) {
 	let tests = $(ele).closest('form').find('table').find('tr');
 	//let all = $('#select_all_tcs').is(":checked");
 	for(const tr of tests) {
-		if($(tr).first('td').find('input').is(":checked") && $(tr).find('td>a.asideLink1').length>0) {
+		if($(tr).find('td').eq(0).find('input').is(":checked") && $(tr).find('td>a.asideLink1').length>0) {
 			execFiles.push($(tr).find('td>a.asideLink1').next('input').val());
 		}
 	}

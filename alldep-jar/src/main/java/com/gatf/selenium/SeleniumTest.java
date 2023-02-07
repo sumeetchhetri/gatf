@@ -171,6 +171,7 @@ public abstract class SeleniumTest {
 	
 	protected String addWdm(String browserName, Capabilities capabilities) {
 		boolean isDocker = false;
+		boolean isHeadless = false;
 		boolean isRecording = false;
 		if(browserName.endsWith("-rec")) {
 			isDocker = true;
@@ -179,6 +180,10 @@ public abstract class SeleniumTest {
 		} else if(browserName.endsWith("-dkr")) {
 			isDocker = true;
 			browserName= browserName.replaceFirst("-dkr", "");
+		} else if(browserName.endsWith("-hdl")) {
+			isDocker = true;
+			isHeadless = true;
+			browserName= browserName.replaceFirst("-hdl", "");
 		}
 		
 		if(isDocker) {
@@ -234,6 +239,8 @@ public abstract class SeleniumTest {
 			wdm.capabilities(capabilities).browserInDocker();
 			if(isRecording) {
 				wdm.enableRecording().enableVnc();
+			} else if(!isHeadless) {
+				wdm.enableVnc();
 			}
 			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"dkr");
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
@@ -248,17 +255,23 @@ public abstract class SeleniumTest {
 	
 	protected WebDriver getDockerDriver(String browserName) {
 		boolean isDocker = false;
+		boolean isHeadless = false;
 		boolean isRecording = false;
 		if(browserName.endsWith("-rec")) {
 			isDocker = true;
 			isRecording = true;
 		} else if(browserName.endsWith("-dkr")) {
 			isDocker = true;
+		} else if(browserName.endsWith("-hdl")) {
+			isDocker = true;
+			isHeadless = true;
 		}
 		if(wdmMgs.containsKey(browserName) && isDocker) {
 			WebDriver wd = wdmMgs.get(browserName).create();
 			if(isRecording) {
 				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl(), wdmMgs.get(browserName).getDockerRecordingPath()));
+			} else if(!isHeadless) {
+				System.out.println(String.format("VNC URL for Docker Browser Session is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl()));
 			}
 			WebDriver augmented = null;
 			int counter = 10;

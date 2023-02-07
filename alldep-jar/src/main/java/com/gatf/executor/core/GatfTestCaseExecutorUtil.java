@@ -963,7 +963,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
                                 }
                             }
-                            if(e1.getValue().isStatus()) {
+                            if((e1.getValue() == null && res.getResult().isStatus()) || e1.getValue().isStatus()) {
                                 succ++;
                                 tsucc++;
                             } else {

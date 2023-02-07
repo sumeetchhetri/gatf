@@ -1,4 +1,4 @@
-FROM selenoid/chrome:latest
+FROM selenoid/_BROWSER_:_VERSION_
 
 USER root
 RUN curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - && apt-get install -y nodejs
