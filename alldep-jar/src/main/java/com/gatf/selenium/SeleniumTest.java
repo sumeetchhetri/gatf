@@ -63,6 +63,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.JavascriptExecutor;
@@ -391,6 +392,30 @@ public abstract class SeleniumTest {
 
 	protected String getFileProviderHash(String name) {
 		return ___cxt___.getFileProviderHash(name);
+	}
+
+	protected String getBrowserName() {
+		return getSession().browserName;
+	}
+
+	protected String getSessionName() {
+		return getSession().sessionName;
+	}
+
+	protected boolean isBrowserName(String bn) {
+		if(StringUtils.isNotBlank(bn)) {
+			bn = bn.trim();
+			if(bn.charAt(0)==bn.charAt(bn.length()-1)) {
+                if(bn.charAt(0)=='"' || bn.charAt(0)=='\'') {
+                	bn = bn.substring(1, bn.length()-1);
+                }
+            }
+		}
+		return getSession().browserName.equals(bn);
+	}
+
+	protected boolean isSessionName(String bn) {
+		return getSession().browserName.equals(bn);
 	}
 
 	private SeleniumTestSession getSession() {
@@ -2728,5 +2753,26 @@ public abstract class SeleniumTest {
 		} catch (NumberFormatException e) {
 			d.switchTo().frame(selector);
 		}
+	}
+	
+	protected boolean handleAlertConfirm(WebDriver d, boolean isAlert, boolean confirmIsOk, String value) {
+		int counter = 1;
+		while(counter++<11) {
+			try {
+				Alert alert = d.switchTo().alert();
+				if(isAlert) {
+					alert.accept();
+				} else {
+					if(confirmIsOk) 
+						alert.accept();
+					else 
+						alert.dismiss();
+				}
+				return value!=null?true:alert.getText().equals(value);
+			} catch (Exception e) {
+			}
+			sleep(1000);
+		}
+		return false;
 	}
 }

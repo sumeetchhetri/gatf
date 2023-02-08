@@ -698,8 +698,12 @@ public class Command {
             comd = new EleScreenshotCommand(cmd.substring(15).trim(), cmdDetails, state, false);
         } else if(cmd.toLowerCase().startsWith("alert ")) {
             comd = new AlertCommand(cmd.substring(6).trim(), cmdDetails, state);
+        } else if(cmd.toLowerCase().startsWith("alert")) {
+            comd = new AlertCommand("", cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("confirm ")) {
             comd = new ConfirmCommand(cmd.substring(8).trim(), cmdDetails, state);
+        } else if(cmd.toLowerCase().startsWith("confirm")) {
+            comd = new ConfirmCommand("", cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("zoom ") || cmd.toLowerCase().startsWith("pinch ") 
                 || cmd.toLowerCase().startsWith("tap ") || cmd.toLowerCase().equals("rotate")
                 || cmd.toLowerCase().equals("hidekeypad") || cmd.toLowerCase().startsWith("touch ")
@@ -3045,9 +3049,13 @@ public class Command {
         		"If block",
         		"\t? {find-expr} & {find-expr}?\n\t{\n\t\tcode\n\t}",
         		"\t? eval {template-expr} & {template-expr}?\n\t{\n\t\tcode\n\t}",
+        		"\t? browser-scope {browser-name}?\n\t{\n\t\tcode\n\t}",
+        		"\t? session-scope {browser-name}?\n\t{\n\t\tcode\n\t}",
 				"Examples :-",
 				"\t? xpath@\"ddd\"\n\t{\n\t\texec @print(\"if\")\n\t}",
-				"\t? eval \"a\"==\"a\" & eval ${bvar}!=\"b\"\n\t{\n\t\texec @print(\"if\")\n\t}"
+				"\t? eval \"a\"==\"a\" & eval ${bvar}!=\"b\"\n\t{\n\t\texec @print(\"if\")\n\t}",
+				"\t? browser-scope \"chrome\"\n\t{\n\t\texec @print(\"if\")\n\t}",
+				"\t? s-scope \"one\"\n\t{\n\t\texec @print(\"if\")\n\t}"
             };
         }
     }
@@ -4023,8 +4031,11 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Open Browser",
-        		"\topen {chrome|firefox|ie|opera|edge|safari|appium-android|appium-ios..} {optional session-name}",
-				"Examples :-",
+        		"\topen {chrome|chrome-dkr|chrome-rec|chrome-hdl|firefox|firefox-dkr|firefox-rec|firefox-hdl|opera|opera-dkr|opera-rec|opera-hdl|ie|edge|safari|appium-android|appium-ios..} {optional session-name}",
+				"\t\t*-hdl -- Headless Docker based WebDriver",
+				"\t\t*-dkr -- VNC Docker based WebDriver",
+				"\t\t*-rec -- VNC Docker based WebDriver With Recording",
+        		"Examples :-",
 				"\topen chrome",
 				"\topen firefox \"my-ff-sess\"",
             };
@@ -4689,7 +4700,7 @@ public class Command {
     }
 
     public static class FindCommand extends Command {
-        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, eval = null;
+        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, eval = null, browserScope = "", sessionScope = "";
         boolean suppressErr = false, byselsame = false;
         String by() {
             return by;
@@ -4714,6 +4725,14 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             if(val.trim().startsWith("eval ")) {
             	eval = val.trim().substring(5).trim();
+            	by = "";
+            	classifier = "";
+            } else if(val.trim().startsWith("browser-scope ")) {
+            	browserScope = val.trim().substring(14).trim();
+            	by = "";
+            	classifier = "";
+            } else if(val.trim().startsWith("session-scope ")) {
+            	sessionScope = val.trim().substring(14).trim();
             	by = "";
             	classifier = "";
             } else {
@@ -4962,8 +4981,12 @@ public class Command {
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
         }
         String javacodeonly(List<Command> children) {
-        	if(eval!=null) {
+        	if(StringUtils.isNotBlank(eval)) {
         		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", doEvalIf(\""+esc(state.unsanitize(eval))+"\"));";
+        	} else if(StringUtils.isNotBlank(browserScope)) {
+        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", isBrowserName(\""+esc(state.unsanitize(browserScope))+"\"));";
+        	} else if(StringUtils.isNotBlank(sessionScope)) {
+        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", isSessionName(\""+esc(state.unsanitize(sessionScope))+"\"));";
         	}
             return javacodeonlyNoAssert(children, false)
                     + "\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
@@ -6932,12 +6955,14 @@ public class Command {
         }
         String javacode() {
             if(value!=null && !value.isEmpty()) {
-                String avn = state.alvarname();
+            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, \""+esc(value)+"\"));\n";
+                /*String avn = state.alvarname();
                 String c = "Alert "+avn+" = ___cw___.switchTo().alert();\n";
                 c += "\nAssert.assertEquals(\""+esc(value)+"\", "+avn+".getText());\n"+avn+".accept();\n";
-                return c;
+                return c;*/
             } else {
-                return "___cw___.switchTo().alert().accept();";
+            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, null));\n";
+                //return "___cw___.switchTo().alert().accept();";
             }
         }
         public AlertCommand(String info, Object[] cmdDetails, CommandState state) {
@@ -6954,7 +6979,8 @@ public class Command {
         		"Show alert with message",
         		"\talert {value}",
         		"Examples :-",
-        		"\talert('Hello')",
+        		"\talert",
+        		"\talert 'Hello'",
             };
         }
     }
@@ -6967,24 +6993,26 @@ public class Command {
         }
         String javacode() {
             if(value!=null && !value.isEmpty()) {
-                String avn = state.alvarname();
+            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", \""+esc(value)+"\"));\n";
+                /*String avn = state.alvarname();
                 String c = "Alert "+avn+" = ___cw___.switchTo().alert();\n";
                 c += "\nAssert.assertEquals(\""+esc(value)+"\", "+avn+".getText());\n"+avn+"."+(isOk?"accept":"dismiss")+"();\n";
-                return c;
+                return c;*/
             } else {
-                return "___cw___.switchTo().alert()."+(isOk?"accept":"dismiss")+"();";
+            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", null));\n";
+                //return "___cw___.switchTo().alert()."+(isOk?"accept":"dismiss")+"();";
             }
         }
         public ConfirmCommand(String info, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            String[] t = info.trim().split("[\t ]+");
+            String[] t = info.equals("")?new String[] {"ok"}:info.trim().split("[\t ]+");
             if(t[0].trim().isEmpty()) {
                 t[0] = "ok";
             }
-            if(!t[0].toLowerCase().trim().matches("ok|cancel|yes|no")) {
+            if(!t[0].toLowerCase().trim().matches("ok|cancel|yes|no|true|false|1|0")) {
                 throwParseError(null, new RuntimeException("confirm dialog can be accepted or dismissed, one of (ok|cancel|yes|no) allowed"));
             }
-            if(t[0].toLowerCase().trim().matches("cancel|no")) {
+            if(t[0].toLowerCase().trim().matches("cancel|no|false|0")) {
                 isOk = false;
             }
             if(t.length>1)
