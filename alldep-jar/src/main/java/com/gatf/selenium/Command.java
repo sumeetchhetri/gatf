@@ -2945,7 +2945,7 @@ public class Command {
         IfCommand(String cmd, boolean negation, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             this.negation = negation;
-            String[] parts = cmd.trim().split("[\t ]+");
+            String[] parts = cmd.trim().split("&");
             for (String part : parts) {
             	if(part.charAt(0)==part.charAt(part.length()-1)) {
                     if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
@@ -3043,9 +3043,11 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"If block",
-        		"\t? {find-expr}\n\t{\n\t\tcode\n\t}",
+        		"\t? {find-expr} & {find-expr}?\n\t{\n\t\tcode\n\t}",
+        		"\t? eval {template-expr} & {template-expr}?\n\t{\n\t\tcode\n\t}",
 				"Examples :-",
-				"\t? xpath@\"ddd\"\n\t{\n\t\texec @print(\"if\")\n\t}"
+				"\t? xpath@\"ddd\"\n\t{\n\t\texec @print(\"if\")\n\t}",
+				"\t? eval \"a\"==\"a\" & eval ${bvar}!=\"b\"\n\t{\n\t\texec @print(\"if\")\n\t}"
             };
         }
     }
@@ -4712,6 +4714,8 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             if(val.trim().startsWith("eval ")) {
             	eval = val.trim().substring(5).trim();
+            	by = "";
+            	classifier = "";
             } else {
 	            if(parts.length>=1) {
 	                parts[0] = parts[0].trim();
