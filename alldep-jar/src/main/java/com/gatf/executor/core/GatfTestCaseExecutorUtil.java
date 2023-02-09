@@ -929,10 +929,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             if (dorep) {
                                 ReportHandler.doSeleniumTestReport(fileName, retvals, res.getResult(), context);
                             }
-                            if(res.getResult().isStatus()) {
+                            if(res.getResult()!=null && res.getResult().isStatus()) {
                                 succ++;
                                 tsucc++;
-                            } else {
+                            } else if(res.getResult()!=null) {
                                 fal++;
                                 tfal++;
                             }
@@ -963,10 +963,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
                                 }
                             }
-                            if((e1.getValue() == null && res.getResult().isStatus()) || e1.getValue().isStatus()) {
+                            if(e1.getValue()!=null && e1.getValue().isStatus()) {
                                 succ++;
                                 tsucc++;
-                            } else {
+                            } else if(e1.getValue()!=null) {
                                 fal++;
                                 tfal++;
                             }
