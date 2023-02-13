@@ -102,9 +102,9 @@ implements Serializable {
 					___cw___,
 					___sc___1,
 					___ce___,
-					0L,
-					evaluate("userNameTxt"),
-					"class",
+					0L,null,
+					new String[] {evaluate("userNameTxt"),null},
+					new String[] {"class",null},
 					evaluate("attr@id,attr@name"),
 					false,
 					null,
@@ -170,42 +170,42 @@ implements Serializable {
 			List<Map<String, String>> prov1 = getProviderTestDataMap("prov1");
 
 			//id
-			System.out.println(getElements(___cw___, ___sc___1, "id@usernameId", null));
+			System.out.println(getElements(___cw___, ___sc___1, "id@usernameId", null, null, null));
 
 			//className
-			System.out.println(getElements(___cw___, ___sc___1, "class@userNameTxt", null));
-			System.out.println(getElements(___cw___, ___sc___1, "className@userNameTxt", null));
+			System.out.println(getElements(___cw___, ___sc___1, "class@userNameTxt", null, null, null));
+			System.out.println(getElements(___cw___, ___sc___1, "className@userNameTxt", null, null, null));
 
 			//name
-			System.out.println(getElements(___cw___, ___sc___1, "name@username", null));
+			System.out.println(getElements(___cw___, ___sc___1, "name@username", null, null, null));
 
 			//tagname
-			System.out.println(getElements(___cw___, ___sc___1, "tag@input", null));
-			System.out.println(getElements(___cw___, ___sc___1, "tagname@input", null));
+			System.out.println(getElements(___cw___, ___sc___1, "tag@input", null, null, null));
+			System.out.println(getElements(___cw___, ___sc___1, "tagname@input", null, null, null));
 
 			//Xpath
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[@id=\"usernameId\"]\"", null));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[text()='Login']\"", null));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[contains(text(), 'Login')]\"", null));
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[@id=\"usernameId\"]\"", null, null, null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[text()='Login']\"", null, null, null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//*[contains(text(), 'Login')]\"", null, null, null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]\"", null, null, null));
 			//Full Xpath
-			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "xpath@\"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input\"", null, null, null));
 
 			//cssselector
 			//tag id
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input#usernameId\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input#usernameId\"", null, null, null));
 			//tag class
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input.userNameTxt\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input.userNameTxt\"", null, null, null));
 			//tag attribute
-			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input[name=username]\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "cssselector@\"input[name=username]\"", null, null, null));
 			//tag class attribute
-			System.out.println(getElements(___cw___, ___sc___1, "css@\"input.userNameTxt[name=username]\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "css@\"input.userNameTxt[name=username]\"", null, null, null));
 
 			//text
-			System.out.println(getElements(___cw___, ___sc___1, "text@\"User Name\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "text@\"User Name\"", null, null, null));
 
 			//linkText
-			System.out.println(getElements(___cw___, ___sc___1, "linkText@\"Forgot Password?\"", null));
+			System.out.println(getElements(___cw___, ___sc___1, "linkText@\"Forgot Password?\"", null, null, null));
 
 			//partialLinkText
 			System.out.println(getElements(___cw___, ___sc___1, "partialLinkText@\"Forgot\"", null));

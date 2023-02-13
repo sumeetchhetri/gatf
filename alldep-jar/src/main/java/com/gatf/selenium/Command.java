@@ -582,8 +582,8 @@ public class Command {
             ((EndCommand)comd).type = "}";
         } else if (cmd.startsWith("pass ") || cmd.equalsIgnoreCase("pass")) {
             comd = new PassCommand(cmd.equalsIgnoreCase("pass")?"":cmd.substring(5).trim(), cmdDetails, state);
-        } else if (cmd.startsWith("fail ")) {
-            comd = new FailCommand(cmd.substring(5).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("fail ") || cmd.equalsIgnoreCase("fail")) {
+            comd = new FailCommand(cmd.equalsIgnoreCase("fail")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("open ")) {
             String name = cmd.substring(5).trim();
             comd = new BrowserCommand(name, cmdDetails, state);
@@ -4549,11 +4549,15 @@ public class Command {
         }
         FailCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            value = state.unsanitize(cmd);
-            if(value.charAt(0)==value.charAt(value.length()-1)) {
-                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                    value = value.substring(1, value.length()-1);
-                }
+            if(cmd.equals("")) {
+            	value = "Test/Subtest Failed";
+            } else {
+	            value = state.unsanitize(cmd);
+	            if(value.charAt(0)==value.charAt(value.length()-1)) {
+	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+	                    value = value.substring(1, value.length()-1);
+	                }
+	            }
             }
         }
         public static String[] toSampleSelCmd() {
@@ -4700,7 +4704,7 @@ public class Command {
     }
 
     public static class FindCommand extends Command {
-        String by, classifier, subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, eval = null, browserScope = "", sessionScope = "";
+        String by, classifier, relative = "", by1 = "", classifier1 = "", subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, eval = null, browserScope = "", sessionScope = "";
         boolean suppressErr = false, byselsame = false;
         String by() {
             return by;
@@ -4717,24 +4721,59 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Find Expression",
-        		"\t{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
             };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
-            if(val.trim().startsWith("eval ")) {
+            if(parts[0].equalsIgnoreCase("eval")) {
             	eval = val.trim().substring(5).trim();
             	by = "";
             	classifier = "";
-            } else if(val.trim().startsWith("browser-scope ")) {
+            } else if(parts[0].equalsIgnoreCase("browser-scope")) {
             	browserScope = val.trim().substring(14).trim();
             	by = "";
             	classifier = "";
-            } else if(val.trim().startsWith("session-scope ")) {
+            } else if(parts[0].equalsIgnoreCase("session-scope")) {
             	sessionScope = val.trim().substring(14).trim();
             	by = "";
             	classifier = "";
+            } else if(parts[0].equalsIgnoreCase("relative")) {
+            	if(parts.length<4) {
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector expression, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	}
+            	if(parts[1].indexOf("@")!=-1) {
+                    by1 = parts[1].substring(0, parts[1].indexOf("@")).trim();
+                    classifier1 = parts[1].substring(parts[1].indexOf("@")+1).trim();
+                    classifier1 = state.unsanitize(classifier1);
+                    if(classifier1.charAt(0)==classifier1.charAt(classifier1.length()-1)) {
+                        if(classifier1.charAt(0)=='"' || classifier1.charAt(0)=='\'') {
+                        	classifier1 = classifier1.substring(1, classifier1.length()-1);
+                        }
+                    }
+            	}
+            	if(by1.isEmpty() || classifier1.isEmpty()) {
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	}
+            	if(!parts[2].equalsIgnoreCase("leftof") && !parts[2].equalsIgnoreCase("rightof") && !parts[2].equalsIgnoreCase("above")
+            			&& !parts[2].equalsIgnoreCase("below") && !parts[2].equalsIgnoreCase("near")) {
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	}
+            	if(parts[3].indexOf("@")!=-1) {
+                    by = parts[3].substring(0, parts[3].indexOf("@")).trim();
+                    classifier = parts[3].substring(parts[3].indexOf("@")+1).trim();
+                    classifier = state.unsanitize(classifier);
+                    if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
+                        if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
+                            classifier = classifier.substring(1, classifier.length()-1);
+                        }
+                    }
+            	}
+            	if(by.isEmpty() || classifier.isEmpty()) {
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	}
+            	relative = parts[2].trim();
             } else {
 	            if(parts.length>=1) {
 	                parts[0] = parts[0].trim();
@@ -4747,7 +4786,7 @@ public class Command {
 	                            classifier = classifier.substring(1, classifier.length()-1);
 	                        }
 	                    }
-	
+	                    
 	                    if(parts.length>1) {
 	                        subselector = parts[1].trim();
 	                        subselector = state.unsanitize(subselector);
@@ -4911,12 +4950,12 @@ public class Command {
                 soper = "\""+soper+"\"";
             }
             if(sclassifier!=null) {
-                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+                sclassifier =  "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
             }
             String var = state.varname();
             rtl = var;
             String wel = by.equals("this")?state.currthisat():"___ce___";
-            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
+            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, \""+relative+"\", "+sclassifier+", new String[]{\""+by+"\", \""+by1+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
@@ -4970,12 +5009,12 @@ public class Command {
                 soper = "\""+soper+"\"";
             }
             if(sclassifier!=null) {
-                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            	sclassifier = "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
             }
             String var = state.varname();
             rtl = var;
             String wel = by.equals("this")?state.currthisat():"___ce___";
-            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
+            return "List<String[]> " + var + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, \""+relative+"\", "+sclassifier+", new String[]{\""+by+"\", \""+by1+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
@@ -5042,10 +5081,10 @@ public class Command {
                 soper = "\""+soper+"\"";
             }
             if(sclassifier!=null) {
-                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            	sclassifier = "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
             }
             String wel = by.equals("this")?state.currthisat():"___ce___";
-            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", 0L, "+sclassifier+", \""+by+"\", "
+            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", 0L, \""+relative+"\", "+sclassifier+", new String[]{\""+by+"\", \""+by1+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", "+noexcep+", "+state.getLayers()+");\n";
@@ -5101,10 +5140,10 @@ public class Command {
                 soper = "\""+soper+"\"";
             }
             if(sclassifier!=null) {
-                sclassifier = "evaluate(\""+esc(sclassifier)+"\")";
+            	sclassifier = "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
             }
             String wel = by.equals("this")?state.currthisat():"___ce___";
-            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", (long)"+waitTime+", "+sclassifier+", \""+by+"\", "
+            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", (long)"+waitTime+", \""+relative+"\", "+sclassifier+", new String[]{\""+by+"\", \""+by1+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n"

@@ -99,7 +99,9 @@ import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.print.PrintOptions;
 import org.openqa.selenium.remote.Augmenter;
+import org.openqa.selenium.remote.LocalFileDetector;
 import org.openqa.selenium.remote.RemoteWebDriver;
+import org.openqa.selenium.support.locators.RelativeLocator;
 import org.openqa.selenium.support.ui.ExpectedCondition;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.Select;
@@ -639,6 +641,9 @@ public abstract class SeleniumTest {
 	
 	protected void set___d___(WebDriver ___d___)
 	{
+		if(___d___ instanceof RemoteWebDriver) {
+			((RemoteWebDriver)___d___).setFileDetector(new LocalFileDetector());
+		}
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);
 		getSession().___dqs___.add(false);
@@ -929,7 +934,7 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void sendKeys(WebDriver driver, WebElement le, String type, String qualifier, String tvalue) {
-		sendKeys(type, qualifier, driver, le, tvalue);
+		sendKeys(type, qualifier, driver, le, tvalue, ___cxt___);
 	}
 	
 	protected static String randomize(String tvalue) {
@@ -1008,7 +1013,7 @@ public abstract class SeleniumTest {
 		return StringUtils.join(vals, " ");
 	}
 
-	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue) {
+	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue, AcceptanceTestContext ___cxt___) {
 		if(type.equalsIgnoreCase("randomize")) {
 			if ((le.getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
 					|| (le.getTagName().toLowerCase().matches("textarea"))) {
@@ -1040,6 +1045,9 @@ public abstract class SeleniumTest {
 				le.click();
 			}
 		} else {
+			if(tvalue.startsWith("file://")) {
+				tvalue = resolveFile(tvalue.substring(7), ___cxt___);
+			}
 			le.sendKeys(tvalue);
 			jsEvent(wd, le, qualifier);
 		}
@@ -1472,9 +1480,13 @@ public abstract class SeleniumTest {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 	}
+	
+	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, List<WebElement> ce) {
+		return getElements(d, sc, finder, null, null, ce);
+	}
 
 	@SuppressWarnings({ "serial", "unchecked" })
-	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, List<WebElement> ce) {
+	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, String finder1, String relative, List<WebElement> ce) {
 		finder = finder.trim();
 		String by = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(0, finder.indexOf("@")).trim();
 		if(by.charAt(0)==by.charAt(by.length()-1)) {
@@ -1523,6 +1535,65 @@ public abstract class SeleniumTest {
 			el = new ArrayList<WebElement>(){{add(d.switchTo().activeElement());}};
 		} else if(by.equalsIgnoreCase("jq") || by.equalsIgnoreCase("jquery") || by.equalsIgnoreCase("$")) {
 			el = ByJquerySelector(d, classifier);
+		}
+		
+		if(el!=null && el.size()>0 && relative!=null && finder1!=null) {
+			switch (relative) {
+				case "leftof":
+					el = RelativeLocator.with(getBy(d, finder1)).toLeftOf(el.get(0)).findElements(sc);
+					break;
+				case "rightof":
+					el = RelativeLocator.with(getBy(d, finder1)).toRightOf(el.get(0)).findElements(sc);
+					break;
+				case "above":
+					el = RelativeLocator.with(getBy(d, finder1)).above(el.get(0)).findElements(sc);
+					break;
+				case "below":
+					el = RelativeLocator.with(getBy(d, finder1)).below(el.get(0)).findElements(sc);
+					break;
+				case "near":
+					el = RelativeLocator.with(getBy(d, finder1)).near(el.get(0)).findElements(sc);
+					break;
+				default:
+					break;
+			}
+		}
+		return el;
+	}
+	
+	private static By getBy(WebDriver d, String finder) {
+		finder = finder.trim();
+		String by = finder.substring(0, finder.indexOf("@")).trim();
+		if(by.charAt(0)==by.charAt(by.length()-1)) {
+			if(by.charAt(0)=='"' || by.charAt(0)=='\'') {
+				by = by.substring(1, by.length()-1);
+			}
+		}
+		String classifier = finder.substring(finder.indexOf("@")+1).trim();
+		if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
+			if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
+				classifier = classifier.substring(1, classifier.length()-1);
+			}
+		}
+		By el = null;
+		if(by.equalsIgnoreCase("id")) {
+			el = By.id(classifier);
+		} else if(by.equalsIgnoreCase("name")) {
+			el = By.name(classifier);
+		} else if(by.equalsIgnoreCase("class") || by.equalsIgnoreCase("className")) {
+			el = By.className(classifier);
+		} else if(by.equalsIgnoreCase("tag") || by.equalsIgnoreCase("tagname")) {
+			el = By.tagName(classifier);
+		} else if(by.equalsIgnoreCase("xpath")) {
+			el = By.xpath(classifier);
+		} else if(by.equalsIgnoreCase("cssselector") || by.equalsIgnoreCase("css")) {
+			el = By.cssSelector(classifier);
+		} else if(by.equalsIgnoreCase("text")) {
+			el = By.xpath("//*[contains(text(), '" + classifier+"')]");
+		} else if(by.equalsIgnoreCase("linkText")) {
+			el = By.linkText(classifier);
+		} else if(by.equalsIgnoreCase("partialLinkText")) {
+			el = By.partialLinkText(classifier);
 		}
 		return el;
 	}
@@ -1606,10 +1677,8 @@ public abstract class SeleniumTest {
 			}
 		}
 	}
-
-	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
-		initJs(wd);
-		jsFocus(wd, ret.get(0));
+	
+	private static String resolveFile(String filePath, AcceptanceTestContext ___cxt___) {
 		if(!new File(filePath).exists()) {
 			File upfl = ___cxt___.getResourceFile(filePath);
 			if(!upfl.exists()) {
@@ -1623,6 +1692,26 @@ public abstract class SeleniumTest {
 				filePath = upfl.getAbsolutePath();
 			}
 		}
+		return filePath;
+	}
+
+	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
+		initJs(wd);
+		jsFocus(wd, ret.get(0));
+		filePath = resolveFile(filePath, ___cxt___);
+		/*if(!new File(filePath).exists()) {
+			File upfl = ___cxt___.getResourceFile(filePath);
+			if(!upfl.exists()) {
+				upfl = new File(System.getProperty("user.dir"), filePath);
+				if(!upfl.exists()) {
+					throw new RuntimeException("File not found at the given path, please provide a valid file [" + filePath + "]");
+				} else {
+					filePath = upfl.getAbsolutePath();
+				}
+			} else {
+				filePath = upfl.getAbsolutePath();
+			}
+		}*/
 		
 		if(SeleniumTest.IN_DOCKER.get().getLeft() && wdmMgs.containsKey(SeleniumTest.IN_DOCKER.get().getRight()[0])) {
 			try {
@@ -1771,7 +1860,7 @@ public abstract class SeleniumTest {
 			for(final WebElement we: ret) {
 				jsEvent(wd, we, "fo");
 				System.out.println(type + " => " + tvalue);
-				sendKeys(type, qualifier, wd, we, tvalue);
+				sendKeys(type, qualifier, wd, we, tvalue, ___cxt___);
 				//we.sendKeys(tvalue);
 				//jsEvent(wd, we, qualifier);
 				break;
@@ -1888,27 +1977,27 @@ public abstract class SeleniumTest {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<WebElement> handleWaitFunc(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	protected List<WebElement> handleWaitFunc(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
 	}
 
 	@SuppressWarnings("unchecked")
-	protected List<String[]> transientProviderData(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	protected List<String[]> transientProviderData(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+		return (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
 	}
 
 	@SuppressWarnings("unchecked")
-	private Object handleWaitOrTransientProv(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, final String classifier, final String by, String subselector, 
+	private Object handleWaitOrTransientProv(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
 		final WebDriver wsc = (WebDriver) sc;
 		final Object[] o = new Object[2];
 		long timeoutRemaining = 0;
 		initJs(driver);
-		System.out.println("Searching element => " + by+"@"+classifier);
+		System.out.println("Searching element => " + by[0]+"@"+classifier[0]);
 		if(timeOutInSeconds<=0) {
-			List<WebElement> el = getElements(driver, wsc, by+"@"+classifier, ce);
+			List<WebElement> el = getElements(driver, wsc, by[0]+"@"+classifier[0], by[1]+"@"+classifier[1], relative, ce);
 			if (el == null || el.isEmpty())  {
 			} else {
 				boolean enabledCheck = false;
@@ -1929,7 +2018,7 @@ public abstract class SeleniumTest {
 					public Boolean apply(WebDriver input) {
 						List<WebElement> ___ce___ = ce;
 						try {
-							List<WebElement> el = getElements(driver, wsc, by+"@"+classifier, ce);
+							List<WebElement> el = getElements(driver, wsc, by[0]+"@"+classifier[0], by[1]+"@"+classifier[1], relative, ce);
 							if (el == null || el.isEmpty()) return false;
 
 							boolean enabledCheck = false;
@@ -2344,7 +2433,7 @@ public abstract class SeleniumTest {
 						ce.add(element);
 						for (String layer : layers) {
 							try {
-								List<WebElement> el = getElements(driver, driver, layer, ce);
+								List<WebElement> el = getElements(driver, driver, layer, null, null, ce);
 								if(el!=null && el.size()>0 && /*el.get(0).isEnabled() &&*/ el.get(0).isDisplayed()) {
 									int ozl = getZIndex(el.get(0));
 									Rectangle orec = getRect(el.get(0));
@@ -2742,7 +2831,7 @@ public abstract class SeleniumTest {
 		}
 		
 		if(selector.indexOf("@")!=-1) {
-			List<WebElement> els = getElements(d, d, selector, null);
+			List<WebElement> els = getElements(d, d, selector, null, null, null);
 			if(els.size()>0) {
 				d.switchTo().frame(els.get(0));
 			}
