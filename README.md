@@ -714,13 +714,16 @@ Examples :-
 
 
 Type random values in input/textarea elements
-	randomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_ {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}
+	randomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}
 Examples :-
 	randomize id@'ele1' alphanumeric 12
 	randomize id@'ele1' alpha 8 3 (first-name middle-name last-name)
 	randomize id@'ele1' numeric 5
 	randomize id@'ele1' range 9999 99999
 	randomize id@'ele1' value 'abcd'
+	randomize id@'ele1' fuzzyn _@3:4:5:6
+	randomize id@'ele1' fuzzya _@3:4:5:6
+	randomize id@'ele1' fuzzyan _@3:4:5:6
 
 
 Execute javascript code in the browser

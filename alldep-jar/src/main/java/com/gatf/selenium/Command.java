@@ -5625,8 +5625,8 @@ public class Command {
                                 v1 = v1.substring(1, v1.length()-1);
                             }
                         }
-                        if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_")) {
-                        	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_"));
+                        if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc")) {
+                        	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc"));
                         }
                     }
                     if(parts.length>t+1) {
@@ -5652,7 +5652,15 @@ public class Command {
         				Long.parseLong(v2);
         			} catch (Exception e) {
         				if(v2!=null && !v1.equalsIgnoreCase("value")) {
-        					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
+        					if(v1.startsWith("fuzzy")) {
+        						if(v2.length()>4 && v2.charAt(1)=='@' && v2.contains(":")) {
+        							
+        						} else {
+        							throwParseError(null, new RuntimeException("Randomize command with fuzzy logic needs the syntax fuzzy <sep-char>@<seq-len>:<seq-len>:<seq-len> --> _@3:4:5 --> 333_4444_55555"));
+        						}
+        					} else {
+        						throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
+        					}
         				}
         			}
                     
@@ -6462,8 +6470,8 @@ public class Command {
                     }
                 } else if(t[counter].toLowerCase().equals("randomize")) {
                     cmd.action = t[counter].toLowerCase();
-                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_")) {
-                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_"));
+                    if(t.length<counter+1 || !t[counter+1].toLowerCase().toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc")) {
+                    	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc"));
                     }
                     
                     cmd.expr1 = state.unsanitize(t[++counter]);
@@ -6484,6 +6492,14 @@ public class Command {
                         Long.parseLong(cmd.expr2);
         			} catch (Exception e) {
         				if(cmd.expr2!=null && !cmd.expr1.equalsIgnoreCase("value")) {
+        					if(cmd.expr1.startsWith("fuzzy")) {
+        						if(cmd.expr2.length()>4 && cmd.expr2.charAt(1)=='@' && cmd.expr2.contains(":")) {
+        						} else {
+        							throwParseError(null, new RuntimeException("Randomize command with fuzzy logic needs the syntax fuzzy <sep-char>@<seq-len>:<seq-len>:<seq-len> --> _@3:4:5 --> 333_4444_55555"));
+        						}
+        					} else {
+        						throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
+        					}
         					throwParseError(null, new RuntimeException("Randomize command needs first argument to be a number for alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|range"));
         				}
         			}

@@ -970,6 +970,104 @@ public abstract class SeleniumTest {
 			}
 			long num = (long)(min + (Math.random() * (max - min)));
 			return num+"";
+		} else if(v1.toLowerCase().equals("fuzzyn")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomNumeric(Integer.valueOf(prt)) + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzya")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)) + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzyauc")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)).toUpperCase() + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzyalc")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)).toLowerCase() + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzyan")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)) + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzyanuc")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)).toUpperCase() + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
+		} else if(v1.toLowerCase().equals("fuzzyanlc")) {
+			String sep = v2.charAt(0)+"";
+			String[] prts = v2.substring(2).split(":");
+			String finalNum = "";
+			for (String prt : prts) {
+				try {
+					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)).toLowerCase() + sep;
+				} catch (Exception e) {
+				}
+			}
+			if(finalNum.endsWith(sep)) {
+				finalNum = finalNum.substring(0, finalNum.length()-1);
+			}
+			return finalNum;
 		}
 		
 		if(StringUtils.isNotBlank(v3)) {
@@ -2105,9 +2203,17 @@ public abstract class SeleniumTest {
 						} else if(subselector.equalsIgnoreCase("tagname")) {
 							rhs = we.getTagName();
 						} else if(subselector.toLowerCase().startsWith("attr@")) {
-							rhs = we.getAttribute(value);
+							String atname = subselector.substring(5);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+								atname = atname.substring(1, atname.length()-1);
+							}
+							rhs = we.getAttribute(atname);
 						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
-							rhs = we.getCssValue(value);
+							String atname = subselector.substring(9);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+								atname = atname.substring(1, atname.length()-1);
+							}
+							rhs = we.getCssValue(atname);
 						} else if(subselector.equalsIgnoreCase("width")) {
 							rhs = String.valueOf(we.getSize().getWidth());
 						} else if(subselector.equalsIgnoreCase("height")) {
@@ -2150,9 +2256,17 @@ public abstract class SeleniumTest {
 						} else if(subselector.equalsIgnoreCase("tagname")) {
 							rhs = we.getTagName();
 						} else if(subselector.toLowerCase().startsWith("attr@")) {
-							rhs = we.getAttribute(value);
+							String atname = subselector.substring(5);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+								atname = atname.substring(1, atname.length()-1);
+							}
+							rhs = we.getAttribute(atname);
 						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
-							rhs = we.getCssValue(value);
+							String atname = subselector.substring(9);
+							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+								atname = atname.substring(1, atname.length()-1);
+							}
+							rhs = we.getCssValue(atname);
 						} else if(subselector.equalsIgnoreCase("width")) {
 							rhs = String.valueOf(we.getSize().getWidth());
 						} else if(subselector.equalsIgnoreCase("height")) {
