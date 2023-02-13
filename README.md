@@ -418,6 +418,18 @@ Examples :-
 	}
 
 
+Else block, needs to be superseded by an If or Else-If block
+	:
+	{
+		code
+	}
+Examples :-
+	:
+	{
+		exec @print("else")
+	}
+
+
 Mobile rotate
 	rotate
 
@@ -757,40 +769,6 @@ Examples :-
 		exec @print("if")
 	}
 
-Else-If block, needs to be superseded by an If block
-	:? {find-expr} & {find-expr}?
-	{
-		code
-	}
-	:? eval {template-expr} & {template-expr}?
-	{
-		code
-	}
-	:? browser-scope {browser-name}?
-	{
-		code
-	}
-	:? session-scope {browser-name}?
-	{
-		code
-	}
-Examples :-
-	:? xpath@"ddd"
-	{
-		exec @print("else-if")
-	}
-
-Else block, needs to be superseded by an If or Else-If block
-	:
-	{
-		code
-	}
-Examples :-
-	:
-	{
-		exec @print("else")
-	}
-
 
 Hover over an element and click some other element
 	hoverclick {find-expr} {find-expr}
@@ -880,7 +858,7 @@ Examples :-
 
 
 Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+	{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
 
 
 Fail test/sub-test
@@ -1104,7 +1082,7 @@ Continue in loop
 
 
 Find Expression
-	{id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+	{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
 
 
 Navigate Forward/Next
@@ -1116,6 +1094,18 @@ Mobile Pinch
 Examples :-
 	pinch 123 234
 	pinch id@'ele'
+
+
+Else-If block, needs to be superseded by an If block
+	:? {find-expr}
+	{
+		code
+	}
+Examples :-
+	:? xpath@"ddd"
+	{
+		exec @print("else-if")
+	}
 
 
 Execute embedded code in java/js/ruby/groovy/python
@@ -1151,7 +1141,7 @@ Examples :-
 
 
 Multiple Chained Actions
-	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|randomize {alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
+	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick} {find-expr}?|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|randomize {alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
 Examples :-
 	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
 	actions movetoelement id@'ele' sendkeys 'abc'

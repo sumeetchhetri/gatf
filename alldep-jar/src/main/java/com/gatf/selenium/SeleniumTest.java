@@ -642,7 +642,10 @@ public abstract class SeleniumTest {
 	protected void set___d___(WebDriver ___d___)
 	{
 		if(___d___ instanceof RemoteWebDriver) {
-			((RemoteWebDriver)___d___).setFileDetector(new LocalFileDetector());
+			try {
+				((RemoteWebDriver)___d___).setFileDetector(new LocalFileDetector());
+			} catch(Exception e) {
+			}
 		}
 		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
 		getSession().___d___.add(___d___);

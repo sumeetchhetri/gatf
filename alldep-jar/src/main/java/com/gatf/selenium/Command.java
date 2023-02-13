@@ -4725,7 +4725,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Find Expression",
-        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
             };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
@@ -6358,7 +6358,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Multiple Chained Actions",
-        		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick}|"
+        		"\tactions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick} {find-expr}?|"
         		+ "{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop {find-expr} {find-expr}}|"
         		+ "randomize {alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_} {arg1} {arg2} {arg3}?}|"
         		+ "{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...",
