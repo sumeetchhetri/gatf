@@ -1748,6 +1748,10 @@ function configuration() {
                 "type": "boolean",
                 "required": false
             },
+            "selConcWebdriver": {
+                "type": "boolean",
+                "required": false
+            },
             "isSeleniumModuleTests": {
                 "type": "boolean",
                 "required": false

@@ -43,5 +43,5 @@
   <isSeleniumExecutor>false</isSeleniumExecutor>
   <javaHome>/usr/lib/jvm/java-11-openjdk-amd64/</javaHome>
   <gatfJarPath>/gatf-alldep.jar</gatfJarPath>
-  <selDebugger>false</selDebugger>
+  <selConcWebdriver>false</selConcWebdriver>
 </gatf-execute-config>

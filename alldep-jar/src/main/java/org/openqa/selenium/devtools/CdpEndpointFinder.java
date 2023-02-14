@@ -25,8 +25,6 @@ import org.openqa.selenium.remote.http.HttpClient;
 import org.openqa.selenium.remote.http.HttpRequest;
 import org.openqa.selenium.remote.http.HttpResponse;
 
-import com.gatf.selenium.SeleniumTest;
-
 import java.io.UncheckedIOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -114,8 +112,8 @@ public class CdpEndpointFinder {
     }
 
     try {
-    	if(SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:")) {
-    		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + SeleniumTest.IN_DOCKER.get().getMiddle();
+    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:")) {
+    		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();
     		raw = raws;
     	}
       URI uri = new URI(String.format("http://%s", raw));

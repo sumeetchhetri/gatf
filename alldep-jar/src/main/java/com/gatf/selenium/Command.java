@@ -39,6 +39,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.logging.LoggingPreferences;
@@ -68,6 +69,7 @@ public class Command {
        
         int modeExecType = 0;
         boolean modeEnableGlobalTimeouts = true;
+        boolean modeEnableConcurrentWebDriver = false;
 
         int NUMBER = 1;
         int NUMBER_COND = 1;
@@ -318,6 +320,7 @@ public class Command {
         }
     }
 
+    protected boolean isTop = false;
     protected static Map<String, String> plugins = new HashMap<String, String>();
     protected CommandState state;
     protected String name;
@@ -832,20 +835,50 @@ public class Command {
         }
         return comd;
     }
+    
+    static ImmutablePair<Command, Object[]> nextCommand(ListIterator<Object[]> iter, CommandState state) {
+    	Command tmp = null;
+        Object[] o = iter.next();
+        
+    	for (String dkey : state.dynProps.keySet()) {
+			o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
+		}
+
+        try
+        {
+            tmp = parse(o, state);
+            /*if(o[0].toString().trim().startsWith("alias \"pre1\"")) {
+            	System.out.println();
+            }*/
+        }
+        catch (GatfSelCodeParseError e)
+        {
+            throw e;
+        }
+        catch (Throwable e)
+        {
+            throwParseErrorS(o, e);
+        }
+        return new ImmutablePair<Command, Object[]>(tmp, o);
+    }
 
     static void get(Command parent, ListIterator<Object[]> iter, CommandState state) throws Exception {
         Command prev = null;
         while(iter.hasNext()) {
-            Command tmp = null;
-            Object[] o = iter.next();
+        	ImmutablePair<Command, Object[]> ip = nextCommand(iter, state);
+            Command tmp = ip.left;
+            Object[] o = ip.right;
             
-        	for (String dkey : state.dynProps.keySet()) {
+        	/*for (String dkey : state.dynProps.keySet()) {
 				o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
 			}
 
             try
             {
                 tmp = parse(o, state);
+                if(o[0].toString().trim().startsWith("var @firstname")) {
+                	System.out.println();
+                }
             }
             catch (GatfSelCodeParseError e)
             {
@@ -854,10 +887,15 @@ public class Command {
             catch (Throwable e)
             {
                 throwParseErrorS(o, e);
-            }
+            }*/
             
             if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
             	throwParseErrorS(o, new RuntimeException("Nested subtests/aliases not allowed"));
+            }
+            if(tmp instanceof SubTestCommand) {
+            	if(!parent.isTop) {
+                	throwParseErrorS(o, new RuntimeException("subtests/aliases are allowed only at the top level"));
+                }
             }
             if(parent instanceof FrameCommand && tmp instanceof FrameCommand) {
             	//throwParseErrorS(o, new RuntimeException("Nested frame scopes not allowed"));
@@ -874,9 +912,23 @@ public class Command {
                     || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
                     || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
                     || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
-                get(tmp, iter, state);
-                parent.children.add(tmp);
-                if(tmp.children.size()==0 || !(tmp.children.get(0) instanceof StartCommand)) {
+            	ImmutablePair<Command, Object[]> ipn = nextCommand(iter, state);
+                Command tmpn = ipn.left;
+                Object[] on = ipn.right;
+            	if(!(tmpn instanceof StartCommand) && !(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) 
+            			&& !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand) && (!(tmp instanceof TransientProviderCommand) || (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy))) {
+        			throwError(on, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
+        		}
+
+            	iter.previous();
+            	parent.children.add(tmp);
+            	if(tmpn instanceof StartCommand) {
+	        		get(tmp, iter, state);
+            	} else {
+	        		get(parent, iter, state);
+            	}
+                
+                /*if(tmp.children.size()==0 || !(tmp.children.get(0) instanceof StartCommand)) {
                 	if(!(tmp instanceof TransientProviderCommand) || (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy)) {
                 		if(!(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) && !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand)) {
                 			throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
@@ -904,7 +956,7 @@ public class Command {
                 }
             	if(tmp.children.size()>0 && !(tmp.children.get(tmp.children.size()-1) instanceof EndCommand)) {
             		throwError(o, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " does not have a closing block"));
-            	}
+            	}*/
                 isValid = true;
             } else if(tmp instanceof ValueListCommand) {
                 get(tmp, iter, state);
@@ -918,7 +970,9 @@ public class Command {
                 parent.children.add(tmp);
                 get(parent, iter, state);
                 if(!isValid)isValid = false;
-                return;
+                if(!parent.isTop) {
+                	return;
+                }
             } else if((tmp instanceof CommentCommand && state.commentStart) || tmp instanceof CodeCommand) {
                 if(tmp instanceof CommentCommand) {
                     ((CommentCommand)tmp).b.append(((ValueCommand)tmp.children.get(0)).value+"\n");
@@ -930,10 +984,14 @@ public class Command {
                 if(parent instanceof CommentCommand) {
                     ((CommentCommand)parent).b.append(((EndCommentCommand)tmp).value);
                 }
-                return;
+                if(!parent.isTop) {
+                	return;
+                }
             } else if(tmp instanceof EndCommand) {
                 parent.children.add(tmp);
-                return;
+                if(!parent.isTop) {
+                	return;
+                }
             } else if(tmp instanceof ImportCommand) {
             	String parentPath = state.basePath;
                 if(StringUtils.isNotBlank(o[3].toString())) {
@@ -1023,6 +1081,9 @@ public class Command {
 					throwError(o, new RuntimeException("Config properties file not a valid properties file"));
 				}
                 state.configProps = tprops;
+                if(!parent.isTop) {
+                	throwParseErrorS(o, new RuntimeException("mode command allowed only at the top level"));
+                }
                 parent.children.add(tmp);
                 isValid = true;
             } else if(tmp instanceof DynPropsCommand) {
@@ -1073,19 +1134,21 @@ public class Command {
                     if(state.modeExecType==0) {
                         state.modeExecType = 1;
                     }
+                    if(!parent.isTop) {
+                    	throwParseErrorS(o, new RuntimeException("open command allowed only at the top level"));
+                    }
                     parent.children.add(tmp);
                 } else if(tmp instanceof ModeCommand) {
                     isValid = true;
-                    if(state.modeExecType!=0) {
-                        throwParseErrorS(o, new RuntimeException("mode if provided should be the first execution command in a test script"));
-                    } else {
-                        if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
-                            throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
-                        }
-                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
-                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeExecType;
-                        
-                        state.modeEnableGlobalTimeouts = ((ModeCommand)tmp).enableGlobalTimeouts;
+                    if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
+                        throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
+                    }
+                    state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
+                    state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeExecType;
+                    
+                    state.modeEnableGlobalTimeouts = ((ModeCommand)tmp).enableGlobalTimeouts;
+                    if(!parent.isTop) {
+                    	throwParseErrorS(o, new RuntimeException("mode command allowed only at the top level"));
                     }
                     parent.children.add(tmp);
                 } else if(tmp instanceof SleepCommand) {
@@ -1143,6 +1206,7 @@ public class Command {
             lio.add(new Object[]{s, cnt++, fn, fn.getParentFile()!=null?fn.getParentFile().getAbsolutePath():"", state});
         }
 
+        tcmd.isTop = true;
         get(tcmd, lio.listIterator(), state);
         mergeIfElses(tcmd);
 
@@ -1178,6 +1242,7 @@ public class Command {
         } else {
             commands.clear();
         }
+        SeleniumTest.CONC_WD = context.getGatfExecutorConfig().isSelConcWebdriver();
         commands.addAll(FileUtils.readLines(file, "UTF-8"));
         CommandState state = new CommandState();
         state.basePath = context.getGatfExecutorConfig().getTestCasesBasePath();
@@ -1348,6 +1413,17 @@ public class Command {
         b.append("public void close() {\n/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();\n}\n");
         b.append("public SeleniumTest copy(AcceptanceTestContext ctx, int index) {\nreturn new "+className+"(ctx, index);}\n");
         List<ConfigPropsCommand> cmds = new ArrayList<>();
+        if(mp==null || mp.size()==0) {
+        	for (Command c : children) {
+                if(c instanceof BrowserCommand) {
+                	SeleniumDriverConfig dummy = new SeleniumDriverConfig();
+                	dummy.setArguments("");
+                	dummy.setVersion("");
+                	dummy.setName(c.name);
+                	mp.put(c.name, dummy);
+                }
+            }
+        }
         for (SeleniumDriverConfig driverConfig : mp.values())
         {
             b.append("public void setupDriver"+driverConfig.getName().toLowerCase().replaceAll("[^0-9A-Za-z]+", "")+"(LoggingPreferences ___lp___) throws Exception {\n");
@@ -2820,13 +2896,26 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
 	            String cntvar = state.varnamerandom();
-	            b.append("int "+cntvar+" = 0;\n");
-	            b.append("\nwhile(true) {\n");
-	            b.append(cond.javacodeonlyNoAssert(children, true));
-	            b.append("if("+cond.getActionableVar()+(isVisible?"=":"!")+"=null)break;\n");
-	            b.append("sleep("+state.timeoutSleepGranularity+");\n");
-	            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-	            b.append("}\n");
+	            if(!isVisible) {
+		            b.append("int "+cntvar+" = 0;\n");
+		            b.append("\nwhile(true) {\n");
+		            b.append(cond.javacodeonlyNoAssert(children, true));
+		            b.append("if("+cond.getActionableVar()+"!=null)break;\n");
+		            b.append("sleep("+state.timeoutSleepGranularity+");\n");
+		            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+		            b.append("}\n");
+	            } else {
+	            	String cntvar1 = state.varnamerandom();
+	            	b.append("int "+cntvar+" = 0;\n");
+	            	b.append("boolean "+cntvar1+" = false;\n");
+		            b.append("\nwhile(true) {\n");
+		            b.append(cond.javacodeonlyNoAssert(children, true));
+		            b.append("if("+cond.getActionableVar()+"!=null) "+cntvar1+" = true;\n");
+		            b.append("if("+cntvar1 + " && " +cond.getActionableVar()+"==null) break;\n");
+		            b.append("sleep("+state.timeoutSleepGranularity+");\n");
+		            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+		            b.append("}\n");
+	            }
             }
             if(children!=null && children.size()>0) {
                 Command c = children.get(0);
@@ -3085,11 +3174,14 @@ public class Command {
             this.negation = negation;
             String[] parts = cmd.trim().split("[\t ]+");
             for (String part : parts) {
-            	if(part.charAt(0)==part.charAt(part.length()-1)) {
+            	if(part!=null && !part.trim().isEmpty() && part.charAt(0)==part.charAt(part.length()-1)) {
                     if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
                     	part = part.substring(1, part.length()-1);
                     }
                 }
+            	if(part==null || part.trim().isEmpty()) {
+            		throwParseErrorS(cmdDetails, new RuntimeException("Else if command needs a condition"));
+            	}
             	conds.add(new FindCommand(part, cmdDetails, state));
 			}
         }

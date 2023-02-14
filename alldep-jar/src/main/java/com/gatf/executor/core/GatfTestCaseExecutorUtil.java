@@ -185,7 +185,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
     private Long startTime = 0L;
     
-    private boolean selDebugger;
+    private boolean selConcWebdriver;
 
     private AcceptanceTestContext context;
 
@@ -330,8 +330,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         this.startTime = startTime;
     }
     
-    public void setSelDebugger(boolean selDebugger) {
-		this.selDebugger = selDebugger;
+    public void setSelConcWebdriver(boolean selConcWebdriver) {
+		this.selConcWebdriver = selConcWebdriver;
 	}
 
 	public void setContext(AcceptanceTestContext context) {
@@ -463,7 +463,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         configuration.setSeleniumScripts(seleniumScripts);
         configuration.setSeleniumDriverConfigs(seleniumDriverConfigs);
         configuration.setSeleniumLoggerPreferences(seleniumLoggerPreferences);
-        configuration.setSelDebugger(selDebugger);
+        configuration.setSelConcWebdriver(selConcWebdriver);
         configuration.setJavaHome(javaHome);
 
         if (configFile != null) {
@@ -1809,7 +1809,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             mojo.execute();
         } else if (args.length > 1 && args[0].startsWith("-selenium") && !args[1].trim().isEmpty()) {
             GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
-            mojo.setSelDebugger(args[0].equals("-selenium-debugger"));
             mojo.setConfigFile(args[1]);
             mojo.setNumConcurrentExecutions(1);
             mojo.setHttpConnectionTimeout(10000);

@@ -28,6 +28,10 @@ public class SeleniumTestSession implements Serializable {
     protected transient long __teststarttime__ = 0L;
     protected transient final Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
     protected transient final Map<String, Object> __vars__ = new LinkedHashMap<String, Object>();
+	
+    //protected transient ServerSocket ccServer = null;
+    //protected transient Thread ccThrd = null;
+    //protected transient volatile boolean ccStatus = true;
     
     protected final Map<String, Object[]> internalTestRs = new HashMap<String,Object[]>();
     

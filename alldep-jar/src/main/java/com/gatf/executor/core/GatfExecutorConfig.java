@@ -144,7 +144,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String gatfJarPath;
     
-    private boolean selDebugger;
+    private boolean selConcWebdriver;
     
     private String wrkPath;
     
@@ -602,12 +602,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
         this.gatfJarPath = gatfJarPath;
     }
 
-    public boolean isSelDebugger() {
-		return selDebugger;
+    public boolean isSelConcWebdriver() {
+		return selConcWebdriver;
 	}
 
-	public void setSelDebugger(boolean selDebugger) {
-		this.selDebugger = selDebugger;
+	public void setSelConcWebdriver(boolean selConcWebdriver) {
+		this.selConcWebdriver = selConcWebdriver;
 	}
 
 	public String getWrkPath() {
