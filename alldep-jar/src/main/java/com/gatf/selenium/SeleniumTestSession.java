@@ -23,6 +23,7 @@ public class SeleniumTestSession implements Serializable {
     protected transient int __wpos__ = 0;
     protected final Map<String, SeleniumResult> __result__ = new HashMap<String, SeleniumResult>();
     
+    protected transient String __aliasname__ = null;
     protected transient String __subtestname__ = null;
     protected transient long __subtestexecutiontime__ = 0L;
     protected transient long __teststarttime__ = 0L;

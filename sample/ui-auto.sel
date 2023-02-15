@@ -18,12 +18,6 @@ click text@"Sign In"
 ?? css@"div#left-panel>nav>div>ul>li" selected
 ?? css@"div#left-panel>nav>div>ul>li" enabled
 ?? css@"div#left-panel>nav>div>ul>li" visible
-? css@"a[href=#myCustomers]"
-? css@"a[href=#allCustomers]"
-? css@"a[href=#myVendors]"
-? css@"a[href=#allVendors]"
-? css@"a[href=#customerConnection]"
-? css@"a[href=#vendorConnection]"
 ? name@"asdasd"
 {
 	click id@"1"
@@ -53,16 +47,16 @@ maximize
 close
 clear class@"logoutLink"
 submit class@"logoutLink"
-window_set width 100
-window_set height 100
-window_set posx 100
-window_set posy 100
+setting width 100
+setting height 100
+setting posx 100
+setting posy 100
 window main
 window 1
 window "2"
 window main
 var t css@"div[class=ssdfdsf]>nav>div>ul>li"
-import test.sel
+//import test.sel
 jsvar u "return window;"
 execjs "arguments[0].style.border='3px solid red'"
 screenshot "test.png"
@@ -86,7 +80,7 @@ chord \uE009\u0061 id@"Location"
 {
 	exec @print("loop")
 }
-#transient-provider "prov1" "temp,temp1" id@"Location" attr@"abc",cssvalue@"bcd"
+#transient-provider "prov1" "temp,temp1" id@"Location" attr@"abc",cssvalue@"bcd" lazy
 #provider "prov1"
 {
 	click css@"input[type='submit']"
@@ -104,7 +98,6 @@ tap xpath@"sds" 2
 swipe 1 2 3 4 5
 rotate
 hidekeypad
-touch press xpath@"Sd" 1 2 press 1 2 press xpath@"Sd" tap xpath@"Sd" 1 2 tap 1 2 tap xpath@"Sd" moveto xpath@"Sd" 1 2 moveto 1 2 moveto xpath@"Sd" longpress xpath@"Sd" 1 2 3 longpress xpath@"Sd" 1 2 longpress 1 2 3 wait wait 1 release
 shake
 exec @print($v{abt})
 #provider "abc"
@@ -163,7 +156,7 @@ api yourapitestcase
 [
 	dfdf
 ]
-? ${abc}=="1"
+? eval ${abc}=="1"
 {
 	exec @print("if")
 	var mydate new java.text.SimpleDateFormat("MM/DD/YYYY").format(new java.util.Date())

@@ -1,6 +1,333 @@
+open chrome "one"
+open chrome "two"
+open chrome-dkr
+open chrome-hdl
+open chrome-rec
 open chrome
-dynprops env.props
+//dynprops env.props
 maximize
+mode normal true
+goto https://abc.com
+//??+ xpath@"t1" click text ="ABCD"
+/*click xpath@"t1" text ="ABCD"
+??+ xpath@"t1" clear
+clear xpath@"t1"*/
+??+ xpath@"t1" submit
+submit xpath@"t1"
+??+ xpath@"t1" hover
+hover xpath@"t1"
+??+ xpath@"t1" upload 'asas'
+upload 'asas' xpath@"t1"
+??+ xpath@"t1" type 'asas'
+type 'asas' xpath@"t1"
+??+ xpath@"t1" select index@1
+select index@1 xpath@"t1"
+randomize xpath@"UIUIUIUIUIUI" fuzzyn _@3:4:5:6
+??- xpath@"UIUIUIUIUIUI" randomize fuzzyn _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyn _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzya _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyauc _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyalc _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyan _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyanuc _@3:4:5:6
+??+ xpath@"sdadsa" randomize fuzzyanlc _@3:4:5:6
+??+ xpath@expr3 type "file://ID-Doc-1.png"
+var @firstname xpath@"//input[@placeholder="FirstName"]" attr@value
+#transient-provider prov1 var1,var2 id@'abc' text,attr@abc lazy
+#transient-provider prov2 var1,var2 id@'abc' text,attr@abc
+{
+	sleep 123
+	{
+		{
+			sleep 1234
+			{
+				sleep 12344
+			}
+		}
+		sleep 12345
+		{
+		}
+	}
+	? xpath@sdsd123456
+	{
+		sleep 1234566
+		{
+			sleep 1234566
+			? xpath@sdsd
+			{
+				sleep 1234566
+			}
+		}
+		sleep 1234566
+	}
+	:
+	{
+		sleep 3
+	}
+}
+alias "pre"
+{
+	sleep 10000
+	{
+		sleep 1
+	}
+	? xpath@sdsd
+	{
+		sleep 2222
+		? xpath@sdsd
+		{
+			sleep 2222
+			? xpath@sdsd
+			{
+				sleep 2222
+				? xpath@sdsd
+				{
+					sleep 2222
+				}
+			}
+		}
+	}
+	:
+	{
+		sleep 3
+	}
+}
+alias "pre1"
+{
+	@call "pre"
+	sleep 10000
+}
+subtest "abc" ("p1:1" "p2:aaa") one
+{
+	sleep 10000
+	execjs "function reportScreenshot() {html2canvas(document.body).then(function(canvas) {var a = document.createElement("a");a.href = canvas.toDataURL();a.setAttribute("download", 'report.png');a.click();});}reportScreenshot();"
+	@call pre
+	@call pre1
+	sleep 1111
+	tab 1
+	{
+		sleep 1
+		? xpath@sdsd
+		{
+			sleep 2
+		}
+	}
+	? xpath@sdsd
+	{
+		sleep 2
+		? xpath@sdsd
+		{
+			sleep 2
+		}
+	}
+	:
+	{
+		sleep 3
+		? xpath@sdsd
+		{
+			sleep 2
+		}
+	}
+	close
+	tab 0
+}
+subtest "xyz" ("p1:1" "p2:aaa") one
+{
+	sleep 10000
+	@call pre
+	@call pre1
+	sleep 1111
+	@call abc
+	? eval ${username} == "qa@llh"
+	{
+		sleep 1
+	}
+	:? xpath@sdsd
+	{
+		sleep 2
+	}
+	:
+	{
+		sleep 3
+	}
+}
+alias "bcd"
+{
+	sleep 10000
+}
+? eval ${username} == "qa@llh"
+{
+	sleep 1
+}
+:? xpath@sdsd
+{
+	sleep 2
+}
+:
+{
+	sleep 3
+}
+? eval ${a}=="a" & eval ${a}=="a"
+{
+	sleep 1
+}
+? xpath@sdsd text ="DDDD"
+{
+	sleep 2
+}
+? title = "XXXXXXX"
+{
+	sleep 2
+}
+? title = 
+[
+	"YYYYY"
+	click this
+]
+{
+	sleep 2
+}
+# xpath@"//input[contains(@class,'checkServiceClass')]"
+{
+    click this
+}
+? xpath@TTTTTTT selected
+{
+	sleep 2
+}
+? relative xpath@"expr1" above xpath@"expr2"
+{
+	sleep 1
+}
+? relative xpath@"expr1" below xpath@"expr2"
+{
+	sleep 1
+}
+? relative xpath@"expr1" leftof xpath@"expr2"
+{
+	sleep 1
+}
+? relative xpath@"expr1" rightof xpath@"expr2"
+{
+	sleep 1
+}
+? relative xpath@"expr1" near xpath@"expr2"
+{
+	sleep 1
+}
+? browser-scope "chrome"
+{
+	sleep 2
+}
+? session-scope "one"
+{
+	sleep 2
+}
+{
+	sleep 34444
+}
+alert
+alert "sadasd"
+confirm
+confirm true
+confirm false
+confirm true "dsadas"
+
+@call bcd
+@call "abc" ("p1:2" "p2:bbb") two
+
+#provider "aad" 1 10
+{
+	sleep 10
+	??- xpath@"//*[@id="usernameId"]" type "${abc}@index"
+<<<(java)
+	Thread.sleep(@index);
+>>>
+}
+#provider "aads" 1
+{
+	sleep 20
+<<<(java)
+	Thread.sleep(@index);
+>>>
+}
+#provider-sf "aads"
+{
+	sleep 30
+<<<(java)
+	Thread.sleep(@index);
+>>>
+}
+readfile /tmp/test.txt
+{
+	exec @print(@index)
+	exec @print(@line)
+}
+readfile /tmp/test.png binary
+{
+	exec @print(@index)
+	exec @print(@line)
+}
+#transient-provider prov1 var1,var2 class@'userNameTxt' attr@id,attr@name
+{
+	exec @print(${var1})
+	exec @print(${var2})
+	? eval "${var1}"=="usernameId"
+	{
+		exec @print("variable 1-----if native")
+	}
+	#jif(${var1}.equals("usernameId")) {
+		exec @print("variable 1-----if java")
+	#j}
+}
+curl post http://abc.com
+{
+	[
+		Content-Type=application/xml
+	]
+	<abc>abc</abc>
+}
+var curl_val plugin curl post http://abc.com
+{
+	[
+		Content-Type=application/xml
+	]
+	<abc>abc</abc>
+}
+frame 1
+{
+    type test id@sdsd
+    close
+}
+tab 1
+{
+    type test id@sdsd
+    close
+}
+window 1
+{
+    type test id@sdsd
+    close
+}
+? xpath@sasa xpath@sdsdsd xpath@sdsds
+{
+    pass
+}
+:? id@sdsd id@sdsds css@sdsad
+{
+    fail
+}
+close
+close 1
+close others
+scroll id@sdsd
+setting clk_focus true
+??- xpath@"//*[@data-translate='Login']" click
+setting clk_focus false
+netapix on POST "https://app.ohumhealthcare.com/demo6_back/api/rest/auth/loginf"
+??- xpath@"//*[@data-translate='Login']" click
+netapix off json var1@$.token,var2@$.firstname,$.mobileNo
+
 alias "waitldr"
 {
 	??+ id@"some-element"

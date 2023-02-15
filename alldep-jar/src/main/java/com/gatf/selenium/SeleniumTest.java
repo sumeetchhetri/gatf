@@ -837,6 +837,19 @@ public abstract class SeleniumTest {
 		}
 		getSession().__subtestname__ = __subtestname__;
 	}
+	
+	protected String get__subtestname__() {
+		return getSession().__subtestname__;
+	}
+	
+	protected void set__aliasname__(String __aliasname__)
+	{
+		getSession().__aliasname__ = __aliasname__;
+	}
+	
+	protected String get__aliasname__() {
+		return getSession().__aliasname__;
+	}
 
 	protected WebDriver getWebDriver() {
 		return getSession().___d___.get(getSession().__wpos__);
@@ -2256,7 +2269,7 @@ public abstract class SeleniumTest {
 								flag &= value.compareTo(rhs)<=0;
 							} else if(oper.startsWith(">=")) {
 								flag &= value.compareTo(rhs)>=0;
-							} else if(oper.startsWith("=")) {
+							} else if(oper.startsWith("=") || oper.startsWith("==")) {
 								flag &= value.compareTo(rhs)==0;
 							} else if(oper.startsWith("<")) {
 								flag &= value.compareTo(rhs)<0;
@@ -2272,87 +2285,80 @@ public abstract class SeleniumTest {
 								flag &= value.endsWith(rhs);
 							}
 						}
-					}
-
-					for(final WebElement we: ret) {
-						String rhs = null;
-						if(subselector.equalsIgnoreCase("text")) {
-							rhs = we.getText();
-						} else if(subselector.equalsIgnoreCase("tagname")) {
-							rhs = we.getTagName();
-						} else if(subselector.toLowerCase().startsWith("attr@")) {
-							String atname = subselector.substring(5);
-							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
-								atname = atname.substring(1, atname.length()-1);
+					} else {
+						for(final WebElement we: ret) {
+							String rhs = null;
+							if(subselector.equalsIgnoreCase("text")) {
+								rhs = we.getText();
+							} else if(subselector.equalsIgnoreCase("tagname")) {
+								rhs = we.getTagName();
+							} else if(subselector.toLowerCase().startsWith("attr@")) {
+								String atname = subselector.substring(5);
+								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+									atname = atname.substring(1, atname.length()-1);
+								}
+								rhs = we.getAttribute(atname);
+							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
+								String atname = subselector.substring(9);
+								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+									atname = atname.substring(1, atname.length()-1);
+								}
+								rhs = we.getCssValue(atname);
+							} else if(subselector.equalsIgnoreCase("width")) {
+								rhs = String.valueOf(we.getSize().getWidth());
+							} else if(subselector.equalsIgnoreCase("height")) {
+								rhs = String.valueOf(we.getSize().getHeight());
+							} else if(subselector.equalsIgnoreCase("xpos")) {
+								rhs = String.valueOf(we.getLocation().getX());
+							} else if(subselector.equalsIgnoreCase("ypos")) {
+								rhs = String.valueOf(we.getLocation().getY());
 							}
-							rhs = we.getAttribute(atname);
-						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
-							String atname = subselector.substring(9);
-							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
-								atname = atname.substring(1, atname.length()-1);
+	
+							if(rhs!=null) {
+								if(oper.startsWith("<=")) {
+									flag &= value.compareTo(rhs)<=0;
+								} else if(oper.startsWith(">=")) {
+									flag &= value.compareTo(rhs)>=0;
+								} else if(oper.startsWith("=") || oper.startsWith("==")) {
+									flag &= value.compareTo(rhs)==0;
+								} else if(oper.startsWith("<")) {
+									flag &= value.compareTo(rhs)<0;
+								} else if(oper.startsWith(">")) {
+									flag &= value.compareTo(rhs)>0;
+								} else if(oper.startsWith("!=")) {
+									flag &= value.compareTo(rhs)!=0;
+								} else if(oper.startsWith("%") && oper.endsWith("%")) {
+									flag &= value.contains(rhs);
+								} else if(oper.startsWith("%")) {
+									flag &= value.startsWith(rhs);
+								} else if(oper.endsWith("%")) {
+									flag &= value.endsWith(rhs);
+								}
 							}
-							rhs = we.getCssValue(atname);
-						} else if(subselector.equalsIgnoreCase("width")) {
-							rhs = String.valueOf(we.getSize().getWidth());
-						} else if(subselector.equalsIgnoreCase("height")) {
-							rhs = String.valueOf(we.getSize().getHeight());
-						} else if(subselector.equalsIgnoreCase("xpos")) {
-							rhs = String.valueOf(we.getLocation().getX());
-						} else if(subselector.equalsIgnoreCase("ypos")) {
-							rhs = String.valueOf(we.getLocation().getY());
+	
+							break;
 						}
-
-						if(rhs!=null) {
-							if(oper.startsWith("<=")) {
-								flag &= value.compareTo(rhs)<=0;
-							} else if(oper.startsWith(">=")) {
-								flag &= value.compareTo(rhs)>=0;
-							} else if(oper.startsWith("=")) {
-								flag &= value.compareTo(rhs)==0;
-							} else if(oper.startsWith("<")) {
-								flag &= value.compareTo(rhs)<0;
-							} else if(oper.startsWith(">")) {
-								flag &= value.compareTo(rhs)>0;
-							} else if(oper.startsWith("!=")) {
-								flag &= value.compareTo(rhs)!=0;
-							} else if(oper.startsWith("%") && oper.endsWith("%")) {
-								flag &= value.contains(rhs);
-							} else if(oper.startsWith("%")) {
-								flag &= value.startsWith(rhs);
-							} else if(oper.endsWith("%")) {
-								flag &= value.endsWith(rhs);
-							}
-						}
-
-						break;
 					}
 				} else if(values!=null && values.length>0) {
-					for(final WebElement we: ret) {
+					if(byselsame)
+					{
 						String rhs = null;
-						if(subselector.equalsIgnoreCase("text")) {
-							rhs = we.getText();
-						} else if(subselector.equalsIgnoreCase("tagname")) {
-							rhs = we.getTagName();
-						} else if(subselector.toLowerCase().startsWith("attr@")) {
-							String atname = subselector.substring(5);
-							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
-								atname = atname.substring(1, atname.length()-1);
-							}
-							rhs = we.getAttribute(atname);
-						} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
-							String atname = subselector.substring(9);
-							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
-								atname = atname.substring(1, atname.length()-1);
-							}
-							rhs = we.getCssValue(atname);
+						if(subselector.equalsIgnoreCase("title")) {
+							rhs = ((WebDriver)sc).getTitle();
+						} else if(subselector.equalsIgnoreCase("currentUrl")) {
+							rhs = ((WebDriver)sc).getCurrentUrl();
+						} else if(subselector.equalsIgnoreCase("pageSource")) {
+							rhs = ((WebDriver)sc).getPageSource();
 						} else if(subselector.equalsIgnoreCase("width")) {
-							rhs = String.valueOf(we.getSize().getWidth());
+							rhs = String.valueOf(driver.manage().window().getSize().getWidth());
 						} else if(subselector.equalsIgnoreCase("height")) {
-							rhs = String.valueOf(we.getSize().getHeight());
+							rhs = String.valueOf(driver.manage().window().getSize().getHeight());
 						} else if(subselector.equalsIgnoreCase("xpos")) {
-							rhs = String.valueOf(we.getLocation().getX());
+							rhs = String.valueOf(driver.manage().window().getPosition().getX());
 						} else if(subselector.equalsIgnoreCase("ypos")) {
-							rhs = String.valueOf(we.getLocation().getY());
+							rhs = String.valueOf(driver.manage().window().getPosition().getY());
+						} else if(subselector.equalsIgnoreCase("alerttext")) {
+							rhs = String.valueOf(driver.switchTo().alert().getText());
 						}
 
 						if(rhs!=null) {
@@ -2370,7 +2376,7 @@ public abstract class SeleniumTest {
 									tflag &= nvalue.compareTo(rhs)>=0;
 								}
 								flag &= tflag;
-							} else if(oper.startsWith("=")) {
+							} else if(oper.startsWith("=") || oper.startsWith("==")) {
 								boolean tflag = true;
 								for (int i=0;i<values.length;i++) {
 									String nvalue = values[i];
@@ -2421,8 +2427,104 @@ public abstract class SeleniumTest {
 								flag &= tflag;
 							}
 						}
-
-						break;
+					} else {
+						for(final WebElement we: ret) {
+							String rhs = null;
+							if(subselector.equalsIgnoreCase("text")) {
+								rhs = we.getText();
+							} else if(subselector.equalsIgnoreCase("tagname")) {
+								rhs = we.getTagName();
+							} else if(subselector.toLowerCase().startsWith("attr@")) {
+								String atname = subselector.substring(5);
+								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+									atname = atname.substring(1, atname.length()-1);
+								}
+								rhs = we.getAttribute(atname);
+							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
+								String atname = subselector.substring(9);
+								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
+									atname = atname.substring(1, atname.length()-1);
+								}
+								rhs = we.getCssValue(atname);
+							} else if(subselector.equalsIgnoreCase("width")) {
+								rhs = String.valueOf(we.getSize().getWidth());
+							} else if(subselector.equalsIgnoreCase("height")) {
+								rhs = String.valueOf(we.getSize().getHeight());
+							} else if(subselector.equalsIgnoreCase("xpos")) {
+								rhs = String.valueOf(we.getLocation().getX());
+							} else if(subselector.equalsIgnoreCase("ypos")) {
+								rhs = String.valueOf(we.getLocation().getY());
+							}
+	
+							if(rhs!=null) {
+								if(oper.startsWith("<=")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag |= nvalue.compareTo(rhs)<=0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith(">=")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.compareTo(rhs)>=0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith("=")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.compareTo(rhs)==0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith("<")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.compareTo(rhs)<0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith(">")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.compareTo(rhs)>0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith("!=")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.compareTo(rhs)!=0;
+									}
+									flag &= tflag;
+								} else if(oper.startsWith("%") && oper.endsWith("%")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.contains(rhs);
+									}
+									flag &= tflag;
+								} else if(oper.startsWith("%")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.startsWith(rhs);
+									}
+									flag &= tflag;
+								} else if(oper.endsWith("%")) {
+									boolean tflag = true;
+									for (int i=0;i<values.length;i++) {
+										String nvalue = values[i];
+										tflag &= nvalue.endsWith(rhs);
+									}
+									flag &= tflag;
+								}
+							}
+	
+							break;
+						}
 					}
 				}
 			} else if(action!=null) {
