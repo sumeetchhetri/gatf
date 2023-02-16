@@ -1680,21 +1680,28 @@ public abstract class SeleniumTest {
 	@SuppressWarnings({ "serial", "unchecked" })
 	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, String finder1, String relative, List<WebElement> ce) {
 		finder = finder.trim();
-		String by = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(0, finder.indexOf("@")).trim();
+		String by = finder.indexOf("@")!=-1?finder.substring(0, finder.indexOf("@")).trim():finder;
 		if(by.charAt(0)==by.charAt(by.length()-1)) {
 			if(by.charAt(0)=='"' || by.charAt(0)=='\'') {
 				by = by.substring(1, by.length()-1);
 			}
 		}
-		if(by.equalsIgnoreCase("this")) {
-			return ce;
-		}
-		String classifier = (finder.equalsIgnoreCase("active@") || finder.equalsIgnoreCase("active"))?"active":finder.substring(finder.indexOf("@")+1).trim();
-		if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
+		
+		String classifier = finder.indexOf("@")!=-1?finder.substring(finder.indexOf("@")+1).trim():"";
+		if(!classifier.isEmpty() && classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
 			if(classifier.charAt(0)=='"' || classifier.charAt(0)=='\'') {
 				classifier = classifier.substring(1, classifier.length()-1);
 			}
 		}
+		
+		if(by.equalsIgnoreCase("this") || by.equalsIgnoreCase("current")) {
+			return ce;
+		} else if(by.equalsIgnoreCase("active")) {
+			return new ArrayList<WebElement>(){{add(d.switchTo().activeElement());}};
+		} else if(classifier.trim().isEmpty()) {
+			throw new RuntimeException("Invalid element selector specified " + finder);
+		}
+		
 		List< WebElement> el = null;
 		if(by.equalsIgnoreCase("id")) {
 			el = By.id(classifier).findElements(sc);
@@ -1723,8 +1730,6 @@ public abstract class SeleniumTest {
 			el = By.linkText(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("partialLinkText")) {
 			el = By.partialLinkText(classifier).findElements(sc);
-		} else if(by.equalsIgnoreCase("active")) {
-			el = new ArrayList<WebElement>(){{add(d.switchTo().activeElement());}};
 		} else if(by.equalsIgnoreCase("jq") || by.equalsIgnoreCase("jquery") || by.equalsIgnoreCase("$")) {
 			el = ByJquerySelector(d, classifier);
 		}
@@ -3014,6 +3019,7 @@ public abstract class SeleniumTest {
 			lrp.add(rp);
 			devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
 			
+			System.out.println("Starting network inspection on CDP session " + devTools.getCdpSession().toString());
 			devTools.addListener(Fetch.requestPaused(), requestPaused -> {
 				System.out.println(String.format("Captured Network Response for [%s] -> %d", requestPaused.getRequestId().toString(), 
 						requestPaused.getResponseStatusCode().get()));
@@ -3021,6 +3027,7 @@ public abstract class SeleniumTest {
 				String rurl = requestPaused.getRequest().getUrl();
 				rurl = rurl.indexOf("?")!=-1?rurl.substring(0, rurl.indexOf("?")):rurl;
 				if(requestPaused.getRequest().getMethod().equalsIgnoreCase(method) && rurl.equalsIgnoreCase(murl)) {
+					System.out.println("Matched inspection request [" + method + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
 					List<HeaderEntry> headers = requestPaused.getResponseHeaders().get();
 					String mimeType = null;
 					Map<String, Object> headerMap = new HashMap<>();
@@ -3108,7 +3115,9 @@ public abstract class SeleniumTest {
 			
 			if(driver instanceof HasDevTools) {
 				DevTools devTools = ((HasDevTools)driver).getDevTools();
+				System.out.println("Closing network inspection on CDP session " + devTools.getCdpSession().toString());
 				devTools.send(Fetch.disable());
+				devTools.clearListeners();
 				devTools.disconnectSession();
 			}
 			

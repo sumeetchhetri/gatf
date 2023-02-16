@@ -5100,6 +5100,8 @@ public class Command {
             }
             if(sclassifier!=null) {
                 sclassifier =  "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
+            } else {
+            	sclassifier =  "new String[] {\"\", \"\"}";
             }
             rtl = varname;
             String wel = by.equals("this")?state.currthisat():"___ce___";
@@ -5250,6 +5252,8 @@ public class Command {
             }
             if(sclassifier!=null) {
             	sclassifier = "new String[] {evaluate(\""+esc(sclassifier)+"\"), evaluate(\""+esc(classifier1)+"\")}";
+            } else {
+            	sclassifier =  "new String[] {\"\", \"\"}";
             }
             String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
             String wel = by.equals("this")?state.currthisat():"___ce___";
