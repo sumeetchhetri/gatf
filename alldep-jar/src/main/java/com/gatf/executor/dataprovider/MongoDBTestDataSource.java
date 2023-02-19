@@ -233,6 +233,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 						for (int i = 0; i < variableNamesArr.size(); i++) {
 							//Assert.assertTrue(String.format("Could not find %s field in the result document returned",
 							//		propertyNamesArr.get(i)), object.containsField(propertyNamesArr.get(i)));
+							if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 							if(object.containsField(propertyNamesArr.get(i)))
 							{
 								row.put(variableNamesArr.get(i), object.get(propertyNamesArr.get(i)).toString());

@@ -777,6 +777,20 @@ public class AcceptanceTestContext {
 		return dataSourceMapForProfiling;
 	}
 	
+	public TestDataSource getDSN(String name)
+	{
+		return dataSourceMap.get(name);
+	}
+	
+	public SQLDatabaseTestDataSource getSQLDSN(String name)
+	{
+		TestDataSource t = dataSourceMap.get(name);
+		if(t!=null && t instanceof SQLDatabaseTestDataSource) {
+			return (SQLDatabaseTestDataSource)t;
+		}
+		return null;
+	}
+	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void handleHooks(List<GatfTestDataSourceHook> dataSourceHooks)
 	{
@@ -949,7 +963,6 @@ public class AcceptanceTestContext {
 	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private List<Map<String, String>> getProviderData(GatfTestDataProvider provider, TestCase testCase) {
-		
 		TestDataSource dataSource = dataSourceMap.get(provider.getDataSourceName());
 		
 		TestDataProvider testDataProvider = null;
@@ -1001,7 +1014,7 @@ public class AcceptanceTestContext {
 		
 		testData = testDataProvider.provide(provider, this);
 		if(testDataProvider instanceof FileTestDataProvider) {
-			fileProviderStateMap.put(provider.getProviderName(), ((FileTestDataProvider)testDataProvider).getHash());
+			fileProviderStateMap.put(provider.getProviderName(), ((FileTestDataProvider)testDataProvider).getHash(provider, this));
 		}
 		return testData;
 	}

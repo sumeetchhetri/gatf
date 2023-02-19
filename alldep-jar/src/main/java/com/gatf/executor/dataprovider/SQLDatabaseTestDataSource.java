@@ -118,13 +118,18 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 		logger.info("Releasing connections....");
 	}
 	
+	public List<Map<String, String>> provide(String queryStr, String vars, AcceptanceTestContext context) {
+		GatfTestDataProvider provider = new GatfTestDataProvider();
+		provider.setQueryStr(queryStr);
+		provider.setProviderName(vars);
+		return provide(provider, context);
+	}
+	
 	public List<Map<String, String>> provide(GatfTestDataProvider provider, AcceptanceTestContext context) {
-		
 		List<Map<String, String>> result = new ArrayList<Map<String,String>>();
-		
 		Resource res = null;
+		
 		try {
-			
 			Assert.assertNotNull("queryString cannot be empty", provider.getQueryStr());
 			Assert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
 			
@@ -154,7 +159,6 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 			ResultSet resultSet = null;
 			
 			try {
-				
 				res = getResource();
 				Connection conn = (Connection)res.object;
 				
@@ -169,6 +173,7 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 				while (resultSet.next()) {
 					Map<String, String> row = new HashMap<String, String>();
 					for (int i = 0; i < variableNamesArr.size(); i++) {
+						if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 						row.put(variableNamesArr.get(i), resultSet.getString(i+1));
 					}
 					result.add(row);
@@ -206,10 +211,9 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 
 	public boolean execute(String queryStr) {
 		boolean response = false;
-		
 		Resource res = null;
+		
 		try {
-			
 			Assert.assertNotNull("queryString cannot be empty", queryStr);
 			Assert.assertFalse("queryString cannot be empty", queryStr.isEmpty());
 			
@@ -218,7 +222,6 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 			build.append(String.format("dataSource name is %s\n", getDataSourceName()));
 			build.append(String.format("queryString is %s]", queryStr));
 			logger.info(build.toString());
-			
 			
 			Statement statement = null;
 			try {

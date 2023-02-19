@@ -25,6 +25,7 @@ public class SeleniumTestSession implements Serializable {
     
     protected transient String __aliasname__ = null;
     protected transient String __subtestname__ = null;
+    protected transient Map<String, Object> __loopcontext__ = new HashMap<>();
     protected transient long __subtestexecutiontime__ = 0L;
     protected transient long __teststarttime__ = 0L;
     protected transient final Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();

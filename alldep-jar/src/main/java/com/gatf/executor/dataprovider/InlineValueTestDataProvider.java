@@ -73,6 +73,7 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 			
 			Map<String, String> row = new HashMap<String, String>();
 			for (int i = 0; i < variableNamesArr.size(); i++) {
+				if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 				row.put(variableNamesArr.get(i), values[i]);
 			}
 			result.add(row);

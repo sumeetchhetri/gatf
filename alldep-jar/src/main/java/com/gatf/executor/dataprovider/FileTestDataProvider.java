@@ -59,12 +59,21 @@ import au.com.bytecode.opencsv.CSVReader;
  */
 public class FileTestDataProvider implements TestDataProvider {
 	
-	private File provFile = null;
-
 	private Logger logger = Logger.getLogger(FileTestDataProvider.class.getSimpleName());
 	
+	public static List<Map<String, String>> provide(String filePath, String variableNames, AcceptanceTestContext context) {
+		GatfTestDataProvider provider = new GatfTestDataProvider();
+		String addl = "";
+		if(filePath.contains("@")) {
+			addl = filePath.substring(filePath.indexOf("@")+1);
+			filePath = filePath.substring(0, filePath.indexOf("@"));
+		}
+		provider.setArgs(new String[] {filePath, variableNames, addl});
+		provider.setProviderProperties(variableNames);
+		return new FileTestDataProvider().provide(provider, context);
+	}
+	
 	public List<Map<String, String>> provide(GatfTestDataProvider provider, AcceptanceTestContext context) {
-		
 		List<Map<String, String>> result = new ArrayList<Map<String,String>>();
 		
 		if(provider.getArgs()==null || provider.getArgs().length==0) {
@@ -102,6 +111,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		build.append(String.format("variableNames is %s]", variableNames));
 		logger.info(build.toString());
 		
+		File provFile = null;
 		try {
 			provFile = context.getResourceFile(filePath);
 			Assert.assertTrue(String.format("Unable to find %s", filePath), provFile!=null && provFile.exists());
@@ -110,11 +120,11 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 		
 		if(fileType.equalsIgnoreCase("csv") || fileType.equalsIgnoreCase("xls") || fileType.equalsIgnoreCase("xlsx")) {
-			handleCsvFamilyFile(provider.getArgs(), fileType, variableNamesArr, result);
+			handleCsvFamilyFile(provFile, provider.getArgs(), fileType, variableNamesArr, result);
 		} else if(fileType.equalsIgnoreCase("xml")) {
-			handleXMLFile(variableNamesArr, result);
+			handleXMLFile(provFile, variableNamesArr, result);
 		} else if(fileType.equalsIgnoreCase("json")) {
-			handleJSONFile(variableNamesArr, result);
+			handleJSONFile(provFile, variableNamesArr, result);
 		} else {
 			throw new AssertionError(String.format("Invalid fileType %s, only csv, xml and json allowed", fileType));
 		}
@@ -122,7 +132,14 @@ public class FileTestDataProvider implements TestDataProvider {
 		return result;
 	}
 	
-	public String getHash() {
+	public String getHash(GatfTestDataProvider provider, AcceptanceTestContext context) {
+		File provFile = null;
+		String filePath = provider.getArgs()[0].trim();
+		try {
+			provFile = context.getResourceFile(filePath);
+		} catch (Exception e) {
+			throw new AssertionError(String.format("Unable to find %s", filePath));
+		}
 		if(provFile!=null && provFile.exists()) {
 			try {
 				return DigestUtils.sha512Hex(new FileInputStream(provFile));
@@ -132,9 +149,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		return null;
 	}
 	
-	private void handleCsvFamilyFile(String[] args, String fileType, List<String> variableNamesArr, 
-			List<Map<String, String>> result)
-	{
+	private void handleCsvFamilyFile(File provFile, String[] args, String fileType, List<String> variableNamesArr,  List<Map<String, String>> result) {
 		List<String[]> list = new ArrayList<String[]>();
 		try {
 			if(fileType.equalsIgnoreCase("csv")) {
@@ -159,6 +174,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				}
 				Map<String, String> row = new HashMap<String, String>();
 				for (int i = 0; i < variableNamesArr.size(); i++) {
+					if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 					row.put(variableNamesArr.get(i), parts[i]);
 				}
 				result.add(row);
@@ -183,6 +199,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				}
 				Map<String, String> row = new HashMap<String, String>();
 				for (int i = 0; i < variableNamesArr.size(); i++) {
+					if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 					row.put(variableNamesArr.get(i), parts[i]);
 				}
 				result.add(row);
@@ -201,7 +218,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 	}*/
 	
-	private void handleXMLFile(List<String> variableNamesArr, List<Map<String, String>> result) {
+	private void handleXMLFile(File provFile, List<String> variableNamesArr, List<Map<String, String>> result) {
 		try
 		{
 			String content = FileUtils.readFileToString(provFile, "UTF-8");
@@ -239,6 +256,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				for (int j = 0; j < nodeLength; j++) {
 					Map<String, String> row = new HashMap<String, String>();
 					for (int i = 0; i < variableNamesArr.size(); i++) {
+						if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 						row.put(variableNamesArr.get(i), nodes.get(i).item(j).getNodeValue());
 					}
 					result.add(row);
@@ -249,7 +267,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		}
 	}
 	
-	private void handleJSONFile(List<String> variableNamesArr, List<Map<String, String>> result) {
+	private void handleJSONFile(File provFile, List<String> variableNamesArr, List<Map<String, String>> result) {
 		try
 		{
 			String content = FileUtils.readFileToString(provFile, "UTF-8");
@@ -271,6 +289,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				for (int j = 0; j < nodeLength; j++) {
 					Map<String, String> row = new HashMap<String, String>();
 					for (int i = 0; i < variableNamesArr.size(); i++) {
+						if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 						row.put(variableNamesArr.get(i), varValues.get(i).get(j));
 					}
 					result.add(row);

@@ -53,6 +53,7 @@ import org.reflections.Reflections;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.selenium.Command.ProviderLoopCommand.ProviderType;
 import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
@@ -265,24 +266,35 @@ public class Command {
             Matcher m = p.matcher(cmd);
             while (m.find()) {
                 if(!qss.containsKey(m.group())) {
-                    qss.put(m.group(), "######" + UUID.randomUUID().toString() + "######");
+                	String repl = "######" + UUID.randomUUID().toString() + "######";
+                    qss.put(m.group(), repl);
+                    cmd = cmd.replace(m.group(), repl);
+                } else {
+                	cmd = cmd.replace(m.group(), qss.get(m.group()));
                 }
             }
-            for (String qs : qss.keySet())
+            /*for (String qs : qss.keySet())
             {
                 cmd = cmd.replace(qs, qss.get(qs));
-            }
+            }*/
             p = Pattern.compile("'([^']*)'");
             m = p.matcher(cmd);
             while (m.find()) {
+                //if(!qss.containsKey(m.group())) {
+                //    qss.put(m.group(), "######" + UUID.randomUUID().toString() + "######");
+                //}
                 if(!qss.containsKey(m.group())) {
-                    qss.put(m.group(), "######" + UUID.randomUUID().toString() + "######");
+                	String repl = "######" + UUID.randomUUID().toString() + "######";
+                    qss.put(m.group(), repl);
+                    cmd = cmd.replace(m.group(), repl);
+                } else {
+                	cmd = cmd.replace(m.group(), qss.get(m.group()));
                 }
             }
-            for (String qs : qss.keySet())
+            /*for (String qs : qss.keySet())
             {
                 cmd = cmd.replace(qs, qss.get(qs));
-            }
+            }*/
             return cmd;
         }
     }
@@ -358,6 +370,9 @@ public class Command {
     static Command parse(Object[] cmdDetails, CommandState state, Command parent) {
         String cmd = cmdDetails[0].toString().trim();
         Command comd = null;
+        if(cmd.startsWith("??1000")) {
+        	System.out.println();
+        }
         cmd = state.sanitize(cmd);
         if(parent instanceof ValueListCommand && !cmd.trim().equals("]")) {
     		comd = new ValueCommand(cmdDetails, state);
@@ -465,42 +480,54 @@ public class Command {
             	throwParseErrorS(cmdDetails, new RuntimeException("Only following java control statements allowed - if|try|catch|finally|else|else if|while|for|continue|break|\\{|\\}|synchronized"));
             }
             comd = new JavaControlCommand(cmd, cmdDetails, state);
+        } else if (cmd.startsWith("#sql ")) {
+            cmd = cmd.substring(4).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.InlineSQL);
+        } else if (cmd.startsWith("#file ")) {
+            cmd = cmd.substring(5).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.InlineFile);
         } else if (cmd.startsWith("#provider ")) {
             cmd = cmd.substring(9).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Provided);
         } else if (cmd.startsWith("#p ")) {
             cmd = cmd.substring(2).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Provided);
         } else if (cmd.startsWith("#provider-sf ")) {
             cmd = cmd.substring(12).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, true);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, ProviderType.Provided);
         } else if (cmd.startsWith("#p-sf ")) {
             cmd = cmd.substring(5).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, true);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, ProviderType.Provided);
         } else if (cmd.startsWith("#counter ")) {
             cmd = cmd.substring(8).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Counter);
         } else if (cmd.startsWith("#c ")) {
             cmd = cmd.substring(2).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
-            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, false);
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Counter);
         } else if (cmd.startsWith("#transient-provider ")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
@@ -535,6 +562,8 @@ public class Command {
             comd = new ScopedLoopCommand(cmdDetails, state, cond);
         } else if (cmd.startsWith("readfile ")) {
             comd = new ReadFileCommand(cmd.substring(9).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("filevar ")) {
+            comd = new FileVarCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.startsWith("[")) {
             comd = new ValueListCommand(cmdDetails, state);
             //((ValueListCommand)comd).type = "[";
@@ -721,7 +750,7 @@ public class Command {
 	                }
 	                ((ValueCommand)comd).value = state.unsanitize(cmd);
             	} else {
-            		throwError(cmdDetails, new RuntimeException("Invalid command found ["+cmd+"]"));
+            		throwError(cmdDetails, new RuntimeException("Invalid command found ["+state.unsanitize(cmd)+"]"));
             	}
             }
         }
@@ -1655,12 +1684,12 @@ public class Command {
             code = code.replace("@driver", "___cw___");
             code = code.replace("@window", "___ocw___");
             code = code.replace("@element", "___ce___.get(0)");
-            code = code.replace("@sc", state.currvarnamesc());
+            code = code.replace("@sc", "get__loopcontext__var(\"s\")");
             code = code.replace("@printProvJson", "___cxt___print_provider__json");
             code = code.replace("@printProv", "___cxt___print_provider__");
             code = code.replace("@print", "System.out.println");
-            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
-            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
+            code = code.replace("@index", "get__loopcontext__indx()");
+            code = code.replace("@line", "get__loopcontext__var(\"a1\")");
             code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1)");
             Matcher m = p.matcher(code);
             String fcode = "";
@@ -1799,13 +1828,13 @@ public class Command {
         }
         String javacode() {
             String code = b.toString();
-            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
-            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
+            code = code.replace("@index", "get__loopcontext__indx()");
+            code = code.replace("@line", "get__loopcontext__var(\"a1\")");
             if(lang.equals("java")) {
                 code = code.replace("@driver", "___cw___");
                 code = code.replace("@window", "___ocw___");
                 code = code.replace("@element", "___ce___.get(0)");
-                code = code.replace("@sc", state.currvarnamesc());
+                code = code.replace("@sc", "get__loopcontext__var(\"s\")");
                 code = code.replace("@printProvJson", "___cxt___print_provider__json");
                 code = code.replace("@printProv", "___cxt___print_provider__");
                 code = code.replace("@print", "System.out.println");
@@ -1884,7 +1913,7 @@ public class Command {
                         }
                         args += "var " + vn + " = \\\"\"+getProviderDataValue(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")+\"\\\";";
                     } else {
-                    	arg = arg.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+                    	arg = arg.replace("@index", "get__loopcontext__indx()");
                     	args += "var " + vn + " = " + arg + ";";
                     }
                 }
@@ -1982,12 +2011,12 @@ public class Command {
             code = code.replace("@driver", "___cw___");
             code = code.replace("@window", "___ocw___");
             code = code.replace("@element", "___ce___.get(0)");
-            code = code.replace("@sc", state.currvarnamesc());
+            code = code.replace("@sc", "get__loopcontext__var(\"s\")");
             code = code.replace("@printProvJson", "___cxt___print_provider__json");
             code = code.replace("@printProv", "___cxt___print_provider__");
             code = code.replace("@print", "System.out.println");
-            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
-            code = code.replace("@line", state.currvarname()!=null?state.currvarname():"@line");
+            code = code.replace("@index", "get__loopcontext__indx()");
+            code = code.replace("@line", "get__loopcontext__var(\"a1\")");
         	Matcher m = CodeCommand.p.matcher(code);
             while(m.find()) {
             	code = code.replaceFirst("\\$"+m.group(1)+"\\{"+m.group(2)+"\\}", "getProviderDataValueO(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")");
@@ -2022,7 +2051,7 @@ public class Command {
             return "execjs \"" + code + "\"";
         }
         String javacode() {
-            code = code.replace("@index", state.currvarnameitr()!=null?state.currvarnameitr():"@index");
+            code = code.replace("@index", "get__loopcontext__indx()");
             return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(evaluate(\""+esc(code)+"\"));\n}";
         }
         public static String[] toSampleSelCmd() {
@@ -2474,17 +2503,17 @@ public class Command {
         String javacode() {
             if(cond!=null) {
             	StringBuilder b = new StringBuilder();
-                int counter = state.timeoutNum;
-                String cntvar = state.varnamerandom();
+                //int counter = state.timeoutNum;
+                //String cntvar = state.varnamerandom();
                 String varname = state.varname();
-                b.append("int "+cntvar+" = 0;\n");
+                //b.append("int "+cntvar+" = 0;\n");
                 b.append("List<String[]> " + varname + " = null;\n");
-                b.append("\nwhile(true) {\n");
+                //b.append("\nwhile(true) {\n");
                 b.append(cond.javacodetrprovonly(varname));
-                b.append("if("+varname+"!=null && "+varname+".size()>0) break;\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-                b.append("}\n");
+                //b.append("if("+varname+"!=null && "+varname+".size()>0) break;\n");
+                //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+                //b.append("}\n");
                 b.append(isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+varname+".get(0)[0]);":"\n___add_var__(\""+name+"\", "+varname+".get(0)[0]);\n");
                 return b.toString();
             } else if(pcomd!=null) {
@@ -2939,7 +2968,7 @@ public class Command {
                     children.add(comd);
                 } else {
                     cmd = val;
-                    cond = new FindCommand(parts[0], cmdDetails, state);
+                    cond = new FindCommand(cmd, cmdDetails, state);
                 }
             } else if(cmd.equalsIgnoreCase("actions")) {
             	Command comd = handleActions(val.trim(), null, cmdDetails, state);
@@ -2958,24 +2987,24 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
-	            String cntvar = state.varnamerandom();
+	            //String cntvar = state.varnamerandom();
 	            if(!isVisible) {
-		            b.append("int "+cntvar+" = 0;\n");
-		            b.append("\nwhile(true) {\n");
-		            b.append(cond.javacodeonlyNoAssert(children, true));
-		            b.append("if("+cond.getActionableVar()+"!=null)break;\n");
-		            b.append("sleep("+state.timeoutSleepGranularity+");\n");
-		            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-		            b.append("}\n");
+		            //b.append("int "+cntvar+" = 0;\n");
+		            //b.append("\nwhile(true) {\n");
+		            b.append(cond.javacodeonlyNoAssert(children, false, counter));
+		            //b.append("if("+cond.getActionableVar()+"!=null)break;\n");
+		            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+		            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+		            //b.append("}\n");
 	            } else {
-	            	b.append("int "+cntvar+" = 0;\n");
-		            b.append("\nwhile(true) {\n");
-		            b.append("\nsleep(1000);\n");
-		            b.append(cond.javacodeonlyNoAssert(children, true));
-		            b.append("if("+cond.getActionableVar()+"==null)break;\n");
-		            b.append("sleep("+state.timeoutSleepGranularity+");\n");
-		            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-		            b.append("}\n");
+	            	//b.append("int "+cntvar+" = 0;\n");
+		            //b.append("\nwhile(true) {\n");
+		            //b.append("\nsleep(1000);\n");
+		            b.append(cond.javacodeonlyNoAssert(children, false, counter));
+		            //b.append("if("+cond.getActionableVar()+"==null)break;\n");
+		            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+		            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+		            //b.append("}\n");
 	            }
             }
             if(children!=null && children.size()>0) {
@@ -3135,10 +3164,10 @@ public class Command {
             b.append("try{\n");
             if(conds!=null) {
             	for (FindCommand fcmd : conds) {
-            		b.append(fcmd.javacodeifonly(children));
+            		b.append(fcmd.javacodeifonly(children, vrd));
             	}
             }
-            b.append("\n"+vrd+"=true;\n");
+            //b.append("\n"+vrd+"=true;\n");
             if(!negation)
             {
                 if(!children.isEmpty())
@@ -3163,11 +3192,11 @@ public class Command {
                         b.append("\n");
                     }
                 }
-                b.append("\n"+vrd+"=true;\n");
+                //b.append("\n"+vrd+"=true;\n");
             }
             else
             {
-                b.append("\n"+vrd+"=false;\n");
+                //b.append("\n"+vrd+"=false;\n");
             }
             b.append("}\ncatch(Exception "+ex+"){\nSystem.out.println("+ex+".getMessage());throw "+ex+";}\n");
             return b.toString();
@@ -3383,13 +3412,14 @@ public class Command {
                 state.pushParc();
                 state.pushItr();
                 state.loopCounter++;
+                String varitr = state.currvarnameitr();
                 String vrn = state.varname();
-                b.append("\nObject "+vrn+"=null;\n");
-                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+                b.append("Map<String, Object> "+vrn+" = get__loopcontext__();\n");
+                b.append("\nset__loopcontext__(\"\");\n");
                 b.append("\nif("+cond.condition()+") {\n");
-                b.append("\nint "+state.currvarnameitr() + " = 0;");
+                b.append("\nint "+varitr + " = 0;");
                 b.append("\nfor(final WebElement " + state.varname() + " : " + cvarname + ") {\n");
-                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
+                b.append("\nadd__loopcontext__arg(\"i\","+varitr+");\n");
                 b.append("final SearchContext "+state.currvarnameparc()+" = "+state.currvarname()+";");
                 String vr = state.currvarname();
                 b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ state.thisat()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
@@ -3398,8 +3428,7 @@ public class Command {
                     b.append(c.javacode());
                     b.append("\n");
                 }
-                b.append(state.currvarnameitr()+"++;\n}\n}");
-                b.append("\n___add_var__(\"@index\","+vrn+");\n");
+                b.append(varitr+"++;\n}\n}\nset__loopcontext__("+vrn+");\n");
                 //prevvarnamesc();
                 state.prevvarnameparc();
                 state.prevvarnameitr();
@@ -3418,15 +3447,22 @@ public class Command {
     }
 
     public static class ProviderLoopCommand extends Command {
-        String name;
+    	enum ProviderType {
+    		Counter, Provided, InlineSQL, InlineFile
+    	}
+    	
+        String name, dsn, query, filePath;
+        String[] vars;
         int index = Integer.MIN_VALUE;
         int end = Integer.MIN_VALUE;
         boolean isStateFul = false;
-        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean counter, boolean isStateFul) {
+        ProviderType type = ProviderType.Provided;
+        ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean isStateFul, ProviderType type) {
             super(cmdDetails, state);
             this.isStateFul = isStateFul;
+            this.type = type;
             String[] parts = val.trim().split("[\t ]+");
-            if(counter) {
+            if(type==ProviderType.Counter) {
             	if(parts.length==1 && !parts[0].trim().isEmpty()) {
             		try
                     {
@@ -3437,7 +3473,7 @@ public class Command {
                     {
                         throwError(fileLineDetails, new RuntimeException("Counter end should be a number"));
                     }
-            	} else {
+            	} else if(parts.length==2) {
 	                if(!parts[0].trim().isEmpty()) {
 	                    try
 	                    {
@@ -3462,6 +3498,51 @@ public class Command {
                 if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end) {
                 } else {
                     throwError(fileLineDetails, new RuntimeException("Counter needs both start and end values and start should be less than end"));
+                }
+            } else if(type==ProviderType.InlineSQL) {
+                if(parts.length==3) {
+                	String t = state.unsanitize(parts[0].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	dsn = t.trim();
+                	t = state.unsanitize(parts[1].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	query = t.trim();
+                	t = state.unsanitize(parts[2].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	vars= t.split(",");
+                } else {
+                    throwParseError(cmdDetails, new RuntimeException("SQL provider command should have the syntax `#sql {dsn} {query} {var1,var2,..}`"));
+                }
+            } else if(type==ProviderType.InlineFile) {
+                if(parts.length==2) {
+                	String t = state.unsanitize(parts[0].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	filePath = t.trim();
+                	t = state.unsanitize(parts[1].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	vars= t.split(",");
+                } else {
+                    throwParseError(cmdDetails, new RuntimeException("File provider command should have the syntax `#file {filepath} {var1,var2,..}`"));
                 }
             } else {
                 name = state.unsanitize(parts[0].trim());
@@ -3500,12 +3581,40 @@ public class Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            if(isStateFul) {
-            	b.append("#provider-sf ");
+            if(type==ProviderType.InlineSQL) {
+                b.append("#sql ");
+                b.append(dsn);
+                b.append(" ");
+                b.append(query);
+                b.append(" ");
+                b.append(StringUtils.join(vars, ","));
+            } else if(type==ProviderType.InlineFile) {
+                b.append("#sql ");
+                b.append(dsn);
+                b.append(" ");
+                b.append(query);
+                b.append(" ");
+                b.append(StringUtils.join(vars, ","));
             } else {
-            	b.append("#provider ");
+            	if(type==ProviderType.Counter) {
+            		b.append("#counter ");
+            		b.append(index);
+            		b.append(" ");
+            		b.append(end);
+            	} else {
+	            	if(isStateFul) {
+		            	b.append("#provider-sf ");
+		            	b.append(name);
+		            } else {
+		            	b.append("#provider ");
+		            	b.append(name);
+	            		b.append(" ");
+	            		b.append(index);
+	            		b.append(" ");
+	            		b.append(end);
+		            }
+            	}
             }
-            b.append(name);
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -3519,82 +3628,93 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            if(index!=Integer.MIN_VALUE && end!=Integer.MIN_VALUE && index<end)
+            String vrn1 = state.varname();
+            b.append("Map<String, Object> "+vrn1+" = get__loopcontext__();\n");
+            b.append("\nset__loopcontext__(\"\");\n");
+            if(type==ProviderType.Counter)
             {
                 state.loopCounter++;
                 state.pushItr();
                 String loopname = state.currvarnameitr();
-                String vrn = state.varname();
-                b.append("\nObject "+vrn+"=null;\n");
-                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
                 b.append("\nfor(int " + loopname + "="+index+";"+loopname+"<" + end + ";"+loopname+"++) {\n");
-                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
+                b.append("\nadd__loopcontext__arg(\"a1\","+loopname+");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
                 b.append("}");
-                b.append("\n___add_var__(\"@index\","+vrn+");\n");
                 state.prevvarnameitr();
                 state.loopCounter--;
             }
             else if(index>=0)
             {
-                b.append("set__provname__(\"" + name + "\");\n");
-                b.append("set__provpos__(\"" + name + "\", " + index + ");\n{\n");
-                String vrn = state.varname();
-                b.append("\nObject "+vrn+"=null;\n");
-                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+                b.append("set__provname__(\"" + esc(name) + "\");\n");
+                b.append("set__provpos__(\"" + esc(name) + "\", " + index + ");\n{\n");
                 state.pushItr();
                 String loopname = state.currvarnameitr();
                 b.append("int "+loopname + " = " + index +";\n");
-                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
+                b.append("\nadd__loopcontext__arg(\"a1\","+loopname+");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
-                b.append("\n___add_var__(\"@index\","+vrn+");\n");
                 b.append("}");
                 state.prevvarnameitr();
-                b.append("rem__provname__(\"" + name + "\");\n");
+                b.append("rem__provname__(\"" + esc(name) + "\");\n");
             }
             else if(!children.isEmpty())
             {
                 state.loopCounter++;
-                b.append("int "+state.varname()+" = getProviderTestDataMap(\""+name+"\").size();\n");
-                b.append("set__provname__(\"" + name + "\");\n");
+                if(type==ProviderType.InlineSQL) {
+                	name = dsn+query;
+                	b.append("int "+state.varname()+" = getSQLProviderTestDataMap(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                } else if(type==ProviderType.InlineFile) {
+                	name = "file://" + filePath;
+                	b.append("int "+state.varname()+" = getFileProviderTestDataMap(\""+esc(filePath)+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                } else {
+                	b.append("int "+state.varname()+" = getProviderTestDataMap(\""+esc(name)+"\").size();\n");
+                }
+                b.append("set__provname__(\"" + esc(name) + "\");\n");
                 String provLength = state.currvarname();
                 state.pushItr();
                 String loopname = state.currvarnameitr();
                 if(isStateFul) {
-                	b.append("initStateFulProvider(\""+name+"\");");
+                	b.append("initStateFulProvider(\""+esc(name)+"\");");
                 }
-                String vrn = state.varname();
-                b.append("\nObject "+vrn+"=null;\n");
-                b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+                String indx = index>=0?index+"":"0";
+                String endx = "((" + end + ">" + index + " && " + end + "<" + provLength + ")?"+end+":"+provLength+")";
+                if(index==Integer.MIN_VALUE && end==Integer.MIN_VALUE) {
+                	indx = "0";
+                	endx = provLength;
+                } else if(end==Integer.MIN_VALUE) {
+                	endx = provLength;
+                }
                 if(isStateFul) {
-                	b.append("\nfor(int " + loopname + "=preStateFulProvider(\""+name+"\", 0);"+loopname+"<" + provLength + ";"+loopname+"++) {\n");
+                	b.append("\nfor(int " + loopname + "=preStateFulProvider(\""+esc(name)+"\", 0);"+loopname+"<" + provLength + ";"+loopname+"++) {\n");
                 } else {
-                	b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provLength + ";"+loopname+"++) {\n");
+                	b.append("\nfor(int " + loopname + "="+indx+";"+loopname+"<" + endx + ";"+loopname+"++) {\n");
                 }
-                b.append("\n___add_var__(\"@index\","+state.currvarnameitr()+");\n");
-                b.append("set__provpos__(\"" + name + "\", " + loopname + ");\n");
+                b.append("\nadd__loopcontext__arg(\"a1\","+loopname+");\n");
+                b.append("set__provpos__(\"" + esc(name) + "\", " + loopname + ");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
                 if(isStateFul) {
-                	b.append("postStateFulProvider(\""+name+"\", "+loopname+");\n");
+                	b.append("postStateFulProvider(\""+esc(name)+"\", "+loopname+");\n");
                 }
                 b.append("}");
-                b.append("\n___add_var__(\"@index\","+vrn+");\n");
                 state.prevvarnameitr();
-                b.append("rem__provname__(\"" + name + "\");\n");
+                b.append("rem__provname__(\"" + esc(name) + "\");\n");
+                if(type==ProviderType.InlineSQL || type==ProviderType.InlineFile) {
+                	b.append("delProvider(\""+esc(name)+"\");\n");
+                }
                 state.loopCounter--;
             }
+            b.append("\nset__loopcontext__("+vrn1+");\n");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -3606,6 +3726,8 @@ public class Command {
         		"\t#counter {end-index}\n\t{\n\t\tcode\n\t}",
         		"\t#c {start-index} {end-index}\n\t{\n\t\tcode\n\t}",
         		"\t#c {end-index}\n\t{\n\t\tcode\n\t}",
+        		"\t#sql {dsn} {query} {var1,var2,..}\n\t{\n\t\tcode\n\t}",
+        		"\t#file {filepath} {var1,var2,..}\n\t{\n\t\tcode\n\t}",
 				"Examples :-",
 				"\t#provider \"provider-name\"\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
 				"\t#provider \"provider-name\" 0 3\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
@@ -3617,6 +3739,8 @@ public class Command {
 				"\t#counter 5\n\t{\n\t\texec @print(@index)\n\t}",
 				"\t#c 0 5\n\t{\n\t\texec @print(@index)\n\t}",
 				"\t#c 5\n\t{\n\t\texec @print(@index)\n\t}",
+				"\t#sql sqldsn \"select col1,col2 from some_table\" \"var1,var2\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@var1)\n\t\tclick xpath@'$var2'\n\t}",
+				"\t#file \"/tmp/path/file.txt\" \"var1,var2\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@var1)\n\t\tclick xpath@'$var2'\n\t}"
             };
         }
     }
@@ -3656,28 +3780,28 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String brl = state.varname();
-            if(!isBinary) b.append("\njava.io.BufferedReader "+brl+" = null;");
-            b.append("\ntry {\n");
             state.pushItr();
             String loopname = state.currvarnameitr();
             String vrn = state.varname();
-            b.append("\nObject "+vrn+"=null;\n");
-            b.append("\nif(___get_var_nex__(\"@index\")!=null) "+vrn+"=(Integer)___get_var_nex__(\"@index\");\n");
+            String pstn = state.varnamerandom();
+            if(!isBinary) b.append("\njava.io.BufferedReader "+brl+" = null;");
+            b.append("Map<String, Object> "+pstn+" = get__loopcontext__();\n");
+            b.append("\nset__loopcontext__(\""+esc(name)+"\");\nadd__loopcontext__arg(\"ft\", \""+(isBinary?"b":"t")+"\");\n");
+            b.append("\ntry {\n");
             if(isBinary) {
             	b.append("\nbyte[] "+state.varname()+" = null;");
-            	b.append("\nint "+loopname+"=0;");
-            	b.append("\n"+state.currvarname()+"=org.apache.commons.io.FileUtils.readFileToByteArray(new java.io.File(\""+esc(name)+"\"));");
+            	b.append("\nint "+loopname+"=0;\nadd__loopcontext__arg(\"i\", "+loopname+");\n");
+            	b.append("\nbyte[] "+vrn+"=org.apache.commons.io.FileUtils.readFileToByteArray(new java.io.File(\""+esc(name)+"\"));add__loopcontext__arg(\"a1\", "+vrn+");\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
                     b.append("\n");
                 }
-            	
             } else {
             	b.append(brl+" = new java.io.BufferedReader(new java.io.InputStreamReader(new java.io.FileInputStream(\""+esc(name)+"\")));");
-            	b.append("\nString "+state.varname()+" = null;");
+            	b.append("\nString "+vrn+" = null;");
             	b.append("\nint "+loopname+"=0;");
-	            b.append("\nwhile (("+state.currvarname()+" = "+brl+".readLine()) != null) {");
+	            b.append("\nwhile (("+vrn+" = "+brl+".readLine()) != null) {\nadd__loopcontext__arg(\"i\","+loopname+");\nadd__loopcontext__arg(\"a1\", "+vrn+");\n" );
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
@@ -3686,9 +3810,9 @@ public class Command {
 	            b.append("\n"+loopname+"++;");
 	            b.append("\n}");
             }
-            b.append("\n___add_var__(\"@index\","+vrn+");\n");
             b.append("\n} catch(Exception e) {throw new RuntimeException(\"Unable to read file\");}");
             if(!isBinary) b.append("finally {if("+brl+"!=null) {try{"+brl+".close();}catch(Exception e){}}}");
+            b.append("\nset__loopcontext__("+pstn+");");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -3698,6 +3822,74 @@ public class Command {
 				"Examples :-",
 				"\t#readfile \"/path/to/file.txt\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@line)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
 				"\t#readfile \"/path/to/file.bin\" \"binary\"\n\t{\n\t\texec @print(@index)\n\t\texec @print(@line)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
+            };
+        }
+    }
+
+    public static class FileVarCommand extends Command {
+    	String regex;
+    	String[] vars, positions;
+        FileVarCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length==3) {
+            	String t = state.unsanitize(parts[0].trim());
+            	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                    	t = t.substring(1, t.length()-1);
+                    }
+                }
+            	vars= t.split(",");
+            	regex = state.unsanitize(parts[1].trim());
+            	if(regex.charAt(0)==regex.charAt(regex.length()-1)) {
+                    if(regex.charAt(0)=='"' || regex.charAt(0)=='\'') {
+                    	regex = regex.substring(1, regex.length()-1);
+                    }
+                }
+            	try {
+					Pattern.compile(regex);
+				} catch (Exception e) {
+					throwParseError(cmdDetails, new RuntimeException("Invalid regex pattern specified " + regex));
+				}
+            	t = state.unsanitize(parts[2].trim());
+            	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                    	t = t.substring(1, t.length()-1);
+                    }
+                }
+            	positions= t.split(",");
+            	if(vars.length!=positions.length) {
+            		throwParseError(cmdDetails, new RuntimeException("File variable command needs length of vars and regex positions to be the same"));
+            	}
+            	/*for (String pos : positions) {
+					if(!pos.matches("[0-9]+")) {
+						throwParseError(cmdDetails, new RuntimeException("File variable command needs the regex group positions to be numeric"));
+					}
+				}*/
+            } else {
+                throwParseError(cmdDetails, new RuntimeException("File variable command should have the syntax `filevar {var1,var2,..} {regex} {var1-pattern,var2-pattern..}`"));
+            }
+        }
+        String toCmd() {
+            return "filevar " + StringUtils.join(vars, ",") + " regex " + StringUtils.join(positions, ",");
+        }
+        String javacode() {
+        	String vrs = "new String[]{", pos = "new String[]{";
+        	for (int i=0;i<vars.length;i++) {
+        		vrs += "evaluate(\""+esc(vars[i])+"\"),";
+        		pos += "\"" + esc(positions[i]) + "\",";
+			}
+        	vrs = vrs.substring(0, vrs.length()-1) + "}";
+        	pos = pos.substring(0, pos.length()-1) + "}";
+            return "if(get__loopcontext__var(\"ft\").equals(\"t\") && !get__loopcontext__var(\"n\").equals(\"n\")) setupFileVar(\""+esc(regex)+"\", "+vrs+", "+pos+");\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"File Variable definition",
+				"\tfilevar {var1,var2,..} {regex} {var1-pattern,var2-pattern..}",
+				"Examples :-",
+	    		"\tfilevar v1,@v2,@v3 \"(.*)|(.*),(.*)\" \"$1,ABC_$2,BCD$3EFG\"",
+	    		"\tfilevar v1 \"([a-z]+)\" \"$1\""
             };
         }
     }
@@ -3733,17 +3925,17 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             b.append("newTopLevelProvider();\n");
-            int counter = state.timeoutNum;
-            String cntvar = state.varnamerandom();
+            //int counter = state.timeoutNum;
+            //String cntvar = state.varnamerandom();
             String provname = state.varname();
-            b.append("int "+cntvar+" = 0;\n");
+            //b.append("int "+cntvar+" = 0;\n");
             b.append("List<String[]> " + provname + " = null;\n");
-            b.append("\nwhile(true) {\n");
+            //b.append("\nwhile(true) {\n");
             b.append(cond.javacodetrprovonly(provname));
-            b.append("if("+provname+"!=null && "+provname+".size()>0) break;\n");
-            b.append("sleep("+state.timeoutSleepGranularity+");\n");
-            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-            b.append("}\n");
+            //b.append("if("+provname+"!=null && "+provname+".size()>0) break;\n");
+            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+            //b.append("}\n");
             String loopname = state.varname();
             List<String> ssl = Arrays.asList(varname.split("[\t ]*,[\t ]*"));
             b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ".size();"+loopname+"++) {");
@@ -3811,17 +4003,17 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             b.append("newProvider(\""+value+"\");\n");
-            int counter = state.timeoutNum;
-            String cntvar = state.varnamerandom();
+            //int counter = state.timeoutNum;
+            //String cntvar = state.varnamerandom();
             String provname = state.varname();
-            b.append("int "+cntvar+" = 0;\n");
+            //b.append("int "+cntvar+" = 0;\n");
             b.append("List<String[]> " + provname + " = null;\n");
-            b.append("\nwhile(true) {\n");
+            //b.append("\nwhile(true) {\n");
             b.append(cond.javacodetrprovonly(provname));
-            b.append("if("+provname+"!=null && "+provname+".size()>0) break;\n");
-            b.append("sleep("+state.timeoutSleepGranularity+");\n");
-            b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
-            b.append("}\n");
+            //b.append("if("+provname+"!=null && "+provname+".size()>0) break;\n");
+            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
+            //b.append("}\n");
             String loopname = state.varname();
             List<String> ssl = Arrays.asList(varname.split("[\t ]*,[\t ]*"));
             b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ".size();"+loopname+"++) {");
@@ -3832,9 +4024,10 @@ public class Command {
             }
             b.append("getProviderTestDataMap(\""+value+"\").add(__mp);\n");
             b.append("}");
-            ProviderLoopCommand plc = new ProviderLoopCommand(value, fileLineDetails, state, false, false);
+            ProviderLoopCommand plc = new ProviderLoopCommand(value, fileLineDetails, state, false, ProviderType.Provided);
             plc.children = children;
             b.append(plc.javacode());
+            b.append("");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -5107,7 +5300,7 @@ public class Command {
             String wel = by.equals("this")?state.currthisat():"___ce___";
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
             String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return varname + " = transientProviderData(___cw___, "+sc+", "+wel+", 0L, \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
+            return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", null, "+tvalue+", \"Element not found by selector " 
                     + logbc + " at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
@@ -5173,24 +5366,24 @@ public class Command {
         }*/
         String javacodeonly() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return javacodeonlyNoAssert(null, false)
+            return javacodeonlyNoAssert(null, false, state.timeoutNum)
                     + "\nAssert.assertTrue(\"Element not found by selector " + logbc
                     + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
         }
-        String javacodeifonly(List<Command> children) {
+        String javacodeifonly(List<Command> children, String vrd) {
         	if(StringUtils.isNotBlank(eval)) {
-        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", doEvalIf(\""+esc(state.unsanitize(eval))+"\"));";
+        		return vrd + " = doEvalIf(\""+esc(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(browserScope)) {
-        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", isBrowserName(\""+esc(state.unsanitize(browserScope))+"\"));";
+        		return vrd + " = isBrowserName(\""+esc(state.unsanitize(browserScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(sessionScope)) {
-        		return "\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", isSessionName(\""+esc(state.unsanitize(sessionScope))+"\"));";
+        		return vrd + " = isSessionName(\""+esc(state.unsanitize(sessionScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return javacodeonlyNoAssert(children, false)
-                    + "\nAssert.assertTrue(\"Element not found by selector " + logbc 
-                    + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
+            return javacodeonlyNoAssert(children, true, state.timeoutNum)
+                    + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nAssert.assertTrue(\"Element not found by selector " + logbc 
+                    + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
         }
-        String javacodeonlyNoAssert(List<Command> children, boolean noexcep) {
+        String javacodeonlyNoAssert(List<Command> children, boolean noexcep, int counter) {
             //javacodeonlyint(children);
             String sc = state.currvarnamesc();
             String value = (operval!=null?"evaluate(\""+esc(operval)+"\")":null), values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
@@ -5257,11 +5450,11 @@ public class Command {
             }
             String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
             String wel = by.equals("this")?state.currthisat():"___ce___";
+            String excmsg = noexcep?null:"\"Element not found by selector " + logbc + " at line number "+fileLineDetails[1]+" \"";
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
-            String b = "___ce___ = handleWaitFunc(___cw___, "+sc+", "+wel+", 0L, \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
+            String b = "___ce___ = handleWaitFuncWL(___cw___, "+sc+", "+wel+", "+counter+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
-                    + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
-                    + logbc + " at line number "+fileLineDetails[1]+" \", "+noexcep+", "+state.getLayers()+");\n";
+                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.getLayers()+");\n";
             return b;
         }
         /*String javacodeonly(List<Command> children, long waitTime) {
@@ -6718,15 +6911,15 @@ public class Command {
                 	} else {
 	                	String ck = state.unsanitize(expr1);
 	                    FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-	                    int counter = state.timeoutNum;
-	                    String cntvar = state.varnamerandom();
-	                    b.append("int "+cntvar+" = 0;\n");
-	                    b.append("\nwhile(true) {\n");
+	                    //int counter = state.timeoutNum;
+	                    //String cntvar = state.varnamerandom();
+	                    //b.append("int "+cntvar+" = 0;\n");
+	                    //b.append("\nwhile(true) {\n");
 	                    b.append(fc.javacodeonly());
-	                    b.append("if("+fc.getActionableVar()+"!=null)break;\n");
-	                    b.append("sleep("+state.timeoutSleepGranularity+");\n");
-	                    b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
-	                    b.append("}\n");
+	                    //b.append("if("+fc.getActionableVar()+"!=null)break;\n");
+	                    //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+	                    //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
+	                    //b.append("}\n");
 	                    b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
                 	}
                 }
@@ -6755,15 +6948,15 @@ public class Command {
                 	} else {
 	                    String ck = state.unsanitize(expr1);
 	                    FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-	                    int counter = state.timeoutNum;
-	                    String cntvar = state.varnamerandom();
-	                    b.append("int "+cntvar+" = 0;\n");
-	                    b.append("\nwhile(true) {\n");
+	                    //int counter = state.timeoutNum;
+	                    //String cntvar = state.varnamerandom();
+	                    //b.append("int "+cntvar+" = 0;\n");
+	                    //b.append("\nwhile(true) {\n");
 	                    b.append(fc.javacodeonly());
-	                    b.append("if("+fc.getActionableVar()+"!=null)break;\n");
-	                    b.append("sleep("+state.timeoutSleepGranularity+");\n");
-	                    b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
-	                    b.append("}\n");
+	                    //b.append("if("+fc.getActionableVar()+"!=null)break;\n");
+	                    //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+	                    //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
+	                    //b.append("}\n");
 	                    //b.append("\n"+fc.javacodeonly(null));
 	                    b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
                 	}
@@ -6771,29 +6964,29 @@ public class Command {
             } else if(action.toLowerCase().matches("draganddrop1")) {
                 String ck = state.unsanitize(expr1);
                 FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-                int counter = state.timeoutNum;
-                String cntvar = state.varnamerandom();
-                b.append("int "+cntvar+" = 0;\n");
-                b.append("\nwhile(true) {\n");
+                //int counter = state.timeoutNum;
+                //String cntvar = state.varnamerandom();
+                //b.append("int "+cntvar+" = 0;\n");
+                //b.append("\nwhile(true) {\n");
                 b.append(fc.javacodeonly());
-                b.append("if("+fc.getActionableVar()+"!=null)break;\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
-                b.append("}\n");
+                //b.append("if("+fc.getActionableVar()+"!=null)break;\n");
+                //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
+                //b.append("}\n");
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm = state.currvarname();
                 
                 String ck1 = state.unsanitize(expr2);
                 FindCommand fc1 = new FindCommand(ck1, fileLineDetails, state);
-                counter = state.timeoutNum;
-                cntvar = state.varnamerandom();
-                b.append("int "+cntvar+" = 0;\n");
-                b.append("\nwhile(true) {\n");
+                //counter = state.timeoutNum;
+                //cntvar = state.varnamerandom();
+                //b.append("int "+cntvar+" = 0;\n");
+                //b.append("\nwhile(true) {\n");
                 b.append(fc1.javacodeonly());
-                b.append("if("+fc1.getActionableVar()+"!=null)break;\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc1.getErr()+");\n");
-                b.append("}\n");
+                //b.append("if("+fc1.getActionableVar()+"!=null)break;\n");
+                //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc1.getErr()+");\n");
+                //b.append("}\n");
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm1 = state.currvarname();
                 
@@ -6801,29 +6994,29 @@ public class Command {
             } else if(action.toLowerCase().matches("draganddrop")) {
                 String ck = state.unsanitize(expr1);
                 FindCommand fc = new FindCommand(ck, fileLineDetails, state);
-                int counter = state.timeoutNum;
-                String cntvar = state.varnamerandom();
-                b.append("int "+cntvar+" = 0;\n");
-                b.append("\nwhile(true) {\n");
+                //int counter = state.timeoutNum;
+                //String cntvar = state.varnamerandom();
+                //b.append("int "+cntvar+" = 0;\n");
+                //b.append("\nwhile(true) {\n");
                 b.append(fc.javacodeonly());
-                b.append("if("+fc.getActionableVar()+"!=null)break;\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
-                b.append("}\n");
+                //b.append("if("+fc.getActionableVar()+"!=null)break;\n");
+                //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
+                //b.append("}\n");
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm = state.currvarname();
                 
                 String ck1 = state.unsanitize(expr2);
                 FindCommand fc1 = new FindCommand(ck1, fileLineDetails, state);
-                counter = state.timeoutNum;
-                cntvar = state.varnamerandom();
-                b.append("int "+cntvar+" = 0;\n");
-                b.append("\nwhile(true) {\n");
+                //counter = state.timeoutNum;
+                //cntvar = state.varnamerandom();
+                //b.append("int "+cntvar+" = 0;\n");
+                //b.append("\nwhile(true) {\n");
                 b.append(fc1.javacodeonly());
-                b.append("if("+fc1.getActionableVar()+"!=null)break;\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc1.getErr()+");\n");
-                b.append("}\n");
+                //b.append("if("+fc1.getActionableVar()+"!=null)break;\n");
+                //b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc1.getErr()+");\n");
+                //b.append("}\n");
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm1 = state.currvarname();
                 
@@ -8136,7 +8329,7 @@ public class Command {
 		}
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
-        		"/path/to/project/gatf-config.xml", 
+    			"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml", 

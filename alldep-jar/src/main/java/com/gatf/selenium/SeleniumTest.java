@@ -64,9 +64,11 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
+import org.joda.time.DateTime;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Capabilities;
@@ -114,6 +116,8 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.dataprovider.FileTestDataProvider;
+import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
@@ -470,6 +474,19 @@ public abstract class SeleniumTest {
 		return getAllProviderData(getPn(name));
 	}
 
+	protected List<Map<String, String>> getSQLProviderTestDataMap(String dsn, String query, String vars) {
+		SQLDatabaseTestDataSource sdt = ___cxt___.getSQLDSN(dsn);
+		if(sdt!=null) {
+			getSession().providerTestDataMap.put(dsn+query, sdt.provide(query, vars, ___cxt___));
+			return getSession().providerTestDataMap.get(dsn+query);
+		}
+		throw new RuntimeException("No DSN found with the name " + dsn);
+	}
+
+	protected List<Map<String, String>> getFileProviderTestDataMap(String filePath, String vars) {
+		return FileTestDataProvider.provide(filePath, vars, ___cxt___);
+	}
+
 	protected String getFileProviderHash(String name) {
 		return ___cxt___.getFileProviderHash(name);
 	}
@@ -541,6 +558,13 @@ public abstract class SeleniumTest {
 	}
 
 	static Pattern p = Pattern.compile("\\$(p|P)\\{([\"'a-zA-Z0-9_\\.]+)\\.([0-9]+)\\.([a-zA-Z0-9_\\.]+)\\}");
+	
+	private void initTmplMap(Map<String, Object> _mt) {
+		_mt.put("M", Math.class);
+		_mt.put("U", Util.class);
+		_mt.put("S", StringUtils.class);
+		_mt.put("D", DateUtils.class);
+	}
 
 	/*
 	 * Three types of template variables can be evaluated
@@ -563,6 +587,7 @@ public abstract class SeleniumTest {
 						tmpl = tmpl.replace("$v", "$");
 						_mt.putAll(getSession().__vars__);
 					}
+					initTmplMap(_mt);
 					tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
 				}
 			} else {
@@ -571,6 +596,7 @@ public abstract class SeleniumTest {
 					tmpl = tmpl.replace("$v", "$");
 					_mt.putAll(getSession().__vars__);
 				}
+				initTmplMap(_mt);
 				tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
 			}
 			String tmpln = tmpl;
@@ -596,6 +622,7 @@ public abstract class SeleniumTest {
 				}
 			}
 			if(foundProvRef) {
+				initTmplMap(_mt);
 				tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpln);
 			}
 		}
@@ -609,6 +636,7 @@ public abstract class SeleniumTest {
 	protected boolean doEvalIf(String eval) {
 		Map<String, Object> _mt = new HashMap<String, Object>();
 		try {
+			initTmplMap(_mt);
 			String ret = ___cxt___.getWorkflowContextHandler().templatize(_mt, "#if("+evaluate(eval) + ") true #else false #end");
 			return ret.toLowerCase().trim().equals("true");
 		} catch (Exception e) {
@@ -849,6 +877,45 @@ public abstract class SeleniumTest {
 	
 	protected String get__aliasname__() {
 		return getSession().__aliasname__;
+	}
+	
+	protected void set__loopcontext__(Map<String, Object> __loopcontext__)
+	{
+		getSession().__loopcontext__ = __loopcontext__;
+		if(!get__loopcontext__var("n").equals("n") && get__loopcontext__var("ft").equals("t")) {
+			rem__provname__(get__loopcontext__var("n")+"_rf");
+			delProvider(get__loopcontext__var("n")+"_rf");
+		}
+	}
+	
+	protected String get__loopcontext__var(String n) {
+		if(!getSession().__loopcontext__.containsKey(n)) {
+			return n;
+			//throw new RuntimeException("No Loop Context available");
+		}
+		return (String)getSession().__loopcontext__.get(n);
+	}
+	
+	protected int get__loopcontext__indx() {
+		if(!getSession().__loopcontext__.containsKey("i")) {
+			return -1;
+		}
+		return Integer.valueOf((String)getSession().__loopcontext__.get("i"));
+	}
+	
+	protected void set__loopcontext__(String name)
+	{
+		getSession().__loopcontext__ = new HashMap<>();
+		getSession().__loopcontext__.put("n", name);
+	}
+	
+	protected void add__loopcontext__arg(String n, Object v)
+	{
+		getSession().__loopcontext__.put(n, v);
+	}
+	
+	protected Map<String, Object> get__loopcontext__() {
+		return getSession().__loopcontext__;
 	}
 
 	protected WebDriver getWebDriver() {
@@ -2172,13 +2239,43 @@ public abstract class SeleniumTest {
 			((JavascriptExecutor)wd).executeScript("arguments[0].dispatchEvent(new MouseEvent('click', {bubbles: true}));", we);
 		}
 	}
+	
+	@SuppressWarnings("unchecked")
+	protected List<WebElement> handleWaitFuncWL(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final int timeOutCounter, String relative, final String[] classifier, final String[] by, String subselector, 
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+		int counter = 0;
+		while(true) {
+			List<WebElement> el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+			if (el != null) return el;
+			sleep(1000);
+			if (counter++ == timeOutCounter)
+				break;
+		}
+		if(!noExcep) throw new RuntimeException(exmsg);
+		return null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected List<String[]> transientProviderDataWL(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutCounter, String relative, final String[] classifier, final String[] by, String subselector, 
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+		int counter = 0;
+		while(true) {
+			List<String[]> el = (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+			if (el != null) return el;
+			sleep(1000);
+			if (counter++ == timeOutCounter)
+				break;
+		}
+		if(!noExcep) throw new RuntimeException(exmsg);
+		return null;
+	}
 
 	@SuppressWarnings("unchecked")
 	protected List<WebElement> handleWaitFunc(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
 		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
 	}
-
+	
 	@SuppressWarnings("unchecked")
 	protected List<String[]> transientProviderData(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
@@ -3169,5 +3266,239 @@ public abstract class SeleniumTest {
 			sleep(1000);
 		}
 		return false;
+	}
+	
+	protected void setupFileVar(String regex, String[] vars, String[] pos) {
+		Pattern pr = Pattern.compile(regex);
+		Matcher m = pr.matcher(get__loopcontext__var("a1"));
+		if(m.matches()) {
+			for (int i=0;i<vars.length;i++) {
+				String varv = pos[i];
+				for (int j = 0; j < m.groupCount(); j++) {
+					varv = varv.replace("${"+(j+1)+"}", m.group(j+1));
+					varv = varv.replace("$"+(j+1), m.group(j+1));
+				}
+				if(vars[i].startsWith("@")) {
+					___cxt___add_param__(vars[i], varv);
+				} else {
+					newProvider(get__loopcontext__var("n")+"_rf");
+					set__provname__(get__loopcontext__var("n")+"_rf");
+					set__provpos__(get__loopcontext__var("n")+"_rf", get__loopcontext__indx());
+				}
+			}
+		}
+	}
+	
+	public static interface UtilDateF {
+		public String oper();
+	}
+	public static interface UtilDateFS {
+		public String oper(int days, String fmt);
+	}
+	
+	public static class Util {
+		public static String random(String typstr) {
+			return randomize(typstr);
+		}
+		
+		private static String dateArith(String what, int howMuch, String fmt) {
+			if(fmt==null) fmt = "dd/MM/yyyy HH:mm:ss";
+			DateTime dt = new DateTime();
+			switch(what) {
+				case "h":
+					dt = howMuch>0?dt.plusHours(howMuch):dt.minusHours(howMuch);
+					break;
+				case "mi":
+					dt = howMuch>0?dt.plusMinutes(howMuch):dt.minusMinutes(howMuch);
+					break;
+				case "s":
+					dt = howMuch>0?dt.plusSeconds(howMuch):dt.minusSeconds(howMuch);
+					break;
+				case "ms":
+					dt = howMuch>0?dt.plusMillis(howMuch):dt.minusMillis(howMuch);
+					break;
+				case "d":
+					dt = howMuch>0?dt.plusDays(howMuch):dt.minusDays(howMuch);
+					break;
+				case "m":
+					dt = howMuch>0?dt.plusMonths(howMuch):dt.minusMonths(howMuch);
+					break;
+				case "w":
+					dt = howMuch>0?dt.plusWeeks(howMuch):dt.minusWeeks(howMuch);
+					break;
+				case "y":
+					dt = howMuch>0?dt.plusYears(howMuch):dt.minusYears(howMuch);
+					break;
+				default: break;
+			}
+			return dt.toString(fmt);
+		}
+		
+		public static String today() {
+			return dateArith(null, 0, "dd/MM/yyyy");
+		}
+		public static String yesterday() {
+			return dateArith("d", -1, "dd/MM/yyyy");
+		}
+		public static String tomorrow() {
+			return dateArith("d", 1, "dd/MM/yyyy");
+		}
+		public static String someDay(int days, String fmt) {
+			return dateArith("d", days, fmt);
+		}
+
+		public static String lastWeek() {
+			return dateArith("w", -1, "dd/MM/yyyy");
+		}
+		public static String nextWeek() {
+			return dateArith("w", 1, "dd/MM/yyyy");
+		}
+		public static String someWeek(int weeks, String fmt) {
+			return dateArith("w", weeks, "dd/MM/yyyy");
+		}
+		
+		public static String lastMonth() {
+			return dateArith("m", -1, "dd/MM/yyyy");
+		}
+		public static String nextMonth() {
+			return dateArith("m", 1, "dd/MM/yyyy");
+		}
+		public static String someMonth(int months, String fmt) {
+			return dateArith("m", months, "dd/MM/yyyy");
+		}
+		
+		public static String lastYear() {
+			return dateArith("y", -1, "dd/MM/yyyy");
+		}
+		public static String nextYear() {
+			return dateArith("y", 1, "dd/MM/yyyy");
+		}
+		public static String someYear(int years, String fmt) {
+			return dateArith("y", years, "dd/MM/yyyy");
+		}
+		
+		public static String now() {
+			return dateArith(null, 0, "HH:mm:ss");
+		}
+		
+		public static String lastSecond() {
+			return dateArith("s", -1, "HH:mm:ss");
+		}
+		public static String nextSecond() {
+			return dateArith("s", 1, "HH:mm:ss");
+		}
+		public static String someSecond(int secs, String fmt) {
+			return dateArith("s", secs, fmt);
+		}
+		
+		public static String lastMinute() {
+			return dateArith("mi", -1, "HH:mm:ss");
+		}
+		public static String nextMinute() {
+			return dateArith("mi", 1, "HH:mm:ss");
+		}
+		public static String someMinute(int mins, String fmt) {
+			return dateArith("mi", mins, fmt);
+		}
+		
+		public static String lastHour() {
+			return dateArith("h", -1, "HH:mm:ss");
+		}
+		public static String nextHour() {
+			return dateArith("h", 1, "HH:mm:ss");
+		}
+		public static String someHour(int hours, String fmt) {
+			return dateArith("h", hours, fmt);
+		}
+		
+		public static UtilDateF today = () -> {
+			return dateArith(null, 0, "dd/MM/yyyy");
+		};
+		public static UtilDateF yesterday = () -> {
+			return dateArith("d", -1, "dd/MM/yyyy");
+		};
+		public static UtilDateF tomorrow = () -> {
+			return dateArith("d", 1, "dd/MM/yyyy");
+		};
+		public static UtilDateFS day = (int days, String fmt) -> {
+			return dateArith("d", days, fmt);
+		};
+
+		public static UtilDateF lastWeek = () -> {
+			return dateArith("w", -1, "dd/MM/yyyy");
+		};
+		public static UtilDateF nextWeek = () -> {
+			return dateArith("w", 1, "dd/MM/yyyy");
+		};
+		public static UtilDateFS week = (int weeks, String fmt) -> {
+			return dateArith("w", weeks, "dd/MM/yyyy");
+		};
+		
+		public static UtilDateF lastMonth = () -> {
+			return dateArith("m", -1, "dd/MM/yyyy");
+		};
+		public static UtilDateF nextMonth = () -> {
+			return dateArith("m", 1, "dd/MM/yyyy");
+		};
+		public static UtilDateFS month = (int months, String fmt) -> {
+			return dateArith("m", months, "dd/MM/yyyy");
+		};
+		
+		public static UtilDateF lastYear = () -> {
+			return dateArith("y", -1, "dd/MM/yyyy");
+		};
+		public static UtilDateF nextYear = () -> {
+			return dateArith("y", 1, "dd/MM/yyyy");
+		};
+		public static UtilDateFS year = (int years, String fmt) -> {
+			return dateArith("y", years, "dd/MM/yyyy");
+		};
+		
+		public static UtilDateF now = () -> {
+			return dateArith(null, 0, "HH:mm:ss");
+		};
+		
+		public static UtilDateF lastSecond = () -> {
+			return dateArith("s", -1, "HH:mm:ss");
+		};
+		public static UtilDateF nextSecond = () -> {
+			return dateArith("s", 1, "HH:mm:ss");
+		};
+		public static UtilDateFS second = (int secs, String fmt) -> {
+			return dateArith("s", secs, fmt);
+		};
+		
+		public static UtilDateF lastMinute = () -> {
+			return dateArith("mi", -1, "HH:mm:ss");
+		};
+		public static UtilDateF nextMinute = () -> {
+			return dateArith("mi", 1, "HH:mm:ss");
+		};
+		public static UtilDateFS minute = (int mins, String fmt) -> {
+			return dateArith("mi", mins, fmt);
+		};
+		
+		public static UtilDateF lastHour = () -> {
+			return dateArith("h", -1, "HH:mm:ss");
+		};
+		public static UtilDateF nextHour = () -> {
+			return dateArith("h", 1, "HH:mm:ss");
+		};
+		public static UtilDateFS hour = (int hours, String fmt) -> {
+			return dateArith("h", hours, fmt);
+		};
+		
+		public static String g(UtilDateF f1, UtilDateF f2) {
+			return StringUtils.join(f1.oper(), f2.oper());
+		}
+		public static String g(UtilDateF f1, UtilDateF f2, String del) {
+			return StringUtils.joinWith(del, f1.oper(), f2.oper());
+		}
+		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2) {
+			return StringUtils.join(f1.oper(p1, fmt1), f2.oper(p2, fmt2));
+		}
+		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2, String del) {
+			return StringUtils.joinWith(del, f1.oper(p1, fmt1), f2.oper(p2, fmt2));
+		}
 	}
 }
