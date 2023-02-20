@@ -481,49 +481,55 @@ public class Command {
             }
             comd = new JavaControlCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("#sql ")) {
-            cmd = cmd.substring(4).trim();
+            cmd = cmd.substring(5).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.InlineSQL);
+        } else if (cmd.startsWith("#mongo ")) {
+            cmd = cmd.substring(7).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.InlineMongo);
         } else if (cmd.startsWith("#file ")) {
-            cmd = cmd.substring(5).trim();
+            cmd = cmd.substring(6).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.InlineFile);
         } else if (cmd.startsWith("#provider ")) {
-            cmd = cmd.substring(9).trim();
+            cmd = cmd.substring(10).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Provided);
         } else if (cmd.startsWith("#p ")) {
-            cmd = cmd.substring(2).trim();
+            cmd = cmd.substring(3).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Provided);
         } else if (cmd.startsWith("#provider-sf ")) {
-            cmd = cmd.substring(12).trim();
+            cmd = cmd.substring(13).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, ProviderType.Provided);
         } else if (cmd.startsWith("#p-sf ")) {
-            cmd = cmd.substring(5).trim();
+            cmd = cmd.substring(6).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, true, ProviderType.Provided);
         } else if (cmd.startsWith("#counter ")) {
-            cmd = cmd.substring(8).trim();
+            cmd = cmd.substring(9).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Counter);
         } else if (cmd.startsWith("#c ")) {
-            cmd = cmd.substring(2).trim();
+            cmd = cmd.substring(3).trim();
             if(cmd.isEmpty()) {
             	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
@@ -535,7 +541,7 @@ public class Command {
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state);
         } else if (cmd.startsWith("#tp ")) {
-            cmd = cmd.substring(3).trim();
+            cmd = cmd.substring(4).trim();
             if(cmd.isEmpty()) {
                 //exception
             }
@@ -564,6 +570,9 @@ public class Command {
             comd = new ReadFileCommand(cmd.substring(9).trim(), cmdDetails, state);
         } else if (cmd.startsWith("filevar ")) {
             comd = new FileVarCommand(cmd.substring(8).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("dsq ")) {
+            cmd = cmd.substring(4).trim();
+            comd = new DSQueryCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("[")) {
             comd = new ValueListCommand(cmdDetails, state);
             //((ValueListCommand)comd).type = "[";
@@ -2987,25 +2996,26 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
+            	b.append(cond.javacodeonlyNoAssert(children, false, counter, isVisible));
 	            //String cntvar = state.varnamerandom();
-	            if(!isVisible) {
+	            //if(!isVisible) {
 		            //b.append("int "+cntvar+" = 0;\n");
 		            //b.append("\nwhile(true) {\n");
-		            b.append(cond.javacodeonlyNoAssert(children, false, counter));
+		            //b.append(cond.javacodeonlyNoAssert(children, false, counter, isVisible));
 		            //b.append("if("+cond.getActionableVar()+"!=null)break;\n");
 		            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
 		            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
 		            //b.append("}\n");
-	            } else {
+	            //} else {
 	            	//b.append("int "+cntvar+" = 0;\n");
 		            //b.append("\nwhile(true) {\n");
 		            //b.append("\nsleep(1000);\n");
-		            b.append(cond.javacodeonlyNoAssert(children, false, counter));
+		            //b.append(cond.javacodeonlyNoAssert(children, false, counter, isVisible));
 		            //b.append("if("+cond.getActionableVar()+"==null)break;\n");
 		            //b.append("sleep("+state.timeoutSleepGranularity+");\n");
 		            //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");
 		            //b.append("}\n");
-	            }
+	            //}
             }
             if(children!=null && children.size()>0) {
                 Command c = children.get(0);
@@ -3448,11 +3458,11 @@ public class Command {
 
     public static class ProviderLoopCommand extends Command {
     	enum ProviderType {
-    		Counter, Provided, InlineSQL, InlineFile
+    		Counter, Provided, InlineSQL, InlineMongo, InlineFile
     	}
     	
-        String name, dsn, query, filePath;
-        String[] vars;
+        String name, dsn, query, filePath, collName;
+        String[] vars, props;
         int index = Integer.MIN_VALUE;
         int end = Integer.MIN_VALUE;
         boolean isStateFul = false;
@@ -3515,6 +3525,9 @@ public class Command {
                         }
                     }
                 	query = t.trim();
+                	if(!query.toLowerCase().matches("^(select|with|call)[\t ]+.*") && type==ProviderType.InlineSQL) {
+                		throwParseError(cmdDetails, new RuntimeException("SQL provider only allows select|with|call queries"));
+                	}
                 	t = state.unsanitize(parts[2].trim());
                 	if(t.charAt(0)==t.charAt(t.length()-1)) {
                         if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
@@ -3523,6 +3536,56 @@ public class Command {
                     }
                 	vars= t.split(",");
                 } else {
+                    throwParseError(cmdDetails, new RuntimeException("SQL provider command should have the syntax `#sql {dsn} {query} {var1,var2,..}`"));
+                }
+            } else if(type==ProviderType.InlineMongo) {
+                if(parts.length==3) {
+                	String t = state.unsanitize(parts[0].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	dsn = t.trim();
+                	t = state.unsanitize(parts[1].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	collName = t.trim();
+                	t = state.unsanitize(parts[2].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	query = t.trim();
+            		try {
+						WorkflowContextHandler.OM.readTree(query);
+					} catch (Exception e) {
+						throwParseError(cmdDetails, new RuntimeException("Mongo provider needs valid json queries"));
+					}
+                	t = state.unsanitize(parts[3].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	vars= t.split(",");
+                	t = state.unsanitize(parts[4].trim());
+                	if(t.charAt(0)==t.charAt(t.length()-1)) {
+                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                        	t = t.substring(1, t.length()-1);
+                        }
+                    }
+                	props= t.split(",");
+                	if(vars.length!=props.length) {
+                		throwParseError(cmdDetails, new RuntimeException("Mongo provider needs same number of source/target property names"));
+                	}
+                } else {
+                	if(type==ProviderType.InlineMongo)
+                		throwParseError(cmdDetails, new RuntimeException("Mongo provider command should have the syntax `#mongo {dsn} {query} {var1,var2,..}`"));
                     throwParseError(cmdDetails, new RuntimeException("SQL provider command should have the syntax `#sql {dsn} {query} {var1,var2,..}`"));
                 }
             } else if(type==ProviderType.InlineFile) {
@@ -3586,6 +3649,17 @@ public class Command {
                 b.append(dsn);
                 b.append(" ");
                 b.append(query);
+                b.append(" ");
+                b.append(StringUtils.join(vars, ","));
+            } else if(type==ProviderType.InlineMongo) {
+                b.append("#mongo ");
+                b.append(dsn);
+                b.append(" ");
+                b.append(collName);
+                b.append(" ");
+                b.append(query);
+                b.append(" ");
+                b.append(StringUtils.join(props, ","));
                 b.append(" ");
                 b.append(StringUtils.join(vars, ","));
             } else if(type==ProviderType.InlineFile) {
@@ -3670,6 +3744,9 @@ public class Command {
                 if(type==ProviderType.InlineSQL) {
                 	name = dsn+query;
                 	b.append("int "+state.varname()+" = getSQLProviderTestDataMap(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                } else if(type==ProviderType.InlineMongo) {
+                	name = dsn+collName+query;
+                	b.append("int "+state.varname()+" = getMongoProviderTestDataMap(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(collName)+"\", \""+esc(StringUtils.join(props, ","))+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
                 } else if(type==ProviderType.InlineFile) {
                 	name = "file://" + filePath;
                 	b.append("int "+state.varname()+" = getFileProviderTestDataMap(\""+esc(filePath)+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
@@ -3709,7 +3786,7 @@ public class Command {
                 b.append("}");
                 state.prevvarnameitr();
                 b.append("rem__provname__(\"" + esc(name) + "\");\n");
-                if(type==ProviderType.InlineSQL || type==ProviderType.InlineFile) {
+                if(type==ProviderType.InlineSQL || type==ProviderType.InlineMongo || type==ProviderType.InlineFile) {
                 	b.append("delProvider(\""+esc(name)+"\");\n");
                 }
                 state.loopCounter--;
@@ -3727,6 +3804,7 @@ public class Command {
         		"\t#c {start-index} {end-index}\n\t{\n\t\tcode\n\t}",
         		"\t#c {end-index}\n\t{\n\t\tcode\n\t}",
         		"\t#sql {dsn} {query} {var1,var2,..}\n\t{\n\t\tcode\n\t}",
+        		"\t#mongo {dsn} {collection-name} {query} {col1,col2,..} {var1,var2,..}\n\t{\n\t\tcode\n\t}",
         		"\t#file {filepath} {var1,var2,..}\n\t{\n\t\tcode\n\t}",
 				"Examples :-",
 				"\t#provider \"provider-name\"\n\t{\n\t\texec @print(@index)\n\t\tclick xpath@'$provider-variable-1'\n\t}",
@@ -3890,6 +3968,51 @@ public class Command {
 				"Examples :-",
 	    		"\tfilevar v1,@v2,@v3 \"(.*)|(.*),(.*)\" \"$1,ABC_$2,BCD$3EFG\"",
 	    		"\tfilevar v1 \"([a-z]+)\" \"$1\""
+            };
+        }
+    }
+
+    public static class DSQueryCommand extends Command {
+        String dsn, query;
+        DSQueryCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.trim().split("[\t ]+");
+            if(parts.length==2) {
+                String t = state.unsanitize(parts[0].trim());
+                if(t.charAt(0)==t.charAt(t.length()-1)) {
+                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                    	t = t.substring(1, t.length()-1);
+                    }
+                }
+                dsn = t;
+                t = state.unsanitize(parts[1].trim());
+                if(t.charAt(0)==t.charAt(t.length()-1)) {
+                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
+                    	t = t.substring(1, t.length()-1);
+                    }
+                }
+                query = t;
+            } else {
+            	throwParseError(cmdDetails, new RuntimeException("DS query command needs dsn name and query to execute"));
+            }
+        }
+        String toCmd() {
+            StringBuilder b = new StringBuilder();
+            b.append("dsq ");
+            b.append(dsn);
+            b.append(" ");
+            b.append(query);
+            return b.toString();
+        }
+        String javacode() {
+            return "executeQuery(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"));\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Data Source Query definition",
+        		"\t#dsq {dsn} {query}",
+				"Examples :-",
+				"\t#dsq sqldb \"update some_table set cola = 'value' where colb = 1\""
             };
         }
     }
@@ -5303,7 +5426,7 @@ public class Command {
             return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", null, "+tvalue+", \"Element not found by selector " 
-                    + logbc + " at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
+                    + logbc + " at line number "+fileLineDetails[1]+" \", false, "+state.timeoutSleepGranularity+", false, "+state.getLayers()+");\n";
         }
         /*String javacodevaronly() {
             String sc = state.currvarnamesc();
@@ -5366,7 +5489,7 @@ public class Command {
         }*/
         String javacodeonly() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return javacodeonlyNoAssert(null, false, state.timeoutNum)
+            return javacodeonlyNoAssert(null, false, state.timeoutNum, false)
                     + "\nAssert.assertTrue(\"Element not found by selector " + logbc
                     + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
         }
@@ -5379,11 +5502,11 @@ public class Command {
         		return vrd + " = isSessionName(\""+esc(state.unsanitize(sessionScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return javacodeonlyNoAssert(children, true, state.timeoutNum)
+            return javacodeonlyNoAssert(children, true, state.timeoutNum, false)
                     + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nAssert.assertTrue(\"Element not found by selector " + logbc 
                     + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
         }
-        String javacodeonlyNoAssert(List<Command> children, boolean noexcep, int counter) {
+        String javacodeonlyNoAssert(List<Command> children, boolean noexcep, int counter, boolean isVisible) {
             //javacodeonlyint(children);
             String sc = state.currvarnamesc();
             String value = (operval!=null?"evaluate(\""+esc(operval)+"\")":null), values = "new String[]{}", action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
@@ -5454,7 +5577,7 @@ public class Command {
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
             String b = "___ce___ = handleWaitFuncWL(___cw___, "+sc+", "+wel+", "+counter+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
-                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.getLayers()+");\n";
+                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.timeoutSleepGranularity+", "+isVisible+", "+state.getLayers()+");\n";
             return b;
         }
         /*String javacodeonly(List<Command> children, long waitTime) {

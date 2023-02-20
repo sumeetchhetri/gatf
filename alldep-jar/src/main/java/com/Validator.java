@@ -114,6 +114,8 @@ implements Serializable {
 					null,
 					"Element not found by selector class@'userNameTxt' at line number 2 ",
 					false,
+					1000,
+					false,
 					""
 					);
 

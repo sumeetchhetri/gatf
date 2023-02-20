@@ -117,7 +117,9 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.FileTestDataProvider;
+import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
+import com.gatf.executor.dataprovider.TestDataSource;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
@@ -480,7 +482,24 @@ public abstract class SeleniumTest {
 			getSession().providerTestDataMap.put(dsn+query, sdt.provide(query, vars, ___cxt___));
 			return getSession().providerTestDataMap.get(dsn+query);
 		}
-		throw new RuntimeException("No DSN found with the name " + dsn);
+		throw new RuntimeException("No SQL DSN found with the name " + dsn);
+	}
+
+	protected List<Map<String, String>> getMongoProviderTestDataMap(String dsn, String query, String collName, String properties, String vars) {
+		MongoDBTestDataSource sdt = ___cxt___.getMongoDSN(dsn);
+		if(sdt!=null) {
+			getSession().providerTestDataMap.put(dsn+query, sdt.provide(query, collName, properties, vars, ___cxt___));
+			return getSession().providerTestDataMap.get(dsn+query);
+		}
+		throw new RuntimeException("No Mongo DSN found with the name " + dsn);
+	}
+	
+	protected boolean executeQuery(String dsn, String query) {
+		TestDataSource tds = ___cxt___.getDSN(dsn);
+		if(tds!=null) {
+			return tds.execute(query);
+		}
+		return false;
 	}
 
 	protected List<Map<String, String>> getFileProviderTestDataMap(String filePath, String vars) {
@@ -2242,12 +2261,16 @@ public abstract class SeleniumTest {
 	
 	@SuppressWarnings("unchecked")
 	protected List<WebElement> handleWaitFuncWL(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final int timeOutCounter, String relative, final String[] classifier, final String[] by, String subselector, 
-			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
 		int counter = 0;
 		while(true) {
-			List<WebElement> el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
-			if (el != null) return el;
-			sleep(1000);
+			List<WebElement> el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
+			if(!isVisible) {
+				if (el != null) return el;
+			} else {
+				if (el == null) return el;
+			}
+			sleep(timeoutGranularity);
 			if (counter++ == timeOutCounter)
 				break;
 		}
@@ -2257,12 +2280,16 @@ public abstract class SeleniumTest {
 	
 	@SuppressWarnings("unchecked")
 	protected List<String[]> transientProviderDataWL(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutCounter, String relative, final String[] classifier, final String[] by, String subselector, 
-			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
 		int counter = 0;
 		while(true) {
-			List<String[]> el = (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
-			if (el != null) return el;
-			sleep(1000);
+			List<String[]> el = (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
+			if(!isVisible) {
+				if (el != null) return el;
+			} else {
+				if (el == null) return el;
+			}
+			sleep(timeoutGranularity);
 			if (counter++ == timeOutCounter)
 				break;
 		}
@@ -2272,19 +2299,19 @@ public abstract class SeleniumTest {
 
 	@SuppressWarnings("unchecked")
 	protected List<WebElement> handleWaitFunc(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
-			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
+		return (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
 	}
 	
 	@SuppressWarnings("unchecked")
 	protected List<String[]> transientProviderData(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
-			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
-		return (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, layers);
+			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
+		return (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, timeOutInSeconds, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
 	}
 
 	@SuppressWarnings("unchecked")
 	private Object handleWaitOrTransientProv(WebDriver driver, final SearchContext sc, final List<WebElement> ce, final long timeOutInSeconds, String relative, final String[] classifier, final String[] by, String subselector, 
-			boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, String ... layers) {
+			boolean byselsame, String value, String[] values, final String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
 		final WebDriver wsc = (WebDriver) sc;
 		final Object[] o = new Object[2];
 		long timeoutRemaining = 0;

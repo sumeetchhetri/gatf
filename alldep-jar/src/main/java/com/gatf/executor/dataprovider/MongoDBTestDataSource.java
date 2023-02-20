@@ -154,8 +154,16 @@ public class MongoDBTestDataSource extends TestDataSource {
 		logger.info("Releasing connections....");
 	}
 	
+	public List<Map<String, String>> provide(String queryStr, String collectionName, String propertyNames, String vars, AcceptanceTestContext context) {
+		GatfTestDataProvider provider = new GatfTestDataProvider();
+		provider.setQueryStr(queryStr);
+		provider.setArgs(new String[] {collectionName});
+		provider.setSourceProperties(propertyNames);
+		provider.setProviderName(vars);
+		return provide(provider, context);
+	}
+	
 	public List<Map<String, String>> provide(GatfTestDataProvider provider, AcceptanceTestContext context) {
-		
 		List<Map<String, String>> result = new ArrayList<Map<String,String>>();
 		
 		Assert.assertNotNull("provider cannot be null", provider);

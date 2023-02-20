@@ -791,6 +791,15 @@ public class AcceptanceTestContext {
 		return null;
 	}
 	
+	public MongoDBTestDataSource getMongoDSN(String name)
+	{
+		TestDataSource t = dataSourceMap.get(name);
+		if(t!=null && t instanceof MongoDBTestDataSource) {
+			return (MongoDBTestDataSource)t;
+		}
+		return null;
+	}
+	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
 	private void handleHooks(List<GatfTestDataSourceHook> dataSourceHooks)
 	{
