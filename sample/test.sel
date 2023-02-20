@@ -8,30 +8,30 @@ open chrome
 maximize
 mode normal true
 goto https://abc.com
-//??+ xpath@"t1" click text ="ABCD"
-/*click xpath@"t1" text ="ABCD"
-??+ xpath@"t1" clear
-clear xpath@"t1"*/
+//??+ xpath@"t01" click text ="ABCD"
+/*click xpath@"t02" text ="ABCD"
+??+ xpath@"t03" clear
+clear xpath@"t04"*/
 ??+ xpath@"t1" submit
-submit xpath@"t1"
-??+ xpath@"t1" hover
-hover xpath@"t1"
-??+ xpath@"t1" upload 'asas'
-upload 'asas' xpath@"t1"
-??+ xpath@"t1" type 'asas'
-type 'asas' xpath@"t1"
-??+ xpath@"t1" select index@1
-select index@1 xpath@"t1"
-randomize xpath@"UIUIUIUIUIUI" fuzzyn _@3:4:5:6
-??- xpath@"UIUIUIUIUIUI" randomize fuzzyn _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyn _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzya _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyauc _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyalc _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyan _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyanuc _@3:4:5:6
-??+ xpath@"sdadsa" randomize fuzzyanlc _@3:4:5:6
-??+ xpath@expr3 type "file://ID-Doc-1.png"
+submit xpath@"t2"
+??+ xpath@"t3" hover
+hover xpath@"t4"
+??+ xpath@"t5" upload 'asas'
+upload 'asas' xpath@"t6"
+??+ xpath@"t7" type 'asas'
+type 'asas' xpath@"t8"
+??+ xpath@"t9" select index@1
+select index@1 xpath@"t10"
+randomize xpath@"UIUIUIUIUIUI1" fuzzyn _@3:4:5:6
+??- xpath@"UIUIUIUIUIUI2" randomize fuzzyn _@3:4:5:6
+??+ xpath@"sdadsa3" randomize fuzzyn _@3:4:5:6
+??+ xpath@"sdadsa4" randomize fuzzya _@3:4:5:6
+??+ xpath@"sdadsa5" randomize fuzzyauc _@3:4:5:6
+??+ xpath@"sdadsa6" randomize fuzzyalc _@3:4:5:6
+??+ xpath@"sdadsa7" randomize fuzzyan _@3:4:5:6
+??+ xpath@"sdadsa8" randomize fuzzyanuc _@3:4:5:6
+??+ xpath@"sdadsa9" randomize fuzzyanlc _@3:4:5:6
+??+ xpath@expr10 type "file://ID-Doc-1.png"
 var @firstname xpath@"//input[@placeholder="FirstName"]" attr@value
 #transient-provider prov1 var1,var2 id@'abc' text,attr@abc lazy
 #transient-provider prov2 var1,var2 id@'abc' text,attr@abc
@@ -258,15 +258,30 @@ confirm true "dsadas"
 	Thread.sleep(@index);
 >>>
 }
+#sql sqldsn "select col1,col2 from some_table" "var1,var2"
+{
+	sleep 20
+	exec @print(${var1})
+	exec @print(${var2})
+}
+dsq sqldsn "update some_table set cola = 'value' where colb = 1"
+#file fileprov "var1,var2"
+{
+	sleep 20
+	exec @print(${var1})
+	exec @print(${var2})
+}
 readfile /tmp/test.txt
 {
 	exec @print(@index)
 	exec @print(@line)
+	filevar v1,@v2,v3 "(.*)|(.*),(.*)" "1,2,3"
 }
 readfile /tmp/test.png binary
 {
 	exec @print(@index)
 	exec @print(@line)
+	filevar v1,v2,@v3 "(.*)|(.*),(.*)" "1,2,3"
 }
 #transient-provider prov1 var1,var2 class@'userNameTxt' attr@id,attr@name
 {
@@ -336,7 +351,7 @@ subtest "login into Application"
 {
   goto https://example.com/url/
   ??- xpath@"//*[@id="usernameId"]" type "abc"
-  @waitldr
+  @call waitldr
   ? xpath@"//*[@id="passwordId"]"
   {
 	  ??- id@usernameId
@@ -348,7 +363,7 @@ subtest "login into Application"
 	  ??- xpath@"//*[@id="usernameId"]"
 	  ??- xpath@"//*[text()='Login']"
 	  ??- xpath@"//*[contains(text(), 'Login')]"
-	  ??- xpath@"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]"
+	  ??1000 xpath@"//input[contains(@class, 'form-control') and contains(@class, 'userNameTxt') and contains(@class, 'enterme')]"
 	  ??- xpath@"/html/body/div[3]/div/div[2]/div/div[1]/div/div/div/form[1]/div/div/div[1]/div[2]/div/div[1]/input"
 	  ??- cssselector@"input#usernameId"
 	  ??- cssselector@"input.userNameTxt"
@@ -366,33 +381,33 @@ subtest "login into Application"
 	  //tab 1
 	  ? xpath@"//*[@id="passwordIdInnerIf"]"
 	  {
-	      @waitldr
+	      @call waitldr
 	      ? xpath@"//*[@id="passwordIdInnerInnerIf"]"
 		  {
-		      @waitldr
+		      @call waitldr
 		      pass "Test Passed"
 		  }
 	  }
 	  :? xpath@"//*[@id="passwordIdInnerElseIf"]"
 	  {
-	  	  @waitldr
+	  	  @call waitldr
 	  }
 	  :
 	  {
-	  	  @waitldr
+	  	  @call waitldr
 	  	  fail "Test Failed"
 	  }
   }
   :? xpath@"//*[@id="passwordId1"]"
   {
-  	  @waitldr
+  	  @call waitldr
   }
   :
   {
-  	  @waitldr
+  	  @call waitldr
   }
 }
-@subtest "login into Application"
+@call "login into Application"
 #provider "aad" 1 10
 {
 	sleep 10
@@ -445,7 +460,7 @@ curl post http://abc.com
 	<abc>abc</abc>
 }
 
-var curl_val plugin curl post http://abc.com
+var curl_val1 plugin curl post http://abc.com
 {
 	[
 		Content-Type=application/xml

@@ -581,6 +581,29 @@ public abstract class SeleniumTest {
 	private void initTmplMap(Map<String, Object> _mt) {
 		_mt.put("M", Math.class);
 		_mt.put("U", Util.class);
+		_mt.put("today", Util.today);
+		_mt.put("yesterday", Util.yesterday);
+		_mt.put("tomorrow", Util.tomorrow);
+		_mt.put("day", Util.day);
+		_mt.put("lastWeek", Util.lastWeek);
+		_mt.put("nextWeek", Util.nextWeek);
+		_mt.put("week", Util.week);
+		_mt.put("lastMonth", Util.lastMonth);
+		_mt.put("nextMonth", Util.nextMonth);
+		_mt.put("month", Util.month);
+		_mt.put("lastYear", Util.lastYear);
+		_mt.put("nextYear", Util.nextYear);
+		_mt.put("year", Util.year);
+		_mt.put("now", Util.now);
+		_mt.put("lastSecond", Util.lastSecond);
+		_mt.put("nextSecond", Util.nextSecond);
+		_mt.put("second", Util.second);
+		_mt.put("lastMinute", Util.lastMinute);
+		_mt.put("nextMinute", Util.nextMinute);
+		_mt.put("minute", Util.minute);
+		_mt.put("lastHour", Util.lastHour);
+		_mt.put("nextHour", Util.nextHour);
+		_mt.put("hour", Util.hour);
 		_mt.put("S", StringUtils.class);
 		_mt.put("D", DateUtils.class);
 	}
@@ -3317,10 +3340,10 @@ public abstract class SeleniumTest {
 	}
 	
 	public static interface UtilDateF {
-		public String oper();
+		public String f();
 	}
 	public static interface UtilDateFS {
-		public String oper(int days, String fmt);
+		public String f(int days, String fmt);
 	}
 	
 	public static class Util {
@@ -3331,32 +3354,34 @@ public abstract class SeleniumTest {
 		private static String dateArith(String what, int howMuch, String fmt) {
 			if(fmt==null) fmt = "dd/MM/yyyy HH:mm:ss";
 			DateTime dt = new DateTime();
-			switch(what) {
-				case "h":
-					dt = howMuch>0?dt.plusHours(howMuch):dt.minusHours(howMuch);
-					break;
-				case "mi":
-					dt = howMuch>0?dt.plusMinutes(howMuch):dt.minusMinutes(howMuch);
-					break;
-				case "s":
-					dt = howMuch>0?dt.plusSeconds(howMuch):dt.minusSeconds(howMuch);
-					break;
-				case "ms":
-					dt = howMuch>0?dt.plusMillis(howMuch):dt.minusMillis(howMuch);
-					break;
-				case "d":
-					dt = howMuch>0?dt.plusDays(howMuch):dt.minusDays(howMuch);
-					break;
-				case "m":
-					dt = howMuch>0?dt.plusMonths(howMuch):dt.minusMonths(howMuch);
-					break;
-				case "w":
-					dt = howMuch>0?dt.plusWeeks(howMuch):dt.minusWeeks(howMuch);
-					break;
-				case "y":
-					dt = howMuch>0?dt.plusYears(howMuch):dt.minusYears(howMuch);
-					break;
-				default: break;
+			if(what!=null) {
+				switch(what) {
+					case "h":
+						dt = howMuch>0?dt.plusHours(howMuch):dt.minusHours(howMuch);
+						break;
+					case "mi":
+						dt = howMuch>0?dt.plusMinutes(howMuch):dt.minusMinutes(howMuch);
+						break;
+					case "s":
+						dt = howMuch>0?dt.plusSeconds(howMuch):dt.minusSeconds(howMuch);
+						break;
+					case "ms":
+						dt = howMuch>0?dt.plusMillis(howMuch):dt.minusMillis(howMuch);
+						break;
+					case "d":
+						dt = howMuch>0?dt.plusDays(howMuch):dt.minusDays(howMuch);
+						break;
+					case "m":
+						dt = howMuch>0?dt.plusMonths(howMuch):dt.minusMonths(howMuch);
+						break;
+					case "w":
+						dt = howMuch>0?dt.plusWeeks(howMuch):dt.minusWeeks(howMuch);
+						break;
+					case "y":
+						dt = howMuch>0?dt.plusYears(howMuch):dt.minusYears(howMuch);
+						break;
+					default: break;
+				}
 			}
 			return dt.toString(fmt);
 		}
@@ -3516,16 +3541,16 @@ public abstract class SeleniumTest {
 		};
 		
 		public static String g(UtilDateF f1, UtilDateF f2) {
-			return StringUtils.join(f1.oper(), f2.oper());
+			return g(f1, f2, " ");
 		}
 		public static String g(UtilDateF f1, UtilDateF f2, String del) {
-			return StringUtils.joinWith(del, f1.oper(), f2.oper());
+			return StringUtils.joinWith(del, f1.f(), f2.f());
 		}
 		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2) {
-			return StringUtils.join(f1.oper(p1, fmt1), f2.oper(p2, fmt2));
+			return g(f1, p1, fmt1, f2, p2, fmt2, " ");
 		}
 		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2, String del) {
-			return StringUtils.joinWith(del, f1.oper(p1, fmt1), f2.oper(p2, fmt2));
+			return StringUtils.joinWith(del, f1.f(p1, fmt1), f2.f(p2, fmt2));
 		}
 	}
 }

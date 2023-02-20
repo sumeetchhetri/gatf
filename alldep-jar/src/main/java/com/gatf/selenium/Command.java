@@ -73,6 +73,7 @@ public class Command {
         int starts = 0;
         int ends = 0;
        
+        int ifTimeoutNum = 1;
         int timeoutNum = 60;
         long timeoutSleepGranularity = 1000;
        
@@ -616,6 +617,7 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("timeout ")) {
         	comd = new TimeoutCommand(cmd.substring(8), cmdDetails, state);
         	state.timeoutNum = ((TimeoutCommand)comd).counter;
+        	state.ifTimeoutNum = ((TimeoutCommand)comd).ifCounter;
         	state.timeoutSleepGranularity = ((TimeoutCommand)comd).sleepGranularity;
         } else if (cmd.toLowerCase().startsWith("layer ")) {
             comd = new LayerCommand(cmd.substring(6).trim(), cmdDetails, state);
@@ -4557,6 +4559,7 @@ public class Command {
     }
 
     public static class TimeoutCommand extends Command {
+    	int ifCounter = 1;
     	int counter = 60;
     	long sleepGranularity = 1000;
     	TimeoutCommand(String val, Object[] cmdDetails, CommandState state) {
@@ -4575,12 +4578,22 @@ public class Command {
 					throwParseError(null, new RuntimeException("Please specify timeout in seconds"));
 				}
             }
-            if(counter<10) {
-            	throwParseError(null, new RuntimeException("Timeout should be more than or equal to 10"));
+            if(counter<2) {
+            	throwParseError(null, new RuntimeException("Timeout should be more than or equal to 2"));
             }
             if(parts.length>1 && StringUtils.isNotBlank(parts[1])) {
             	try {
-            		sleepGranularity = Long.valueOf(parts[1]);
+            		ifCounter = Integer.valueOf(parts[1]);
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Please specify timeout in seconds"));
+				}
+            }
+            if(ifCounter<1) {
+            	throwParseError(null, new RuntimeException("Timeout should be more than or equal to 1"));
+            }
+            if(parts.length>2 && StringUtils.isNotBlank(parts[2])) {
+            	try {
+            		sleepGranularity = Long.valueOf(parts[2]);
 				} catch (Exception e) {
 					throwParseError(null, new RuntimeException("Please specify proper sleep granularity (should be in milliseconds)"));
 				}
@@ -4588,17 +4601,18 @@ public class Command {
             
             if(sleepGranularity!=1000) {
             	counter = (int)(counter*1000/sleepGranularity);
+            	ifCounter = (int)(ifCounter*1000/sleepGranularity);
             }
         }
         String toCmd() {
-            return "timeout " + counter + " " + sleepGranularity;
+            return "timeout " + counter + " " + ifCounter + " " + sleepGranularity;
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Define Global timeout",
-        		"\ttimeout {timeout-secs} {sleep-granularity-millis}",
+        		"\ttimeout {timeout-secs} {if-timeout-secs}} {sleep-granularity-millis}",
 				"Examples :-",
-				"\ttimeout 100 1000",
+				"\ttimeout 60 1 1000",
             };
         }
         public String javacode() {
@@ -5502,7 +5516,7 @@ public class Command {
         		return vrd + " = isSessionName(\""+esc(state.unsanitize(sessionScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return javacodeonlyNoAssert(children, true, state.timeoutNum, false)
+            return javacodeonlyNoAssert(children, true, state.ifTimeoutNum, false)
                     + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nAssert.assertTrue(\"Element not found by selector " + logbc 
                     + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
         }
@@ -8453,7 +8467,7 @@ public class Command {
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
     			"/path/to/project/gatf-config.xml",
-        		"/path/to/project/", "true"}, null, false);
+        		"/path/to/project/", "true"}, "com.Test", true);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml", 
         		"/path/to/project/", "true"}, null, false);
