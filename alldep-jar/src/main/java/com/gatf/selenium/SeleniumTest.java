@@ -3357,28 +3357,28 @@ public abstract class SeleniumTest {
 			if(what!=null) {
 				switch(what) {
 					case "h":
-						dt = howMuch>0?dt.plusHours(howMuch):dt.minusHours(howMuch);
+						dt = dt.plusHours(howMuch);
 						break;
 					case "mi":
-						dt = howMuch>0?dt.plusMinutes(howMuch):dt.minusMinutes(howMuch);
+						dt = dt.plusMinutes(howMuch);
 						break;
 					case "s":
-						dt = howMuch>0?dt.plusSeconds(howMuch):dt.minusSeconds(howMuch);
+						dt = dt.plusSeconds(howMuch);
 						break;
 					case "ms":
-						dt = howMuch>0?dt.plusMillis(howMuch):dt.minusMillis(howMuch);
+						dt = dt.plusMillis(howMuch);
 						break;
 					case "d":
-						dt = howMuch>0?dt.plusDays(howMuch):dt.minusDays(howMuch);
+						dt = dt.plusDays(howMuch);
 						break;
 					case "m":
-						dt = howMuch>0?dt.plusMonths(howMuch):dt.minusMonths(howMuch);
+						dt = dt.plusMonths(howMuch);
 						break;
 					case "w":
-						dt = howMuch>0?dt.plusWeeks(howMuch):dt.minusWeeks(howMuch);
+						dt = dt.plusWeeks(howMuch);
 						break;
 					case "y":
-						dt = howMuch>0?dt.plusYears(howMuch):dt.minusYears(howMuch);
+						dt = dt.plusYears(howMuch);
 						break;
 					default: break;
 				}
@@ -3396,7 +3396,7 @@ public abstract class SeleniumTest {
 			return dateArith("d", 1, "dd/MM/yyyy");
 		}
 		public static String someDay(int days, String fmt) {
-			return dateArith("d", days, fmt);
+			return dateArith("d", days, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		}
 
 		public static String lastWeek() {
@@ -3406,7 +3406,7 @@ public abstract class SeleniumTest {
 			return dateArith("w", 1, "dd/MM/yyyy");
 		}
 		public static String someWeek(int weeks, String fmt) {
-			return dateArith("w", weeks, "dd/MM/yyyy");
+			return dateArith("w", weeks, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		}
 		
 		public static String lastMonth() {
@@ -3416,7 +3416,7 @@ public abstract class SeleniumTest {
 			return dateArith("m", 1, "dd/MM/yyyy");
 		}
 		public static String someMonth(int months, String fmt) {
-			return dateArith("m", months, "dd/MM/yyyy");
+			return dateArith("m", months, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		}
 		
 		public static String lastYear() {
@@ -3426,7 +3426,7 @@ public abstract class SeleniumTest {
 			return dateArith("y", 1, "dd/MM/yyyy");
 		}
 		public static String someYear(int years, String fmt) {
-			return dateArith("y", years, "dd/MM/yyyy");
+			return dateArith("y", years, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		}
 		
 		public static String now() {
@@ -3440,7 +3440,7 @@ public abstract class SeleniumTest {
 			return dateArith("s", 1, "HH:mm:ss");
 		}
 		public static String someSecond(int secs, String fmt) {
-			return dateArith("s", secs, fmt);
+			return dateArith("s", secs, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		}
 		
 		public static String lastMinute() {
@@ -3450,7 +3450,7 @@ public abstract class SeleniumTest {
 			return dateArith("mi", 1, "HH:mm:ss");
 		}
 		public static String someMinute(int mins, String fmt) {
-			return dateArith("mi", mins, fmt);
+			return dateArith("mi", mins, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		}
 		
 		public static String lastHour() {
@@ -3460,7 +3460,7 @@ public abstract class SeleniumTest {
 			return dateArith("h", 1, "HH:mm:ss");
 		}
 		public static String someHour(int hours, String fmt) {
-			return dateArith("h", hours, fmt);
+			return dateArith("h", hours, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		}
 		
 		public static UtilDateF today = () -> {
@@ -3473,7 +3473,7 @@ public abstract class SeleniumTest {
 			return dateArith("d", 1, "dd/MM/yyyy");
 		};
 		public static UtilDateFS day = (int days, String fmt) -> {
-			return dateArith("d", days, fmt);
+			return dateArith("d", days, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		};
 
 		public static UtilDateF lastWeek = () -> {
@@ -3483,7 +3483,7 @@ public abstract class SeleniumTest {
 			return dateArith("w", 1, "dd/MM/yyyy");
 		};
 		public static UtilDateFS week = (int weeks, String fmt) -> {
-			return dateArith("w", weeks, "dd/MM/yyyy");
+			return dateArith("w", weeks, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		};
 		
 		public static UtilDateF lastMonth = () -> {
@@ -3493,7 +3493,7 @@ public abstract class SeleniumTest {
 			return dateArith("m", 1, "dd/MM/yyyy");
 		};
 		public static UtilDateFS month = (int months, String fmt) -> {
-			return dateArith("m", months, "dd/MM/yyyy");
+			return dateArith("m", months, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		};
 		
 		public static UtilDateF lastYear = () -> {
@@ -3503,7 +3503,7 @@ public abstract class SeleniumTest {
 			return dateArith("y", 1, "dd/MM/yyyy");
 		};
 		public static UtilDateFS year = (int years, String fmt) -> {
-			return dateArith("y", years, "dd/MM/yyyy");
+			return dateArith("y", years, StringUtils.isNotBlank(fmt)?fmt:"dd/MM/yyyy");
 		};
 		
 		public static UtilDateF now = () -> {
@@ -3517,7 +3517,7 @@ public abstract class SeleniumTest {
 			return dateArith("s", 1, "HH:mm:ss");
 		};
 		public static UtilDateFS second = (int secs, String fmt) -> {
-			return dateArith("s", secs, fmt);
+			return dateArith("s", secs, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		};
 		
 		public static UtilDateF lastMinute = () -> {
@@ -3527,7 +3527,7 @@ public abstract class SeleniumTest {
 			return dateArith("mi", 1, "HH:mm:ss");
 		};
 		public static UtilDateFS minute = (int mins, String fmt) -> {
-			return dateArith("mi", mins, fmt);
+			return dateArith("mi", mins, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		};
 		
 		public static UtilDateF lastHour = () -> {
@@ -3537,7 +3537,7 @@ public abstract class SeleniumTest {
 			return dateArith("h", 1, "HH:mm:ss");
 		};
 		public static UtilDateFS hour = (int hours, String fmt) -> {
-			return dateArith("h", hours, fmt);
+			return dateArith("h", hours, StringUtils.isNotBlank(fmt)?fmt:"HH:mm:ss");
 		};
 		
 		public static String g(UtilDateF f1, UtilDateF f2) {

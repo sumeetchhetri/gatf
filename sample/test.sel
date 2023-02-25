@@ -467,3 +467,4 @@ var curl_val1 plugin curl post http://abc.com
 	]
 	<abc>abc</abc>
 }
+//$U.today() $U.now() $U.g($today, $now) $today.f() $nextMonth.f()
