@@ -259,6 +259,11 @@
 			<artifactId>selenium-java</artifactId>
 			<version>${seleinium.version}</version>
 		</dependency>
+		<dependency>
+			<groupId>org.seleniumhq.selenium</groupId>
+			<artifactId>selenium-http-jdk-client</artifactId>
+			<version>${seleinium.version}</version>
+		</dependency>
 
 		<dependency>
 			<groupId>io.appium</groupId>

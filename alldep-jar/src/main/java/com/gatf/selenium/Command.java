@@ -8467,7 +8467,7 @@ public class Command {
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
     			"/path/to/project/gatf-config.xml",
-        		"/path/to/project/", "true"}, "com.Test", true);
+        		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml", 
         		"/path/to/project/", "true"}, null, false);

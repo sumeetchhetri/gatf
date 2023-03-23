@@ -1796,6 +1796,9 @@ function configuration() {
                         "path": {
                             "type": "string"
                         },
+                        "arguments": {
+                            "type": "string"
+                        },
                         "capabilities": {
                             "label": {
                                 "type": "section",
