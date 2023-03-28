@@ -3013,6 +3013,7 @@ public abstract class SeleniumTest {
         
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
         Security.setProperty("crypto.policy", "unlimited");
+        System.setProperty("webdriver.http.factory", "jdk-http-client");
         
         AcceptanceTestContext c = new AcceptanceTestContext();
         c.setGatfExecutorConfig(config);

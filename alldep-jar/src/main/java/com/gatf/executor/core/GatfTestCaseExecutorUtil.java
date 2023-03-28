@@ -541,6 +541,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         //System.setProperty("java.home", configuration.getJavaHome());
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
         Security.setProperty("crypto.policy", "unlimited");
+        System.setProperty("webdriver.http.factory", "jdk-http-client");
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();
@@ -595,6 +596,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         //System.setProperty("java.home", configuration.getJavaHome());
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
         Security.setProperty("crypto.policy", "unlimited");
+        System.setProperty("webdriver.http.factory", "jdk-http-client");
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();
@@ -893,11 +895,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 Object[] retvals = testdata.get(i);
                 List<SeleniumTestSession> sessions = null;
                 try {
+                	System.out.println("=======================Started execution gatf test case " + dyn.getName() + "=======================");
                     summLst.put((String) retvals[0], new LinkedHashMap<String, List<Object[]>>());
                     sessions = dyn.execute(lp);
                 } catch (Throwable e) {
                     dyn.pushResult(new SeleniumTestResult(dyn, e));
                     sessions = dyn.get__sessions__();
+                } finally {
+                	System.out.println("=======================Completed execution gatf test case " + dyn.getName() + "=======================");
                 }
                 dyn.quitAll();
 
@@ -2091,6 +2096,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             //System.setProperty("java.home", configuration.getJavaHome());
             System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
             Security.setProperty("crypto.policy", "unlimited");
+            System.setProperty("webdriver.http.factory", "jdk-http-client");
 
             try {
                 SeleniumCodeGeneratorAndUtil.clean();
