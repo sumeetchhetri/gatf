@@ -184,7 +184,7 @@ public final class NettyRequestFactory {
               .set(SEC_WEBSOCKET_VERSION, "13");
 
       if (!headers.contains(ORIGIN)) {
-    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && uri.toString().contains("://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {}
+    	if(com.gatf.selenium.SeleniumTest.IS_GATF.get()!=null && com.gatf.selenium.SeleniumTest.IS_GATF.get()) {}
     	else headers.set(ORIGIN, originHeader(uri));
       }
 

@@ -213,6 +213,7 @@ public abstract class SeleniumTest {
 	public static Map<String, Map<String, String>> DRV_FEATURES = new ConcurrentHashMap<String, Map<String,String>>();
 	
 	public static ThreadLocal<ImmutableTriple<Boolean, String, String[]>> IN_DOCKER = new ThreadLocal<>();
+	public static ThreadLocal<Boolean> IS_GATF = new ThreadLocal<>();
 	
 	//public static ThreadLocal<>
 	
@@ -257,6 +258,7 @@ public abstract class SeleniumTest {
 	}*/
 	
 	protected String addWdm(String browserName, Capabilities capabilities) {
+		IS_GATF.set(true);
 		boolean isDocker = false;
 		boolean isHeadless = false;
 		boolean isRecording = false;

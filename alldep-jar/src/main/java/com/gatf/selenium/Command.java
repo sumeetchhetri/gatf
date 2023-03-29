@@ -4211,6 +4211,9 @@ public class Command {
 					config.setArguments(cargs);
                 }
                 config.setArguments(config.getArguments()+ " --ignore-certificate-errors");
+                //if(System.getProperty("webdriver.http.factory")==null) {
+                //	config.setArguments(config.getArguments()+ " --remote-allow-origins=*");
+                //}
                 if(!config.getName().equals("chrome")) {
                 	String cargs = config.getArguments();
 					cargs = cargs.replace("--no-sandbox", "").replace("--disable-dev-shm-usage", "");
