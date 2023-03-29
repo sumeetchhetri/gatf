@@ -112,7 +112,7 @@ public class CdpEndpointFinder {
     }
 
     try {
-    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:")) {
+    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {
     		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();
     		raw = raws;
     	}
