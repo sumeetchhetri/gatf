@@ -48,6 +48,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -363,6 +364,10 @@ public abstract class SeleniumTest {
 				System.out.println(String.format("VNC URL for Docker Browser Session is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl()));
 			}
 			WebDriver augmented = null;
+			try {
+				Thread.sleep(2000);//Sleep for some time for cdp proxy to be up and running
+			} catch (Exception e) {
+			}
 			int counter = 10;
 			while(counter-->0) {
 				try {
@@ -371,8 +376,10 @@ public abstract class SeleniumTest {
 				}
 				try {
 					augmented = new Augmenter().augment(wd);
-					System.out.println("Got augmented docker driver....");
-					break;
+					if(augmented instanceof HasDevTools) {
+						System.out.println("Got augmented docker driver....");
+						break;
+					}
 				} catch (Exception e) {
 					System.out.println(SeleniumTest.IN_DOCKER.get());
 					System.out.println(Arrays.asList(SeleniumTest.IN_DOCKER.get()));
@@ -442,7 +449,7 @@ public abstract class SeleniumTest {
 		if(getSession().__subtestname__==null) {
 			result.executionTime = System.nanoTime() - getSession().__teststarttime__;
 			getSession().__result__.get(getSession().browserName).result = result;
-			if(result!=null && !result.isStatus()) {
+			if(result!=null && !result.isStatus() && !result.isContinue) {
 				quit();
 			}
 		} else {
@@ -1011,34 +1018,45 @@ public abstract class SeleniumTest {
 	public static interface CondFunc {
 		Integer f(Object[] args);
 	}
-
-	public void quit() {
-		if(getSession().___d___.size()>0) {
+	
+	public void quit(SeleniumTestSession sess) {
+		if(sess.___d___.size()>0) {
 			int indx = 0;
-			for (WebDriver d : getSession().___d___)
+			for (WebDriver d : sess.___d___)
 			{
-				if(getSession().___dqs___.get(indx)) continue;
-				String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
-				DRV_FEATURES.remove(sessionId);
-				d.quit();
-				getSession().___dqs___.set(indx, true);
+				if(sess.___dqs___.get(indx)) continue;
+				try {
+					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+					DRV_FEATURES.remove(sessionId);
+				} catch (Exception e) {
+				}
+				try {
+					d.quit();
+				} catch (Exception e) {
+					if(e.getCause()!=null) {
+						if(e.getCause() instanceof TimeoutException) {
+							try {
+								d.quit();
+							} catch (Exception e2) {
+								e2.getCause().printStackTrace();
+							}
+						} else {
+							e.getCause().printStackTrace();
+						}
+					}
+				}
+				sess.___dqs___.set(indx, true);
 			}
 		}
 	}
 
+	public void quit() {
+		quit(getSession());
+	}
+
 	public void quitAll() {
 		for (SeleniumTestSession s : sessions) {
-			if(s.___d___.size()>0) {
-				int indx = 0;
-				for (WebDriver d : s.___d___)
-				{
-					if(s.___dqs___.get(indx)) continue;
-					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
-					DRV_FEATURES.remove(sessionId);
-					d.quit();
-					s.___dqs___.set(indx, true);
-				}
-			}
+			quit(s);
 		}
 		for(WebDriverManager wdm: wdmMgs.values()) {
 			wdm.quit();
@@ -1062,11 +1080,15 @@ public abstract class SeleniumTest {
 	public static class SeleniumTestResult implements Serializable {
 		private static final long serialVersionUID = 1L;
 
-		private Map<String, SerializableLogEntries> logs = new HashMap<String, SerializableLogEntries>();;
+		private Map<String, SerializableLogEntries> logs = new HashMap<String, SerializableLogEntries>();
 
 		private boolean status;
 
+		private boolean isContinue;
+
 		long executionTime;
+
+		String stName;
 
 		private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
 
@@ -1093,6 +1115,7 @@ public abstract class SeleniumTest {
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, String img, LoggingPreferences ___lp___) {
 			this.status = false;
+			this.isContinue = false;
 			this.internalTestRes = test.getSession().internalTestRs;
 			/*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
@@ -1102,34 +1125,41 @@ public abstract class SeleniumTest {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }*/
-			if(!(cause instanceof PassSubTestException)) {
-				if(!(cause instanceof SubTestException)) {
-					try {
-						cause.printStackTrace();
-						java.lang.System.out.println(img);
-						screenshotAsFile(d, img);
-					} catch (Exception e) {
-					}
-					List<LogEntry> entries = new ArrayList<LogEntry>();
-					entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
-					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
-					this.logs.put("gatf", new SerializableLogEntries(entries));
-					if(cause instanceof FailSubTestException) {
-						System.out.println(cause.getMessage());
-					}
-				} else {
-					List<LogEntry> entries = new ArrayList<LogEntry>();
-					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ((SubTestException)cause).stname + " execution failed"));
-					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ""));
-					this.logs.put("gatf", new SerializableLogEntries(entries));
-				}
-			} else {
+			if(cause instanceof PassSubTestException) {
 				this.status = true;
+				this.isContinue = true;
+				this.stName = test.get__subtestname__();
 				System.out.println(cause.getMessage());
+			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException) {
+				this.isContinue = cause instanceof WarnSubTestException;
+				this.stName = test.get__subtestname__();
+				List<LogEntry> entries = new ArrayList<LogEntry>();
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+				this.logs.put("gatf", new SerializableLogEntries(entries));
+				System.out.println(cause.getMessage());
+			} else if(cause instanceof SubTestException) {
+				this.stName = ((SubTestException)cause).stname;
+				List<LogEntry> entries = new ArrayList<LogEntry>();
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ((SubTestException)cause).cause.getMessage()));
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(((SubTestException)cause).cause)));
+				this.logs.put("gatf", new SerializableLogEntries(entries));
+			} else {
+				try {
+					cause.printStackTrace();
+					java.lang.System.out.println(img);
+					screenshotAsFile(d, img);
+				} catch (Exception e) {
+				}
+				List<LogEntry> entries = new ArrayList<LogEntry>();
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+				this.logs.put("gatf", new SerializableLogEntries(entries));
 			}
 		}
 		public SeleniumTestResult(SeleniumTest test, Throwable cause) {
 			this.status = false;
+			this.stName = test.get__subtestname__();
 			this.internalTestRes = test.getSession().internalTestRs;
 			List<LogEntry> entries = new ArrayList<LogEntry>();
 			entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
@@ -3041,8 +3071,22 @@ public abstract class SeleniumTest {
     }
 	
 	@SuppressWarnings("serial")
-	public static class PassSubTestException extends RuntimeException {
+	public static class ValidSubTestException extends RuntimeException {
+		public ValidSubTestException(String msg) {
+			super(msg);
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class PassSubTestException extends ValidSubTestException {
 		public PassSubTestException(String msg) {
+			super(msg);
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class WarnSubTestException extends ValidSubTestException {
+		public WarnSubTestException(String msg) {
 			super(msg);
 		}
 	}
@@ -3057,9 +3101,11 @@ public abstract class SeleniumTest {
 	@SuppressWarnings("serial")
 	public static class SubTestException extends RuntimeException {
 		String stname;
+		Throwable cause;
 		public SubTestException(String stname, Throwable cause) {
 			super(cause.getMessage());
 			this.stname = stname;
+			this.cause = cause;
 		}
 	}
 	

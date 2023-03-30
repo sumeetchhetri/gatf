@@ -76,6 +76,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -966,6 +967,17 @@ public abstract class WebDriverManager {
                     try {
                     	driver.quit();
 					} catch(Exception e) {
+						if(e.getCause()!=null) {
+							if(e.getCause() instanceof TimeoutException) {
+								try {
+									driver.quit();
+								} catch (Exception e2) {
+									e2.getCause().printStackTrace();
+								}
+							} else {
+								e.getCause().printStackTrace();
+							}
+						}
 					}
                 }
             }

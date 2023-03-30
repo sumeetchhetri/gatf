@@ -596,6 +596,8 @@ public class Command {
             comd = new PassCommand(cmd.equalsIgnoreCase("pass")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.startsWith("fail ") || cmd.equalsIgnoreCase("fail")) {
             comd = new FailCommand(cmd.equalsIgnoreCase("fail")?"":cmd.substring(5).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("warn ") || cmd.equalsIgnoreCase("warn")) {
+            comd = new FailCommand(cmd.equalsIgnoreCase("warn")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("open ")) {
             String name = cmd.substring(5).trim();
             comd = new BrowserCommand(name, cmdDetails, state);
@@ -2434,7 +2436,7 @@ public class Command {
 	                b.append(tm.javacode());
 	                b.append("}catch(java.io.IOException _ioe){}");*/
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
-                	b.append("if(!("+ex+" instanceof PassSubTestException)) throw new SubTestException(\""+name+"\", "+ex+");\n");
+                	b.append("if(!("+ex+" instanceof ValidSubTestException)) throw new SubTestException(\""+name+"\", "+ex+");\n");
                 } else {
                 	b.append("throw "+ex+";\n");
                 }
@@ -5073,6 +5075,37 @@ public class Command {
         		"Examples :-",
         		"\tfail \"Test failed\"",
         		"\tfail \"Sub-Test failed\"",
+            };
+        }
+    }
+
+    public static class WarnCommand extends ValueCommand {
+        String toCmd() {
+            return "warn \"" + value + "\"";
+        }
+        String javacode() {
+            return "if(true)\n{\nthrow new WarnSubTestException(\""+esc(value)+"\");\n}";
+        }
+        WarnCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            if(cmd.equals("")) {
+            	value = "Test/Subtest Failed";
+            } else {
+	            value = state.unsanitize(cmd);
+	            if(value.charAt(0)==value.charAt(value.length()-1)) {
+	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
+	                    value = value.substring(1, value.length()-1);
+	                }
+	            }
+            }
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Fail test/sub-test and continue",
+        		"\twarn {error string}",
+        		"Examples :-",
+        		"\twarn \"Test failed\"",
+        		"\twarn \"Sub-Test failed\"",
             };
         }
     }
