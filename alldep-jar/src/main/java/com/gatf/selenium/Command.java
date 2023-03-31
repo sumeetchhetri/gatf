@@ -597,7 +597,7 @@ public class Command {
         } else if (cmd.startsWith("fail ") || cmd.equalsIgnoreCase("fail")) {
             comd = new FailCommand(cmd.equalsIgnoreCase("fail")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.startsWith("warn ") || cmd.equalsIgnoreCase("warn")) {
-            comd = new FailCommand(cmd.equalsIgnoreCase("warn")?"":cmd.substring(5).trim(), cmdDetails, state);
+            comd = new WarnCommand(cmd.equalsIgnoreCase("warn")?"":cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("open ")) {
             String name = cmd.substring(5).trim();
             comd = new BrowserCommand(name, cmdDetails, state);
@@ -8505,10 +8505,10 @@ public class Command {
     			"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
-        		"/path/to/project/gatf-config.xml", 
+        		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	validateSel(new String[] {"-validate-sel", "main/clinical.sel",
-        		"/path/to/project/gatf-config.xml", 
+        		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);*/
 
         /*List<String> ___a___1 = new ArrayList<String>();
