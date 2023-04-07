@@ -14,6 +14,7 @@
 package com.gatf.executor.core;
 
 import java.io.File;
+import java.io.FileWriter;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.security.Security;
@@ -64,6 +65,7 @@ import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.LoadTestResource;
 import com.gatf.executor.report.ReportHandler;
+import com.gatf.executor.report.ReportHandler.TestFileReporter;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.executor.report.RuntimeReportUtil.LoadTestEntry;
 import com.gatf.executor.report.TestCaseExecutionLogGenerator;
@@ -77,11 +79,18 @@ import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.FailureException;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 import com.gatf.selenium.SeleniumTestSession;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
 import com.gatf.ui.GatfConfigToolUtil;
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Table;
+
+import au.com.bytecode.opencsv.CSVWriter;
 
 /**
  * @author Sumeet Chhetri The maven plugin main class for the Test case Executor/Workflow engine
@@ -888,16 +897,25 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             TestSuiteStats stats = new TestSuiteStats();
             int tot = 0, fal = 0, succ = 0, skp = 0;
             Date time = new Date();
+            String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + "test_report_.pdf";
+            String csvReport = context.getOutDir().getAbsolutePath() + File.separator + "test_report_.csv";
+            Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
+            CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
+            Map<String, SeleniumTestResult> failDetails = new LinkedHashMap<>();
             for (int i = 0; i < tests.size(); i++) {
             	TestSuiteStats tstats = new TestSuiteStats();
                 int ttot = 0, tfal = 0, tsucc = 0, tskp = 0;
                 SeleniumTest dyn = tests.get(i).copy(context, index + 1);
                 Object[] retvals = testdata.get(i);
+                
+                long start = System.currentTimeMillis();
                 List<SeleniumTestSession> sessions = null;
                 try {
                 	System.out.println("=======================Started execution gatf test case " + dyn.getName() + "=======================");
                     summLst.put((String) retvals[0], new LinkedHashMap<String, List<Object[]>>());
                     sessions = dyn.execute(lp);
+                } catch (FailureException e) {
+                    sessions = dyn.get__sessions__();
                 } catch (Throwable e) {
                     dyn.pushResult(new SeleniumTestResult(dyn, e));
                     sessions = dyn.get__sessions__();
@@ -905,11 +923,15 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 	System.out.println("=======================Completed execution gatf test case " + dyn.getName() + "=======================");
                 }
                 dyn.quitAll();
+                
+                Table table = TestFileReporter.start((String)retvals[0] + " [Time - " + (System.currentTimeMillis()-start)/1000 + " sec]", document, csvdoc);
 
+                int counter = 1;
                 for (int u = 0; u < sessions.size(); u++) {
                     SeleniumTestSession sess = sessions.get(u);
                     for (Map.Entry<String, SeleniumResult> e : sess.getResult().entrySet()) {
-                        String keykey = e.getKey() + (sess.getSessionName() != null ? ("-" + sess.getSessionName()) : StringUtils.EMPTY);
+                    	String sessname = sess.getSessionName() != null ? ("-" + sess.getSessionName()) : StringUtils.EMPTY;
+                        String keykey = e.getKey() + sessname;
                         if (!summLst.get((String) retvals[0]).containsKey(keykey)) {
                             summLst.get((String) retvals[0]).put(keykey, new ArrayList<Object[]>());
                         }
@@ -928,11 +950,20 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 tim = parts[0] + "." + (parts[1].length() > 3 ? parts[1].substring(0, 3) : parts[1]);
                             }
                             tim += "s";
+                            String msg = "";
+                            if(res.getResult().getLogs()!=null && res.getResult().getLogs().get("gatf")!=null && res.getResult().getLogs().get("gatf").getAll().size()>0) {
+                            	msg = res.getResult().getLogs().get("gatf").getAll().get(0).getMessage();
+                            }
                             String fileName = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", fileName + ".html", res.getResult().isStatus() ? "SUCCESS" : "FAILED",
-                                    !res.getResult().isStatus() ? res.getResult().getLogs().get("gatf").getAll().get(0).getMessage() : StringUtils.EMPTY, tim});
+                                    !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
                             if (dorep) {
                                 ReportHandler.doSeleniumTestReport(fileName, retvals, res.getResult(), context);
+                                //fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+                                String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", table, document, csvdoc);
+                                if(dest!=null && !res.getResult().isStatus()) {
+                                	failDetails.put(dest, res.getResult());
+                                }
                             }
                             if(res.getResult().isStatus()) {
                                 succ++;
@@ -951,6 +982,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                                 skp++;
                                 tskp++;
+                                TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getKey(), "0s", res.getResult().isStatus(), "Skipped", null, table, document, csvdoc);
                             } else {
                                 String tim = e1.getValue().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                                 stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
@@ -960,12 +992,21 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     tim = parts[0] + "." + (parts[1].length() > 3 ? parts[1].substring(0, 3) : parts[1]);
                                 }
                                 tim += "s";
+                                String msg = "";
+                                if(e1.getValue().getLogs()!=null && e1.getValue().getLogs().get("gatf")!=null && e1.getValue().getLogs().get("gatf").getAll().size()>0) {
+                                	msg = e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage();
+                                }
                                 String fileName = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "-"
                                         + e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), fileName + ".html", e1.getValue().isStatus() ? "SUCCESS" : "FAILED",
-                                        !e1.getValue().isStatus() ? e1.getValue().getLogs().get("gatf").getAll().get(0).getMessage() : StringUtils.EMPTY, tim});
+                                        !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
                                 if (dorep) {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
+                                    //fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+                                    String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", table, document, csvdoc);
+                                    if(dest!=null && !e1.getValue().isStatus()) {
+                                    	failDetails.put(dest, e1.getValue());
+                                    }
                                 }
                                 
                                 if(e1.getValue().isStatus()) {
@@ -981,6 +1022,16 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             ttot++;
                         }
                     }
+                }
+                
+                table.setMarginBottom(30.0f);
+                document.add(table);
+                
+                if(failDetails.size()>0) {
+                	for (String dest : failDetails.keySet()) {
+                		SeleniumTestResult re = failDetails.get(dest);
+                		TestFileReporter.addErrorDetails(dest, re, document);
+					}
                 }
                 
                 if(node.equals("local")) {
@@ -1011,6 +1062,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 LoadTestEntry lentry = new LoadTestEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", stats, time);
                 RuntimeReportUtil.addLEntry(lentry);
             }
+            
+            document.close();
+            csvdoc.close();
+            
             return summLst;
         }
     }
@@ -2277,6 +2332,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 try {
                     result = dyn.execute(lp);
                     lglist.add(result);
+                } catch (FailureException e) {
+                	lglist.add(dyn.get__sessions__());
                 } catch (Throwable e) {
                     dyn.pushResult(new SeleniumTestResult(dyn, e));
                     lglist.add(dyn.get__sessions__());

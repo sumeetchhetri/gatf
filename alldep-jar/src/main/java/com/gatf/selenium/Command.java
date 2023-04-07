@@ -1660,6 +1660,8 @@ public class Command {
         //ScreenshotCommand tm = new ScreenshotCommand("_main_exec.png", new Object[] {}, state, true);
         //b.append(tm.javacode());
         //b.append("}catch(java.io.IOException _ioe){}");
+        b.append("if("+ex+" instanceof FailSubTestException) "+ex+" = new RuntimeException("+ex+");\n");
+    	b.append("else if("+ex+" instanceof SubTestException) "+ex+" = new RuntimeException("+ex+");\n");
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \"_main_exec.png\", ___lp___));\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
@@ -2435,8 +2437,10 @@ public class Command {
 	                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
 	                b.append(tm.javacode());
 	                b.append("}catch(java.io.IOException _ioe){}");*/
+	                b.append("if(!("+ex+" instanceof ValidSubTestException)) "+ex+" = new SubTestException(\""+name+"\", "+ex+");\n");
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
-                	b.append("if(!("+ex+" instanceof ValidSubTestException)) throw new SubTestException(\""+name+"\", "+ex+");\n");
+                	b.append("if("+ex+" instanceof FailSubTestException) throw (FailSubTestException)"+ex+";\n");
+                	b.append("else if(!("+ex+" instanceof ValidSubTestException)) throw (SubTestException)"+ex+";\n");
                 } else {
                 	b.append("throw "+ex+";\n");
                 }

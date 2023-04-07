@@ -63,7 +63,32 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
+import com.itextpdf.io.font.constants.StandardFonts;
+import com.itextpdf.io.image.ImageDataFactory;
+import com.itextpdf.kernel.colors.DeviceGray;
+import com.itextpdf.kernel.events.Event;
+import com.itextpdf.kernel.events.IEventHandler;
+import com.itextpdf.kernel.events.PdfDocumentEvent;
+import com.itextpdf.kernel.font.PdfFont;
+import com.itextpdf.kernel.font.PdfFontFactory;
+import com.itextpdf.kernel.geom.PageSize;
+import com.itextpdf.kernel.geom.Rectangle;
+import com.itextpdf.kernel.pdf.action.PdfAction;
+import com.itextpdf.kernel.pdf.filespec.PdfFileSpec;
+import com.itextpdf.layout.Canvas;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.borders.SolidBorder;
+import com.itextpdf.layout.element.AreaBreak;
+import com.itextpdf.layout.element.Image;
+import com.itextpdf.layout.element.Link;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.AreaBreakType;
+import com.itextpdf.layout.properties.HorizontalAlignment;
+import com.itextpdf.layout.properties.Property;
+import com.itextpdf.layout.properties.TextAlignment;
 
+import au.com.bytecode.opencsv.CSVWriter;
 import net.lingala.zip4j.ZipFile;
 
 /**
@@ -1269,5 +1294,197 @@ public class ReportHandler {
 		{
 			finalTestResults.put(fileName, new ConcurrentLinkedQueue<TestCaseReport>());
 		}
+	}
+	
+	public static class TestFileReporter {
+		public static Table start(String name, Document document, CSVWriter csvdoc) {
+			csvdoc.writeNext(new String[] {});
+			csvdoc.writeNext(new String[] {});
+			csvdoc.writeNext(new String[] {name});
+			csvdoc.writeNext(new String[] {});
+			
+			String[] headerNames = new String[] {"S.No", "Node", "Run.No", "Session", "Sub Test Name", "Execution Time", "Status", "Message"};
+			if(headerNames.length<=5) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A4);
+			} else if(headerNames.length<=8) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A4.rotate());
+			} else if(headerNames.length<=10) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A3);
+			} else if(headerNames.length<=12) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A3.rotate());
+			} else if(headerNames.length<=14) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A2);
+			} else if(headerNames.length<=16) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A2.rotate());
+			} else if(headerNames.length<=18) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A1);
+			} else if(headerNames.length<=22) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A1.rotate());
+			} else if(headerNames.length<=32) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A0);
+			} else {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A0.rotate());
+			}
+			
+			TextFooterEventHandler evt = new TextFooterEventHandler("Gatf Test Report", null, "== End of Report ==", document);
+			document.getPdfDocument().addEventHandler(PdfDocumentEvent.START_PAGE, evt);
+			document.getPdfDocument().addEventHandler(PdfDocumentEvent.END_PAGE, evt);
+			
+			Paragraph hdr = new Paragraph();
+			hdr.setTextAlignment(TextAlignment.CENTER);
+			hdr.setHorizontalAlignment(HorizontalAlignment.CENTER);
+			Paragraph chunk = new Paragraph(name);
+			try {
+				chunk.setFont(PdfFontFactory.createFont(StandardFonts.COURIER));
+			} catch (IOException e) {
+			}
+			chunk.setFontSize(10);
+			chunk.setUnderline(0.1f, -2f);
+			hdr.add(chunk);
+			hdr.setMarginBottom(30.0f);
+			document.add(hdr);
+			
+			Table table = new Table(8);
+			csvdoc.writeNext(headerNames);
+			for(String str: headerNames) {
+				com.itextpdf.layout.element.Cell header = new com.itextpdf.layout.element.Cell();
+		        header.setBackgroundColor(new DeviceGray(0.75f));
+		        header.setBorder(new SolidBorder(2));
+		        header.add(new Paragraph(str));
+		        table.addHeaderCell(header);
+			}
+			table.setHorizontalAlignment(HorizontalAlignment.CENTER);
+			return table;
+		}
+		
+		public static String addSubTest(int sno, String node, int runNo, String sess, String stname, String stTime, boolean status, String result, String fileName, Table table, Document document, CSVWriter csvdoc) {
+			if(fileName!=null) {
+				/*try {
+					byte[] embeddedFileContentBytes = Files.readAllBytes(Paths.get(fileName));
+					PdfFileSpec spec = PdfFileSpec.createEmbeddedFileSpec(document.getPdfDocument(), embeddedFileContentBytes, null, Paths.get(fileName).getFileName().toString(), null, null);
+					PdfAction action = PdfAction.createLaunch(spec);
+					Paragraph rnl = new Paragraph(new Link(sno+"", action));
+					table.addCell(rnl);
+				} catch (IOException e) {
+					table.addCell(sno+"");
+				}*/
+				PdfFileSpec spec = PdfFileSpec.createExternalFileSpec(document.getPdfDocument(), fileName, null);
+				PdfAction action = PdfAction.createLaunch(spec);
+				Paragraph rnl = new Paragraph(new Link(sno+"", action));
+				table.addCell(rnl);
+			} else {
+				table.addCell(sno+"");
+			}
+			table.addCell(node);
+			table.addCell(runNo+"");
+			table.addCell(sess);
+			table.addCell(stname!=null?stname:"");
+			table.addCell(stTime);
+			if(!status) {
+				Paragraph fp = new Paragraph(new Link(status+"", PdfAction.createGoTo("dest"+sno)));
+				table.addCell(fp);
+			} else {
+				table.addCell(status+"");
+			}
+			table.addCell(result);
+			csvdoc.writeNext(new String[] {sno+"", node, runNo+"", sess, stname!=null?stname:"", stTime, status+"", result});
+			return "dest"+sno;
+		}
+		
+		public static void addErrorDetails(String dest, SeleniumTestResult res, Document document) {
+			document.getPdfDocument().setDefaultPageSize(PageSize.A4);
+			document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			String sno = dest.substring(4);
+			Paragraph hdr = new Paragraph();
+			hdr.setTextAlignment(TextAlignment.CENTER);
+			hdr.setHorizontalAlignment(HorizontalAlignment.CENTER);
+			Paragraph chunk = new Paragraph("Error Details for Test #" + sno);
+			try {
+				chunk.setFont(PdfFontFactory.createFont(StandardFonts.COURIER));
+			} catch (IOException e) {
+			}
+			chunk.setFontSize(10);
+			chunk.setUnderline(0.1f, -2f);
+			hdr.add(chunk);
+			hdr.setMarginBottom(30.0f);
+			hdr.setProperty(Property.DESTINATION, dest);
+			document.add(hdr);
+			
+			String errTrace = res.getLogs().get("gatf").getAll().size()>1?res.getLogs().get("gatf").getAll().get(1).getMessage():null;
+			if(errTrace!=null) {
+				Paragraph p1 = new Paragraph();
+				p1.setTextAlignment(TextAlignment.LEFT);
+				p1.setHorizontalAlignment(HorizontalAlignment.LEFT);
+				Paragraph c1 = new Paragraph(errTrace);
+				c1.setFontSize(8);
+				p1.add(c1);
+				p1.setMarginBottom(30.0f);
+				document.add(p1);
+			}
+			
+			if(res.getSubtestImg()!=null) {
+				try {
+					Image img = new Image(ImageDataFactory.create(res.getSubtestImg()));
+					img.setWidth(document.getPdfDocument().getDefaultPageSize().getWidth()-50);
+					img.setHeight(400);
+					img.setMarginBottom(30.0f);
+					img.setHorizontalAlignment(HorizontalAlignment.CENTER);
+					document.add(img);
+				} catch (Exception e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		
+		private static class TextFooterEventHandler implements IEventHandler {
+	        protected Document doc;
+	        private String header, footer, lastFooter;
+	        public TextFooterEventHandler(String header, String footer, String lastFooter, Document doc) {
+	        	this.header = header;
+	        	this.footer = footer;
+	        	this.lastFooter = lastFooter;
+	            this.doc = doc;
+	        }
+	        @Override
+	        public void handleEvent(Event currentEvent) {
+	            PdfDocumentEvent docEvent = (PdfDocumentEvent) currentEvent;
+	            Rectangle pageSize = docEvent.getPage().getPageSize();
+	            PdfFont font = null;
+	            try {
+	                font = PdfFontFactory.createFont(StandardFonts.COURIER);
+	            } catch (IOException e) {
+	            }
+	            float coordX = ((pageSize.getLeft() + doc.getLeftMargin())
+	                    + (pageSize.getRight() - doc.getRightMargin())) / 2;
+	            float coordP = (pageSize.getLeft() + doc.getLeftMargin())
+	                    + (pageSize.getRight() - doc.getRightMargin()) - 5;
+	            float headerY = pageSize.getTop() - doc.getTopMargin() + 10;
+	            float footerY = doc.getBottomMargin()/3;
+	            Canvas canvas = new Canvas(docEvent.getPage(), pageSize);
+	            if(currentEvent.getType().equals(PdfDocumentEvent.START_PAGE) && header!=null) {
+	            	canvas.setFont(font)
+	                    .setFontSize(5)
+	                    .showTextAligned(header, coordX, headerY, TextAlignment.CENTER)
+	                    .close();
+	            } else if(currentEvent.getType().equals(PdfDocumentEvent.END_PAGE)) {
+	            	int totalPages = docEvent.getDocument().getNumberOfPages();
+	            	int pageNum = docEvent.getDocument().getPageNumber(docEvent.getPage());
+	            	String foot = footer;
+	            	if(totalPages==pageNum) {
+	            		foot = lastFooter;
+	            	}
+	            	if(foot!=null) {
+	            		canvas.setFont(font)
+		                    .setFontSize(5)
+		                    .showTextAligned(foot, coordX, footerY, TextAlignment.CENTER);
+	            	}
+	            	canvas.setFont(font)
+	                    .setFontSize(5)
+	                    .showTextAligned("Page " +  pageNum, coordP, footerY, TextAlignment.RIGHT)
+	                    .close();
+	            }
+	            
+	        }
+	    }
 	}
 }

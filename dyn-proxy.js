@@ -1,12 +1,12 @@
 const http = require('http');
 const httpProxy = require('http-proxy');
-const fs = require('fs');
+//const fs = require('fs');
 const execSync = require('child_process').execSync;
 let chrdbgport = null;
 
-function ec(cmd) {
+/*function ec(cmd) {
     execSync(cmd, {stdio:[0,1,2]});
-}
+}*/
 
 var proxy = httpProxy.createProxyServer({});
 var server = http.createServer(function(req, res) {
@@ -25,17 +25,15 @@ server.on('upgrade', function (req, socket, head) {
 	proxy.ws(req, socket, head, { target: 'http://127.0.0.1:' + chrdbgport });
 });
 
-console.log("listening on port 5050");
+console.log("listening on port 8001");
 server.listen(8001);
 
 
-function onRequest(client_req, client_res) {
+/*function onRequest(client_req, client_res) {
 	console.log('serve: ' + client_req.url);
 
-	/*
-	DVT_FILE=`find /tmp -name "DevToolsActivePort"|grep "DevToolsActivePort"`
-	DVT_PORT=`head -n 1 ${DVT_FILE}`
-	*/
+	//DVT_FILE=`find /tmp -name "DevToolsActivePort"|grep "DevToolsActivePort"`
+	//DVT_PORT=`head -n 1 ${DVT_FILE}`
 	
 	if(chrdbgport==null) {
 		let file = execSync('find /tmp -name "DevToolsActivePort"|grep "DevToolsActivePort"').toString();
@@ -82,4 +80,4 @@ function onRequest(client_req, client_res) {
 			end: true
 		});
 	}
-}
+}*/

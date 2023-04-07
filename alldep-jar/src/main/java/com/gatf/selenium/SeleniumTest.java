@@ -48,7 +48,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -170,6 +169,7 @@ public abstract class SeleniumTest {
 	private transient AcceptanceTestContext ___cxt___ = null;
 	
     protected transient Map<String, WebDriverManager> wdmMgs = new ConcurrentHashMap<>();
+    protected transient Map<String, Boolean> wdmSessions = new ConcurrentHashMap<>();
 
 	List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
 
@@ -358,6 +358,7 @@ public abstract class SeleniumTest {
 		}
 		if(wdmMgs.containsKey(browserName) && isDocker) {
 			WebDriver wd = wdmMgs.get(browserName).create();
+			wdmSessions.put(getSessionId(wd), true);
 			if(isRecording) {
 				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", wdmMgs.get(browserName).getDockerNoVncUrl(), wdmMgs.get(browserName).getDockerRecordingPath()));
 			} else if(!isHeadless) {
@@ -425,7 +426,7 @@ public abstract class SeleniumTest {
 	@SuppressWarnings("serial")
 	protected Set<String> addTest(String sessionName, String browserName) {
 		final SeleniumTestSession s = new SeleniumTestSession();
-		s.sessionName = sessionName;
+		s.sessionName = sessionName==null?Integer.toHexString(sessionNum+1):sessionName;
 		s.browserName = browserName;
 		sessions.add(s);
 		if(!s.__result__.containsKey(browserName)) {
@@ -450,7 +451,8 @@ public abstract class SeleniumTest {
 			result.executionTime = System.nanoTime() - getSession().__teststarttime__;
 			getSession().__result__.get(getSession().browserName).result = result;
 			if(result!=null && !result.isStatus() && !result.isContinue) {
-				quit();
+				//quit();
+				throw new FailureException(result.getCause());
 			}
 		} else {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
@@ -1025,24 +1027,25 @@ public abstract class SeleniumTest {
 			for (WebDriver d : sess.___d___)
 			{
 				if(sess.___dqs___.get(indx)) continue;
+				String sessionId = null;
 				try {
-					String sessionId = ((RemoteWebDriver)d).getSessionId().toString();
+					sessionId = ((RemoteWebDriver)d).getSessionId().toString();
 					DRV_FEATURES.remove(sessionId);
 				} catch (Exception e) {
 				}
 				try {
-					d.quit();
+					if((sessionId!=null && !wdmSessions.containsKey(sessionId)) || sessionId==null) d.quit();
 				} catch (Exception e) {
 					if(e.getCause()!=null) {
-						if(e.getCause() instanceof TimeoutException) {
+						/*if(e.getCause() instanceof TimeoutException) {
 							try {
 								d.quit();
 							} catch (Exception e2) {
 								e2.getCause().printStackTrace();
 							}
-						} else {
+						} else {*/
 							e.getCause().printStackTrace();
-						}
+						//}
 					}
 				}
 				sess.___dqs___.set(indx, true);
@@ -1089,9 +1092,16 @@ public abstract class SeleniumTest {
 		long executionTime;
 
 		String stName;
+		
+		String stImg;
+		
+		transient Throwable cause;
 
 		private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
 
+		public Throwable getCause() {
+			return cause;
+		}
 		public Map<String, SerializableLogEntries> getLogs()
 		{
 			return logs;
@@ -1104,16 +1114,26 @@ public abstract class SeleniumTest {
 		{
 			return executionTime;
 		}
+		public String getSubtestName()
+		{
+			return stName;
+		}
+		public String getSubtestImg()
+		{
+			return stImg;
+		}
 		public Map<String,Object[]> getInternalTestRes()
 		{
 			return internalTestRes;
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, LoggingPreferences ___lp___)
 		{
+			this.stName = test.get__subtestname__();
 			this.status = true;
 			this.internalTestRes = test.getSession().internalTestRs;
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, String img, LoggingPreferences ___lp___) {
+			this.cause = cause;
 			this.status = false;
 			this.isContinue = false;
 			this.internalTestRes = test.getSession().internalTestRs;
@@ -1129,6 +1149,9 @@ public abstract class SeleniumTest {
 				this.status = true;
 				this.isContinue = true;
 				this.stName = test.get__subtestname__();
+				List<LogEntry> entries = new ArrayList<LogEntry>();
+				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+				this.logs.put("gatf", new SerializableLogEntries(entries));
 				System.out.println(cause.getMessage());
 			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException) {
 				this.isContinue = cause instanceof WarnSubTestException;
@@ -1137,27 +1160,71 @@ public abstract class SeleniumTest {
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
 				this.logs.put("gatf", new SerializableLogEntries(entries));
-				System.out.println(cause.getMessage());
+				if(cause instanceof FailSubTestException) {
+					try {
+						((FailSubTestException)cause).stName = this.stName;
+						stImg = img;
+						((FailSubTestException)cause).img = img;
+						cause.printStackTrace();
+						java.lang.System.out.println(img);
+						screenshotAsFile(d, img);
+					} catch (Exception e) {
+					}
+				} else {
+					System.out.println(cause.getMessage());
+				}
 			} else if(cause instanceof SubTestException) {
-				this.stName = ((SubTestException)cause).stname;
+				this.stName = ((SubTestException)cause).stName;
+				this.isContinue = false;
 				List<LogEntry> entries = new ArrayList<LogEntry>();
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ((SubTestException)cause).cause.getMessage()));
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(((SubTestException)cause).cause)));
 				this.logs.put("gatf", new SerializableLogEntries(entries));
-			} else {
 				try {
+					stImg = img;
+					((SubTestException)cause).img = img;
 					cause.printStackTrace();
 					java.lang.System.out.println(img);
 					screenshotAsFile(d, img);
 				} catch (Exception e) {
 				}
+			} else {
+				this.stName = test.get__subtestname__();
 				List<LogEntry> entries = new ArrayList<LogEntry>();
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+				if(cause instanceof RuntimeException) {
+					if(cause.getCause()!=null) {
+						if(cause.getCause() instanceof FailSubTestException) {
+							stImg = ((FailSubTestException)cause.getCause()).img;
+							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + ((FailSubTestException)cause.getCause()).stName + " Failed"));
+						} else if(cause.getCause() instanceof SubTestException) {
+							stImg = ((SubTestException)cause.getCause()).img;
+							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + ((SubTestException)cause.getCause()).stName + " Failed"));
+						} else {
+							entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+							entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+						}
+					} else {
+						entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+						entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+					}
+				} else {
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
+				}
+				if(stImg==null) {
+					try {
+						stImg = img;
+						cause.printStackTrace();
+						java.lang.System.out.println(img);
+						screenshotAsFile(d, img);
+					} catch (Exception e) {
+					}
+				}
 				this.logs.put("gatf", new SerializableLogEntries(entries));
 			}
 		}
 		public SeleniumTestResult(SeleniumTest test, Throwable cause) {
+			this.cause = cause;
 			this.status = false;
 			this.stName = test.get__subtestname__();
 			this.internalTestRes = test.getSession().internalTestRs;
@@ -3096,15 +3163,37 @@ public abstract class SeleniumTest {
 		public FailSubTestException(String msg) {
 			super(msg);
 		}
+		String img, stName;
+		public String getStName() {
+			return stName;
+		}
+		public String getStImg() {
+			return img;
+		}
 	}
 	
 	@SuppressWarnings("serial")
 	public static class SubTestException extends RuntimeException {
-		String stname;
+		String img, stName;
 		Throwable cause;
-		public SubTestException(String stname, Throwable cause) {
+		public SubTestException(String stName, Throwable cause) {
 			super(cause.getMessage());
-			this.stname = stname;
+			this.stName = stName;
+			this.cause = cause;
+		}
+		public String getStName() {
+			return stName;
+		}
+		public String getStImg() {
+			return img;
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static class FailureException extends RuntimeException {
+		Throwable cause;
+		public FailureException(Throwable cause) {
+			super(cause.getMessage());
 			this.cause = cause;
 		}
 	}
