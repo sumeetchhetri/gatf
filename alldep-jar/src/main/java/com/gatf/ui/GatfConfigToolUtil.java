@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
@@ -43,6 +45,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumDriverConfig;
 
 
@@ -338,6 +341,12 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	protected static void handleError(Throwable e, Response response, HttpStatus status) throws IOException
 	{
 		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
+		if(e instanceof GatfSelCodeParseError) {
+			Map<String, Object> h = new HashMap<>();
+			h.put("error", ((GatfSelCodeParseError)e).getDetails());
+			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
+			response.setContentType(MediaType.APPLICATION_JSON);
+		}
 		response.setContentLength(configJson.length());
         response.getWriter().write(configJson);
 		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);

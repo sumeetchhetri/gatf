@@ -14,3 +14,4 @@ plugin/target
 /out
 /tmp
 sample
+alldep-jar/src/main/resources/gatf-config-tool/codemirror/src

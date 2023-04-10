@@ -529,7 +529,12 @@ var alltestcasefiles = [];
             startInitConfigTool(configuration);
         }, null);
 
-		$('#srch-term').on('keydown', searchLeftNavs);
+		$('#srch-term').on('change', searchLeftNavs);
+		$('.accordion-heading').on('click', function() {
+			$($(this).find('a').attr('href')).toggleClass('in out');
+			if($('#srch-term').val()!='') $('#srch-term').val('').trigger('change');
+			$('#testcasefile-holder').find('.asideLink').css('background-color', '#fff');
+		});
 
 		$(document).off('click').on('click', function(e) {
 		    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON') && $(e.target).attr('click-event')) {
@@ -1180,6 +1185,9 @@ function startInitConfigTool(func) {
                         }
                         $('#' + id).attr('tcfname', testFileName);
                         $('#' + id).click(function() {
+							$('#testcasefile-holder').find('.asideLink').css('background-color', '#fff');
+							$(this).css('background-color', '#ddd');
+							$('#srch-term').val($(this).text().trim()).trigger('change');
                             currtestcasefile = $(this).attr('tcfname');
                             $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
                             currtestcases = [''];
@@ -1202,10 +1210,13 @@ function startInitConfigTool(func) {
                                     });
                                     ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 										lineNumbers: true,
+										lineWrapping: true,
 										tabSize: 4,
 										matchBrackets: true,
+										extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
+    									foldGutter: true,
 										mode: 'text/x-perl',
-										gutters: ["CodeMirror-linenumbers", "breakpoints"],
+										gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
 										viewportMargin: Infinity
 									});
                                     return;
@@ -1297,7 +1308,21 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             var content = getTestResultContent1(data);
             $('#play_result_area').html(content);
         };
-    }(tcf), null);
+    }(tcf), function(tcf){
+		return function(data) {
+            if (tcf.toLowerCase().endsWith(".sel")) {
+				function makeMarker() {
+					var marker = document.createElement("div");
+					marker.style.color = "red";
+					marker.innerHTML = "●";
+					return marker;
+				}
+				ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
+			} else {
+				alert(data);
+			}
+		};
+	}(tcf));
 }
 
 const uid = function() {
@@ -1312,10 +1337,13 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	$('#req-txtarea').data('tcf', tcf);
 	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 		lineNumbers: true,
+		lineWrapping: true,
 		tabSize: 4,
 		matchBrackets: true,
+		extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
+    	foldGutter: true,
 		mode: 'text/x-perl',
-		gutters: ["CodeMirror-linenumbers", "breakpoints"],
+		gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
 		viewportMargin: Infinity
 	});
 	ceeditor.on("gutterClick", function(cm, n) {
@@ -2241,7 +2269,7 @@ function getSeleniumReports() {
 
 function searchLeftNavs(ele) {
     var term = ele.target.value.trim();
-    $('.accordion-toggle').each(function() {
+    /*$('.accordion-toggle').each(function() {
         if (term == '') {
             $(this).parent().show();
         } else {
@@ -2249,10 +2277,12 @@ function searchLeftNavs(ele) {
                 $(this).parent().hide();
             }
         }
-    });
+    });*/
+    $('.accordion-body').removeClass('in').addClass('out');
     $('.accordion-inner').each(function() {
         if (term == '') {
-            $(this).parent().show();
+            //$(this).parent().show();
+            $('.accordion-body').removeClass('out').addClass('in');
             $(this).children().show();
         } else {
             var flag = false;
@@ -2265,7 +2295,7 @@ function searchLeftNavs(ele) {
                 }
             });
             if (flag) {
-                $(this).parent().show();
+                $(this).parent().removeClass('out').addClass('in');
                 $(this).parent().parent().children().eq(0).show();
             }
         }

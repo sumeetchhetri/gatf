@@ -325,11 +325,17 @@ public class Command {
 
     @SuppressWarnings("serial")
     public static class GatfSelCodeParseError extends RuntimeException {
-        public GatfSelCodeParseError(String message) {
+    	Object[] details;
+        public GatfSelCodeParseError(String message, Object[] o) {
             super(message);
+            details = new Object[] {o[0], o[1]};
         }
-        public GatfSelCodeParseError(String message, Throwable e) {
+        public GatfSelCodeParseError(String message, Object[] o, Throwable e) {
             super(message, e);
+            details = new Object[] {o[0], o[1]};
+        }
+        public Object[] getDetails() {
+        	return details;
         }
     }
 
@@ -340,28 +346,28 @@ public class Command {
     void throwParseError(Object[] o, Throwable e) {
         if(e!=null) {
             if(o!=null) {
-                throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", e);
+                throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
             }
-            throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")", e);
+            throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")", o, e);
         }
         if(o!=null) {
-            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")");
+            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
         }
-        throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")");
+        throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")", o);
     }
 
     static void throwParseErrorS(Object[] o, Throwable e) {
         if(e!=null) {
-            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", e);
+            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
         }
-        throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")");
+        throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
     }
 
     static void throwError(Object[] o, Throwable e) {
         if(e!=null) {
-            throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", e);
+            throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
         }
-        throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")");
+        throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
     }
 
     int weight() {

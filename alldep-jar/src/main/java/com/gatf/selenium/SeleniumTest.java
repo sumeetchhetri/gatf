@@ -277,43 +277,44 @@ public abstract class SeleniumTest {
 		}
 		
 		if(isDocker) {
-			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, null));
+			if(!WebDriverManager.isDockerAvailable()) {
+				if(isRecording) {
+					throw new RuntimeException("Docker not available, recording cannot proceed, will not execute test");
+				} else {
+					System.out.println("Docker not available, will proceed with local browser/driver...");
+					IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
+					isDocker = false;
+				}
+			} else {
+				IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, null));
+			}
 		} else {
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
 		}
 		
-		if(wdmMgs.containsKey(browserName) && !isDocker) {
-			return browserName;
-		}
 		WebDriverManager wdm = null;
 		switch(browserName) {
 			case "chrome": {
-				if(!isDocker && System.getProperty("webdriver.chrome.driver")!=null) return browserName;
 				wdm = WebDriverManager.chromedriver();
 				break;
 			}
 			case "firefox": {
-				if(!isDocker && System.getProperty("webdriver.gecko.driver")!=null) return browserName;
 				wdm = WebDriverManager.firefoxdriver();
 				break;
 			}
 			case "ie": {
-				if(!isDocker && System.getProperty("webdriver.ie.driver")!=null) return browserName;
 				wdm = WebDriverManager.iedriver();
 				break;
 			}
 			case "edge": {
-				if(!isDocker && System.getProperty("webdriver.edge.driver")!=null) return browserName;
 				wdm = WebDriverManager.edgedriver();
 				break;
 			}
 			case "safari": {
-				if(!isDocker && System.getProperty("webdriver.safari.driver")!=null) return browserName;
 				wdm = WebDriverManager.safaridriver();
 				break;
 			}
 			case "opera": {
-				if(!isDocker && System.getProperty("webdriver.opera.driver")!=null) return browserName;
 				wdm = WebDriverManager.operadriver();
 				break;
 			}
@@ -336,7 +337,7 @@ public abstract class SeleniumTest {
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
 			wdmMgs.put(browserName, wdm);
 		} else {
-			wdm.setup();
+			//wdm.setup();
 			wdmMgs.put(browserName, wdm);
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
 		}
@@ -356,6 +357,17 @@ public abstract class SeleniumTest {
 			isDocker = true;
 			isHeadless = true;
 		}
+		
+		if(!WebDriverManager.isDockerAvailable()) {
+			if(isRecording) {
+				throw new RuntimeException("Docker not available, recording cannot proceed, will not execute test");
+			} else {
+				System.out.println("Docker not available, will proceed with local browser/driver...");
+				isDocker = false;
+				return wdmMgs.get(browserName).create();
+			}
+		}
+		
 		if(wdmMgs.containsKey(browserName) && isDocker) {
 			WebDriver wd = wdmMgs.get(browserName).create();
 			wdmSessions.put(getSessionId(wd), true);

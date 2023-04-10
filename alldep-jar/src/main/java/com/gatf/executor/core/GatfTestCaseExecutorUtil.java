@@ -659,7 +659,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         		testClassNames.add(dyn.getClass().getName());
         	} catch (GatfSelCodeParseError e) {
         		e.printStackTrace();
-        		throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
+        		throw e;
         	} catch (Exception e) {
         		e.printStackTrace();
         		throw new RuntimeException("Unable to compile seleasy script " + selscript);
@@ -749,12 +749,21 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             isLoadTestingEnabled = true;
 
         ExecutorService threadPool = null;
+        boolean concExec = false;
         if (numberOfRuns > 1) {
             int threadNum = 100;
             if (numberOfRuns < 100)
                 threadNum = numberOfRuns;
 
             threadPool = Executors.newFixedThreadPool(threadNum);
+        } else if(context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
+        	//Parallel selenium execution of multiple scripts
+        	int threadNum = context.getGatfExecutorConfig().getNumConcurrentExecutions();
+        	if (threadNum > 10)
+                threadNum = 10;
+        	threadPool = Executors.newFixedThreadPool(threadNum);
+        	numberOfRuns = 1;
+        	concExec = true;
         }
 
         context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
@@ -799,20 +808,38 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             summLstMap.put("local", new ArrayList<Map<String, Map<String, List<Object[]>>>>());
             if (threadPool != null) {
                 List<FutureTask<Map<String, Map<String, List<Object[]>>>>> ltasks = new ArrayList<FutureTask<Map<String, Map<String, List<Object[]>>>>>();
-                for (int i = 0; i < numberOfRuns; i++) {
-                    ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, runNum, runPrefix, "local")));
-                    threadPool.execute(ltasks.get(i));
-                    try {
-                        Thread.sleep(concurrentUserRampUpTimeMs);
-                    } catch (InterruptedException e) {
+                if(!concExec) {
+                	for (int i = 0; i < numberOfRuns; i++) {
+                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, runNum, runPrefix, "local")));
+                        threadPool.execute(ltasks.get(i));
+                    	//Ramp up time only applied for load test scenarios
+	                    try {
+	                        Thread.sleep(concurrentUserRampUpTimeMs);
+	                    } catch (InterruptedException e) {
+	                    }
                     }
-                }
-                for (int i = 0; i < numberOfRuns; i++) {
-                    try {
-                        Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
-                        summLstMap.get("local").add(o);
-                    } catch (Exception e) {
-                        e.printStackTrace();
+                    for (int i = 0; i < numberOfRuns; i++) {
+                        try {
+                            Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
+                            summLstMap.get("local").add(o);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else {
+                	for (int i = 0; i < tests.size(); i++) {
+                		List<SeleniumTest> ctests = new ArrayList<>();
+                		ctests.add(tests.get(i));
+                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(-1, context, ctests, testdata, lp, dorep, runNum, runPrefix, "local")));
+                        threadPool.execute(ltasks.get(i));
+                    }
+                    for (int i = 0; i < tests.size(); i++) {
+                        try {
+                            Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
+                            summLstMap.get("local").add(o);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
 
@@ -913,7 +940,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 long start = System.currentTimeMillis();
                 List<SeleniumTestSession> sessions = null;
                 try {
-                	System.out.println("=======================Started execution gatf test case " + dyn.getName() + "=======================");
+                	System.out.println("[" +Thread.currentThread().getName()+"]=======================Started execution gatf test case " + dyn.getName() + "=======================");
                     summLst.put((String) retvals[0], new LinkedHashMap<String, List<Object[]>>());
                     sessions = dyn.execute(lp);
                 } catch (FailureException e) {
@@ -922,7 +949,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     dyn.pushResult(new SeleniumTestResult(dyn, e));
                     sessions = dyn.get__sessions__();
                 } finally {
-                	System.out.println("=======================Completed execution gatf test case " + dyn.getName() + "=======================");
+                	System.out.println("[" +Thread.currentThread().getName()+"]=======================Completed execution gatf test case " + dyn.getName() + "=======================");
                 }
                 dyn.quitAll();
                 
