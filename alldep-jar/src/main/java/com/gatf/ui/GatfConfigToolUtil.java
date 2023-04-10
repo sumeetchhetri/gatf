@@ -40,6 +40,7 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.report.ReportHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
@@ -79,6 +80,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         createServerApiAndIssueTrackingApiFilesIfNotExists(mojo);
         
         server.addListener(new NetworkListener("ConfigServer", ipAddress, port));
+        ReportHandler.MY_URL = "http://localhost:" + port;
         
         handleRootContext(server, mainDir, mojo);
         

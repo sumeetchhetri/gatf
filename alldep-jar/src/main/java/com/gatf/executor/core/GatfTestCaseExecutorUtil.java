@@ -44,6 +44,7 @@ import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.openqa.selenium.logging.LoggingPreferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -897,11 +898,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             TestSuiteStats stats = new TestSuiteStats();
             int tot = 0, fal = 0, succ = 0, skp = 0;
             Date time = new Date();
-            String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + "test_report_.pdf";
-            String csvReport = context.getOutDir().getAbsolutePath() + File.separator + "test_report_.csv";
+            String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (index + 2) + "-" + (runNum) + "-report " + System.currentTimeMillis());
+            String csvReport = pdfReport + ".csv";
+            pdfReport += ".pdf";
             Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
             CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
-            Map<String, SeleniumTestResult> failDetails = new LinkedHashMap<>();
+            Map<String, ImmutablePair<SeleniumTestResult, String>> failDetails = new LinkedHashMap<>();
             for (int i = 0; i < tests.size(); i++) {
             	TestSuiteStats tstats = new TestSuiteStats();
                 int ttot = 0, tfal = 0, tsucc = 0, tskp = 0;
@@ -959,10 +961,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
                             if (dorep) {
                                 ReportHandler.doSeleniumTestReport(fileName, retvals, res.getResult(), context);
-                                //fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
                                 String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", table, document, csvdoc);
-                                if(dest!=null && !res.getResult().isStatus()) {
-                                	failDetails.put(dest, res.getResult());
+                                if(dest!=null) {
+                                	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+                                	failDetails.put(dest, new ImmutablePair<SeleniumTestResult, String>(res.getResult(), fileName));
                                 }
                             }
                             if(res.getResult().isStatus()) {
@@ -1002,10 +1004,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                         !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
                                 if (dorep) {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
-                                    //fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
                                     String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", table, document, csvdoc);
-                                    if(dest!=null && !e1.getValue().isStatus()) {
-                                    	failDetails.put(dest, e1.getValue());
+                                    if(dest!=null) {
+                                    	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+                                    	failDetails.put(dest, new ImmutablePair<SeleniumTestResult, String>(e1.getValue(), fileName));
                                     }
                                 }
                                 
@@ -1029,8 +1031,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 
                 if(failDetails.size()>0) {
                 	for (String dest : failDetails.keySet()) {
-                		SeleniumTestResult re = failDetails.get(dest);
-                		TestFileReporter.addErrorDetails(dest, re, document);
+                		ImmutablePair<SeleniumTestResult, String> rep = failDetails.get(dest);
+                		TestFileReporter.addErrorDetails(dest, rep, document);
 					}
                 }
                 

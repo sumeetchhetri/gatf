@@ -46,6 +46,7 @@ import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.PrefixFileFilter;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
@@ -74,7 +75,6 @@ import com.itextpdf.kernel.font.PdfFontFactory;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.action.PdfAction;
-import com.itextpdf.kernel.pdf.filespec.PdfFileSpec;
 import com.itextpdf.layout.Canvas;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.borders.SolidBorder;
@@ -97,6 +97,8 @@ import net.lingala.zip4j.ZipFile;
  * reporting after test suite execution
  */
 public class ReportHandler {
+	
+	public static String MY_URL = "http://localhost:9080";
 	
 	public ReportHandler(String node, String identifier) {
 		/*if(node!=null && identifier!=null)
@@ -1359,19 +1361,12 @@ public class ReportHandler {
 		
 		public static String addSubTest(int sno, String node, int runNo, String sess, String stname, String stTime, boolean status, String result, String fileName, Table table, Document document, CSVWriter csvdoc) {
 			if(fileName!=null) {
-				/*try {
-					byte[] embeddedFileContentBytes = Files.readAllBytes(Paths.get(fileName));
-					PdfFileSpec spec = PdfFileSpec.createEmbeddedFileSpec(document.getPdfDocument(), embeddedFileContentBytes, null, Paths.get(fileName).getFileName().toString(), null, null);
-					PdfAction action = PdfAction.createLaunch(spec);
-					Paragraph rnl = new Paragraph(new Link(sno+"", action));
-					table.addCell(rnl);
-				} catch (IOException e) {
-					table.addCell(sno+"");
-				}*/
-				PdfFileSpec spec = PdfFileSpec.createExternalFileSpec(document.getPdfDocument(), fileName, null);
+				/*PdfFileSpec spec = PdfFileSpec.createExternalFileSpec(document.getPdfDocument(), fileName, null);
 				PdfAction action = PdfAction.createLaunch(spec);
 				Paragraph rnl = new Paragraph(new Link(sno+"", action));
-				table.addCell(rnl);
+				table.addCell(rnl);*/
+				Paragraph fp = new Paragraph(new Link(sno+"", PdfAction.createGoTo("html"+sno)));
+				table.addCell(fp);
 			} else {
 				table.addCell(sno+"");
 			}
@@ -1391,49 +1386,67 @@ public class ReportHandler {
 			return "dest"+sno;
 		}
 		
-		public static void addErrorDetails(String dest, SeleniumTestResult res, Document document) {
-			document.getPdfDocument().setDefaultPageSize(PageSize.A4);
-			document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+		public static void addErrorDetails(String dest, ImmutablePair<SeleniumTestResult, String> res, Document document) {
 			String sno = dest.substring(4);
-			Paragraph hdr = new Paragraph();
-			hdr.setTextAlignment(TextAlignment.CENTER);
-			hdr.setHorizontalAlignment(HorizontalAlignment.CENTER);
-			Paragraph chunk = new Paragraph("Error Details for Test #" + sno);
-			try {
-				chunk.setFont(PdfFontFactory.createFont(StandardFonts.COURIER));
-			} catch (IOException e) {
-			}
-			chunk.setFontSize(10);
-			chunk.setUnderline(0.1f, -2f);
-			hdr.add(chunk);
-			hdr.setMarginBottom(30.0f);
-			hdr.setProperty(Property.DESTINATION, dest);
-			document.add(hdr);
-			
-			String errTrace = res.getLogs().get("gatf").getAll().size()>1?res.getLogs().get("gatf").getAll().get(1).getMessage():null;
-			if(errTrace!=null) {
-				Paragraph p1 = new Paragraph();
-				p1.setTextAlignment(TextAlignment.LEFT);
-				p1.setHorizontalAlignment(HorizontalAlignment.LEFT);
-				Paragraph c1 = new Paragraph(errTrace);
-				c1.setFontSize(8);
-				p1.add(c1);
-				p1.setMarginBottom(30.0f);
-				document.add(p1);
-			}
-			
-			if(res.getSubtestImg()!=null) {
+			if(!res.getLeft().isStatus()) {
+				document.getPdfDocument().setDefaultPageSize(PageSize.A4);
+				document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+				Paragraph hdr = new Paragraph();
+				hdr.setTextAlignment(TextAlignment.CENTER);
+				hdr.setHorizontalAlignment(HorizontalAlignment.CENTER);
+				Paragraph chunk = new Paragraph("Error Details for Test #" + sno);
 				try {
-					Image img = new Image(ImageDataFactory.create(res.getSubtestImg()));
-					img.setWidth(document.getPdfDocument().getDefaultPageSize().getWidth()-50);
-					img.setHeight(400);
-					img.setMarginBottom(30.0f);
-					img.setHorizontalAlignment(HorizontalAlignment.CENTER);
-					document.add(img);
+					chunk.setFont(PdfFontFactory.createFont(StandardFonts.COURIER));
+				} catch (IOException e) {
+				}
+				chunk.setFontSize(10);
+				chunk.setUnderline(0.1f, -2f);
+				hdr.add(chunk);
+				hdr.setMarginBottom(30.0f);
+				hdr.setProperty(Property.DESTINATION, dest);
+				document.add(hdr);
+				
+				String errTrace = res.getLeft().getLogs().get("gatf").getAll().size()>1?res.getLeft().getLogs().get("gatf").getAll().get(1).getMessage():null;
+				if(errTrace!=null) {
+					Paragraph p1 = new Paragraph();
+					p1.setTextAlignment(TextAlignment.LEFT);
+					p1.setHorizontalAlignment(HorizontalAlignment.LEFT);
+					Paragraph c1 = new Paragraph(errTrace);
+					c1.setFontSize(8);
+					p1.add(c1);
+					p1.setMarginBottom(30.0f);
+					document.add(p1);
+				}
+				
+				if(res.getLeft().getSubtestImg()!=null) {
+					try {
+						Image img = new Image(ImageDataFactory.create(res.getLeft().getSubtestImg()));
+						img.setWidth(document.getPdfDocument().getDefaultPageSize().getWidth()-50);
+						img.setHeight(400);
+						img.setMarginBottom(30.0f);
+						img.setHorizontalAlignment(HorizontalAlignment.CENTER);
+						document.add(img);
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
+				}
+			}
+			
+			/*if(res.getRight()!=null) {
+				ConverterProperties properties = new ConverterProperties();
+			    properties.setBaseUri(MY_URL);
+			    try {
+			    	document.getPdfDocument().setDefaultPageSize(PageSize.A4);
+					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+					List<IElement> elements = HtmlConverter.convertToElements(new FileInputStream(res.getRight()), properties);
+					elements.get(0).setProperty(Property.DESTINATION, "html"+sno);
+					for (IElement element : elements) {
+						document.add((IBlockElement)element);
+					}
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
-			}
+			}*/
 		}
 		
 		private static class TextFooterEventHandler implements IEventHandler {

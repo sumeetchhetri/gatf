@@ -414,6 +414,11 @@
 		    <artifactId>layout</artifactId>
 		    <version>7.2.5</version>
 		</dependency>
+		<dependency>
+		    <groupId>com.itextpdf</groupId>
+		    <artifactId>html2pdf</artifactId>
+		    <version>4.0.5</version>
+		</dependency>
 	</dependencies>
 
 	<modules>
