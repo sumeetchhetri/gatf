@@ -830,7 +830,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 	for (int i = 0; i < tests.size(); i++) {
                 		List<SeleniumTest> ctests = new ArrayList<>();
                 		ctests.add(tests.get(i));
-                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(-1, context, ctests, testdata, lp, dorep, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, testdata, lp, dorep, runNum, runPrefix, "local")));
                         threadPool.execute(ltasks.get(i));
                     }
                     for (int i = 0; i < tests.size(); i++) {

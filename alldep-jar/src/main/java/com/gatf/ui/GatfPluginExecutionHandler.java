@@ -15,7 +15,9 @@
 */
 package com.gatf.ui;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
@@ -30,6 +32,7 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
@@ -39,10 +42,13 @@ import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
 
 public class GatfPluginExecutionHandler extends HttpHandler {
 
 	private AtomicBoolean isStarted = new AtomicBoolean(false);
+	
+	private AtomicBoolean isJsonErr = new AtomicBoolean(false);
 	
 	private AtomicBoolean isDone = new AtomicBoolean(false);
 	
@@ -86,6 +92,10 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					
 					String temp = status;
 					status = "";
+					if(isJsonErr.get()) {
+						isJsonErr.set(false);
+						throw new RuntimeException(temp);
+					}
 					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
@@ -107,6 +117,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				if(!isStarted.get() && !isDone.get()) {
 					leftOver.set(null);
 					isStarted.set(true);
+					isJsonErr.set(false);
 					if(pluginType.equals("executor")) {
 						RuntimeReportUtil.registerConfigUI();
 					}
@@ -119,10 +130,21 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 								initializeMojoProps(executorMojo, mojo);
 							} catch (Throwable e) {
 								e.printStackTrace();
-								if(e.getMessage()!=null)
-									status = e.getMessage();
-								else
-									status = ExceptionUtils.getStackTrace(e);
+								if(e instanceof GatfSelCodeParseError) {
+									Map<String, Object> h = new HashMap<>();
+									h.put("error", ((GatfSelCodeParseError)e).getDetails());
+									try {
+										status = WorkflowContextHandler.OM.writeValueAsString(h);
+										isJsonErr.set(true);
+									} catch (JsonProcessingException e1) {
+									}
+								}
+								if(!isJsonErr.get()) {
+									if(e.getMessage()!=null)
+										status = e.getMessage();
+									else
+										status = ExceptionUtils.getStackTrace(e);
+								}
 							} finally { 
 								executorMojo.shutdown();
 							}
@@ -171,6 +193,10 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					
 					String temp = status;
 					status = "";
+					if(isJsonErr.get()) {
+						isJsonErr.set(false);
+						throw new RuntimeException(temp);
+					}
 					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
@@ -199,9 +225,13 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 				} else if(isDone.get()) {
 					isDone.set(false);
 					isStarted.set(false);
+					isJsonErr.set(false);
 					
 					String temp = status;
 					status = "";
+					if(isJsonErr.get()) {
+						throw new RuntimeException(temp);
+					}
 					if(StringUtils.isNotBlank(temp))
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					

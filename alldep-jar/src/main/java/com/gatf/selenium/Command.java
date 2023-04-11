@@ -328,11 +328,11 @@ public class Command {
     	Object[] details;
         public GatfSelCodeParseError(String message, Object[] o) {
             super(message);
-            details = new Object[] {o[0], o[1]};
+            details = new Object[] {o[0], o[1], o[5]};
         }
         public GatfSelCodeParseError(String message, Object[] o, Throwable e) {
             super(message, e);
-            details = new Object[] {o[0], o[1]};
+            details = new Object[] {o[0], o[1], o[5]};
         }
         public Object[] getDetails() {
         	return details;
@@ -1262,11 +1262,23 @@ public class Command {
         Command tcmd = new Command(null, state);
         tcmd.name = fn.getAbsolutePath();
 
+        String relfn = fn.getName();
+        if(StringUtils.isNotBlank(state.basePath)) {
+        	String path = state.basePath.trim();
+        	if(StringUtils.isNotBlank(state.testcaseDir) && !state.testcaseDir.trim().equals(".")) {
+        		path += File.separator + state.testcaseDir.trim();
+        	}
+        	relfn = fn.getAbsolutePath().replace(path, "");
+        	if(relfn.startsWith(File.separator)) {
+        		relfn = relfn.substring(1);
+        	}
+        }
+        
         List<Object[]> lio = new ArrayList<Object[]>();
         int cnt = 1;
         for (String s : scmds)
         {
-            lio.add(new Object[]{s, cnt++, fn, fn.getParentFile()!=null?fn.getParentFile().getAbsolutePath():"", state});
+            lio.add(new Object[]{s, cnt++, fn, fn.getParentFile()!=null?fn.getParentFile().getAbsolutePath():"", state, relfn});
         }
 
         tcmd.isTop = true;

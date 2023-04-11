@@ -856,6 +856,21 @@ function executionHandler(method, shwPp, pluginType) {
     }(shwPp, pluginType), function(shwPp, pluginType) {
         return function(data) {
             if (shwPp) alert(data.error);
+            if (data.error && data.error[2] && data.error[2].indexOf(".sel")!=-1) {
+				$('[tcfname="'+data.error[2]+'"]').trigger('click');
+				$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
+				setTimeout(function() {
+					function makeMarker() {
+						var marker = document.createElement("div");
+						marker.style.color = "red";
+						marker.innerHTML = "❌";
+						return marker;
+					}
+					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
+					$.unblockUI();
+				}, 2000);
+				return;
+			}
             if (data.error == 'Execution already in progress..' || data.error == "Execution completed, check Reports Section") {
                 if (data.error == "Execution completed, check Reports Section") {
                     $("#image_status").attr("src", "resources/green.png");
@@ -1314,7 +1329,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 				function makeMarker() {
 					var marker = document.createElement("div");
 					marker.style.color = "red";
-					marker.innerHTML = "●";
+					marker.innerHTML = "❌";
 					return marker;
 				}
 				ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
