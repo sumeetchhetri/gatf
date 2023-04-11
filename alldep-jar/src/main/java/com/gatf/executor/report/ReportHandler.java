@@ -23,6 +23,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -47,6 +48,7 @@ import org.apache.commons.io.filefilter.PrefixFileFilter;
 import org.apache.commons.io.filefilter.SuffixFileFilter;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
@@ -1299,7 +1301,15 @@ public class ReportHandler {
 	}
 	
 	public static class TestFileReporter {
-		public static Table start(String name, Document document, CSVWriter csvdoc) {
+		public static ImmutablePair<Method, Object[]> startO(Object...args) {
+			try {
+				Method m = TestFileReporter.class.getMethod("start", new Class[] {String.class, boolean.class, Document.class, CSVWriter.class});
+				return new ImmutablePair<Method, Object[]>(m , args);
+			} catch (Exception e) {
+			}
+			return null;
+		}
+		public static Table start(String name, boolean isNew, Document document, CSVWriter csvdoc) {
 			csvdoc.writeNext(new String[] {});
 			csvdoc.writeNext(new String[] {});
 			csvdoc.writeNext(new String[] {name});
@@ -1328,9 +1338,13 @@ public class ReportHandler {
 				document.getPdfDocument().setDefaultPageSize(PageSize.A0.rotate());
 			}
 			
-			TextFooterEventHandler evt = new TextFooterEventHandler("Gatf Test Report", null, "== End of Report ==", document);
-			document.getPdfDocument().addEventHandler(PdfDocumentEvent.START_PAGE, evt);
-			document.getPdfDocument().addEventHandler(PdfDocumentEvent.END_PAGE, evt);
+			if(!isNew) {
+				document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
+			} else {
+				TextFooterEventHandler evt = new TextFooterEventHandler("Gatf Test Report", null, "== End of Report ==", document);
+				document.getPdfDocument().addEventHandler(PdfDocumentEvent.START_PAGE, evt);
+				document.getPdfDocument().addEventHandler(PdfDocumentEvent.END_PAGE, evt);
+			}
 			
 			Paragraph hdr = new Paragraph();
 			hdr.setTextAlignment(TextAlignment.CENTER);
@@ -1359,13 +1373,22 @@ public class ReportHandler {
 			return table;
 		}
 		
-		public static String addSubTest(int sno, String node, int runNo, String sess, String stname, String stTime, boolean status, String result, String fileName, Table table, Document document, CSVWriter csvdoc) {
+		public static ImmutablePair<Method, Object[]> addSubTestO(Object...args) {
+			try {
+				Method m = TestFileReporter.class.getMethod("addSubTest", new Class[] {int.class, String.class, int.class, String.class, String.class, String.class, 
+						boolean.class, String.class, String.class, String.class, Table.class, Document.class, CSVWriter.class});
+				return new ImmutablePair<Method, Object[]>(m , args);
+			} catch (Exception e) {
+			}
+			return null;
+		}
+		public static void addSubTest(int sno, String node, int runNo, String sess, String stname, String stTime, boolean status, String result, String fileName, String prefix, Table table, Document document, CSVWriter csvdoc) {
 			if(fileName!=null) {
 				/*PdfFileSpec spec = PdfFileSpec.createExternalFileSpec(document.getPdfDocument(), fileName, null);
 				PdfAction action = PdfAction.createLaunch(spec);
 				Paragraph rnl = new Paragraph(new Link(sno+"", action));
 				table.addCell(rnl);*/
-				Paragraph fp = new Paragraph(new Link(sno+"", PdfAction.createGoTo("html"+sno)));
+				Paragraph fp = new Paragraph(new Link(sno+"", PdfAction.createGoTo("H_"+prefix)));
 				table.addCell(fp);
 			} else {
 				table.addCell(sno+"");
@@ -1376,24 +1399,31 @@ public class ReportHandler {
 			table.addCell(stname!=null?stname:"");
 			table.addCell(stTime);
 			if(!status) {
-				Paragraph fp = new Paragraph(new Link(status+"", PdfAction.createGoTo("dest"+sno)));
+				Paragraph fp = new Paragraph(new Link(status+"", PdfAction.createGoTo("S_"+prefix)));
 				table.addCell(fp);
 			} else {
 				table.addCell(status+"");
 			}
 			table.addCell(result);
 			csvdoc.writeNext(new String[] {sno+"", node, runNo+"", sess, stname!=null?stname:"", stTime, status+"", result});
-			return "dest"+sno;
 		}
 		
-		public static void addErrorDetails(String dest, ImmutablePair<SeleniumTestResult, String> res, Document document) {
-			String sno = dest.substring(4);
+		public static ImmutablePair<Method, Object[]> addErrorDetailsO(Object...args) {
+			try {
+				Method m = TestFileReporter.class.getMethod("addErrorDetails", new Class[] {ImmutableTriple.class, Document.class});
+				return new ImmutablePair<Method, Object[]>(m , args);
+			} catch (Exception e) {
+			}
+			return null;
+		}
+		public static void addErrorDetails(ImmutableTriple<SeleniumTestResult, String, String> res, Document document) {
 			if(!res.getLeft().isStatus()) {
 				document.getPdfDocument().setDefaultPageSize(PageSize.A4);
 				document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
 				Paragraph hdr = new Paragraph();
 				hdr.setTextAlignment(TextAlignment.CENTER);
 				hdr.setHorizontalAlignment(HorizontalAlignment.CENTER);
+				String sno = res.getRight().substring(res.getRight().lastIndexOf("-")+1);
 				Paragraph chunk = new Paragraph("Error Details for Test #" + sno);
 				try {
 					chunk.setFont(PdfFontFactory.createFont(StandardFonts.COURIER));
@@ -1403,7 +1433,7 @@ public class ReportHandler {
 				chunk.setUnderline(0.1f, -2f);
 				hdr.add(chunk);
 				hdr.setMarginBottom(30.0f);
-				hdr.setProperty(Property.DESTINATION, dest);
+				hdr.setProperty(Property.DESTINATION, "S_"+res.getRight());
 				document.add(hdr);
 				
 				String errTrace = res.getLeft().getLogs().get("gatf").getAll().size()>1?res.getLeft().getLogs().get("gatf").getAll().get(1).getMessage():null;
@@ -1421,9 +1451,11 @@ public class ReportHandler {
 				if(res.getLeft().getSubtestImg()!=null) {
 					try {
 						Image img = new Image(ImageDataFactory.create(res.getLeft().getSubtestImg()));
+						//img.scale(50, 50);
 						img.setWidth(document.getPdfDocument().getDefaultPageSize().getWidth()-50);
-						img.setHeight(400);
-						img.setMarginBottom(30.0f);
+						//img.setHeight(400);
+						//img.setMarginBottom(30.0f);
+						img.setAutoScale(true);
 						img.setHorizontalAlignment(HorizontalAlignment.CENTER);
 						document.add(img);
 					} catch (Exception e) {
@@ -1432,14 +1464,14 @@ public class ReportHandler {
 				}
 			}
 			
-			/*if(res.getRight()!=null) {
+			/*if(res.getMiddle()!=null) {
 				ConverterProperties properties = new ConverterProperties();
 			    properties.setBaseUri(MY_URL);
 			    try {
 			    	document.getPdfDocument().setDefaultPageSize(PageSize.A4);
 					document.add(new AreaBreak(AreaBreakType.NEXT_PAGE));
-					List<IElement> elements = HtmlConverter.convertToElements(new FileInputStream(res.getRight()), properties);
-					elements.get(0).setProperty(Property.DESTINATION, "html"+sno);
+					List<IElement> elements = HtmlConverter.convertToElements(new FileInputStream(res.getMiddle()), properties);
+					elements.get(0).setProperty(Property.DESTINATION, "H_"+res.getRight());
 					for (IElement element : elements) {
 						document.add((IBlockElement)element);
 					}

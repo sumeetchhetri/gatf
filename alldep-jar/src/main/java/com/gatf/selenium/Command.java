@@ -1680,7 +1680,7 @@ public class Command {
         //b.append("}catch(java.io.IOException _ioe){}");
         b.append("if("+ex+" instanceof FailSubTestException) "+ex+" = new RuntimeException("+ex+");\n");
     	b.append("else if("+ex+" instanceof SubTestException) "+ex+" = new RuntimeException("+ex+");\n");
-        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \"_main_exec.png\", ___lp___));\n}");
+        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\", ___lp___));\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
@@ -2450,7 +2450,7 @@ public class Command {
                 if(!isAnAlias) {
 	                /*b.append("\ntry{");
 	                b.append(ex+".printStackTrace();\n");*/
-	                String img = "getOutDir() + java.io.File.separator + \"_"+(!isAnAlias?"st":"al")+"_exec_"+name.replaceAll("[^a-zA-Z0-9]", "")+".png\"";
+	                String img = "getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\"";
 	                /*b.append("java.lang.System.out.println("+img+");");
 	                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
 	                b.append(tm.javacode());

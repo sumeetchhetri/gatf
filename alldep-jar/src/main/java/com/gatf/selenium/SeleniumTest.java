@@ -3090,7 +3090,13 @@ public abstract class SeleniumTest {
 			File sc = ((TakesScreenshot)new Augmenter().augment(webDriver)).getScreenshotAs(OutputType.FILE);
 			FileUtils.copyFile(sc, new File(filepath));
 		} else {
-			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(1000)).takeScreenshot(webDriver);
+			float windowDPR = 1.75f;
+			if (webDriver instanceof JavascriptExecutor) {
+				Object output = ((JavascriptExecutor) webDriver).executeScript("return window.devicePixelRatio");
+				String value = String.valueOf(output);
+				windowDPR = Float.parseFloat(value);
+			}
+			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(windowDPR), 100)).takeScreenshot(webDriver);
 			BufferedImage originalImage = fpScreenshot.getImage();
 			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
 		}
@@ -3102,7 +3108,13 @@ public abstract class SeleniumTest {
 			//File sc = ((TakesScreenshot)new Augmenter().augment(element)).getScreenshotAs(OutputType.FILE);
 			FileUtils.copyFile(sc, new File(filepath));
 		} else {
-			Screenshot fpScreenshot = new AShot().takeScreenshot(webDriver, element);
+			float windowDPR = 1.75f;
+			if (webDriver instanceof JavascriptExecutor) {
+				Object output = ((JavascriptExecutor) webDriver).executeScript("return window.devicePixelRatio");
+				String value = String.valueOf(output);
+				windowDPR = Float.parseFloat(value);
+			}
+			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(windowDPR), 100)).takeScreenshot(webDriver, element);
 			BufferedImage originalImage = fpScreenshot.getImage();
 			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
 		}

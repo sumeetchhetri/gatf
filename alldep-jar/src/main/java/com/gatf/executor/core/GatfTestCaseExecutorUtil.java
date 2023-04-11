@@ -45,6 +45,7 @@ import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.openqa.selenium.logging.LoggingPreferences;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -756,6 +757,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 threadNum = numberOfRuns;
 
             threadPool = Executors.newFixedThreadPool(threadNum);
+            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
         } else if(context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
         	//Parallel selenium execution of multiple scripts
         	int threadNum = context.getGatfExecutorConfig().getNumConcurrentExecutions();
@@ -764,9 +766,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         	threadPool = Executors.newFixedThreadPool(threadNum);
         	numberOfRuns = 1;
         	concExec = true;
+        	context.getWorkflowContextHandler().initializeSuiteContext(tests.size());
+        } else {
+        	context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
         }
-
-        context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 
         startTime = System.currentTimeMillis();
 
@@ -804,13 +807,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             runNum++;
 
             Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap = new LinkedHashMap<String, List<Map<String, Map<String, List<Object[]>>>>>();
-
+            List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
             summLstMap.put("local", new ArrayList<Map<String, Map<String, List<Object[]>>>>());
             if (threadPool != null) {
-                List<FutureTask<Map<String, Map<String, List<Object[]>>>>> ltasks = new ArrayList<FutureTask<Map<String, Map<String, List<Object[]>>>>>();
+                List<FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
                 if(!concExec) {
                 	for (int i = 0; i < numberOfRuns; i++) {
-                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
                         threadPool.execute(ltasks.get(i));
                     	//Ramp up time only applied for load test scenarios
 	                    try {
@@ -820,8 +823,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     }
                     for (int i = 0; i < numberOfRuns; i++) {
                         try {
-                            Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
-                            summLstMap.get("local").add(o);
+                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                            summLstMap.get("local").add(o.getLeft());
+                            reportLst.addAll(o.getRight());
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -830,13 +834,16 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 	for (int i = 0; i < tests.size(); i++) {
                 		List<SeleniumTest> ctests = new ArrayList<>();
                 		ctests.add(tests.get(i));
-                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, testdata, lp, dorep, runNum, runPrefix, "local")));
+                		List<Object[]> ctestdata = new ArrayList<>();
+                		ctestdata.add(testdata.get(i));
+                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
                         threadPool.execute(ltasks.get(i));
                     }
                     for (int i = 0; i < tests.size(); i++) {
                         try {
-                            Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
-                            summLstMap.get("local").add(o);
+                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                            summLstMap.get("local").add(o.getLeft());
+                            reportLst.addAll(o.getRight());
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -849,7 +856,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
             } else {
                 try {
-                    summLstMap.get("local").add(new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, runNum, runPrefix, "local").call());
+                	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local").call();
+                    summLstMap.get("local").add(o.getLeft());
+                    reportLst.addAll(o.getRight());
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -861,11 +870,59 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
 
             if (dorep) {
+            	if(!isLoadTestingEnabled) {
+            		try {
+		            	String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (runNum) + "-report-" + System.currentTimeMillis());
+		                String csvReport = pdfReport + ".csv";
+		                pdfReport += ".pdf";
+		            	Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
+		                CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
+		                Table table = null;
+		                boolean isNew = true;
+		                for (ImmutablePair<Method, Object[]> p : reportLst) {
+							switch (p.getLeft().getName()) {
+								case "start":
+									p.getRight()[p.getRight().length-3] = isNew;
+									p.getRight()[p.getRight().length-2] = document;
+									p.getRight()[p.getRight().length-1] = csvdoc;
+									table = (Table)p.getLeft().invoke(null, p.getRight());
+									isNew = false;
+									break;
+								case "addSubTest":
+									p.getRight()[p.getRight().length-3] = table;
+									p.getRight()[p.getRight().length-2] = document;
+									p.getRight()[p.getRight().length-1] = csvdoc;
+									p.getLeft().invoke(null, p.getRight());
+									break;
+								case "addErrorDetails":
+									if(table!=null) {
+										table.setMarginBottom(30.0f);
+						                document.add(table);
+						                table = null;
+									}
+									p.getRight()[p.getRight().length-1] = document;
+									p.getLeft().invoke(null, p.getRight());
+									break;
+								default:
+									break;
+							}
+						}
+		                document.close();
+		                csvdoc.close();
+            		} catch (Exception e) {
+                        e.printStackTrace();
+                    }
+            	}
+            	
                 ReportHandler.doSeleniumSummaryTestReport(summLstMap, context, runNum, runPrefix);
                 indexes.get("local").put(runNum, runPrefix + "-" + runNum + "-selenium-index.html");
             }
 
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+            if(concExec) {
+            	context.getWorkflowContextHandler().initializeSuiteContext(tests.size());
+            } else {
+            	context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+            }
 
             if (done) {
                 break;
@@ -894,18 +951,19 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         shutdown();
     }
 
-    private static class ConcSeleniumTest implements Callable<Map<String, Map<String, List<Object[]>>>> {
+    private static class ConcSeleniumTest implements Callable<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>> {
         private int index;
         private AcceptanceTestContext context;
         private List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
         private List<Object[]> testdata = new ArrayList<Object[]>();
         private LoggingPreferences lp;
         private boolean dorep;
+        private boolean isLoadTestingEnabled;
         private int runNum;
         private String runPrefix;
         private String node;
 
-        public ConcSeleniumTest(int index, AcceptanceTestContext context, List<SeleniumTest> tests, List<Object[]> testdata, LoggingPreferences lp, boolean dorep, int runNum, String runPrefix,
+        public ConcSeleniumTest(int index, AcceptanceTestContext context, List<SeleniumTest> tests, List<Object[]> testdata, LoggingPreferences lp, boolean dorep, boolean isLoadTestingEnabled, int runNum, String runPrefix,
                 String node) {
             this.index = index;
             this.context = context;
@@ -916,21 +974,19 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             this.runPrefix = runPrefix;
             this.node = node;
             this.dorep = dorep;
+            this.isLoadTestingEnabled = isLoadTestingEnabled;
         }
 
         @SuppressWarnings("unused")
         @Override
-        public Map<String, Map<String, List<Object[]>>> call() throws Exception {
+        public ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> call() throws Exception {
             Map<String, Map<String, List<Object[]>>> summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
+            List<ImmutablePair<Method, Object[]>> reportList = new ArrayList<>();
             TestSuiteStats stats = new TestSuiteStats();
             int tot = 0, fal = 0, succ = 0, skp = 0;
             Date time = new Date();
-            String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (index + 2) + "-" + (runNum) + "-report " + System.currentTimeMillis());
-            String csvReport = pdfReport + ".csv";
-            pdfReport += ".pdf";
-            Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
-            CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
-            Map<String, ImmutablePair<SeleniumTestResult, String>> failDetails = new LinkedHashMap<>();
+            //Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
+            //CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
             for (int i = 0; i < tests.size(); i++) {
             	TestSuiteStats tstats = new TestSuiteStats();
                 int ttot = 0, tfal = 0, tsucc = 0, tskp = 0;
@@ -953,7 +1009,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
                 dyn.quitAll();
                 
-                Table table = TestFileReporter.start((String)retvals[0] + " [Time - " + (System.currentTimeMillis()-start)/1000 + " sec]", document, csvdoc);
+                List<ImmutableTriple<SeleniumTestResult, String, String>> failDetails = new ArrayList<>();
+                //Table table = TestFileReporter.start((String)retvals[0] + " [Time - " + (System.currentTimeMillis()-start)/1000 + " sec]", i==0, document, csvdoc);
+                if (dorep && !isLoadTestingEnabled) {
+                	reportList.add(TestFileReporter.startO((String)retvals[0] + " [Time - " + (System.currentTimeMillis()-start)/1000 + " sec]", null, null, i==0));
+                }
 
                 int counter = 1;
                 for (int u = 0; u < sessions.size(); u++) {
@@ -988,12 +1048,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
                             if (dorep) {
                                 ReportHandler.doSeleniumTestReport(fileName, retvals, res.getResult(), context);
-                                String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", table, document, csvdoc);
-                                if(dest!=null) {
-                                	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
-                                	failDetails.put(dest, new ImmutablePair<SeleniumTestResult, String>(res.getResult(), fileName));
+                                if(!isLoadTestingEnabled) {
+	                                String prefix = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i+1) + "-" + counter;
+	                                reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", prefix, null, null, null));
+	                                //TestFileReporter.addSubTest(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", prefix, table, document, csvdoc);
+	                            	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+	                            	failDetails.add(new ImmutableTriple<SeleniumTestResult, String, String>(res.getResult(), fileName, prefix));
                                 }
-                            }
+                               }
                             if(res.getResult().isStatus()) {
                                 succ++;
                                 tsucc++;
@@ -1011,7 +1073,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                                 skp++;
                                 tskp++;
-                                TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getKey(), "0s", res.getResult().isStatus(), "Skipped", null, table, document, csvdoc);
+                                String prefix = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i+1) + "-" + counter;
+                                if (dorep && !isLoadTestingEnabled) {
+                                	reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, e1.getKey(), "0s", res.getResult().isStatus(), "Skipped", null, prefix, null, null, null));
+                                }
+                                //TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getKey(), "0s", res.getResult().isStatus(), "Skipped", null, prefix, table, document, csvdoc);
                             } else {
                                 String tim = e1.getValue().getExecutionTime() / Math.pow(10, 9) + StringUtils.EMPTY;
                                 stats.setExecutionTime(stats.getExecutionTime() + res.getResult().getExecutionTime()/1000000);
@@ -1031,10 +1097,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                         !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
                                 if (dorep) {
                                     ReportHandler.doSeleniumTestReport(fileName, retvals, e1.getValue(), context);
-                                    String dest = TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", table, document, csvdoc);
-                                    if(dest!=null) {
-                                    	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
-                                    	failDetails.put(dest, new ImmutablePair<SeleniumTestResult, String>(e1.getValue(), fileName));
+                                    if(!isLoadTestingEnabled) {
+	                                    String prefix = runPrefix + "-" + (index + 2) + "-" + (runNum) + "-" + (i+1) + "-" + counter;
+	                                    reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", prefix, null, null, null));
+	                                    //TestFileReporter.addSubTest(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", prefix, table, document, csvdoc);
+	                                	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
+	                                	failDetails.add(new ImmutableTriple<SeleniumTestResult, String, String>(e1.getValue(), fileName, prefix));
                                     }
                                 }
                                 
@@ -1053,13 +1121,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     }
                 }
                 
-                table.setMarginBottom(30.0f);
-                document.add(table);
+                //table.setMarginBottom(30.0f);
+                //document.add(table);
                 
                 if(failDetails.size()>0) {
-                	for (String dest : failDetails.keySet()) {
-                		ImmutablePair<SeleniumTestResult, String> rep = failDetails.get(dest);
-                		TestFileReporter.addErrorDetails(dest, rep, document);
+                	for (ImmutableTriple<SeleniumTestResult, String, String> rep : failDetails) {
+                		//estFileReporter.addErrorDetails(rep, document);
+                		reportList.add(TestFileReporter.addErrorDetailsO(rep, null));
 					}
                 }
                 
@@ -1092,10 +1160,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 RuntimeReportUtil.addLEntry(lentry);
             }
             
-            document.close();
-            csvdoc.close();
+            //document.close();
+            //csvdoc.close();
             
-            return summLst;
+            return new ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>(summLst, reportList);
         }
     }
 
@@ -2216,10 +2284,26 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
 
             ExecutorService threadPool = null;
+            boolean concExec = false;
             if (numberOfRuns > 1) {
-                threadPool = Executors.newFixedThreadPool(numberOfRuns);
+                int threadNum = 100;
+                if (numberOfRuns < 100)
+                    threadNum = numberOfRuns;
+
+                threadPool = Executors.newFixedThreadPool(threadNum);
+                context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+            } else if(context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
+            	//Parallel selenium execution of multiple scripts
+            	int threadNum = context.getGatfExecutorConfig().getNumConcurrentExecutions();
+            	if (threadNum > 10)
+                    threadNum = 10;
+            	threadPool = Executors.newFixedThreadPool(threadNum);
+            	numberOfRuns = 1;
+            	concExec = true;
+            	context.getWorkflowContextHandler().initializeSuiteContext(tests.size());
+            } else {
+            	context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
             }
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 
             if (isLoadTestingEnabled) {
                 reportSampleTimeMs = context.getGatfExecutorConfig().getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
@@ -2279,25 +2363,46 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 runNum++;
 
                 Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap = new LinkedHashMap<String, List<Map<String, Map<String, List<Object[]>>>>>();
-
+                List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
+                
                 summLstMap.put(dContext.getNode(), new ArrayList<Map<String, Map<String, List<Object[]>>>>());
                 if (threadPool != null) {
-                    List<FutureTask<Map<String, Map<String, List<Object[]>>>>> ltasks = new ArrayList<FutureTask<Map<String, Map<String, List<Object[]>>>>>();
-                    for (int i = 0; i < numberOfRuns; i++) {
-                        ltasks.add(new FutureTask<Map<String, Map<String, List<Object[]>>>>(
-                                new ConcSeleniumTest(i - 1, context, tests, dContext.getSelTestdata(), lp, dorep, runNum, runPrefix, dContext.getNode())));
-                        threadPool.execute(ltasks.get(i));
-                        try {
-                            Thread.sleep(concurrentUserRampUpTimeMs);
-                        } catch (InterruptedException e) {
+                	List<FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
+                	if(!concExec) {
+	                    for (int i = 0; i < numberOfRuns; i++) {
+	                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(
+	                                new ConcSeleniumTest(i - 1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
+	                        threadPool.execute(ltasks.get(i));
+	                        try {
+	                            Thread.sleep(concurrentUserRampUpTimeMs);
+	                        } catch (InterruptedException e) {
+	                        }
+	                    }
+	                    for (int i = 0; i < numberOfRuns; i++) {
+	                        try {
+	                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+	                            summLstMap.get(dContext.getNode()).add(o.getLeft());
+	                        } catch (Exception e) {
+	                            e.printStackTrace();
+	                        }
+	                    }
+                	} else {
+                    	for (int i = 0; i < tests.size(); i++) {
+                    		List<SeleniumTest> ctests = new ArrayList<>();
+                    		ctests.add(tests.get(i));
+                    		List<Object[]> ctestdata = new ArrayList<>();
+                    		ctestdata.add(dContext.getSelTestdata().get(i));
+                            ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(
+                            		new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
+                            threadPool.execute(ltasks.get(i));
                         }
-                    }
-                    for (int i = 0; i < numberOfRuns; i++) {
-                        try {
-                            Map<String, Map<String, List<Object[]>>> o = ltasks.get(i).get();
-                            summLstMap.get(dContext.getNode()).add(o);
-                        } catch (Exception e) {
-                            e.printStackTrace();
+                        for (int i = 0; i < tests.size(); i++) {
+                            try {
+                            	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                                summLstMap.get(dContext.getNode()).add(o.getLeft());
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
                     }
 
@@ -2307,7 +2412,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     }
                 } else {
                     try {
-                        summLstMap.get(dContext.getNode()).add(new ConcSeleniumTest(-1, context, tests, dContext.getSelTestdata(), lp, dorep, runNum, runPrefix, dContext.getNode()).call());
+                    	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = 
+                    			new ConcSeleniumTest(-1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode()).call();
+                        summLstMap.get(dContext.getNode()).add(o.getLeft());
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
@@ -2319,6 +2426,47 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 if (dorep) {
+                	if(!isLoadTestingEnabled) {
+                		try {
+    		            	String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (runNum) + "-report " + System.currentTimeMillis());
+    		                String csvReport = pdfReport + ".csv";
+    		                pdfReport += ".pdf";
+    		            	Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
+    		                CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
+    		                Table table = null;
+    		                for (ImmutablePair<Method, Object[]> p : reportLst) {
+    							switch (p.getLeft().getName()) {
+    								case "start":
+    									p.getRight()[p.getRight().length-2] = document;
+    									p.getRight()[p.getRight().length-1] = csvdoc;
+    									table = (Table)p.getLeft().invoke(null, p.getRight());
+    									break;
+    								case "addSubTest":
+    									p.getRight()[p.getRight().length-3] = table;
+    									p.getRight()[p.getRight().length-2] = document;
+    									p.getRight()[p.getRight().length-1] = csvdoc;
+    									table = (Table)p.getLeft().invoke(null, p.getRight());
+    									break;
+    								case "addErrorDetails":
+    									if(table!=null) {
+    										table.setMarginBottom(30.0f);
+    						                document.add(table);
+    						                table = null;
+    									}
+    									p.getRight()[p.getRight().length-1] = document;
+    									table = (Table)p.getLeft().invoke(null, p.getRight());
+    									break;
+    								default:
+    									break;
+    							}
+    						}
+    		                document.close();
+    		                csvdoc.close();
+                		} catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                	}
+                	
                     ReportHandler.doSeleniumSummaryTestReport(summLstMap, context, runNum, runPrefix);
                     indexes.get(dContext.getNode()).put(runNum, runPrefix + "-" + runNum + "-selenium-index.html");
                 }
