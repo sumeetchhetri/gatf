@@ -82,6 +82,7 @@ import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
 import com.gatf.selenium.SeleniumTest.FailureException;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 import com.gatf.selenium.SeleniumTest.SeleniumTestResult;
 import com.gatf.selenium.SeleniumTestSession;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
@@ -773,6 +774,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         startTime = System.currentTimeMillis();
 
+        GatfRunTimeError firstError = null;
         int runNum = 0;
         while (tests.size() > 0) {
             boolean dorep = false;
@@ -810,10 +812,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
             summLstMap.put("local", new ArrayList<Map<String, Map<String, List<Object[]>>>>());
             if (threadPool != null) {
-                List<FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
+                List<FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
                 if(!concExec) {
                 	for (int i = 0; i < numberOfRuns; i++) {
-                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
                         threadPool.execute(ltasks.get(i));
                     	//Ramp up time only applied for load test scenarios
 	                    try {
@@ -823,7 +825,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     }
                     for (int i = 0; i < numberOfRuns; i++) {
                         try {
-                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                        	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
                             summLstMap.get("local").add(o.getLeft());
                             reportLst.addAll(o.getRight());
                         } catch (Exception e) {
@@ -836,14 +838,15 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 		ctests.add(tests.get(i));
                 		List<Object[]> ctestdata = new ArrayList<>();
                 		ctestdata.add(testdata.get(i));
-                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
                         threadPool.execute(ltasks.get(i));
                     }
                     for (int i = 0; i < tests.size(); i++) {
                         try {
-                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                        	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
                             summLstMap.get("local").add(o.getLeft());
                             reportLst.addAll(o.getRight());
+                            if(firstError==null) firstError = o.getMiddle();
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
@@ -856,9 +859,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
             } else {
                 try {
-                	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local").call();
+                	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local").call();
                     summLstMap.get("local").add(o.getLeft());
                     reportLst.addAll(o.getRight());
+                    if(firstError==null) firstError = o.getMiddle();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -949,9 +953,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         ReportHandler.doSeleniumFinalTestReport(indexes, context);
 
         shutdown();
+
+        if(!isLoadTestingEnabled && firstError!=null) {
+        	throw firstError;
+        }
     }
 
-    private static class ConcSeleniumTest implements Callable<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>> {
+    private static class ConcSeleniumTest implements Callable<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>> {
         private int index;
         private AcceptanceTestContext context;
         private List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
@@ -979,9 +987,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         @SuppressWarnings("unused")
         @Override
-        public ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> call() throws Exception {
+        public ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> call() throws Exception {
             Map<String, Map<String, List<Object[]>>> summLst = new LinkedHashMap<String, Map<String, List<Object[]>>>();
             List<ImmutablePair<Method, Object[]>> reportList = new ArrayList<>();
+            GatfRunTimeError firstError = null;
             TestSuiteStats stats = new TestSuiteStats();
             int tot = 0, fal = 0, succ = 0, skp = 0;
             Date time = new Date();
@@ -1055,13 +1064,16 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 	                            	fileName = context.getOutDir().getAbsolutePath() + File.separator + fileName + ".html";
 	                            	failDetails.add(new ImmutableTriple<SeleniumTestResult, String, String>(res.getResult(), fileName, prefix));
                                 }
-                               }
+                            }
                             if(res.getResult().isStatus()) {
                                 succ++;
                                 tsucc++;
                             } else {
                                 fal++;
                                 tfal++;
+                                if(res.getResult().getCause()!=null && firstError==null && res.getResult().getCause() instanceof GatfRunTimeError) {
+                                	firstError = (GatfRunTimeError)res.getResult().getCause();
+                                }
                             }
                         }
                         
@@ -1112,6 +1124,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 } else {
                                     fal++;
                                     tfal++;
+                                    if(e1.getValue().getCause()!=null && firstError==null && e1.getValue().getCause() instanceof GatfRunTimeError) {
+                                    	firstError = (GatfRunTimeError)e1.getValue().getCause();
+                                    }
                                 }
                             }
                             
@@ -1163,7 +1178,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             //document.close();
             //csvdoc.close();
             
-            return new ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>(summLst, reportList);
+            return new ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>(summLst, firstError, reportList);
         }
     }
 
@@ -2319,6 +2334,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
             }
 
+            GatfRunTimeError firstError = null;
             int runNum = 0;
             while (tests.size() > 0) {
                 // long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
@@ -2367,10 +2383,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 
                 summLstMap.put(dContext.getNode(), new ArrayList<Map<String, Map<String, List<Object[]>>>>());
                 if (threadPool != null) {
-                	List<FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
+                	List<FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
                 	if(!concExec) {
 	                    for (int i = 0; i < numberOfRuns; i++) {
-	                        ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(
+	                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>(
 	                                new ConcSeleniumTest(i - 1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
 	                        threadPool.execute(ltasks.get(i));
 	                        try {
@@ -2380,7 +2396,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 	                    }
 	                    for (int i = 0; i < numberOfRuns; i++) {
 	                        try {
-	                        	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+	                        	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
 	                            summLstMap.get(dContext.getNode()).add(o.getLeft());
 	                        } catch (Exception e) {
 	                            e.printStackTrace();
@@ -2392,14 +2408,15 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     		ctests.add(tests.get(i));
                     		List<Object[]> ctestdata = new ArrayList<>();
                     		ctestdata.add(dContext.getSelTestdata().get(i));
-                            ltasks.add(new FutureTask<ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>>>(
+                            ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>>>(
                             		new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
                             threadPool.execute(ltasks.get(i));
                         }
                         for (int i = 0; i < tests.size(); i++) {
                             try {
-                            	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
+                            	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = ltasks.get(i).get();
                                 summLstMap.get(dContext.getNode()).add(o.getLeft());
+                                if(firstError==null) firstError = o.getMiddle();
                             } catch (Exception e) {
                                 e.printStackTrace();
                             }
@@ -2412,9 +2429,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     }
                 } else {
                     try {
-                    	ImmutablePair<Map<String, Map<String, List<Object[]>>>, List<ImmutablePair<Method, Object[]>>> o = 
+                    	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, GatfRunTimeError, List<ImmutablePair<Method, Object[]>>> o = 
                     			new ConcSeleniumTest(-1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode()).call();
                         summLstMap.get(dContext.getNode()).add(o.getLeft());
+                        if(firstError==null) firstError = o.getMiddle();
                     } catch (Exception e) {
                         e.printStackTrace();
                     }

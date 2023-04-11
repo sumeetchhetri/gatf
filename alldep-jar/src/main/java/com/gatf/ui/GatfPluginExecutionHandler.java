@@ -42,7 +42,7 @@ import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
-import com.gatf.selenium.Command.GatfSelCodeParseError;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 
 public class GatfPluginExecutionHandler extends HttpHandler {
 
@@ -130,9 +130,9 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 								initializeMojoProps(executorMojo, mojo);
 							} catch (Throwable e) {
 								e.printStackTrace();
-								if(e instanceof GatfSelCodeParseError) {
+								if(e instanceof GatfRunTimeError) {
 									Map<String, Object> h = new HashMap<>();
-									h.put("error", ((GatfSelCodeParseError)e).getDetails());
+									h.put("error", ((GatfRunTimeError)e).getDetails());
 									try {
 										status = WorkflowContextHandler.OM.writeValueAsString(h);
 										isJsonErr.set(true);

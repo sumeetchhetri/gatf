@@ -172,6 +172,8 @@ public abstract class SeleniumTest {
     protected transient Map<String, Boolean> wdmSessions = new ConcurrentHashMap<>();
 
 	List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
+	
+	protected int line;
 
 	protected String name;
 
@@ -404,6 +406,10 @@ public abstract class SeleniumTest {
 		throw new RuntimeException("No driver found for remote docker");
 	}
 	
+	protected void __set__cln__(int line) {
+		this.line = line;
+	}
+	
 	protected void setSleepGranularity(long timeoutSleepGranularity) {
 		this.timeoutSleepGranularity = timeoutSleepGranularity; 
 	}
@@ -464,7 +470,9 @@ public abstract class SeleniumTest {
 			getSession().__result__.get(getSession().browserName).result = result;
 			if(result!=null && !result.isStatus() && !result.isContinue) {
 				//quit();
-				throw new FailureException(result.getCause());
+				FailureException fe = new FailureException(result.getCause());
+				fe.details = new Object[] {"", line, name};
+				throw fe;
 			}
 		} else {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
@@ -1107,6 +1115,8 @@ public abstract class SeleniumTest {
 		
 		String stImg;
 		
+		int line;
+		
 		transient Throwable cause;
 
 		private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
@@ -1143,11 +1153,13 @@ public abstract class SeleniumTest {
 			this.stName = test.get__subtestname__();
 			this.status = true;
 			this.internalTestRes = test.getSession().internalTestRs;
+			this.line = test.line;
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, String img, LoggingPreferences ___lp___) {
 			this.cause = cause;
 			this.status = false;
 			this.isContinue = false;
+			this.line = test.line;
 			this.internalTestRes = test.getSession().internalTestRs;
 			/*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
@@ -1157,6 +1169,9 @@ public abstract class SeleniumTest {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }*/
+			if(cause instanceof GatfRunTimeError) {
+				((GatfRunTimeError)cause).details = new Object[] {"", test.line, test.name};
+			}
 			if(cause instanceof PassSubTestException) {
 				this.status = true;
 				this.isContinue = true;
@@ -1177,6 +1192,7 @@ public abstract class SeleniumTest {
 						((FailSubTestException)cause).stName = this.stName;
 						stImg = img;
 						((FailSubTestException)cause).img = img;
+						System.out.println("Error occurred on line no " + line);
 						cause.printStackTrace();
 						java.lang.System.out.println(img);
 						screenshotAsFile(d, img);
@@ -1195,6 +1211,7 @@ public abstract class SeleniumTest {
 				try {
 					stImg = img;
 					((SubTestException)cause).img = img;
+					System.out.println("Error occurred on line no " + line);
 					cause.printStackTrace();
 					java.lang.System.out.println(img);
 					screenshotAsFile(d, img);
@@ -1226,6 +1243,7 @@ public abstract class SeleniumTest {
 				if(stImg==null) {
 					try {
 						stImg = img;
+						System.out.println("Error occurred on line no " + line);
 						cause.printStackTrace();
 						java.lang.System.out.println(img);
 						screenshotAsFile(d, img);
@@ -1239,7 +1257,12 @@ public abstract class SeleniumTest {
 			this.cause = cause;
 			this.status = false;
 			this.stName = test.get__subtestname__();
+			this.line = test.line;
 			this.internalTestRes = test.getSession().internalTestRs;
+			if(cause instanceof GatfRunTimeError) {
+				((GatfRunTimeError)cause).details = new Object[] {"", test.line, test.name};
+			}
+			System.out.println("Error occurred on line no " + line);
 			List<LogEntry> entries = new ArrayList<LogEntry>();
 			entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 			entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
@@ -3162,10 +3185,25 @@ public abstract class SeleniumTest {
     }
 	
 	@SuppressWarnings("serial")
-	public static class ValidSubTestException extends RuntimeException {
+	public static abstract class GatfRunTimeError extends RuntimeException {
+		Object[] details;
+		public abstract Object[] getDetails();
+		public GatfRunTimeError(String msg) {
+			super(msg);
+		}
+		public GatfRunTimeError(String msg, Throwable e) {
+			super(msg, e);
+		}
+	}
+	
+	@SuppressWarnings("serial")
+	public static abstract class ValidSubTestException extends GatfRunTimeError {
 		public ValidSubTestException(String msg) {
 			super(msg);
 		}
+		public Object[] getDetails() {
+        	return details;
+        }
 	}
 	
 	@SuppressWarnings("serial")
@@ -3183,7 +3221,7 @@ public abstract class SeleniumTest {
 	}
 	
 	@SuppressWarnings("serial")
-	public static class FailSubTestException extends RuntimeException {
+	public static class FailSubTestException extends GatfRunTimeError {
 		public FailSubTestException(String msg) {
 			super(msg);
 		}
@@ -3194,10 +3232,13 @@ public abstract class SeleniumTest {
 		public String getStImg() {
 			return img;
 		}
+		public Object[] getDetails() {
+        	return details;
+        }
 	}
 	
 	@SuppressWarnings("serial")
-	public static class SubTestException extends RuntimeException {
+	public static class SubTestException extends GatfRunTimeError {
 		String img, stName;
 		Throwable cause;
 		public SubTestException(String stName, Throwable cause) {
@@ -3211,15 +3252,21 @@ public abstract class SeleniumTest {
 		public String getStImg() {
 			return img;
 		}
+		public Object[] getDetails() {
+        	return details;
+        }
 	}
 	
 	@SuppressWarnings("serial")
-	public static class FailureException extends RuntimeException {
+	public static class FailureException extends GatfRunTimeError {
 		Throwable cause;
 		public FailureException(Throwable cause) {
 			super(cause.getMessage());
 			this.cause = cause;
 		}
+		public Object[] getDetails() {
+        	return details;
+        }
 	}
 	
 	protected void navigateTo(WebDriver d, String url) {

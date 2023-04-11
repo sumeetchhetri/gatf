@@ -54,6 +54,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.selenium.Command.ProviderLoopCommand.ProviderType;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 import com.gatf.selenium.plugins.ApiPlugin;
 import com.gatf.selenium.plugins.CurlPlugin;
 import com.gatf.selenium.plugins.JsonPlugin;
@@ -324,7 +325,7 @@ public class Command {
     }
 
     @SuppressWarnings("serial")
-    public static class GatfSelCodeParseError extends RuntimeException {
+    public static class GatfSelCodeParseError extends GatfRunTimeError {
     	Object[] details;
         public GatfSelCodeParseError(String message, Object[] o) {
             super(message);
@@ -1695,9 +1696,9 @@ public class Command {
     public static String genDebugInfo(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
     		if(c instanceof GotoCommand) {
-    			return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/";
+    			return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__("+c.fileLineDetails[1]+");";
     		}
-    		return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "*/";
+    		return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "*/__set__cln__("+c.fileLineDetails[1]+");";
     	}
     	return "";
     }
@@ -2448,6 +2449,7 @@ public class Command {
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{");
                 if(!isAnAlias) {
+                	String oex = state.evarname();
 	                /*b.append("\ntry{");
 	                b.append(ex+".printStackTrace();\n");*/
 	                String img = "getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\"";
@@ -2455,10 +2457,10 @@ public class Command {
 	                ScreenshotCommand tm = new ScreenshotCommand(img, new Object[] {}, state, true);
 	                b.append(tm.javacode());
 	                b.append("}catch(java.io.IOException _ioe){}");*/
-	                b.append("if(!("+ex+" instanceof ValidSubTestException)) "+ex+" = new SubTestException(\""+name+"\", "+ex+");\n");
+	                b.append("Throwable "+oex+" = "+ex+";if(!("+ex+" instanceof ValidSubTestException)) "+ex+" = new SubTestException(\""+name+"\", "+ex+");\n");
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
-                	b.append("if("+ex+" instanceof FailSubTestException) throw (FailSubTestException)"+ex+";\n");
-                	b.append("else if(!("+ex+" instanceof ValidSubTestException)) throw (SubTestException)"+ex+";\n");
+                	b.append("if("+oex+" instanceof FailSubTestException) throw (FailSubTestException)"+oex+";\n");
+                	b.append("else if(!("+oex+" instanceof ValidSubTestException)) throw (SubTestException)"+oex+";\n");
                 } else {
                 	b.append("throw "+ex+";\n");
                 }

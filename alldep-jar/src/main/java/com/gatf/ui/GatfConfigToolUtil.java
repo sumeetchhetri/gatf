@@ -47,6 +47,7 @@ import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumDriverConfig;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 
 
 /**
@@ -341,9 +342,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	protected static void handleError(Throwable e, Response response, HttpStatus status) throws IOException
 	{
 		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
-		if(e instanceof GatfSelCodeParseError) {
+		if(e instanceof GatfRunTimeError) {
 			Map<String, Object> h = new HashMap<>();
-			h.put("error", ((GatfSelCodeParseError)e).getDetails());
+			h.put("error", ((GatfRunTimeError)e).getDetails());
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
 			response.setContentType(MediaType.APPLICATION_JSON);
 		}
