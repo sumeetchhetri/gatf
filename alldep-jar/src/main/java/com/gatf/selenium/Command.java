@@ -2460,7 +2460,7 @@ public class Command {
 	                b.append("Throwable "+oex+" = "+ex+";if(!("+ex+" instanceof ValidSubTestException)) "+ex+" = new SubTestException(\""+name+"\", "+ex+");\n");
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___));");
                 	b.append("if("+oex+" instanceof FailSubTestException) throw (FailSubTestException)"+oex+";\n");
-                	b.append("else if(!("+oex+" instanceof ValidSubTestException)) throw (SubTestException)"+oex+";\n");
+                	b.append("else if(!("+oex+" instanceof ValidSubTestException)) throw (SubTestException)"+ex+";\n");
                 } else {
                 	b.append("throw "+ex+";\n");
                 }
