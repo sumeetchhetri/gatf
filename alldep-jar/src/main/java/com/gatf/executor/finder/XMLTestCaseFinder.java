@@ -33,7 +33,7 @@ public class XMLTestCaseFinder extends TestCaseFinder {
 	}
 
 	public List<TestCase> resolveTestCases(File testCaseFile) throws Exception {
-		List<TestCase> xmlTestCases = (List<TestCase>)WorkflowContextHandler.XOM.readValue(testCaseFile, new TypeReference<List<TestCase>>() {});
+		List<TestCase> xmlTestCases = (List<TestCase>)WorkflowContextHandler.XOM.readValue(testCaseFile, new TypeReference<List<TestCase>>(){});
 		return xmlTestCases;
 	}
 }

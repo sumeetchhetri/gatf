@@ -20,7 +20,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -45,9 +47,9 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
-import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeErrors;
 
 
 /**
@@ -345,6 +347,17 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(e instanceof GatfRunTimeError) {
 			Map<String, Object> h = new HashMap<>();
 			h.put("error", ((GatfRunTimeError)e).getDetails());
+			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
+			response.setContentType(MediaType.APPLICATION_JSON);
+		} else if(e instanceof GatfRunTimeErrors) {
+			GatfRunTimeErrors errs = (GatfRunTimeErrors)e;
+			Map<String, Object> h = new HashMap<>();
+			h.put("error", errs.getAll().get(0).getDetails());
+			List<Object[]> others = new ArrayList<>();
+			for (int i=1;i<errs.getAll().size();i++) {
+				others.add(errs.getAll().get(i).getDetails());
+			}
+			h.put("others", others);
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
 			response.setContentType(MediaType.APPLICATION_JSON);
 		}

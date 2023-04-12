@@ -24,6 +24,7 @@ import java.util.Map;
 import org.apache.commons.collections.MultiMap;
 import org.apache.commons.collections.map.MultiValueMap;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.dataprovider.GatfTestDataProvider;
@@ -41,7 +42,6 @@ public class DataSourceProfiler {
 	
 	MultiMap dsprofileMap;
 	
-	@SuppressWarnings("unchecked")
 	public DataSourceProfiler(AcceptanceTestContext context) throws Exception {
 		
 		if(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml")!=null)
@@ -50,7 +50,7 @@ public class DataSourceProfiler {
 			
 			dsprofileMap = new MultiValueMap();
 			
-			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml"), List.class);
+			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(DataSourceProfiler.class.getResourceAsStream("/profile-providers.xml"), new TypeReference<List<GatfTestDataProvider>>() {});
 			for (GatfTestDataProvider gatfTestDataProvider : provs) {
 				dsprofileMap.put(gatfTestDataProvider.getProviderName(), gatfTestDataProvider);
 			}
@@ -58,7 +58,7 @@ public class DataSourceProfiler {
 		
 		if(context.getResourceFile("profile-providers.xml")!=null && context.getResourceFile("profile-providers.xml").exists())
 		{
-			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(context.getResourceFile("profile-providers.xml"), List.class);
+			List<GatfTestDataProvider> provs = (List<GatfTestDataProvider>)WorkflowContextHandler.XOM.readValue(context.getResourceFile("profile-providers.xml"), new TypeReference<List<GatfTestDataProvider>>() {});
 			for (GatfTestDataProvider gatfTestDataProvider : provs) {
 				if(dsprofileMap.containsKey(gatfTestDataProvider.getProviderName()))
 					dsprofileMap.remove(gatfTestDataProvider.getProviderName());

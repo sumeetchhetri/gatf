@@ -4214,7 +4214,24 @@ public class Command {
             	rUrl = "http://127.0.0.1:4723/wd/hub";
             }
             
-            b.append("boolean logconsole = false, logdebug = false;\n");
+            b.append("boolean logconsole = false, logdebug = false, lognw = false;\n");
+            List<String> rprops = new ArrayList<>();
+            for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
+            {
+            	if(e.getKey().equalsIgnoreCase("logconsole") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\nlogconsole = true;\n");
+            		rprops.add("logconsole");
+            	} else if(e.getKey().equalsIgnoreCase("logdebug") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\nlogdebug = true;\n");
+            		rprops.add("logdebug");
+                } else if(e.getKey().equalsIgnoreCase("lognw") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
+            		b.append("\nlognw = true;\n");
+            		rprops.add("lognw");
+                }
+            }
+            for (String rp : rprops) {
+            	config.getCapabilities().remove(rp);
+			}
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             if(config.getName().startsWith("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
@@ -4491,15 +4508,7 @@ public class Command {
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
             }
-            for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
-            {
-            	if(e.getKey().equalsIgnoreCase("logconsole") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
-            		b.append("\nlogconsole = true;\n");
-            	} else if(e.getKey().equalsIgnoreCase("logdebug") && e.getValue().toLowerCase().trim().matches("1|on|true")) {
-            		b.append("\nlogdebug = true;\n");
-                }
-            }
-            b.append("initBrowser(get___d___(), logconsole, logdebug);\n");
+            b.append("initBrowser(get___d___(), logconsole, logdebug, lognw);\n");
             
             boolean isDocker = "true".equalsIgnoreCase(System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER"));
             if(isDocker) {

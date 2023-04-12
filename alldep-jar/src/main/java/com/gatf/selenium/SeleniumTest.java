@@ -3185,6 +3185,17 @@ public abstract class SeleniumTest {
     }
 	
 	@SuppressWarnings("serial")
+	public static class GatfRunTimeErrors extends RuntimeException {
+		private List<GatfRunTimeError> errors;
+		public GatfRunTimeErrors(List<GatfRunTimeError> errors) {
+			this.errors = errors;
+		}
+		public List<GatfRunTimeError> getAll() {
+			return errors;
+		}
+	}
+	
+	@SuppressWarnings("serial")
 	public static abstract class GatfRunTimeError extends RuntimeException {
 		Object[] details;
 		public abstract Object[] getDetails();
@@ -3279,13 +3290,14 @@ public abstract class SeleniumTest {
 		waitForReady(d);
 	}
 	
-	protected void initBrowser(WebDriver driver, boolean logconsole, boolean logdebug) {
+	protected void initBrowser(WebDriver driver, boolean logconsole, boolean logdebug, boolean lognw) {
 		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
 			BROWSER_FEATURES.put(sessionId+".SECURITY", true);
 			//BROWSER_FEATURES.put(sessionId+".INTERCEPTNW", interceptApiCall);
 			BROWSER_FEATURES.put(sessionId+".LOGCONSOLE", logconsole);
+			BROWSER_FEATURES.put(sessionId+".NWCONSOLE", lognw);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
 			devTools.send(org.openqa.selenium.devtools.v108.security.Security.setIgnoreCertificateErrors(true));
@@ -3459,7 +3471,9 @@ public abstract class SeleniumTest {
 									vname = det[0].trim();
 									path = det[1].trim();
 								}
-								System.out.println("Fetching " + path + " from [" + body + "]");
+								if(BROWSER_FEATURES.containsKey(sessionId+".NWCONSOLE") && BROWSER_FEATURES.get(sessionId+".NWCONSOLE")) {
+									System.out.println("Fetching " + path + " from [" + body + "]");
+								}
 								___cxt___add_param__(vname, JsonPath.read(body, path));
 							}
 						}

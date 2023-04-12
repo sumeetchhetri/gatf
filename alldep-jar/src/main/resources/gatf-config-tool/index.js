@@ -766,6 +766,7 @@ $.fn.dataTable.ext.type.order["alphanum-asc"] = function(a, b) {
 //var execTimes = {};
 var simplifyInterval;
 var execFiles = new Array();
+var errdFilesReport;
 
 function executionHandler(method, shwPp, pluginType) {
     var cdt = '';
@@ -857,18 +858,27 @@ function executionHandler(method, shwPp, pluginType) {
         return function(data) {
             if (shwPp) alert(data.error);
             if (data.error && data.error[2] && data.error[2].indexOf(".sel")!=-1) {
-				$('[tcfname="'+data.error[2]+'"]').trigger('click');
-				$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
-				setTimeout(function() {
-					function makeMarker() {
-						var marker = document.createElement("div");
-						marker.style.color = "red";
-						marker.innerHTML = "❌";
-						return marker;
+				if(data.others && data.others.length>0) {
+					errdFilesReport = new Set();
+					errdFilesReport.add([data.error[1], data.error[2]]);
+					for(const v of data.others) {
+						errdFilesReport.add([v[1], v[2]]);
 					}
-					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-					$.unblockUI();
-				}, 2000);
+					$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
+				} else {
+					$('[tcfname="'+data.error[2]+'"]').trigger('click');
+					$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
+					setTimeout(function() {
+						function makeMarker() {
+							var marker = document.createElement("div");
+							marker.style.color = "red";
+							marker.innerHTML = "❌";
+							return marker;
+						}
+						ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
+						$.unblockUI();
+					}, 2000);
+				}
 				return;
 			}
             if (data.error == 'Execution already in progress..' || data.error == "Execution completed, check Reports Section") {
@@ -1274,6 +1284,13 @@ function onsucctcnmupdt() {
     ac = ac.substring(0, ac.lastIndexOf("=") + 1) + tc;
     $('#ExampleBeanServiceImpl_form').attr("action", ac);
     $('#93be7b20299b11e281c10800200c9a66_URL').val(ac);
+    if(errdFilesReport && errdFilesReport.size>0 && ceeditor) {
+		for(const v of errdFilesReport) {
+			if($('#heading_main').text().endsWith(v[1])) {
+				ceeditor.setGutterMarker(v[0]-1, "breakpoints", null);
+			}
+		}
+	}
 }
 
 function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExternalLogsApi) {
@@ -1326,6 +1343,8 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), function(tcf){
 		return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
+				errdFilesReport = new Set();
+				errdFilesReport.add([data.error[1], data.error[2]]);
 				function makeMarker() {
 					var marker = document.createElement("div");
 					marker.style.color = "red";
@@ -1560,20 +1579,49 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), null);
 }
 
-function initiateDownloads() {
-    ajaxCall(true, "GET", "/projectZip", "", "", {}, function(data) {
-        var content = "<br/>";
-        if (data[0] == "binary")
-            content += "<a href=\"/gatf-test-bin.zip\"><h3>Binary Project</h3></a><br/><br/>";
-        else if (data[0] == "maven")
-            content += "<a href=\"/gatf-test-bin.zip\"><h3>Maven Project</h3></a><br/><br/>";
-        if (data.length > 1)
-            content += "<a href=\"/gatf-test-mvn.zip\"><h3>Maven Project</h3></a><br/><br/>";
-        $('#ExampleBeanServiceImpl_form').html(content);
-    }, function(data) {
-        var content = "<p>Error while generating projects..\n" + data + "</p><br/><br/>";
-        $('#ExampleBeanServiceImpl_form').html(content);
-    });
+function getErroredSeleasyScripts() {
+    $('#heading_main').html('Errored Scripts');
+    $('#ExampleBeanServiceImpl_form').html('');
+    if(errdFilesReport && errdFilesReport.size>0) {
+		var htm = '<table id="errdselscr" class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black">';
+        var ttable;
+        htm += '<thead><tr><th style="color:black">File</th><th style="color:black">Line No</th></tr></thead><tbody>';
+		for(const v of errdFilesReport) {
+			htm += '<tr><td>'+v[1]+'</td><td class="errdss">'+v[0]+'</td></tr>';
+		}
+		htm += '</tbody></table><p>&nbsp;</p><p>&nbsp;</p>';
+        $('#ExampleBeanServiceImpl_form').append(htm);
+        ttable = $('#errdselscr').dataTable({
+            "bPaginate": true,
+            "bFilter": true,
+            "bJQueryUI": true,
+            "bSort": true,
+            "bDestroy": true,
+            "iDisplayLength": 10,
+            "dom": 'Tlfrtip',
+            "buttons": [
+                'copy', 'csv', 'excel', 'pdf', 'print'
+            ]
+        });
+        $('.errdss').on('click', function() {
+			$('[tcfname="'+($(this).siblings().eq(0).text())+'"]').trigger('click');
+			$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
+			setTimeout(function(ele) {
+				return function() {
+					function makeMarker() {
+						var marker = document.createElement("div");
+						marker.style.color = "red";
+						marker.innerHTML = "❌";
+						return marker;
+					}
+					ceeditor.setGutterMarker(ele.text()*1-1, "breakpoints", makeMarker());
+					$.unblockUI();
+				};
+			}($(this)), 2000);
+		});
+	} else {
+		$('#ExampleBeanServiceImpl_form').html('No Errored Seleasy scripts found...');
+	}
     return false;
 }
 

@@ -15,6 +15,7 @@
 */
 package com.gatf.ui;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +44,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeErrors;
 
 public class GatfPluginExecutionHandler extends HttpHandler {
 
@@ -133,6 +135,20 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 								if(e instanceof GatfRunTimeError) {
 									Map<String, Object> h = new HashMap<>();
 									h.put("error", ((GatfRunTimeError)e).getDetails());
+									try {
+										status = WorkflowContextHandler.OM.writeValueAsString(h);
+										isJsonErr.set(true);
+									} catch (JsonProcessingException e1) {
+									}
+								} else if(e instanceof GatfRunTimeErrors) {
+									GatfRunTimeErrors errs = (GatfRunTimeErrors)e;
+									Map<String, Object> h = new HashMap<>();
+									h.put("error", errs.getAll().get(0).getDetails());
+									List<Object[]> others = new ArrayList<>();
+									for (int i=1;i<errs.getAll().size();i++) {
+										others.add(errs.getAll().get(i).getDetails());
+									}
+									h.put("others", others);
 									try {
 										status = WorkflowContextHandler.OM.writeValueAsString(h);
 										isJsonErr.set(true);
