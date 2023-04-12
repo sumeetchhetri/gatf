@@ -647,6 +647,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         {
         	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
         }
+        
+        List<GatfRunTimeError> allErrors = new ArrayList<>();
 
         final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(configuration);
         final List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
@@ -662,11 +664,16 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         		testClassNames.add(dyn.getClass().getName());
         	} catch (GatfSelCodeParseError e) {
         		e.printStackTrace();
-        		throw e;
+        		allErrors.add(e);
+        		//throw e;
         	} catch (Exception e) {
         		e.printStackTrace();
         		throw new RuntimeException("Unable to compile seleasy script " + selscript);
         	}
+        }
+        
+        if(allErrors.size()>0) {
+        	throw new GatfRunTimeErrors(allErrors);
         }
 
         String runPrefix = "LRun-1";
@@ -775,7 +782,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         startTime = System.currentTimeMillis();
 
-        List<GatfRunTimeError> allErrors = new ArrayList<>();
         int runNum = 0;
         while (tests.size() > 0) {
             boolean dorep = false;
