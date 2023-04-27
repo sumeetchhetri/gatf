@@ -672,7 +672,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         	}
         }
         
-        if(allErrors.size()>0) {
+        if(allErrors.size()>0 && tests.size()==0) {
         	throw new GatfRunTimeErrors(allErrors);
         }
 

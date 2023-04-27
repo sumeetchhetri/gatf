@@ -5293,7 +5293,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Find Expression",
-        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|active|jq|$|jquery|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
             };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
@@ -5317,6 +5317,7 @@ public class Command {
             	}
             	if(parts[1].indexOf("@")!=-1) {
                     by1 = parts[1].substring(0, parts[1].indexOf("@")).trim();
+                    by1 = state.unsanitize(by1);
                     classifier1 = parts[1].substring(parts[1].indexOf("@")+1).trim();
                     classifier1 = state.unsanitize(classifier1);
                     if(classifier1.charAt(0)==classifier1.charAt(classifier1.length()-1)) {
@@ -5325,15 +5326,16 @@ public class Command {
                         }
                     }
             	}
-            	if(by1.isEmpty() || classifier1.isEmpty()) {
-            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	if(!by1.toLowerCase().matches("tagname|tag") || classifier1.isEmpty()) {
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} tag@expr1`"));
             	}
             	if(!parts[2].equalsIgnoreCase("leftof") && !parts[2].equalsIgnoreCase("rightof") && !parts[2].equalsIgnoreCase("above")
             			&& !parts[2].equalsIgnoreCase("below") && !parts[2].equalsIgnoreCase("near")) {
-            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} tag@expr1`"));
             	}
             	if(parts[3].indexOf("@")!=-1) {
                     by = parts[3].substring(0, parts[3].indexOf("@")).trim();
+                    by = state.unsanitize(by);
                     classifier = parts[3].substring(parts[3].indexOf("@")+1).trim();
                     classifier = state.unsanitize(classifier);
                     if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
@@ -5342,8 +5344,15 @@ public class Command {
                         }
                     }
             	}
-            	if(by.isEmpty() || classifier.isEmpty()) {
-            		throwError(cmdDetails, new RuntimeException("Invalid relative selector command, relative selector should confirm to `relative xpath@expr {above|below|leftof|rightof|near} xpath@expr1`"));
+            	if(by.equalsIgnoreCase("xpath")) {
+                	try {
+						state.factory.newXPath().compile(classifier);
+					} catch (XPathExpressionException e) {
+						throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
+					}
+                }
+            	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|$|css|cssselector") || classifier.isEmpty()) {
+            		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
             	}
             	relative = parts[2].trim();
             } else {
@@ -5352,6 +5361,7 @@ public class Command {
 	                int nxindx = 2;
 	                if(parts[0].indexOf("@")!=-1) {
 	                    by = parts[0].substring(0, parts[0].indexOf("@")).trim();
+	                    by = state.unsanitize(by);
 	                    classifier = parts[0].substring(parts[0].indexOf("@")+1).trim();
 	                    classifier = state.unsanitize(classifier);
 	                    if(classifier.charAt(0)==classifier.charAt(classifier.length()-1)) {
@@ -5372,8 +5382,12 @@ public class Command {
 								throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 							}
 	                    }
+	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|$|css|cssselector") || classifier.isEmpty()) {
+	                		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
+	                	}
 	                } else {
 	                	by = parts[0];
+	                	by = state.unsanitize(by);
 	                    classifier = by.equalsIgnoreCase("this")?"":null;
 	                    classifier = by.equalsIgnoreCase("current")?"":null;
 	                    classifier = by.equalsIgnoreCase("active")?"":null;
@@ -5381,8 +5395,6 @@ public class Command {
 	                    byselsame = true;
 	                    nxindx = 1;
 	                }
-	                
-	                by = state.unsanitize(by);
 	                
                     if(parts.length>nxindx) {
                         oper = state.unsanitize(parts[nxindx].trim()) + (parts.length>nxindx+1?state.unsanitize(parts[nxindx+1].trim()):"");

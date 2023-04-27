@@ -360,7 +360,7 @@ public abstract class SeleniumTest {
 			isHeadless = true;
 		}
 		
-		if(!WebDriverManager.isDockerAvailable()) {
+		if(isDocker && !WebDriverManager.isDockerAvailable()) {
 			if(isRecording) {
 				throw new RuntimeException("Docker not available, recording cannot proceed, will not execute test");
 			} else {
@@ -368,6 +368,8 @@ public abstract class SeleniumTest {
 				isDocker = false;
 				return wdmMgs.get(browserName).create();
 			}
+		} else if(!isDocker) {
+			return wdmMgs.get(browserName).create();
 		}
 		
 		if(wdmMgs.containsKey(browserName) && isDocker) {
@@ -1211,8 +1213,14 @@ public abstract class SeleniumTest {
 				try {
 					stImg = img;
 					((SubTestException)cause).img = img;
-					System.out.println("Error occurred on line no " + line);
-					cause.printStackTrace();
+					if(!(((SubTestException)cause).cause instanceof FailSubTestException)) {
+						System.out.println("Error occurred on line no " + line);
+						if(cause.getMessage().contains("no such window: target window already closed")) {
+							java.lang.System.out.println(cause.getMessage());
+						} else {
+							cause.printStackTrace();
+						}
+					}
 					java.lang.System.out.println(img);
 					screenshotAsFile(d, img);
 				} catch (Exception e) {

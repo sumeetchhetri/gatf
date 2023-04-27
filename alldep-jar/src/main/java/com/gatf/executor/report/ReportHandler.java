@@ -1448,7 +1448,7 @@ public class ReportHandler {
 					document.add(p1);
 				}
 				
-				if(res.getLeft().getSubtestImg()!=null) {
+				if(res.getLeft().getSubtestImg()!=null && new File(res.getLeft().getSubtestImg()).exists()) {
 					try {
 						Image img = new Image(ImageDataFactory.create(res.getLeft().getSubtestImg()));
 						//img.scale(50, 50);

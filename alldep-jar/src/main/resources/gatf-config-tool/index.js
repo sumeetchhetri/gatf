@@ -1212,7 +1212,7 @@ function startInitConfigTool(func) {
                         $('#' + id).click(function() {
 							$('#testcasefile-holder').find('.asideLink').css('background-color', '#fff');
 							$(this).css('background-color', '#ddd');
-							$('#srch-term').val($(this).text().trim()).trigger('change');
+							//$('#srch-term').val($(this).text().trim()).trigger('change');
                             currtestcasefile = $(this).attr('tcfname');
                             $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
                             currtestcases = [''];
