@@ -347,28 +347,28 @@ public class Command {
     void throwParseError(Object[] o, Throwable e) {
         if(e!=null) {
             if(o!=null) {
-                throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
+                throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o, e);
             }
-            throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")", o, e);
+            throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0].toString().trim()+")", o, e);
         }
         if(o!=null) {
-            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
+            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o);
         }
-        throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0]+")", o);
+        throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0].toString().trim()+")", o);
     }
 
     static void throwParseErrorS(Object[] o, Throwable e) {
         if(e!=null) {
-            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
+            throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o, e);
         }
-        throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
+        throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o);
     }
 
     static void throwError(Object[] o, Throwable e) {
         if(e!=null) {
-            throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o, e);
+            throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o, e);
         }
-        throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0]+")", o);
+        throw new GatfSelCodeParseError("Error at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o);
     }
 
     int weight() {
@@ -2955,7 +2955,8 @@ public class Command {
                 if (parts[1].toLowerCase().matches(typeExStr) || parts[1].toLowerCase().equals("select") 
                         || parts[1].toLowerCase().matches(clickExStr) || parts[1].toLowerCase().equals("hover")
                         || parts[1].toLowerCase().equals("hoverclick") || parts[1].toLowerCase().equals("clear")
-                        || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("upload")) {
+                        || parts[1].toLowerCase().equals("submit") || parts[1].toLowerCase().equals("upload")
+                        || parts[1].toLowerCase().equals("doubleclick") || parts[1].toLowerCase().equals("dblclick")) {
                     cmd = "";
                     for (int i = 1; i < parts.length; i++)
                     {
@@ -5351,7 +5352,7 @@ public class Command {
 						throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 					}
                 }
-            	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|$|css|cssselector") || classifier.isEmpty()) {
+            	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
             		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
             	}
             	relative = parts[2].trim();
@@ -5382,7 +5383,7 @@ public class Command {
 								throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 							}
 	                    }
-	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|$|css|cssselector") || classifier.isEmpty()) {
+	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
 	                		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
 	                	}
 	                } else {
