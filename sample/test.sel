@@ -8,6 +8,16 @@ open chrome
 maximize
 mode normal true
 goto https://abc.com
+? eval ${a}=="a" & eval ${a}=="a"
+{
+	sleep 1
+}
+??+ xpath@"//div[contains(text(),\"Differential Count Should be equal to '100', please validate result and retry ..!\")]" click
+? xpath@"//div[contains(text(),\"Differential Count Should be equal to '100', please validate result and retry ..!\")]"
+{
+	??+ xpath@"//div[contains(text(),\"Differential Count Should be equal to '100', please validate result and retry ..!\")]" click
+}
+api api-name@test-case-file-path
 //??+ xpath@"t01" click text ="ABCD"
 /*click xpath@"t02" text ="ABCD"
 ??+ xpath@"t03" clear
@@ -99,6 +109,7 @@ alias "pre1"
 }
 subtest "abc" ("p1:1" "p2:aaa") one
 {
+	??+ xpath@"//div[contains(text(),\"Differential Count Should be equal to '100', please validate result and retry ..!\")]" click
 	sleep 10000
 	execjs "function reportScreenshot() {html2canvas(document.body).then(function(canvas) {var a = document.createElement("a");a.href = canvas.toDataURL();a.setAttribute("download", 'report.png');a.click();});}reportScreenshot();"
 	@call pre
@@ -167,7 +178,7 @@ alias "bcd"
 {
 	sleep 3
 }
-? eval ${a}=="a" & eval ${a}=="a"
+? eval ${a} == "a" & eval ${a} == "a"
 {
 	sleep 1
 }
@@ -195,23 +206,23 @@ alias "bcd"
 {
 	sleep 2
 }
-? relative xpath@"expr1" above xpath@"expr2"
+? relative tag@"expr1" above xpath@"expr2"
 {
 	sleep 1
 }
-? relative xpath@"expr1" below xpath@"expr2"
+? relative tag@"expr1" below xpath@"expr2"
 {
 	sleep 1
 }
-? relative xpath@"expr1" leftof xpath@"expr2"
+? relative tag@"expr1" leftof xpath@"expr2"
 {
 	sleep 1
 }
-? relative xpath@"expr1" rightof xpath@"expr2"
+? relative tag@"expr1" rightof xpath@"expr2"
 {
 	sleep 1
 }
-? relative xpath@"expr1" near xpath@"expr2"
+? relative tag@"expr1" near xpath@"expr2"
 {
 	sleep 1
 }
@@ -467,4 +478,9 @@ var curl_val1 plugin curl post http://abc.com
 	]
 	<abc>abc</abc>
 }
-//$U.today() $U.now() $U.g($today, $now) $today.f() $nextMonth.f()
+??- xpath@"//*[@id="$today.f()"]" type "$U.today()"
+exec @print(evaluate("$U.today()"))
+<<<(java)
+	Thread.sleep(123);
+	@print(evaluate("$U.today()"));
+>>>

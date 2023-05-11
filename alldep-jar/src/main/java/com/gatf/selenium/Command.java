@@ -68,6 +68,7 @@ public class Command {
     protected static class CommandState {
     	XPathFactory factory = XPathFactory.newInstance();
         boolean commentStart = false, codeStart = false, started = false;
+        String origBasePath = "";
         String basePath = "";
         String testcaseDir = "";
         int concExec = 0;
@@ -264,33 +265,32 @@ public class Command {
         }
 
         String sanitize(String cmd) {
-            Pattern p = Pattern.compile("\"([^\"]*)\"");
+            Pattern p = Pattern.compile("\"(?:\\\\\\\"|[^\\\"])*\"");
             Matcher m = p.matcher(cmd);
             while (m.find()) {
-                if(!qss.containsKey(m.group())) {
+            	String g = m.toMatchResult().group();
+                if(!qss.containsKey(g)) {
                 	String repl = "######" + UUID.randomUUID().toString() + "######";
-                    qss.put(m.group(), repl);
-                    cmd = cmd.replace(m.group(), repl);
+                    qss.put(g, repl);
+                    cmd = cmd.replace(g, repl);
                 } else {
-                	cmd = cmd.replace(m.group(), qss.get(m.group()));
+                	cmd = cmd.replace(g, qss.get(g));
                 }
             }
             /*for (String qs : qss.keySet())
             {
                 cmd = cmd.replace(qs, qss.get(qs));
             }*/
-            p = Pattern.compile("'([^']*)'");
+            p = Pattern.compile("'(?:\\\\'|[^'])*'");
             m = p.matcher(cmd);
             while (m.find()) {
-                //if(!qss.containsKey(m.group())) {
-                //    qss.put(m.group(), "######" + UUID.randomUUID().toString() + "######");
-                //}
-                if(!qss.containsKey(m.group())) {
+            	String g = m.toMatchResult().group();
+                if(!qss.containsKey(g)) {
                 	String repl = "######" + UUID.randomUUID().toString() + "######";
-                    qss.put(m.group(), repl);
-                    cmd = cmd.replace(m.group(), repl);
+                    qss.put(g, repl);
+                    cmd = cmd.replace(g, repl);
                 } else {
-                	cmd = cmd.replace(m.group(), qss.get(m.group()));
+                	cmd = cmd.replace(g, qss.get(g));
                 }
             }
             /*for (String qs : qss.keySet())
@@ -378,9 +378,6 @@ public class Command {
     static Command parse(Object[] cmdDetails, CommandState state, Command parent) {
         String cmd = cmdDetails[0].toString().trim();
         Command comd = null;
-        if(cmd.startsWith("??1000")) {
-        	System.out.println();
-        }
         cmd = state.sanitize(cmd);
         if(parent instanceof ValueListCommand && !cmd.trim().equals("]")) {
     		comd = new ValueCommand(cmdDetails, state);
@@ -615,12 +612,7 @@ public class Command {
             comd = new CapabilitySetPropertyCommand(cmd.substring(15));
         }*/ else if (cmd.toLowerCase().startsWith("goto ")) {
             String url = cmd.substring(5).trim();
-            url = state.unsanitize(url);
-            if(url.charAt(0)==url.charAt(url.length()-1)) {
-                if(url.charAt(0)=='"' || url.charAt(0)=='\'') {
-                    url = url.substring(1, url.length()-1);
-                }
-            }
+            url = unSantizedUnQuoted(url, state);
             comd = new GotoCommand(cmdDetails, state);
             ((GotoCommand)comd).url = url;
         } else if (cmd.toLowerCase().startsWith("timeout ")) {
@@ -755,20 +747,10 @@ public class Command {
             } catch (GatfSelCodeParseError e) {
             	if(parent instanceof PluginCommand) {
 	                comd = new ValueCommand(cmdDetails, state);
-	                if(cmd.charAt(0)==cmd.charAt(cmd.length()-1)) {
-	                    if(cmd.charAt(0)=='"' || cmd.charAt(0)=='\'') {
-	                        cmd = cmd.substring(1, cmd.length()-1);
-	                    }
-	                }
-	                ((ValueCommand)comd).value = state.unsanitize(cmd);
+	                ((ValueCommand)comd).value = unSantizedUnQuoted(cmd, state);
             	} else if(parent instanceof VarCommand && ((VarCommand)parent).pcomd!=null) {
 	                comd = new ValueCommand(cmdDetails, state);
-	                if(cmd.charAt(0)==cmd.charAt(cmd.length()-1)) {
-	                    if(cmd.charAt(0)=='"' || cmd.charAt(0)=='\'') {
-	                        cmd = cmd.substring(1, cmd.length()-1);
-	                    }
-	                }
-	                ((ValueCommand)comd).value = state.unsanitize(cmd);
+	                ((ValueCommand)comd).value = unSantizedUnQuoted(cmd, state);
             	} else {
             		throwError(cmdDetails, new RuntimeException("Invalid command found ["+state.unsanitize(cmd)+"]"));
             	}
@@ -1079,8 +1061,15 @@ public class Command {
                 if(!f.exists()) {
                     f = new File(state.basePath + File.separator + ((ImportCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((ImportCommand)tmp).name);
+                    	if(state.testcaseDir.trim().equals(".")) {
+                    		f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
+                    	} else {
+                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ImportCommand)tmp).name);
+                    	}
                     }
+                }
+                if(!f.exists()) {
+                	f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
                 }
                 if(!f.exists()) {
                     throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
@@ -1113,8 +1102,15 @@ public class Command {
                 if(!f.exists()) {
                     f = new File(state.basePath + File.separator + ((IncludeCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((IncludeCommand)tmp).name);
+                    	if(state.testcaseDir.trim().equals(".")) {
+                    		f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
+                    	} else {
+                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((IncludeCommand)tmp).name);
+                    	}
                     }
+                }
+                if(!f.exists()) {
+                	f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
                 }
                 if(!f.exists()) {
                     throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
@@ -1145,8 +1141,15 @@ public class Command {
                 if(!f.exists()) {
                     f = new File(state.basePath + File.separator + ((ConfigPropsCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((ConfigPropsCommand)tmp).name);
+                    	if(state.testcaseDir.trim().equals(".")) {
+                    		f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
+                    	} else {
+                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ConfigPropsCommand)tmp).name);
+                    	}
                     }
+                }
+                if(!f.exists()) {
+                	f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
                 }
                 if(!f.exists()) {
                     throwParseErrorS(o, new RuntimeException("Config properties file not found in any of the search paths"));
@@ -1171,8 +1174,15 @@ public class Command {
                 if(!f.exists()) {
                     f = new File(state.basePath + File.separator + ((DynPropsCommand)tmp).name);
                     if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                        f = new File(state.basePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
+                    	if(state.testcaseDir.trim().equals(".")) {
+                    		f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
+                    	} else {
+                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
+                    	}
                     }
+                }
+                if(!f.exists()) {
+                	f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
                 }
                 if(!f.exists()) {
                     throwParseErrorS(o, new RuntimeException("Dynamic properties file not found in any of the search paths"));
@@ -1324,9 +1334,10 @@ public class Command {
         SeleniumTest.CONC_WD = context.getGatfExecutorConfig().isSelConcWebdriver();
         commands.addAll(FileUtils.readLines(file, "UTF-8"));
         CommandState state = new CommandState();
-        state.basePath = context.getGatfExecutorConfig().getTestCasesBasePath();
+        state.origBasePath = context.getGatfExecutorConfig().getTestCasesBasePath();
+        state.basePath = state.origBasePath;
         if(context.getGatfExecutorConfig().getTestCaseDir()!=null) {
-            state.testcaseDir += context.getGatfExecutorConfig().getTestCaseDir();
+            state.testcaseDir = context.getGatfExecutorConfig().getTestCaseDir();
         }
         loadPlugins(state, context);
         state.visitedFiles.add(file.getAbsolutePath());
@@ -2073,12 +2084,7 @@ public class Command {
         String code;
         ExecJsCommand(String code, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            code = state.unsanitize(code);
-            if(code.charAt(0)==code.charAt(code.length()-1)) {
-                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
-                    code = code.substring(1, code.length()-1);
-                }
-            }
+            code = unSantizedUnQuoted(code, state);
             this.code = code;
         }
         String toCmd() {
@@ -2103,12 +2109,7 @@ public class Command {
         String code;
         ExecJsFileCommand(String code, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            code = state.unsanitize(code);
-            if(code.charAt(0)==code.charAt(code.length()-1)) {
-                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
-                    code = code.substring(1, code.length()-1);
-                }
-            }
+            code = unSantizedUnQuoted(code, state);
             this.code = code;
         }
         String toCmd() {
@@ -2583,12 +2584,7 @@ public class Command {
             if(val.indexOf(" ")!=-1) {
                 name = val.substring(0, val.indexOf(" ")).trim();
                 script = val.substring(val.indexOf(" ")+1).trim();
-                script = state.unsanitize(script);
-                if(script.charAt(0)==script.charAt(script.length()-1)) {
-                    if(script.charAt(0)=='"' || script.charAt(0)=='\'') {
-                        script = script.substring(1, script.length()-1);
-                    }
-                }
+                script = unSantizedUnQuoted(script, state);
             } else {
                 //excep
             }
@@ -2616,14 +2612,7 @@ public class Command {
         boolean isTmp = false;
         ScreenshotCommand(String code, Object[] cmdDetails, CommandState state, boolean isTmp) {
             super(cmdDetails, state);
-            code = state.unsanitize(code);
-            if(StringUtils.isNotBlank(code)) {
-	            if(code.charAt(0)==code.charAt(code.length()-1)) {
-	                if(code.charAt(0)=='"' || code.charAt(0)=='\'') {
-	                    code = code.substring(1, code.length()-1);
-	                }
-	            }
-            }
+            code = unSantizedUnQuoted(code, state);
             this.fpath = code.trim().isEmpty()?System.nanoTime()+".png":code;
             this.isTmp = isTmp;
         }
@@ -2658,13 +2647,8 @@ public class Command {
                 fpath = System.nanoTime()+".png";
                 cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
             } else {
-                cond = new FindCommand(parts[1].trim(), fileLineDetails, state);
-                fpath = state.unsanitize(parts[0].trim());
-                if(fpath.charAt(0)==fpath.charAt(fpath.length()-1)) {
-                    if(fpath.charAt(0)=='"' || fpath.charAt(0)=='\'') {
-                        fpath = fpath.substring(1, fpath.length()-1);
-                    }
-                }
+            	cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+                fpath = unSantizedUnQuoted(parts[1].trim(), state);
             }
             this.isTmp = isTmp;
         }
@@ -2766,12 +2750,7 @@ public class Command {
             String[] parts = value.split("[\t ]*,[\t ]*");
             if(parts.length>0) {
                 for (String c : parts) {
-                    String name = state.unsanitize(c);
-                    if(name.charAt(0)==name.charAt(name.length()-1)) {
-                        if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                            name = name.substring(1, name.length()-1);
-                        }
-                    }
+                    String name = unSantizedUnQuoted(c, state);
                     b.append("import " + name + ";\n");
                 }
                 return b.toString();
@@ -2800,12 +2779,7 @@ public class Command {
         String name;
         IncludeCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd);
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
         }
         String toCmd() {
             return "include " + name;
@@ -2828,12 +2802,7 @@ public class Command {
         String name;
         ImportCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd);
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
         }
         String toCmd() {
             return "import " + name;
@@ -2856,12 +2825,7 @@ public class Command {
         String name;
         ConfigPropsCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd);
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
         }
         String toCmd() {
             return "config " + name;
@@ -2893,12 +2857,7 @@ public class Command {
         String name;
         DynPropsCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd);
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
         }
         String toCmd() {
             return "dynprops " + name;
@@ -3540,74 +3499,34 @@ public class Command {
                 }
             } else if(type==ProviderType.InlineSQL) {
                 if(parts.length==3) {
-                	String t = state.unsanitize(parts[0].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	String t = unSantizedUnQuoted(parts[0].trim(), state);
                 	dsn = t.trim();
-                	t = state.unsanitize(parts[1].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[1].trim(), state);
                 	query = t.trim();
                 	if(!query.toLowerCase().matches("^(select|with|call)[\t ]+.*") && type==ProviderType.InlineSQL) {
                 		throwParseError(cmdDetails, new RuntimeException("SQL provider only allows select|with|call queries"));
                 	}
-                	t = state.unsanitize(parts[2].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[2].trim(), state);
                 	vars= t.split(",");
                 } else {
                     throwParseError(cmdDetails, new RuntimeException("SQL provider command should have the syntax `#sql {dsn} {query} {var1,var2,..}`"));
                 }
             } else if(type==ProviderType.InlineMongo) {
                 if(parts.length==3) {
-                	String t = state.unsanitize(parts[0].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	String t = unSantizedUnQuoted(parts[0].trim(), state);
                 	dsn = t.trim();
-                	t = state.unsanitize(parts[1].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[1].trim(), state);
                 	collName = t.trim();
-                	t = state.unsanitize(parts[2].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[2].trim(), state);
                 	query = t.trim();
             		try {
 						WorkflowContextHandler.OM.readTree(query);
 					} catch (Exception e) {
 						throwParseError(cmdDetails, new RuntimeException("Mongo provider needs valid json queries"));
 					}
-                	t = state.unsanitize(parts[3].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[3].trim(), state);
                 	vars= t.split(",");
-                	t = state.unsanitize(parts[4].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[4].trim(), state);
                 	props= t.split(",");
                 	if(vars.length!=props.length) {
                 		throwParseError(cmdDetails, new RuntimeException("Mongo provider needs same number of source/target property names"));
@@ -3619,30 +3538,15 @@ public class Command {
                 }
             } else if(type==ProviderType.InlineFile) {
                 if(parts.length==2) {
-                	String t = state.unsanitize(parts[0].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	String t = unSantizedUnQuoted(parts[0].trim(), state);
                 	filePath = t.trim();
-                	t = state.unsanitize(parts[1].trim());
-                	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                        if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                        	t = t.substring(1, t.length()-1);
-                        }
-                    }
+                	t = unSantizedUnQuoted(parts[1].trim(), state);
                 	vars= t.split(",");
                 } else {
                     throwParseError(cmdDetails, new RuntimeException("File provider command should have the syntax `#file {filepath} {var1,var2,..}`"));
                 }
             } else {
-                name = state.unsanitize(parts[0].trim());
-                if(name.charAt(0)==name.charAt(name.length()-1)) {
-                    if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                        name = name.substring(1, name.length()-1);
-                    }
-                }
+                name = unSantizedUnQuoted(parts[0].trim(), state);
                 if(parts.length>1 && !parts[1].trim().isEmpty()) {
                 	if(isStateFul) {
                 		throwError(fileLineDetails, new RuntimeException("Stateful Providers cannot specify index/start"));
@@ -3858,12 +3762,7 @@ public class Command {
         ReadFileCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
-            name = state.unsanitize(parts[0].trim());
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(parts[0].trim(), state);
             if(parts.length>1) {
             	isBinary = "binary".equalsIgnoreCase(parts[1].trim());
             }
@@ -3940,30 +3839,15 @@ public class Command {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length==3) {
-            	String t = state.unsanitize(parts[0].trim());
-            	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                    	t = t.substring(1, t.length()-1);
-                    }
-                }
+            	String t = unSantizedUnQuoted(parts[0].trim(), state);
             	vars= t.split(",");
-            	regex = state.unsanitize(parts[1].trim());
-            	if(regex.charAt(0)==regex.charAt(regex.length()-1)) {
-                    if(regex.charAt(0)=='"' || regex.charAt(0)=='\'') {
-                    	regex = regex.substring(1, regex.length()-1);
-                    }
-                }
+            	regex = unSantizedUnQuoted(parts[1].trim(), state);
             	try {
 					Pattern.compile(regex);
 				} catch (Exception e) {
 					throwParseError(cmdDetails, new RuntimeException("Invalid regex pattern specified " + regex));
 				}
-            	t = state.unsanitize(parts[2].trim());
-            	if(t.charAt(0)==t.charAt(t.length()-1)) {
-                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                    	t = t.substring(1, t.length()-1);
-                    }
-                }
+            	t = unSantizedUnQuoted(parts[2].trim(), state);
             	positions= t.split(",");
             	if(vars.length!=positions.length) {
             		throwParseError(cmdDetails, new RuntimeException("File variable command needs length of vars and regex positions to be the same"));
@@ -4007,19 +3891,9 @@ public class Command {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length==2) {
-                String t = state.unsanitize(parts[0].trim());
-                if(t.charAt(0)==t.charAt(t.length()-1)) {
-                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                    	t = t.substring(1, t.length()-1);
-                    }
-                }
+                String t = unSantizedUnQuoted(parts[0].trim(), state);
                 dsn = t;
-                t = state.unsanitize(parts[1].trim());
-                if(t.charAt(0)==t.charAt(t.length()-1)) {
-                    if(t.charAt(0)=='"' || t.charAt(0)=='\'') {
-                    	t = t.substring(1, t.length()-1);
-                    }
-                }
+                t = unSantizedUnQuoted(parts[1].trim(), state);
                 query = t;
             } else {
             	throwParseError(cmdDetails, new RuntimeException("DS query command needs dsn name and query to execute"));
@@ -4056,12 +3930,7 @@ public class Command {
             if(parts.length>=4) {
                 parts[0] = parts[0].trim();
                 varname = parts[0];
-                varname = state.unsanitize(varname);
-                if(varname.charAt(0)==varname.charAt(varname.length()-1)) {
-                    if(varname.charAt(0)=='"' || varname.charAt(0)=='\'') {
-                    	varname = varname.substring(1, varname.length()-1);
-                    }
-                }
+                varname = unSantizedUnQuoted(varname, state);
                 cond = new FindCommand(parts[1].trim() + " " + parts[2].trim(), fileLineDetails, state);
             } else {
                 //excep
@@ -4122,20 +3991,8 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=4) {
                 parts[0] = parts[0].trim();
-                value = parts[0];
-                value = state.unsanitize(value);
-                if(value.charAt(0)==value.charAt(value.length()-1)) {
-                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                        value = value.substring(1, value.length()-1);
-                    }
-                }
-                varname = parts[1];
-                varname = state.unsanitize(varname);
-                if(varname.charAt(0)==varname.charAt(varname.length()-1)) {
-                    if(varname.charAt(0)=='"' || varname.charAt(0)=='\'') {
-                        varname = varname.substring(1, varname.length()-1);
-                    }
-                }
+                value = unSantizedUnQuoted(parts[0], state);
+                varname = unSantizedUnQuoted(parts[1], state);
                 cond = new FindCommand(parts[2].trim() + " " + parts[3].trim(), fileLineDetails, state);
                 if(parts.length>4 && parts[4].trim().equalsIgnoreCase("lazy")) {
                 	isLazy = true;
@@ -4701,12 +4558,7 @@ public class Command {
     public static class FrameCommand extends Command {
         FrameCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd);
-            if(name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
         }
         String name() {
             return name;
@@ -4752,13 +4604,7 @@ public class Command {
     public static class WindowCommand extends Command {
         WindowCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = cmd;
-            name = state.unsanitize(name);
-            if(StringUtils.isNotBlank(name) && name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
             name = name.trim();
         }
         String name() {
@@ -4820,13 +4666,7 @@ public class Command {
     public static class TabCommand extends Command {
         TabCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = cmd;
-            name = state.unsanitize(name);
-            if(StringUtils.isNotBlank(name) && name.charAt(0)==name.charAt(name.length()-1)) {
-                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-                    name = name.substring(1, name.length()-1);
-                }
-            }
+            name = unSantizedUnQuoted(cmd, state);
             if("main".equalsIgnoreCase(name)) {
             	name = "0";
             }
@@ -5001,13 +4841,8 @@ public class Command {
         }
         CloseCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            name = state.unsanitize(cmd.trim());
+            name = unSantizedUnQuoted(cmd, state);
             if(StringUtils.isNotBlank(name)) {
-	            if(name.charAt(0)==name.charAt(name.length()-1)) {
-	                if(name.charAt(0)=='"' || name.charAt(0)=='\'') {
-	                    name = name.substring(1, name.length()-1);
-	                }
-	            }
 	            if(name.equalsIgnoreCase("others")) {
 	            	name = "others";
 	            } else {
@@ -5094,12 +4929,7 @@ public class Command {
             if(cmd.equals("")) {
             	value = "Test/Subtest Failed";
             } else {
-	            value = state.unsanitize(cmd);
-	            if(value.charAt(0)==value.charAt(value.length()-1)) {
-	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-	                    value = value.substring(1, value.length()-1);
-	                }
-	            }
+	            value = unSantizedUnQuoted(cmd, state);
             }
         }
         public static String[] toSampleSelCmd() {
@@ -5125,12 +4955,7 @@ public class Command {
             if(cmd.equals("")) {
             	value = "Test/Subtest Failed";
             } else {
-	            value = state.unsanitize(cmd);
-	            if(value.charAt(0)==value.charAt(value.length()-1)) {
-	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-	                    value = value.substring(1, value.length()-1);
-	                }
-	            }
+	            value = unSantizedUnQuoted(cmd, state);
             }
         }
         public static String[] toSampleSelCmd() {
@@ -5153,14 +4978,7 @@ public class Command {
         }
         PassCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            value = state.unsanitize(cmd);
-            if(!value.trim().isEmpty()) {
-	            if(value.charAt(0)==value.charAt(value.length()-1)) {
-	                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-	                    value = value.substring(1, value.length()-1);
-	                }
-	            }
-            }
+            value = unSantizedUnQuoted(cmd, state);
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -5349,7 +5167,8 @@ public class Command {
                 	try {
 						state.factory.newXPath().compile(classifier);
 					} catch (XPathExpressionException e) {
-						throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
+						System.out.println("Warning: Possible invalid xpath expression " + classifier);
+						//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 					}
                 }
             	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
@@ -5380,7 +5199,8 @@ public class Command {
 	                    	try {
 								state.factory.newXPath().compile(classifier);
 							} catch (XPathExpressionException e) {
-								throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
+								System.out.println("Warning: Possible invalid xpath expression " + classifier);
+								//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 							}
 	                    }
 	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
@@ -5461,7 +5281,7 @@ public class Command {
             return " " + logbc + (StringUtils.isEmpty(subselector)?"":" \"" + subselector + "\"");
         }
         String getErr() {
-        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
+        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return "\"Element not found by selector " + logbc + " at line number "+fileLineDetails[1]+" \"";
         }
         String javacodetrprovonly(String varname) {
@@ -5518,7 +5338,7 @@ public class Command {
             rtl = varname;
             String wel = by.equals("this")?state.currthisat():"___ce___";
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
-            String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
+            String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", null, "+tvalue+", \"Element not found by selector " 
@@ -5584,20 +5404,20 @@ public class Command {
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n";
         }*/
         String javacodeonly() {
-        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
+        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return javacodeonlyNoAssert(null, false, state.timeoutNum, false)
                     + "\nAssert.assertTrue(\"Element not found by selector " + logbc
                     + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
         }
         String javacodeifonly(List<Command> children, String vrd) {
         	if(StringUtils.isNotBlank(eval)) {
-        		return vrd + " = doEvalIf(\""+esc(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = doEvalIf(\""+esc(unSantizedUnQuoted(eval, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(browserScope)) {
-        		return vrd + " = isBrowserName(\""+esc(state.unsanitize(browserScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = isBrowserName(\""+esc(unSantizedUnQuoted(browserScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(sessionScope)) {
-        		return vrd + " = isSessionName(\""+esc(state.unsanitize(sessionScope))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = isSessionName(\""+esc(unSantizedUnQuoted(sessionScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
-        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
+        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return javacodeonlyNoAssert(children, true, state.ifTimeoutNum, false)
                     + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nAssert.assertTrue(\"Element not found by selector " + logbc 
                     + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
@@ -5667,7 +5487,7 @@ public class Command {
             } else {
             	sclassifier =  "new String[] {\"\", \"\"}";
             }
-            String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
+            String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             String wel = by.equals("this")?state.currthisat():"___ce___";
             String excmsg = noexcep?null:"\"Element not found by selector " + logbc + " at line number "+fileLineDetails[1]+" \"";
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
@@ -6132,13 +5952,7 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>0) {
             	if(type.equalsIgnoreCase("chord")) {
-                    parts[0] = state.unsanitize(parts[0].trim());
-                    value = parts[0];
-                    if(value.charAt(0)==value.charAt(value.length()-1)) {
-                        if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                            value = value.substring(1, value.length()-1);
-                        }
-                    }
+                    value = unSantizedUnQuoted(parts[0], state);
                     String temp = StringEscapeUtils.unescapeJava(value);
                     try {
                         if(fcmd==null) {
@@ -6168,13 +5982,7 @@ public class Command {
                     }
                 } else if(type.equalsIgnoreCase("type") || type.equalsIgnoreCase("sendkeys")) {
                 	parts[0] = parts[0].trim();
-                    value = parts[0];
-                    value = state.unsanitize(value);
-                    if(value.charAt(0)==value.charAt(value.length()-1)) {
-                        if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                            value = value.substring(1, value.length()-1);
-                        }
-                    }
+                    value = unSantizedUnQuoted(parts[0], state);
                     if(fcmd==null) {
                     	String cstr = Stream.<String>of(parts).skip(1).collect(Collectors.joining(" "));
                         cond = new FindCommand(cstr.trim(), fileLineDetails, state);
@@ -6189,33 +5997,18 @@ public class Command {
                     }
                     if(parts.length>t) {
                         v1 = parts[c];
-                        v1 = state.unsanitize(v1);
-                        if(v1.charAt(0)==v1.charAt(v1.length()-1)) {
-                            if(v1.charAt(0)=='"' || v1.charAt(0)=='\'') {
-                                v1 = v1.substring(1, v1.length()-1);
-                            }
-                        }
+                        v1 = unSantizedUnQuoted(v1, state);
                         if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc")) {
                         	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc"));
                         }
                     }
                     if(parts.length>t+1) {
                         v2 = parts[c+1];
-                        v2 = state.unsanitize(v2);
-                        if(v2.charAt(0)==v2.charAt(v2.length()-1)) {
-                            if(v2.charAt(0)=='"' || v2.charAt(0)=='\'') {
-                                v2 = v2.substring(1, v2.length()-1);
-                            }
-                        }
+                        v2 = unSantizedUnQuoted(v2, state);
                     }
                     if(parts.length>t+2) {
                         v3 = parts[c+2];
-                        v3 = state.unsanitize(v3);
-                        if(v3.charAt(0)==v3.charAt(v3.length()-1)) {
-                            if(v3.charAt(0)=='"' || v3.charAt(0)=='\'') {
-                                v3 = v3.substring(1, v3.length()-1);
-                            }
-                        }
+                        v3 = unSantizedUnQuoted(v3, state);
                     }
                     
                     try {
@@ -6325,13 +6118,7 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>0) {
                 parts[0] = parts[0].trim();
-                value = parts[0];
-                value = state.unsanitize(value);
-                if(value.charAt(0)==value.charAt(value.length()-1)) {
-                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                        value = value.substring(1, value.length()-1);
-                    }
-                }
+                value = unSantizedUnQuoted(parts[0], state);
                 if(value.matches(".*@[0-9]+")) {
                 	try {
                 		count = Integer.parseInt(value.substring(value.lastIndexOf("@")+1));
@@ -6511,33 +6298,18 @@ public class Command {
                 }
                 if(parts.length>t) {
                     v1 = parts[c];
-                    v1 = state.unsanitize(v1);
-                    if(v1.charAt(0)==v1.charAt(v1.length()-1)) {
-                        if(v1.charAt(0)=='"' || v1.charAt(0)=='\'') {
-                            v1 = v1.substring(1, v1.length()-1);
-                        }
-                    }
+                    v1 = unSantizedUnQuoted(v1, state);
                     if(!v1.toLowerCase().matches("alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc")) {
                     	throwParseError(null, new RuntimeException("Randomize type can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc"));
                     }
                 }
                 if(parts.length>t+1) {
                     v2 = parts[c+1];
-                    v2 = state.unsanitize(v2);
-                    if(v2.charAt(0)==v2.charAt(v2.length()-1)) {
-                        if(v2.charAt(0)=='"' || v2.charAt(0)=='\'') {
-                            v2 = v2.substring(1, v2.length()-1);
-                        }
-                    }
+                    v2 = unSantizedUnQuoted(v2, state);
                 }
                 if(parts.length>t+2) {
                     v3 = parts[c+2];
-                    v3 = state.unsanitize(v3);
-                    if(v3.charAt(0)==v3.charAt(v3.length()-1)) {
-                        if(v3.charAt(0)=='"' || v3.charAt(0)=='\'') {
-                            v3 = v3.substring(1, v3.length()-1);
-                        }
-                    }
+                    v3 = unSantizedUnQuoted(v3, state);
                 }
                 
                 try {
@@ -6640,13 +6412,7 @@ public class Command {
             String[] parts = val.trim().split("[\t ]+");
             this.noblur = noblur;
             if(parts.length>0) {
-                parts[0] = state.unsanitize(parts[0].trim());
-                value = parts[0];
-                if(value.charAt(0)==value.charAt(value.length()-1)) {
-                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                        value = value.substring(1, value.length()-1);
-                    }
-                }
+                value = unSantizedUnQuoted(parts[0], state);
                 String temp = StringEscapeUtils.unescapeJava(value);
                 try {
                     if(parts.length>1) {
@@ -6734,12 +6500,7 @@ public class Command {
                 if(by.indexOf("@")!=-1) {
                     value = by.split("@")[1];
                     by = by.split("@")[0];
-                    value = state.unsanitize(value);
-                    if(value.charAt(0)==value.charAt(value.length()-1)) {
-                        if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                            value = value.substring(1, value.length()-1);
-                        }
-                    }
+                    value = unSantizedUnQuoted(value, state);
                 }
                 if(parts.length>1) {
                 	String cstr = Stream.<String>of(parts).skip(1).collect(Collectors.joining(" "));
@@ -7030,18 +6791,8 @@ public class Command {
                         fc++;
                     }
                     if(fc==2) {
-                        cmd.expr1 = state.unsanitize(t[++counter]);
-                        if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
-                            if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
-                                cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
-                            }
-                        }
-                        cmd.expr2 = state.unsanitize(t[++counter]);
-                        if(cmd.expr2.charAt(0)==cmd.expr2.charAt(cmd.expr2.length()-1)) {
-                            if(cmd.expr2.charAt(0)=='"' || cmd.expr2.charAt(0)=='\'') {
-                                cmd.expr2 = cmd.expr2.substring(1, cmd.expr2.length()-1);
-                            }
-                        }
+                        cmd.expr1 = unSantizedUnQuoted(t[++counter], state);
+                        cmd.expr2 = unSantizedUnQuoted(t[++counter], state);
                     } else {
                         throwParseError(null, new RuntimeException("Expressions(2) expected after actions (dragAndDrop|moveByOffset)"));
                     }
@@ -7051,20 +6802,9 @@ public class Command {
                     	throwParseError(null, new RuntimeException("Randomize command needs to define a type that can only be one of alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc"));
                     }
                     
-                    cmd.expr1 = state.unsanitize(t[++counter]);
-                    if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
-                        if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
-                            cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
-                        }
-                    }
-                    
+                    cmd.expr1 = unSantizedUnQuoted(t[++counter], state);
                     try {
-                    	cmd.expr2 = state.unsanitize(t[counter+1]);
-                        if(cmd.expr2.charAt(0)==cmd.expr2.charAt(cmd.expr2.length()-1)) {
-                            if(cmd.expr2.charAt(0)=='"' || cmd.expr2.charAt(0)=='\'') {
-                                cmd.expr2 = cmd.expr2.substring(1, cmd.expr2.length()-1);
-                            }
-                        }
+                    	cmd.expr2 = unSantizedUnQuoted(t[counter+1], state);
                         ++counter;
                         Long.parseLong(cmd.expr2);
         			} catch (Exception e) {
@@ -7082,12 +6822,7 @@ public class Command {
         			}
                     
                     try {
-                    	cmd.expr3 = state.unsanitize(t[counter+1]);
-                        if(cmd.expr3.charAt(0)==cmd.expr3.charAt(cmd.expr3.length()-1)) {
-                            if(cmd.expr3.charAt(0)=='"' || cmd.expr3.charAt(0)=='\'') {
-                                cmd.expr3 = cmd.expr3.substring(1, cmd.expr3.length()-1);
-                            }
-                        }
+                    	cmd.expr3 = unSantizedUnQuoted(t[counter+1], state);
                         Long.parseLong(cmd.expr3);
         				++counter;
         			} catch (Exception e) {
@@ -7313,12 +7048,7 @@ public class Command {
                         cmd.action = "key";
                     }
                     if(flag && tl>counter+1) {
-                        cmd.expr1 = state.unsanitize(t[++counter]);
-                        if(cmd.expr1.charAt(0)==cmd.expr1.charAt(cmd.expr1.length()-1)) {
-                            if(cmd.expr1.charAt(0)=='"' || cmd.expr1.charAt(0)=='\'') {
-                                cmd.expr1 = cmd.expr1.substring(1, cmd.expr1.length()-1);
-                            }
-                        }
+                        cmd.expr1 = unSantizedUnQuoted(t[++counter], state);
                     } else if(flag) {
                         throwParseError(null, new RuntimeException("Expression expected after actions (keydown|keyup)"));
                     }
@@ -7691,12 +7421,7 @@ public class Command {
         }
         public AlertCommand(String info, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            value = state.unsanitize(info);
-            if(value.length()>0 && value.charAt(0)==value.charAt(value.length()-1)) {
-                if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                    value = value.substring(1, value.length()-1);
-                }
-            }
+            value = unSantizedUnQuoted(info, state);
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -7741,12 +7466,7 @@ public class Command {
             }
             if(t.length>1)
             {
-                value = state.unsanitize(t[1].trim());
-                if(value.length()>0 && value.charAt(0)==value.charAt(value.length()-1)) {
-                    if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
-                        value = value.substring(1, value.length()-1);
-                    }
-                }
+                value = unSantizedUnQuoted(t[1], state);
             }
         }
         public static String[] toSampleSelCmd() {
@@ -8327,7 +8047,7 @@ public class Command {
 
     public static String unSantizedUnQuoted(String value, CommandState state) {
         value = state.unsanitize(value.trim());
-        if(value.charAt(0)==value.charAt(value.length()-1)) {
+        if(value!=null && value.length()>=2 && value.charAt(0)==value.charAt(value.length()-1)) {
             if(value.charAt(0)=='"' || value.charAt(0)=='\'') {
                 value = value.substring(1, value.length()-1);
             }
@@ -8514,6 +8234,18 @@ public class Command {
     
     @SuppressWarnings({ "unchecked", "rawtypes" })
 	public static void main(String[] args) throws Exception {
+    	Pattern p = Pattern.compile("'(?:\\\\'|[^'])*'");
+        Matcher m1 = p.matcher(".. '\\\\\"test me'..'Say \\'Hello\\'!'..'\\\\\\\\ \\\\'' .. ");
+        while (m1.find()) {
+            System.out.println(m1.toMatchResult().group());
+        }
+        
+        p = Pattern.compile("\"(?:\\\\\\\"|[^\\\"])*\"");
+        m1 = p.matcher("? eval ${a}==\"a\" & eval ${a}==\"a\"");
+        while (m1.find()) {
+            System.out.println(m1.toMatchResult().group());
+        }
+    	
     	System.out.println(Command.toSampleSelCmd());
     	Reflections r = new Reflections("com.gatf.selenium");
     	Set<Class<? extends Command>> classes = r.getSubTypesOf(Command.class);

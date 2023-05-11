@@ -41,6 +41,13 @@ public class ApiPlugin {
                     return JsonPlugin.read(new Object[]{report.getResponseContent()});
                 }
             }
+        } else {
+        	if(report!=null) {
+        		throw new RuntimeException(String.format("API test %s failed with statuscode %d and error (%s) Error details below\n%s", 
+        				testname, report.getResponseStatusCode(), report.getError(), report.getErrorText()));
+        	} else {
+        		throw new RuntimeException("API test " + testname + " failed");
+        	}
         }
         
         return null;

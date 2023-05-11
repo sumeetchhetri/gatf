@@ -60,7 +60,7 @@ var t css@"div[class=ssdfdsf]>nav>div>ul>li"
 jsvar u "return window;"
 execjs "arguments[0].style.border='3px solid red'"
 screenshot "test.png"
-ele-screenshot "teste.png" css@"div[class=ssdfdsf]>nav>div>ul>li"
+ele-screenshot css@"div[class=ssdfdsf]>nav>div>ul>li" "teste.png"
 ??60 class@"welcome_text" hover
 hoverclick class@"welcome_text" id@"signOut"
 ? id@"Location1"

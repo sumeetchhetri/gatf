@@ -1195,7 +1195,11 @@ public abstract class SeleniumTest {
 						stImg = img;
 						((FailSubTestException)cause).img = img;
 						System.out.println("Error occurred on line no " + line);
-						cause.printStackTrace();
+						if(cause.getMessage().contains("no such window: target window already closed")) {
+							java.lang.System.out.println("no such window: target window already closed");
+						} else {
+							cause.printStackTrace();
+						}
 						java.lang.System.out.println(img);
 						screenshotAsFile(d, img);
 					} catch (Exception e) {
@@ -1216,7 +1220,7 @@ public abstract class SeleniumTest {
 					if(!(((SubTestException)cause).cause instanceof FailSubTestException)) {
 						System.out.println("Error occurred on line no " + line);
 						if(cause.getMessage().contains("no such window: target window already closed")) {
-							java.lang.System.out.println(cause.getMessage());
+							java.lang.System.out.println("no such window: target window already closed");
 						} else {
 							cause.printStackTrace();
 						}
@@ -1252,7 +1256,11 @@ public abstract class SeleniumTest {
 					try {
 						stImg = img;
 						System.out.println("Error occurred on line no " + line);
-						cause.printStackTrace();
+						if(cause.getMessage().contains("no such window: target window already closed")) {
+							java.lang.System.out.println("no such window: target window already closed");
+						} else {
+							cause.printStackTrace();
+						}
 						java.lang.System.out.println(img);
 						screenshotAsFile(d, img);
 					} catch (Exception e) {
