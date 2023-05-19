@@ -2083,6 +2083,7 @@ public abstract class SeleniumTest {
 			PDFTextStripper stripper = new PDFTextStripper();
 			stripper.setStartPage(1);
 			//stripper.setEndPage(1);
+			new File(filePath+".txt").delete();
 			Writer wr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath+".txt")));
 			stripper.writeText(doc, wr);
 			if (doc != null) {
@@ -2121,20 +2122,19 @@ public abstract class SeleniumTest {
 				}
 				url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
 			}
-			String optionalOpenNums = (String)((JavascriptExecutor)driver).executeScript("return window.__wostn__");
-			String foundOpenNums = (String)((JavascriptExecutor)driver).executeScript("return window.__wosjp__.length");
+			if(StringUtils.isBlank(url) || "FAIL".equals(url)) {
+				throw new RuntimeException("Invalid window.open url found");
+			}
+			Long optionalOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.__wostn__");
+			Long foundOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.__wosjp__.length");
 			try {
-				int optionalOpenNum = Integer.valueOf(optionalOpenNums);
-				int foundOpenNum = Integer.valueOf(foundOpenNums);
 				if(foundOpenNum<openPos) {
 					throw new RuntimeException("Not all window.open's have fired, please wait, only "+foundOpenNum+" fired out of " + optionalOpenNum);
 				}
 			} catch (Exception e) {
 			}
-			if(StringUtils.isBlank(url) || "FAIL".equals(url)) {
-				throw new RuntimeException("Invalid window.open url found");
-			}
 			client = TestCaseExecutorUtil.getClient();
+			new File(filePath).delete();
 			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
 			Response res = call.execute();
 			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
