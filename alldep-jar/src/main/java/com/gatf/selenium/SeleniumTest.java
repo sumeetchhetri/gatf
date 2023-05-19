@@ -2094,33 +2094,44 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void windowOpenSaveJsPre(WebDriver driver) {
+	protected void windowOpenSaveJsPre(WebDriver driver, int optionalOpenNums) {
 		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 		try {
-			((JavascriptExecutor)driver).executeScript("window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);window.open=__owo__;console.log(a);}");
+			((JavascriptExecutor)driver).executeScript("window.__wostn__="+optionalOpenNums+";window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);if(window.__wosjp__.length==window.__wostn__){window.open=__owo__;}console.log(a);}");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	protected void windowOpenSaveJsPost(WebDriver driver, String filePath, boolean extractText) {
+	protected void windowOpenSaveJsPost(WebDriver driver, String filePath, boolean extractText, int openPos) {
 		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 		OkHttpClient client = null;
 		try {
-			String url = (String)((JavascriptExecutor)driver).executeScript("return window.__wosjp__[0]");
+			String url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
 			int counter = 0;
-			while(StringUtils.isBlank(url) && counter++<60) {
+			while((StringUtils.isBlank(url) || "FAIL".equals(url)) && counter++<60) {
 				System.out.println("Waiting for download URL... attempt " + counter);
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 				}
+				url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
 			}
-			if(StringUtils.isBlank(url)) {
+			String optionalOpenNums = (String)((JavascriptExecutor)driver).executeScript("return window.__wostn__");
+			String foundOpenNums = (String)((JavascriptExecutor)driver).executeScript("return window.__wosjp__.length");
+			try {
+				int optionalOpenNum = Integer.valueOf(optionalOpenNums);
+				int foundOpenNum = Integer.valueOf(foundOpenNums);
+				if(foundOpenNum<openPos) {
+					throw new RuntimeException("Not all window.open's have fired, please wait, only "+foundOpenNum+" fired out of " + optionalOpenNum);
+				}
+			} catch (Exception e) {
+			}
+			if(StringUtils.isBlank(url) || "FAIL".equals(url)) {
 				throw new RuntimeException("Invalid window.open url found");
 			}
 			client = TestCaseExecutorUtil.getClient();

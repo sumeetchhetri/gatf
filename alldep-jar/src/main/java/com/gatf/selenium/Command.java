@@ -5378,7 +5378,7 @@ public class Command {
         }
         String javacodeifonly(List<Command> children, String vrd) {
         	if(StringUtils.isNotBlank(eval)) {
-        		return vrd + " = doEvalIf(\""+esc(unSantizedUnQuoted(eval, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = doEvalIf(\""+esc(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(browserScope)) {
         		return vrd + " = isBrowserName(\""+esc(unSantizedUnQuoted(browserScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(sessionScope)) {
@@ -6161,6 +6161,8 @@ public class Command {
     public static class WindowOpenSaveInterceptJsCommand extends Command {
     	boolean start = true;
     	boolean extractText = false;
+    	int optionalOpenNums = 1;
+    	int openPos = 0;
     	WindowOpenSaveInterceptJsCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = cmd.trim().split("[\t ]+");
@@ -6179,20 +6181,46 @@ public class Command {
             	parts[2] = unSantizedUnQuoted(parts[2].trim(), state);
             	this.extractText = parts[2].trim().equalsIgnoreCase("text")?true:false;
             }
+            if(!start && parts.length>3) {
+            	parts[3] = unSantizedUnQuoted(parts[3].trim(), state);
+            	try {
+            		openPos = Integer.valueOf(parts[3].trim());
+            		if(openPos<0) {
+            			openPos = 0;
+            			System.out.println("The window open position called in this context should be greater than 0");
+            		} else {
+            			openPos = openPos-1;
+            		}
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Please provide a valid/positive window.open position"));
+				}
+            }
+            if(start && parts.length>1) {
+            	try {
+            		optionalOpenNums = Integer.valueOf(parts[1].trim());
+            		if(optionalOpenNums<=0) {
+            			optionalOpenNums = 1;
+            			System.out.println("The total number of window opens called in this context should be greater than 0");
+            		}
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Please provide a valid/positive total window.open number"));
+				}
+            }
         }
         String toCmd() {
             return "wopensave " + (start?"on":"off") + (start?"":" \"" +name+ "\"") + (!start && extractText?" text":"");
         }
         String javacode() {
-        	if(start) return "\nwindowOpenSaveJsPre(___cw___);\n";
-        	else return "\nwindowOpenSaveJsPost(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+");\n";
+        	if(start) return "\nwindowOpenSaveJsPre(___cw___, "+optionalOpenNums+");\n";
+        	else return "\nwindowOpenSaveJsPost(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+", "+openPos+");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Save URL passed to window.open",
-        		"\twopensave {on|off} {filepath}? {text}?",
+        		"\twopensave {on|off} {num-window-opens|filepath}? {text}?",
         		"Examples :-",
         		"\twopensave on",
+        		"\twopensave on 2",
         		"\twopensave off '/path/to/file.txt' text",
             };
         }
