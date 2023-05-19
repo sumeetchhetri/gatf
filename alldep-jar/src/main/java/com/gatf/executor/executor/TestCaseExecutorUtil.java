@@ -55,6 +55,7 @@ import org.w3c.dom.Document;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.ext.AutocannonTestCaseExecutor;
 import com.gatf.executor.ext.VegetaTestCaseExecutor;
 import com.gatf.executor.ext.WrkTestCaseExecutor;
@@ -525,6 +526,7 @@ public class TestCaseExecutorUtil {
 			}
 			
 			handleRequestContent(testCase, builder);
+			builder.header("Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
 			
 			if(testCase.getHeaders()!=null)
 			{

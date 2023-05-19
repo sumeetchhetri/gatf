@@ -30,6 +30,7 @@ import java.util.jar.JarFile;
 
 import org.apache.commons.collections.MapUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.w3c.dom.Attr;
@@ -529,4 +530,16 @@ public class WorkflowContextHandler {
 			}
 		}*/
 	}
+	
+	public static String getBaseUrl(String url) {
+		if(StringUtils.isNotBlank(url)) {
+			if(url.indexOf("/", 8)<=0) {
+				return url;
+			} else {
+				return url.substring(0, url.indexOf("/", 8));
+			}
+		}
+		return null;
+	}
+
 }

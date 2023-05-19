@@ -47,6 +47,7 @@ public class MailPlugin {
         OkHttpClient client = TestCaseExecutorUtil.getClient();
         Request.Builder rbuilder = new Request.Builder();
         rbuilder.url(url);
+        rbuilder.header("Referer", WorkflowContextHandler.getBaseUrl(url));
         
         RequestBody body = null;
         

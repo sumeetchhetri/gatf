@@ -117,7 +117,7 @@ public class Command {
         
         Properties configProps = null;
         Map<String, String> dynProps = new HashMap<String, String>();
-        Map<String, String> aliases = new HashMap<>();
+        Map<String, String> functions = new HashMap<>();
         
         String getLayers() {
             if(layerStr==null) {
@@ -138,15 +138,15 @@ public class Command {
         
         void addSubtest(SubTestCommand st) {
             if(subtestDups.contains(st.name)) {
-                throwError(st.fileLineDetails, new RuntimeException("Duplicate "+(st.isAnAlias?"alias":"subtest")+" defined"));
+                throwError(st.fileLineDetails, new RuntimeException("Duplicate "+(st.isAFunc?"func":"subtest")+" defined"));
             }
             subtestDups.add(st.name);
             allSubTests.add(st);
-            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true, st.isAnAlias});
+            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true, st.isAFunc});
         }
         
         void addSubtest(ExecSubTestCommand st) {
-            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAnAlias});
+            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAFunc});
         }
         Map<String, String> qss = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
@@ -690,8 +690,8 @@ public class Command {
             comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("subtest ")) {
             comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("alias ")) {
-            comd = new SubTestCommand(cmd.substring(6).trim(), cmdDetails, state, true);
+        } else if (cmd.toLowerCase().startsWith("func ")) {
+            comd = new SubTestCommand(cmd.substring(5).trim(), cmdDetails, state, true);
         } else if (cmd.toLowerCase().startsWith("@call ")) {
             comd = new ExecSubTestCommand(cmd.substring(6).trim(), cmdDetails, state);
         } /*else if (cmd.toLowerCase().startsWith("@")) {
@@ -771,31 +771,16 @@ public class Command {
     
     static Command handleActions(String cmd, FindCommand fcmd, Object[] cmdDetails, CommandState state) {
         Command comd = null;
-        /*if (cmd.toLowerCase().startsWith("type ")) {
-            comd = new TypeCommand(cmd.substring(5), cmdDetails, state, false);
-        } else*/ if (cmd.toLowerCase().matches(typeSwStr)) {
+        if (cmd.toLowerCase().matches(typeSwStr)) {
         	Matcher m = typeSw.matcher(cmd.toLowerCase());
         	m.matches();
         	String type = m.group(1);
         	String qualifier = m.group(2);
         	cmd = m.group(3);
-        	//cmd = state.unsanitize(cmd);
             comd = new TypeCommand(cmd, cmdDetails, state, fcmd, type, qualifier);
-        } /*else if (cmd.toLowerCase().startsWith("sendkeys ")) {
-            comd = new TypeCommand(cmd.substring(9), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("sendkeysnb ")) {
-            comd = new TypeCommand(cmd.substring(11), cmdDetails, state, true);
-        }*/ else if (cmd.toLowerCase().startsWith("upload ")) {
+        } else if (cmd.toLowerCase().startsWith("upload ")) {
             comd = new UploadCommand(cmd.substring(7), cmdDetails, state);
-        }/* else if (cmd.toLowerCase().startsWith("randomize ")) {
-            comd = new RandomizeCommand(cmd.substring(10), cmdDetails, state, fcmd, false);
-        } else if (cmd.toLowerCase().startsWith("randomizenb ")) {
-            comd = new RandomizeCommand(cmd.substring(12), cmdDetails, state, fcmd, true);
-        } else if (cmd.toLowerCase().startsWith("chord ")) {
-            comd = new ChordCommand(cmd.substring(6), cmdDetails, state, false);
-        } else if (cmd.toLowerCase().startsWith("chordnb ")) {
-            comd = new ChordCommand(cmd.substring(8), cmdDetails, state, false);
-        }*/ else if (cmd.toLowerCase().startsWith("select ")) {
+        } else if (cmd.toLowerCase().startsWith("select ")) {
             comd = new SelectCommand(cmd.substring(7), cmdDetails, state);
         } else if (cmd.toLowerCase().matches(clickSwStr)) {
         	Matcher m = clickSw.matcher(cmd.toLowerCase());
@@ -859,7 +844,7 @@ public class Command {
         try
         {
             tmp = parse(o, state, parent);
-            /*if(o[0].toString().trim().startsWith("alias \"pre1\"")) {
+            /*if(o[0].toString().trim().startsWith("func \"pre1\"")) {
             	System.out.println();
             }*/
         }
@@ -875,38 +860,17 @@ public class Command {
     }
 
     static void get(Command parent, ListIterator<Object[]> iter, CommandState state) throws Exception {
-        //Command prev = null;
         while(iter.hasNext()) {
         	ImmutablePair<Command, Object[]> ip = nextCommand(parent, iter, state);
             Command tmp = ip.left;
             Object[] o = ip.right;
             
-        	/*for (String dkey : state.dynProps.keySet()) {
-				o[0] = o[0].toString().replace("!"+dkey+"!", state.dynProps.get(dkey));
-			}
-
-            try
-            {
-                tmp = parse(o, state);
-                if(o[0].toString().trim().startsWith("var @firstname")) {
-                	System.out.println();
-                }
-            }
-            catch (GatfSelCodeParseError e)
-            {
-                throw e;
-            }
-            catch (Throwable e)
-            {
-                throwParseErrorS(o, e);
-            }*/
-            
             if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
-            	throwParseErrorS(o, new RuntimeException("Nested subtests/aliases not allowed"));
+            	throwParseErrorS(o, new RuntimeException("Nested subtests/functions not allowed"));
             }
             if(tmp instanceof SubTestCommand) {
             	if(!parent.isTop) {
-                	throwParseErrorS(o, new RuntimeException("subtests/aliases are allowed only at the top level"));
+                	throwParseErrorS(o, new RuntimeException("subtests/functions are allowed only at the top level"));
                 }
             }
             if(parent instanceof FrameCommand && tmp instanceof FrameCommand) {
@@ -1768,7 +1732,8 @@ public class Command {
 	    		"\texec @printProvJson(\"provider-name\")",
 	    		"\texec @printProv(\"provider-name\")",
 	    		"\texec @print(\"something-to-console\")",
-	    		"\texec @print(@index)"
+	    		"\texec @print(@index)",
+	    		"\texec System.out.println(\"Hello World!\")"
         	};
         }
     }
@@ -1802,7 +1767,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Block level comment",
-				"\t/*...*/"
+				"\t/*\n\t Some multi line comment\n\t Some multi line comment 2\n\t*/"
         	};
         }
     }
@@ -1852,7 +1817,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Execute embedded code in java/js/ruby/groovy/python",
-				"\t<<<(java|js|ruby|groovy|python) a,b,c\n\tcode\n\t>>>",
+				"\t<<<(java|js|ruby|groovy|python) a,b,c\n\t{code}\n\t>>>",
 				"Available variables in context -",
 				"\t1. @driver - WebDriver instance (Java only)",
 				"\t2. @window - WebDriver instance (Java only)",
@@ -2071,7 +2036,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Execute java code",
+				"Java control command, block statements",
 				"\t#j{if|try|catch|finally|else|else if|while|for|continue|break|\\{|\\}|synchronized} {java statement}",
 				"Examples :-",
 	    		"\t#jif(1==1) {} else {}",
@@ -2149,7 +2114,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Draw a circle in a canvas element",
+				"Draw a circle on a canvas element",
 				"\tcanvas {find-expr}",
 				"Examples :-",
 	    		"\tcanvas xpath@\"asds\"",
@@ -2183,7 +2148,7 @@ public class Command {
 				}
             }
             if(subt==null) {
-            	throwError(fileLineDetails, new RuntimeException("No alias/subtest with that name found - " + name));
+            	throwError(fileLineDetails, new RuntimeException("No func/subtest with that name found - " + name));
             }
             String pstr = "";
             if(parts.length>1) {
@@ -2201,7 +2166,7 @@ public class Command {
             			}
             		}
             		if(!pvalid) {
-            			throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAnAlias?"alias":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+            			throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAFunc?"func":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
             		} else {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
@@ -2214,13 +2179,13 @@ public class Command {
     							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
     								params.put(pdet[0].trim(), pdet[1]);
     							} else {
-    								throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAnAlias?"alias":"subtest")+" parameter name"));
+    								throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAFunc?"func":"subtest")+" parameter name"));
     							}
     						}
     					}
             		}
             		counter++;
-            		if(counter<parts.length && !subt.isAnAlias) {
+            		if(counter<parts.length && !subt.isAFunc) {
             			if(parts[counter].trim().matches("@[0-9]+")) {
                             sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
                             if(sessionId<0) {
@@ -2230,7 +2195,7 @@ public class Command {
                             sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
                         }
             		}
-            	} else if(!subt.isAnAlias) {
+            	} else if(!subt.isAFunc) {
             		if(parts[1].trim().matches("@[0-9]+")) {
                         sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
                         if(sessionId<0) {
@@ -2241,10 +2206,10 @@ public class Command {
                     }
             	}
             }
-            if(!subt.isAnAlias) {
+            if(!subt.isAFunc) {
 	            /*for (Command c : state.allSubTests) {
 	            	SubTestCommand st = (SubTestCommand)c;
-					if(st.name.equals(name) && !st.isAnAlias) {
+					if(st.name.equals(name) && !st.isAFunc) {
 						Map<String, String> nparams = new HashMap<String, String>(st.params);
 						nparams.putAll(params);
 						subt = st;
@@ -2268,7 +2233,7 @@ public class Command {
         }
         String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(!subt.isAnAlias) {
+            if(!subt.isAFunc) {
 	            if(state.modeExecType==2) {
 	                if(sessionName!=null) {
 	                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
@@ -2290,7 +2255,7 @@ public class Command {
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(!subt.isAnAlias && state.modeExecType!=2) {
+            if(!subt.isAFunc && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -2300,13 +2265,13 @@ public class Command {
     public static class SubTestCommand extends Command {
         String sessionName;
         Integer sessionId = null;
-        boolean isAnAlias = false;
+        boolean isAFunc = false;
         boolean hasName = true;
         Map<String, String> params = new HashMap<String, String>();
         String fName = "__st__" + state.NUMBER_ST++;
-        SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAnAlias) {
+        SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAFunc) {
             super(cmdDetails, state);
-            this.isAnAlias = isAnAlias;
+            this.isAFunc = isAFunc;
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
                 name = unSantizedUnQuoted(parts[0].trim(), state);
@@ -2379,7 +2344,7 @@ public class Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append(isAnAlias?"alias":"subtest");
+            b.append(isAFunc?"func":"subtest");
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -2396,7 +2361,7 @@ public class Command {
         }
         /*String javacodesubtest(boolean initvars) {
             StringBuilder b = new StringBuilder();
-            if(!isAnAlias) {
+            if(!isAFunc) {
 	            if(state.modeExecType==2) {
 	                if(sessionName!=null) {
 	                    b.append("setSession(\""+esc(sessionName)+"\", -1, true);\n"); 
@@ -2418,7 +2383,7 @@ public class Command {
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
-            if(!isAnAlias && state.modeExecType!=2) {
+            if(!isAFunc && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
@@ -2431,8 +2396,8 @@ public class Command {
             {
             	b.append(genDebugInfo(this));
             	String pstn = state.varnamerandom();
-                b.append("String "+pstn+" = get__"+(!isAnAlias?"subtest":"alias")+"name__();\n");
-            	b.append("set__"+(!isAnAlias?"subtest":"alias")+"name__(\""+esc(name)+"\");\n");
+                b.append("String "+pstn+" = get__"+(!isAFunc?"subtest":"func")+"name__();\n");
+            	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(\""+esc(name)+"\");\n");
                 b.append("\ntry {\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
@@ -2444,12 +2409,12 @@ public class Command {
 					}
                     b.append("\n");
                 }
-                if(!isAnAlias) {
+                if(!isAFunc) {
                 	b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 }
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{");
-                if(!isAnAlias) {
+                if(!isAFunc) {
                 	String oex = state.evarname();
 	                /*b.append("\ntry{");
 	                b.append(ex+".printStackTrace();\n");*/
@@ -2466,8 +2431,8 @@ public class Command {
                 	b.append("throw "+ex+";\n");
                 }
                 b.append("\n}\nfinally {\n");
-                //b.append("set__"+(!isAnAlias?"subtest":"alias")+"name__(null);\n");
-                b.append("set__"+(!isAnAlias?"subtest":"alias")+"name__("+pstn+");\n");
+                //b.append("set__"+(!isAFunc?"subtest":"func")+"name__(null);\n");
+                b.append("set__"+(!isAFunc?"subtest":"func")+"name__("+pstn+");\n");
                 b.append("\n}");
             }
             b.append("return ___ce___;\n}\n");
@@ -2483,13 +2448,13 @@ public class Command {
 				"\targs - the arguments passed to the subtest",
 				"Examples :-",
 				"\tsubtest \"sb1\" \"bs1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
-				"\tsubtest \"sb1\" @1\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
-				"Alias definition",
-				"\talias \"name\" (args)\n\t{\n\t\tcode\n\t}",
+				"\tsubtest \"sb1\" @1\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}\n\n",
+				"Function definition",
+				"\tfunc \"name\" (args)\n\t{\n\t\tcode\n\t}",
 				"where",
-				"\targs - the arguments passed to the alias",
+				"\targs - the arguments passed to the func",
 				"Examples :-",
-				"\talias \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}"
+				"\tfunc \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}"
         	};
         }
     }
@@ -2767,7 +2732,7 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Specify Java Imports",
-				"\trequire [{classname1},..{classnameN}]",
+				"\trequire fqcn|[{fqcn1},..{fqcnN}]",
 				"Examples :-",
 	    		"\trequire java.util.Date",
 	    		"\trequire [java.util.List, java.math.BigDecimal]"
@@ -2789,7 +2754,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Include other seleasy scripts completely",
+				"Include other seleasy scripts inline",
 				"\tinclude {script-path}",
 				"Examples :-",
 	    		"\tinclude a/b/c/t1.sel",
@@ -2812,7 +2777,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Import only subtests/aliases from other seleasy scripts",
+				"Import only subtests/functions from other seleasy scripts",
 				"\timport {script-path}",
 				"Examples :-",
 	    		"\timport a/b/c/t1.sel",
@@ -2867,7 +2832,7 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Import dynamic (code vars) properties file",
+				"Import dynamic (code vars) properties file, dynamic variables provide support for configurable code",
 				"\tdynprops {file-path}",
 				"Examples :-",
 	    		"\tdynprops a/b/c/t1.props",
@@ -4590,13 +4555,14 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-        		"Select frame",
+        		"Select frame or use a scoped frame block",
         		"\tframe main|parent|1..N|{some-name}",
 				"Examples :-",
 				"\tframe main",
 				"\tframe parent",
 				"\tframe 2",
 				"\tframe \"my-frame\"",
+				"\tframe\n\t{...\n\t}"
             };
         }
     }
@@ -4743,13 +4709,14 @@ public class Command {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-        		"Select frame",
+        		"Select a tab or use a scoped tab block",
         		"\ttab main|0..N|{some-name}",
 				"Examples :-",
 				"\ttab main",
 				"\ttab 0",
 				"\ttab 2",
 				"\ttab \"my-frame\"",
+				"\ttab\n\t{...\n\t}"
             };
         }
     }
@@ -6209,7 +6176,8 @@ public class Command {
             	name = unSantizedUnQuoted(parts[1].trim(), state);
             }
             if(!start && parts.length>2) {
-            	this.extractText = parts.length>2 && parts[2].trim().equalsIgnoreCase("text")?true:false;
+            	parts[2] = unSantizedUnQuoted(parts[2].trim(), state);
+            	this.extractText = parts[2].trim().equalsIgnoreCase("text")?true:false;
             }
         }
         String toCmd() {

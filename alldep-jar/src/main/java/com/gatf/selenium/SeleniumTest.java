@@ -800,8 +800,8 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void addSubTest(String browserName, String stname, boolean isAnAlias) {
-		if(isAnAlias) return;
+	protected void addSubTest(String browserName, String stname, boolean isAFunc) {
+		if(isAFunc) return;
 		if(getSession().__result__.containsKey(browserName)) {
 			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
 				getSession().__result__.get(browserName).__cresult__.put(stname, null);
@@ -945,13 +945,13 @@ public abstract class SeleniumTest {
 		return getSession().__subtestname__;
 	}
 	
-	protected void set__aliasname__(String __aliasname__)
+	protected void set__funcname__(String __funcname__)
 	{
-		getSession().__aliasname__ = __aliasname__;
+		getSession().__funcname__ = __funcname__;
 	}
 	
-	protected String get__aliasname__() {
-		return getSession().__aliasname__;
+	protected String get__funcname__() {
+		return getSession().__funcname__;
 	}
 	
 	protected void set__loopcontext__(Map<String, Object> __loopcontext__)
@@ -1205,6 +1205,12 @@ public abstract class SeleniumTest {
 					} catch (Exception e) {
 					}
 				} else {
+					java.lang.System.out.println(img);
+					try {
+						stImg = img;
+						screenshotAsFile(d, img);
+					} catch (Exception e) {
+					}
 					System.out.println(cause.getMessage());
 				}
 			} else if(cause instanceof SubTestException) {
@@ -2118,7 +2124,7 @@ public abstract class SeleniumTest {
 				throw new RuntimeException("Invalid window.open url found");
 			}
 			client = TestCaseExecutorUtil.getClient();
-			Call call = client.newCall(new Request.Builder().url(url).build());
+			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
 			Response res = call.execute();
 			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
 			res.close();

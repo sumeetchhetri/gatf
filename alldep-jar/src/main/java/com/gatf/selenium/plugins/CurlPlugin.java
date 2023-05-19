@@ -9,6 +9,7 @@ import java.util.Map;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 
 import okhttp3.OkHttpClient;
@@ -37,6 +38,7 @@ public class CurlPlugin {
         OkHttpClient client = TestCaseExecutorUtil.getClient();
         Request.Builder rbuilder = new Request.Builder();
         rbuilder.url(url);
+        rbuilder.header("Referer", WorkflowContextHandler.getBaseUrl(url));
         
         RequestBody body = null;
         
