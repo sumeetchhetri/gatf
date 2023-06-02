@@ -131,7 +131,7 @@ implements Serializable {
 
 			Object ___w___5 = null;
 
-			if (___get_var_nex__("@index") != null) ___w___5 = (Integer) ___get_var_nex__("@index");
+			//if (___get_var_nex__("@index") != null) ___w___5 = (Integer) ___get_var_nex__("@index");
 
 			for (int ___itr___1 = 0; ___itr___1 < ___w___4; ___itr___1++) {
 

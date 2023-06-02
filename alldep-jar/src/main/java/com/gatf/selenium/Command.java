@@ -2251,14 +2251,29 @@ public class Command {
 	            }
             }
             for (String pn : params.keySet()) {
-				b.append("___add_var__(\""+pn+"\", \""+esc(params.get(pn))+"\");\n");
+				b.append("___add_var__(\""+pn+"\", evaluate(\""+esc(params.get(pn))+"\"));\n");
 			}
             b.append(genDebugInfo(this));
             b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            for (String pn : params.keySet()) {
+				b.append("___del_var__(\""+pn+"\");\n");
+			}
             if(!subt.isAFunc && state.modeExecType!=2) {
                 b.append("}\n");
             }
             return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Subtest/Function execution",
+				"\t@call \"name\" session-name|@session-id (args)",
+				"where",
+				"\tsession-name - the browser session name for which to run this sub test",
+				"\tsession-id - the browser session id prefixed with @ for which to run this sub test",
+				"\targs - the arguments passed to the subtest, space separated pairs of colon separated name/value",
+				"Examples :-",
+				"\t@call \"func1\" @1 (arg1:1 arg2:abc)\n\t{\n\t\tselect index@$v{arg1} id@\"$v{arg2}\"\n\t}\n\n"
+        	};
         }
     }
 
@@ -2267,7 +2282,6 @@ public class Command {
         Integer sessionId = null;
         boolean isAFunc = false;
         boolean hasName = true;
-        Map<String, String> params = new HashMap<String, String>();
         String fName = "__st__" + state.NUMBER_ST++;
         SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAFunc) {
             super(cmdDetails, state);
@@ -2303,11 +2317,11 @@ public class Command {
         						String param = unSantizedUnQuoted(nparts[i].trim(), state);
         						if(StringUtils.isNotBlank(param)) {
         							String[] pdet = param.split(":");
-        							if(pdet.length!=2) {
-        								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
-        							}
+        							//if(pdet.length!=2) {
+        							//	throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+        							//}
         							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
-        								params.put(pdet[0].trim(), pdet[1]);
+        								//params.put(pdet[0].trim(), pdet[1]);
         							} else {
         								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name"));
         							}
@@ -2445,16 +2459,17 @@ public class Command {
 				"where",
 				"\tsession-name - the browser session name for which to run this sub test",
 				"\tsession-id - the browser session id prefixed with @ for which to run this sub test",
-				"\targs - the arguments passed to the subtest",
+				"\targs - the arguments passed to the subtest, space separated names for args",
 				"Examples :-",
 				"\tsubtest \"sb1\" \"bs1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
-				"\tsubtest \"sb1\" @1\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}\n\n",
+				"\tsubtest \"sb1\" @1 (arg1 arg2)\n\t{\n\t\tselect index@$v{arg1} id@\"$v{arg2}\"\n\t}\n\n",
 				"Function definition",
 				"\tfunc \"name\" (args)\n\t{\n\t\tcode\n\t}",
 				"where",
 				"\targs - the arguments passed to the func",
 				"Examples :-",
-				"\tfunc \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}"
+				"\tfunc \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
+				"\tfunc \"cmd2\" @1 (arg1 arg2)\n\t{\n\t\tselect index@$v{arg1} id@\"$v{arg2}\"\n\t}\n\n",
         	};
         }
     }

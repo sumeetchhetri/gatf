@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
+import java.util.Stack;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -660,7 +661,11 @@ public abstract class SeleniumTest {
 					Map<String, Object> _mt = getFinalDataMap(pn, pp);
 					if(tmpl.indexOf("$v{")!=-1) {
 						tmpl = tmpl.replace("$v", "$");
-						_mt.putAll(getSession().__vars__);
+						for(String vn: getSession().__vars__.keySet()) {
+							if(!getSession().__vars__.get(vn).isEmpty() ) {
+								_mt.put(vn, getSession().__vars__.get(vn).peek());
+							}
+						}
 					}
 					initTmplMap(_mt);
 					tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
@@ -669,7 +674,11 @@ public abstract class SeleniumTest {
 				Map<String, Object> _mt = getFinalDataMap(null, null);
 				if(tmpl.indexOf("$v{")!=-1) {
 					tmpl = tmpl.replace("$v", "$");
-					_mt.putAll(getSession().__vars__);
+					for(String vn: getSession().__vars__.keySet()) {
+						if(!getSession().__vars__.get(vn).isEmpty() ) {
+							_mt.put(vn, getSession().__vars__.get(vn).peek());
+						}
+					}
 				}
 				initTmplMap(_mt);
 				tmpl = ___cxt___.getWorkflowContextHandler().templatize(_mt, tmpl);
@@ -780,22 +789,24 @@ public abstract class SeleniumTest {
 	}
 
 	protected void ___add_var__(String name, Object val) {
-		getSession().__vars__.put(name, val);
+		if(!getSession().__vars__.containsKey(name)) {
+			getSession().__vars__.put(name, new Stack<>());
+		}
+		getSession().__vars__.get(name).push(val);
 	}
 
 	protected Object ___get_var__(String name) {
-		if(!getSession().__vars__.containsKey(name)) {
+		if(!getSession().__vars__.containsKey(name) || getSession().__vars__.get(name).isEmpty() ) {
 			throw new RuntimeException("Variable " + name + " not defined");
 		}
-		return getSession().__vars__.get(name);
-	}
-
-	protected Object ___get_var_nex__(String name) {
-		return getSession().__vars__.get(name);
+		return getSession().__vars__.get(name).peek();
 	}
 
 	protected void ___del_var__(String name) {
 		if(getSession().__vars__.containsKey(name)) {
+			if(!getSession().__vars__.get(name).isEmpty()) {
+				getSession().__vars__.get(name).pop();
+			}
 			getSession().__vars__.remove(name);
 		}
 	}

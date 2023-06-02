@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Stack;
 
 import org.openqa.selenium.WebDriver;
 
@@ -29,7 +30,7 @@ public class SeleniumTestSession implements Serializable {
     protected transient long __subtestexecutiontime__ = 0L;
     protected transient long __teststarttime__ = 0L;
     protected transient final Map<String, Integer> __provdetails__ = new LinkedHashMap<String, Integer>();
-    protected transient final Map<String, Object> __vars__ = new LinkedHashMap<String, Object>();
+    protected transient final Map<String, Stack<Object>> __vars__ = new LinkedHashMap<String, Stack<Object>>();
 	
     //protected transient ServerSocket ccServer = null;
     //protected transient Thread ccThrd = null;

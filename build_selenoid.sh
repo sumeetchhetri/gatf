@@ -1,5 +1,5 @@
-CHROME_VERSION=112.0
-FF_VERSION=112.0
+CHROME_VERSION=113.0
+FF_VERSION=113.0
 OPERA_VERSION=95.0
 
 set -x
@@ -14,7 +14,7 @@ sed -i'' -e "s|_VERSION_|$CHROME_VERSION|g" Dockerfile-chrome
 mv entrypoint.sh entrypoint_so.sh
 sed -i'' -e 's|wait|cd /seltest \&\& npm i http http-proxy \&\& node dyn-proxy.js \&\n\nwait|g' entrypoint_so.sh
 docker build -f Dockerfile-chrome --tag sumeetchhetri/vnc:chrome_$CHROME_VERSION .
-docker tag sumeetchhetri/vnc sumeetchhetri/vnc:chrome_$CHROME_VERSION
+#docker tag sumeetchhetri/vnc:chrome_108.0 sumeetchhetri/vnc:chrome_$CHROME_VERSION
 docker push sumeetchhetri/vnc:chrome_$CHROME_VERSION
 cd -
 
@@ -29,7 +29,7 @@ sed -i'' -e "s|_VERSION_|$FF_VERSION|g" Dockerfile-firefox
 mv entrypoint.sh entrypoint_so.sh
 sed -i'' -e 's|wait|cd /seltest \&\& npm i http http-proxy \&\& node dyn-proxy.js \&\n\nwait|g' entrypoint_so.sh
 docker build -f Dockerfile-firefox --tag sumeetchhetri/vnc:firefox_$FF_VERSION .
-docker tag sumeetchhetri/vnc sumeetchhetri/vnc:firefox_$FF_VERSION
+#docker tag sumeetchhetri/vnc:firefox_109.0 sumeetchhetri/vnc:firefox_$FF_VERSION
 docker push sumeetchhetri/vnc:firefox_$FF_VERSION
 cd -
 
