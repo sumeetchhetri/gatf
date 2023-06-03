@@ -10,10 +10,12 @@
 		<link href="css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
 		<!--link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
 		<link rel="stylesheet" href="css/dygraph.css" />
+		<link rel="stylesheet" href="css/diff2html.min.css" />
 		<link rel="stylesheet" type="text/css" href="codemirror/lib/codemirror.css"></link>
 		<link rel="stylesheet" type="text/css" href="codemirror/addon/dialog/dialog.css">
 		<link rel="stylesheet" type="text/css" href="codemirror/addon/search/matchesonscrollbar.css">
 		<link rel="stylesheet" type="text/css" href="codemirror/addon/fold/foldgutter.css">
+		<link rel="stylesheet" type="text/css" href="codemirror/theme/dracula.css">
         
         <!--[if lt IE 9]>
           <script src="resources/html5.js"></script>
@@ -27,7 +29,7 @@
         <div class="navbar navbar-fixed-top header">
 			<div class="col-md-12">
 				<div class="navbar-header"> 
-					<a href="#" class="navbar-brand droppedHover">GATF - Config Tool</a>
+					<a href="https://github.com/sumeetchhetri/gatf" class="navbar-brand droppedHover">GATF - Config Tool</a>
 					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse1"> 
 						<i class="glyphicon glyphicon-search"></i>
 					</button>
@@ -35,11 +37,11 @@
 				<div class="collapse navbar-collapse" id="navbar-collapse1">
 					<form class="navbar-form pull-left">
 						<div class="input-group" style="max-width:470px;">
-							<input type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term">
+							<input style="width:300px" type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term">
 						</div>
 					</form>
 					<ul class="nav navbar-nav navbar-right">
-						<li><a href="#" target="_ext" class="">© GATF 2014, All rights reserved.</a></li>
+						<img src="images/dm.png" id="dmmode" style="width: 40px;height: 40px;padding: 5px;margin-top: 5px;"/>
 					</ul>
 				</div>
 			</div>
@@ -216,6 +218,9 @@
 		<script type="text/javascript" src="js/html2canvas.min.js"></script>
 		<script type="text/javascript" src="js/canvas2image.js"></script>
 		<script type="text/javascript" src="js/FileSaver.js"></script>
+		<script type="text/javascript" src="js/jss.min.js"></script>
+		<script type="text/javascript" src="js/diff.min.js"></script>
+		<script type="text/javascript" src="js/diff2html.min.js"></script>
 		<script type="text/javascript" src="codemirror/lib/codemirror.js"></script>
 		<script type="text/javascript" src="codemirror/mode/perl/perl.js"></script>
 		<script type="text/javascript" src="codemirror/addon/dialog/dialog.js"></script>

@@ -2150,62 +2150,82 @@ public class Command {
             if(subt==null) {
             	throwError(fileLineDetails, new RuntimeException("No func/subtest with that name found - " + name));
             }
-            String pstr = "";
+            
             if(parts.length>1) {
+            	String pstr = "";
             	if(parts[1].startsWith("(")) {
-            		pstr += parts[1].substring(1) + " ";
+            		if(!parts[1].equals("(")) {
+            			pstr += parts[1].substring(1) + " ";
+            		}
             		boolean pvalid = false;
             		int counter = 2;
             		for (;counter < parts.length;counter++) {
             			if(parts[counter].endsWith(")")) {
-            				pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+            				if(!parts[counter].equals("(")) {
+                    			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+            				}
             				pvalid = true;
             				break;
             			} else {
-            				pstr += parts[counter].substring(1) + " ";
+            				pstr += parts[counter] + " ";
             			}
             		}
             		if(!pvalid) {
-            			throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAFunc?"func":"subtest")+" parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+            			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(arg1 arg2 arg3 arg4....)`"));
             		} else {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
     						String param = unSantizedUnQuoted(nparts[i].trim(), state);
-    						if(StringUtils.isNotBlank(param)) {
-    							String[] pdet = param.split(":");
-    							if(pdet.length!=2) {
-    								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
-    							}
-    							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
-    								params.put(pdet[0].trim(), pdet[1]);
-    							} else {
-    								throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAFunc?"func":"subtest")+" parameter name"));
-    							}
-    						}
+    						String[] pdet = param.split(":");
+							if(pdet.length!=2) {
+								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+							}
+							if(subt.params.contains(pdet[0].trim())) {
+								if(params.containsKey(pdet[0].trim())) {
+									throwError(fileLineDetails, new RuntimeException("Duplicate parameter name `"+pdet[0].trim()+"`"));
+								}
+								params.put(pdet[0].trim(), pdet[1]);
+							} else {
+								throwError(fileLineDetails, new RuntimeException("Invalid "+(subt.isAFunc?"func":"subtest")+" parameter name, allowed parameters are " + subt.params.toString()));
+							}
     					}
-            		}
-            		counter++;
-            		if(counter<parts.length && !subt.isAFunc) {
-            			if(parts[counter].trim().matches("@[0-9]+")) {
-                            sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
-                            if(sessionId<0) {
-                            	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+            			
+            			counter++;
+                		if(counter<parts.length && !subt.isAFunc) {
+                			if(parts[counter].trim().matches("@[0-9]+")) {
+                                sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
+                                if(sessionId<0) {
+                                	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                                }
+                            } else {
+                                sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
                             }
-                        } else {
-                            sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
-                        }
+                		}
             		}
             	} else if(!subt.isAFunc) {
-            		if(parts[1].trim().matches("@[0-9]+")) {
-                        sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
-                        if(sessionId<0) {
-                        	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
-                        }
-                    } else {
-                        sessionName = unSantizedUnQuoted(parts[1].trim(), state);
-                    }
+            		if(parts.length==2) {
+            			if(StringUtils.isNotBlank(parts[1].trim())) {
+                    		if(parts[1].trim().matches("@[0-9]+")) {
+        	                    sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
+        	                    if(sessionId<0) {
+        	                    	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+        	                    }
+        	                } else {
+        	                    sessionName = unSantizedUnQuoted(parts[1].trim(), state);
+        	                }
+                		}
+                	} else {
+                		throwError(fileLineDetails, new RuntimeException("Subtest/Function definition arguments should follow within `(` and `)`"));
+                	}
+            	} else {
+            		throwError(fileLineDetails, new RuntimeException("Subtest/Function definition arguments should follow within `(` and `)`"));
             	}
             }
+            
+            if(subt.params.size()!=params.size()) {
+            	throwError(fileLineDetails, new RuntimeException("Please provide all the arguments for execution"));
+            }
+
             if(!subt.isAFunc) {
 	            /*for (Command c : state.allSubTests) {
 	            	SubTestCommand st = (SubTestCommand)c;
@@ -2280,6 +2300,7 @@ public class Command {
     public static class SubTestCommand extends Command {
         String sessionName;
         Integer sessionId = null;
+        Set<String> params = new HashSet<String>();
         boolean isAFunc = false;
         boolean hasName = true;
         String fName = "__st__" + state.NUMBER_ST++;
@@ -2294,60 +2315,66 @@ public class Command {
                 	hasName = false;
                     name = "Subtest " + (state.NUMBER_ST - 1);
                 }
-                String pstr = "";
                 if(parts.length>1) {
+                	String pstr = "";
                 	if(parts[1].startsWith("(")) {
-                		pstr += parts[1].substring(1) + " ";
+                		if(!parts[1].equals("(")) {
+                			pstr += parts[1].substring(1) + " ";
+                		}
                 		boolean pvalid = false;
                 		int counter = 2;
                 		for (;counter < parts.length;counter++) {
                 			if(parts[counter].endsWith(")")) {
-                				pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+                				if(!parts[counter].equals("(")) {
+                        			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+                				}
                 				pvalid = true;
                 				break;
                 			} else {
-                				pstr += parts[counter].substring(1) + " ";
+                				pstr += parts[counter] + " ";
                 			}
                 		}
                 		if(!pvalid) {
-                			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(\"p1:value1\" \"p2:value2\" ...)`"));
+                			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(arg1 arg2 arg3 arg4....)`"));
                 		} else {
                 			String[] nparts = pstr.trim().split("[\t ]+");
                 			for (int i = 0; i < nparts.length; i++) {
         						String param = unSantizedUnQuoted(nparts[i].trim(), state);
-        						if(StringUtils.isNotBlank(param)) {
-        							String[] pdet = param.split(":");
-        							//if(pdet.length!=2) {
-        							//	throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
-        							//}
-        							if(pdet[0].trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
-        								//params.put(pdet[0].trim(), pdet[1]);
-        							} else {
-        								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name"));
-        							}
-        						}
+    							if(!param.trim().matches("[a-zA-Z]+[a-zA-Z0-9_]*")) {
+    								throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter name `"+param+"`"));
+    							} else {
+    								if(params.contains(param.trim())) {
+    									throwError(fileLineDetails, new RuntimeException("Duplicate parameter name `"+param.trim()+"`"));
+    								}
+    								params.add(param.trim());
+    							}
         					}
-                		}
-                		counter++;
-                		if(counter<parts.length) {
-                			if(parts[counter].trim().matches("@[0-9]+")) {
-                                sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
-                                if(sessionId<0) {
-                                	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                			
+                			counter++;
+                    		if(counter<parts.length && !isAFunc) {
+                    			if(parts[counter].trim().matches("@[0-9]+")) {
+                                    sessionId = Integer.parseInt(parts[counter].trim().substring(1)) - 1;
+                                    if(sessionId<0) {
+                                    	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+                                    }
+                                } else {
+                                    sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
                                 }
-                            } else {
-                                sessionName = unSantizedUnQuoted(parts[counter].trim(), state);
-                            }
+                    		}
+                		}
+                	} else if(parts.length==2) {
+                		if(StringUtils.isNotBlank(parts[1].trim())) {
+	                		if(parts[1].trim().matches("@[0-9]+")) {
+	    	                    sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
+	    	                    if(sessionId<0) {
+	    	                    	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
+	    	                    }
+	    	                } else {
+	    	                    sessionName = unSantizedUnQuoted(parts[1].trim(), state);
+	    	                }
                 		}
                 	} else {
-                		if(parts[1].trim().matches("@[0-9]+")) {
-                            sessionId = Integer.parseInt(parts[1].trim().substring(1)) - 1;
-                            if(sessionId<0) {
-                            	throwError(fileLineDetails, new RuntimeException("Session id should be greater than 0"));
-                            }
-                        } else {
-                            sessionName = unSantizedUnQuoted(parts[1].trim(), state);
-                        }
+                		throwError(fileLineDetails, new RuntimeException("Subtest/Function definition arguments should follow within `(` and `)`"));
                 	}
                 }
             } else {
@@ -6203,7 +6230,7 @@ public class Command {
             		if(openPos<0) {
             			openPos = 0;
             			System.out.println("The window open position called in this context should be greater than 0");
-            		} else {
+            		} else if(openPos>0) {
             			openPos = openPos-1;
             		}
 				} catch (Exception e) {
@@ -6232,11 +6259,12 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Save URL passed to window.open",
-        		"\twopensave {on|off} {num-window-opens|filepath}? {text}?",
+        		"\twopensave {on|off} {num-window-opens|filepath}? {text}? {openPos}?",
         		"Examples :-",
         		"\twopensave on",
         		"\twopensave on 2",
         		"\twopensave off '/path/to/file.txt' text",
+        		"\twopensave off '/path/to/file.txt' text 2",
             };
         }
     }

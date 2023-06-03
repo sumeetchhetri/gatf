@@ -2111,7 +2111,9 @@ public abstract class SeleniumTest {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
 		try {
-			((JavascriptExecutor)driver).executeScript("window.__wostn__="+optionalOpenNums+";window.__wosjp__=[];window.__owo__=window.open;window.open=function(a,b,c){window.__wosjp__=[a,b,c];window.__owo__(a,b,c);if(window.__wosjp__.length==window.__wostn__){window.open=__owo__;}console.log(a);}");
+			initJs(driver);
+			//((JavascriptExecutor)driver).executeScript("window.__wostn__="+optionalOpenNums+";window.__wosjp__=[];window.open=function(a,b,c){window.__wosjp__.push([a,b,c]);window.__owo__(a,b,c);console.log(a);}");
+			((JavascriptExecutor)driver).executeScript("window.GatfUtil.wpensaveInit("+optionalOpenNums+")");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -2123,24 +2125,26 @@ public abstract class SeleniumTest {
 		}
 		OkHttpClient client = null;
 		try {
-			String url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
+			//String url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
+			String url = (String)((JavascriptExecutor)driver).executeScript("window.GatfUtil.wopensaveFetch("+openPos+")");
 			int counter = 0;
 			while((StringUtils.isBlank(url) || "FAIL".equals(url)) && counter++<60) {
-				System.out.println("Waiting for download URL... attempt " + counter);
+				System.out.println("Waiting for `wopensave` download URL... attempt " + counter);
 				try {
 					Thread.sleep(1000);
 				} catch (InterruptedException e) {
 				}
-				url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
+				//url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
+				url = (String)((JavascriptExecutor)driver).executeScript("window.GatfUtil.wopensaveFetch("+openPos+")");
 			}
 			if(StringUtils.isBlank(url) || "FAIL".equals(url)) {
 				throw new RuntimeException("Invalid window.open url found");
 			}
-			Long optionalOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.__wostn__");
-			Long foundOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.__wosjp__.length");
+			Long optionalOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.__wostn__");
+			Long foundOpenNum = (Long)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.__wosjp__.length");
 			try {
 				if(foundOpenNum<openPos) {
-					throw new RuntimeException("Not all window.open's have fired, please wait, only "+foundOpenNum+" fired out of " + optionalOpenNum);
+					throw new RuntimeException("Not all window.open's have fired, only "+foundOpenNum+" fired out of " + optionalOpenNum + ", requested " + openPos);
 				}
 			} catch (Exception e) {
 			}

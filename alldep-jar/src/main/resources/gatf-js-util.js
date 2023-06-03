@@ -6,6 +6,31 @@ if (window.jQuery) {
 }
 
 window.GatfUtil = new function() {
+	this.__owo__ = window.open,
+	this.__wostn__ = 1,
+	this.__wosjp__ = [],
+	this.__wosjpr__ = 1,
+	this.wpensaveInit = function(optionalOpenNums) {
+		window.GatfUtil.__wostn__ = optionalOpenNums;
+		window.GatfUtil.__wosjp__ = [];
+		window.GatfUtil.__wosjpr__ = optionalOpenNums;
+		window.open = function(a, b, c) {
+			window.GatfUtil.__wosjp__.push([a,b,c]);
+			window.GatfUtil.__owo__(a,b,c);
+			console.log(a);
+		}
+	},
+	this.wopensaveFetch(openpos) {
+		if(openpos<window.GatfUtil.__wosjp__.length) {
+			window.GatfUtil.__wosjpr__ = window.GatfUtil.__wosjpr__ - 1;
+			if(window.GatfUtil.__wosjpr__==0) {
+				window.open = window.GatfUtil.__owo__;
+			}
+			return window.GatfUtil.__wosjp__[openpos][0];
+		}
+		else 
+			return 'FAIL';
+	}
 	this.getXpath = function(node) {
 	    var xpath = [];
 	    if(node.attr("id"))return '//*[@id="'+node.attr("id")+'"]';
