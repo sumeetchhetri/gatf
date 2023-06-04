@@ -1205,14 +1205,58 @@ function triggerClick(ele) {
 }
 
 function addTcFileHTml() {
-    var htmm = '<input type="text" id="tcfile_name_holder_add">&nbsp;&nbsp;<a href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
+    var htmm = '<input type="text" placeholder="File Name" id="tcfile_name_holder_add">&nbsp;&nbsp;<textarea placeholder="Attibutes" id="tcfile_extras" rows="3" style="width: 300px;resize:vertical !important;margin-left: 10px;"></textarea><a style="margin-left: 10px;" href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
     htmm += '<table border="1">';
     for (var i = 0; i < alltestcasefiles.length; i++) {
+    	let extras = "";
+    	if(alltestcasefiles[i][1]) {
+    		const lines = alltestcasefiles[i][1].split("\n");
+    		for(const l of lines) {
+    			if(l.indexOf("|")!=-1 && (l.split("|")[1].trim().startsWith("https://") || l.split("|")[1].trim().startsWith("http://"))) {
+    				extras += '<a href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a>';
+    			} else {
+    				extras += '<p style="margin:0px">'+l.trim()+'</p>';
+    			}
+    		}
+    	}
+    	let es = "block";
+    	if(extras) {
+    		es = "none";
+    	}
         var tcid = 'tcf_' + i;
-        htmm += '<tr><td><input type="checkbox" click-event="addRemoveExecFile(this,\'' + alltestcasefiles[i] + '\')"></td><td><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i] + '</a><input id="inp_' + tcid + '" type="text" style="display:none" value="' + alltestcasefiles[i] + '" blur-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td><td><a href="#" click-event="manageRenameFile(\'' + tcid + '\')">Rename</a></td><td><a href="#" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">X</a></td><td><center><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i] + '\')">Execute</button></center></td></tr>';
+        htmm += '<tr><td style="width:3%"><input type="checkbox" click-event="addRemoveExecFile(this,\'' + alltestcasefiles[i][0] + '\')"></td>' + 
+        		'<td class="nmchng" style="width:30%"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i][0] + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + alltestcasefiles[i][0] + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
+        		'<td style="width:57%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(alltestcasefiles[i][1]?alltestcasefiles[i][1]:'')+'</textarea>' +
+        		'<td style="width:10%"><center><table><tr><td style="text-align: center;border: 0px black;"><button type="button" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">Remove</button></td>' + 
+        		'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i][0] + '\')">Execute</button></td></tr></table></center></td>' + 
+        		'</tr>';
     }
     htmm += '</table><br/><center><button type="button" click-event="execSelectedFiles(this)">Execute Selected</button></center>';
     $('#ExampleBeanServiceImpl_form').html(htmm);
+    $('.extctt').dblclick(function() {
+    	$(this).siblings('textarea').show();
+    	$(this).hide();
+    	const rl = $(this).siblings('textarea').val().split("\n").length;
+    	$(this).siblings('textarea').attr('rows', rl);
+    	$(this).siblings('textarea').focus();
+    });
+    $('.editexcont').change(function() {
+    	manageTcFileHandler('PUT', $('#' + $(this).attr('fid')).text(), "", $(this).val());
+    	$(this).siblings('div').show();
+    });
+    $('.editexcont').blur(function() {
+    	$(this).siblings('div').show();
+    	$(this).hide();
+    });
+    $('.nmchng').dblclick(function() {
+	    $(this).find('a').hide();
+	    $('#inp_' + $(this).find('a').attr('id')).show();
+	    $('#inp_' + $(this).find('a').attr('id')).focus();
+    });
+    $('.nmchng').find('input').blur(function() {
+	    $(this).siblings('a').show();
+	    $(this).hide();
+    });
 	initEvents($('#ExampleBeanServiceImpl_form'));
     $('#heading_main').html('Manage Tests');
 }
@@ -1223,8 +1267,15 @@ function manageRenameFile(tcid) {
     return false;
 }
 
-function manageTcFileHandler(method, tcFileName, tcFileNameTo) {
-    ajaxCall(true, method, "testcasefiles?testcaseFileName=" + tcFileName + "&testcaseFileNameTo=" + tcFileNameTo, "", "", {}, function(data) {
+function manageTcFileHandler(method, tcFileName, tcFileNameTo, extt) {
+	let extras = "";
+	if(method=='POST' && $('#tcfile_extras').text()) {
+		extras = btoa($('#tcfile_extras'));
+	} else if(method=='PUT' && extt) {
+		extras = btoa(extt);
+	}
+	if(!tcFileName) return false;
+    ajaxCall(true, method, "testcasefiles?testcaseFileName=" + tcFileName + "&testcaseFileNameTo=" + tcFileNameTo + "&extras="+extras, "", "", {}, function(data) {
         if(data) alert(data);
         startInitConfigTool(addTcFileHTml);
     }, function(data) {
@@ -1261,7 +1312,7 @@ function startInitConfigTool(func) {
 
             var filesGrps = [];
             for (var t = 0; t < data.length; t++) {
-                var testname = data[t];
+                var testname = data[t][0];
                 var folder = "";
                 var fileName = testname;
                 if (testname.indexOf("\\") != -1) {

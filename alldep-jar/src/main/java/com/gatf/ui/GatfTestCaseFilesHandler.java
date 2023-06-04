@@ -15,11 +15,12 @@
 */
 package com.gatf.ui;
 
-import java.io.BufferedOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
 import java.io.FilenameFilter;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.List;
 
@@ -56,6 +57,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     	if(request.getMethod().equals(Method.POST)) {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
+    			String extras = request.getParameter("extras");
     			if(StringUtils.isNotBlank(testcaseFileName)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
         			if(!testcaseFileName.toLowerCase().endsWith(".xml") && !testcaseFileName.toLowerCase().endsWith(".sel"))
@@ -72,13 +74,20 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Testcase file already exists");
         			}
         			new File(filePath).createNewFile();
-        			BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
         			if(testcaseFileName.toLowerCase().endsWith(".xml")) {
-        			    bos.write("<TestCases></TestCases>".getBytes());
+        				FileUtils.writeStringToFile(new File(filePath), "<TestCases></TestCases>", "UTF-8");
         			} else {
-        			    bos.write("open chrome".getBytes());
+        				FileUtils.writeStringToFile(new File(filePath), "open chrome", "UTF-8");
         			}
-        			bos.close();
+        			if(StringUtils.isNotBlank(extras)) {
+        				try {
+							String ext = new String(Base64.getDecoder().decode(extras.getBytes("UTF-8")), "UTF-8");
+							if(ext.length()>0) {
+								FileUtils.writeStringToFile(new File(filePath+".attr"), extras, "UTF-8");
+							}
+						} catch (Exception e) {
+						}
+        			}
         			response.setStatus(HttpStatus.OK_200);
     			} else {
     				throw new RuntimeException("No testcaseFileName query parameter specified");
@@ -90,6 +99,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			String testcaseFileNameTo = request.getParameter("testcaseFileNameTo");
+    			String extras = request.getParameter("extras");
     			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(testcaseFileNameTo)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
         			if(!(testcaseFileName.toLowerCase().endsWith(".xml") && testcaseFileNameTo.toLowerCase().endsWith(".xml")) && 
@@ -103,36 +113,15 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     					new File(dirPath).mkdir();
     				}
     				
-    				if(testcaseFileName.indexOf("\\")!=-1)
-    				{
-    					if(testcaseFileNameTo.indexOf("\\")!=-1)
-    					{
-    						String pres = testcaseFileName.substring(0, testcaseFileName.lastIndexOf("\\"));
-    						String pret = testcaseFileNameTo.substring(0, testcaseFileNameTo.lastIndexOf("\\"));
-    						if(!pres.equals(pret)) {
-    							throw new RuntimeException("Source and Target filenames should have the same directory tree");
-    						}
-    					}
-    					else
-    					{
-    						throw new RuntimeException("Source and Target filenames should have the same directory tree");
-    					}
-    				}
-    				else if(testcaseFileNameTo.indexOf("\\")!=-1)
-    				{
-    					if(testcaseFileName.indexOf("\\")!=-1)
-    					{
-    						String pres = testcaseFileName.substring(0, testcaseFileName.lastIndexOf("\\"));
-    						String pret = testcaseFileNameTo.substring(0, testcaseFileNameTo.lastIndexOf("\\"));
-    						if(!pres.equals(pret)) {
-    							throw new RuntimeException("Source and Target filenames should have the same directory tree");
-    						}
-    					}
-    					else
-    					{
-    						throw new RuntimeException("Source and Target filenames should have the same directory tree");
-    					}
-    				}
+    				try {
+						Path pfrom = Paths.get(testcaseFileName).getParent();
+						Path pto = Paths.get(testcaseFileNameTo).getParent();
+						if(!pfrom.toString().equals(pto.toString())) {
+							throw new RuntimeException("Source and Target filenames should have the same directory tree");
+						}
+					} catch (Exception e) {
+						throw new RuntimeException("Source and Target filenames should be valid");
+					}
     				
         			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
         			String tofilePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileNameTo;
@@ -150,6 +139,23 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Source Testcase file does not exist");
         			}
         			response.setStatus(HttpStatus.OK_200);
+    			} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(extras)) {
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+        			if(!(testcaseFileName.toLowerCase().endsWith(".xml") || testcaseFileName.toLowerCase().endsWith(".sel")))
+        			{
+        			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
+        			}
+        			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
+    				String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+    				if(StringUtils.isNotBlank(extras)) {
+        				try {
+							String ext = new String(Base64.getDecoder().decode(extras.getBytes("UTF-8")), "UTF-8");
+							if(ext.length()>0) {
+								FileUtils.writeStringToFile(new File(filePath+".attr"), extras, "UTF-8");
+							}
+						} catch (Exception e) {
+						}
+        			}
     			} else {
     				throw new RuntimeException("Both testcaseFileName and testcaseFileNameTo required");
     			}
@@ -191,8 +197,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 				if(!new File(dirPath).exists()) {
 					new File(dirPath).mkdir();
 				}
-    			
-				List<String> fileNames = new ArrayList<String>();
+				
+				List<String[]> fileNames = new ArrayList<String[]>();
     			if(gatfConfig.isSeleniumExecutor() && gatfConfig.isSeleniumModuleTests()) {
 		        	File mdir = new File(dirPath);
 		        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
@@ -202,7 +208,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 		    				if(sfpath.charAt(0)==File.separatorChar) {
 		    					sfpath = sfpath.substring(1);
 		    				}
-		    				fileNames.add(sfpath);
+		    				fileNames.add(new String[] {sfpath, null});
 		    			}
 		    		}
 		        	
@@ -215,7 +221,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 	    			List<File> fileLst = new ArrayList<File>();
 	    			TestCaseFinder.getFiles(mdir, filter, fileLst);
 	    			if(fileLst.size()>0) {
-	    				fileNames.add("selenium-apis.xml");
+	    				fileNames.add(new String[] {"selenium-apis.xml", null});
 	    			}
 				} else {
 					FilenameFilter filter = new FilenameFilter() {
@@ -233,7 +239,13 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 	    			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles);
 	    			
 	    			for (File file : allFiles) {
-	    				fileNames.add(TestCaseFinder.getRelativePath(file, dirFPath));
+	    				String ext = "";
+	    				try {
+	    					ext = FileUtils.readFileToString(new File(file.getAbsolutePath()+".attr"), "UTF-8");
+	    					ext = new String(Base64.getDecoder().decode(ext.getBytes("UTF-8")), "UTF-8");
+						} catch (Exception e) {
+						}
+	    				fileNames.add(new String[] {TestCaseFinder.getRelativePath(file, dirFPath), ext});
 					}
 				}
     			
@@ -247,5 +259,4 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 			}
     	}
     }
-
 }

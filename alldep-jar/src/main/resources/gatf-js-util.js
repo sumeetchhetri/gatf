@@ -18,7 +18,7 @@ window.GatfUtil = new function() {
 			window.GatfUtil.__wosjp__.push([a,b,c]);
 			window.GatfUtil.__owo__(a,b,c);
 			console.log(a);
-		}
+		};
 	},
 	this.wopensaveFetch(openpos) {
 		if(openpos<window.GatfUtil.__wosjp__.length) {
@@ -30,7 +30,7 @@ window.GatfUtil = new function() {
 		}
 		else 
 			return 'FAIL';
-	}
+	},
 	this.getXpath = function(node) {
 	    var xpath = [];
 	    if(node.attr("id"))return '//*[@id="'+node.attr("id")+'"]';
@@ -76,7 +76,6 @@ window.GatfUtil = new function() {
 	            .replace(/\[(\d+)\]/g, ':nth-of-type($1)')
 	            .replace(/^\s+/, '');
 	},
-	
 	this.getCssSelector = function(node) {
 	    return this.getXpath(node)
 	            .replace(/\[(\d+?)\]/g, function(s,m1){ return '['+(m1)+']'; })
