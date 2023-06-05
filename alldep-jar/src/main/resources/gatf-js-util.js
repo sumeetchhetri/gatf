@@ -20,7 +20,7 @@ window.GatfUtil = new function() {
 			console.log(a);
 		};
 	},
-	this.wopensaveFetch(openpos) {
+	this.wopensaveFetch = function(openpos) {
 		if(openpos<window.GatfUtil.__wosjp__.length) {
 			window.GatfUtil.__wosjpr__ = window.GatfUtil.__wosjpr__ - 1;
 			if(window.GatfUtil.__wosjpr__==0) {

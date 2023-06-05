@@ -52,6 +52,7 @@ function darkMode() {
 		currTheme = "dracula";
 		jss.set('.form-control',{'color': 'white', 'background-color': '#333'});
 		jss.set('input',{'color': 'white', 'background-color': '#333'});
+		jss.set('textarea',{'color': 'white', 'background-color': '#333'});
 		jss.set('button',{'color': 'white', 'background-color': '#333'});
 		jss.set('table th',{'color': 'white', 'background-color': '#333', 'border': '1px solid #ddd'});
 		jss.set('table td',{'border': '1px solid #ddd'});
@@ -94,6 +95,7 @@ function darkMode() {
 		jss.remove('.form-control');
 		jss.remove('input');
 		jss.remove('button');
+		jss.remove('textarea');
 		jss.set('table th',{'color': 'white', 'background-color': '#A7C942', 'border': '1px solid #98bf21'});
 		jss.set('table td',{'border': '1px solid #98bf21'});
 		jss.set('a',{'color': '#428bca'});
@@ -1411,6 +1413,7 @@ function startInitConfigTool(func) {
                         $('#' + id).click(function() {
 							$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 							$(this).css('background-color', '#ddd');
+							$(this).css('color', 'black');
 							//$('#srch-term').val($(this).text().trim()).trigger('change');
                             currtestcasefile = $(this).attr('tcfname');
                             $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
@@ -1422,8 +1425,8 @@ function startInitConfigTool(func) {
                                     $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
-									$('#ExampleBeanServiceImpl_form').append('<button type="button" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
-                                    $('#ExampleBeanServiceImpl_form').append('<button type="button" id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
+									$('#ExampleBeanServiceImpl_form').append('<button type="button" style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+                                    $('#ExampleBeanServiceImpl_form').append('<button type="button" style="position: absolute;right: 30px;top: 55px;" id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
                                     $('#play_test_case').click(function() {
                                         playTest(currtestcasefile, "", false, false);
                                         return false;
@@ -1491,6 +1494,7 @@ function onsucctcnmupdt() {
 			}
 		}
 	}
+	$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
 function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExternalLogsApi) {
@@ -1506,7 +1510,7 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
         prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', 'Update', "onsucctcnmupdt", null);
         initEvents($('#ExampleBeanServiceImpl_form'));
         if (tcfname != null && data != null) {
-            $('#ExampleBeanServiceImpl_form').append('<button type="button" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+            $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;left: 60px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
             $('#play_test_case').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
                 return function() {
                     playTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
@@ -1539,6 +1543,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             }
             var content = getTestResultContent1(data);
             $('#play_result_area').html(content);
+            $("html, body").animate({ scrollTop: $(document).height() }, 1000);
         };
     }(tcf), function(tcf){
 		return function(data) {
@@ -1548,10 +1553,11 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 				function makeMarker() {
 					var marker = document.createElement("div");
 					marker.style.color = "red";
-					marker.innerHTML = "❌";
+					marker.innerHTML = "❌<b class='error_mark'></b>";
 					return marker;
 				}
 				ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
+				window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 			} else {
 				alert(data);
 			}
@@ -2373,11 +2379,16 @@ function configuration() {
             countMap = {};
             isSeleniumExecutor = data.isSeleniumExecutor;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
-            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', "startInitConfigTool", null);
+            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', "onUpdConfig", null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);
 }
+function onUpdConfig() {
+	startInitConfigTool();
+	$("html, body").animate({ scrollTop: $(document).height() }, 1000);
+}
+
 var isSeleniumExecutor = false;
 
 function handleAuth(token) {
@@ -2599,8 +2610,8 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
     });
 }
 
-function handleChgEvent() {
-	hideShowClasses('form-elems','form-request_content', this);
+function handleChgEvent(ths) {
+	hideShowClasses('form-elems','form-request_content', ths);
 	updatetawidcont();
 }
 
@@ -2643,7 +2654,7 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
     if (!isSelfContained || isSelfContained === false) {
         htm += '<div class="control-group"> \
 					<label>Use Raw Text:&nbsp;</label> \
-					<div class="controls"><input id="raw_req_cont_flag" type="checkbox" change-event="handleChgEvent()"/></div> \
+					<div class="controls"><input id="raw_req_cont_flag" type="checkbox" change-event="handleChgEvent(this)"/></div> \
 				</div>';
     }
     if (isSelfContained === true) {
@@ -2686,7 +2697,8 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
         '<div class="control-group"> \
 				<label class=""></label> \
 				<div class="controls"> \
-					<button type="button" type="submit" class="' + method.toLowerCase() + 'bigb" type="submit" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
+					<button type="button" style="position: absolute;left: 60px;top: 55px;" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
+					<button type="button" class="postbigb" click-event="gotoTop()">Top</button> \
 				</div> \
 			</div> \
 			<br/><br/><p></p><br/> \
@@ -2694,6 +2706,10 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
 			<label>Response Time&nbsp;</label><span id="restime"></span><br/><br/> \
 			<label>Response Headers:&nbsp;</label><div><pre id="reshdrs" style="word-wrap:break"></pre></div> \
 			<label style="word-wrap:break-word;margin-left:50px;width:auto;background-color: #ebf4fb;border:none;"></label><div><br/><pre id="status" class="prettyprint" style="word-wrap:break-word;margin-left:50px;width:auto;border:none;"></pre></div><br/></div>');
+}
+
+function gotoTop() {
+	$("html, body").animate({ scrollTop: 0 }, 1000);
 }
 
 function gatfHLCodeMirror() {

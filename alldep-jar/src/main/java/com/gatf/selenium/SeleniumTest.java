@@ -986,7 +986,7 @@ public abstract class SeleniumTest {
 		if(!getSession().__loopcontext__.containsKey("i")) {
 			return -1;
 		}
-		return Integer.valueOf((String)getSession().__loopcontext__.get("i"));
+		return (Integer)getSession().__loopcontext__.get("i");
 	}
 	
 	protected void set__loopcontext__(String name)
