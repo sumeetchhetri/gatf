@@ -2126,7 +2126,7 @@ public abstract class SeleniumTest {
 		OkHttpClient client = null;
 		try {
 			//String url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
-			String url = (String)((JavascriptExecutor)driver).executeScript("window.GatfUtil.wopensaveFetch("+openPos+")");
+			String url = (String)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.wopensaveFetch("+openPos+")");
 			int counter = 0;
 			while((StringUtils.isBlank(url) || "FAIL".equals(url)) && counter++<60) {
 				System.out.println("Waiting for `wopensave` download URL... attempt " + counter);
@@ -2135,7 +2135,7 @@ public abstract class SeleniumTest {
 				} catch (InterruptedException e) {
 				}
 				//url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
-				url = (String)((JavascriptExecutor)driver).executeScript("window.GatfUtil.wopensaveFetch("+openPos+")");
+				url = (String)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.wopensaveFetch("+openPos+")");
 			}
 			if(StringUtils.isBlank(url) || "FAIL".equals(url)) {
 				throw new RuntimeException("Invalid window.open url found");

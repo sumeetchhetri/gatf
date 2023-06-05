@@ -2155,20 +2155,28 @@ public class Command {
             	String pstr = "";
             	if(parts[1].startsWith("(")) {
             		if(!parts[1].equals("(")) {
-            			pstr += parts[1].substring(1) + " ";
+            			pstr += parts[1].substring(1);
             		}
             		boolean pvalid = false;
+            		if(parts[1].endsWith(")")) {
+            			pstr = pstr.substring(0, pstr.length()-1) + " ";
+            			pvalid = true;
+    				} else {
+    					pstr += " ";
+    				}
             		int counter = 2;
-            		for (;counter < parts.length;counter++) {
-            			if(parts[counter].endsWith(")")) {
-            				if(!parts[counter].equals("(")) {
-                    			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
-            				}
-            				pvalid = true;
-            				break;
-            			} else {
-            				pstr += parts[counter] + " ";
-            			}
+            		if(!pvalid) {
+	            		for (;counter < parts.length;counter++) {
+	            			if(parts[counter].endsWith(")")) {
+	            				if(!parts[counter].equals("(")) {
+	                    			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+	            				}
+	            				pvalid = true;
+	            				break;
+	            			} else {
+	            				pstr += parts[counter] + " ";
+	            			}
+	            		}
             		}
             		if(!pvalid) {
             			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(arg1 arg2 arg3 arg4....)`"));
@@ -2317,22 +2325,31 @@ public class Command {
                 }
                 if(parts.length>1) {
                 	String pstr = "";
+                	parts[1] = parts[1].trim();
                 	if(parts[1].startsWith("(")) {
                 		if(!parts[1].equals("(")) {
-                			pstr += parts[1].substring(1) + " ";
+                			pstr += parts[1].substring(1);
                 		}
                 		boolean pvalid = false;
+                		if(parts[1].endsWith(")")) {
+                			pstr = pstr.substring(0, pstr.length()-1) + " ";
+                			pvalid = true;
+        				} else {
+        					pstr += " ";
+        				}
                 		int counter = 2;
-                		for (;counter < parts.length;counter++) {
-                			if(parts[counter].endsWith(")")) {
-                				if(!parts[counter].equals("(")) {
-                        			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
-                				}
-                				pvalid = true;
-                				break;
-                			} else {
-                				pstr += parts[counter] + " ";
-                			}
+                		if(!pvalid) {
+	                		for (;counter < parts.length;counter++) {
+	                			if(parts[counter].endsWith(")")) {
+	                				if(!parts[counter].equals(")")) {
+	                        			pstr += parts[counter].substring(0, parts[counter].length()-1) + " ";
+	                				}
+	                				pvalid = true;
+	                				break;
+	                			} else {
+	                				pstr += parts[counter] + " ";
+	                			}
+	                		}
                 		}
                 		if(!pvalid) {
                 			throwError(fileLineDetails, new RuntimeException("Invalid subtest parameter(s), please use format `(arg1 arg2 arg3 arg4....)`"));

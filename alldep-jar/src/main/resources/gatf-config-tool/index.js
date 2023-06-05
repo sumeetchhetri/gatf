@@ -67,6 +67,7 @@ function darkMode() {
 		jss.set('.postbigb',{'background-color': '#333'});
 		jss.set('.putbigb',{'background-color': '#333'});
 		jss.set('.plusminuslist',{'background-color': '#333'});
+		jss.set('.panel-heading',{'border-bottom': '0px black'});
 	} else {
 		$('body').css('background-color', '#e0e0e0');
 		$('.header').css('background-color', '#ffffff');
@@ -109,6 +110,7 @@ function darkMode() {
 		jss.set('.postbigb',{'background-color': 'orange'});
 		jss.set('.putbigb',{'background-color': 'blue'});
 		jss.set('.plusminuslist',{'background-color': 'orange'});
+		jss.set('.panel-heading',{'border-bottom': '1px solid transparent'});
 	}
 }
 
@@ -1341,7 +1343,7 @@ function startInitConfigTool(func) {
                     filesGrps[folder].sort();
                     if (folder != "") {
                         var fid = 'folder_' + tind;
-                        $('#testcasefile-holder').append('<a status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
+                        $('#testcasefile-holder').append('<a style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
                         $('#' + fid).attr('folder', folder);
                         $('#' + fid).click(function() {
                             var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
@@ -1425,13 +1427,14 @@ function startInitConfigTool(func) {
                                     $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
-									$('#ExampleBeanServiceImpl_form').append('<button type="button" style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
-                                    $('#ExampleBeanServiceImpl_form').append('<button type="button" style="position: absolute;right: 30px;top: 55px;" id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button><br/><div id="debug_result_area"></div>');
-                                    $('#play_test_case').click(function() {
+									$('#buttons_cont').append('<button type="button" style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button" style="position: absolute;right: 30px;top: 55px;" id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button>');
+									$('#buttons_cont').append('<button type="button" id="debug_test_case" type="submit" class="postbigb pull-right" type="submit">Debug</button><button type="button" style="margin-right: 10px;" id="play_test_case" type="submit" class="postbigb pull-right" type="submit">Test</button>');
+                                    $('#ExampleBeanServiceImpl_form').append('<div id="play_result_area"></div><div id="debug_result_area"></div>');
+                                    $('[id="play_test_case"]').click(function() {
                                         playTest(currtestcasefile, "", false, false);
                                         return false;
                                     });
-                                    $('#debug_test_case').click(function() {
+                                    $('[id="debug_test_case"]').click(function() {
                                         debugTest(currtestcasefile, "", false, false);
                                         return false;
                                     });
@@ -1494,7 +1497,8 @@ function onsucctcnmupdt() {
 			}
 		}
 	}
-	$("html, body").animate({ scrollTop: $(document).height() }, 1000);
+	window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
 function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExternalLogsApi) {
@@ -1510,8 +1514,8 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
         prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', 'Update', "onsucctcnmupdt", null);
         initEvents($('#ExampleBeanServiceImpl_form'));
         if (tcfname != null && data != null) {
-            $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;left: 60px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
-            $('#play_test_case').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
+            $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button"style="position: absolute;right: 100px;bottom: 135px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+            $('[id="play_test_case"]').click(function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
                 return function() {
                     playTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
                     return false;
@@ -1543,7 +1547,8 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             }
             var content = getTestResultContent1(data);
             $('#play_result_area').html(content);
-            $("html, body").animate({ scrollTop: $(document).height() }, 1000);
+            window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+            //$("html, body").animate({ scrollTop: $(document).height() }, 1000);
         };
     }(tcf), function(tcf){
 		return function(data) {
@@ -2386,7 +2391,8 @@ function configuration() {
 }
 function onUpdConfig() {
 	startInitConfigTool();
-	$("html, body").animate({ scrollTop: $(document).height() }, 1000);
+	window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
 var isSeleniumExecutor = false;
@@ -2696,9 +2702,11 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
     $('#ExampleBeanServiceImpl_form').append(
         '<div class="control-group"> \
 				<label class=""></label> \
-				<div class="controls"> \
-					<button type="button" style="position: absolute;left: 60px;top: 55px;" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
+				<div class="controls" id="buttons_cont"> \
+					<button type="button" style="position: absolute;left: 60px;top: 55px;" class="postbigb" click-event="gotoBottom()">Bottom</button> \
+					<button type="button" style="position: absolute;left: 140px;top: 55px;" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
 					<button type="button" class="postbigb" click-event="gotoTop()">Top</button> \
+					<button type="button" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
 				</div> \
 			</div> \
 			<br/><br/><p></p><br/> \
@@ -2710,6 +2718,11 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
 
 function gotoTop() {
 	$("html, body").animate({ scrollTop: 0 }, 1000);
+}
+
+function gotoBottom() {
+	 window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	//$("html, body").animate({ scrollTop: 0 }, 1000);
 }
 
 function gatfHLCodeMirror() {

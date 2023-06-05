@@ -16,7 +16,7 @@ window.GatfUtil = new function() {
 		window.GatfUtil.__wosjpr__ = optionalOpenNums;
 		window.open = function(a, b, c) {
 			window.GatfUtil.__wosjp__.push([a,b,c]);
-			window.GatfUtil.__owo__(a,b,c);
+			window.GatfUtil.__owo__.apply(null, window.GatfUtil.__wosjp__[0]);
 			console.log(a);
 		};
 	},
