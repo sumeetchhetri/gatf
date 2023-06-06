@@ -51,9 +51,10 @@ public class GatfMiscHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
-		AcceptanceTestContext.setCorsHeaders(response);
+		AcceptanceTestContext.checkAuthAndSetCors(mojo, request, response);
+		if(response.getStatus()==401) return;
 	    response.setHeader("Cache-Control", "no-cache, no-store");
-    	if(request.getMethod().equals(Method.GET) ) {
+    	if(request.getMethod().equals(Method.GET)) {
     		try {
     			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			

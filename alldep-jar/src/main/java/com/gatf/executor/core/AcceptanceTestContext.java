@@ -38,6 +38,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.junit.Assert;
 import org.reficio.ws.builder.SoapBuilder;
@@ -64,6 +65,7 @@ import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.ui.GatfConfigToolMojoInt;
 
 /**
  * @author Sumeet Chhetri
@@ -144,7 +146,11 @@ public class AcceptanceTestContext {
 		return true;
 	}
 	
-	public static void setCorsHeaders(Response response) {
+	public static void checkAuthAndSetCors(GatfConfigToolMojoInt mojo, Request request, Response response) {
+		if(!mojo.isAuthenticated(request)) {
+			response.setStatus(401);
+			return;
+		}
 		if(Boolean.FALSE.toString().equalsIgnoreCase(System.getenv("cors.enabled")) || Boolean.FALSE.toString().equalsIgnoreCase(System.getProperty("cors.enabled"))) {
 		} else {
 			response.setHeader("Access-Control-Allow-Origin", "*");

@@ -22,15 +22,22 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
@@ -68,7 +75,50 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	
 	private TestCase authTestCase = null;
 	
+	protected static Properties authSrc = new Properties();
+	
+	private int sessionTimeoutMs = 30 * 60 * 1000;
+
+	private static Map<String, Long> authTokens = new ConcurrentHashMap<>();
+	
 	public GatfConfigToolUtil() {
+	}
+	
+	public boolean isAuthenticated(Request request) {
+		if(authSrc!=null) {
+			String token = request.getParameter("token");
+			if(StringUtils.isNotBlank(token) && authTokens.containsKey(token)) {
+				authTokens.put(token, System.currentTimeMillis());
+				return true;
+			}
+			return false;
+		}
+		return true;
+	}
+	
+	public static String authenticate(Request request, Response response) {
+		if(authSrc!=null) {
+			response.setStatus(HttpStatus.UNAUTHORIZED_401);
+			if(request.getMethod().equals(Method.POST) ) {
+				String un = request.getParameter("username");
+				String pwd = request.getParameter("password");
+				if(StringUtils.isNotBlank(un) && StringUtils.isNotBlank(pwd)) {
+					if(authSrc.containsKey(un) && authSrc.get(un).toString().equals(pwd)) {
+						try {
+							String token = Base64.encodeBase64String(UUID.randomUUID().toString().getBytes("UTF-8"));
+							String tkjson = "{\"token\": \""+token+"\"}";
+							authTokens.put(token, System.currentTimeMillis());
+							response.setContentType(MediaType.APPLICATION_JSON);
+				            response.setContentLength(tkjson.length());
+				            response.getWriter().write(tkjson);
+				            response.setStatus(HttpStatus.OK_200);
+						} catch (Exception e) {
+						}
+					}
+				}
+			}
+		}
+		return null;
 	}
 
 	public void execute() throws Exception {
@@ -76,6 +126,30 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 
 		final String mainDir = rootDir + File.separator + "gatf-config-tool";
 		WorkflowContextHandler.copyResourcesToDirectory("gatf-config-tool", mainDir);
+		
+		try {
+			authSrc.load(new FileInputStream("auth.props"));
+			if(authSrc.containsKey("session.timeout")) {
+				try {
+					sessionTimeoutMs = Integer.parseInt(authSrc.get("session.timeout").toString());
+				} catch (Exception e) {
+				}
+				authSrc.remove("session.timeout");
+			}
+			if(authSrc.size()==0) {
+				authSrc = null;
+				authTokens = null;
+			}
+		} catch (IOException e) {
+			authSrc = null;
+			authTokens = null;
+		}
+		
+		if(authSrc!=null) {
+			System.out.println("===============Authentication source file available, Running in authenticated mode===============");
+		} else {
+			System.out.println("===============Running in anonymous mode===============");
+		}
         
         final GatfConfigToolUtil mojo = this;
         
@@ -105,7 +179,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 				return gp;
 			}
 		};
-        
+		
         server.getServerConfiguration().addHttpHandler(new GatfConfigurationHandler(mojo, f), "/configure");
         
         GatfReportsHandler repHandler = new GatfReportsHandler(mojo, f);
@@ -127,6 +201,18 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		    while(new File("gatf.ctrl").exists()) {
 				Thread.sleep(10000);
 				repHandler.clearInactiveDebugSessions();
+				
+				if(authTokens!=null) {
+					Set<String> rkeys = new HashSet<>();
+					authTokens.forEach((k, v) -> {
+						if(System.currentTimeMillis()-v>=sessionTimeoutMs) {
+							rkeys.add(k);
+						}
+					});
+					for (String k : rkeys) {
+						authTokens.remove(k);
+					}
+				}
 		    }
 		} catch (Exception e) {
 		    System.err.println(e);
@@ -155,11 +241,17 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		server.getServerConfiguration().addHttpHandler(
 		    new HttpHandler() {
 		        public void service(Request request, Response response) throws Exception {
-		        	new CacheLessStaticHttpHandler(mainDir).service(request, response);
+		        	new CacheLessStaticHttpHandler(authSrc!=null, mainDir).service(request, response);
 		        }
 		    }, "/");
 		
 		server.getServerConfiguration().addHttpHandler(new GatfProjectZipHandler(mojo), "/projectZip");
+		server.getServerConfiguration().addHttpHandler(new HttpHandler() {
+			@Override
+			public void service(Request request, Response response) throws Exception {
+				authenticate(request, response);
+			}
+		}, "/login");
 	}
 
     protected static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojoInt mojo, boolean isChanged) throws IOException

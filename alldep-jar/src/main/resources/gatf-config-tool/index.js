@@ -619,16 +619,68 @@ var miscMap = {};
 var currtestcases = [''];
 var alltestcasefiles = [];
 
+function doLogin(e) {
+	e.preventDefault();
+	const params = $('#loginform').find('form').serializeObject();
+	if(Object.keys(params).length!=2) return false;
+	ajaxCall(true, "POST", "login", "application/x-www-form-urlencoded", "username="+params["username"]+"&password="+params["password"], {}, function(data) {
+    	onSuccessLogin(data["token"]);
+		ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
+	        miscMap = data;
+	        startInitConfigTool(configuration);
+	    }, null);
+    }, function() {
+    	alert("Invalid Authentication Credentials");
+    });
+    return false;
+}
+
+function onSuccessLogin(token) {
+	auth_token = token;
+	sessionStorage.setItem("token", token);
+	$('#loginform').addClass('hidden');
+	$('#toptoolbar').removeClass('hidden');
+	$('#subnav').removeClass('hidden');
+	$('#myModal').removeClass('hidden');
+	$('#main').removeClass('hidden');
+}
+
 (function() {
     debugEnabled = false;
     serverUrl = "http://localhost:9080/";
+    auth_token = "";
 
     $(document).ready(function() {
+		$.ajaxPrefilter(function( options) {
+			if(options.url.startsWith("configure") || options.url.startsWith("reports") || options.url.startsWith("misc") || options.url.startsWith("testcasefiles")
+				 || options.url.startsWith("testcases") || options.url.startsWith("execute") || options.url.startsWith("profile")) {
+				if(options.url.indexOf("?")==-1) options.url = options.url + "?token=" + auth_token;
+				else options.url = options.url + "&token=" + auth_token;
+			} else if(options.url.startsWith("/configure") || options.url.startsWith("/reports") || options.url.startsWith("/misc") || options.url.startsWith("/testcasefiles")
+				 || options.url.startsWith("/testcases") || options.url.startsWith("/execute") || options.url.startsWith("/profile")) {
+				if(options.url.indexOf("?")==-1) options.url = options.url + "?token=" + auth_token;
+				else options.url = options.url + "&token=" + auth_token;
+			}
+		});
+		
 		$('#dmmode').click(darkMode);
-        ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
-            miscMap = data;
-            startInitConfigTool(configuration);
-        }, null);
+		
+		if(sessionStorage.getItem("token")) {
+			$('#loginform').addClass('hidden');
+			auth_token = sessionStorage.getItem("token");
+			ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
+	            miscMap = data;
+	            startInitConfigTool(configuration);
+	        }, function(err, jq) {
+	        	if(jq.status==401) {
+	        		sessionStorage.removeItem("token");
+	        		location.reload();
+	        	}
+	        });
+	        onSuccessLogin(auth_token);
+		} else {
+			$('#loginform').removeClass('hidden');
+		}
 
 		$('#srch-term').on('change', searchLeftNavs);
 		$('.accordion-heading').on('click', function() {
@@ -1217,7 +1269,7 @@ function addTcFileHTml() {
     		const lines = alltestcasefiles[i][1].split("\n");
     		for(const l of lines) {
     			if(l.indexOf("|")!=-1 && (l.split("|")[1].trim().startsWith("https://") || l.split("|")[1].trim().startsWith("http://"))) {
-    				extras += '<a href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a>';
+    				extras += '<a target="_blank" href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a>';
     			} else {
     				extras += '<p style="margin:0px">'+l.trim()+'</p>';
     			}
@@ -1336,6 +1388,7 @@ function startInitConfigTool(func) {
             }
 
             filesGrps.sort();
+            
             var tind = 0;
             for (var folder in filesGrps) {
                 if (filesGrps.hasOwnProperty(folder)) {
@@ -1350,9 +1403,13 @@ function startInitConfigTool(func) {
                             if ($(this).attr('status') == "show") {
                                 $('.' + escapedfolder + '_claz').hide();
                                 $(this).attr('status', 'hide');
+                                $('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
+                                $('.' + escapedfolder + '_claz[folder]').trigger('click');
                             } else {
-                                $('.' + escapedfolder + '_claz').show();
+                            	$('.' + escapedfolder + '_claz').show();
                                 $(this).attr('status', 'show');
+                                //$('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
+                                //$('.' + escapedfolder + '_claz[folder]').trigger('click');
                             }
                             return false;
                         });
@@ -1377,7 +1434,7 @@ function startInitConfigTool(func) {
                             firstFile = id;
                         if (folder != "") {
                             var escapedfolder = folder.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
-                            $('#testcasefile-holder').append('<a style="margin-left:20px;display:none" id="' + id + '" href="#" class="list-group-item asideLink ' + escapedfolder + '_claz">&nbsp;' + fileName + '</a>');
+                            $('#testcasefile-holder').append('<a style="margin-left:20px;display:none" id="' + id + '" href="#" class="list-group-item asideLink ' + escapedfolder + '_claz">↳&nbsp;' + fileName + '</a>');
                         } else {
                             $('#testcasefile-holder').append('<a id="' + id + '" href="#" class="list-group-item asideLink">&nbsp;' + testFileName + '</a>');
                         }
@@ -1450,6 +1507,19 @@ function startInitConfigTool(func) {
 										viewportMargin: Infinity,
 										theme: currTheme
 									});
+									if(fromErroredFile) {
+										errdFilesReport = new Set();
+										errdFilesReport.add([fromErroredFile.error[1], fromErroredFile.error[2]]);
+										function makeMarker() {
+											var marker = document.createElement("div");
+											marker.style.color = "red";
+											marker.innerHTML = "❌<b class='error_mark'></b>";
+											return marker;
+										}
+										ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker());
+										window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
+										fromErroredFile = undefined;
+									}
                                     return;
                                 }
                                 if (data1 != null && data1.length > 0) {
@@ -1479,6 +1549,38 @@ function startInitConfigTool(func) {
                     }
                 }
             }
+            
+            /*let result = [];
+			let level = {result};
+			Object.keys(filesGrps).forEach(path => {
+			  path.split(/\/|\\/).reduce((r, name, i, a) => {
+			    if(!r[name]) {
+			      r[name] = {result: []};
+			      r.result.push({name, children: r[name].result})
+			    }
+			    return r[name];
+			  }, level)
+			});
+			console.log(result);*/
+			
+			$('.asideLink[folder*="/"]').each(function() {
+				$(this).html("↓ " + $(this).html());
+				$(this).hide();
+				const prts = $(this).attr('folder').split(/\/|\\/);
+				prts.splice(-1);
+				const sep = $(this).attr('folder').split('/').length==prts.length?'/':'\\';
+				const ef = prts.join(sep).replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+				$(this).addClass(ef+'_claz');
+				/*let pp = [];
+				for(let i=0;i<prts.length-1;i++) {
+					pp.push(prts[i]);
+					const lbo = pp.join(sep);
+					const efc = lbo.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+					$(this).addClass(efc+'_claz');
+					$('.'+ef+'_claz').addClass(efc+'_claz');
+				}*/
+			});
+            
             if (typeof func == "function") func();
         };
     }(func), null);
@@ -1534,7 +1636,9 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
     }
 }
 
+var fromErroredFile;
 function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
+	fromErroredFile = undefined;
     var isserverlogfile = isServerLogsApi ? "&isServerLogsApi=true" : "";
     isserverlogfile += isExternalLogsApi ? "&isExternalLogsApi=true" : "";
     ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
@@ -1553,16 +1657,21 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), function(tcf){
 		return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
-				errdFilesReport = new Set();
-				errdFilesReport.add([data.error[1], data.error[2]]);
-				function makeMarker() {
-					var marker = document.createElement("div");
-					marker.style.color = "red";
-					marker.innerHTML = "❌<b class='error_mark'></b>";
-					return marker;
+            	if(tcf!=data.error[2]) {
+            		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+            		fromErroredFile = data;
+            	} else {
+					errdFilesReport = new Set();
+					errdFilesReport.add([data.error[1], data.error[2]]);
+					function makeMarker() {
+						var marker = document.createElement("div");
+						marker.style.color = "red";
+						marker.innerHTML = "❌<b class='error_mark'></b>";
+						return marker;
+					}
+					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
+					window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
-				ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-				window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 			} else {
 				alert(data);
 			}
@@ -2602,7 +2711,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         } catch (err) {
             data = jqXhr.responseText;
         }
-        sfunc(data);
+        sfunc(data, jqXhr);
     }).fail(function(jqXhr, textStatus, msg) {
         if (blockUi) $.unblockUI();
         if (efunc == null) alert(jqXhr.responseText);
@@ -2612,7 +2721,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         } catch (err) {
             data = jqXhr.responseText;
         }
-        if (efunc != null) efunc(data);
+        if (efunc != null) efunc(data, jqXhr);
     });
 }
 

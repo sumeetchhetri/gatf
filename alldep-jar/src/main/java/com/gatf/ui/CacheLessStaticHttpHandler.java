@@ -19,6 +19,7 @@ import java.io.File;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import org.apache.commons.io.FileUtils;
 import org.glassfish.grizzly.Grizzly;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.Request;
@@ -40,7 +41,20 @@ public class CacheLessStaticHttpHandler extends StaticHttpHandler {
 
 	protected final ArraySet<File> docRoots = new ArraySet<File>(File.class);
 	
-	public CacheLessStaticHttpHandler(String... docRoots) {
+	private boolean isAuthMode = false;
+	
+	public CacheLessStaticHttpHandler(boolean isAuthMode, String docRoot) {
+		this.isAuthMode = isAuthMode;
+    	if (docRoot == null) {
+            throw new NullPointerException("docRoot can't be null");
+        }
+
+        final File file = new File(docRoot);
+        this.docRoots.add(file);
+	}
+	
+	public CacheLessStaticHttpHandler(boolean isAuthMode, String... docRoots) {
+		this.isAuthMode = isAuthMode;
 		if (docRoots != null) {
             for (String docRoot : docRoots) {
             	if (docRoot == null) {
@@ -115,6 +129,19 @@ public class CacheLessStaticHttpHandler extends StaticHttpHandler {
         }
         
         pickupContentType(response, resource.getPath());
+        
+        if(isAuthMode && resource.getAbsolutePath().endsWith("index.html")) {
+        	String filecontents = FileUtils.readFileToString(resource, "UTF-8");
+        	//filecontents = filecontents.replace("id=\"loginform\" class=\"log-form hidden\"", "id=\"loginform\" class=\"log-form\"");
+        	filecontents = filecontents.replace("id=\"toptoolbar\" class=\"", "id=\"toptoolbar\" class=\"hidden ");
+        	filecontents = filecontents.replace("id=\"subnav\" class=\"", " id=\"subnav\" class=\"hidden ");
+        	filecontents = filecontents.replace("id=\"myModal\" class=\"", "id=\"myModal\" class=\"hidden ");
+        	filecontents = filecontents.replace(" id=\"main\" class=\"\"", " id=\"main\" class=\"hidden\"");
+        	File tmpIndxRes = File.createTempFile("indx__", ".html");
+        	tmpIndxRes.delete();
+        	FileUtils.writeStringToFile(tmpIndxRes, filecontents, "UTF-8");
+        	resource = tmpIndxRes;
+        }
         
         sendFile(response, resource);
 

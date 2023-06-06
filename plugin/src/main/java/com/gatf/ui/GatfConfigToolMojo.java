@@ -28,6 +28,7 @@ import org.apache.maven.plugins.annotations.ResolutionScope;
 import org.apache.maven.project.MavenProject;
 import org.glassfish.grizzly.http.server.HttpServer;
 import org.glassfish.grizzly.http.server.NetworkListener;
+import org.glassfish.grizzly.http.server.Request;
 
 import com.gatf.GatfPlugin;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -154,5 +155,11 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 
 	public void setRootDir(String rootDir) {
 	    this.rootDir = rootDir;
+	}
+
+	@Override
+	public boolean isAuthenticated(Request request) {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

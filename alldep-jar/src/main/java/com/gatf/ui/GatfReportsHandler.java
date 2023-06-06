@@ -71,7 +71,8 @@ public class GatfReportsHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
-		AcceptanceTestContext.setCorsHeaders(response);
+		AcceptanceTestContext.checkAuthAndSetCors(mojo, request, response);
+		if(response.getStatus()==401) return;
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
     		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
@@ -81,7 +82,7 @@ public class GatfReportsHandler extends HttpHandler {
 				new File(dirPath).mkdir();
 			}
 			if(request.getMethod().equals(Method.GET) ) {
-			    new CacheLessStaticHttpHandler(dirPath).service(request, response);
+			    new CacheLessStaticHttpHandler(GatfConfigToolUtil.authSrc!=null, dirPath).service(request, response);
 			} else if(request.getMethod().equals(Method.PUT) ) {
 			    String action = request.getParameter("action");
 			    String sessionId = request.getParameter("sessionId");

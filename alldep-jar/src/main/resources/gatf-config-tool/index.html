@@ -6,233 +6,242 @@
         <title>GATF Config Tool</title>
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
         <link href="resources/bootstrap.min.css" rel="stylesheet">
-		<!-- Page-Level Plugin CSS - Tables -->
-		<link href="css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
-		<!--link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
-		<link rel="stylesheet" href="css/dygraph.css" />
-		<link rel="stylesheet" href="css/diff2html.min.css" />
-		<link rel="stylesheet" type="text/css" href="codemirror/lib/codemirror.css"></link>
-		<link rel="stylesheet" type="text/css" href="codemirror/addon/dialog/dialog.css">
-		<link rel="stylesheet" type="text/css" href="codemirror/addon/search/matchesonscrollbar.css">
-		<link rel="stylesheet" type="text/css" href="codemirror/addon/fold/foldgutter.css">
-		<link rel="stylesheet" type="text/css" href="codemirror/theme/dracula.css">
-        
+        <!-- Page-Level Plugin CSS - Tables -->
+        <link href="css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
+        <!--link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
+        <link rel="stylesheet" href="css/dygraph.css" />
+        <link rel="stylesheet" href="css/diff2html.min.css" />
+        <link rel="stylesheet" type="text/css" href="codemirror/lib/codemirror.css">
+        </link>
+        <link rel="stylesheet" type="text/css" href="codemirror/addon/dialog/dialog.css">
+        <link rel="stylesheet" type="text/css" href="codemirror/addon/search/matchesonscrollbar.css">
+        <link rel="stylesheet" type="text/css" href="codemirror/addon/fold/foldgutter.css">
+        <link rel="stylesheet" type="text/css" href="codemirror/theme/dracula.css">
         <!--[if lt IE 9]>
-          <script src="resources/html5.js"></script>
+        <script src="resources/html5.js"></script>
         <![endif]-->
-
         <link href="index.css" rel="stylesheet">
     </head>
-    
     <body>
-    	<div id="debug-controls" class="hidden" style="z-index:10000;position:fixed;background-color:white;width:100px;height:20px;color:black;left:100px;top:100px;"></div>
-        <div class="navbar navbar-fixed-top header">
-			<div class="col-md-12">
-				<div class="navbar-header"> 
-					<a href="https://github.com/sumeetchhetri/gatf" class="navbar-brand droppedHover">GATF - Config Tool</a>
-					<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse1"> 
-						<i class="glyphicon glyphicon-search"></i>
-					</button>
-				</div>
-				<div class="collapse navbar-collapse" id="navbar-collapse1">
-					<form class="navbar-form pull-left">
-						<div class="input-group" style="max-width:470px;">
-							<input style="width:300px" type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term">
-						</div>
-					</form>
-					<ul class="nav navbar-nav navbar-right">
-						<img src="images/dm.png" id="dmmode" style="width: 40px;height: 40px;padding: 5px;margin-top: 5px;"/>
-					</ul>
-				</div>
-			</div>
+        <div id="debug-controls" class="hidden" style="z-index:10000;position:fixed;background-color:white;width:100px;height:20px;color:black;left:100px;top:100px;"></div>
+        <div id="toptoolbar" class="navbar navbar-fixed-top header">
+            <div class="col-md-12">
+                <div class="navbar-header"> 
+                    <a href="https://github.com/sumeetchhetri/gatf" class="navbar-brand droppedHover">GATF - Config Tool</a>
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse1"> 
+                    <i class="glyphicon glyphicon-search"></i>
+                    </button>
+                </div>
+                <div class="collapse navbar-collapse" id="navbar-collapse1">
+                    <form class="navbar-form pull-left">
+                        <div class="input-group" style="max-width:470px;">
+                            <input style="width:300px" type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term">
+                        </div>
+                    </form>
+                    <ul class="nav navbar-nav navbar-right">
+                        <img src="images/dm.png" id="dmmode" style="width: 40px;height: 40px;padding: 5px;margin-top: 5px;"/>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div id="subnav" class="navbar navbar-default">
+            <div class="col-md-12">
+                <div class="btn-group">
+                    <a href="#" click-event="configuration()" style="margin-left:15px;" class="navbar-btn btn btn-default btn-plus">
+                    Configuration 
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="addTcFileHTml()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    TestCase Files
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="executeHtml('executor')" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    Execute
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="getReports()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    Reports
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="getSeleniumReports()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    Seleasy Reports
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="getErroredSeleasyScripts()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    Errored Seleasy Scripts
+                    </a>
+                </div>
+                <div class="btn-group">
+                    <a href="#" click-event="getProfiles()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
+                    Data Source Profile
+                    </a>
+                </div>
+            </div>
+        </div>
+        <!-- Modal -->
+        <div id="myModal" class="modal fade" role="dialog">
+            <div class="modal-dialog" style="width:90%;height:400px;">
+                <!-- Modal content-->
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal">&times;</button>
+                        <h4 class="modal-title" id="myModalH"></h4>
+                    </div>
+                    <div class="modal-body" id="myModalB">
+                    </div>
+                    <div class="modal-footer" id="myModalF">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!--main-->
+        <div id="main" class="">
+            <div class="">
+                <div class="col-md-3">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="">All Links</h4>
+                        </div>
+                        <div class="panel-body">
+                            <div class="list-group">
+                                <div class="accordion" id="leftNavAccordionDiv">
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse4">
+                                            Configuration
+                                            </a>
+                                        </div>
+                                        <div id="leftNavCollapse4" class="accordion-body collapse in" style="margin-left:20px">
+                                            <div class="accordion-inner">
+                                                <a href="#" class="list-group-item asideLink" click-event="configuration()">&nbsp;Executor</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="generatorConfig()">&nbsp;Generator</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="getExtIntData('gatf-logging-api-int.xml','loggingapi')">&nbsp;Server Logs API</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="getExtIntData('gatf-issuetracking-api-int.xml','issuetrackerapi')">&nbsp;Issue Tracking API</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse3">
+                                            TestCase Files
+                                            </a>
+                                        </div>
+                                        <div id="leftNavCollapse3" class="accordion-body collapse in" style="margin-left:20px">
+                                            <div class="accordion-inner" id="testcasefile-holder">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse5">
+                                            Execute
+                                            </a>
+                                        </div>
+                                        <div id="leftNavCollapse5" class="accordion-body collapse in" style="margin-left:20px">
+                                            <div class="accordion-inner">
+                                                <a href="#" class="list-group-item asideLink" click-event="executeHtml('executor')">&nbsp;Executor</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="executeHtml('generator')">&nbsp;Generator</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" href="#" click-event="getReports()">
+                                            Reports
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" href="#" click-event="getSeleniumReports()">
+                                            Seleasy Reports
+                                            </a>
+                                        </div>
+                                    </div>
+                                    <div class="accordion-group">
+                                        <div class="accordion-heading list-group-item">
+                                            <a class="accordion-toggle" href="#" click-event="getErroredSeleasyScripts()">
+                                            Errored Seleasy Scripts
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-9">
+                    <div class="panel panel-default">
+                        <div class="panel-heading">
+                            <h4 class="" id="heading_main">Manage Testcases </h4>
+                        </div>
+                        <div class="panel-body">
+                            <form class="form form-vertical" id="ExampleBeanServiceImpl_form" name="ExampleBeanServiceImpl_form"  style="margin-left:30px">
+                            </form>
+                        </div>
+                        <!--/panel content-->
+                    </div>
+                </div>
+            </div>
+            <!--/main-->
+        </div>
+        <div id="loginform" class="log-form hidden">
+		    <h2>Login to your account</h2>
+		    <form>
+		        <input type="text" name="username" required=true title="username" placeholder="Username" />
+		        <input type="password" name="password" required=true title="username" placeholder="Password" />
+		        <button type="submit" class="btn" click-event="doLogin(event)">Login</button>
+		    </form>
 		</div>
-		<div class="navbar navbar-default" id="subnav">
-			<div class="col-md-12">
-				<div class="btn-group">
-				  <a href="#" click-event="configuration()" style="margin-left:15px;" class="navbar-btn btn btn-default btn-plus">
-					  Configuration 
-				  </a>
-			  </div>
-			  <div class="btn-group">
-	  <a href="#" click-event="addTcFileHTml()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   TestCase Files
-	  </a>
-	    </div>   <div class="btn-group">
-	  <a href="#" click-event="executeHtml('executor')" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   Execute
-	  </a>
-	    </div>  <div class="btn-group">
-	  <a href="#" click-event="getReports()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   Reports
-	  </a>
-	    </div>  <div class="btn-group">
-	  <a href="#" click-event="getSeleniumReports()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   Seleasy Reports
-	  </a>
-	    </div>  <div class="btn-group">
-	  <a href="#" click-event="getErroredSeleasyScripts()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   Errored Seleasy Scripts
-	  </a>
-	    </div>  <div class="btn-group">
-	  <a href="#" click-event="getProfiles()" style="margin-left:10px;" class="navbar-btn btn btn-default btn-plus dropdown-toggle">
-		   Data Source Profile
-	  </a>
-	    </div>  
-			</div>
-		</div>
-		  <!-- Modal -->
-		  <div class="modal fade" id="myModal" role="dialog">
-			<div class="modal-dialog" style="width:90%;height:400px;">
-			
-			  <!-- Modal content-->
-			  <div class="modal-content">
-				<div class="modal-header">
-				  <button type="button" class="close" data-dismiss="modal">&times;</button>
-				  <h4 class="modal-title" id="myModalH"></h4>
-				</div>
-				<div class="modal-body" id="myModalB">
-				</div>
-				<div class="modal-footer" id="myModalF">
-				  
-				</div>
-			  </div>
-			  
-			</div>
-		  </div>
-		<!--main-->
-		<div class="" id="main">
-			<div class="">
-				<div class="col-md-3">
-					<div class="panel panel-default">
-						<div class="panel-heading">
-							 <h4 class="">All Links</h4>
-						</div>
-						<div class="panel-body">
-							<div class="list-group"> 
-							  <div class="accordion" id="leftNavAccordionDiv">
-								  <div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse4">
-  	  		 Configuration
-		  </a>
-	    </div>
-		<div id="leftNavCollapse4" class="accordion-body collapse in" style="margin-left:20px">
-	  <div class="accordion-inner">
-	  		  <a href="#" class="list-group-item asideLink" click-event="configuration()">&nbsp;Executor</a>
-			  <a href="#" class="list-group-item asideLink" click-event="generatorConfig()">&nbsp;Generator</a>
-			  <a href="#" class="list-group-item asideLink" click-event="getExtIntData('gatf-logging-api-int.xml','loggingapi')">&nbsp;Server Logs API</a>
-			  <a href="#" class="list-group-item asideLink" click-event="getExtIntData('gatf-issuetracking-api-int.xml','issuetrackerapi')">&nbsp;Issue Tracking API</a>
-	  	  </div>
-  </div>
-  </div><div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  	  	  	  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse3">
-			  TestCase Files
-		  </a>
-	    </div>
-    <div id="leftNavCollapse3" class="accordion-body collapse in" style="margin-left:20px">
-	  <div class="accordion-inner" id="testcasefile-holder">
-	  		  
-	  	  </div>
-  </div>
-  </div><div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  	  		  <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse5">
-			  Execute
-		  </a>
-	    </div>
-		<div id="leftNavCollapse5" class="accordion-body collapse in" style="margin-left:20px">
-	  <div class="accordion-inner">
-	  		  <a href="#" class="list-group-item asideLink" click-event="executeHtml('executor')">&nbsp;Executor</a>
-			  <a href="#" class="list-group-item asideLink" click-event="executeHtml('generator')">&nbsp;Generator</a>
-	  	  </div>
-  </div>
-  </div><div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  	  		  <a class="accordion-toggle" href="#" click-event="getReports()">
-			  Reports
-		  </a>
-	    </div>
-  </div><div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  	  		  <a class="accordion-toggle" href="#" click-event="getSeleniumReports()">
-			  Seleasy Reports
-		  </a>
-	    </div>
-  </div><div class="accordion-group">
-  <div class="accordion-heading list-group-item">
-  	  		  <a class="accordion-toggle" href="#" click-event="getErroredSeleasyScripts()">
-			  Errored Seleasy Scripts
-		  </a>
-	    </div>
-  </div>
-
-  
-							  </div>
-							</div>
-						</div>
-					</div>
-				</div>
-				<div class="col-md-9">
-										
-															<div class="panel panel-default">
-						<div class="panel-heading">
-							 <h4 class="" id="heading_main">Manage Testcases </h4>
-						</div>
-						<div class="panel-body">
-							<form class="form form-vertical" id="ExampleBeanServiceImpl_form" name="ExampleBeanServiceImpl_form"  style="margin-left:30px">
-														</form>
-						</div>
-						<!--/panel content-->
-					</div>
-									</div>
-			</div>
-			<!--/main-->
-		</div>
-		<div id="push" class=""></div>
-		<script type="text/javascript" src="resources/javascript-xpath-latest-cmp.js"></script>
-		<script type="text/javascript" src="resources/prettify.js"></script>
+        <div id="push" class=""></div>
+        <script type="text/javascript" src="resources/javascript-xpath-latest-cmp.js"></script>
+        <script type="text/javascript" src="resources/prettify.js"></script>
         <script type='text/javascript' src="resources/jquery-3.6.0.min.js"></script>
         <script type='text/javascript' src="resources/bootstrap.min.js"></script>
-		<script type="text/javascript" src="resources/json2.js"></script>
-		<script type="text/javascript" src="resources/jquery.form.js"></script>
-		<script type="text/javascript" src="resources/testgen.js"></script>
-		<script type="text/javascript" src="resources/jquery.blockUI.js"></script>
-		<script type="text/javascript" src="resources/vkbeautify.js"></script>
-		<link rel="stylesheet" type="text/css" href="resources/prettify.css">
-		<link rel="stylesheet" type="text/css" href="resources/jquery.datetimepicker.css"/>
-		<script type="text/javascript" src="resources/jquery.datetimepicker.js"></script>
-	    <script type="text/javascript" src="resources/jquery.autosize.min.js"></script>
-	    <script type="text/javascript" language="javascript" src="js/plugins/dataTables/jquery.dataTables.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/dataTables.buttons.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/jszip.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/pdfmake.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/vfs_fonts.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.html5.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.print.min.js"></script>
-		<!--  script type="text/javascript" src="resources/jquery.dataTables.js"></script -->
-		<script type="text/javascript" src="resources/dataTables.bootstrap.js"></script>
-		<script type="text/javascript" src="resources/dataTables.tableTools.js"></script>
-		<script type="text/javascript" src="js/dygraph.min.js"></script>
-		<script type="text/javascript" src="js/hdrhistogram.umd.js"></script>
-		<script type="text/javascript" src="js/html2canvas.min.js"></script>
-		<script type="text/javascript" src="js/canvas2image.js"></script>
-		<script type="text/javascript" src="js/FileSaver.js"></script>
-		<script type="text/javascript" src="js/jss.min.js"></script>
-		<script type="text/javascript" src="js/diff.min.js"></script>
-		<script type="text/javascript" src="js/diff2html.min.js"></script>
-		<script type="text/javascript" src="codemirror/lib/codemirror.js"></script>
-		<script type="text/javascript" src="codemirror/mode/perl/perl.js"></script>
-		<script type="text/javascript" src="codemirror/addon/dialog/dialog.js"></script>
-		<script type="text/javascript" src="codemirror/addon/search/searchcursor.js"></script>
-		<script type="text/javascript" src="codemirror/addon/search/search.js"></script>
-		<script type="text/javascript" src="codemirror/addon/scroll/annotatescrollbar.js"></script>
-		<script type="text/javascript" src="codemirror/addon/search/matchesonscrollbar.js"></script>
-		<script type="text/javascript" src="codemirror/addon/search/jump-to-line.js"></script>
-		<script type="text/javascript" src="codemirror/addon/fold/foldcode.js"></script>
-		<script type="text/javascript" src="codemirror/addon/fold/foldgutter.js"></script>
-		<script type="text/javascript" src="codemirror/addon/fold/comment-fold.js"></script>
-		<script type="text/javascript" src="codemirror/addon/fold/indent-fold.js"></script>
-		<script type='text/javascript' src="index.js"></script>
+        <script type="text/javascript" src="resources/json2.js"></script>
+        <script type="text/javascript" src="resources/jquery.form.js"></script>
+        <script type="text/javascript" src="resources/testgen.js"></script>
+        <script type="text/javascript" src="resources/jquery.blockUI.js"></script>
+        <script type="text/javascript" src="resources/vkbeautify.js"></script>
+        <link rel="stylesheet" type="text/css" href="resources/prettify.css">
+        <link rel="stylesheet" type="text/css" href="resources/jquery.datetimepicker.css"/>
+        <script type="text/javascript" src="resources/jquery.datetimepicker.js"></script>
+        <script type="text/javascript" src="resources/jquery.autosize.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/jquery.dataTables.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/dataTables.buttons.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/jszip.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/pdfmake.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/vfs_fonts.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.html5.min.js"></script>
+        <script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.print.min.js"></script>
+        <!--  script type="text/javascript" src="resources/jquery.dataTables.js"></script -->
+        <script type="text/javascript" src="resources/dataTables.bootstrap.js"></script>
+        <script type="text/javascript" src="resources/dataTables.tableTools.js"></script>
+        <script type="text/javascript" src="js/dygraph.min.js"></script>
+        <script type="text/javascript" src="js/hdrhistogram.umd.js"></script>
+        <script type="text/javascript" src="js/html2canvas.min.js"></script>
+        <script type="text/javascript" src="js/canvas2image.js"></script>
+        <script type="text/javascript" src="js/FileSaver.js"></script>
+        <script type="text/javascript" src="js/jss.min.js"></script>
+        <script type="text/javascript" src="js/diff.min.js"></script>
+        <script type="text/javascript" src="js/diff2html.min.js"></script>
+        <script type="text/javascript" src="codemirror/lib/codemirror.js"></script>
+        <script type="text/javascript" src="codemirror/mode/perl/perl.js"></script>
+        <script type="text/javascript" src="codemirror/addon/dialog/dialog.js"></script>
+        <script type="text/javascript" src="codemirror/addon/search/searchcursor.js"></script>
+        <script type="text/javascript" src="codemirror/addon/search/search.js"></script>
+        <script type="text/javascript" src="codemirror/addon/scroll/annotatescrollbar.js"></script>
+        <script type="text/javascript" src="codemirror/addon/search/matchesonscrollbar.js"></script>
+        <script type="text/javascript" src="codemirror/addon/search/jump-to-line.js"></script>
+        <script type="text/javascript" src="codemirror/addon/fold/foldcode.js"></script>
+        <script type="text/javascript" src="codemirror/addon/fold/foldgutter.js"></script>
+        <script type="text/javascript" src="codemirror/addon/fold/comment-fold.js"></script>
+        <script type="text/javascript" src="codemirror/addon/fold/indent-fold.js"></script>
+        <script type='text/javascript' src="index.js"></script>
     </body>
 </html>

@@ -3253,6 +3253,9 @@ public abstract class SeleniumTest {
 		public GatfRunTimeError(String msg, Throwable e) {
 			super(msg, e);
 		}
+		//public void process(String relPath) {
+		//	details = new Object[] {details[0], details[1], details[2], relPath};
+		//}
 	}
 	
 	@SuppressWarnings("serial")

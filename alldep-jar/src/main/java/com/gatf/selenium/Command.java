@@ -1238,8 +1238,8 @@ public class Command {
         tcmd.name = fn.getAbsolutePath();
 
         String relfn = fn.getName();
-        if(StringUtils.isNotBlank(state.basePath)) {
-        	String path = state.basePath.trim();
+        if(StringUtils.isNotBlank(state.origBasePath)) {
+        	String path = state.origBasePath.trim();
         	if(StringUtils.isNotBlank(state.testcaseDir) && !state.testcaseDir.trim().equals(".")) {
         		path += File.separator + state.testcaseDir.trim();
         	}

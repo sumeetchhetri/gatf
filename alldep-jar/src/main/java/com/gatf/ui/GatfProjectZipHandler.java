@@ -27,6 +27,7 @@ import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 import org.zeroturnaround.zip.ZipUtil;
 
+import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.TestCaseFinder;
@@ -42,6 +43,8 @@ public class GatfProjectZipHandler extends HttpHandler {
 
 	@Override
 	public void service(Request request, Response response) throws Exception {
+		AcceptanceTestContext.checkAuthAndSetCors(mojo, request, response);
+		if(response.getStatus()==401) return;
     	List<String> res = new ArrayList<String>();
     	List<String> err = new ArrayList<String>();
     	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool");
