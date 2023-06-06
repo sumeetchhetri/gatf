@@ -721,6 +721,7 @@ public abstract class SeleniumTest {
 		Map<String, Object> _mt = new HashMap<String, Object>();
 		try {
 			initTmplMap(_mt);
+			System.out.println("Evaluating expression ["+evaluate(eval)+"]");
 			String ret = ___cxt___.getWorkflowContextHandler().templatize(_mt, "#if("+evaluate(eval) + ") true #else false #end");
 			return ret.toLowerCase().trim().equals("true");
 		} catch (Exception e) {
@@ -2112,6 +2113,7 @@ public abstract class SeleniumTest {
 		}
 		try {
 			initJs(driver);
+			System.out.println("Window open intercept added for " + optionalOpenNums + " window(s)....");
 			//((JavascriptExecutor)driver).executeScript("window.__wostn__="+optionalOpenNums+";window.__wosjp__=[];window.open=function(a,b,c){window.__wosjp__.push([a,b,c]);window.__owo__(a,b,c);console.log(a);}");
 			((JavascriptExecutor)driver).executeScript("window.GatfUtil.wpensaveInit("+optionalOpenNums+")");
 		} catch (Exception e) {
@@ -2148,6 +2150,7 @@ public abstract class SeleniumTest {
 				}
 			} catch (Exception e) {
 			}
+			System.out.println("Window open intercept got url [" + url + "] for window " + openPos);
 			client = TestCaseExecutorUtil.getClient();
 			new File(filePath).delete();
 			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
