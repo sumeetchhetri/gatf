@@ -5119,6 +5119,19 @@ public class Command {
                 .replace(crid, "\\\\r").replace(ffid, "\\\\f").replace(dqid, "\\\"");
         return tmp;
     }
+    
+    static String esc1(String cmd) {
+        String blid = "######" + UUID.randomUUID().toString() + "######";
+        String nlid = "######" + UUID.randomUUID().toString() + "######";
+        String tbid = "######" + UUID.randomUUID().toString() + "######";
+        String crid = "######" + UUID.randomUUID().toString() + "######";
+        String ffid = "######" + UUID.randomUUID().toString() + "######";
+        String tmp = cmd.replace("\\\\b", blid).replace("\\\\n", nlid).replace("\\\\t", tbid)
+                .replace("\\\\r", crid).replace("\\\\f", ffid);
+        tmp = tmp.replace(blid, "\\\\b").replace(nlid, "\\\\n").replace(tbid, "\\\\t")
+                .replace(crid, "\\\\r").replace(ffid, "\\\\f");
+        return tmp.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
 
     public static class FindCommand extends Command {
         String by, classifier, relative = "", by1 = "", classifier1 = "", subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, operval = null, eval = null, browserScope = "", sessionScope = "";
@@ -5437,7 +5450,7 @@ public class Command {
         }
         String javacodeifonly(List<Command> children, String vrd) {
         	if(StringUtils.isNotBlank(eval)) {
-        		return vrd + " = doEvalIf(\""+esc(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = doEvalIf(\""+esc1(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(browserScope)) {
         		return vrd + " = isBrowserName(\""+esc(unSantizedUnQuoted(browserScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(sessionScope)) {

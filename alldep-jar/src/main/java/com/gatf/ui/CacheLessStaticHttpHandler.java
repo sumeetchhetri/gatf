@@ -132,7 +132,7 @@ public class CacheLessStaticHttpHandler extends StaticHttpHandler {
         
         if(isAuthMode && resource.getAbsolutePath().endsWith("index.html")) {
         	String filecontents = FileUtils.readFileToString(resource, "UTF-8");
-        	//filecontents = filecontents.replace("id=\"loginform\" class=\"log-form hidden\"", "id=\"loginform\" class=\"log-form\"");
+        	filecontents = filecontents.replace("id=\"loginform\" class=\"log-form hidden\"", "id=\"loginform\" class=\"log-form\"");
         	filecontents = filecontents.replace("id=\"toptoolbar\" class=\"", "id=\"toptoolbar\" class=\"hidden ");
         	filecontents = filecontents.replace("id=\"subnav\" class=\"", " id=\"subnav\" class=\"hidden ");
         	filecontents = filecontents.replace("id=\"myModal\" class=\"", "id=\"myModal\" class=\"hidden ");

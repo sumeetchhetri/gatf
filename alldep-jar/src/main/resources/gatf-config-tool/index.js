@@ -665,21 +665,26 @@ function onSuccessLogin(token) {
 		
 		$('#dmmode').click(darkMode);
 		
-		if(sessionStorage.getItem("token")) {
-			$('#loginform').addClass('hidden');
-			auth_token = sessionStorage.getItem("token");
+		if($('#loginform').is(':visible')) {
+			if(sessionStorage.getItem("token")) {
+				$('#loginform').addClass('hidden');
+				auth_token = sessionStorage.getItem("token");
+				ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
+		            miscMap = data;
+		            onSuccessLogin(auth_token);
+		            startInitConfigTool(configuration);
+		        }, function(err, jq) {
+		        	if(jq.status==401) {
+		        		sessionStorage.removeItem("token");
+		        		location.reload();
+		        	}
+		        });
+		    }
+		} else {
 			ajaxCall(true, "GET", "misc", "", "", {}, function(data) {
 	            miscMap = data;
 	            startInitConfigTool(configuration);
-	        }, function(err, jq) {
-	        	if(jq.status==401) {
-	        		sessionStorage.removeItem("token");
-	        		location.reload();
-	        	}
-	        });
-	        onSuccessLogin(auth_token);
-		} else {
-			$('#loginform').removeClass('hidden');
+	        }, null);
 		}
 
 		$('#srch-term').on('change', searchLeftNavs);
