@@ -443,11 +443,23 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			response.setContentType(MediaType.APPLICATION_JSON);
 		} else if(e instanceof GatfRunTimeErrors) {
 			GatfRunTimeErrors errs = (GatfRunTimeErrors)e;
+			Set<String> uniq = new HashSet<>();
+			List<Object[]> alldets = new ArrayList<>();
+			for (int i=0;i<errs.getAll().size();i++) {
+				String key = "";
+				for (Object o : errs.getAll().get(i).getDetails()) {
+					key += o!=null?o.toString():"";
+				}
+				if(!uniq.contains(key)) {
+					alldets.add(errs.getAll().get(i).getDetails());
+					uniq.add(key);
+				}
+			}
 			Map<String, Object> h = new HashMap<>();
-			h.put("error", errs.getAll().get(0).getDetails());
+			h.put("error", alldets.get(0));
 			List<Object[]> others = new ArrayList<>();
-			for (int i=1;i<errs.getAll().size();i++) {
-				others.add(errs.getAll().get(i).getDetails());
+			for (int i=1;i<alldets.size();i++) {
+				others.add(alldets.get(i));
 			}
 			h.put("others", others);
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);

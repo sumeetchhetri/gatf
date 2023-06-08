@@ -29,6 +29,8 @@ import java.io.Writer;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.security.Security;
 import java.time.Duration;
 import java.time.ZoneId;
@@ -87,16 +89,16 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v108.dom.DOM;
-import org.openqa.selenium.devtools.v108.dom.model.Node;
-import org.openqa.selenium.devtools.v108.dom.model.NodeId;
-import org.openqa.selenium.devtools.v108.fetch.Fetch;
-import org.openqa.selenium.devtools.v108.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v108.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v108.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v108.log.Log;
-import org.openqa.selenium.devtools.v108.network.Network;
-import org.openqa.selenium.devtools.v108.network.model.ResourceType;
+import org.openqa.selenium.devtools.v113.dom.DOM;
+import org.openqa.selenium.devtools.v113.dom.model.Node;
+import org.openqa.selenium.devtools.v113.dom.model.NodeId;
+import org.openqa.selenium.devtools.v113.fetch.Fetch;
+import org.openqa.selenium.devtools.v113.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v113.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v113.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v113.log.Log;
+import org.openqa.selenium.devtools.v113.network.Network;
+import org.openqa.selenium.devtools.v113.network.model.ResourceType;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -174,9 +176,15 @@ public abstract class SeleniumTest {
 
 	List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
 	
+	protected String cfileName;
 	protected int line;
 
+	protected String basePath;
 	protected String name;
+	protected List<String[]> possibleInvXpathExprs = new ArrayList<>();
+	protected void addPossInvXpath(String xpath, String cmd, String line, String file) {
+		possibleInvXpathExprs.add(new String[] {xpath, cmd, line, file});
+	}
 
 	protected transient int sessionNum = -1;
 
@@ -336,7 +344,7 @@ public abstract class SeleniumTest {
 			} else if(!isHeadless) {
 				wdm.enableVnc();
 			}
-			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":"dkr");
+			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":(isHeadless?"hdl":"dkr"));
 			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
 			wdmMgs.put(browserName, wdm);
 		} else {
@@ -409,8 +417,12 @@ public abstract class SeleniumTest {
 		throw new RuntimeException("No driver found for remote docker");
 	}
 	
-	protected void __set__cln__(int line) {
-		this.line = line;
+	protected void __set__cln__(String line_) {
+		try {
+			cfileName = line_.split(":")[0];
+			line = Integer.valueOf(line_.split(":")[1]);
+		} catch (Exception e) {
+		}
 	}
 	
 	protected void setSleepGranularity(long timeoutSleepGranularity) {
@@ -471,15 +483,26 @@ public abstract class SeleniumTest {
 		if(getSession().__subtestname__==null) {
 			result.executionTime = System.nanoTime() - getSession().__teststarttime__;
 			getSession().__result__.get(getSession().browserName).result = result;
-			if(result!=null && !result.isStatus() && !result.isContinue) {
-				//quit();
-				FailureException fe = new FailureException(result.getCause());
-				fe.details = new Object[] {"", line, name};
-				throw fe;
-			}
 		} else {
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
-			//RuntimeReportUtil.addEntry(index, result.status);
+		}
+		if(result!=null && !result.isStatus() && !result.isContinue) {
+			FailureException fe = new FailureException(result.getCause());
+			if(cfileName!=null) {
+				String relName = cfileName.replace(basePath, "");
+			    if(relName.startsWith(File.separator)) {
+			    	relName = relName.substring(1);
+	        	}
+			    String cmd = "";
+				try {
+					cmd = Files.readAllLines(Paths.get(name)).get(line-1);
+				} catch (Exception e) {
+				}
+				fe.details = new Object[] {cmd, line, relName};
+			} else {
+				fe.details = new Object[] {"", 0, ""};
+			}
+			throw fe;
 		}
 	}
 
@@ -1030,14 +1053,15 @@ public abstract class SeleniumTest {
 		return null;
 	}*/
 
-	public SeleniumTest(String name, AcceptanceTestContext ___cxt___, int index) {
+	public SeleniumTest(String name_, AcceptanceTestContext ___cxt___, int index) {
 		this.___cxt___ = ___cxt___;
 		try {
-			File basePath = new File(___cxt___.getGatfExecutorConfig().getTestCasesBasePath());
-		    File testPath = new File(basePath, ___cxt___.getGatfExecutorConfig().getTestCaseDir());
-		    this.name = name.replace(testPath.getAbsolutePath(), "").substring(1);
+			File basePath_ = new File(___cxt___.getGatfExecutorConfig().getTestCasesBasePath());
+		    File testPath = new File(basePath_, ___cxt___.getGatfExecutorConfig().getTestCaseDir());
+		    basePath = testPath.getAbsolutePath();
+		    this.name = name_;
 		} catch (Exception e) {
-			this.name = name;
+			this.name = name_;
 		}
 		this.index = index;
 		//this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
@@ -1169,12 +1193,13 @@ public abstract class SeleniumTest {
 			this.internalTestRes = test.getSession().internalTestRs;
 			this.line = test.line;
 		}
-		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable cause, String img, LoggingPreferences ___lp___) {
-			this.cause = cause;
+		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable exc, String img, LoggingPreferences ___lp___, String subTestName) {
+			this.cause = exc;
 			this.status = false;
 			this.isContinue = false;
 			this.line = test.line;
 			this.internalTestRes = test.getSession().internalTestRs;
+			this.stName = subTestName;
 			/*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
@@ -1183,8 +1208,27 @@ public abstract class SeleniumTest {
                     this.logs.put(s, new SerializableLogEntries(logEntries.getAll())); 
                 }
             }*/
+			boolean isPending = false;
 			if(cause instanceof GatfRunTimeError) {
-				((GatfRunTimeError)cause).details = new Object[] {"", test.line, test.name};
+				isPending = ((GatfRunTimeError)cause).pending;
+				if(isPending) {
+					if(cause instanceof XPathException && ((XPathException)cause).details!=null && ((XPathException)cause).details.length>0) {
+						//System.out.println("Invalid xpath expression provided, check if your xpath expression contains spaces and use single quotes(') instead of double quotes(\") for your xpath expressions");
+					} else {
+						String relName = test.cfileName.replace(test.basePath, "");
+					    if(relName.startsWith(File.separator)) {
+					    	relName = relName.substring(1);
+			        	}
+					    String cmd = "";
+						try {
+							cmd = Files.readAllLines(Paths.get(test.cfileName)).get(test.line-1);
+						} catch (Exception e) {
+						}
+						((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName};
+					}
+					((GatfRunTimeError)cause).pending = false;
+					((GatfRunTimeError)cause).img = img;
+				}
 			}
 			if(cause instanceof PassSubTestException) {
 				this.status = true;
@@ -1193,71 +1237,40 @@ public abstract class SeleniumTest {
 				List<LogEntry> entries = new ArrayList<LogEntry>();
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 				this.logs.put("gatf", new SerializableLogEntries(entries));
-				System.out.println(cause.getMessage());
-			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException) {
+				if(isPending) System.out.println(cause.getMessage());
+			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException || cause instanceof SubTestException) {
 				this.isContinue = cause instanceof WarnSubTestException;
 				this.stName = test.get__subtestname__();
 				List<LogEntry> entries = new ArrayList<LogEntry>();
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
 				this.logs.put("gatf", new SerializableLogEntries(entries));
-				if(cause instanceof FailSubTestException) {
-					try {
-						((FailSubTestException)cause).stName = this.stName;
-						stImg = img;
-						((FailSubTestException)cause).img = img;
+				if(isPending) {
+					if(cause instanceof FailSubTestException) {
 						System.out.println("Error occurred on line no " + line);
 						if(cause.getMessage().contains("no such window: target window already closed")) {
 							java.lang.System.out.println("no such window: target window already closed");
 						} else {
 							cause.printStackTrace();
 						}
+					} else {
+						System.out.println(cause.getMessage());
+					}
+					try {
+						stImg = img;
 						java.lang.System.out.println(img);
 						screenshotAsFile(d, img);
 					} catch (Exception e) {
 					}
-				} else {
-					java.lang.System.out.println(img);
-					try {
-						stImg = img;
-						screenshotAsFile(d, img);
-					} catch (Exception e) {
-					}
-					System.out.println(cause.getMessage());
-				}
-			} else if(cause instanceof SubTestException) {
-				this.stName = ((SubTestException)cause).stName;
-				this.isContinue = false;
-				List<LogEntry> entries = new ArrayList<LogEntry>();
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ((SubTestException)cause).cause.getMessage()));
-				entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(((SubTestException)cause).cause)));
-				this.logs.put("gatf", new SerializableLogEntries(entries));
-				try {
-					stImg = img;
-					((SubTestException)cause).img = img;
-					if(!(((SubTestException)cause).cause instanceof FailSubTestException)) {
-						System.out.println("Error occurred on line no " + line);
-						if(cause.getMessage().contains("no such window: target window already closed")) {
-							java.lang.System.out.println("no such window: target window already closed");
-						} else {
-							cause.printStackTrace();
-						}
-					}
-					java.lang.System.out.println(img);
-					screenshotAsFile(d, img);
-				} catch (Exception e) {
 				}
 			} else {
 				this.stName = test.get__subtestname__();
 				List<LogEntry> entries = new ArrayList<LogEntry>();
 				if(cause instanceof RuntimeException) {
 					if(cause.getCause()!=null) {
-						if(cause.getCause() instanceof FailSubTestException) {
-							stImg = ((FailSubTestException)cause.getCause()).img;
-							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + ((FailSubTestException)cause.getCause()).stName + " Failed"));
-						} else if(cause.getCause() instanceof SubTestException) {
+						if(subTestName!=null) {
 							stImg = ((SubTestException)cause.getCause()).img;
-							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + ((SubTestException)cause.getCause()).stName + " Failed"));
+							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + subTestName + " Failed"));
 						} else {
 							entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 							entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
@@ -1270,17 +1283,19 @@ public abstract class SeleniumTest {
 					entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
 					entries.add(new LogEntry(Level.ALL, new Date().getTime(), ExceptionUtils.getStackTrace(cause)));
 				}
-				if(stImg==null) {
+				if(isPending) {
 					try {
 						stImg = img;
 						System.out.println("Error occurred on line no " + line);
 						if(cause.getMessage().contains("no such window: target window already closed")) {
 							java.lang.System.out.println("no such window: target window already closed");
+						} else if(cause.getMessage().contains("is not a valid XPath expression")) {
+							java.lang.System.out.println("Invalid xpath expression provided, check if your xpath expression contains spaces and use single quotes(') instead of double quotes(\") for your xpath expressions");
 						} else {
 							cause.printStackTrace();
+							java.lang.System.out.println(img);
+							screenshotAsFile(d, img);
 						}
-						java.lang.System.out.println(img);
-						screenshotAsFile(d, img);
 					} catch (Exception e) {
 					}
 				}
@@ -1294,7 +1309,16 @@ public abstract class SeleniumTest {
 			this.line = test.line;
 			this.internalTestRes = test.getSession().internalTestRs;
 			if(cause instanceof GatfRunTimeError) {
-				((GatfRunTimeError)cause).details = new Object[] {"", test.line, test.name};
+				String relName = test.cfileName.replace(test.basePath, "");
+			    if(relName.startsWith(File.separator)) {
+			    	relName = relName.substring(1);
+	        	}
+			    String cmd = "";
+				try {
+					cmd = Files.readAllLines(Paths.get(test.cfileName)).get(test.line-1);
+				} catch (Exception e) {
+				}
+				((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName};
 			}
 			System.out.println("Error occurred on line no " + line);
 			List<LogEntry> entries = new ArrayList<LogEntry>();
@@ -3249,12 +3273,21 @@ public abstract class SeleniumTest {
 	@SuppressWarnings("serial")
 	public static abstract class GatfRunTimeError extends RuntimeException {
 		Object[] details;
+		Throwable err;
+		boolean pending = true;
+		String img;
 		public abstract Object[] getDetails();
 		public GatfRunTimeError(String msg) {
 			super(msg);
 		}
 		public GatfRunTimeError(String msg, Throwable e) {
 			super(msg, e);
+		}
+		public Throwable getErr() {
+			return err;
+		}
+		public String getStImg() {
+			return img;
 		}
 		//public void process(String relPath) {
 		//	details = new Object[] {details[0], details[1], details[2], relPath};
@@ -3290,13 +3323,6 @@ public abstract class SeleniumTest {
 		public FailSubTestException(String msg) {
 			super(msg);
 		}
-		String img, stName;
-		public String getStName() {
-			return stName;
-		}
-		public String getStImg() {
-			return img;
-		}
 		public Object[] getDetails() {
         	return details;
         }
@@ -3304,18 +3330,9 @@ public abstract class SeleniumTest {
 	
 	@SuppressWarnings("serial")
 	public static class SubTestException extends GatfRunTimeError {
-		String img, stName;
-		Throwable cause;
 		public SubTestException(String stName, Throwable cause) {
 			super(cause.getMessage());
-			this.stName = stName;
-			this.cause = cause;
-		}
-		public String getStName() {
-			return stName;
-		}
-		public String getStImg() {
-			return img;
+			this.err = cause;
 		}
 		public Object[] getDetails() {
         	return details;
@@ -3324,10 +3341,25 @@ public abstract class SeleniumTest {
 	
 	@SuppressWarnings("serial")
 	public static class FailureException extends GatfRunTimeError {
-		Throwable cause;
+		Throwable err;
 		public FailureException(Throwable cause) {
 			super(cause.getMessage());
-			this.cause = cause;
+			this.err = cause;
+			if(err instanceof GatfRunTimeError) {
+				this.pending = ((GatfRunTimeError)err).pending;
+			}
+		}
+		public Object[] getDetails() {
+        	return details;
+        }
+	}
+	
+	@SuppressWarnings("serial")
+	public static class XPathException extends GatfRunTimeError {
+		Throwable err;
+		public XPathException(Throwable cause) {
+			super(cause.getMessage());
+			this.err = cause;
 		}
 		public Object[] getDetails() {
         	return details;
@@ -3354,7 +3386,7 @@ public abstract class SeleniumTest {
 			BROWSER_FEATURES.put(sessionId+".NWCONSOLE", lognw);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v108.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v113.security.Security.setIgnoreCertificateErrors(true));
 			if(logconsole) {
 				devTools.send(Log.enable());
 				devTools.addListener(Log.entryAdded(), logEntry -> {
@@ -3381,6 +3413,24 @@ public abstract class SeleniumTest {
 				} catch (InterruptedException e) {
 				}
 				if(status.equalsIgnoreCase("complete")) break;
+			}
+			
+			if(possibleInvXpathExprs.size()>0) {
+				initJs(driver);
+				for (String[] xpathExpr : possibleInvXpathExprs) {
+					try {
+						((JavascriptExecutor)driver).executeScript("window.GatfUtil.findByXpath(arguments[0])", xpathExpr[0]);
+					} catch (Exception e) {
+						try {
+							cfileName = xpathExpr[3];
+							line = Integer.parseInt(xpathExpr[2]);
+						} catch (Exception e2) {
+						}
+						XPathException fe = new XPathException(e);
+						fe.details = new Object[] {xpathExpr[1], line, cfileName};
+						throw fe;
+					}
+				}
 			}
 		}
 	}
@@ -3462,7 +3512,7 @@ public abstract class SeleniumTest {
 						}
 						headerMap.put(he.getName(), he.getValue());
 					}
-					org.openqa.selenium.devtools.v108.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+					org.openqa.selenium.devtools.v113.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 					String body = firsb.getBody();
 					if(firsb.getBase64Encoded()) {
 						try {

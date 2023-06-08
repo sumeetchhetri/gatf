@@ -17,13 +17,10 @@
 
 package org.openqa.selenium.devtools;
 
-import org.openqa.selenium.Capabilities;
-import org.openqa.selenium.internal.Require;
-import org.openqa.selenium.json.Json;
-import org.openqa.selenium.remote.http.ClientConfig;
-import org.openqa.selenium.remote.http.HttpClient;
-import org.openqa.selenium.remote.http.HttpRequest;
-import org.openqa.selenium.remote.http.HttpResponse;
+import static java.net.HttpURLConnection.HTTP_OK;
+import static org.openqa.selenium.json.Json.MAP_TYPE;
+import static org.openqa.selenium.remote.http.Contents.string;
+import static org.openqa.selenium.remote.http.HttpMethod.GET;
 
 import java.io.UncheckedIOException;
 import java.net.URI;
@@ -31,11 +28,13 @@ import java.net.URISyntaxException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Logger;
-
-import static java.net.HttpURLConnection.HTTP_OK;
-import static org.openqa.selenium.json.Json.MAP_TYPE;
-import static org.openqa.selenium.remote.http.Contents.string;
-import static org.openqa.selenium.remote.http.HttpMethod.GET;
+import org.openqa.selenium.Capabilities;
+import org.openqa.selenium.internal.Require;
+import org.openqa.selenium.json.Json;
+import org.openqa.selenium.remote.http.ClientConfig;
+import org.openqa.selenium.remote.http.HttpClient;
+import org.openqa.selenium.remote.http.HttpRequest;
+import org.openqa.selenium.remote.http.HttpResponse;
 
 public class CdpEndpointFinder {
 
@@ -52,7 +51,7 @@ public class CdpEndpointFinder {
     try (HttpClient client = clientFactory.createClient(config)) {
       res = client.execute(new HttpRequest(GET, "/json/version"));
     } catch (UncheckedIOException e) {
-      LOG.severe("Unable to connect to determine websocket url: " + e.getMessage());
+      LOG.warning("Unable to connect to determine websocket url: " + e.getMessage());
       return Optional.empty();
     }
     if (res.getStatus() != HTTP_OK) {
@@ -112,10 +111,10 @@ public class CdpEndpointFinder {
     }
 
     try {
-    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {
-    		String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();
-    		raw = raws;
-    	}
+      if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {	
+    	String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();	
+        raw = raws;	
+      }
       URI uri = new URI(String.format("http://%s", raw));
       LOG.fine("URI found: " + uri);
       return Optional.of(uri);
@@ -124,5 +123,4 @@ public class CdpEndpointFinder {
       return Optional.empty();
     }
   }
-
 }

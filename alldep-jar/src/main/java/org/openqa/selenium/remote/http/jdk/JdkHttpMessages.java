@@ -26,7 +26,6 @@ import org.openqa.selenium.remote.http.HttpResponse;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpClient.Version;
 import java.net.http.HttpRequest.BodyPublisher;
 import java.net.http.HttpRequest.BodyPublishers;
 import java.util.List;
@@ -46,8 +45,8 @@ class JdkHttpMessages {
     this.config = Objects.requireNonNull(config, "Client config");
   }
 
-  public java.net.http.HttpRequest createRequest(HttpRequest req) {
-    String rawUrl = getRawUrl(config.baseUri(), req.getUri());
+  public java.net.http.HttpRequest createRequest(HttpRequest req, URI rawUri) {
+    String rawUrl = rawUri.toString();
 
     // Add query string if necessary
     String queryString = StreamSupport.stream(req.getQueryParameterNames().spliterator(), false)
@@ -101,8 +100,8 @@ class JdkHttpMessages {
 
     builder.timeout(config.readTimeout());
     
-    if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && rawUrl.toString().startsWith("http://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {
-    	builder.version(Version.HTTP_1_1);
+    if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && rawUrl.toString().startsWith("http://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {	
+    	builder.version(java.net.http.HttpClient.Version.HTTP_1_1);	
     }
 
     return builder.build();
@@ -134,20 +133,18 @@ class JdkHttpMessages {
     return BodyPublishers.fromPublisher(chunking, Long.parseLong(length));
   }
 
-  private String getRawUrl(URI baseUrl, String uri) {
+  public URI getRawUri(HttpRequest req) {
+    URI baseUrl = config.baseUri();
+    String uri = req.getUri();
     String rawUrl;
+
     if (uri.startsWith("ws://") || uri.startsWith("wss://") ||
-      uri.startsWith("http://") || uri.startsWith("https://")) {
+        uri.startsWith("http://") || uri.startsWith("https://")) {
       rawUrl = uri;
     } else {
       rawUrl = baseUrl.toString().replaceAll("/$", "") + uri;
     }
 
-    return rawUrl;
-  }
-
-  public URI getRawUri(HttpRequest req) {
-    String rawUrl = getRawUrl(config.baseUri(), req.getUri());
     return URI.create(rawUrl);
   }
 

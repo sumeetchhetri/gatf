@@ -76,7 +76,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
 import java.util.concurrent.CopyOnWriteArrayList;
-import java.util.concurrent.TimeoutException;
 import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.regex.Matcher;
@@ -968,7 +967,7 @@ public abstract class WebDriverManager {
                     	driver.quit();
 					} catch(Exception e) {
 						if(e.getCause()!=null) {
-							if(e.getCause() instanceof TimeoutException) {
+							if(e.getCause() instanceof java.util.concurrent.TimeoutException) {
 								try {
 									driver.quit();
 								} catch (Exception e2) {
@@ -1338,7 +1337,8 @@ public abstract class WebDriverManager {
         File parentFolder = archive.getParentFile();
         File[] ls = parentFolder.listFiles();
         for (File f : ls) {
-            if (getDriverName().contains(removeExtension(f.getName()))) {
+            if (f.getName().startsWith(getDriverName())
+                    && getDriverName().contains(removeExtension(f.getName()))) {
                 log.trace("Found driver in post-download: {}", f);
                 return singletonList(f);
             }
@@ -1808,9 +1808,14 @@ public abstract class WebDriverManager {
             capabilities = caps;
 
         } else {
+            // https://bugs.chromium.org/p/chromium/issues/detail?id=1433472
+            String allowExtensionFlag = resolvedBrowserVersion != null
+                    && Integer.parseInt(resolvedBrowserVersion) < 112
+                            ? "--whitelisted-extension-id="
+                            : "--allowlisted-extension-id=";
             ((ChromiumOptions<?>) caps).addExtensions(extensionPath.toFile());
-            capabilities = ((ChromiumOptions<?>) caps).addArguments(
-                    "--whitelisted-extension-id=" + BROWSER_WATCHER_ID);
+            capabilities = ((ChromiumOptions<?>) caps)
+                    .addArguments(allowExtensionFlag + BROWSER_WATCHER_ID);
         }
     }
 

@@ -229,7 +229,7 @@ implements Serializable {
 				screenshotAsFile(get___d___(), getOutDir() + java.io.File.separator + evaluate("_main_exec.png"));
 			} catch (java.io.IOException _ioe) {
 			}
-			pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, "_main_exec.png", ___lp___));
+			pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, "_main_exec.png", ___lp___, null));
 		}
 	}
 }

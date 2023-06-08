@@ -656,7 +656,7 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 {
 	if(debugEnabled)alert('Start Execute Test method call...');
 	var testUrl = $(urlid).val();
-	var url = "../" + testUrl;
+	var url = testUrl;
 
 	var paramsPresent = false;
 	var alertStr = "";

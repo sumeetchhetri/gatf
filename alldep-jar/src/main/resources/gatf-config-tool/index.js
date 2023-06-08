@@ -1306,8 +1306,10 @@ function addTcFileHTml() {
     	$(this).siblings('div').show();
     });
     $('.editexcont').blur(function() {
-    	$(this).siblings('div').show();
-    	$(this).hide();
+    	if($(this).val()!="") {
+	    	$(this).siblings('div').show();
+	    	$(this).hide()
+		}
     });
     $('.nmchng').dblclick(function() {
 	    $(this).find('a').hide();
@@ -1404,7 +1406,7 @@ function startInitConfigTool(func) {
                         $('#testcasefile-holder').append('<a style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
                         $('#' + fid).attr('folder', folder);
                         $('#' + fid).click(function() {
-                            var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+                            var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
                             if ($(this).attr('status') == "show") {
                                 $('.' + escapedfolder + '_claz').hide();
                                 $(this).attr('status', 'hide');
@@ -1419,7 +1421,7 @@ function startInitConfigTool(func) {
                             return false;
                         });
                         $('#' + fid).find('button').click(function() {
-							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
 							execFiles = new Array();
 							$('.' + escapedfolder + '_claz').each(function() {
 								execFiles.push($(this).attr('tcfname'));
@@ -1438,7 +1440,7 @@ function startInitConfigTool(func) {
                         if (firstFile == '')
                             firstFile = id;
                         if (folder != "") {
-                            var escapedfolder = folder.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+                            var escapedfolder = folder.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
                             $('#testcasefile-holder').append('<a style="margin-left:20px;display:none" id="' + id + '" href="#" class="list-group-item asideLink ' + escapedfolder + '_claz">↳&nbsp;' + fileName + '</a>');
                         } else {
                             $('#testcasefile-holder').append('<a id="' + id + '" href="#" class="list-group-item asideLink">&nbsp;' + testFileName + '</a>');
@@ -1574,13 +1576,13 @@ function startInitConfigTool(func) {
 				const prts = $(this).attr('folder').split(/\/|\\/);
 				prts.splice(-1);
 				const sep = $(this).attr('folder').split('/').length==prts.length?'/':'\\';
-				const ef = prts.join(sep).replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+				const ef = prts.join(sep).replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
 				$(this).addClass(ef+'_claz');
 				/*let pp = [];
 				for(let i=0;i<prts.length-1;i++) {
 					pp.push(prts[i]);
 					const lbo = pp.join(sep);
-					const efc = lbo.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '');
+					const efc = lbo.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
 					$(this).addClass(efc+'_claz');
 					$('.'+ef+'_claz').addClass(efc+'_claz');
 				}*/
@@ -2628,7 +2630,7 @@ function addSetV(label) {
 }
 
 function addFormParm(label) {
-    var url = "../" + $('#93be7b20299b11e281c10800200c9a66_URL').val();
+    var url = $('#93be7b20299b11e281c10800200c9a66_URL').val();
     $('#ExampleBeanServiceImpl_form').attr('action', url);
 
     var temkey = document.getElementById(label + '+name').value;

@@ -17,8 +17,6 @@ package com.gatf.ui;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
@@ -115,9 +113,9 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     				}
     				
     				try {
-						Path pfrom = Paths.get(testcaseFileName).getParent();
-						Path pto = Paths.get(testcaseFileNameTo).getParent();
-						if(!pfrom.toString().equals(pto.toString())) {
+    					String pfrom = testcaseFileName.indexOf(File.separator)!=-1?testcaseFileName.substring(testcaseFileName.lastIndexOf(File.separator)+1):"";
+    					String pto = testcaseFileNameTo.indexOf(File.separator)!=-1?testcaseFileNameTo.substring(testcaseFileNameTo.lastIndexOf(File.separator)+1):"";
+						if(!pfrom.equals(pto)) {
 							throw new RuntimeException("Source and Target filenames should have the same directory tree");
 						}
 					} catch (Exception e) {
