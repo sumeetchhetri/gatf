@@ -2675,7 +2675,7 @@ public class Command {
 	                b.append("}catch(java.io.IOException _ioe){}");*/
 	                //b.append("Throwable "+oex+" = "+ex+";if(!("+ex+" instanceof ValidSubTestException)) "+ex+" = new SubTestException(\""+name+"\", "+ex+");\n");
                 	b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___, \""+name+"\"));");
-                	b.append("if("+ex+" instanceof WarnSubTestException || "+ex+" instanceof PassSubTestException) throw "+ex+";\n");
+                	b.append("if(!("+ex+" instanceof WarnSubTestException) && !("+ex+" instanceof PassSubTestException)) throw "+ex+";\n");
                 	//b.append("else if(!("+oex+" instanceof ValidSubTestException)) throw (SubTestException)"+ex+";\n");
                 } else {
                 	b.append("throw "+ex+";\n");
