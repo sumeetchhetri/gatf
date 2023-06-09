@@ -7408,9 +7408,9 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String acnm = state.varname();
-            b.append("\njava.awt.Robot "+acnm+" = new java.awt.Robot();");
+            b.append("\ntry{\njava.awt.Robot "+acnm+" = new java.awt.Robot();");
             b.append(_javacode(acnm));
-            b.append("\nsleep(100);");
+            b.append("\nsleep(100);\n} catch(Exception e){\nthrow new RuntimeException(e);}\n");
             return b.toString();
         }
     }
