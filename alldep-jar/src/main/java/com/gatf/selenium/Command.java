@@ -394,8 +394,22 @@ public class Command {
         return 100;
     }
 
+    static String utf8Trim(String str) {
+    	if(str!=null && str.length()>0 && !StringUtils.isAsciiPrintable(str.substring(0, 1))) {
+        	for (String utf8 : WHT_SPC_CHARS) {
+        		if(str.startsWith(utf8)) {
+        			str = str.substring(1);
+        		}
+			}
+        	return utf8Trim(str);
+        }
+    	return str;
+    }
+    
+    //Refer to the utf8 whitespace characters list -- https://unicode-explorer.com/articles/space-characters
+    static final String[] WHT_SPC_CHARS = {"\u0000", "\u0020", "\u00A0", "\u2000", "\u2001", "\u2002", "\u2003", "\u2004", "\u2005", "\u2006", "\u2007", "\u2008", "\u2009", "\u200A", "\u202F", "\u205F", "\u3000", "\u200B", "\u2060", "\uFEFF", "\u180E", "\u2800", "\u3164", "\uFFA0"};
     static Command parse(Object[] cmdDetails, CommandState state, Command parent) {
-        String cmd = cmdDetails[0].toString().trim();
+        String cmd = utf8Trim(cmdDetails[0].toString().trim());
         Command comd = null;
         cmd = state.sanitize(cmd);
         if(parent instanceof ValueListCommand && !cmd.trim().equals("]")) {
