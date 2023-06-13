@@ -401,6 +401,9 @@ public class Command {
         			str = str.substring(1);
         		}
 			}
+        	/*if(str.toCharArray()[0]==(char)-96) {
+        		str = str.substring(1);
+        	}*/
         	return utf8Trim(str);
         }
     	return str;
@@ -830,7 +833,7 @@ public class Command {
 		                comd = new ValueCommand(cmdDetails, state);
 		                ((ValueCommand)comd).value = unSantizedUnQuoted(cmd, state);
 	            	} else {
-	            		if(e2 instanceof GatfSelCodeParseError) {
+	            		if(e2 instanceof GatfSelCodeParseError && !((GatfSelCodeParseError)e2).getMessage().startsWith("No func/subtest with that name found - ")) {
 	            			throw e2;
 	            		}
 	            		throwError(cmdDetails, new RuntimeException("Invalid command found ["+state.unsanitize(cmd)+"]"));
@@ -1781,9 +1784,9 @@ public class Command {
     public static String genDebugInfo(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
     		if(c instanceof GotoCommand) {
-    			return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1])+"\");";
+    			return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     		}
-    		return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1])+"\");";
+    		return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     	}
     	return "";
     }
@@ -5602,10 +5605,10 @@ public class Command {
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
             String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             if(classifierPinvXp) {
-            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifierPinvXps[1]+"\", \""+classifierPinvXps[2]+"\");";
+            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifierPinvXps[1]+"\", \""+esc(classifierPinvXps[2])+"\");";
             }
             if(classifier1PinvXp) {
-            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier1))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifier1PinvXps[1]+"\", \""+classifier1PinvXps[2]+"\");";
+            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier1))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifier1PinvXps[1]+"\", \""+esc(classifierPinvXps[2])+"\");";
             }
             return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
@@ -5760,10 +5763,10 @@ public class Command {
             String excmsg = noexcep?null:"\"Element not found by selector " + logbc + " at line number "+fileLineDetails[1]+" \"";
             wel = by.equals("active")?"___cw___.switchTo().activeElement()":wel;
             if(classifierPinvXp) {
-            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifierPinvXps[1]+"\", \""+classifierPinvXps[2]+"\");";
+            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifierPinvXps[1]+"\", \""+esc(classifierPinvXps[2])+"\");";
             }
             if(classifier1PinvXp) {
-            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier1))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifier1PinvXps[1]+"\", \""+classifier1PinvXps[2]+"\");";
+            	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier1))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifier1PinvXps[1]+"\", \""+esc(classifierPinvXps[2])+"\");";
             }
             String b = "___ce___ = handleWaitFuncWL(___cw___, "+sc+", "+wel+", "+counter+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "

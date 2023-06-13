@@ -1332,11 +1332,10 @@ function manageRenameFile(tcid) {
 
 function manageTcFileHandler(method, tcFileName, tcFileNameTo, extt) {
 	let extras = "";
-	if(method=='POST' && $('#tcfile_extras').text()) {
-		extras = btoa($('#tcfile_extras'));
-	} else if(method=='PUT' && extt) {
-		extras = btoa(extt);
+	if(method=='POST' && $('#tcfile_extras').val()) {
+		extt = $('#tcfile_extras').val();
 	}
+	if(extt) extras = btoa(extt);
 	if(!tcFileName) return false;
     ajaxCall(true, method, "testcasefiles?testcaseFileName=" + tcFileName + "&testcaseFileNameTo=" + tcFileNameTo + "&extras="+extras, "", "", {}, function(data) {
         if(data) alert(data);
