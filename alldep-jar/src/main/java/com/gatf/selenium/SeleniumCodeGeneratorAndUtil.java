@@ -86,6 +86,7 @@ public class SeleniumCodeGeneratorAndUtil {
 		
 		if(isLog) {
 			try {
+				//System.out.println(sourceCode);
 				System.out.println(new Formatter().formatSource(sourceCode));
 			} catch (Exception e) {
 				System.out.println(sourceCode);

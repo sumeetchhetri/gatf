@@ -1784,9 +1784,9 @@ public class Command {
     public static String genDebugInfo(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
     		if(c instanceof GotoCommand) {
-    			return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    			return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     		}
-    		return "/*GATF_ST_LINE@" + c.fileLineDetails[2].toString().trim()+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    		return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     	}
     	return "";
     }
