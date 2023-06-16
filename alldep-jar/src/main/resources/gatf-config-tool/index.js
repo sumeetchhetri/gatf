@@ -1265,7 +1265,9 @@ function triggerClick(ele) {
 	ele.trigger('click');
 }
 
-function addTcFileHTml() {
+function addTcFileHTml(foldername) {
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+	$('#testcasefile-holder').find('a').eq(0).css('background-color', '#ddd');
     var htmm = '<input type="text" placeholder="File Name" id="tcfile_name_holder_add">&nbsp;&nbsp;<textarea placeholder="Attibutes" id="tcfile_extras" rows="3" style="width: 300px;resize:vertical !important;margin-left: 10px;"></textarea><a style="margin-left: 10px;" href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
     htmm += '<table border="1">';
     for (var i = 0; i < alltestcasefiles.length; i++) {
@@ -1285,12 +1287,13 @@ function addTcFileHTml() {
     		es = "none";
     	}
         var tcid = 'tcf_' + i;
-        htmm += '<tr><td style="width:3%"><input type="checkbox" click-event="addRemoveExecFile(this,\'' + alltestcasefiles[i][0] + '\')"></td>' + 
-        		'<td class="nmchng" style="width:30%"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i][0] + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + alltestcasefiles[i][0] + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
-        		'<td style="width:57%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(alltestcasefiles[i][1]?alltestcasefiles[i][1]:'')+'</textarea>' +
-        		'<td style="width:10%"><center><table><tr><td style="text-align: center;border: 0px black;"><button type="button" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">Remove</button></td>' + 
-        		'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i][0] + '\')">Execute</button></td></tr></table></center></td>' + 
-        		'</tr>';
+        if(!foldername || (foldername && alltestcasefiles[i][0].startsWith(foldername)))
+	        htmm += '<tr><td style="width:3%"><input type="checkbox" click-event="addRemoveExecFile(this,\'' + alltestcasefiles[i][0] + '\')"></td>' + 
+	        		'<td class="nmchng" style="width:44%;word-break:break-all;"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i][0] + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + alltestcasefiles[i][0] + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
+	        		'<td style="width:45%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(alltestcasefiles[i][1]?alltestcasefiles[i][1]:'')+'</textarea>' +
+	        		'<td style="width:8%"><center><table><tr><td style="text-align: center;border: 0px black;"><button type="button" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">Remove</button></td>' + 
+	        		'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i][0] + '\')">Execute</button></td></tr></table></center></td>' + 
+	        		'</tr>';
     }
     htmm += '</table><br/><center><button type="button" click-event="execSelectedFiles(this)">Execute Selected</button></center>';
     $('#ExampleBeanServiceImpl_form').html(htmm);
@@ -1411,9 +1414,11 @@ function startInitConfigTool(func) {
                                 $(this).attr('status', 'hide');
                                 $('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
                                 $('.' + escapedfolder + '_claz[folder]').trigger('click');
+                                addTcFileHTml();
                             } else {
                             	$('.' + escapedfolder + '_claz').show();
                                 $(this).attr('status', 'show');
+                                addTcFileHTml($(this).attr('folder'));
                                 //$('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
                                 //$('.' + escapedfolder + '_claz[folder]').trigger('click');
                             }

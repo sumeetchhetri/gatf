@@ -223,12 +223,9 @@ implements Serializable {
 
 			pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
 		} catch (Throwable ___e___1) {
-			try {
-				___e___1.printStackTrace();
-				java.lang.System.out.println("_main_exec.png");
-				screenshotAsFile(get___d___(), getOutDir() + java.io.File.separator + evaluate("_main_exec.png"));
-			} catch (java.io.IOException _ioe) {
-			}
+			___e___1.printStackTrace();
+			java.lang.System.out.println("_main_exec.png");
+			screenshotAsFile(get___d___(), getOutDir() + java.io.File.separator + evaluate("_main_exec.png"));
 			pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, "_main_exec.png", ___lp___, null));
 		}
 	}

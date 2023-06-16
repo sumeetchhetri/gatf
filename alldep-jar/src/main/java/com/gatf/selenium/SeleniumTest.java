@@ -3183,10 +3183,13 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected static void screenshotAsFile(WebDriver webDriver, String filepath) throws IOException {
+	protected static void screenshotAsFile(WebDriver webDriver, String filepath) {
 		if(webDriver instanceof AppiumDriver) {
 			File sc = ((TakesScreenshot)new Augmenter().augment(webDriver)).getScreenshotAs(OutputType.FILE);
-			FileUtils.copyFile(sc, new File(filepath));
+			try {
+				FileUtils.copyFile(sc, new File(filepath));
+			} catch (Exception e) {
+			}
 		} else {
 			float windowDPR = 1.75f;
 			if (webDriver instanceof JavascriptExecutor) {
@@ -3196,7 +3199,10 @@ public abstract class SeleniumTest {
 			}
 			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(windowDPR), 100)).takeScreenshot(webDriver);
 			BufferedImage originalImage = fpScreenshot.getImage();
-			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
+			try {
+				ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
+			} catch (Exception e) {
+			}
 		}
 	}
 
