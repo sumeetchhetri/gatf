@@ -226,7 +226,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					FilenameFilter filter = new FilenameFilter() {
 	    				public boolean accept(File folder, String name) {
 	    					return (!gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".xml")) 
-	    					        || (gatfConfig.isSeleniumExecutor() && (name.toLowerCase().endsWith(".sel") || name.toLowerCase().equalsIgnoreCase("selenium-apis.xml")));
+	    					        || (gatfConfig.isSeleniumExecutor() && (name.toLowerCase().endsWith(".sel") 
+	    					        || name.toLowerCase().endsWith(".props") || name.toLowerCase().equalsIgnoreCase("selenium-apis.xml")));
 	    				}
 	    			};
 	    			
@@ -235,7 +236,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 	    			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
 	    			
 	    			List<File> allFiles = TestCaseFinder.filterFiles(gatfConfig.getIgnoreFiles(), fileLst, dirFPath);
-	    			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles);
+	    			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles, gatfConfig.isSeleniumExecutor());
 	    			
 	    			for (File file : allFiles) {
 	    				String ext = "";

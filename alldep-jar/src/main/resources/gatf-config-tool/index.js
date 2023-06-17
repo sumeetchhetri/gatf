@@ -24,8 +24,9 @@ function rgb2hex(ele){
 
 var currColor = "#ffffff";
 var currTheme = "default";
-function darkMode() {
-	if(rgb2hex($('.header'))=="#ffffff") {
+function darkMode(theme) {
+	if(theme==="dark" || (theme!=="default" && rgb2hex($('.header'))=="#ffffff")) {
+		localStorage.setItem('theme', 'dark');
 		$('body').css('background-color', '#000000');
 		$('.header').css('background-color', '#000000');
 		$('.header').find('.navbar-collapse').css('background-color', '#000000');
@@ -69,6 +70,7 @@ function darkMode() {
 		jss.set('.plusminuslist',{'background-color': '#333'});
 		jss.set('.panel-heading',{'border-bottom': '0px black'});
 	} else {
+		localStorage.setItem('theme', 'default');
 		$('body').css('background-color', '#e0e0e0');
 		$('.header').css('background-color', '#ffffff');
 		$('.header').find('.navbar-collapse').css('background-color', '#ffffff');
@@ -664,6 +666,9 @@ function onSuccessLogin(token) {
 		});
 		
 		$('#dmmode').click(darkMode);
+		if(localStorage.getItem("theme")) {
+			darkMode(localStorage.getItem("theme"));
+		}
 		
 		if($('#loginform').is(':visible')) {
 			if(sessionStorage.getItem("token")) {
@@ -1246,6 +1251,30 @@ function execSelectedFiles(ele) {
     return false;
 }
 
+function hideLeftPanel() {
+	$('#lftpanel').hide();
+	$('#rgtpanel').removeClass('col-md-9').addClass('col-md-12');
+}
+
+function showLeftPanel() {
+	$('#lftpanel').show();
+	$('#rgtpanel').removeClass('col-md-12').addClass('col-md-9');
+}
+
+function hideTopNav() {
+	$('#hdtpi').hide();
+	$('#sdtpi').show();
+	$('#subnav').hide();
+	$('#main').css('padding-top', '60px');
+}
+
+function showTopNav() {
+	$('#hdtpi').show();
+	$('#sdtpi').hide();
+	$('#subnav').show();
+	$('#main').css('padding-top', '120px');
+}
+
 function addRemoveExecFile(ele, testfilen) {
     if (ele.checked) {
         execFiles.push(testfilen);
@@ -1266,8 +1295,10 @@ function triggerClick(ele) {
 }
 
 function addTcFileHTml(foldername) {
-	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
-	$('#testcasefile-holder').find('a').eq(0).css('background-color', '#ddd');
+	if(!foldername) {
+		$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+		$('#testcasefile-holder').find('a').eq(0).css('background-color', '#ddd');
+	}
     var htmm = '<input type="text" placeholder="File Name" id="tcfile_name_holder_add">&nbsp;&nbsp;<textarea placeholder="Attibutes" id="tcfile_extras" rows="3" style="width: 300px;resize:vertical !important;margin-left: 10px;"></textarea><a style="margin-left: 10px;" href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
     htmm += '<table border="1">';
     for (var i = 0; i < alltestcasefiles.length; i++) {
@@ -1276,7 +1307,7 @@ function addTcFileHTml(foldername) {
     		const lines = alltestcasefiles[i][1].split("\n");
     		for(const l of lines) {
     			if(l.indexOf("|")!=-1 && (l.split("|")[1].trim().startsWith("https://") || l.split("|")[1].trim().startsWith("http://"))) {
-    				extras += '<a target="_blank" href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a>';
+    				extras += '<a target="_blank" href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a><br/>';
     			} else {
     				extras += '<p style="margin:0px">'+l.trim()+'</p>';
     			}
@@ -1292,7 +1323,7 @@ function addTcFileHTml(foldername) {
 	        		'<td class="nmchng" style="width:44%;word-break:break-all;"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + alltestcasefiles[i][0] + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + alltestcasefiles[i][0] + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
 	        		'<td style="width:45%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(alltestcasefiles[i][1]?alltestcasefiles[i][1]:'')+'</textarea>' +
 	        		'<td style="width:8%"><center><table><tr><td style="text-align: center;border: 0px black;"><button type="button" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">Remove</button></td>' + 
-	        		'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i][0] + '\')">Execute</button></td></tr></table></center></td>' + 
+	        		(alltestcasefiles[i][0].endsWith('.props')?'':'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + alltestcasefiles[i][0] + '\')">Execute</button></td>') + '</tr></table></center></td>'
 	        		'</tr>';
     }
     htmm += '</table><br/><center><button type="button" click-event="execSelectedFiles(this)">Execute Selected</button></center>';
@@ -1401,7 +1432,6 @@ function startInitConfigTool(func) {
             var tind = 0;
             for (var folder in filesGrps) {
                 if (filesGrps.hasOwnProperty(folder)) {
-
                     filesGrps[folder].sort();
                     if (folder != "") {
                         var fid = 'folder_' + tind;
@@ -1416,6 +1446,8 @@ function startInitConfigTool(func) {
                                 $('.' + escapedfolder + '_claz[folder]').trigger('click');
                                 addTcFileHTml();
                             } else {
+								$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+								$(this).css('background-color', '#ddd');
                             	$('.' + escapedfolder + '_claz').show();
                                 $(this).attr('status', 'show');
                                 addTcFileHTml($(this).attr('folder'));
@@ -1490,13 +1522,13 @@ function startInitConfigTool(func) {
                             currtestcases = [''];
                             ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(data1) {
                                 var htmm = '<button type="button" class="plusminuslist" click-event=\"addTestCase(true, null, \'\', null, false, false)\">Add New Testcase</button><br/></br/>';
-                                if (currtestcasefile.toLowerCase().endsWith(".sel")) {
+                                if (isSeleniumExecutor) {
                                     htmm = "";
                                     $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
-                                    prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "Update", "onsucctcnmupdt", null, true, "sel_test_case");
+                                    prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "💾", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
-									$('#buttons_cont').append('<button type="button" style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button" style="position: absolute;right: 30px;top: 55px;" id="debug_test_case" type="submit" class="postbigb" type="submit">Debug</button>');
-									$('#buttons_cont').append('<button type="button" id="debug_test_case" type="submit" class="postbigb pull-right" type="submit">Debug</button><button type="button" style="margin-right: 10px;" id="play_test_case" type="submit" class="postbigb pull-right" type="submit">Test</button>');
+									$('#buttons_cont').append('<button type="button" style="position: absolute;right: 105px;top: 5px;" id="play_test_case" type="submit" class="" type="submit">▶</button><button type="button" style="position: absolute;right: 70px;top: 5px;" id="debug_test_case" type="submit" class="" type="submit">| |</button>');
+									$('#buttons_cont').append('<button type="button" id="debug_test_case" style="position:absolute;right:70px;bottom:25px;" type="submit" class="" type="submit">| |</button><button type="button" style="position:absolute;right:105px;bottom:25px;" id="play_test_case" type="submit" class=" pull-right" type="submit">▶</button>');
                                     $('#ExampleBeanServiceImpl_form').append('<div id="play_result_area"></div><div id="debug_result_area"></div>');
                                     $('[id="play_test_case"]').click(function() {
                                         playTest(currtestcasefile, "", false, false);
@@ -1530,6 +1562,10 @@ function startInitConfigTool(func) {
 										ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker());
 										window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 										fromErroredFile = undefined;
+									}
+									if(currtestcasefile.toLowerCase().endsWith(".props")) {
+										$('[id="play_test_case"]').remove();
+										$('[id="debug_test_case"]').remove();
 									}
                                     return;
                                 }
@@ -1591,7 +1627,7 @@ function startInitConfigTool(func) {
 					$('.'+ef+'_claz').addClass(efc+'_claz');
 				}*/
 			});
-            
+            darkMode(localStorage.getItem("theme"));
             if (typeof func == "function") func();
         };
     }(func), null);
@@ -1620,11 +1656,11 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
         tcfname = currtestcasefile;
     if (isNew) {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
-        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType, 'POST', 'Add', "onsucctcnmupdt", null);
+        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType, 'POST', '💾', "onsucctcnmupdt", null);
 		initEvents($('#ExampleBeanServiceImpl_form'));
     } else {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
-        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', 'Update', "onsucctcnmupdt", null);
+        prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', '💾', "onsucctcnmupdt", null);
         initEvents($('#ExampleBeanServiceImpl_form'));
         if (tcfname != null && data != null) {
             $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button"style="position: absolute;right: 100px;bottom: 135px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
@@ -2054,7 +2090,7 @@ function generatorConfig() {
         return function(data) {
             countMap = {};
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
-            prepareForm('configure?configType=generator', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', null, null);
+            prepareForm('configure?configType=generator', 'POST', jQuery.isEmptyObject(data) ? '💾' : '💾', null, null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);
@@ -2504,7 +2540,7 @@ function configuration() {
             countMap = {};
             isSeleniumExecutor = data.isSeleniumExecutor;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
-            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? 'Add' : 'Update', "onUpdConfig", null);
+            prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? '💾' : '💾', "onUpdConfig", null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);
@@ -2819,14 +2855,16 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
             validateOnBlur: false
         });
     }
+    let cls = buttonLabel=="Update"?'bigb':'';
+    let rght = eid==="sel_test_case"?140:70;
     $('#ExampleBeanServiceImpl_form').append(
         '<div class="control-group"> \
 				<label class=""></label> \
 				<div class="controls" id="buttons_cont"> \
-					<button type="button" style="position: absolute;left: 60px;top: 55px;" class="postbigb" click-event="gotoBottom()">Bottom</button> \
-					<button type="button" style="position: absolute;left: 140px;top: 55px;" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
-					<button type="button" class="postbigb" click-event="gotoTop()">Top</button> \
-					<button type="button" class="' + method.toLowerCase() + 'bigb" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
+					<button type="button" style="position: absolute;left: 20px;top: 5px;" click-event="gotoBottom()">↓</button> \
+					<button type="button" style="position: absolute;right: '+rght+'px;top: 5px;" class="' + method.toLowerCase() + cls + '" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
+					<button type="button" style="position: absolute;left: 20px;bottom: 25px;" click-event="gotoTop()">↑</button> \
+					<button type="button" style="position: absolute;right: '+rght+'px;bottom: 25px;" class="' + method.toLowerCase() + cls + '" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
 				</div> \
 			</div> \
 			<br/><br/><p></p><br/> \

@@ -280,11 +280,11 @@ public abstract class TestCaseFinder {
 		}
 	}
 	
-	public static List<File> filterValidTestCaseFiles(List<File> testFiles)
+	public static List<File> filterValidTestCaseFiles(List<File> testFiles, boolean isSeleniumExec)
 	{
 		List<File> allFiles = new ArrayList<File>();
 		for (File file : testFiles) {
-		    if(file.getName().toLowerCase().endsWith(".sel")) {
+		    if(isSeleniumExec && (file.getName().toLowerCase().endsWith(".sel") || file.getName().toLowerCase().endsWith(".props"))) {
 		        allFiles.add(file);
 		        continue;
 		    }

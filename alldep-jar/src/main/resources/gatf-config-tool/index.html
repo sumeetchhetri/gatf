@@ -39,12 +39,14 @@
                         </div>
                     </form>
                     <ul class="nav navbar-nav navbar-right">
+                    	<button type="button" style="display:none;position:absolute;top:13px;right:50px;" id="hdtpi" click-event="hideTopNav()">⇑</button>
+                    	<button type="button" style="position:absolute;top:13px;right:50px;" id="sdtpi" click-event="showTopNav()">⇓</button>
                         <img src="images/dm.png" id="dmmode" style="width: 40px;height: 40px;padding: 5px;margin-top: 5px;"/>
                     </ul>
                 </div>
             </div>
         </div>
-        <div id="subnav" class="navbar navbar-default">
+        <div id="subnav" style="display:none" class="navbar navbar-default">
             <div class="col-md-12">
                 <div class="btn-group">
                     <a href="#" click-event="configuration()" style="margin-left:15px;" class="navbar-btn btn btn-default btn-plus">
@@ -102,9 +104,10 @@
         <!--main-->
         <div id="main" class="">
             <div class="">
-                <div class="col-md-3">
+                <div class="col-md-3" id="lftpanel">
                     <div class="panel panel-default">
                         <div class="panel-heading">
+                        	<button style="position:absolute;top:5px;right:20px" class="pull-right" click-event="hideLeftPanel()" type="button">←</button>
                             <h4 class="">All Links</h4>
                         </div>
                         <div class="panel-body">
@@ -175,10 +178,11 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-9">
+                <div class="col-md-9" id="rgtpanel">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                            <h4 class="" id="heading_main">Manage Testcases </h4>
+                        	<button style="position:absolute;top:5px;right:20px" class="pull-right" click-event="showLeftPanel()" type="button">→</button>
+                            <h4 style="margin-top:20px" class="" id="heading_main">Manage Testcases </h4>
                         </div>
                         <div class="panel-body">
                             <form class="form form-vertical" id="ExampleBeanServiceImpl_form" name="ExampleBeanServiceImpl_form"  style="margin-left:30px">
