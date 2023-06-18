@@ -805,8 +805,8 @@ function getProfiles() {
 }
 
 function executeHtml(pluginType) {
+	$('#editorTabs').html('').addClass('hidden');
     var htmm = '<a href="#" class="plusminuslist" click-event=\"seltestfailed = false;executionHandler(\'PUT\', true, \'' + pluginType + '\')\">Start Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'DELETE\', true, \'' + pluginType + '\')\">Stop Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'GET\', true, \'' + pluginType + '\')\">Check Execution Status</a><br/><br/><image id="image_status" src="resources/yellow.png"/>';
-
     if (pluginType == 'executor') {
         if (!calledbytestfpage) {
             execFiles = new Array();
@@ -848,6 +848,7 @@ function executeHtml(pluginType) {
 }
 
 function getExtIntData(extApiFileName, configType) {
+	$('#editorTabs').html('').addClass('hidden');
     var isExternal = configType == 'issuetrackerapi' ? true : false;
     ajaxCall(true, "GET", "testcases?testcaseFileName=" + extApiFileName + "&configType=" + configType, "", "", {}, function(isExternal, extApiFileName, configType) {
         return function(data1) {
@@ -1295,6 +1296,7 @@ function triggerClick(ele) {
 }
 
 function addTcFileHTml(foldername) {
+	$('#editorTabs').html('').addClass('hidden');
 	if(!foldername) {
 		$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 		$('#testcasefile-holder').find('a').eq(0).css('background-color', '#ddd');
@@ -1524,6 +1526,15 @@ function startInitConfigTool(func) {
                                 var htmm = '<button type="button" class="plusminuslist" click-event=\"addTestCase(true, null, \'\', null, false, false)\">Add New Testcase</button><br/></br/>';
                                 if (isSeleniumExecutor) {
                                     htmm = "";
+                                    if(ceeditor) {
+                                    	if($('#req-txtarea').length>0) {
+                                    		try {
+                                    			ceeditor.toTextArea();
+                                    		} catch(er) {}
+                                    	}
+                                    	else
+                                    		ceeditor = undefined;
+                                    }
                                     $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "💾", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
@@ -1538,6 +1549,53 @@ function startInitConfigTool(func) {
                                         debugTest(currtestcasefile, "", false, false);
                                         return false;
                                     });
+                                    const fedid = sha256(currtestcasefile);
+                                    $("#editorTabs").removeClass('hidden');
+                                    if($('#'+fedid).length==0) {
+                                    	$("#editorTabs").find('li').removeClass('active');
+                                    	const fld = currtestcasefile.length>15?(currtestcasefile.substring(0,15)+"..."):currtestcasefile;
+                                    	$("#editorTabs").append('<li id="'+fedid+'" class="active"><a href="#" id="'+fedid+'">'+fld+'<span style="padding-left:10px;font-size:8px;cursor:pointer;" class="btn_close">❌<span></a></li>');
+                                    	$('#'+fedid).attr('title', currtestcasefile);
+                                    	$('#'+fedid).data('content', data1);
+                                    	$('#'+fedid).find('.btn_close').click(function() {
+                                    		const fli = $(this).parent().parent().parent().children('li');
+                                    		const currpos = $(this).parent().parent().index();
+                                    		if(currpos>0) {
+                                    			fli.eq(currpos-1).addClass('active');
+                                    			fli.eq(currpos-1).trigger('click');
+                                    		} else {
+                                    			if(fli.length>1) {
+                                    				fli.eq(currpos+1).addClass('active');
+                                    				fli.eq(currpos+1).trigger('click');
+                                    			} else {
+                                    				addTcFileHTml();
+                                    			}
+                                    		}
+                                    		$(this).parent().parent().remove();
+                                    	});
+                                    	$('#'+fedid).click(function() {
+                                    		$("#editorTabs").find('li').removeClass('active');
+                                    		$(this).addClass('active');
+                                    		if(ceeditor) ceeditor.toTextArea();
+                                    		$('#req-txtarea').val(data1);
+		                                    ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
+												lineNumbers: true,
+												lineWrapping: true,
+												tabSize: 4,
+												matchBrackets: true,
+												extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
+		    									foldGutter: true,
+												mode: 'text/x-perl',
+												gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
+												viewportMargin: Infinity,
+												theme: currTheme
+											});
+                                    	});
+                                    } else {
+                                    	$('#'+fedid).data('content', data1);
+                                   		$("#editorTabs").find('li').removeClass('active');
+                                   		$('#'+fedid).addClass('active');
+                                    }
                                     ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 										lineNumbers: true,
 										lineWrapping: true,
@@ -1736,6 +1794,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	if(!sessionId) sessionId = uid();
 	var isserverlogfile = "&sessionId="+sessionId;
 	$('#req-txtarea').data('tcf', tcf);
+	ceeditor = undefined;
 	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 		lineNumbers: true,
 		lineWrapping: true,
@@ -2084,6 +2143,7 @@ function getTestResultContent1(report) {
 }
 
 function generatorConfig() {
+	$('#editorTabs').html('').addClass('hidden');
     $('#heading_main').html('Generator Configurationuration');
     var configschema = JSON.parse('{"type":"object","properties":{"testPaths":{"type":"array","items":{"nolabel":true,"type":"string"}},"soapWsdlKeyPairs":{"type":"array","items":{"nolabel":true,"type":"string"}},"urlPrefix":{"type":"string"},"requestDataType":{"type":"string"},"responseDataType":{"type":"string"},"resourcepath":{"type":"string"},"enabled":{"type":"boolean","required":true},"overrideSecure":{"type":"boolean","required":true},"useSoapClient":{"type":"boolean","required":true},"urlSuffix":{"type":"string"},"postmanCollectionVersion":{"type":"integer"},"testCaseFormat":{"type":"string"}}}');
     ajaxCall(true, "GET", "configure?configType=generator", "", "", {}, function(configschema) {
@@ -2097,6 +2157,7 @@ function generatorConfig() {
 }
 
 function configuration() {
+	$('#editorTabs').html('').addClass('hidden');
     $('#heading_main').html('Manage Configuration');
     var configschema = {
         "type": "object",

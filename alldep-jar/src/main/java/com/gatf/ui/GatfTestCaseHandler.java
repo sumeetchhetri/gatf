@@ -113,7 +113,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && !isSelTc)) {
     		try {
-    		    if(isSelTc) {
+    		    if(isSelTc && !isApiIntType) {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
@@ -181,7 +181,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
     	} else if(request.getMethod().equals(Method.GET)) {
     		try {
-    		    if(isSelTc) {
+    		    if(isSelTc && !isApiIntType) {
     		        String data = FileUtils.readFileToString(new File(filePath), "UTF-8");
                     response.setContentType(MediaType.TEXT_PLAIN);
                     response.setContentLength(data.length());
