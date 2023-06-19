@@ -1578,6 +1578,7 @@ function startInitConfigTool(func) {
                                     		$(this).addClass('active');
                                     		if(ceeditor) ceeditor.toTextArea();
                                     		$('#req-txtarea').val(data1);
+                                    		currtestcasefile = $(this).attr('title');
 		                                    ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 												lineNumbers: true,
 												lineWrapping: true,
