@@ -91,7 +91,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    boolean isServerLogsApi = request.getParameter("isServerLogsApi")!=null;
 			    boolean isExternalLogsApi = request.getParameter("isExternalLogsApi")!=null;
 			    int selDbgline = -1;
-			    boolean selDbgBrkRemove = false;
+			    boolean selDbgBrkRemove = false, setBreakpoint = false;
 			    TestCaseReport tcReport = null;
 			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
@@ -119,6 +119,11 @@ public class GatfReportsHandler extends HttpHandler {
 			    	if(linenum.startsWith("r")) {
 			    		selDbgBrkRemove = true;
 			    		linenum = linenum.substring(1);
+			    		setBreakpoint = true;
+			    	} else if(linenum.startsWith("b")) {
+			    		selDbgBrkRemove = false;
+			    		linenum = linenum.substring(1);
+			    		setBreakpoint = true;
 			    	}
 			    	selDbgline = Integer.parseInt(linenum);
 			    }
@@ -127,7 +132,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    	throw new RuntimeException("Invalid action specified..");
 			    }
 			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 
-			    		0, false, selDbgline, selDbgBrkRemove, sessionId);
+			    		0, false, selDbgline, setBreakpoint, selDbgBrkRemove, sessionId);
 			    if(out[1]!=null) {
 			        response.setContentType(out[2].toString());
 			        response.setContentLength(((byte[])out[1]).length);
@@ -146,7 +151,7 @@ public class GatfReportsHandler extends HttpHandler {
 
 	public Object[] executeTest(GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
 	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin, int selDbgline, 
-	        boolean selDbgBrkRemove, String sessionId) throws Exception {
+	        boolean setBreakpoint, boolean selDbgBrkRemove, String sessionId) throws Exception {
 	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent") || action.equals("debug"))
         {
@@ -510,7 +515,6 @@ public class GatfReportsHandler extends HttpHandler {
                 lock.lock();
                 
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
-                    executorMojo.initilaizeContext(gatfConfig, true);
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
                     if(action.equals("debug")) {
                     	if(selDbgline<-5) {
@@ -536,21 +540,32 @@ public class GatfReportsHandler extends HttpHandler {
     	        					configPath = new File(mojo.getRootDir(), "gatf-config.json").getAbsolutePath();
     	        				}
     	        			}
+    	                    executorMojo.initilaizeContext(gatfConfig, true);
     	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
     	                    dbgSessions.put(sessionId, dbgSession);
-    	                    String cont = "Success: " + dbgSession.getSrcCode();
-    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+    	                    Map<String, Object> out = new HashMap<>();
+    	                    out.put("s", true);
+    	                    out.put("c", dbgSession.getSrcCode());
+    	                    out.put("l", dbgSession.getDebuggableLines());
+    	                    out.put("i", dbgSession.getPrevLine());
+    	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+    	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	} else {
+    	                    Map<String, Object> out = new HashMap<>();
                     		if(dbgSession==null) {
-                        		String cont = "Fail: No Debug session running for script " + testcaseFileName;
-        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+        	                    out.put("s", false);
+        	                    out.put("m", "No Debug session running for script " + testcaseFileName);
+        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                         	}
                     		switch (selDbgline) {
 								case -1: {
 									//F6 Step over
 									if(!dbgSession.enableStepRequest()) {
-										String cont = "Fail: Please suspend the debugger first";
-		        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+		        	                    out.put("s", false);
+		        	                    out.put("m", "Please suspend the debugger first");
+		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 									}
 									break;
 								}
@@ -571,28 +586,39 @@ public class GatfReportsHandler extends HttpHandler {
 								}
 								case -5: {
 									//Status check call 1 - running, 0 - stopped
-									String cont = "Success: " + dbgSession.getRunning();
-		    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+	        	                    out.put("s", true);
+	        	                    out.put("r", dbgSession.getRunning());
+	        	                    out.put("p", dbgSession.getPrevLine());
+	        	                    out.put("n", dbgSession.getNextLine());
+	        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+	        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 								}
 								default: {
 									if(selDbgBrkRemove) {
 										//Click on line number in script (remove breakpoint)
-										if(!dbgSession.unsetBreakPoint(selDbgline)) {
-											String cont = "Fail: Invalid line number for debugger";
-			        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+										if(!dbgSession.unsetBreakPoint(selDbgline+1)) {
+			        	                    out.put("s", false);
+			        	                    out.put("m", "Invalid line number for debugger");
+			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 										}
 									} else {
 										//Click on line number in script (add breakpoint)
-										if(!dbgSession.setBreakPoint(selDbgline)) {
-											String cont = "Fail: Invalid line number for debugger";
-			        	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+										if(!dbgSession.setBreakPoint(selDbgline+1)) {
+			        	                    out.put("s", false);
+			        	                    out.put("m", "Invalid line number for debugger");
+			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 										}
 									}
 									break;
 								}
 							}
-                    		String cont = "Success: " + dbgSession.getNextLine();
-    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+    	                    out.put("s", true);
+    	                    out.put("p", dbgSession.getPrevLine());
+    	                    out.put("n", dbgSession.getNextLine());
+    	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+    	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
                     } else {
                     	executorMojo.doSeleniumTest(gatfConfig, null);

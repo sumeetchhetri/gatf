@@ -338,6 +338,40 @@ public class Command {
         this.fileLineDetails = fileLineDetails;
         this.state = state;
     }
+    
+    public static Object[] getSubtestFromCall(String line, String testcaseFileName, AcceptanceTestContext context) {
+    	List<String> commands = new ArrayList<String>();
+    	try {
+    		Command allcmds = Command.read(context.getResourceFile(testcaseFileName), commands, context);
+    		CommandState state = new CommandState();
+    		state.allSubTests = allcmds.state.allSubTests;
+    		Object[] cmdDetails = new Object[]{line, 1, null, "", state, ""};
+			if(line.trim().startsWith("@call")) {
+				String cmd = utf8Trim(line.substring(6).trim().trim());
+		        cmd = state.sanitize(cmd);
+				ExecSubTestCommand ecmd = new ExecSubTestCommand(cmd, cmdDetails, state);
+				for (Command c : allcmds.children) {
+					if(c instanceof SubTestCommand) {
+						if(((SubTestCommand)c).name.equals(ecmd.name)) {
+							return c.fileLineDetails;
+						}
+					}
+				}
+			} else {
+				NlpExecSubTestCommand ecmd = new NlpExecSubTestCommand(line.trim(), cmdDetails, state);
+				for (Command c : allcmds.children) {
+					if(c instanceof SubTestCommand) {
+						if(((SubTestCommand)c).name.equals(ecmd.name)) {
+							return c.fileLineDetails;
+						}
+					}
+				}
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+    	return new Object[] {};
+    }
 
     public String getClassName() {
         return className;
@@ -348,11 +382,11 @@ public class Command {
     	Object[] details;
         public GatfSelCodeParseError(String message, Object[] o) {
             super(message);
-            details = new Object[] {o[0], o[1], o[5]};
+            details = new Object[] {o[0], o[1], o[5], ""};
         }
         public GatfSelCodeParseError(String message, Object[] o, Throwable e) {
             super(message, e);
-            details = new Object[] {o[0], o[1], o[5]};
+            details = new Object[] {o[0], o[1], o[5], e.getMessage()};
         }
         public Object[] getDetails() {
         	return details;
@@ -1179,6 +1213,7 @@ public class Command {
                 if(state.visitedFiles.contains(f.getAbsolutePath())) {
                     throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
                 }
+                state.visitedFiles.add(f.getAbsolutePath());
                 List<String> commands = FileUtils.readLines(f, "UTF-8");
                 int cnt = 1;
                 String fnm = ((IncludeCommand)tmp).name;
@@ -1605,7 +1640,7 @@ public class Command {
             }
             b.append("}\n"); 
         }
-        List<String[]> bn = new ArrayList<String[]>();
+        List<Object[]> bn = new ArrayList<Object[]>();
         Set<String> sessDups = new HashSet<String>();
         int lastSessionId = 0;
         for (Command c : children) {
@@ -1618,7 +1653,7 @@ public class Command {
                 }
                 ((BrowserCommand)c).sessionId = lastSessionId;
                 if(mp.containsKey(c.name)) {
-                    bn.add(new String[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+""});
+                    bn.add(new Object[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+"", c});
                 } else {
                 	b.append("public void setupDriver"+c.name.toLowerCase().replaceAll("[^0-9A-Za-z]+", "")+"(LoggingPreferences ___lp___) throws Exception {\n");
                 	SeleniumDriverConfig sd = new SeleniumDriverConfig();
@@ -1634,7 +1669,7 @@ public class Command {
                     	b.append(cfp.javacode());
                     }
                     b.append("}\n");
-                    bn.add(new String[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+""});
+                    bn.add(new Object[]{c.name.toLowerCase(), ((BrowserCommand)c).sessionName, ((BrowserCommand)c).sessionId+"", c});
                     //throwError(c.fileLineDetails, new RuntimeException("Driver configuration not found for " + c.name));
                 }
                 lastSessionId++;
@@ -1655,10 +1690,10 @@ public class Command {
             
             if(stsessionName!=null || stsessionId!=null) {
 	            boolean flag = false;
-	        	for (String[] brn : bn)
+	        	for (Object[] brn : bn)
 	            {
-	                String sessionName = brn[1];
-	                String sessionId = brn[2];
+	                String sessionName = (String)brn[1];
+	                String sessionId =  (String)brn[2];
 	                
 	                flag |= (sessionName!=null && sessionName.equalsIgnoreCase(stsessionName)) || sessionId.equalsIgnoreCase(stsessionId);
 	            }
@@ -1671,12 +1706,12 @@ public class Command {
         }
         b.append("public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {\n");
         b.append("/*GATF_ST_START_*/");
-        for (String[] brn : bn)
+        for (Object[] brn : bn)
         {
-        	String bsessionName = brn[1];
-            String bsessionId = brn[2];
+        	String bsessionName =  (String)brn[1];
+            String bsessionId =  (String)brn[2];
             //b.append("java.util.Set<String> "+state.varnameat()+" = addTest("+(StringUtils.isNotBlank(brn[1])?("\""+esc(brn[1])+"\""):"null")+", \""+esc(brn[0])+"\");\n");
-            b.append("addTest("+(StringUtils.isNotBlank(brn[1])?("\""+esc(brn[1])+"\""):"null")+", \""+esc(brn[0])+"\");\n");
+            b.append("addTest("+(StringUtils.isNotBlank(bsessionName)?("\""+esc(bsessionName)+"\""):"null")+", \""+esc(brn[0].toString())+"\");\n");
             for (Object[] st : state.subtestDetails)
             {
                 String sessionName = StringUtils.isNotBlank((String)st[1])?(String)st[1]:null;
@@ -1692,7 +1727,7 @@ public class Command {
                 	if((Boolean)st[5]) {
 		                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
 		                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
-		                b.append("addSubTest(\""+esc(brn[0])+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
+		                b.append("addSubTest(\""+esc(brn[0].toString())+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
                 	}
                 }
                 //b.append("}\n");
@@ -1706,18 +1741,20 @@ public class Command {
             }
             for (int y=bn.size()-1;y>=0;y--)
             {
-                String[] brn = bn.get(y);
+                Object[] brn = bn.get(y);
                 b.append("quit();\n");
-                b.append("setupDriver"+brn[0].replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
+                b.append(genDebugInfo(((Command)brn[3])));
+                b.append("setupDriver"+brn[0].toString().replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
             }
             b.append("_execute(___lp___);\n");
         } else {
-            for (String[] brn : bn)
+            for (Object[] brn : bn)
             {
                 b.append("setSession(null, " + (brn[2]!=null?brn[2]:"-1")+", true);\n");
                 //b.append("startTest();\n");
                 b.append("quit();\n");
-                b.append("setupDriver"+brn[0].replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
+                b.append(genDebugInfo(((Command)brn[3])));
+                b.append("setupDriver"+brn[0].toString().replaceAll("[^0-9A-Za-z]+", "")+"(___lp___);\n");
                 b.append("_execute(___lp___);\n");
             }
         }
@@ -1783,10 +1820,10 @@ public class Command {
     
     public static String genDebugInfo(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
-    		if(c instanceof GotoCommand) {
+    		if(c instanceof BrowserCommand) {
     			return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     		}
-    		return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    		return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     	}
     	return "";
     }
@@ -2292,6 +2329,11 @@ public class Command {
 					if(params.containsKey(pdet[0].trim())) {
 						throwError(fileLineDetails, new RuntimeException("Duplicate parameter name `"+pdet[0].trim()+"`"));
 					}
+					if(pdet[1]!=null && pdet[1].length()>=2 && pdet[1].charAt(0)==pdet[1].charAt(pdet[1].length()-1)) {
+			            if(pdet[1].charAt(0)=='"' || pdet[1].charAt(0)=='\'') {
+			            	pdet[1] = pdet[1].substring(1, pdet[1].length()-1);
+			            }
+			        }
 					params.put(pdet[0].trim(), pdet[1]);
 				} else {
 					if(subt.params.size()==0) {
@@ -2321,7 +2363,6 @@ public class Command {
 	            state.addSubtest(this);
             }
         }
-    	
     }
     
     public static class ExecSubTestCommand extends Command {
@@ -2397,6 +2438,11 @@ public class Command {
 								if(params.containsKey(pdet[0].trim())) {
 									throwError(fileLineDetails, new RuntimeException("Duplicate parameter name `"+pdet[0].trim()+"`"));
 								}
+								if(pdet[1]!=null && pdet[1].length()>=2 && pdet[1].charAt(0)==pdet[1].charAt(pdet[1].length()-1)) {
+						            if(pdet[1].charAt(0)=='"' || pdet[1].charAt(0)=='\'') {
+						            	pdet[1] = pdet[1].substring(1, pdet[1].length()-1);
+						            }
+						        }
 								params.put(pdet[0].trim(), pdet[1]);
 							} else {
 								if(subt.params.size()==0) {
@@ -8587,7 +8633,7 @@ public class Command {
 		}
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
-    			"/path/to/project/gatf-config.xml",
+        		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",

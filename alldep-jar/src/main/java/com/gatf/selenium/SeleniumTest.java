@@ -498,9 +498,9 @@ public abstract class SeleniumTest {
 					cmd = Files.readAllLines(Paths.get(name)).get(line-1);
 				} catch (Exception e) {
 				}
-				fe.details = new Object[] {cmd, line, relName};
+				fe.details = new Object[] {cmd, line, relName, result.getCause().getMessage()};
 			} else {
-				fe.details = new Object[] {"", 0, ""};
+				fe.details = new Object[] {"", 0, "", result.getCause().getMessage()};
 			}
 			throw fe;
 		}
@@ -1224,7 +1224,7 @@ public abstract class SeleniumTest {
 							cmd = Files.readAllLines(Paths.get(test.cfileName)).get(test.line-1);
 						} catch (Exception e) {
 						}
-						((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName};
+						((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName, cause.getMessage()};
 					}
 					((GatfRunTimeError)cause).pending = false;
 					((GatfRunTimeError)cause).img = img;
@@ -1318,7 +1318,7 @@ public abstract class SeleniumTest {
 					cmd = Files.readAllLines(Paths.get(test.cfileName)).get(test.line-1);
 				} catch (Exception e) {
 				}
-				((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName};
+				((GatfRunTimeError)cause).details = new Object[] {cmd, test.line, relName, cause.getMessage()};
 			}
 			System.out.println("Error occurred on line no " + line);
 			List<LogEntry> entries = new ArrayList<LogEntry>();
@@ -3433,7 +3433,7 @@ public abstract class SeleniumTest {
 						} catch (Exception e2) {
 						}
 						XPathException fe = new XPathException(e);
-						fe.details = new Object[] {xpathExpr[1], line, cfileName};
+						fe.details = new Object[] {xpathExpr[1], line, cfileName, "Invalid XPATH expression"};
 						throw fe;
 					}
 				}

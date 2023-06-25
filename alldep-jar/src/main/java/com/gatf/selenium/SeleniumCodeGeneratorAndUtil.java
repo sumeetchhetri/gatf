@@ -102,14 +102,14 @@ public class SeleniumCodeGeneratorAndUtil {
 			String sellineident = "/*GATF_ST_LINE@";
 			sourceCode.lines().forEach(line -> {
 				if(line.trim().startsWith(sellineident)) {
-					boolean addOne = line.indexOf("_*/")!=-1;
-					int indx = addOne?line.indexOf("_*/"):line.indexOf("*/");
+					boolean isOpen = line.indexOf("_*/")!=-1;
+					int indx = isOpen?line.indexOf("_*/"):line.indexOf("*/");
 					String fld = line.substring(line.indexOf(sellineident)+sellineident.length(), indx);
 					String sflnm = fld.substring(0, fld.indexOf(":"));
 					int sln = Integer.parseInt(fld.substring(fld.indexOf(":")+1));
-					selToJavaLineMap.put(sln, new Object[] {sflnm, cl.get() + (addOne?1:0)});
+					selToJavaLineMap.put(sln, new Object[] {sflnm, cl.get(), isOpen});
 				} else if(line.trim().startsWith("/*GATF_ST_START_*/")) {
-					selToJavaLineMap.put(0, new Object[] {null, cl.get()});
+					//selToJavaLineMap.put(0, new Object[] {null, cl.get(), false});
 				}
 				cl.incrementAndGet();
 			});

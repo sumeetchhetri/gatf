@@ -27,7 +27,7 @@ public class ApiPlugin {
         GatfReportsHandler handler = new GatfReportsHandler(mojo, null);
         mojo.setRootDir(mojo.getContext().getGatfExecutorConfig().getTestCasesBasePath());
         Object[] out = handler.executeTest(mojo.getContext().getGatfExecutorConfig(), null, "playTest", testcaseFileName, testname, false, 
-        		false, index, true, 0, false, null);
+        		false, index, true, 0, false, false, null);
         TestCaseReport report = (TestCaseReport)out[3];
         
         System.out.println("Executed api " + testname + "@" + testcaseFileName);

@@ -852,6 +852,7 @@ function getExtIntData(extApiFileName, configType) {
     var isExternal = configType == 'issuetrackerapi' ? true : false;
     ajaxCall(true, "GET", "testcases?testcaseFileName=" + extApiFileName + "&configType=" + configType, "", "", {}, function(isExternal, extApiFileName, configType) {
         return function(data1) {
+        	$('#heading_main').html('Manage ' + (configType == 'issuetrackerapi'?'Issue Tracker APIs':'Server Logs APIs'));
             currtestcasefile = extApiFileName;
             var htmm = '';
             if (data1 != null && data1.length > 0) {
@@ -1038,7 +1039,7 @@ function executionHandler(method, shwPp, pluginType) {
 					$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
 				} else {
 					$('[tcfname="'+data.error[2]+'"]').trigger('click');
-					$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
+					if($('.blockUI').length==0) $.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
 					setTimeout(function() {
 						function makeMarker() {
 							var marker = document.createElement("div");
@@ -1401,6 +1402,445 @@ function testcasefileView() {
     }
 }
 
+var SELEASY=[
+	["?", false, {displayText: "", text: " xpath@\"expr\"\n{\n\t//code when true\n}"}, {displayText: " - eval", text: " eval ${var}==\"Value\"\n{\n\t//code when true\n}"},
+		  {displayText: " - browser", text: " browser-scope \"chrome\"\n{\n\t//code when true\n}"}, {displayText: " - session", text: " session-scope \"chrome\"\n{\n\t//code when true\n}"},
+		  {displayText: " - relative", text: " relative tag@\"expr1\" above xpath@\"expr2\"\n{\n\t//code when true\n}"}, {displayText: " - selected", text: " xpath@\"expr\" selected\n{\n\t//code when true\n}"}],
+	["?!", true, 0],
+	"?? xpath@\"expr\"",
+	"??- xpath@\"expr\"",
+	"??+ xpath@\"expr\"",
+	["if", true, 0],
+	["ifnot", true, 0],
+	[":", false, {displayText: "", text: "\n{\n\t//code when true\n}"}],//index = 7
+	[":?", true, 0],
+	[":?!", true, 0],
+	["else if", true, 0],
+	["else ifnot", true, 0],
+	["else", true, 7],//index = 12
+	["window", false, {displayText: " 0", text: " 0"}, {displayText: " main", text: " main"}, {displayText: " parent", text: " parent"}, {displayText: " block", text: " 1\n{\n\t//code to be executed\n}"}],
+	["frame", true, 13],
+	["tab", true, 13],
+	"#",
+	"##",
+	"loop over",
+	"#provider",
+	"#counter",
+	"#j",
+	"#counter",
+	"#sql",
+	"#mongo",
+	"#file",
+	"#transient-variable",
+	"#transient-provider",
+	"break",
+	"close",
+	"continue",
+	["eval", " ${var}==\"Value\""],
+	"exec @print(\"Hello World\")",
+	"goto \"https://abc.com\"",
+	"import file.sel",
+	["open", false, {displayText: " chrome", text: " chrome"}, {displayText: " chrome-hdl", text: " chrome-hdl"}, {displayText: " chrome-dkr", text: " chrome-dkr"},
+			{displayText: " chrome-rec", text: " chrome-rec"}, {displayText: " firefox", text: " firefox"}, {displayText: " safari", text: " safari"},
+			{displayText: " ie", text: " ie"}, {displayText: " opera", text: " opera"}, {displayText: " edge", text: " edge"},
+			{displayText: " appium-android", text: " appium-android"}, {displayText: " appium-ios", text: " appium-ios"}],
+	"require",
+	"sleep 1000",
+	["subtest", " \"subtestname\" (args)\n{\n\t//subtest logic\n}"],
+	"@call \"subtestname\"",
+	"@print()",
+	"@driver",
+	"@window",
+	"@element",
+	"@sc",
+	"@printprovjson()",
+	"@printProv()",
+	"@index",
+	"@line",
+	"@cntxtparam()",
+	"pass \"pass message\"",
+	"fail \"failure message\"",
+	"warn \"warning message\"",
+	"dynprops file.props",
+	"maximize",
+	"include file.sel",
+	"config file.props",
+	"xpath@\"expr\"",
+	"css@\"expr\"",
+	"id@\"expr\"",
+	"name@\"expr\"",
+	"class@\"expr\"",
+	"tag@\"expr\"",
+	"cssselector@\"expr\"",
+	"text@\"expr\"",
+	"partiallinktext@\"expr\"",
+	"linktext@\"expr\"",
+	"jq@\"expr\"",
+	"jquery@\"expr\"",
+	"active",
+	"this",
+	"current",
+	"var varname \"Some Value\"",
+	["robot", false, {displayText: " keydown", text: " keydown 1"}, {displayText: " keyup", text: " keyup 1"}, {displayText: " keypress", text: " keypress 1"}],
+	"type",
+	"click",
+	"back",
+	"forward",
+	"refresh",
+	"clear",
+	"submit",
+	"setting",
+	"jsvar",
+	"execjs 'console.log(\"Hello\");'",
+	"screenshot \"/path/to/file\"",
+	"ele-screenshot xpath@\"expr\" \"/path/to/file\"",
+	"hoverclick",
+	"actions",
+	"chord",
+	"confirm",
+	"alert",
+	"moveby",
+	"doubleclick",
+	"dblclick",
+	["netapix", false, {displayText: " on", text: " on GET http://abc.com/api/person"}, {displayText: " off", text: " off json var1@$.token,var2@$.firstname,$.mobileNo"}],
+	["wopensave", false, {displayText: " on", text: " on"}, {displayText: " off", text: " off \"/path/to/file.pdf\" \"text\""}],
+	"sendKeys",
+	"moveto",
+	"clickhold",
+	"release",
+	"keyup",
+	"keydown",
+	"api",
+	"plugin",
+	"jsonwrite",
+	"xmlwrite",
+	"zoom",
+	"pinch",
+	"tap",
+	"swipe",
+	"rotate",
+	"hidekeypad",
+	"shake",
+	"chrome",
+	"chrome-dkr",
+	"chrome-hdl",
+	"chrome-rec",
+	"firefox",
+	"opera",
+	"safari",
+	"ie",
+	"edge",
+	"appium-ios",
+	"appium-android",
+	"readfile",
+	"mode",
+	"hover",
+	"upload '/path/to/file.txt' id@'ele1'",
+	"randomize",
+	"func \"funcname\" (args)",
+	"relative",
+	"sql",
+	"dsq",
+	"ds query",
+	"file",
+	"curl",
+	"scroll",
+	"visible",
+	"attr",
+	"fuzzyn",
+	"fuzzya",
+	"fuzzyauc",
+	"fuzzyalc",
+	"fuzzyan",
+	"fuzzyanuc",
+	"fuzzyanlc",
+	"title",
+	"selected",
+	"above",
+	"below",
+	"leftof",
+	"rightof",
+	"near",
+	"true",
+	"false",
+	"filevar",
+	"others",
+	"on",
+	"off",
+	"post",
+	"get",
+	"put",
+	"delete",
+	"tagname",
+	"width",
+	"height",
+	"posx",
+	"posy",
+	"main",
+	"cssvalue",
+	"lazy",
+	"jsonread",
+	"jsonpath",
+	"xmlread",
+	"xmlpath",
+	"mongo",
+	"counter",
+	"ds",
+	"query",
+	"timeout",
+	"waitready",
+	"scrollup",
+	"scrollpageup",
+	"scrollpagedown",
+	"scrolldown",
+	"execjsfile /path/to/file.js",
+	"canvas xpath@\"expr\"",
+	"touch",
+	"layer",
+	"normal",
+	"integration",
+	"parent",
+	"clk_focus",
+	"capability_set",
+	"currenturl",
+	"pagesource",
+	"xpos",
+	"ypos",
+	"alerttext",
+	"alphanumeric",
+	"alpha",
+	"alphanumericlc",
+	"alphalc",
+	"alphanumericuc",
+	"alphauc",
+	"numeric",
+	"value",
+	"range",
+	"prefixed",
+	"prefixed_",
+	"status",
+	"header",
+	"json",
+	"select",
+	"clickandhold",
+	"contextclick",
+	"rightclick",
+	"movetoelement",
+	"draganddrop",
+	"dragdrop",
+	"dragdrop1",
+	"draganddrop1",
+	"movebyoffset",
+	"ok",
+	"yes",
+	"cancel",
+	"no",
+	"enabled",
+	"className"
+];
+var editorSynonyms = function(cm, option) {
+    return new Promise(function(accept) {
+      setTimeout(function() {
+        var cursor = cm.getCursor(), line = cm.getLine(cursor.line);
+        var start = cursor.ch, end = cursor.ch;
+        while (start && /[^\s\t\n]/.test(line.charAt(start - 1))) --start;
+        while (end < line.length && /[^\s\t\n]/.test(line.charAt(end))) ++end;
+        var word = line.slice(start, end).toLowerCase();
+        let matched = [];
+        for (var i = 0; i < SELEASY.length; i++) {
+        	if(typeof SELEASY[i]=='string' && SELEASY[i].startsWith(word)) {
+        		matched.push(SELEASY[i]);
+        	} else if(SELEASY[i][0].startsWith(word)) {
+        		if(SELEASY[i].length==2) {
+	        		for (var j = 1; j < SELEASY[i].length; j++) {
+	        			let v = {text: SELEASY[i][0] + SELEASY[i][1], displayText: SELEASY[i][0]};
+	        			matched.push(v);
+	        		}
+        		} else {
+	        		const isAlias = SELEASY[i][1];
+	        		const pointer = isAlias?SELEASY[SELEASY[i][2]]:SELEASY[i];
+	        		for (var j = 2; j < pointer.length; j++) {
+	        			let v = JSON.parse(JSON.stringify(pointer[j]));
+	        			v.text = SELEASY[i][0] + v.text;
+	        			v.displayText = SELEASY[i][0] + v.displayText;
+	        			matched.push(v);
+	        		}
+	        	}
+        	}
+        }
+        if(matched.length>0)
+	        return accept({list: matched,
+	             from: CodeMirror.Pos(cursor.line, start),
+	             to: CodeMirror.Pos(cursor.line, end)});
+        return accept(null);
+      }, 100)
+    })
+}
+
+function loadTestCaseFileEditor() {
+	//$('#req-txtarea').addClass('hidden');
+	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
+		lineNumbers: true,
+		lineWrapping: true,
+		tabSize: 4,
+		matchBrackets: true,
+		styleActiveLine: true,
+		extraKeys: {"Ctrl-Space": "autocomplete", "Ctrl-B": function(cm) {cm.foldCode(cm.getCursor());}},
+		foldGutter: true,
+		mode: 'text/x-seleasy',
+		gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
+		viewportMargin: Infinity,
+		theme: currTheme,
+		autoCloseBrackets: true,
+		hintOptions: {hint: editorSynonyms}
+	});
+	ceeditor.on('changes', function(cm) {
+		const fedidi = sha256(currtestcasefile);
+		if($('#'+fedidi).data('content')!=cm.getValue() && $('#'+fedidi).find('.dirty').length==0) {
+			$('#'+fedidi).data('content', cm.getValue());
+			$('#'+fedidi).append('<span class="dirty" style="position: absolute;top: 0px;left: 5px;font-size: 15px;color: #df5d1e;">*<span>');
+			if(celines!=ceeditor.lineCount()) {
+				celines = ceeditor.lineCount();
+				setTimeout(function() {
+					editorEvents();
+				}, 100);
+			}
+		} else if($('#'+fedidi).data('content')!=cm.getValue() && $('#'+fedidi).find('.dirty').length>0) {
+			$('#'+fedidi).data('content', cm.getValue());
+			if($('#'+fedidi).data('content')==cm.getValue()) {
+				$('#'+fedidi).find('.dirty').remove();
+			} else {
+				if(celines!=ceeditor.lineCount()) {
+					celines = ceeditor.lineCount();
+					setTimeout(function() {
+						editorEvents();
+					}, 100);
+				}
+			}
+		} else if($('#'+fedidi).data('content')==cm.getValue() && $('#'+fedidi).find('.dirty').length>0) {
+			$('#'+fedidi).find('.dirty').remove();
+		}
+	});
+	if(celinedetails) {
+		ceeditor.addLineClass(celinedetails-1, "wrap", "currentHighlight");
+		ceeditor.scrollIntoView({line:celinedetails, char:0}, 200);
+	}
+	celines = ceeditor.lineCount();
+	celinedetails = undefined;
+	const fedidi = sha256(currtestcasefile);
+	$('#'+fedidi).data('content', ceeditor.getValue());
+	if(fromErroredFile) {
+		errdFilesReport = new Set();
+		errdFilesReport.add([fromErroredFile.error[1], fromErroredFile.error[2]]);
+		function makeMarker() {
+			var marker = document.createElement("div");
+			marker.style.color = "red";
+			marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+			return marker;
+		}
+		currtestcasefile = fromErroredFile.error[2];
+    	$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
+		$('#heading_main').html('Manage Tests >> ' + currtestcasefile);
+		ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker());
+		$('.error_mark_icon').attr('title', fromErroredFile.error[3]);
+		showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+		//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
+		fromErroredFile = undefined;
+	}
+	if(currtestcasefile.toLowerCase().endsWith(".props")) {
+		$('[id="play_test_case"]').addClass('hidden');
+		$('[id="debug_test_case"]').addClass('hidden');
+	} else {
+		$('[id="play_test_case"]').removeClass('hidden');
+		$('[id="debug_test_case"]').removeClass('hidden');
+	}
+	setTimeout(function() {
+		editorEvents();
+	}, 100);
+}
+
+var celinedetails, celines;
+function editorEvents() {
+	const lines = ceeditor.getValue().split("\n");
+	$('.CodeMirror-code').find('pre').css('cursor', 'text');
+	for(let i=0;i<lines.length;i++) {
+		const line = lines[i];
+		const span = $('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).find('span');
+		if(line.trim().startsWith("dynprops ")) {
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				currtestcasefile = line.trim().substring(9).trim();
+				$('a[tcfname="'+(line.trim().substring(9).trim())+'"]').trigger('click');
+			});
+		} else if(line.trim().startsWith("config ")) {
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				currtestcasefile = line.trim().substring(7).trim();
+				$('a[tcfname="'+(line.trim().substring(7).trim())+'"]').trigger('click');
+			});
+		} else if(line.trim().startsWith("include ")) {
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				currtestcasefile = line.trim().substring(8).trim();
+				$('a[tcfname="'+(line.trim().substring(8).trim())+'"]').trigger('click');
+			});
+		} else if(line.trim().startsWith("import ")) {
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				currtestcasefile = line.trim().substring(7).trim();
+				$('a[tcfname="'+(line.trim().substring(7).trim())+'"]').trigger('click');
+			});
+		} else if(line.trim().startsWith("goto ")) {
+			let url = line.trim().substring(5);
+			let childrens = $('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).find('span');
+			for(let j=1;j<childrens.length;j++) {
+				childrens.eq(j).remove();
+			}
+			$('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).append('<span class="cm-string">'+url+'</span>');
+			$('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				if(url.startsWith("https://") || url.startsWith("http://"))
+					window.open(url, '_blank');
+				//else lookup from backend
+			});
+		} else if(line.trim().startsWith("@call ")) {
+			let possibleSubtestFuncCall = line.trim();
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				console.log(possibleSubtestFuncCall);
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&possibleSubtestFuncCall='+possibleSubtestFuncCall, "", "", {}, function(out) {
+            		console.log(out);
+					celinedetails = out[1];
+					if(currtestcasefile == out[0]) {
+						ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
+						ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
+					}
+					currtestcasefile = out[0];
+					$('a[tcfname="'+(out[0])+'"]').trigger('click');
+        		}, null);
+				//lookup from backend and populate target file
+			});
+		} else if(span.length>0 && span.eq(0).hasClass("cm-string")) {
+			let possibleSubtestFuncCall = line.trim();
+			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
+			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
+				console.log(possibleSubtestFuncCall);
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&possibleSubtestFuncCall='+possibleSubtestFuncCall, "", "", {}, function(out) {
+            		console.log(out);
+					celinedetails = out[1];
+					if(currtestcasefile == out[0]) {
+						ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
+						ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
+					}
+					currtestcasefile = out[0];
+					$('a[tcfname="'+(out[0])+'"]').trigger('click');
+        		}, null);
+				//lookup from backend and populate target file
+			});
+		}
+	}
+}
+
 function startInitConfigTool(func) {
     ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func) {
         return function(data) {
@@ -1429,12 +1869,18 @@ function startInitConfigTool(func) {
                 });
             }
 
-            filesGrps.sort();
+            filesGrps = Object.keys(filesGrps).sort().reduce(
+				  (obj, key) => { 
+				    obj[key] = filesGrps[key]; 
+				    return obj;
+				  }, 
+				  {}
+				);
             
             var tind = 0;
             for (var folder in filesGrps) {
                 if (filesGrps.hasOwnProperty(folder)) {
-                    filesGrps[folder].sort();
+                    filesGrps[folder].sort(function(a, b){return a.completeName.localeCompare(b.completeName)});
                     if (folder != "") {
                         var fid = 'folder_' + tind;
                         $('#testcasefile-holder').append('<a style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
@@ -1483,6 +1929,8 @@ function startInitConfigTool(func) {
                         } else {
                             $('#testcasefile-holder').append('<a id="' + id + '" href="#" class="list-group-item asideLink">&nbsp;' + testFileName + '</a>');
                         }
+                        let iconn = fileName.endsWith(".props")?"properties.jpg":"testicon.png"; 
+                        $('#' + id).prepend('<img style="position:absolute;right:5px;top:1px;width:15px" src="images/'+iconn+'"/>');
                         $('#' + id).attr('tcfname', testFileName);
                         $('#' + id).on('contextmenu', function(e) {
 							e.preventDefault();
@@ -1520,6 +1968,7 @@ function startInitConfigTool(func) {
 							$(this).css('color', 'black');
 							//$('#srch-term').val($(this).text().trim()).trigger('change');
                             currtestcasefile = $(this).attr('tcfname');
+                            $('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
                             $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
                             currtestcases = [''];
                             ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(data1) {
@@ -1532,10 +1981,11 @@ function startInitConfigTool(func) {
                                     			ceeditor.toTextArea();
                                     		} catch(er) {}
                                     	}
-                                    	else
+                                    	else {
                                     		ceeditor = undefined;
+                                    	}
                                     }
-                                    $('#ExampleBeanServiceImpl_form').html('<textarea id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
+                                    $('#ExampleBeanServiceImpl_form').html('<textarea class="hidden" id="req-txtarea" rows=100 style="width:90%">' + data1 + '</textarea>');
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "💾", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
 									$('#buttons_cont').append('<button type="button" style="position: absolute;right: 105px;top: 5px;" id="play_test_case" type="submit" class="" type="submit">▶</button><button type="button" style="position: absolute;right: 70px;top: 5px;" id="debug_test_case" type="submit" class="" type="submit">| |</button>');
@@ -1556,76 +2006,138 @@ function startInitConfigTool(func) {
                                     	const fld = currtestcasefile.length>15?(currtestcasefile.substring(0,15)+"..."):currtestcasefile;
                                     	$("#editorTabs").append('<li id="'+fedid+'" class="active"><a href="#" id="'+fedid+'">'+fld+'<span style="padding-left:10px;font-size:8px;cursor:pointer;" class="btn_close">❌<span></a></li>');
                                     	$('#'+fedid).attr('title', currtestcasefile);
-                                    	$('#'+fedid).data('content', data1);
-                                    	$('#'+fedid).find('.btn_close').click(function() {
+                                    	$('#'+fedid).find('.btn_close').click(function(event) {
+                                    		event.stopPropagation();
                                     		const fli = $(this).parent().parent().parent().children('li');
                                     		const currpos = $(this).parent().parent().index();
-                                    		if(currpos>0) {
-                                    			fli.eq(currpos-1).addClass('active');
-                                    			fli.eq(currpos-1).trigger('click');
-                                    		} else {
-                                    			if(fli.length>1) {
-                                    				fli.eq(currpos+1).addClass('active');
-                                    				fli.eq(currpos+1).trigger('click');
-                                    			} else {
-                                    				addTcFileHTml();
-                                    			}
-                                    		}
-                                    		$(this).parent().parent().remove();
+                                    		const thsele = $(this);
+                                    		if($(this).parent().parent().find('.dirty').length>0) {
+	                                    		bootbox.confirm({
+	                                    			animate: false,
+					                                message: 'You have pending unsaved unchanges, Do you want to close the file?',
+					                                buttons: {
+						                                confirm: {
+							                                label: 'Yes',
+							                                className: 'btn-success'
+						                                },
+						                                cancel: {
+							                                label: 'No',
+							                                className: 'btn-danger'
+						                                }
+					                                },
+					                                callback: function (result) {
+					                                	if(result) {
+															if(currpos>0) {
+				                                    			fli.eq(currpos-1).addClass('active');
+				                                    			fli.eq(currpos-1).trigger('click');
+				                                    		} else {
+				                                    			if(fli.length>1) {
+				                                    				fli.eq(currpos+1).addClass('active');
+				                                    				fli.eq(currpos+1).trigger('click');
+				                                    			} else {
+				                                    				addTcFileHTml();
+				                                    			}
+				                                    		}
+				                                    		thsele.parent().parent().remove();					                                	
+					                                	}
+					                                }
+						                        });
+						                	} else {
+						                		if(currpos>0) {
+	                                    			fli.eq(currpos-1).addClass('active');
+	                                    			fli.eq(currpos-1).trigger('click');
+	                                    		} else {
+	                                    			if(fli.length>1) {
+	                                    				fli.eq(currpos+1).addClass('active');
+	                                    				fli.eq(currpos+1).trigger('click');
+	                                    			} else {
+	                                    				addTcFileHTml();
+	                                    			}
+	                                    		}
+	                                    		thsele.parent().parent().remove();
+						                	}
                                     	});
                                     	$('#'+fedid).click(function() {
-                                    		$("#editorTabs").find('li').removeClass('active');
-                                    		$(this).addClass('active');
-                                    		if(ceeditor) ceeditor.toTextArea();
-                                    		$('#req-txtarea').val(data1);
+                                    		if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
                                     		currtestcasefile = $(this).attr('title');
-		                                    ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
-												lineNumbers: true,
-												lineWrapping: true,
-												tabSize: 4,
-												matchBrackets: true,
-												extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
-		    									foldGutter: true,
-												mode: 'text/x-perl',
-												gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
-												viewportMargin: Infinity,
-												theme: currTheme
-											});
+		                                	const fedidi = sha256(currtestcasefile);
+		                                	$("#editorTabs").find('li').removeClass('active');
+                                    		$('#'+fedidi).addClass('active');
+                                    		$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
+                                    		$('#heading_main').html('Manage Tests >> ' + currtestcasefile);
+                                    		if($(this).find('.dirty').length>0) {
+	                                    		bootbox.confirm({
+	                                    			animate: false,
+					                                message: 'You have pending unsaved unchanges, Do you want to ignore the changes and load the current file content instead?',
+					                                buttons: {
+						                                confirm: {
+							                                label: 'Yes',
+							                                className: 'btn-success'
+						                                },
+						                                cancel: {
+							                                label: 'No',
+							                                className: 'btn-danger'
+						                                }
+					                                },
+					                                callback: function (result) {
+					                                	if(!result) {
+					                                		if(ceeditor) ceeditor.toTextArea();
+					                                		$('#req-txtarea').val($('#'+fedidi).data('content'));
+						                                    loadTestCaseFileEditor();
+						                                    $.unblockUI();
+					                                	} else {
+					                                		$('#'+fedidi).find('.dirty').remove();
+					                                		//$('#req-txtarea').addClass('hidden');
+					                                		ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(content) {
+					                                			if(ceeditor) ceeditor.toTextArea();
+					                                    		$('#req-txtarea').val(content);
+							                                    loadTestCaseFileEditor();
+				                                    		}, null);
+					                                	}
+					                                }
+					                        	});
+	                                    	} else {
+	                                    		//$('#req-txtarea').addClass('hidden');
+	                                    		ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(content) {
+	                                    			if(ceeditor) ceeditor.toTextArea();
+		                                    		$('#req-txtarea').val(content);
+				                                    loadTestCaseFileEditor();
+	                                    		}, null);
+	                                    	}
                                     	});
+                                    	loadTestCaseFileEditor();
                                     } else {
-                                    	$('#'+fedid).data('content', data1);
                                    		$("#editorTabs").find('li').removeClass('active');
                                    		$('#'+fedid).addClass('active');
-                                    }
-                                    ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
-										lineNumbers: true,
-										lineWrapping: true,
-										tabSize: 4,
-										matchBrackets: true,
-										extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
-    									foldGutter: true,
-										mode: 'text/x-perl',
-										gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
-										viewportMargin: Infinity,
-										theme: currTheme
-									});
-									if(fromErroredFile) {
-										errdFilesReport = new Set();
-										errdFilesReport.add([fromErroredFile.error[1], fromErroredFile.error[2]]);
-										function makeMarker() {
-											var marker = document.createElement("div");
-											marker.style.color = "red";
-											marker.innerHTML = "❌<b class='error_mark'></b>";
-											return marker;
-										}
-										ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker());
-										window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
-										fromErroredFile = undefined;
-									}
-									if(currtestcasefile.toLowerCase().endsWith(".props")) {
-										$('[id="play_test_case"]').remove();
-										$('[id="debug_test_case"]').remove();
-									}
+                                    	if($('#'+fedid).find('.dirty').length>0) {
+                                    		bootbox.confirm({
+	                                    		animate: false,
+				                                message: 'You have pending unsaved unchanges, Do you want to ignore the changes and load the current file content instead?',
+				                                buttons: {
+					                                confirm: {
+						                                label: 'Yes',
+						                                className: 'btn-success'
+					                                },
+					                                cancel: {
+						                                label: 'No',
+						                                className: 'btn-danger'
+					                                }
+				                                },
+				                                callback: function (result) {
+				                                	if(!result) {
+				                                		$('#req-txtarea').val($('#'+fedid).data('content'));
+				                                	} else {
+				                                		$('#'+fedid).find('.dirty').remove();
+				                                	}
+				                                	loadTestCaseFileEditor();
+				                                	$.unblockUI();
+				                                }
+				                        	});
+                                    	} else {
+                                			loadTestCaseFileEditor();
+                                			$.unblockUI();
+                                		}
+                                	}
                                     return;
                                 }
                                 if (data1 != null && data1.length > 0) {
@@ -1692,6 +2204,26 @@ function startInitConfigTool(func) {
     }(func), null);
 }
 
+function showSuccessAlert(msg) {
+	bootbox.alert({
+	    animate: false,
+        message: msg,
+        backdrop: true
+    });
+}
+
+function showErrorAlert(msg) {
+	bootbox.alert({
+	    animate: false,
+        message: msg,
+        className: 'rubberBand errored',
+        callback: function () {
+        	if($('.error_mark').length>0)
+        		window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
+        }
+    });
+}
+
 function onsucctcnmupdt() {
     var tc = $('input[name="name"]').val();
     var ac = $('#ExampleBeanServiceImpl_form').attr("action");
@@ -1705,7 +2237,17 @@ function onsucctcnmupdt() {
 			}
 		}
 	}
-	window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	if($('#heading_main').text().startsWith("Manage Tests")) {
+		if(isSeleniumExecutor) {
+			const fedidi = sha256(currtestcasefile);
+			$('#'+fedidi).find('.dirty').remove();
+		} else {
+			showSuccessAlert("Test Script saved Successfully...");
+		}
+	}
+	else if($('#heading_main').text().startsWith("Manage Server Logs")) showSuccessAlert("Server Logs API saved Successfully...");
+	else if($('#heading_main').text().startsWith("Manage Issue Tracker")) showSuccessAlert("Issue Tracker API saved Successfully...");
+	//window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
 	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
@@ -1757,29 +2299,41 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             }
             var content = getTestResultContent1(data);
             $('#play_result_area').html(content);
-            window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+            if (!tcf.toLowerCase().endsWith(".sel")) {
+            	$('#api_execution_reponse').show();
+            	setTimeout(function() {
+            		window.scrollTo({top: $('#api_execution_reponse').offset().top, behavior: 'smooth'});
+            	}, 500);
+            } else {
+            	$('#api_execution_reponse').hide();
+            	showSuccessAlert("Script Execution Successfull...");
+            }
             //$("html, body").animate({ scrollTop: $(document).height() }, 1000);
         };
     }(tcf), function(tcf){
 		return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
             	if(tcf!=data.error[2]) {
-            		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
             		fromErroredFile = data;
+            		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
             	} else {
 					errdFilesReport = new Set();
 					errdFilesReport.add([data.error[1], data.error[2]]);
 					function makeMarker() {
 						var marker = document.createElement("div");
 						marker.style.color = "red";
-						marker.innerHTML = "❌<b class='error_mark'></b>";
+						marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
 						return marker;
 					}
+					currtestcasefile = data.error[2];
+					$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
 					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-					window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
+					$('.error_mark_icon').attr('title', data.error[3]);
+					showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+					//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
 			} else {
-				alert(data);
+				showErrorAlert(data);
 			}
 		};
 	}(tcf));
@@ -1788,6 +2342,12 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 const uid = function() {
     return Date.now().toString(36) + Math.random().toString(36).substr(2);
 }
+function makeDebugMarker() {
+	var marker = document.createElement("div");
+	marker.style.color = "#822";
+	marker.innerHTML = "●";
+	return marker;
+}
 
 var ceeditor, prevline, chkIntv, sessionId;
 function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
@@ -1795,44 +2355,44 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	if(!sessionId) sessionId = uid();
 	var isserverlogfile = "&sessionId="+sessionId;
 	$('#req-txtarea').data('tcf', tcf);
-	ceeditor = undefined;
+	ceeditor.toTextArea();
 	ceeditor = CodeMirror.fromTextArea(document.getElementById('req-txtarea'), {
 		lineNumbers: true,
 		lineWrapping: true,
 		tabSize: 4,
 		matchBrackets: true,
-		extraKeys: {"Ctrl-Q": function(cm){ cm.foldCode(cm.getCursor()); }},
+		styleActiveLine: true,
+		readOnly: 'nocursor',
+		//extraKeys: {"Ctrl-B": function(cm){ cm.foldCode(cm.getCursor()); }},
     	foldGutter: true,
-		mode: 'text/x-perl',
+		mode: 'text/x-seleasy',
 		gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
 		viewportMargin: Infinity,
-		theme: currTheme
+		theme: currTheme,
+		autoCloseBrackets: true
+    	//hintOptions: {hint: editorSynonyms}
 	});
 	ceeditor.on("gutterClick", function(cm, n) {
-		function makeMarker() {
-			var marker = document.createElement("div");
-			marker.style.color = "#822";
-			marker.innerHTML = "●";
-			return marker;
-		}
 		var info = cm.lineInfo(n);
+		var dal = $('#debug-controls').data("dal");
+		if(dal.indexOf(n)==-1) return;
 		if(info.gutterMarkers) {
 			ajaxCall(true, "PUT", "/reports?action=debug&line=r"+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+		        		ceeditor.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeDebugMarker());
 		        	}
 		        };
 		    }(tcf), null);
 		} else {
-			ajaxCall(true, "PUT", "/reports?action=debug&line="+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=b"+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		cm.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeMarker());
+		        		ceeditor.setGutterMarker(n, "breakpoints", info.gutterMarkers ? null : makeDebugMarker());
 		        	}
 		        };
 		    }(tcf), null);
@@ -1842,13 +2402,17 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		F6: function(cm) {
 			ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		line = data.replace("Success: ", "")*1;
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-		        		prevline = line-1;
-		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        		line = data["n"]*1 - 1;
+		        		if(prevline!=data["p"]-1) {
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+			        		prevline = data["p"]*1 - 1;
+			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        	}
 		        	}
 		        };
 		    }(tcf), null);
@@ -1856,13 +2420,17 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	  	F8: function(cm) {
 	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		line = data.replace("Success: ", "")*1;
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-		        		prevline = line-1;
-		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        		line = data["n"]*1 - 1;
+		        		if(prevline!=data["p"]-1) {
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+			        		prevline = data["p"]*1 - 1;
+			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        	}
 		        	}
 		        };
 		    }(tcf), null);
@@ -1870,13 +2438,17 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	  	'Ctrl-C': function(cm) {
 	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		line = data.replace("Success: ", "")*1;
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-		        		prevline = line-1;
-		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        		line = data["n"]*1 - 1;
+		        		if(prevline!=data["p"]-1) {
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+			        		prevline = data["p"]*1 - 1;
+			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        	}
 		        	}
 		        };
 		    }(tcf), null);
@@ -1884,10 +2456,11 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	  	'Ctrl-X': function(cm) {
 	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
-		        	if(data.startsWith("Fail: ")) {
+		        	if(data["s"]===false) {
 		        		alert(data);
 		        	} else {
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+		        		//alert("Debug session ended");
+		        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
 		        		prevline = 0;
 		        	}
 		        };
@@ -1903,10 +2476,14 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        	if(data.startsWith("Fail: ")) {
 		        		alert(data);
 		        	} else {
-		        		line = data.replace("Success: ", "")*1;
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-		        		prevline = line-1;
-		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        		line = data["n"]*1 - 1;
+		        		if(prevline!=data["p"]-1) {
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+			        		prevline = data["p"]*1 - 1;
+			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        	}
 		        	}
 		        };
 		    }(tcf), null);
@@ -1916,10 +2493,14 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        	if(data.startsWith("Fail: ")) {
 		        		alert(data);
 		        	} else {
-		        		line = data.replace("Success: ", "")*1;
-		        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-		        		prevline = line-1;
-		        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+		        		line = data["n"]*1 - 1;
+		        		if(prevline!=data["p"]-1) {
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+			        		prevline = data["p"]*1 - 1;
+			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        	}
 		        	}
 		        };
 		    }(tcf), null);
@@ -1930,10 +2511,14 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        	if(data.startsWith("Fail: ")) {
 			        		alert(data);
 			        	} else {
-			        		line = data.replace("Success: ", "")*1;
-			        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-			        		prevline = line-1;
-			        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+			        		line = data["n"]*1 - 1;
+			        		if(prevline!=data["p"]-1) {
+				        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+			        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+				        		prevline = data["p"]*1 - 1;
+				        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+				        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+				        	}
 			        	}
 			        };
 			    }(tcf), null);
@@ -1944,7 +2529,8 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        	if(data.startsWith("Fail: ")) {
 			        		alert(data);
 			        	} else {
-			        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
+			        		alert("Debug session ended");
+			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
 			        		prevline = 0;
 			        	}
 			        };
@@ -1955,10 +2541,10 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	document.onkeypress = cmkp;*/
 	ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
         return function(data) {
-        	if(data.startsWith("Fail: ")) {
-        		alert(data);
+        	if(data["s"]===false) {
+        		alert(data["m"]);
         	} else {
-        		$('#debug-controls').css('left', dbgctrl + 'px');
+        		//$('#debug-controls').css('left', dbgctrl + 'px');
         		$('#debug-controls').removeClass('hidden');
         		$('#debug-controls').html('<i key="F8" class="glyphicon glyphicon-play"></i><i key="Ctrl-C" class="glyphicon glyphicon-stop"></i><i key="F6" class="glyphicon glyphicon-step-forward"></i><i key="Ctrl-X" class="glyphicon glyphicon-remove-circle"></i>');
         		$('#debug-controls').find('i').css('width', '25px');
@@ -1967,9 +2553,11 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
         		$('#debug-controls').find('i').on('click', function() {
         			ceeditor.options.extraKeys[$(this).attr('key')]();
         		});
-        		ceeditor.getDoc().setValue(data.replace("Success: ", ""));
-        		prevline = 0;
-        		ceeditor.addLineClass(0, 'wrap', 'CodeMirror-activeline-background');
+        		ceeditor.getDoc().setValue(data["c"]);
+        		prevline = data["i"]-1;
+        		$('#debug-controls').data("dal", data["l"]);
+        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
         		chkIntv = setInterval(function() {
         			if(!$('#req-txtarea').data('tcf')) {
         				clearInterval(chkIntv);
@@ -1979,13 +2567,13 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
         			}
 			    	ajaxCall(false, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 				        return function(data) {
-				        	if(data.startsWith("Fail: ")) {
-				        		alert(data);
+				        	if(data["s"]===false) {
+        						alert(data["m"]);
 				        		$('#debug-controls').addClass('hidden');
 				        		clearInterval(chkIntv);
 				        		ceeditor = undefined;
 				        	} else {
-				        		if(data=="Success: 0") {
+				        		if(data["r"]===false) {
 				        			alert("Debug session completed");
 				        			$('#debug-controls').addClass('hidden');
 									clearInterval(chkIntv);
@@ -1993,10 +2581,14 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 				        			ceeditor = undefined;
 				        			//document.removeEventListener('keypress',  cmkp);
 				        		} else {
-					        		line = data.replace("Success: ", "")*1;
-					        		ceeditor.removeLineClass(prevline, 'wrap', 'CodeMirror-activeline-background');
-					        		prevline = line-1;
-					        		ceeditor.addLineClass(line-1, 'wrap', 'CodeMirror-activeline-background');
+					        		line = data["n"]*1 - 1;
+					        		if(prevline!=data["p"]-1) {
+						        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+					        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+						        		prevline = data["p"]*1 - 1;
+						        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+						        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+						        	}
 				        		}
 				        	}
 				        };
@@ -2033,7 +2625,7 @@ function getErroredSeleasyScripts() {
         });
         $('.errdss').on('click', function() {
 			$('[tcfname="'+($(this).siblings().eq(0).text())+'"]').trigger('click');
-			$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
+			if($('.blockUI').length==0) $.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
 			setTimeout(function(ele) {
 				return function() {
 					function makeMarker() {
@@ -2600,16 +3192,18 @@ function configuration() {
     ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema) {
         return function(data) {
             countMap = {};
-            isSeleniumExecutor = data.isSeleniumExecutor;
+            isSeleniumExecutor = data.isSeleniumExecutor
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
             prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? '💾' : '💾', "onUpdConfig", null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);
 }
-function onUpdConfig() {
+function onUpdConfig(data) {
+	isSeleniumExecutor = data.responseJSON.isSeleniumExecutor;
 	startInitConfigTool();
-	window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	showSuccessAlert("Configuration saved Successfully...");
+	//window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
 	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
@@ -2802,7 +3396,7 @@ function searchLeftNavs(ele) {
 }
 
 function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc) {
-    if (blockUi) $.blockUI({
+    if (blockUi && $('.blockUI').length==0) $.blockUI({
         message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'
     });
     $.ajax({
@@ -2813,7 +3407,6 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         contentType: contType,
         data: content
     }).done(function(msg, statusText, jqXhr) {
-        if (blockUi) $.unblockUI();
         var data = jqXhr.responseText;
         try {
             data = JSON.parse(jqXhr.responseText);
@@ -2821,8 +3414,8 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
             data = jqXhr.responseText;
         }
         sfunc(data, jqXhr);
-    }).fail(function(jqXhr, textStatus, msg) {
         if (blockUi) $.unblockUI();
+    }).fail(function(jqXhr, textStatus, msg) {
         if (efunc == null) alert(jqXhr.responseText);
         var data = jqXhr.responseText;
         try {
@@ -2831,6 +3424,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
             data = jqXhr.responseText;
         }
         if (efunc != null) efunc(data, jqXhr);
+        if (blockUi) $.unblockUI();
     });
 }
 
@@ -2869,7 +3463,6 @@ function initEvents(par) {
 
 function execTc(method, succFunc, failFunc) {
 	executeTest('#93be7b20299b11e281c10800200c9a66_URL', method.toUpperCase(), 'application/json', '#ExampleBeanServiceImpl_form', succFunc, failFunc);
-	$('#api_execution_reponse').show();
 	return false;
 }
 

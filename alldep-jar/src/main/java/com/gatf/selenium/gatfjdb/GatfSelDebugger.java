@@ -50,6 +50,7 @@ public class GatfSelDebugger {
 	private Thread eventThr = null;
 	private volatile int running = 1;
 	private volatile AtomicInteger activity = new AtomicInteger(0);
+	private int prevLine;
 	
 	public boolean isActivityObserved() {
 		int actCount = activity.get();
@@ -92,6 +93,10 @@ public class GatfSelDebugger {
 		return 0;
 	}*/
 	
+	public int getPrevLine() {
+		return prevLine;
+	}
+	
 	public int getNextLine() {
 		activity.incrementAndGet();
 		if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
@@ -100,7 +105,8 @@ public class GatfSelDebugger {
 				int lineNumber = (Integer)selToJavaLineMap.get(selln)[1];
 				if(lineNumber==cbe.location().lineNumber()) {
 					found = true;
-				} else if(found) {
+					prevLine = selln;
+				} else if(found) {//We need the next line hence this check
 					return selln;
 				}
 			}
@@ -152,7 +158,7 @@ public class GatfSelDebugger {
         Location location = classType.locationsOfLine(lineNumber).get(0);
         BreakpointRequest bpReq = dvm.eventRequestManager().createBreakpointRequest(location);
         bpReq.enable();
-        dvm.resume();
+        //dvm.resume();
         return true;
     }
 
@@ -187,12 +193,9 @@ public class GatfSelDebugger {
     	dvm.resume();
     }
     
-    public int getRunning() {
+    public boolean getRunning() {
     	activity.incrementAndGet();
-    	if(running==1) {
-    		return getNextLine();
-    	}
-    	return 0;
+    	return running==1;
     }
     
     public void destroy() {
@@ -210,9 +213,19 @@ public class GatfSelDebugger {
         dbgIns.debugClass = testClass;
         dbgIns.selToJavaLineMap = selToJavaLineMap;
         
+        SeleniumTest.IS_GATF.set(true);
     	dbgIns.connectAndLaunchVM(args);
         dbgIns.enableClassPrepareRequest();
         dbgIns.running = 1;
+        SeleniumTest.IS_GATF.set(false);
+        
+        for (Integer selln : selToJavaLineMap.keySet()) {
+        	Object[] o = selToJavaLineMap.get(selln);
+        	if(((Boolean)o[2])) {
+        		dbgIns.prevLine = selln;
+        		break;
+        	}
+        }
         
         dbgIns.eventThr = new Thread(new Runnable() {
 			@Override

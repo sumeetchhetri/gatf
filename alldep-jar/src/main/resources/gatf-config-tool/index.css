@@ -397,3 +397,10 @@ table tr.alt td
 .log-form .forgot:hover {
   color: #1ba0a9;
 }
+.errored {
+	color: red;
+    font-size: 20px;
+}
+.currentHighlight {
+	background: #dddd !important;
+}

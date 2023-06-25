@@ -837,7 +837,14 @@
   };
   StringStream.prototype.eatWhile = function (match) {
     var start = this.pos;
-    while (this.eat(match)){}
+    while (this.eat(match)){
+		//Change made for GATF
+		if(isNaN(this.pos)) {
+			this.pos = this.string.length;
+			break;
+		}
+		//Change made for GATF
+	}
     return this.pos > start
   };
   StringStream.prototype.eatSpace = function () {
@@ -1173,7 +1180,10 @@
       var style = mode.token(stream, state);
       if (stream.pos > stream.start) { return style }
     }
-    throw new Error("Mode " + mode.name + " failed to advance stream.")
+    //Custom change for GATF
+    stream.pos = stream.start+1;
+    //throw new Error("Mode " + mode.name + " failed to advance stream.")
+    //Custom change for GATF
   }
 
   var Token = function(stream, type, state) {
