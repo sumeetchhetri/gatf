@@ -389,14 +389,26 @@ public class AcceptanceTestContext {
 		return methods;
 	}
 	
+	public File getTestCasesDir() {
+		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+		if(gatfExecutorConfig.getTestCaseDir()!=null) {
+			return new File(basePath, gatfExecutorConfig.getTestCaseDir());
+		}
+		return basePath;
+	}
+	
 	public File getResourceFile(String filename) {
 		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
-	    File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
-	    File resource = new File(testPath, filename);
-        if(!resource.exists()) {
+		if(filename==null) return basePath;
+		File resource = null;
+		if(gatfExecutorConfig.getTestCaseDir()!=null) {
+			File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
+		    resource = new File(testPath, filename);
+		}
+        if(resource==null || !resource.exists()) {
             resource = new File(basePath, filename);
         }
-        if(!resource.exists()) {
+        if(resource==null || !resource.exists()) {
             resource = new File(filename);
         }
 		return resource;
@@ -468,7 +480,9 @@ public class AcceptanceTestContext {
 			gatfExecutorConfig.setTestCasesBasePath(basePath.getAbsolutePath());
 		}
 		
-		Assert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
+		if(gatfExecutorConfig.getTestCaseDir()!=null) {
+			Assert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
+		}
 		
 		if(StringUtils.isNotBlank(gatfExecutorConfig.getBaseUrl()))
 		{

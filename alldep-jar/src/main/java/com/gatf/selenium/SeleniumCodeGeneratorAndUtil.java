@@ -29,6 +29,7 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.tools.Diagnostic;
 import javax.tools.Diagnostic.Kind;
@@ -65,10 +66,11 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog, Map<Integer, Object[]> selToJavaLineMap) throws Exception
+	public static SeleniumTest getSeleniumTest(String fileName, ClassLoader loader, AcceptanceTestContext context, Object[] retvals, GatfExecutorConfig config, boolean isLog, Map<String, List<List<Integer[]>>> selToJavaLineMap, Command[] outCmd) throws Exception
 	{
 	    List<String> commands = new ArrayList<String>();
 		Command cmd = Command.read(context.getResourceFile(fileName), commands, context);
+		if(outCmd!=null) outCmd[0] = cmd;
 		/*if(cmd.children.size()>0 && !(cmd.children.get(0) instanceof Command.BrowserCommand)) {
 			throw new RuntimeException("open should be the first execution command in a test script");
 		}*/
@@ -98,21 +100,77 @@ public class SeleniumCodeGeneratorAndUtil {
 		retvals[3] = sourceCode;
 		
 		if(selToJavaLineMap!=null) {
+			File tcdir = context.getTestCasesDir();
 			final AtomicInteger cl = new AtomicInteger(1);
-			String sellineident = "/*GATF_ST_LINE@";
+			String cLine = "/*GATF_LINE@";
+			String opLine = "/*GATF_OP_LINE@";
 			sourceCode.lines().forEach(line -> {
-				if(line.trim().startsWith(sellineident)) {
-					boolean isOpen = line.indexOf("_*/")!=-1;
-					int indx = isOpen?line.indexOf("_*/"):line.indexOf("*/");
-					String fld = line.substring(line.indexOf(sellineident)+sellineident.length(), indx);
-					String sflnm = fld.substring(0, fld.indexOf(":"));
-					int sln = Integer.parseInt(fld.substring(fld.indexOf(":")+1));
-					selToJavaLineMap.put(sln, new Object[] {sflnm, cl.get(), isOpen});
+				if(line.trim().startsWith(cLine)) {
+					int indx = line.indexOf("*/");
+					String fld = line.substring(line.indexOf(cLine)+cLine.length(), indx);
+					String sflnm = fld.substring(0, fld.lastIndexOf(":"));
+					int sln = Integer.parseInt(fld.substring(fld.lastIndexOf(":")+1));
+					sflnm = sflnm.replace(tcdir.getAbsolutePath(), "");
+					if(sflnm.startsWith(File.separator)) {
+						sflnm = sflnm.substring(1);
+					}
+					if(!selToJavaLineMap.containsKey(sflnm)) {
+						selToJavaLineMap.put(sflnm, new ArrayList<>());
+						selToJavaLineMap.get(sflnm).add(new ArrayList<>());
+					}
+					selToJavaLineMap.get(sflnm).get(0).add(new Integer[] {sln, cl.get(), 1});
+				} else if(line.trim().startsWith(opLine)) {
+					int indx = line.indexOf("*/");
+					String fld = line.substring(line.indexOf(opLine)+opLine.length(), indx);
+					String sflnm = fld.substring(0, fld.lastIndexOf(":"));
+					int sln = Integer.parseInt(fld.substring(fld.lastIndexOf(":")+1));
+					sflnm = sflnm.replace(tcdir.getAbsolutePath(), "");
+					if(sflnm.startsWith(File.separator)) {
+						sflnm = sflnm.substring(1);
+					}
+					if(!selToJavaLineMap.containsKey(sflnm)) {
+						selToJavaLineMap.put(sflnm, new ArrayList<>());
+						selToJavaLineMap.get(sflnm).add(new ArrayList<>());
+					}
+					selToJavaLineMap.get(sflnm).get(0).add(new Integer[] {sln, cl.get(), 2});
 				} else if(line.trim().startsWith("/*GATF_ST_START_*/")) {
 					//selToJavaLineMap.put(0, new Object[] {null, cl.get(), false});
 				}
 				cl.incrementAndGet();
 			});
+			final AtomicInteger cl1 = new AtomicInteger(1);
+			String stLine = "/*GATF_ST_LINE@";
+			String stEndLine = "/*GATF_ST_LINE_END@";
+			List<String> lines = sourceCode.lines().collect(Collectors.toList());
+			List<Integer[]> stlines = new ArrayList<>();
+			for(int i=0;i<lines.size();i++) {
+				String line = lines.get(i);
+				if(line.trim().startsWith(stLine)) {
+					int indx = line.indexOf("*/");
+					String fld = line.substring(line.indexOf(stLine)+stLine.length(), indx);
+					String sflnm = fld.substring(0, fld.lastIndexOf(":"));
+					int sln = Integer.parseInt(fld.substring(fld.lastIndexOf(":")+1));
+					stlines.add(new Integer[] {sln, cl1.get(), 3});
+					sflnm = sflnm.replace(tcdir.getAbsolutePath(), "");
+					if(sflnm.startsWith(File.separator)) {
+						sflnm = sflnm.substring(1);
+					}
+					if(!selToJavaLineMap.containsKey(sflnm)) {
+						selToJavaLineMap.put(sflnm, new ArrayList<>());
+					}
+				} else if(line.trim().startsWith(stEndLine)) {
+					int indx = line.indexOf("*/");
+					String sflnm = line.substring(line.indexOf(stEndLine)+stEndLine.length(), indx);
+					sflnm = sflnm.replace(tcdir.getAbsolutePath(), "");
+					if(sflnm.startsWith(File.separator)) {
+						sflnm = sflnm.substring(1);
+					}
+					selToJavaLineMap.get(sflnm).add(stlines);
+					stlines = new ArrayList<>();
+					//selToJavaLineMap.put(-cl1.get(), new Object[] {sflnm, cl1.get(), 4});
+				}
+				cl1.incrementAndGet();
+			}
 		}
 	    
         File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");

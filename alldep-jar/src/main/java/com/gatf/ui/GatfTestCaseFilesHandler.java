@@ -66,11 +66,17 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-    				if(!new File(dirPath).exists()) {
-    					new File(dirPath).mkdir();
-    				}
-        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			String filePath = null;
+        			if(gatfConfig.getTestCaseDir()!=null) {
+	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+	    				if(!new File(dirPath).exists()) {
+	    					new File(dirPath).mkdir();
+	    				}
+	    				filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			} else {
+        				filePath = basepath + File.separator + testcaseFileName;
+        			}
+        			
         			if(new File(filePath).exists()) {
         				throw new RuntimeException("Testcase file already exists");
         			}
@@ -110,10 +116,16 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-    				if(!new File(dirPath).exists()) {
-    					new File(dirPath).mkdir();
-    				}
+        			String filePath = basepath + File.separator + testcaseFileName;
+        			String tofilePath = basepath + File.separator + testcaseFileNameTo;
+        			if(gatfConfig.getTestCaseDir()!=null) {
+	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+	    				if(!new File(dirPath).exists()) {
+	    					new File(dirPath).mkdir();
+	    				}
+	        			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+	        			tofilePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileNameTo;
+        			}
     				
     				try {
     					String pfrom = testcaseFileName.indexOf(File.separator)!=-1?testcaseFileName.substring(testcaseFileName.lastIndexOf(File.separator)+1):"";
@@ -125,8 +137,6 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 						throw new RuntimeException("Source and Target filenames should be valid");
 					}
     				
-        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
-        			String tofilePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileNameTo;
         			if(new File(filePath).exists()) {
         			    try
                         {
@@ -148,7 +158,10 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-    				String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			String filePath = basepath + File.separator + testcaseFileName;
+        			if(gatfConfig.getTestCaseDir()!=null) {
+	        			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			}
     				if(StringUtils.isNotBlank(extras)) {
         				try {
 							String ext = new String(Base64.getDecoder().decode(extras.getBytes("UTF-8")), "UTF-8");
@@ -174,11 +187,14 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
         			}
         			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-    				if(!new File(dirPath).exists()) {
-    					new File(dirPath).mkdir();
-    				}
-        			String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			String filePath = basepath + File.separator + testcaseFileName;
+        			if(gatfConfig.getTestCaseDir()!=null) {
+	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+	    				if(!new File(dirPath).exists()) {
+	    					new File(dirPath).mkdir();
+	    				}
+	        			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			}
         			if(new File(filePath).exists()) {
         				new File(filePath).delete();
         			} else {
@@ -195,18 +211,47 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			String possibleSubtestFuncCall = request.getParameter("possibleSubtestFuncCall");
+    			String referencedFile = request.getParameter("referencedFile");
     			
     			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-				if(!new File(dirPath).exists()) {
-					new File(dirPath).mkdir();
-				}
+    			String dirPath = basepath;
+    			if(gatfConfig.getTestCaseDir()!=null) {
+	    			dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+					if(!new File(dirPath).exists()) {
+						new File(dirPath).mkdir();
+					}
+    			}
 				
-				if(gatfConfig.isSeleniumExecutor() && StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(possibleSubtestFuncCall)) {
+    			if(gatfConfig.isSeleniumExecutor() && StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(referencedFile)) {
+    				GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
+					executorMojo.initilaizeContext(gatfConfig, true);
+					File tfl = executorMojo.getContext().getResourceFile(testcaseFileName);
+					if(tfl.exists()) {
+						File par = tfl.getParentFile();
+						File tcdir = executorMojo.getContext().getTestCasesDir();
+						File rfl = executorMojo.getContext().getResourceFile(referencedFile);
+						String filePath = "";
+						if(!rfl.exists()) {
+							rfl = new File(par, referencedFile);
+						}
+						if(rfl.exists()) {
+							filePath = rfl.getAbsolutePath().replace(tcdir.getAbsolutePath(), "");
+							if(filePath.startsWith(File.separator)) {
+								filePath = filePath.substring(1);
+							}
+						}
+						String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {filePath});
+		    			response.setContentType(MediaType.APPLICATION_JSON);
+			            response.setContentLength(json.length());
+			            response.getWriter().write(json);
+		    			response.setStatus(HttpStatus.OK_200);
+						return;
+					}
+    			} else if(gatfConfig.isSeleniumExecutor() && StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(possibleSubtestFuncCall)) {
 					GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
 					executorMojo.initilaizeContext(gatfConfig, true);
-					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext());
+					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext(), null);
 					String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {fld[5], fld[1]});
 	    			response.setContentType(MediaType.APPLICATION_JSON);
 		            response.setContentLength(json.length());

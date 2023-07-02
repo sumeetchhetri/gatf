@@ -131,7 +131,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    {
 			    	throw new RuntimeException("Invalid action specified..");
 			    }
-			    Object[] out = executeTest(gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 
+			    Object[] out = executeTest(request, gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 
 			    		0, false, selDbgline, setBreakpoint, selDbgBrkRemove, sessionId);
 			    if(out[1]!=null) {
 			        response.setContentType(out[2].toString());
@@ -149,7 +149,7 @@ public class GatfReportsHandler extends HttpHandler {
 		}
     }
 
-	public Object[] executeTest(GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
+	public Object[] executeTest(Request request, GatfExecutorConfig gatfConfig, TestCaseReport tcReport, String action, String testcaseFileName, 
 	        String testCaseName, boolean isServerLogsApi, boolean isExternalLogsApi, int index, boolean fromApiPlugin, int selDbgline, 
 	        boolean setBreakpoint, boolean selDbgBrkRemove, String sessionId) throws Exception {
 	    String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
@@ -161,8 +161,13 @@ public class GatfReportsHandler extends HttpHandler {
             if(isReplay)
             {
                 TestCase origfound = null;
-                String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
-                        + testcaseFileName;
+                String filePath = null;
+                if(gatfConfig.getTestCaseDir()!=null) {
+	                filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
+	                        + testcaseFileName;
+                } else {
+	                filePath = basepath + File.separator + testcaseFileName;
+                }
                 if(!new File(filePath).exists()) {
                     throw new RuntimeException("Test case file does not exist");
                 }
@@ -491,8 +496,13 @@ public class GatfReportsHandler extends HttpHandler {
             else
             {
                 TestCase origfound = null;
-                String filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
-                        + testcaseFileName;
+                String filePath = null;
+                if(gatfConfig.getTestCaseDir()!=null) {
+	                filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
+	                        + testcaseFileName;
+                } else {
+	                filePath = basepath + File.separator + testcaseFileName;
+                }
                 if(!new File(filePath).exists()) {
                     throw new RuntimeException("Test case file does not exist");
                 }
@@ -517,7 +527,7 @@ public class GatfReportsHandler extends HttpHandler {
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
                     if(action.equals("debug")) {
-                    	if(selDbgline<-5) {
+                    	if(selDbgline<-8) {
                     		String cont = "Fail: Invalid debug command";
     	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
                     	}
@@ -560,8 +570,9 @@ public class GatfReportsHandler extends HttpHandler {
                         	}
                     		switch (selDbgline) {
 								case -1: {
-									//F6 Step over
-									if(!dbgSession.enableStepRequest()) {
+									String line = request.getParameter("sline");
+									//F5 Step into
+									if(!dbgSession.enableStepIntoRequest(line)) {
 		        	                    out.put("s", false);
 		        	                    out.put("m", "Please suspend the debugger first");
 		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
@@ -570,26 +581,51 @@ public class GatfReportsHandler extends HttpHandler {
 									break;
 								}
 								case -2: {
+									//F7 Step out
+									if(!dbgSession.enableStepOutRequest()) {
+		        	                    out.put("s", false);
+		        	                    out.put("m", "Please suspend the debugger first");
+		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
+									}
+									break;
+								}
+								case -3: {
+									//F6 Step over
+									if(!dbgSession.enableStepOverRequest()) {
+		        	                    out.put("s", false);
+		        	                    out.put("m", "Please suspend the debugger first");
+		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
+									}
+									break;
+								}
+								case -4: {
 									//F8 Continue
 									dbgSession.resume();
 									break;
 								}
-								case -3: {
-									// Ctrl C
+								case -5: {
+									// Ctrl C Stop
 									dbgSession.suspend();
 									break;
 								}
-								case -4: {
-									// Ctrl X
+								case -6: {
+									// Ctrl X Terminate
 									dbgSession.destroy();
 									break;
 								}
-								case -5: {
+								case -7: {
 									//Status check call 1 - running, 0 - stopped
 	        	                    out.put("s", true);
 	        	                    out.put("r", dbgSession.getRunning());
 	        	                    out.put("p", dbgSession.getPrevLine());
 	        	                    out.put("n", dbgSession.getNextLine());
+	        	                    out.put("v", dbgSession.getState());
+	        	                    out.put("t", dbgSession.getCurrFile());
+	        	                    if(!dbgSession.getRunning()) {
+	        	                    	dbgSessions.remove(sessionId);
+	        	                    }
 	        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
 	        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 								}
@@ -598,7 +634,7 @@ public class GatfReportsHandler extends HttpHandler {
 										//Click on line number in script (remove breakpoint)
 										if(!dbgSession.unsetBreakPoint(selDbgline+1)) {
 			        	                    out.put("s", false);
-			        	                    out.put("m", "Invalid line number for debugger");
+			        	                    out.put("m", "No breakpoint found at line + " + (selDbgline+1));
 			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
 			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 										}
@@ -606,7 +642,7 @@ public class GatfReportsHandler extends HttpHandler {
 										//Click on line number in script (add breakpoint)
 										if(!dbgSession.setBreakPoint(selDbgline+1)) {
 			        	                    out.put("s", false);
-			        	                    out.put("m", "Invalid line number for debugger");
+			        	                    out.put("m", "Breakpoint cannot be added on line " + (selDbgline+1));
 			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
 			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
 										}
@@ -621,6 +657,7 @@ public class GatfReportsHandler extends HttpHandler {
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
                     } else {
+	                    executorMojo.initilaizeContext(gatfConfig, true);
                     	executorMojo.doSeleniumTest(gatfConfig, null);
                     	String cont = "Please check Reports section for the selenium test results";
                         return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};

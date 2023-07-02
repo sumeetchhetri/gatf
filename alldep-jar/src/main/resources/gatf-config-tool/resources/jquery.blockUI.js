@@ -30,8 +30,8 @@
 		var setExpr = $.isFunction( document.createElement('div').style.setExpression );
 
 		// global $ methods for blocking/unblocking the entire page
-		$.blockUI   = function(opts) { install(window, opts); };
-		$.unblockUI = function(opts) { remove(window, opts); };
+		$.blockUI   = function(opts, where) { install(!where?window:where, opts); };
+		$.unblockUI = function(opts, where) { remove(!where?window:where, opts); };
 
 		// convenience method for quick growl-like notifications  (http://www.google.com/search?q=growl)
 		$.growlUI = function(title, message, timeout, onClose) {
@@ -90,7 +90,7 @@
 			// these and use an external stylesheet then do this in your code:
 			// $.blockUI.defaults.css = {};
 			css: {
-				padding:	0,
+				/*padding:	0,
 				margin:		0,
 				width:		'30%',
 				top:		'40%',
@@ -99,7 +99,7 @@
 				color:		'#000',
 				border:		'3px solid #aaa',
 				backgroundColor:'#fff',
-				cursor:		'wait'
+				cursor:		'wait'*/
 			},
 
 			// minimal style set used when themes are used

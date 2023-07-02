@@ -5,6 +5,8 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Map;
 
+import org.apache.commons.lang3.SystemUtils;
+
 import com.gatf.selenium.gatfjdb.GatfDebuggerLauncher;
 import com.sun.jdi.Bootstrap;
 import com.sun.jdi.VirtualMachine;
@@ -76,9 +78,13 @@ public class VMLauncher {
         Map<String, Argument> cArgs = connector.defaultArguments();
         cArgs.get("options").setValue(options);
         cArgs.get("main").setValue(main);
-        GatfDebuggerLauncher l = new GatfDebuggerLauncher();
-        final VirtualMachine vm = l.launch(connector, cArgs);
-        //final VirtualMachine vm = connector.launch(cArgs);
+        final VirtualMachine vm;
+        if(!SystemUtils.IS_OS_WINDOWS) {
+	        GatfDebuggerLauncher l = new GatfDebuggerLauncher();
+	        vm = l.launch(connector, cArgs);
+        } else {
+        	vm = connector.launch(cArgs);
+        }
 
         final Thread outThread = redirect("Subproc stdout",
                                           vm.process().getInputStream(),

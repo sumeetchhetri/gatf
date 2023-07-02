@@ -99,7 +99,7 @@ public class GatfProjectZipHandler extends HttpHandler {
         	File[] files = directory.listFiles(TestCaseFinder.NOZIP_FILE_FILTER);
         	File[] folders = directory.listFiles(TestCaseFinder.DIR_FILTER);
         	
-        	File testCaseDir = new File(directory, gatfConfig.getTestCaseDir());
+        	File testCaseDir = gatfConfig.getTestCaseDir()==null?directory:new File(directory, gatfConfig.getTestCaseDir());
         	File outDir = new File(outdirectory, gatfConfig.getOutFilesDir());
         	
         	File ozFolder = zfolder;

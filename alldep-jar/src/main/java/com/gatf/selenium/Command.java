@@ -26,6 +26,7 @@ import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -328,6 +329,7 @@ public class Command {
     protected Map<String, SeleniumDriverConfig> mp;
     protected String className = "STC_" + System.nanoTime() + "";
     protected List<Command> children = new ArrayList<Command>();
+    protected static boolean isSubtestScope = false;
 
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
     static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
@@ -339,10 +341,10 @@ public class Command {
         this.state = state;
     }
     
-    public static Object[] getSubtestFromCall(String line, String testcaseFileName, AcceptanceTestContext context) {
+    public static Object[] getSubtestFromCall(String line, String testcaseFileName, AcceptanceTestContext context, Command allcmds) {
     	List<String> commands = new ArrayList<String>();
     	try {
-    		Command allcmds = Command.read(context.getResourceFile(testcaseFileName), commands, context);
+    		allcmds = allcmds!=null?allcmds:Command.read(context.getResourceFile(testcaseFileName), commands, context);
     		CommandState state = new CommandState();
     		state.allSubTests = allcmds.state.allSubTests;
     		Object[] cmdDetails = new Object[]{line, 1, null, "", state, ""};
@@ -1820,10 +1822,13 @@ public class Command {
     
     public static String genDebugInfo(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
-    		if(c instanceof BrowserCommand) {
-    			return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "_*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    		if(c instanceof CommentCommand || c instanceof MultiCommentCommand || c instanceof NoopCommand) return "";
+    		if(isSubtestScope || c instanceof SubTestCommand) {
+    			return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    		} else if(c instanceof BrowserCommand) {
+    			return "/*GATF_OP_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     		}
-    		return "/*GATF_ST_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
+    		return "/*GATF_LINE@" + esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1] + "*/__set__cln__(\""+(esc(c.fileLineDetails[2].toString().trim())+":"+c.fileLineDetails[1])+"\");";
     	}
     	return "";
     }
@@ -2525,7 +2530,7 @@ public class Command {
 	                }
 	            } else {
 	                b.append("if(matchesSessionId("+(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-	                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {");
+	                        +((sessionId!=null&&sessionId>0)?(sessionId+""):"-1") + ")) {\n");
 	            }
 	            if(initvars) {
 	                b.append("___sc___1 = get___d___();\n");
@@ -2707,6 +2712,7 @@ public class Command {
             b.append("List<WebElement> ___ce___ = null;\n");
             if(!children.isEmpty())
             {
+            	isSubtestScope = true;
             	b.append(genDebugInfo(this));
             	String pstn = state.varnamerandom();
                 b.append("String "+pstn+" = get__"+(!isAFunc?"subtest":"func")+"name__();\n");
@@ -2746,9 +2752,10 @@ public class Command {
                 b.append("\n}\nfinally {\n");
                 //b.append("set__"+(!isAFunc?"subtest":"func")+"name__(null);\n");
                 b.append("set__"+(!isAFunc?"subtest":"func")+"name__("+pstn+");\n");
-                b.append("\n}");
+                b.append("\n}\n");
+                isSubtestScope = false;
             }
-            b.append("return ___ce___;\n}\n");
+            b.append("/*GATF_ST_LINE_END@"+esc(fileLineDetails[2].toString().trim())+"*/return ___ce___;\n}\n");
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -2777,6 +2784,7 @@ public class Command {
         String name;
         boolean isCntxtVar = false;
         PluginCommand pcomd;
+        ReadFileCommand rcmd;
         String val = "";
         String type = "";
         VarCommand(String val, Object[] cmdDetails, CommandState state) {
@@ -2798,6 +2806,12 @@ public class Command {
                 } else {
                     this.val = state.unsanitize(val);
                 }
+                if(pcomd==null) {
+                	if(this.val.startsWith("readfile ")) {
+                    	rcmd = new ReadFileCommand(this.val.substring(9), cmdDetails, state);
+                    	this.val = null;
+                    }
+                }
             } else {
                 //excep
             }
@@ -2814,6 +2828,9 @@ public class Command {
             } else if(pcomd!=null) {
                 return "var " + name + " plugin " + pcomd.toCmd();
             } else {
+            	if(rcmd!=null) {
+            		return "var " + name + " " + rcmd.toCmd();
+            	}
                 return "var " + name + " " + val; 
             }
         }
@@ -2836,6 +2853,9 @@ public class Command {
             } else if(pcomd!=null) {
                 return "\nObject " + name + " = null;\n"+pcomd.javacodev(name)+";" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             } else {
+            	if(rcmd!=null) {
+            		return "\nObject " + name + " = "+rcmd.javacodev() + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
+            	}
                 return "\n"+(val.startsWith("@")?"Object ":"String ") + name + " = "+(val.startsWith("@")?val.substring(1):val)+";\n" + (isCntxtVar?"\n___cxt___add_param__(\""+name+"\", "+name+");":"\n___add_var__(\""+name+"\", "+name+");");
             }
         }
@@ -4046,7 +4066,7 @@ public class Command {
             	isBinary = "binary".equalsIgnoreCase(parts[1].trim());
             }
         }
-        String toCmd() {
+		String toCmd() {
             StringBuilder b = new StringBuilder();
             b.append("#readfile ");
             b.append(name);
@@ -4059,6 +4079,15 @@ public class Command {
                     b.append("\n");
                 }
                 b.append("}");
+            }
+            return b.toString();
+        }
+        public String javacodev() {
+            StringBuilder b = new StringBuilder();
+            if(isBinary) {
+            	b.append(" org.apache.commons.io.FileUtils.readFileToByteArray(new java.io.File(\""+esc(name)+"\"));\n");
+            } else {
+            	b.append(" org.apache.commons.io.FileUtils.readFileToString(new java.io.File(\""+esc(name)+"\"), \"UTF-8\");\n");
             }
             return b.toString();
         }
@@ -8545,12 +8574,13 @@ public class Command {
     	
         Object[] retvals = new Object[5];
         try {
-        	Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
+        	Command[] out = new Command[1];
+        	Map<String, List<List<Integer[]>>> selToJavaLineMap = new LinkedHashMap<>();
         	SeleniumTest dyn = null;
         	if(className!=null) {
         		dyn = (SeleniumTest)Class.forName(className).getConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {c, 0});
         	} else {
-        		dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>4?args[4].trim().equalsIgnoreCase("true"):false, selToJavaLineMap);
+        		dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(args[1], Command.class.getClassLoader(), c, retvals, config, args.length>4?args[4].trim().equalsIgnoreCase("true"):false, selToJavaLineMap, out);
         	}
             System.out.println(dyn!=null?"SUCCESS":"FAILURE");
             if(dyn!=null) {
@@ -8706,8 +8736,8 @@ public class Command {
                     if(configuration.getOutFilesBasePath()==null)
                         configuration.setOutFilesBasePath(testCasesBasePath);
                     
-                    if(configuration.getTestCaseDir()==null)
-                        configuration.setTestCaseDir("");
+                    //if(configuration.getTestCaseDir()==null)
+                        //configuration.setTestCaseDir("");
                     
                     if(configuration.getNumConcurrentExecutions()==null)
                         configuration.setNumConcurrentExecutions(1);

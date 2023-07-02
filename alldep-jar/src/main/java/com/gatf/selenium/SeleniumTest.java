@@ -1057,8 +1057,12 @@ public abstract class SeleniumTest {
 		this.___cxt___ = ___cxt___;
 		try {
 			File basePath_ = new File(___cxt___.getGatfExecutorConfig().getTestCasesBasePath());
-		    File testPath = new File(basePath_, ___cxt___.getGatfExecutorConfig().getTestCaseDir());
-		    basePath = testPath.getAbsolutePath();
+			if(___cxt___.getGatfExecutorConfig().getTestCaseDir()!=null) {
+			    File testPath = new File(basePath_, ___cxt___.getGatfExecutorConfig().getTestCaseDir());
+			    basePath = testPath.getAbsolutePath();
+			} else {
+				basePath = basePath_.getAbsolutePath();
+			}
 		    this.name = name_;
 		} catch (Exception e) {
 			this.name = name_;

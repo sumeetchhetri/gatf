@@ -260,24 +260,36 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.getRootDir());
 		} else {
+			if(gatfConfig.getTestCasesBasePath().trim().contains(".") || !new File(gatfConfig.getTestCasesBasePath()).exists()) {
+				throw new RuntimeException("Invalid Testcases base path");
+			}
 			gatfConfig.setTestCasesBasePath(gatfConfig.getTestCasesBasePath().trim());
 		}
 		if(gatfConfig.getOutFilesBasePath()==null) {
 			isChanged = true;
 			gatfConfig.setOutFilesBasePath(mojo.getRootDir());
 		} else {
+			if(gatfConfig.getOutFilesBasePath().trim().contains(".") || !new File(gatfConfig.getOutFilesBasePath()).exists()) {
+				throw new RuntimeException("Invalid Out files base path");
+			}
 			gatfConfig.setOutFilesBasePath(gatfConfig.getOutFilesBasePath().trim());
 		}
-		if(gatfConfig.getTestCaseDir()==null) {
+		if(StringUtils.isBlank(gatfConfig.getTestCaseDir()) || gatfConfig.getTestCaseDir().trim().equals(".")) {
 			isChanged = true;
-			gatfConfig.setTestCaseDir("data");
+			gatfConfig.setTestCaseDir(null);
 		} else {
+			if(!new File(gatfConfig.getTestCasesBasePath(), gatfConfig.getTestCaseDir().trim()).exists()) {
+				throw new RuntimeException("Invalid Testcasess directory");
+			}
 			gatfConfig.setTestCaseDir(gatfConfig.getTestCaseDir().trim());
 		}
 		if(gatfConfig.getOutFilesDir()==null) {
 			isChanged = true;
 			gatfConfig.setOutFilesDir("out");
 		} else {
+			if(gatfConfig.getOutFilesDir().trim().contains(".") || !new File(gatfConfig.getOutFilesBasePath(), gatfConfig.getOutFilesDir().trim()).exists()) {
+				throw new RuntimeException("Invalid Out files directory");
+			}
 			gatfConfig.setOutFilesDir(gatfConfig.getOutFilesDir().trim());
 		}
 		if(gatfConfig.isEnabled()==null) {

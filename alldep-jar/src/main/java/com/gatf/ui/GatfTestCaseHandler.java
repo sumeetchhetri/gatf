@@ -67,12 +67,16 @@ public class GatfTestCaseHandler extends HttpHandler {
 			try {
 				gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-				if(!new File(dirPath).exists()) {
-					new File(dirPath).mkdir();
-				}
-    			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
-    					+ testcaseFileName;
+    			if(gatfConfig.getTestCaseDir()!=null) {
+	    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+					if(!new File(dirPath).exists()) {
+						new File(dirPath).mkdir();
+					}
+	    			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
+	    					+ testcaseFileName;
+    			} else {
+    				filePath = basepath + File.separator + testcaseFileName;
+    			}
     			if(!new File(filePath).exists()) {
     				throw new RuntimeException("Test case file does not exist");
     			}

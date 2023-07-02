@@ -78,6 +78,7 @@ import com.gatf.executor.report.TestExecutionPercentile;
 import com.gatf.executor.report.TestSuiteStats;
 import com.gatf.generator.core.ClassLoaderUtils;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
+import com.gatf.selenium.Command;
 import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
@@ -579,10 +580,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     	try {
     		selscript = context.getWorkflowContextHandler().templatize(selscript);
     		Object[] retvals = new Object[4];
-    		Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
-    		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, selToJavaLineMap);
+    		Command[] out = new Command[1];
+    		Map<String, List<List<Integer[]>>> selToJavaLineMap = new LinkedHashMap<>();
+    		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, selToJavaLineMap, out);
     		String[] args = new String[] {dyn.getClass().getName(), configPath};
-    		session = GatfSelDebugger.debugSession(dyn.getClass(), args, selToJavaLineMap);
+    		session = GatfSelDebugger.debugSession(dyn.getClass(), args, selToJavaLineMap, out[0]);
     		session.setSelscript(selscript);
     		session.setSrcCode(retvals[1].toString());
     	} catch (GatfSelCodeParseError e) {
@@ -658,7 +660,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         	try {
         		selscript = context.getWorkflowContextHandler().templatize(selscript);
         		Object[] retvals = new Object[4];
-        		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, null);
+        		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, null, null);
         		tests.add(dyn);
         		testdata.add(retvals);
         		testClassNames.add(dyn.getClass().getName());

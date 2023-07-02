@@ -644,8 +644,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void validate()
 	{
-		Assert.assertTrue("Testcase directory name is blank...", 
-				getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
+		if(getTestCaseDir()!=null) {
+			Assert.assertTrue("Testcase directory name is blank...", 
+					getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
+		}
 		
 		if(isAuthEnabled()) {
 			Assert.assertTrue("Invalid auth extract params", getAuthExtractAuthParams().length==4);

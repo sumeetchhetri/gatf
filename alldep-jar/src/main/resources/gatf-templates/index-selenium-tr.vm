@@ -13,7 +13,7 @@
 
 		<script type="text/javascript" src="js/prettify.js"></script>
 		<script type="text/javascript" src="js/vkbeautify.js"></script>
-		<link href="css/prettify.css" rel="stylesheet">
+        <script type="text/javascript" src="js/jss.min.js"></script>
 		
 		<style>
 			.flot-x-axis div.flot-tick-label { 
@@ -127,10 +127,64 @@ $StringEscapeUtils.escapeHtml(${selLogL.getMessage()})
 		</div>
 
 		<script>
+			function rgb2hex(ele){
+				rgb = $(ele).css('background-color').match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+				return ("#" +
+					("0" + parseInt(rgb[1],10).toString(16)).slice(-2) +
+					("0" + parseInt(rgb[2],10).toString(16)).slice(-2) +
+					("0" + parseInt(rgb[3],10).toString(16)).slice(-2)).toLowerCase();
+			}
 			
+			function darkMode(theme) {
+				if (theme==="dark" || (theme!=="default" && rgb2hex($('#page-wrapper'))=="#ffffff")) {
+					$('body').css('background-color', '#000000');
+					$('body').css('color', '#ffffff');
+					jss.set('input',{'color': 'white', 'background-color': '#333'});
+					jss.set('select',{'color': 'white', 'background-color': '#333'});
+					jss.set('#page-wrapper',{'color': '#ffffff', 'background-color': '#000000'});
+					jss.set('.panel',{'color': 'white', 'background-color': '#000000', 'border': '1px solid #ddd'});
+					jss.set('.panel-default',{'color': 'white', 'background-color': '#000000', 'border': '1px solid #ddd'});
+					jss.set('.panel-default>.panel-heading',{'color': 'white', 'background-color': '#333', 'border': '1px solid #ddd'});
+					$('table').find('td').css('background-color', '#000000');
+					$('table').find('td').css('color', '#ffffff');
+					jss.set('table th',{'color': 'white', 'background-color': '#333', 'border': '1px solid #ddd'});
+					jss.set('table td',{'border': '1px solid #ddd'});
+					$('pre').css('background-color', '#000000');
+					$('pre').css('color', '#ffffff');
+			    } else {
+					jss.set('input',{'color': '#000000', 'background-color': '#ffffff'});
+					jss.set('select',{'color': '#000000', 'background-color': '#ffffff'});
+					$('body').css('background-color', '#ffffff');
+					$('body').css('color', '#000000');
+					jss.set('#page-wrapper',{'color': '#000000', 'background-color': '#ffffff'});
+					jss.set('.panel',{'color': '#000000', 'background-color': '#ffffff', 'border': '1px solid #e0e0e0'});
+					jss.set('.panel-default',{'color': '#000000', 'background-color': '#ffffff', 'border': '1px solid #e0e0e0'});
+					jss.set('.panel-default>.panel-heading',{'color': '#000000', 'background-color': '#ddd', 'border': '1px solid #e0e0e0'});
+					$('table').find('td').css('background-color', '#ffffff');
+					$('table').find('td').css('color', '#000000');
+					jss.set('table th',{'color': 'white', 'background-color': '#A7C942', 'border': '1px solid #98bf21'});
+					jss.set('table td',{'border': '1px solid #98bf21'});
+					$('pre').css('background-color', '#ffffff');
+					$('pre').css('color', '#000000');
+			    }
+			}
+			
+			var currTheme = "default";
 			$(document).ready(function() {
+				currTheme = localStorage.getItem("theme");
+				
+				var lnk=document.createElement('link');
+				lnk.href=currTheme=="default"?'css/prettify.css':'css/code-prettify-theme.css';
+				lnk.rel='stylesheet';
+				lnk.type='text/css';
+				(document.head||document.documentElement).appendChild(lnk);
+
 				$('#selcode_htm').html(prettyPrintOne($('#selcode_htm').html(),null,true));
 				$('#javacode_htm').html(prettyPrintOne($('#javacode_htm').html(),null,true));
+				
+				if(localStorage.getItem("theme")) {
+					darkMode(localStorage.getItem("theme"));
+				}
 			});
 			
 		</script>

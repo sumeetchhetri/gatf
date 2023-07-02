@@ -9,12 +9,14 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jdiscript.util.VMLauncher;
 
+import com.gatf.selenium.Command;
 import com.gatf.selenium.SeleniumTest;
 import com.sun.jdi.AbsentInformationException;
 import com.sun.jdi.ClassType;
@@ -32,6 +34,7 @@ import com.sun.jdi.event.ClassPrepareEvent;
 import com.sun.jdi.event.Event;
 import com.sun.jdi.event.EventSet;
 import com.sun.jdi.event.LocatableEvent;
+import com.sun.jdi.event.StepEvent;
 import com.sun.jdi.event.VMDeathEvent;
 import com.sun.jdi.event.VMDisconnectEvent;
 import com.sun.jdi.request.BreakpointRequest;
@@ -39,18 +42,27 @@ import com.sun.jdi.request.ClassPrepareRequest;
 
 @SuppressWarnings("rawtypes")
 public class GatfSelDebugger {
+	private static class DebugState {
+		private Set<Integer> breaks = new HashSet<Integer>();
+		private int prevLine;
+		private int nextLine;
+	}
+	
+	private Map<String, DebugState> stateMap = new HashMap<>();
+	private Stack<String> selFiles = new Stack<>();
 	private String selscript;
 	private String srcCode;
-	private BreakpointEvent cbe;
+	private LocatableEvent cbe;
 	private Class debugClass; 
 	private VirtualMachine dvm;
 	private ClassPrepareEvent cpe;
-	private Set<Integer> breaks = new HashSet<Integer>();
-	private Map<Integer, Object[]> selToJavaLineMap = new HashMap<Integer, Object[]>();
+	private Map<String, List<List<Integer[]>>> selToJavaLineMap = null;
 	private Thread eventThr = null;
 	private volatile int running = 1;
 	private volatile AtomicInteger activity = new AtomicInteger(0);
-	private int prevLine;
+	private String currFile;
+	private volatile int state = 0;
+	private Command allcmds;
 	
 	public boolean isActivityObserved() {
 		int actCount = activity.get();
@@ -58,11 +70,15 @@ public class GatfSelDebugger {
 		if(actCount>0) {
 			return true;
 		}
-		return false;
+		return true;
 	}
 	
     public String getSrcCode() {
 		return srcCode;
+	}
+	
+    public String getCurrFile() {
+		return currFile;
 	}
 
 	public void setSrcCode(String srcCode) {
@@ -77,41 +93,63 @@ public class GatfSelDebugger {
 		this.selscript = selscript;
 	}
 	
-	public Set<Integer> getDebuggableLines() {
-		return selToJavaLineMap.keySet();
+	public Map<String, List<List<Integer[]>>> getDebuggableLines() {
+		return selToJavaLineMap;
 	}
-	
-	/*public int getCurrentLine() {
-		if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
-			for (Integer selln : selToJavaLineMap.keySet()) {
-				int lineNumber = (Integer)selToJavaLineMap.get(selln)[1];
-				if(lineNumber==cbe.location().lineNumber()) {
-					return selln;
-				}
-			}
-		}
-		return 0;
-	}*/
+    
+    public int getState() {
+    	activity.incrementAndGet();
+    	return state;
+    }
+    
+    public boolean getRunning() {
+    	activity.incrementAndGet();
+    	return running==1;
+    }
 	
 	public int getPrevLine() {
-		return prevLine;
+		return stateMap.get(currFile).prevLine;
 	}
 	
 	public int getNextLine() {
+		return stateMap.get(currFile).nextLine;
+	}
+	
+	private int resolveLines(boolean resolvePrevLine) {
+		int nextLine = -1;
 		activity.incrementAndGet();
 		if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
-			boolean found = false;
-			for (Integer selln : selToJavaLineMap.keySet()) {
-				int lineNumber = (Integer)selToJavaLineMap.get(selln)[1];
-				if(lineNumber==cbe.location().lineNumber()) {
-					found = true;
-					prevLine = selln;
-				} else if(found) {//We need the next line hence this check
-					return selln;
+			boolean found = !resolvePrevLine;
+			if(resolvePrevLine) {
+				outer: for(String file : selToJavaLineMap.keySet()) {
+					for (List<Integer[]> fset : selToJavaLineMap.get(file)) {
+						for (Integer[] linf : fset) {
+							if(linf[1].equals(cbe.location().lineNumber())) {
+								found = true;
+								stateMap.get(currFile).prevLine = linf[0];
+								break outer;
+							}
+						}
+					}
+				}
+			}
+			if(found) {
+				found = false;
+				outer: for (List<Integer[]> fset : selToJavaLineMap.get(currFile)) {
+					for (Integer[] linf : fset) {
+						if(stateMap.get(currFile).prevLine==linf[0]) {
+							found = true;
+						}
+						if(found && stateMap.get(currFile).prevLine<linf[0]) {
+							nextLine = linf[0];
+							break outer;
+						}
+					}
 				}
 			}
 		}
-		return 0;
+		stateMap.get(currFile).nextLine = nextLine;
+		return nextLine;
 	}
 
 	public void connectAndLaunchVM(String[] args) throws IOException, IllegalConnectorArgumentsException, VMStartException {
@@ -130,12 +168,23 @@ public class GatfSelDebugger {
 
     public boolean unsetBreakPoint(int selLineNum) throws AbsentInformationException {
     	activity.incrementAndGet();
-    	if(!selToJavaLineMap.containsKey(selLineNum) || !breaks.contains(selLineNum)) {
+    	if(!stateMap.get(currFile).breaks.contains(selLineNum)) {
     		return false;
     	}
-    	breaks.remove(selLineNum);
     	System.out.println("Removing breakpoint at line " + selLineNum);
-    	int lineNumber = (Integer)selToJavaLineMap.get(selLineNum)[1];
+    	int lineNumber = -1;
+    	outer: for (List<Integer[]> fset : selToJavaLineMap.get(currFile)) {
+			for (Integer[] linf : fset) {
+				if(linf[0].equals(selLineNum)) {
+					lineNumber = linf[1];
+					break outer;
+				}
+			}
+		}
+    	if(lineNumber==-1) {
+    		return false;
+    	}
+    	stateMap.get(currFile).breaks.remove(selLineNum);
     	List<BreakpointRequest> bpl = dvm.eventRequestManager().breakpointRequests();
     	for (BreakpointRequest bpr : bpl) {
 			if(bpr.location().toString().indexOf(debugClass.getName()+":")!=-1 && bpr.location().lineNumber()==lineNumber) {
@@ -148,17 +197,27 @@ public class GatfSelDebugger {
 
     public boolean setBreakPoint(int selLineNum) throws AbsentInformationException {
     	activity.incrementAndGet();
-    	if(!selToJavaLineMap.containsKey(selLineNum)) {
-    		return false;
+    	if(stateMap.get(currFile).breaks.contains(selLineNum)) {
+    		return true;
     	}
     	System.out.println("Adding breakpoint at line " + selLineNum);
-    	int lineNumber = (Integer)selToJavaLineMap.get(selLineNum)[1];
-    	breaks.add(lineNumber);
+    	int lineNumber = -1;
+    	outer: for (List<Integer[]> fset : selToJavaLineMap.get(currFile)) {
+			for (Integer[] linf : fset) {
+				if(linf[0].equals(selLineNum)) {
+					lineNumber = linf[1];
+					break outer;
+				}
+			}
+		}
+    	if(lineNumber==-1) {
+    		return false;
+    	}
+    	stateMap.get(currFile).breaks.add(lineNumber);
         ClassType classType = (ClassType) cpe.referenceType();
         Location location = classType.locationsOfLine(lineNumber).get(0);
         BreakpointRequest bpReq = dvm.eventRequestManager().createBreakpointRequest(location);
         bpReq.enable();
-        //dvm.resume();
         return true;
     }
 
@@ -174,28 +233,62 @@ public class GatfSelDebugger {
         }
     }
 
-    public boolean enableStepRequest() throws AbsentInformationException {
+    public boolean enableStepIntoRequest(String line) throws AbsentInformationException {
     	activity.incrementAndGet();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
-        	setBreakPoint(getNextLine());
+        	Object[] fld = Command.getSubtestFromCall(line, null, null, allcmds);
+        	if(fld!=null) {
+        		selFiles.push(currFile);
+        		resolveLines(true);
+        		currFile = fld[5].toString();
+        		stateMap.get(currFile).prevLine = (Integer)fld[1];
+            	setBreakPoint((Integer)fld[1]);
+            	resolveLines(false);
+            	dvm.resume();
+        	}
+        	state = -1;
             return true;
         }
+    	state = -1;
+    	//StepRequest stepRequest = dvm.eventRequestManager().createStepRequest(cbe.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
+    	//stepRequest.enable();
         return false;
     }
-    
-    public void suspend() {
+
+    public boolean enableStepOutRequest() throws AbsentInformationException {
     	activity.incrementAndGet();
-    	dvm.suspend();
+        if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1 && selFiles.size()>0) {
+        	currFile = selFiles.pop();
+        	resolveLines(false);
+        	state = -2;
+            return true;
+        }
+    	state = -2;
+        return false;
+    }
+
+    public boolean enableStepOverRequest() throws AbsentInformationException {
+    	activity.incrementAndGet();
+        if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
+        	setBreakPoint(resolveLines(true));
+        	dvm.resume();
+        	state = -3;
+            return true;
+        }
+    	state = -3;
+        return false;
     }
     
     public void resume() {
     	activity.incrementAndGet();
     	dvm.resume();
+    	state = -4;
     }
     
-    public boolean getRunning() {
+    public void suspend() {
     	activity.incrementAndGet();
-    	return running==1;
+    	dvm.suspend();
+    	state = -5;
     }
     
     public void destroy() {
@@ -206,12 +299,14 @@ public class GatfSelDebugger {
 			} catch (InterruptedException e) {
 			}
     	}
+    	state = -6;
     }
 
-    public static GatfSelDebugger debugSession(Class<? extends SeleniumTest> testClass, String[] args, Map<Integer, Object[]> selToJavaLineMap) throws Exception {
+    public static GatfSelDebugger debugSession(Class<? extends SeleniumTest> testClass, String[] args, Map<String, List<List<Integer[]>>> selToJavaLineMap, Command out) throws Exception {
         GatfSelDebugger dbgIns = new GatfSelDebugger();
         dbgIns.debugClass = testClass;
         dbgIns.selToJavaLineMap = selToJavaLineMap;
+        dbgIns.allcmds = out;
         
         SeleniumTest.IS_GATF.set(true);
     	dbgIns.connectAndLaunchVM(args);
@@ -219,29 +314,41 @@ public class GatfSelDebugger {
         dbgIns.running = 1;
         SeleniumTest.IS_GATF.set(false);
         
-        for (Integer selln : selToJavaLineMap.keySet()) {
-        	Object[] o = selToJavaLineMap.get(selln);
-        	if(((Boolean)o[2])) {
-        		dbgIns.prevLine = selln;
-        		break;
-        	}
+        for(String file : selToJavaLineMap.keySet()) {
+        	dbgIns.stateMap.put(file, new DebugState());
         }
+        dbgIns.currFile = selToJavaLineMap.keySet().iterator().next();
+        
+		outer: for (List<Integer[]> fset : selToJavaLineMap.get(dbgIns.currFile)) {
+			for (Integer[] linf : fset) {
+				if(linf[2].equals(2)) {
+					dbgIns.stateMap.get(dbgIns.currFile).prevLine = linf[0];
+					break outer;
+				}
+			}
+		}
         
         dbgIns.eventThr = new Thread(new Runnable() {
 			@Override
 			public void run() {
 				try {
+					dbgIns.dvm.resume();
 					EventSet eventSet = null;
 		            while ((eventSet = dbgIns.dvm.eventQueue().remove()) != null) {
 		                for (Event event : eventSet) {
 		                    if (event instanceof ClassPrepareEvent) {
 		                    	System.out.println("ClassPrepareEvent received...");
 		                    	dbgIns.cpe = (ClassPrepareEvent)event;
-		                    	dbgIns.setBreakPoint(selToJavaLineMap.keySet().iterator().next());
+		                    	dbgIns.setBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
+		                    	dbgIns.dvm.resume();
 		                    } else if (event instanceof BreakpointEvent) {
 		                    	System.out.println("BreakpointEvent received...");
 		                    	dbgIns.cbe = (BreakpointEvent) event;
-		                        dbgIns.displayVariables(dbgIns.cbe);
+		                        //dbgIns.displayVariables(dbgIns.cbe);
+		                    } else if (event instanceof StepEvent) {
+		                    	System.out.println("StepEvent received...");
+		                    	dbgIns.cbe = (StepEvent) event;
+		                        //dbgIns.displayVariables(dbgIns.cbe);
 		                    } else {
 		                    	dbgIns.cbe = null;
 		                    	System.out.println(event.getClass().getSimpleName() + " received...");

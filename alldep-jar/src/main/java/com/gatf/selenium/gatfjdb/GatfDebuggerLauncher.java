@@ -54,15 +54,19 @@ public class GatfDebuggerLauncher {
     private String argument(Object o, String name, Map<String, ? extends Argument> arguments) {
     	try {
     		Class<?> claz = Class.forName("com.sun.tools.jdi.ConnectorImpl");
+    		System.out.println("Found class " + claz.getName());
     		Method arg = claz.getDeclaredMethod("argument", new Class[] {String.class, Map.class});
+    		System.out.println("Found method " + arg.getName());
     		arg.setAccessible(true);
     		Object a = arg.invoke(o, new Object[] {name, arguments});
     		claz = Class.forName("com.sun.tools.jdi.ConnectorImpl$ArgumentImpl");
+    		System.out.println("Found class " + claz.getName());
     		arg = claz.getDeclaredMethod("value", new Class[] {});
+    		System.out.println("Found method " + arg.getName());
     		arg.setAccessible(true);
     		return (String)arg.invoke(a, new Object[] {});
 		} catch (Exception e) {
-			// TODO: handle exception
+			e.printStackTrace();
 		}
     	return null;
     }
@@ -73,20 +77,24 @@ public class GatfDebuggerLauncher {
                VMStartException
     {
         VirtualMachine vm = null;
-        
+        System.out.println(o.getClass().getName());
         try {
     		Class<?> claz = Class.forName("com.sun.tools.jdi.SunCommandLineLauncher");
+    		System.out.println("Found class " + claz.getName());
     		Method arg = claz.getDeclaredMethod("transportService", new Class[] {});
+    		System.out.println("Found method " + arg.getName());
     		arg.setAccessible(true);
     		transportService = (TransportService)arg.invoke(o, new Object[] {});
     		arg = claz.getDeclaredMethod("transport", new Class[] {});
+    		System.out.println("Found method " + arg.getName());
     		arg.setAccessible(true);
     		transport = (Transport)arg.invoke(o, new Object[] {});
     		Field fei = claz.getDeclaredField("usingSharedMemory");
+    		System.out.println("Found field " + fei.getName());
     		fei.setAccessible(true);
     		usingSharedMemory = (Boolean)fei.get(o);
 		} catch (Exception e) {
-			// TODO: handle exception
+			e.printStackTrace();
 		}
 
         String home = argument(o, ARG_HOME, arguments);
@@ -99,8 +107,7 @@ public class GatfDebuggerLauncher {
         String exePath = null;
 
         if (quote.length() > 1) {
-            throw new IllegalConnectorArgumentsException("Invalid length",
-                                                         ARG_QUOTE);
+            throw new IllegalConnectorArgumentsException("Invalid length", ARG_QUOTE);
         }
 
         if ((options.indexOf("-Djava.compiler=") != -1) &&
@@ -153,7 +160,7 @@ public class GatfDebuggerLauncher {
 
         	if(!usingSharedMemory) {
             	address = address.substring(address.lastIndexOf(":"));
-            	address = "0.0.0.0" + address;
+            	address = "127.0.0.1" + address;
         	}
 
             String xrun = "transport=" + transport().name() +
@@ -172,7 +179,9 @@ public class GatfDebuggerLauncher {
 
             try {
         		Class<?> claz = Class.forName("com.sun.tools.jdi.AbstractLauncher");
+        		System.out.println("Found class " + claz.getName());
         		Method arg = claz.getDeclaredMethod("launch", new Class[] {String[].class, String.class, TransportService.ListenKey.class, TransportService.class});
+        		System.out.println("Found method " + arg.getName());
         		arg.setAccessible(true);
         		vm = (VirtualMachine)arg.invoke(o, new Object[] {tokenizeCommand(command, quote.charAt(0)), address, listenKey, transportService()});
     		} catch (Exception e) {
