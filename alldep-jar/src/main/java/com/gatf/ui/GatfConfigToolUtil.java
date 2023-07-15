@@ -260,7 +260,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.getRootDir());
 		} else {
-			if(gatfConfig.getTestCasesBasePath().trim().contains(".") || !new File(gatfConfig.getTestCasesBasePath()).exists()) {
+			if(gatfConfig.getTestCasesBasePath().trim().equals(".") || !new File(gatfConfig.getTestCasesBasePath()).exists()) {
 				throw new RuntimeException("Invalid Testcases base path");
 			}
 			gatfConfig.setTestCasesBasePath(gatfConfig.getTestCasesBasePath().trim());
@@ -269,7 +269,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			isChanged = true;
 			gatfConfig.setOutFilesBasePath(mojo.getRootDir());
 		} else {
-			if(gatfConfig.getOutFilesBasePath().trim().contains(".") || !new File(gatfConfig.getOutFilesBasePath()).exists()) {
+			if(gatfConfig.getOutFilesBasePath().trim().equals(".") || !new File(gatfConfig.getOutFilesBasePath()).exists()) {
 				throw new RuntimeException("Invalid Out files base path");
 			}
 			gatfConfig.setOutFilesBasePath(gatfConfig.getOutFilesBasePath().trim());
@@ -287,7 +287,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			isChanged = true;
 			gatfConfig.setOutFilesDir("out");
 		} else {
-			if(gatfConfig.getOutFilesDir().trim().contains(".") || !new File(gatfConfig.getOutFilesBasePath(), gatfConfig.getOutFilesDir().trim()).exists()) {
+			if(gatfConfig.getOutFilesDir().trim().equals(".") || !new File(gatfConfig.getOutFilesBasePath(), gatfConfig.getOutFilesDir().trim()).exists()) {
 				throw new RuntimeException("Invalid Out files directory");
 			}
 			gatfConfig.setOutFilesDir(gatfConfig.getOutFilesDir().trim());

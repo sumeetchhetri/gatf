@@ -2600,6 +2600,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        		chkIntv = setInterval(function() {
 	        			if(!$('#req-txtarea').data('tcf')) {
 	        				clearInterval(chkIntv);
+							chkIntv = undefined;
 	        				ceeditor = undefined;
 	        				$('#debug-controls').addClass('hidden');
 					        //document.removeEventListener('keypress',  cmkp);
@@ -2610,6 +2611,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        						alert(data["m"]);
 					        		$('#debug-controls').addClass('hidden');
 					        		clearInterval(chkIntv);
+									chkIntv = undefined;
 									$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
 					        		ceeditor = undefined;
 					        		openInDebugMode = undefined;
@@ -2618,6 +2620,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					        			alert("Debug session completed");
 					        			$('#debug-controls').addClass('hidden');
 										clearInterval(chkIntv);
+										chkIntv = undefined;
 										$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
 					        			ceeditor = undefined;
 					        			//document.removeEventListener('keypress',  cmkp);
@@ -2646,6 +2649,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					    }(tcf), function(err) {
 			        		$('#debug-controls').addClass('hidden');
 			        		clearInterval(chkIntv);
+							chkIntv = undefined;
 							$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
 			        		ceeditor = undefined;
 			        		openInDebugMode = undefined;
