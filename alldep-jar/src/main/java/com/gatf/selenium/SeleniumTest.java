@@ -437,6 +437,22 @@ public abstract class SeleniumTest {
 		}
 	}
 
+	@SuppressWarnings("serial")
+	protected Set<String> addTest(String sessionName, String browserName) {
+		final SeleniumTestSession s = new SeleniumTestSession();
+		s.sessionName = sessionName==null?Integer.toHexString(sessionNum+1):sessionName;
+		s.browserName = browserName;
+		sessions.add(s);
+		if(!s.__result__.containsKey(browserName)) {
+			SeleniumResult r = new SeleniumResult();
+			r.browserName = browserName;
+			s.__result__.put(browserName, r);
+		} else {
+			//throw new RuntimeException("Duplicate browser defined");
+		}
+		return new HashSet<String>(){{add(s.sessionName); add((sessions.size()-1)+"");}};
+	}
+
 	protected void setSession(String sns, int sn, boolean startFlag) {
 		if(sn>=0 && sessions.size()>sn) {
 			sessionNum = sn;
@@ -455,21 +471,18 @@ public abstract class SeleniumTest {
 			startTest();
 		}
 	}
-
-	@SuppressWarnings("serial")
-	protected Set<String> addTest(String sessionName, String browserName) {
-		final SeleniumTestSession s = new SeleniumTestSession();
-		s.sessionName = sessionName==null?Integer.toHexString(sessionNum+1):sessionName;
-		s.browserName = browserName;
-		sessions.add(s);
-		if(!s.__result__.containsKey(browserName)) {
-			SeleniumResult r = new SeleniumResult();
-			r.browserName = browserName;
-			s.__result__.put(browserName, r);
+	
+	protected void addSubTest(String browserName, String stname, boolean isAFunc) {
+		if(isAFunc) return;
+		if(getSession().__result__.containsKey(browserName)) {
+			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
+				getSession().__result__.get(browserName).__cresult__.put(stname, null);
+			} else {
+				throw new RuntimeException("Duplicate subtest defined");
+			}
 		} else {
-			//throw new RuntimeException("Duplicate browser defined");
+			throw new RuntimeException("Invalid browser specified");
 		}
-		return new HashSet<String>(){{add(s.sessionName); add((sessions.size()-1)+"");}};
 	}
 
 	protected void startTest() {
@@ -484,6 +497,8 @@ public abstract class SeleniumTest {
 			result.executionTime = System.nanoTime() - getSession().__teststarttime__;
 			getSession().__result__.get(getSession().browserName).result = result;
 		} else {
+			getSession().__subtestexecutiontime__ = System.nanoTime() - getSession().__subtestexecutiontime__;
+			result.executionTime = getSession().__subtestexecutiontime__;
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
 		}
 		if(result!=null && !result.isStatus() && !result.isContinue) {
@@ -835,19 +850,6 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	protected void addSubTest(String browserName, String stname, boolean isAFunc) {
-		if(isAFunc) return;
-		if(getSession().__result__.containsKey(browserName)) {
-			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
-				getSession().__result__.get(browserName).__cresult__.put(stname, null);
-			} else {
-				throw new RuntimeException("Duplicate subtest defined");
-			}
-		} else {
-			throw new RuntimeException("Invalid browser specified");
-		}
-	}
-
 	protected WebDriver get___d___()
 	{
 		if(getSession().___d___.size()==0)return null;
@@ -955,7 +957,6 @@ public abstract class SeleniumTest {
 	protected void set__subtestname__(String __subtestname__)
 	{
 		if(__subtestname__!=null) {
-			getSession().__subtestexecutiontime__ = System.nanoTime();
 			if(getSession().__provdetails__.size()>0) {
 				String fstn = "";
 				ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
@@ -963,16 +964,18 @@ public abstract class SeleniumTest {
 				{
 					String pn = keys.get(i);
 					Integer pp = getSession().__provdetails__.get(pn);
-					fstn += pn + "(" + pp + ") ";
+					fstn += "(" + pn + "@" + pp + ") ";
 				}
-				__subtestname__ = fstn + __subtestname__;
-			}
-		} else {
-			getSession().__subtestexecutiontime__ = System.nanoTime() - getSession().__subtestexecutiontime__;
-			if(getSession().__subtestname__!=null) {
-				getSession().__result__.get(getSession().browserName).__cresult__.get(getSession().__subtestname__).executionTime = getSession().__subtestexecutiontime__;
+				__subtestname__ += " " + fstn;
 			}
 		}
+		getSession().__subtestexecutiontime__ = System.nanoTime();
+		getSession().__result__.get(getSession().browserName).__cresult__.put(__subtestname__, null);
+		getSession().__subtestname__ = __subtestname__;
+	}
+	
+	protected void reset__subtestname__(String __subtestname__)
+	{
 		getSession().__subtestname__ = __subtestname__;
 	}
 	
@@ -981,6 +984,11 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void set__funcname__(String __funcname__)
+	{
+		getSession().__funcname__ = __funcname__;
+	}
+	
+	protected void reset__funcname__(String __funcname__)
 	{
 		getSession().__funcname__ = __funcname__;
 	}
@@ -3889,5 +3897,21 @@ public abstract class SeleniumTest {
 		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2, String del) {
 			return StringUtils.joinWith(del, f1.f(p1, fmt1), f2.f(p2, fmt2));
 		}
+	}
+	
+	public static String readFileToStr(String file) {
+		try {
+			return FileUtils.readFileToString(new File(file), "UTF-8");
+		} catch (Exception e) {
+		}
+		return null;
+	}
+	
+	public static byte[] readFileToBytes(String file) {
+		try {
+			return FileUtils.readFileToByteArray(new File(file));
+		} catch (Exception e) {
+		}
+		return null;
 	}
 }

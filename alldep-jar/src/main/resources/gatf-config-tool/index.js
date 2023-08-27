@@ -1778,7 +1778,7 @@ function editorEvents() {
 	$('.CodeMirror-code').find('pre').css('cursor', 'text');
 	for(let i=0;i<lines.length;i++) {
 		const line = lines[i];
-		const span = $('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).find('span');
+		//const span = $('.CodeMirror-code').children().eq(i).find('pre').children().eq(0).find('span');
 		if(line.trim().startsWith("dynprops ")) {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
@@ -1853,7 +1853,7 @@ function editorEvents() {
         		}, null);
 				//lookup from backend and populate target file
 			});
-		} else if(span.length>0 && span.eq(0).hasClass("cm-string")) {
+		} /*else if(span.length>0 && span.eq(0).hasClass("cm-string")) {
 			let possibleSubtestFuncCall = line.trim();
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
@@ -1870,7 +1870,7 @@ function editorEvents() {
         		}, null);
 				//lookup from backend and populate target file
 			});
-		}
+		}*/
 	}
 }
 
@@ -2367,6 +2367,9 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
 					//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
+				$("#myModalB").html('Test Report for script ' + tcf);
+                $("#myModalB").html('<iframe src="reports/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
+                $("#myModal").modal();
 			} else if(data) {
 				showErrorAlert(data);
 			} else {

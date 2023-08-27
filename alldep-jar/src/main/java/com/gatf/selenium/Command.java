@@ -451,6 +451,20 @@ public class Command {
         String cmd = utf8Trim(cmdDetails[0].toString().trim());
         Command comd = null;
         cmd = state.sanitize(cmd);
+        if(cmd.trim().startsWith("^")) {
+        	String skipKey = null;
+        	for (String dkey : state.dynProps.keySet()) {
+    			if(cmd.trim().startsWith("^"+dkey+" ") && state.dynProps.get(dkey).toLowerCase().matches("yes|true|1|enabled|on")) {
+    				skipKey = dkey;
+    				break;
+    			}
+    		}
+        	if(skipKey!=null) {
+        		cmd = cmd.replaceFirst("\\^"+skipKey+" ", "").trim();
+        	} else {
+        		return new NoopCommand(cmdDetails, state);
+        	}
+        }
         if(parent instanceof ValueListCommand && !cmd.trim().equals("]")) {
     		comd = new ValueCommand(cmdDetails, state);
             if(cmd.charAt(0)==cmd.charAt(cmd.length()-1)) {
@@ -646,6 +660,12 @@ public class Command {
             	throwParseErrorS(cmdDetails, new RuntimeException("Counter details required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Counter);
+        } else if (cmd.startsWith("#optional ")) {
+            cmd = cmd.substring(10).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Optional condition for code enablement required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Optional);
         } else if (cmd.startsWith("#transient-provider ")) {
             cmd = cmd.substring(19).trim();
             if(cmd.isEmpty()) {
@@ -1727,9 +1747,9 @@ public class Command {
                 //            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
                 if(((bsessionName!=null && bsessionName.equalsIgnoreCase(sessionName)) || bsessionId.equalsIgnoreCase(sessionId)) || (sessionName==null && sessionId==null)) {
                 	if((Boolean)st[5]) {
-		                b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
-		                            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
-		                b.append("addSubTest(\""+esc(brn[0].toString())+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
+		                //b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
+		                //            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
+		                //b.append("addSubTest(\""+esc(brn[0].toString())+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
                 	}
                 }
                 //b.append("}\n");
@@ -2238,7 +2258,7 @@ public class Command {
             return "execjsfile \"" + code + "\"";
         }
         String javacode() {
-            return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(org.apache.commons.io.FileUtils.readFileToString(new java.io.File(\""+esc(code)+"\"), \"UTF-8\"));\n}";
+            return "if (___ocw___ instanceof JavascriptExecutor) {\n((JavascriptExecutor)___ocw___).executeScript(readFileToStr(\""+esc(code)+"\"));\n}";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -2374,6 +2394,7 @@ public class Command {
     	SubTestCommand subt = null;
     	String sessionName;
         Integer sessionId = null;
+        String args = "";
         Map<String, String> params = new HashMap<String, String>();
         ExecSubTestCommand(Object[] cmdDetails, CommandState state) {
         	super(cmdDetails, state);
@@ -2435,6 +2456,7 @@ public class Command {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
     						String param = unSantizedUnQuoted(nparts[i].trim(), state);
+    						args += param + " ";
     						String[] pdet = param.split(":");
 							if(pdet.length!=2) {
 								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
@@ -2542,7 +2564,9 @@ public class Command {
 				b.append("___add_var__(\""+pn+"\", evaluate(\""+esc(params.get(pn))+"\"));\n");
 			}
             b.append(genDebugInfo(this));
-            b.append("___ce___ = " + subt.fName+"(___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            subt.calls += 1;
+            String name_ = subt.name + " (" + subt.calls + ")" + (args.trim().isEmpty()?"":(" (" + args.trim() + ")"));
+            b.append("___ce___ = " + subt.fName+"(\""+esc(name_)+"\", ___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
             for (String pn : params.keySet()) {
 				b.append("___del_var__(\""+pn+"\");\n");
 			}
@@ -2565,10 +2589,13 @@ public class Command {
         }
     }
 
+    static Pattern tagRgx = Pattern.compile("(\\[[a-zA-Z0-9_\\-]+\\])");
     public static class SubTestCommand extends Command {
         String sessionName;
         Integer sessionId = null;
+        Map<String, String> tags = new HashMap<String, String>();
         Set<String> params = new HashSet<String>();
+        Long calls = 0L;
         boolean isAFunc = false;
         boolean hasName = true;
         String fName = "__st__" + state.NUMBER_ST++;
@@ -2579,6 +2606,14 @@ public class Command {
             if(parts.length>=1) {
                 name = unSantizedUnQuoted(parts[0].trim(), state);
                 if(name.length()>0) {
+                	if(name.contains("[")) {
+                		Matcher m = tagRgx.matcher(name);
+                		while(m.find()) {
+                			tags.putIfAbsent(m.group(1).trim().toLowerCase(), m.group(1).trim());
+                		}
+                		m = tagRgx.matcher(name);
+                		name = m.replaceAll("").trim();
+                	}
                 } else {
                 	hasName = false;
                     name = "Subtest " + (state.NUMBER_ST - 1);
@@ -2708,7 +2743,7 @@ public class Command {
         }*/
         String javacodeint() {
             StringBuilder b = new StringBuilder();
-            b.append("List<WebElement> " + fName + "(WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) {\n");
+            b.append("List<WebElement> " + fName + "(String __sfname__, WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) {\n");
             b.append("List<WebElement> ___ce___ = null;\n");
             if(!children.isEmpty())
             {
@@ -2716,7 +2751,7 @@ public class Command {
             	b.append(genDebugInfo(this));
             	String pstn = state.varnamerandom();
                 b.append("String "+pstn+" = get__"+(!isAFunc?"subtest":"func")+"name__();\n");
-            	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(\""+esc(name)+"\");\n");
+            	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(__sfname__);\n");
                 b.append("\ntry {\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
@@ -2751,7 +2786,7 @@ public class Command {
                 }
                 b.append("\n}\nfinally {\n");
                 //b.append("set__"+(!isAFunc?"subtest":"func")+"name__(null);\n");
-                b.append("set__"+(!isAFunc?"subtest":"func")+"name__("+pstn+");\n");
+                b.append("reset__"+(!isAFunc?"subtest":"func")+"name__("+pstn+");\n");
                 b.append("\n}\n");
                 isSubtestScope = false;
             }
@@ -3745,7 +3780,7 @@ public class Command {
 
     public static class ProviderLoopCommand extends Command {
     	enum ProviderType {
-    		Counter, Provided, InlineSQL, InlineMongo, InlineFile
+    		Counter, Provided, InlineSQL, InlineMongo, InlineFile, Optional
     	}
     	
         String name, dsn, query, filePath, collName;
@@ -3753,13 +3788,19 @@ public class Command {
         int index = Integer.MIN_VALUE;
         int end = Integer.MIN_VALUE;
         boolean isStateFul = false;
+        boolean isValid = true;
         ProviderType type = ProviderType.Provided;
         ProviderLoopCommand(String val, Object[] cmdDetails, CommandState state, boolean isStateFul, ProviderType type) {
             super(cmdDetails, state);
             this.isStateFul = isStateFul;
             this.type = type;
             String[] parts = val.trim().split("[\t ]+");
-            if(type==ProviderType.Counter) {
+            if(type==ProviderType.Optional) {
+            	isValid = false;
+    			if(state.dynProps.containsKey(parts[0].trim()) && state.dynProps.get(parts[0].trim()).toLowerCase().matches("yes|true|1|enabled|on")) {
+    				isValid = true;
+    			}
+            } else if(type==ProviderType.Counter) {
             	if(parts.length==1 && !parts[0].trim().isEmpty()) {
             		try
                     {
@@ -3933,7 +3974,18 @@ public class Command {
             return b.toString();
         }
         String javacode() {
-            StringBuilder b = new StringBuilder();
+        	StringBuilder b = new StringBuilder();
+        	if(type==ProviderType.Optional)
+            {
+        		if(isValid) {
+	        		for (Command c : children) {
+	                	b.append(genDebugInfo(c));
+	                    b.append(c.javacode());
+	                    b.append("\n");
+	                }
+        		}
+        		return b.toString();
+            }
             String vrn1 = state.varname();
             b.append("Map<String, Object> "+vrn1+" = get__loopcontext__();\n");
             b.append("\nset__loopcontext__(\"\");\n");
@@ -4085,9 +4137,9 @@ public class Command {
         public String javacodev() {
             StringBuilder b = new StringBuilder();
             if(isBinary) {
-            	b.append(" org.apache.commons.io.FileUtils.readFileToByteArray(new java.io.File(\""+esc(name)+"\"));\n");
+            	b.append(" readFileToBytes(\""+esc(name)+"\");\n");
             } else {
-            	b.append(" org.apache.commons.io.FileUtils.readFileToString(new java.io.File(\""+esc(name)+"\"), \"UTF-8\");\n");
+            	b.append(" readFileToStr(\""+esc(name)+"\");\n");
             }
             return b.toString();
         }
@@ -8663,7 +8715,7 @@ public class Command {
 		}
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
-        		"/path/to/project/gatf-config.xml",
+    			"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",
