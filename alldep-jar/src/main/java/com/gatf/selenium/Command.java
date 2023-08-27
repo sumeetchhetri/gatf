@@ -663,7 +663,13 @@ public class Command {
         } else if (cmd.startsWith("#optional ")) {
             cmd = cmd.substring(10).trim();
             if(cmd.isEmpty()) {
-            	throwParseErrorS(cmdDetails, new RuntimeException("Optional condition for code enablement required"));
+            	throwParseErrorS(cmdDetails, new RuntimeException("Optional condition/dynprops variable for code enablement required"));
+            }
+            comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Optional);
+        } else if (cmd.startsWith("#o ")) {
+            cmd = cmd.substring(3).trim();
+            if(cmd.isEmpty()) {
+            	throwParseErrorS(cmdDetails, new RuntimeException("Optional condition/dynprops variable for code enablement required"));
             }
             comd = new ProviderLoopCommand(cmd.trim(), cmdDetails, state, false, ProviderType.Optional);
         } else if (cmd.startsWith("#transient-provider ")) {
