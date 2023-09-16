@@ -467,8 +467,8 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
             if (schema.hasOwnProperty('label') && schema.label != undefined) {
                 slab = '<h4>' + schema.label.value + '</h4><br/>';
             }
-            //var sty = isTop?"":"style=\"border:1px dotted\"";
-            var html = "<div class=\"control-group\">" + slab;
+            var sty = (schema.hasOwnProperty('label') && schema.label.border===true)?' style="border:1px dotted black;padding:10px;margin-top:10px;"':'';
+            var html = "<div class=\"control-group\" "+sty+">" + slab;
             for (var property in schema.properties) {
                 if (schema.properties.hasOwnProperty(property)) {
                     var hirNm = heirar;
@@ -2835,6 +2835,58 @@ function configuration() {
             "outFilesDir": {
                 "type": "string"
             },
+            "mailSimulator": {
+                "label": {
+                    "type": "section",
+                "value": "Mail Simulator",
+                "border": true
+                },
+                "type": "object",
+                "properties": {
+                    "login": {
+                        "type": "string"
+                    },
+                    "password": {
+                        "type": "string"
+                    },
+                    "isSecure": {
+                        "type": "boolean"
+                    },
+                    "smtpPort": {
+                        "type": "integer"
+                    },
+                    "imapPort": {
+                        "type": "integer"
+                    }
+                }
+            },
+            "htttpServerSimulator": {
+                "label": {
+                    "type": "section",
+                    "value": "HTTP Simulator",
+                    "border": true
+                },
+                "type": "object",
+                "properties": {
+                    "port": {
+                        "type": "integer"
+                    },
+                    "headers": {
+                        "type": "map",
+                        "types": {
+                            "key": {
+                                "type": "string"
+                            },
+                            "value": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "body": {
+                        "type": "string"
+                    }
+                }
+            },
             "authEnabled": {
                 "type": "boolean",
                 "required": true
@@ -2932,6 +2984,14 @@ function configuration() {
             },
             "isSeleniumModuleTests": {
                 "type": "boolean",
+                "required": false
+            },
+            "seleniumScript": {
+                "type": "string",
+                "required": false
+            },
+            "seleniumScriptRetryCount": {
+                "type": "integer",
                 "required": false
             },
             "seleniumScripts": {

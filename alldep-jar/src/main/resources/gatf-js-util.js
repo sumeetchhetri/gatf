@@ -10,13 +10,13 @@ window.GatfUtil = new function() {
 	this.__wostn__ = 1,
 	this.__wosjp__ = [],
 	this.__wosjpr__ = 1,
-	this.wpensaveInit = function(optionalOpenNums) {
+	this.wopensaveInit = function(optionalOpenNums) {
 		window.GatfUtil.__wostn__ = optionalOpenNums;
 		window.GatfUtil.__wosjp__ = [];
 		window.GatfUtil.__wosjpr__ = optionalOpenNums;
 		window.open = function(a, b, c) {
 			window.GatfUtil.__wosjp__.push([a,b,c]);
-			window.GatfUtil.__owo__.apply(null, window.GatfUtil.__wosjp__[0]);
+			window.GatfUtil.__owo__.apply(null, window.GatfUtil.__wosjp__[window.GatfUtil.__wosjp__.length-1]);
 			console.log(a);
 		};
 	},

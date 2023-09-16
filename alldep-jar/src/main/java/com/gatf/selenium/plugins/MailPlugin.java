@@ -103,11 +103,11 @@ public class MailPlugin {
     
     public static String[] toSampleSelCmd() {
     	return new String[] {
-    		"Curl Plugin",
-    		"\tmail get|put|post|delete {url}\n\t{\n\t\t[\n\t\t\theader=value\n\t\t]\n\t\tcontent-body\n\t}",
+    		"Mail Plugin",
+    		"\tsendmail get|put|post|delete {url}\n\t{\n\t\t[\n\t\t\theader=value\n\t\t]\n\t\tcontent-body\n\t}",
     		"Examples :-",
-    		"\tmail get http://abc.com",
-    		"\tmail post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
+    		"\tsendmail get http://abc.com",
+    		"\tsendmail post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
         };
     }
 }

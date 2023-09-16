@@ -65,6 +65,8 @@ import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.executor.report.TestCaseReport;
+import com.gatf.simulators.EmailGateway;
+import com.gatf.simulators.EmbHttpServer;
 import com.gatf.ui.GatfConfigToolMojoInt;
 
 /**
@@ -125,6 +127,14 @@ public class AcceptanceTestContext {
 	private Map<String, Method> prePostTestCaseExecHooks = new HashMap<String, Method>();
 	
 	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
+	
+	public static interface SimulatorInt {
+		void start(Object[] args);
+		void stop();
+		boolean isEventReceived(Object[] args);
+	}
+	
+	protected static final Map<String, SimulatorInt> simulators = new ConcurrentHashMap<>();
 	
 	public static boolean isValidUrl(String url) {
 		if(!URL_VALIDATOR.isValid(url)) {
@@ -549,6 +559,44 @@ public class AcceptanceTestContext {
 		}
 		
 		initServerLogsApis();
+
+    	MailSimulatorConfig msc = gatfExecutorConfig.getMailSimulator();
+        if(msc!=null) {
+        	Assert.assertTrue("Mail simulator login name is mandatory", StringUtils.isNotBlank(msc.getLogin()));
+        	Assert.assertTrue("Mail simulator password is mandatory", StringUtils.isNotBlank(msc.getPassword()));
+        	Assert.assertTrue("Mail simulator smtp port is mandatory", msc.getSmtpPort()>100);
+        	Assert.assertTrue("Mail simulator imap port is mandatory", msc.getImapPort()>100);
+        	Object[] args = new Object[] {msc.getLogin(), msc.getPassword(), msc.isSecure(), msc.getSmtpPort(), msc.getImapPort()};
+        	EmailGateway email = new EmailGateway();
+        	System.out.println("Starting Embedded Mail Simulator..........................");
+        	email.start(args);
+        	simulators.put("mail", email);
+        }
+        
+        HttpServerSimulatorConfig hsc = gatfExecutorConfig.getHtttpServerSimulator();
+        if(hsc!=null) {
+        	Assert.assertTrue("Http simulator port is mandatory", hsc.getPort()>=80);
+        	Assert.assertTrue("Http simulator body is mandatory", StringUtils.isNotBlank(hsc.getBody()));
+        	try {
+        		WorkflowContextHandler.OM.writeValueAsString(hsc.getHeaders());
+			} catch (Exception e) {
+				Assert.assertTrue("Http simulator headers are invalid", false);
+			}
+        	Object[] args = new Object[] {hsc.getPort(), WorkflowContextHandler.OM.writeValueAsString(hsc.getHeaders()), hsc.getBody()};
+        	EmbHttpServer http = new EmbHttpServer();
+        	System.out.println("Starting Embedded HTTP Simulator..........................");
+        	http.start(args);
+        	simulators.put("http", http);
+        }
+	}
+	
+	public boolean simulatorEventCheck(String name, Object[] args) {
+		if(simulators.containsKey(name)) {
+			simulators.get("mail").isEventReceived(args);
+		} else {
+			System.out.println("Simulator for ["+name+"] not initialzed....");
+		}
+		return false;
 	}
 	
 	public void initServerLogsApis() throws Exception {

@@ -26,9 +26,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.commons.lang3.RandomUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.SystemUtils;
+import org.apache.commons.rng.UniformRandomProvider;
+import org.apache.commons.rng.simple.RandomSource;
+import org.apache.commons.rng.simple.ThreadLocalRandomSource;
 
 /**
  * @author Sumeet Chhetri
@@ -66,6 +68,7 @@ public class GatfFunctionHandler {
 	static Pattern pnumberPattern = Pattern.compile(NUMBER_PLUS_REGEX);
 	static Pattern alphaPattern = Pattern.compile(ALPHA_REGEX);
 	static Pattern alphanumericPattern = Pattern.compile(ALPHANUM_REGEX);
+	static UniformRandomProvider rng = ThreadLocalRandomSource.current(RandomSource.XO_RO_SHI_RO_128_PP);
 
 	public static String handleFunction(String function) {
 		function = function.trim();
@@ -115,9 +118,9 @@ public class GatfFunctionHandler {
 			match.matches();
 			if(match.groupCount()==1) {
 				double maxVal = Double.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				return String.valueOf(RandomUtils.nextDouble(0, maxVal));
+				return String.valueOf(rng.nextDouble(0, maxVal));
 			} else {
-				return String.valueOf(RandomUtils.nextFloat());
+				return String.valueOf(rng.nextFloat());
 			}
 		} else if(function.matches(DECIMAL_RANGE_REGEX)) {
 			Matcher match = decimaRangePattern.matcher(function);
@@ -127,7 +130,7 @@ public class GatfFunctionHandler {
 			try {
 				double nmin = Double.valueOf(min);
 				double nmax = Double.valueOf(max);
-				return String.valueOf(RandomUtils.nextDouble(nmin, nmax));
+				return String.valueOf(rng.nextDouble(nmin, nmax));
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
@@ -154,32 +157,32 @@ public class GatfFunctionHandler {
 			match.matches();
 			if(match.groupCount()==1) {
 				long maxVal = Long.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				return String.valueOf(RandomUtils.nextLong(0, maxVal));
+				return String.valueOf(rng.nextLong(0, maxVal));
 			} else {
-				return String.valueOf(RandomUtils.nextLong());
+				return String.valueOf(rng.nextLong());
 			}
 		} else if(function.matches(NUMBER_MINUS_REGEX)) {
 			Matcher match = mnumberPattern.matcher(function);
 			match.matches();
 			if(match.groupCount()==1) {
 				long maxVal = Long.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				return String.valueOf(-RandomUtils.nextLong(0, maxVal));
+				return String.valueOf(-rng.nextLong(0, maxVal));
 			} else {
-				return String.valueOf(-RandomUtils.nextLong());
+				return String.valueOf(-rng.nextLong());
 			}
 		} else if(function.matches(NUMBER_REGEX)) {
 			Matcher match = numberPattern.matcher(function);
 			match.matches();
 			if(match.groupCount()==1) {
 				long maxVal = Long.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				long randVal = RandomUtils.nextLong(0, maxVal);
-				if(RandomUtils.nextBoolean()) {
+				long randVal = rng.nextLong(0, maxVal);
+				if(rng.nextBoolean()) {
 					randVal = -randVal;
 				}
 				return String.valueOf(randVal);
 			} else {
-				long randVal = RandomUtils.nextLong();
-				if(RandomUtils.nextBoolean()) {
+				long randVal = rng.nextLong();
+				if(rng.nextBoolean()) {
 					randVal = -randVal;
 				}
 				return String.valueOf(randVal);

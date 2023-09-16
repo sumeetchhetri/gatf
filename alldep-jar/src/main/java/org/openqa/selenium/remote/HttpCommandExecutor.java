@@ -142,7 +142,7 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
     return remoteServer;
   }
 
-  //@Override
+  //@Override	
   public Response executeInternal(Command command) throws IOException {
     if (command.getSessionId() == null) {
       if (QUIT.equals(command.getName())) {
@@ -211,16 +211,16 @@ public class HttpCommandExecutor implements CommandExecutor, NeedsLocalLogs {
     }
   }
   
-  private java.util.concurrent.locks.Lock lock = com.gatf.selenium.SeleniumTest.createLock();	
-  @Override	
-  public Response execute(Command command) throws IOException {	
-	  try {	
-		  lock.lock();	
-		  return executeInternal(command);	
-	  } catch(Exception e) {	
-		  throw e;	
-	  } finally {	
-		  lock.unlock();	
-	  }	
+  private java.util.concurrent.locks.Lock lock = com.gatf.selenium.SeleniumTest.createLock();		
+  @Override		
+  public Response execute(Command command) throws IOException {		
+	  try {		
+		  lock.lock();		
+		  return executeInternal(command);		
+	  } catch(Exception e) {		
+		  throw e;		
+	  } finally {		
+		  lock.unlock();		
+	  }		
   }
 }

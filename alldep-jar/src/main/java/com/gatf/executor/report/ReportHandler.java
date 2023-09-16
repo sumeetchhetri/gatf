@@ -1141,7 +1141,9 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-summ.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + File.separator + runPrefix + "-" + loadTestRunNum + "-selenium-index.html";
+            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = resource.getAbsolutePath() + File.separator + runPrefix + "-" + loadTestRunNum + "-selenium-index" + rtid + ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -1166,7 +1168,9 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/selenium-final-index.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + File.separator + "selenium-index.html";
+            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = resource.getAbsolutePath() + File.separator + "selenium-index" + rtid+ ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -1211,7 +1215,9 @@ public class ReportHandler {
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + File.separator + prefix + ".html";
+            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = resource.getAbsolutePath() + File.separator + prefix + rtid + ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();

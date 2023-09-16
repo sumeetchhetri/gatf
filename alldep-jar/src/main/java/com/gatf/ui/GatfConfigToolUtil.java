@@ -324,6 +324,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			isChanged = true;
 			gatfConfig.setRepeatSuiteExecutionNum(0);
 		}
+        if (gatfConfig.getSeleniumScriptRetryCount() == null) {
+        	isChanged = true;
+        	gatfConfig.setSeleniumScriptRetryCount(0);
+        }
 		
 		String tmp = System.getProperty("D_JAVA_HOME")!=null?System.getProperty("D_JAVA_HOME"):System.getenv("D_JAVA_HOME");
 		if(tmp!=null) {

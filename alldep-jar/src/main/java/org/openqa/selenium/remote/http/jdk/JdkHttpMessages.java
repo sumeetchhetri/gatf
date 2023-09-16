@@ -17,11 +17,7 @@
 
 package org.openqa.selenium.remote.http.jdk;
 
-import org.openqa.selenium.remote.http.AddSeleniumUserAgent;
-import org.openqa.selenium.remote.http.ClientConfig;
-import org.openqa.selenium.remote.http.Contents;
-import org.openqa.selenium.remote.http.HttpRequest;
-import org.openqa.selenium.remote.http.HttpResponse;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.ByteArrayInputStream;
 import java.net.URI;
@@ -32,76 +28,87 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
+import org.openqa.selenium.remote.http.AddSeleniumUserAgent;
+import org.openqa.selenium.remote.http.ClientConfig;
+import org.openqa.selenium.remote.http.Contents;
+import org.openqa.selenium.remote.http.HttpMethod;
+import org.openqa.selenium.remote.http.HttpRequest;
+import org.openqa.selenium.remote.http.HttpResponse;
 
 class JdkHttpMessages {
 
   private final ClientConfig config;
   private static final List<String> IGNORE_HEADERS =
-    List.of("content-length", "connection", "host");
+      List.of("content-length", "connection", "host");
 
   public JdkHttpMessages(ClientConfig config) {
     this.config = Objects.requireNonNull(config, "Client config");
   }
 
-  public java.net.http.HttpRequest createRequest(HttpRequest req, URI rawUri) {
+  public java.net.http.HttpRequest createRequest(HttpRequest req, HttpMethod method, URI rawUri) {
     String rawUrl = rawUri.toString();
 
     // Add query string if necessary
-    String queryString = StreamSupport.stream(req.getQueryParameterNames().spliterator(), false)
-      .map(name -> {
-        return StreamSupport.stream(req.getQueryParameters(name).spliterator(), false)
-          .map(value -> String.format("%s=%s", URLEncoder.encode(name, UTF_8), URLEncoder.encode(value, UTF_8)))
-          .collect(Collectors.joining("&"));
-      })
-      .collect(Collectors.joining("&"));
+    String queryString =
+        StreamSupport.stream(req.getQueryParameterNames().spliterator(), false)
+            .map(
+                name -> {
+                  return StreamSupport.stream(req.getQueryParameters(name).spliterator(), false)
+                      .map(
+                          value ->
+                              String.format(
+                                  "%s=%s",
+                                  URLEncoder.encode(name, UTF_8), URLEncoder.encode(value, UTF_8)))
+                      .collect(Collectors.joining("&"));
+                })
+            .collect(Collectors.joining("&"));
 
     if (!queryString.isEmpty()) {
       rawUrl = rawUrl + "?" + queryString;
     }
 
-    java.net.http.HttpRequest.Builder builder = java.net.http.HttpRequest.newBuilder().uri(URI.create(rawUrl));
+    java.net.http.HttpRequest.Builder builder =
+        java.net.http.HttpRequest.newBuilder().uri(URI.create(rawUrl));
 
-    switch (req.getMethod()) {
+    switch (method) {
       case DELETE:
-        builder = builder.DELETE();
+        builder.DELETE();
         break;
 
       case GET:
-        builder = builder.GET();
+        builder.GET();
         break;
 
       case POST:
-        builder = builder.POST(notChunkingBodyPublisher(req));
+        builder.POST(notChunkingBodyPublisher(req));
         break;
 
       case PUT:
-        builder = builder.PUT(notChunkingBodyPublisher(req));
+        builder.PUT(notChunkingBodyPublisher(req));
         break;
 
       default:
-        throw new IllegalArgumentException(String.format("Unsupported request method %s: %s", req.getMethod(), req));
+        throw new IllegalArgumentException(
+            String.format("Unsupported request method %s: %s", req.getMethod(), req));
     }
 
-    for (String name : req.getHeaderNames()) {
-      // This prevents the IllegalArgumentException that states 'restricted header name: ...'
-      if (IGNORE_HEADERS.contains(name.toLowerCase())) {
-        continue;
-      }
-      for (String value : req.getHeaders(name)) {
-        builder = builder.header(name, value);
-      }
-    }
+    req.forEachHeader(
+        (name, value) -> {
+          // This prevents the IllegalArgumentException that states 'restricted header name: ...'
+          if (IGNORE_HEADERS.contains(name.toLowerCase())) {
+            return;
+          }
+          builder.header(name, value);
+        });
 
     if (req.getHeader("User-Agent") == null) {
-      builder = builder.header("User-Agent", AddSeleniumUserAgent.USER_AGENT);
+      builder.header("User-Agent", AddSeleniumUserAgent.USER_AGENT);
     }
 
     builder.timeout(config.readTimeout());
     
-    if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && rawUrl.toString().startsWith("http://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {	
-    	builder.version(java.net.http.HttpClient.Version.HTTP_1_1);	
+    if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && rawUrl.toString().startsWith("http://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {		
+    	builder.version(java.net.http.HttpClient.Version.HTTP_1_1);		
     }
 
     return builder.build();
@@ -121,7 +128,7 @@ class JdkHttpMessages {
       // read the data into a byte array to know the length
       byte[] bytes = Contents.bytes(req.getContent());
       if (bytes.length == 0) {
-        //Looks like we were given a request with no payload.
+        // Looks like we were given a request with no payload.
         return BodyPublishers.noBody();
       }
       return BodyPublishers.ofByteArray(bytes);
@@ -138,11 +145,18 @@ class JdkHttpMessages {
     String uri = req.getUri();
     String rawUrl;
 
-    if (uri.startsWith("ws://") || uri.startsWith("wss://") ||
-        uri.startsWith("http://") || uri.startsWith("https://")) {
+    if (uri.startsWith("ws://")
+        || uri.startsWith("wss://")
+        || uri.startsWith("http://")
+        || uri.startsWith("https://")) {
       rawUrl = uri;
     } else {
-      rawUrl = baseUrl.toString().replaceAll("/$", "") + uri;
+      String base = baseUrl.toString();
+      if (base.endsWith("/")) {
+        rawUrl = base.substring(0, base.length() - 1) + uri;
+      } else {
+        rawUrl = base + uri;
+      }
     }
 
     return URI.create(rawUrl);
@@ -151,8 +165,14 @@ class JdkHttpMessages {
   public HttpResponse createResponse(java.net.http.HttpResponse<byte[]> response) {
     HttpResponse res = new HttpResponse();
     res.setStatus(response.statusCode());
-    response.headers().map()
-      .forEach((name, values) -> values.stream().filter(Objects::nonNull).forEach(value -> res.addHeader(name, value)));
+    response
+        .headers()
+        .map()
+        .forEach(
+            (name, values) ->
+                values.stream()
+                    .filter(Objects::nonNull)
+                    .forEach(value -> res.addHeader(name, value)));
     byte[] responseBody = response.body();
     if (responseBody != null) {
       res.setContent(() -> new ByteArrayInputStream(responseBody));

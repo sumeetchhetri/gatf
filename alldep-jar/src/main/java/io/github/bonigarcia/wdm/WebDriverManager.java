@@ -29,13 +29,14 @@ import static io.github.bonigarcia.wdm.config.DriverManagerType.OPERA;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.LINUX;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.MAC;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.WIN;
+import static io.github.bonigarcia.wdm.online.Downloader.deleteFile;
 import static io.github.bonigarcia.wdm.versions.Shell.runAndWait;
+import static io.github.bonigarcia.wdm.versions.VersionDetector.getWdmVersion;
 import static java.lang.Integer.parseInt;
 import static java.lang.String.valueOf;
 import static java.lang.System.getenv;
 import static java.lang.invoke.MethodHandles.lookup;
 import static java.nio.charset.Charset.defaultCharset;
-import static java.util.Collections.singletonList;
 import static java.util.Collections.sort;
 import static java.util.Locale.ROOT;
 import static java.util.Optional.empty;
@@ -69,6 +70,7 @@ import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -218,6 +220,10 @@ public abstract class WebDriverManager {
     protected String downloadedDriverPath;
 
     protected WebDriverManager() {
+        Optional<String> wdVersion = getWdmVersion(getClass());
+        if (wdVersion.isPresent()) {
+            log.debug("Using WebDriverManager {}", wdVersion.get());
+        }
         config = new Config();
         webDriverList = new CopyOnWriteArrayList<>();
     }
@@ -541,17 +547,14 @@ public abstract class WebDriverManager {
         return this;
     }
 
-    public WebDriverManager dockerRecordingPrefix(String prefix) {
-        config().setDockerRecordingPrefix(prefix);
+    public WebDriverManager disableTracing() {
+        config().setEnableTracing(false);
         return this;
     }
 
-    /**
-     * @deprecated Replaced by {@link #dockerRecordingPrefix(String)}
-     */
-    @Deprecated
-    public WebDriverManager recordingPrefix(String prefix) {
-        return dockerRecordingPrefix(prefix);
+    public WebDriverManager dockerRecordingPrefix(String prefix) {
+        config().setDockerRecordingPrefix(prefix);
+        return this;
     }
 
     public WebDriverManager dockerRecordingOutput(String path) {
@@ -561,22 +564,6 @@ public abstract class WebDriverManager {
     public WebDriverManager dockerRecordingOutput(Path path) {
         config().setDockerRecordingOutput(path);
         return this;
-    }
-
-    /**
-     * @deprecated Replaced by {@link #dockerRecordingOutput(String)}
-     */
-    @Deprecated
-    public WebDriverManager recordingOutput(String path) {
-        return dockerRecordingOutput(Paths.get(path));
-    }
-
-    /**
-     * @deprecated Replaced by {@link #dockerRecordingOutput(String)}
-     */
-    @Deprecated
-    public WebDriverManager recordingOutput(Path path) {
-        return dockerRecordingOutput(path);
     }
 
     public WebDriverManager dockerPrivateEndpoint(String endpoint) {
@@ -622,14 +609,6 @@ public abstract class WebDriverManager {
     public WebDriverManager dockerCustomImage(String dockerImage) {
         config().setDockerCustomImage(dockerImage);
         return this;
-    }
-
-    /**
-     * @deprecated Replaced by {@link #dockerCustomImage(String)}
-     */
-    @Deprecated
-    public WebDriverManager dockerImage(String dockerImage) {
-        return dockerCustomImage(dockerImage);
     }
 
     public WebDriverManager driverVersion(String driverVersion) {
@@ -978,6 +957,7 @@ public abstract class WebDriverManager {
 							}
 						}
 					}
+                    driver.quit();
                 }
             }
 
@@ -1335,13 +1315,19 @@ public abstract class WebDriverManager {
 
     protected List<File> postDownload(File archive) {
         File parentFolder = archive.getParentFile();
-        File[] ls = parentFolder.listFiles();
+        Collection<File> ls = FileUtils.listFiles(parentFolder, null, true);
+        List<File> listFiles = new ArrayList<>();
         for (File f : ls) {
             if (f.getName().startsWith(getDriverName())
                     && getDriverName().contains(removeExtension(f.getName()))) {
                 log.trace("Found driver in post-download: {}", f);
-                return singletonList(f);
+                listFiles.add(f);
+            } else {
+                deleteFile(f);
             }
+        }
+        if (!listFiles.isEmpty()) {
+            return listFiles;
         }
         throw new WebDriverManagerException("Driver " + getDriverName()
                 + " not found (using temporal folder " + parentFolder + ")");
@@ -1460,7 +1446,6 @@ public abstract class WebDriverManager {
         String shortDriverName = getShortDriverName();
         UrlHandler urlHandler = new UrlHandler(config(), candidateUrls,
                 driverVersion, shortDriverName, this::buildUrl);
-        log.trace("All driver URLs: {}", candidateUrls);
 
         boolean getLatest = isUnknown(driverVersion);
         boolean continueSearchingVersion;
@@ -1598,7 +1583,7 @@ public abstract class WebDriverManager {
         log.info("Reading {} to seek {}", driverUrl, getDriverName());
     }
 
-    protected Document loadXML(InputStream inputStream)
+    public static Document loadXML(InputStream inputStream)
             throws SAXException, IOException, ParserConfigurationException {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);

@@ -15,6 +15,7 @@ package com.gatf.executor.core;
 
 import java.io.File;
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.security.Security;
@@ -25,6 +26,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -42,6 +44,7 @@ import java.util.logging.Logger;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
+import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -529,6 +532,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                     if (configuration.getRepeatSuiteExecutionNum() == null)
                         configuration.setRepeatSuiteExecutionNum(repeatSuiteExecutionNum);
+
+                    if (configuration.getSeleniumScriptRetryCount() == null)
+                        configuration.setSeleniumScriptRetryCount(0);
                 }
             } catch (Exception e) {
                 throw new AssertionError(e);
@@ -639,8 +645,52 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
         }
         
+        if(configuration.getSeleniumScriptRetryCount()>0) {
+        	configuration.setLoadTestingEnabled(false);
+        	configuration.setConcurrentUserSimulationNum(0);
+        }
+        
+        if(StringUtils.isNotBlank(configuration.getSeleniumScript())) {
+        	try {
+        		List<String> sfiles = new ArrayList<>();
+        		if(new File(configuration.getSeleniumScript()).exists()) {
+        			File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
+        			Iterator<File> iter = FileUtils.iterateFiles(testCaseDirectory, new WildcardFileFilter("*.sel"), TrueFileFilter.INSTANCE);
+        	    	while(iter.hasNext()) {
+        	    		sfiles.add(iter.next().getAbsolutePath());
+        	    	}
+        		} else {
+					sfiles = FileUtils.readLines(new File(configuration.getSeleniumScript()), "UTF-8");
+        		}
+        		configuration.setSeleniumScripts(sfiles.toArray(new String[sfiles.size()]));
+			} catch (IOException e) {
+			}
+        }
+        
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
         	throw new RuntimeException("Please provide Selenium scripts for execution");
+        }
+        
+        String roundInfo = "";
+        if(configuration.getSeleniumScriptRetryCount()>0 && configuration.getRetryCounter()==0) {
+        	configuration.setRetryCounter(1);
+        	roundInfo = "[RETRY-MODE ROUND 1] ";
+        } else if(configuration.getSeleniumScriptRetryCount()>0 && configuration.getRetryCounter()>0) {
+        	roundInfo = "[RETRY-MODE ROUND " + configuration.getRetryCounter() + "] ";
+        }
+        System.out.println(roundInfo + "Executing following seleasy scripts....\n[\n");
+        String tcfdet = "";
+        for (String tcfile : configuration.getSeleniumScripts()) {
+        	tcfdet += tcfile + "\n";
+			System.out.println("\t --> " + tcfile);
+		}
+        System.out.println("]\n\n");
+        if(configuration.getSeleniumScriptRetryCount()>0 && configuration.getRetryCounter()>0) {
+        	try {
+        		File resource = context.getOutDir();
+				FileUtils.writeStringToFile(new File(resource.getAbsolutePath() + File.separator + "RERTY_MODE_"+configuration.getRetryCounter()+"_TEST_CASES.txt"), tcfdet, "UTF-8");
+			} catch (IOException e) {
+			}
         }
         
         File resource = context.getOutDir();
@@ -785,6 +835,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         startTime = System.currentTimeMillis();
 
         int runNum = 0;
+        List<String> failedFiles = new ArrayList<>();
         while (tests.size() > 0) {
             boolean dorep = false;
 
@@ -824,7 +875,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 List<FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
                 if(!concExec) {
                 	for (int i = 0; i < numberOfRuns; i++) {
-                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local", failedFiles)));
                         threadPool.execute(ltasks.get(i));
                     	//Ramp up time only applied for load test scenarios
 	                    try {
@@ -847,7 +898,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 		ctests.add(tests.get(i));
                 		List<Object[]> ctestdata = new ArrayList<>();
                 		ctestdata.add(testdata.get(i));
-                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local")));
+                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local", failedFiles)));
                         threadPool.execute(ltasks.get(i));
                     }
                     for (int i = 0; i < tests.size(); i++) {
@@ -870,7 +921,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
             } else {
                 try {
-                	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>> o = new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local").call();
+                	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>> o = new ConcSeleniumTest(-1, context, tests, testdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, "local", failedFiles).call();
                     summLstMap.get("local").add(o.getLeft());
                     reportLst.addAll(o.getRight());
                     if(o.getMiddle()!=null && o.getMiddle().size()>0) {
@@ -889,7 +940,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             if (dorep) {
             	if(!isLoadTestingEnabled) {
             		try {
-		            	String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (runNum) + "-report-" + System.currentTimeMillis());
+		            	String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + (runPrefix + "-" + (runNum) + "-RP-");
+		            	if(configuration.getSeleniumScriptRetryCount()>0 && configuration.getRetryCounter()>0) {
+		            		pdfReport += "RERTY_MODE_" + configuration.getRetryCounter() + "-";
+		            	}
+		            	pdfReport += System.currentTimeMillis();
 		                String csvReport = pdfReport + ".csv";
 		                pdfReport += ".pdf";
 		            	Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
@@ -966,7 +1021,15 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         ReportHandler.doSeleniumFinalTestReport(indexes, context);
 
         shutdown();
-
+        
+        if(configuration.getSeleniumScriptRetryCount()>0) {
+        	configuration.setSeleniumScriptRetryCount(configuration.getSeleniumScriptRetryCount() - 1);
+        	configuration.setSeleniumScripts(failedFiles.toArray(new String[failedFiles.size()]));
+        	configuration.setSeleniumScript(null);
+        	configuration.setRetryCounter(configuration.getRetryCounter() + 1);
+        	doSeleniumTest(configuration, null);
+        }
+        
         if(!isLoadTestingEnabled && allErrors.size()>0) {
         	throw new GatfRunTimeErrors(allErrors);
         }
@@ -975,8 +1038,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     private static class ConcSeleniumTest implements Callable<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>> {
         private int index;
         private AcceptanceTestContext context;
-        private List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
-        private List<Object[]> testdata = new ArrayList<Object[]>();
+        private List<SeleniumTest> tests = new ArrayList<>();
+        private List<Object[]> testdata = new ArrayList<>();
+        private List<String> failedFiles = new ArrayList<>();
         private LoggingPreferences lp;
         private boolean dorep;
         private boolean isLoadTestingEnabled;
@@ -985,7 +1049,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         private String node;
 
         public ConcSeleniumTest(int index, AcceptanceTestContext context, List<SeleniumTest> tests, List<Object[]> testdata, LoggingPreferences lp, boolean dorep, boolean isLoadTestingEnabled, int runNum, String runPrefix,
-                String node) {
+                String node, List<String> failedFiles) {
             this.index = index;
             this.context = context;
             this.tests = tests;
@@ -996,6 +1060,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             this.node = node;
             this.dorep = dorep;
             this.isLoadTestingEnabled = isLoadTestingEnabled;
+            this.failedFiles = failedFiles;
         }
 
         @SuppressWarnings("unused")
@@ -1169,6 +1234,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     tstats.setFailedRuns(fal>0?1:0);
                     tstats.setTotalSuiteRuns(1);
                     RuntimeReportUtil.addEntry(node, runPrefix, runNum, runPrefix + "-" + runNum + "-selenium-index.html", tstats, time, dyn.getName());
+                    if(!isLoadTestingEnabled && tstats.getFailedTestCount()>0) {
+                    	failedFiles.add(dyn.getName());
+                    }
                 }
             }
             
@@ -2393,14 +2461,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                 Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap = new LinkedHashMap<String, List<Map<String, Map<String, List<Object[]>>>>>();
                 List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
-                
+                List<String> failedFiles = new ArrayList<>();
                 summLstMap.put(dContext.getNode(), new ArrayList<Map<String, Map<String, List<Object[]>>>>());
                 if (threadPool != null) {
                 	List<FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>> ltasks = new ArrayList<>();
                 	if(!concExec) {
 	                    for (int i = 0; i < numberOfRuns; i++) {
 	                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(
-	                                new ConcSeleniumTest(i - 1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
+	                                new ConcSeleniumTest(i - 1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles)));
 	                        threadPool.execute(ltasks.get(i));
 	                        try {
 	                            Thread.sleep(concurrentUserRampUpTimeMs);
@@ -2422,7 +2490,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     		List<Object[]> ctestdata = new ArrayList<>();
                     		ctestdata.add(dContext.getSelTestdata().get(i));
                             ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>>>(
-                            		new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode())));
+                            		new ConcSeleniumTest(i - 1, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles)));
                             threadPool.execute(ltasks.get(i));
                         }
                         for (int i = 0; i < tests.size(); i++) {
@@ -2445,7 +2513,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 } else {
                     try {
                     	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, List<ImmutablePair<Method, Object[]>>> o = 
-                    			new ConcSeleniumTest(-1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode()).call();
+                    			new ConcSeleniumTest(-1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles).call();
                         summLstMap.get(dContext.getNode()).add(o.getLeft());
                         if(o.getMiddle()!=null && o.getMiddle().size()>0) {
                         	allErrors.addAll(o.getMiddle());

@@ -25,18 +25,18 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.bson.Document;
 import org.junit.Assert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
-import com.mongodb.BasicDBObject;
-import com.mongodb.DB;
-import com.mongodb.DBCollection;
-import com.mongodb.DBCursor;
-import com.mongodb.DBObject;
-import com.mongodb.MongoClient;
-import com.mongodb.ServerAddress;
-import com.mongodb.WriteResult;
-import com.mongodb.util.JSON;
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoCursor;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.result.DeleteResult;
+import com.mongodb.client.result.InsertOneResult;
+import com.mongodb.client.result.UpdateResult;
 
 /**
  * @author Sumeet Chhetri
@@ -46,7 +46,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 
 	private Logger logger = Logger.getLogger(MongoDBTestDataSource.class.getSimpleName());
 	
-	List<ServerAddress> addresses = new ArrayList<ServerAddress>();
+	String addresses = null;
 	
 	public void init() {
 		if(args==null || args.length==0) {
@@ -109,28 +109,27 @@ public class MongoDBTestDataSource extends TestDataSource {
 				}
 			}
 			
-			for (int i=0;i<hosts.length;i++) {
-				ServerAddress address = new ServerAddress(hosts[i], Integer.valueOf(ports[i]));
-				addresses.add(address);
+			addresses = "mongodb://";
+			if(StringUtils.isNotBlank(username) && StringUtils.isNotBlank(password)) {
+				addresses += username.trim() + ":" + password.trim() + "@";
 			}
+			for (int i=0;i<hosts.length;i++) {
+				addresses += hosts[i] + ports[i] + ",";
+			}
+			if(addresses.charAt(addresses.length()-1)==',') addresses = addresses.substring(0, addresses.length()-1);
 			
 			for (int i = 0; i < poolSize; i++) {
 				MongoClient mongoClient = null;
 				//Now try connecting to the Database
 				try {
-					mongoClient = new MongoClient(addresses);
+					mongoClient = MongoClients.create(addresses);
 				} catch (Exception e) {
 					throw new AssertionError(String.format("Connection to MongoDB failed with the error %s", 
 							ExceptionUtils.getStackTrace(e)));
 				}
 				
-				DB db = null;
 				try {
-					db = mongoClient.getDB(dbName);
-					if(username!=null && password!=null) {
-						Assert.assertTrue(String.format("Authentication to the Mongo database %s failed with %s/%s", dbName, 
-								username, password), db.authenticate(username, password.toCharArray()));
-					}
+					mongoClient.getDatabase(dbName);
 				} catch (Exception e) {
 					throw new AssertionError(String.format("Error during initialization of MongoDB connection %s", 
 							ExceptionUtils.getStackTrace(e)));
@@ -218,31 +217,31 @@ public class MongoDBTestDataSource extends TestDataSource {
 			res = getResource();
 			MongoClient mongoClient = (MongoClient)res.object;
 			
-			DB db = null;
+			MongoDatabase db = null;
 			try {
-				db = mongoClient.getDB(dbName);
+				db = mongoClient.getDatabase(dbName);
 				
-				DBCollection coll = db.getCollection(collName);
+				MongoCollection<Document> coll = db.getCollection(collName);
 				Assert.assertNotNull(String.format("Mongodb collection %s not found", collName), coll);
 				
-				DBObject queryObject = null;
+				Document queryObject = null;
 				try {
-					queryObject = (DBObject) JSON.parse(queryString);
+					queryObject = Document.parse(queryString);
 				} catch (Exception e) {
 					Assert.assertNotNull("queryString passed is invalid");
 				}
 				
-				DBCursor cursor = null;
+				MongoCursor<Document> cursor = null;
 				try {
-					cursor = coll.find(queryObject);
+					cursor = coll.find(queryObject).iterator();
 					while(cursor.hasNext()) {
-						DBObject object = cursor.next();
+						Document object = cursor.next();
 						Map<String, String> row = new HashMap<String, String>();
 						for (int i = 0; i < variableNamesArr.size(); i++) {
 							//Assert.assertTrue(String.format("Could not find %s field in the result document returned",
 							//		propertyNamesArr.get(i)), object.containsField(propertyNamesArr.get(i)));
 							if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
-							if(object.containsField(propertyNamesArr.get(i)))
+							if(object.containsKey(propertyNamesArr.get(i)))
 							{
 								row.put(variableNamesArr.get(i), object.get(propertyNamesArr.get(i)).toString());
 							}
@@ -286,7 +285,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 		
 		int queryType = 0;
 		
-		String collectionName = null;
+		String collName = null;
 		String paramData = null;
 		
 		boolean found = false;
@@ -294,7 +293,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 			Matcher match = pattern.matcher(queryStr);
 			if(match.matches()) {
 				found = true;
-				collectionName = match.group(1);
+				collName = match.group(1);
 				paramData = match.group(2);
 				
 				if(DB_REMOVE_REGEX.equals(pattern)) {
@@ -310,7 +309,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 		}
 		
 		Assert.assertTrue("Only remove/insert/save queries allowed", found);
-		Assert.assertTrue("collectionName not found in query", StringUtils.isNotBlank(collectionName));
+		Assert.assertTrue("collectionName not found in query", StringUtils.isNotBlank(collName));
 		
 		String dbName = args[2].trim();
 		String queryString = queryStr.trim();
@@ -329,29 +328,29 @@ public class MongoDBTestDataSource extends TestDataSource {
 			res = getResource();
 			MongoClient mongoClient = (MongoClient)res.object;
 			
-			DB db = null;
+			MongoDatabase db = null;
 			try {
-				db = mongoClient.getDB(dbName);
+				db = mongoClient.getDatabase(dbName);
 
 				try {
-					DBCollection coll = db.getCollection(collectionName);
+					MongoCollection<Document> coll = db.getCollection(collName);
 					Assert.assertNotNull("collection not found", coll);
 					
-					DBObject dbObj = new BasicDBObject();
+					Document dbObj = new Document();
 					if(StringUtils.isNotBlank(paramData))
 					{
-						dbObj = (DBObject)JSON.parse(paramData);
+						dbObj = Document.parse(paramData);
 					}
 					
 					if(queryType==1) {
-						WriteResult response = coll.remove(dbObj);
-						result = response!=null && response.getError()==null;
+						DeleteResult response = coll.deleteMany(dbObj);
+						result = response!=null && response.getDeletedCount()>0;
 					} else if(queryType==2) {
-						WriteResult response = coll.save(dbObj);
-						result = response!=null && response.getError()==null;
+						UpdateResult response = coll.updateOne(new Document(), dbObj);
+						result = response!=null && response.getModifiedCount()>0;
 					} else if(queryType==3) {
-						WriteResult response = coll.insert(dbObj);
-						result = response!=null && response.getError()==null;
+						InsertOneResult response = coll.insertOne(dbObj);
+						result = response!=null && response.getInsertedId()!=null;
 					}
 				} catch (Exception e) {
 					throw new AssertionError(e);
@@ -393,7 +392,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 			if(res!=null)return res;
 			
 			try {
-				mongoClient = new MongoClient(addresses);
+				mongoClient = MongoClients.create(addresses);
 			} catch (Exception e) {
 				throw new AssertionError(String.format("Connection to MongoDB failed with the error %s", 
 						ExceptionUtils.getStackTrace(e)));

@@ -89,16 +89,16 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v113.dom.DOM;
-import org.openqa.selenium.devtools.v113.dom.model.Node;
-import org.openqa.selenium.devtools.v113.dom.model.NodeId;
-import org.openqa.selenium.devtools.v113.fetch.Fetch;
-import org.openqa.selenium.devtools.v113.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v113.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v113.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v113.log.Log;
-import org.openqa.selenium.devtools.v113.network.Network;
-import org.openqa.selenium.devtools.v113.network.model.ResourceType;
+import org.openqa.selenium.devtools.v116.dom.DOM;
+import org.openqa.selenium.devtools.v116.dom.model.Node;
+import org.openqa.selenium.devtools.v116.dom.model.NodeId;
+import org.openqa.selenium.devtools.v116.fetch.Fetch;
+import org.openqa.selenium.devtools.v116.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v116.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v116.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v116.log.Log;
+import org.openqa.selenium.devtools.v116.network.Network;
+import org.openqa.selenium.devtools.v116.network.model.ResourceType;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -141,6 +141,12 @@ import okhttp3.Response;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.Screenshot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
+import technology.tabula.ObjectExtractor;
+import technology.tabula.Page;
+import technology.tabula.PageIterator;
+import technology.tabula.RectangularTextContainer;
+import technology.tabula.Table;
+import technology.tabula.extractors.SpreadsheetExtractionAlgorithm;
 
 public abstract class SeleniumTest {
 	@SuppressWarnings("serial")
@@ -472,7 +478,7 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	protected void addSubTest(String browserName, String stname, boolean isAFunc) {
+	/*protected void addSubTest(String browserName, String stname, boolean isAFunc) {
 		if(isAFunc) return;
 		if(getSession().__result__.containsKey(browserName)) {
 			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
@@ -483,7 +489,7 @@ public abstract class SeleniumTest {
 		} else {
 			throw new RuntimeException("Invalid browser specified");
 		}
-	}
+	}*/
 
 	protected void startTest() {
 		if(getSession().__teststarttime__==0) {
@@ -2108,14 +2114,14 @@ public abstract class SeleniumTest {
 		return el;
 	}
 	
-	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText) {
+	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText, String colsep) {
 		if(pdr instanceof PrintsPage) {
 			try {
 				PrintOptions po = new PrintOptions();
 				Pdf pdf = ((PrintsPage)pdr).print(po);
 				IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
 				if(extractText && new File(filePath).exists()) {
-					extractTextFromPdf(filePath);
+					extractTextFromPdf(filePath, colsep);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -2123,19 +2129,57 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	private void extractTextFromPdf(String filePath) {
+	@SuppressWarnings("rawtypes")
+	private void extractTextFromPdf(String filePath, String colSep) {
 		try {
 			PDDocument doc = PDDocument.load(new File(filePath));
 			System.out.println(doc.getNumberOfPages());
 			System.out.println(doc.isEncrypted());
-			PDFTextStripper stripper = new PDFTextStripper();
-			stripper.setStartPage(1);
-			//stripper.setEndPage(1);
-			new File(filePath+".txt").delete();
 			Writer wr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath+".txt")));
+			
+			/*PDFTextStripper stripper = new PDFTextStripper();
+			stripper.setStartPage(1);
+			new File(filePath+".txt").delete();
 			stripper.writeText(doc, wr);
-			if (doc != null) {
-				doc.close();
+			*/
+			
+			ObjectExtractor oedoc = new ObjectExtractor(doc);
+			PageIterator pi = oedoc.extract();
+			SpreadsheetExtractionAlgorithm sea = new SpreadsheetExtractionAlgorithm();
+			int pn = 1;
+			while (pi.hasNext()) {
+				Page page = pi.next();
+				List<Table> table = sea.extract(page);
+				if(table!=null && table.size()>0) {
+					int tb = 1;
+					for(Table tables: table) {
+						wr.write("============== Page ["+pn+"], Table ["+tb+"] Starts ==============\n");
+			            List<List<RectangularTextContainer>> rows = tables.getRows();
+			            // iterate over the rows of the table
+			            for (List<RectangularTextContainer> cells : rows) {
+			                // print all column-cells of the row plus linefeed
+			                for (RectangularTextContainer content : cells) {
+			                    // Note: Cell.getText() uses \r to concat text chunks
+			                    String text = content.getText().replace("\r", " ");
+			                    wr.write(text + (StringUtils.isBlank(colSep)?"|":colSep));
+			                }
+			                wr.write("\n");
+			            }
+			            wr.write("============== Page ["+pn+"], Table ["+tb+"] Ends ==============\n\n\n");
+			            tb++;
+			        }
+				}
+				pn++;
+			}
+			
+			wr.write("============== Full Page Content Starts ==============\n");
+			PDFTextStripper stripper = new PDFTextStripper();
+			String content = stripper.getText(doc);
+			wr.write(content);
+			wr.write("============== Full Page Content Ends ==============\n");
+			
+			if (oedoc != null) {
+				oedoc.close();
 			}
 			wr.close();
 		} catch (Exception e) {
@@ -2151,13 +2195,13 @@ public abstract class SeleniumTest {
 			initJs(driver);
 			System.out.println("Window open intercept added for " + optionalOpenNums + " window(s)....");
 			//((JavascriptExecutor)driver).executeScript("window.__wostn__="+optionalOpenNums+";window.__wosjp__=[];window.open=function(a,b,c){window.__wosjp__.push([a,b,c]);window.__owo__(a,b,c);console.log(a);}");
-			((JavascriptExecutor)driver).executeScript("window.GatfUtil.wpensaveInit("+optionalOpenNums+")");
+			((JavascriptExecutor)driver).executeScript("window.GatfUtil.wopensaveInit("+optionalOpenNums+")");
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
 	}
 
-	protected void windowOpenSaveJsPost(WebDriver driver, String filePath, boolean extractText, int openPos) {
+	protected void windowOpenSaveJsPost(WebDriver driver, String filePath, boolean extractText, int openPos, String colsep) {
 		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
@@ -2194,7 +2238,7 @@ public abstract class SeleniumTest {
 			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
 			res.close();
 			if(extractText && new File(filePath).exists()) {
-				extractTextFromPdf(filePath);
+				extractTextFromPdf(filePath, colsep);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -3404,7 +3448,7 @@ public abstract class SeleniumTest {
 			BROWSER_FEATURES.put(sessionId+".NWCONSOLE", lognw);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v113.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v116.security.Security.setIgnoreCertificateErrors(true));
 			if(logconsole) {
 				devTools.send(Log.enable());
 				devTools.addListener(Log.entryAdded(), logEntry -> {
@@ -3530,7 +3574,7 @@ public abstract class SeleniumTest {
 						}
 						headerMap.put(he.getName(), he.getValue());
 					}
-					org.openqa.selenium.devtools.v113.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+					org.openqa.selenium.devtools.v116.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 					String body = firsb.getBody();
 					if(firsb.getBase64Encoded()) {
 						try {
@@ -3913,5 +3957,31 @@ public abstract class SeleniumTest {
 		} catch (Exception e) {
 		}
 		return null;
+	}
+	
+	protected void checkMail(String tname, String from, String to, String subject, String content, int timeout) {
+		String stname = get__subtestname__();
+		try {
+			set__subtestname__(tname);
+			if(___cxt___.simulatorEventCheck("mail", new Object[] {from, to, subject, content, timeout})) {
+				throw new PassSubTestException(tname);
+			}
+			throw new FailSubTestException(tname + " --- failed");
+		} finally {
+			reset__subtestname__(stname);
+		}
+	}
+	
+	protected boolean checkHttpRequest(String tname, String from, String to, String content, int timeout) {
+		String stname = get__subtestname__();
+		try {
+			set__subtestname__(tname);
+			if(___cxt___.simulatorEventCheck("http", new Object[] {from, to, content, timeout})) {
+				throw new PassSubTestException(tname);
+			}
+			throw new FailSubTestException(tname + " --- failed");
+		} finally {
+			reset__subtestname__(stname);
+		}
 	}
 }

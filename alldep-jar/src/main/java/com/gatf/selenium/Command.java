@@ -451,7 +451,7 @@ public class Command {
         String cmd = utf8Trim(cmdDetails[0].toString().trim());
         Command comd = null;
         cmd = state.sanitize(cmd);
-        if(cmd.trim().startsWith("^")) {
+        if(!state.commentStart && cmd.trim().startsWith("^")) {
         	String skipKey = null;
         	for (String dkey : state.dynProps.keySet()) {
     			if(cmd.trim().startsWith("^"+dkey+" ") && state.dynProps.get(dkey).toLowerCase().matches("yes|true|1|enabled|on")) {
@@ -792,6 +792,10 @@ public class Command {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("printpdf ")) {
             comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("mail ")) {
+            comd = new MailCommand(cmd.substring(5).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("http")) {
+            comd = new HttpCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("wopensave ")) {
             comd = new WindowOpenSaveInterceptJsCommand(cmd.substring(10).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("netapix ")) {
@@ -1493,7 +1497,7 @@ public class Command {
     	lines.add("xmlpath=com.gatf.selenium.plugins.XmlPlugin@path");
     	lines.add("api=com.gatf.selenium.plugins.ApiPlugin@api");
     	lines.add("curl=com.gatf.selenium.plugins.CurlPlugin@execute");
-    	//lines.add("mail=com.gatf.selenium.plugins.MailPlugin@execute");
+    	//lines.add("sendmail=com.gatf.selenium.plugins.MailPlugin@execute");
         if(cntxt.getResourceFile("plugins.txt").exists()) {
         	lines.addAll(FileUtils.readLines(cntxt.getResourceFile("plugins.txt"), "UTF-8"));
         }
@@ -6575,10 +6579,12 @@ public class Command {
     
     public static class PrintPDFCommand extends Command {
         boolean extractText = false;
+        String colsep = "|";
         PrintPDFCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = cmd.trim().split("[\t ]+");
             this.extractText = parts.length>1 && parts[1].trim().equalsIgnoreCase("text")?true:false;
+            colsep = (parts.length>2 && StringUtils.isNotBlank(parts[1]))?parts[1].trim():"|";
             name = unSantizedUnQuoted(parts[0].trim(), state);
             if(StringUtils.isBlank(name)) {
             	throwParseError(null, new RuntimeException("Print pdf command needs a file path argument"));
@@ -6588,16 +6594,123 @@ public class Command {
             return "printpdf \"" + name + "\"" + (extractText?" text":"");
         }
         String javacode() {
-            return "\nprintToPdf(get___d___(), evaluate(\""+esc(name)+"\"), "+extractText+");\n";
+            return "\nprintToPdf(get___d___(), evaluate(\""+esc(name)+"\"), "+extractText+", \""+esc(colsep)+"\");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Print pdf of the page to file",
-        		"\tprintpdf {filepath} {text?}",
+        		"\tprintpdf {filepath} {text?} {col-separator}?",
         		"Examples :-",
         		"\tprintpdf '/path/to/file.txt'",
         		"\tprintpdf '/path/to/file.txt' text",
+        		"\tprintpdf '/path/to/file.txt' text |",
             };
+        }
+    }
+    
+    public static class MailCommand extends Command {
+    	String from, to, subject, content;
+    	long timeout = 20000;
+        MailCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = cmd.trim().split("[\t ]+");
+            if(StringUtils.isBlank(parts[0])) {
+            	throwParseError(null, new RuntimeException("Mail Simulator Message Checker command needs test name argument"));
+            }
+            name = unSantizedUnQuoted(parts[0].trim(), state);
+            if(StringUtils.isBlank(parts[1])) {
+            	throwParseError(null, new RuntimeException("Mail Simulator Message Checker command needs from address argument"));
+            }
+            from = unSantizedUnQuoted(parts[1].trim(), state);
+            if(StringUtils.isBlank(parts[2])) {
+            	throwParseError(null, new RuntimeException("Mail Simulator Message Checker command needs to address argument"));
+            }
+            to = unSantizedUnQuoted(parts[2].trim(), state);
+            if(StringUtils.isBlank(parts[3])) {
+            	throwParseError(null, new RuntimeException("Mail Simulator Message Checker command needs subject argument"));
+            }
+            subject = unSantizedUnQuoted(parts[3].trim(), state);
+            if(StringUtils.isNotBlank(parts[4])) {
+	            try {
+					timeout = Long.parseLong(parts[4].trim());
+				} catch (Exception e) {
+					content = unSantizedUnQuoted(parts[4].trim(), state);
+				}
+            }
+            if(StringUtils.isNotBlank(parts[5])) {
+	            try {
+					timeout = Long.parseLong(parts[5].trim());
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Mail Simulator Message Checker command timeout argument should be a number"));
+				}
+            }
+            if(content==null) content = "";
+        }
+        String toCmd() {
+            return "mail \"" + name + "\" \""+from+"\" \""+to+"\" \""+subject+"\" \""+content+"\" " + timeout;
+        }
+        String javacode() {
+            return "checkMail(\""+esc(name)+"\", \""+esc(from)+"\", \""+esc(to)+"\", \""+esc(subject)+"\", \""+esc(content)+"\", "+timeout+");\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+        		"Check whether email was received from a given sender, for a given receiver, with a given subject and matching the given content with timeout period",
+        		"\tmail {name}  {from} {to} {subject} {content}? {timeout}?",
+        		"Examples :-",
+        		"\tmail 'mail for appointment' 'abc@a.com' 'abc@b.com' 'Hello There'",
+        		"\tmail 'mail for appointment' 'abc@a.com' 'abc@b.com' 'Hello There' 'How are you doing today'",
+        		"\tmail 'mail for appointment' 'abc@a.com' 'abc@b.com' 'Hello There' 'How are you doing today (.*)'",
+        		"\tmail 'mail for appointment' 'abc@a.com' 'abc@b.com' 'Hello There' 'How are you doing today (.*)' 50000",
+            };
+        }
+    }
+    
+    public static class HttpCommand extends Command {
+    	String from, to, content;
+    	long timeout = 20000;
+    	HttpCommand(String cmd, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = cmd.trim().split("[\t ]+");
+            if(StringUtils.isBlank(parts[0])) {
+            	throwParseError(null, new RuntimeException("Http Simulator Request Checker command needs test name argument"));
+            }
+            name = unSantizedUnQuoted(parts[0].trim(), state);
+            if(StringUtils.isBlank(parts[1])) {
+            	throwParseError(null, new RuntimeException("Http Simulator Request Checker command needs from address argument"));
+            }
+            from = unSantizedUnQuoted(parts[1].trim(), state);
+            if(StringUtils.isBlank(parts[2])) {
+            	throwParseError(null, new RuntimeException("Http Simulator Request Checker command needs to address argument"));
+            }
+            to = unSantizedUnQuoted(parts[2].trim(), state);
+            if(StringUtils.isBlank(parts[3])) {
+            	throwParseError(null, new RuntimeException("Http Simulator Request Checker command needs content argument"));
+            }
+            content = unSantizedUnQuoted(parts[3].trim(), state);
+            if(StringUtils.isNotBlank(parts[4])) {
+	            try {
+					timeout = Long.parseLong(parts[4].trim());
+				} catch (Exception e) {
+					throwParseError(null, new RuntimeException("Http Simulator Request Checker command timeout argument should be a number"));
+				}
+            }
+            if(content==null) content = "";
+        }
+        String toCmd() {
+            return "http \"" + name + "\" \""+from+"\" \""+to+"\" \""+content+"\" " + timeout;
+        }
+        String javacode() {
+            return "checkHttpRequest(\""+esc(name)+"\", \""+esc(from)+"\", \""+esc(to)+"\", \""+esc(content)+"\", "+timeout+");\n";
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+    			"Check whether an http request was received from a given sender, for a given receiver and matching the given content with timeout period",
+    			"\thttp {name}  {from} {to} {content} {timeout}?",
+    			"Examples :-",
+    			"\thttp 'http request message for sms' 'from' 'to' 'How are you doing today'",
+    			"\thttp 'http request message for sms' 'from' 'to' 'How are you doing today (.*)'",
+    			"\thttp 'http request message for sms' 'from' 'to' 'How are you doing today (.*)' 50000",
+        	};
         }
     }
     
@@ -6606,6 +6719,7 @@ public class Command {
     	boolean extractText = false;
     	int optionalOpenNums = 1;
     	int openPos = 0;
+    	String colsep = "|";
     	WindowOpenSaveInterceptJsCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             String[] parts = cmd.trim().split("[\t ]+");
@@ -6635,8 +6749,12 @@ public class Command {
             			openPos = openPos-1;
             		}
 				} catch (Exception e) {
+		            //colsep = parts[3].trim();
 					throwParseError(null, new RuntimeException("Please provide a valid/positive window.open position"));
 				}
+            }
+            if(!start && parts.length>4) {
+            	colsep = StringUtils.isNotBlank(parts[4])?parts[4].trim():"|";
             }
             if(start && parts.length>1) {
             	try {
@@ -6655,7 +6773,7 @@ public class Command {
         }
         String javacode() {
         	if(start) return "\nwindowOpenSaveJsPre(___cw___, "+optionalOpenNums+");\n";
-        	else return "\nwindowOpenSaveJsPost(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+", "+openPos+");\n";
+        	else return "\nwindowOpenSaveJsPost(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+", "+openPos+", \""+esc(colsep)+"\");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -6666,6 +6784,7 @@ public class Command {
         		"\twopensave on 2",
         		"\twopensave off '/path/to/file.txt' text",
         		"\twopensave off '/path/to/file.txt' text 2",
+        		"\twopensave off '/path/to/file.txt' text 2 |",
             };
         }
     }
@@ -8721,7 +8840,7 @@ public class Command {
 		}
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
-    			"/path/to/project/gatf-config.xml",
+        		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",

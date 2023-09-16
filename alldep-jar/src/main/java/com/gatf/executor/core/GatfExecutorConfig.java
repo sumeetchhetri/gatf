@@ -134,6 +134,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private String[] seleniumScripts;
 	
+	private String seleniumScript;
+	
+	private Integer seleniumScriptRetryCount = 0;
+	
 	private SeleniumDriverConfig[] seleniumDriverConfigs = new SeleniumDriverConfig[] {};
 	
 	private String seleniumLoggerPreferences;
@@ -153,6 +157,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     private String vegetaPath;
     
     private String autocannonPath;
+    
+    @JsonIgnore
+	@XmlTransient
+	private int retryCounter = 0;
+    
+    private MailSimulatorConfig mailSimulator;
+    
+    private HttpServerSimulatorConfig htttpServerSimulator;
 	
 	public String getBaseUrl() {
 		return baseUrl;
@@ -540,6 +552,22 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.seleniumScripts = seleniumScripts;
 	}
 
+	public String getSeleniumScript() {
+		return seleniumScript;
+	}
+
+	public void setSeleniumScript(String seleniumScript) {
+		this.seleniumScript = seleniumScript;
+	}
+
+	public Integer getSeleniumScriptRetryCount() {
+		return seleniumScriptRetryCount;
+	}
+
+	public void setSeleniumScriptRetryCount(Integer seleniumScriptRetryCount) {
+		this.seleniumScriptRetryCount = seleniumScriptRetryCount;
+	}
+
 	public SeleniumDriverConfig[] getSeleniumDriverConfigs() {
 		return seleniumDriverConfigs;
 	}
@@ -640,6 +668,30 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setAutocannonPath(String autocannonPath) {
 		this.autocannonPath = autocannonPath;
+	}
+
+	public int getRetryCounter() {
+		return retryCounter;
+	}
+
+	public void setRetryCounter(int retryCounter) {
+		this.retryCounter = retryCounter;
+	}
+
+	public MailSimulatorConfig getMailSimulator() {
+		return mailSimulator;
+	}
+
+	public void setMailSimulator(MailSimulatorConfig mailSimulator) {
+		this.mailSimulator = mailSimulator;
+	}
+
+	public HttpServerSimulatorConfig getHtttpServerSimulator() {
+		return htttpServerSimulator;
+	}
+
+	public void setHtttpServerSimulator(HttpServerSimulatorConfig htttpServerSimulator) {
+		this.htttpServerSimulator = htttpServerSimulator;
 	}
 
 	public void validate()
