@@ -14,11 +14,21 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 @JsonInclude(value = Include.NON_NULL)
 public class HttpServerSimulatorConfig {
 	
+	private boolean enabled;
+	
 	private int port;
 	
 	private String body;
 	
 	private Map<String, String> headers = new HashMap<String, String>();
+	
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
 
 	public int getPort() {
 		return port;

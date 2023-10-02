@@ -11,6 +11,8 @@ import com.fasterxml.jackson.dataformat.xml.annotation.JacksonXmlRootElement;
 @JsonInclude(value = Include.NON_NULL)
 public class MailSimulatorConfig {
 	
+	private boolean enabled;
+
 	private String login;
 	
 	private String password;
@@ -20,6 +22,14 @@ public class MailSimulatorConfig {
 	private int smtpPort;
 	
 	private int imapPort;
+	
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
+	}
 
 	public String getLogin() {
 		return login;

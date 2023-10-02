@@ -37,6 +37,7 @@ import org.w3c.dom.Attr;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
@@ -56,7 +57,8 @@ public class WorkflowContextHandler {
 	public static final XmlMapper XOM = new XmlMapper();
 	
 	static {
-		XOM.enable(SerializationFeature.INDENT_OUTPUT);
+		OM.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+		XOM.enable(SerializationFeature.INDENT_OUTPUT).configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 	}
 
 	private final VelocityEngine engine = new VelocityEngine();

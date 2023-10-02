@@ -2843,6 +2843,9 @@ function configuration() {
                 },
                 "type": "object",
                 "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
                     "login": {
                         "type": "string"
                     },
@@ -2868,6 +2871,9 @@ function configuration() {
                 },
                 "type": "object",
                 "properties": {
+                    "enabled": {
+                        "type": "boolean"
+                    },
                     "port": {
                         "type": "integer"
                     },

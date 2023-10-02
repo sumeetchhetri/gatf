@@ -561,7 +561,7 @@ public class AcceptanceTestContext {
 		initServerLogsApis();
 
     	MailSimulatorConfig msc = gatfExecutorConfig.getMailSimulator();
-        if(msc!=null) {
+        if(msc!=null && msc.isEnabled()) {
         	Assert.assertTrue("Mail simulator login name is mandatory", StringUtils.isNotBlank(msc.getLogin()));
         	Assert.assertTrue("Mail simulator password is mandatory", StringUtils.isNotBlank(msc.getPassword()));
         	Assert.assertTrue("Mail simulator smtp port is mandatory", msc.getSmtpPort()>100);
@@ -574,7 +574,7 @@ public class AcceptanceTestContext {
         }
         
         HttpServerSimulatorConfig hsc = gatfExecutorConfig.getHtttpServerSimulator();
-        if(hsc!=null) {
+        if(hsc!=null && hsc.isEnabled()) {
         	Assert.assertTrue("Http simulator port is mandatory", hsc.getPort()>=80);
         	Assert.assertTrue("Http simulator body is mandatory", StringUtils.isNotBlank(hsc.getBody()));
         	try {

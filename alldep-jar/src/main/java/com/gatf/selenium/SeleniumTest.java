@@ -61,6 +61,7 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -1274,11 +1275,13 @@ public abstract class SeleniumTest {
 					} else {
 						System.out.println(cause.getMessage());
 					}
-					try {
-						stImg = img;
-						java.lang.System.out.println(img);
-						screenshotAsFile(d, img);
-					} catch (Exception e) {
+					if(!this.isContinue) {
+						try {
+							stImg = img;
+							java.lang.System.out.println(img);
+							screenshotAsFile(d, img);
+						} catch (Exception e) {
+						}
 					}
 				}
 			} else {
@@ -2129,8 +2132,17 @@ public abstract class SeleniumTest {
 		}
 	}
 	
+	private final static Map<String, List<List<Map<String, String>>>> _pdtTables = new HashMap<>();
+	
+	protected static List<List<Map<String, String>>> pdfTable(String filePath) {
+		String fk = DigestUtils.sha256Hex(filePath+".txt");
+		if(_pdtTables.containsKey(fk)) {
+			return _pdtTables.get(fk);
+		}
+		return new ArrayList<List<Map<String, String>>>();
+	}
 	@SuppressWarnings("rawtypes")
-	private void extractTextFromPdf(String filePath, String colSep) {
+	protected static void extractTextFromPdf(String filePath, String colSep) {
 		try {
 			PDDocument doc = PDDocument.load(new File(filePath));
 			System.out.println(doc.getNumberOfPages());
@@ -2143,6 +2155,9 @@ public abstract class SeleniumTest {
 			stripper.writeText(doc, wr);
 			*/
 			
+			String fk = DigestUtils.sha256Hex(filePath+".txt");
+			_pdtTables.put(fk, new ArrayList<List<Map<String, String>>>());
+			
 			ObjectExtractor oedoc = new ObjectExtractor(doc);
 			PageIterator pi = oedoc.extract();
 			SpreadsheetExtractionAlgorithm sea = new SpreadsheetExtractionAlgorithm();
@@ -2153,15 +2168,75 @@ public abstract class SeleniumTest {
 				if(table!=null && table.size()>0) {
 					int tb = 1;
 					for(Table tables: table) {
+						List<String> headers = null;
+						int nehdrs = 0;
+						Map<String, Double> colhts = new HashMap<>();
+						double highest = 0;
+						List<Map<String, String>> lst = null;
 						wr.write("============== Page ["+pn+"], Table ["+tb+"] Starts ==============\n");
 			            List<List<RectangularTextContainer>> rows = tables.getRows();
 			            // iterate over the rows of the table
 			            for (List<RectangularTextContainer> cells : rows) {
-			                // print all column-cells of the row plus linefeed
+			            	List<String> cols = new ArrayList<>();
+			            	int necols = 0;
+			                // print all column-cells of the row plus line feed
+			            	boolean txtfound = false;
 			                for (RectangularTextContainer content : cells) {
 			                    // Note: Cell.getText() uses \r to concat text chunks
 			                    String text = content.getText().replace("\r", " ");
 			                    wr.write(text + (StringUtils.isBlank(colSep)?"|":colSep));
+			                    cols.add(text);
+			                    txtfound |= !text.trim().isBlank();
+			                    necols += !text.trim().isBlank()?1:0;
+			                }
+			                if(txtfound) {
+			                	try {
+					                if(headers==null) {
+					                	headers = cols;
+					                	nehdrs = necols;
+				                		lst = new ArrayList<Map<String, String>>();
+										_pdtTables.get(fk).add(lst);
+					                } else {
+					                	if(nehdrs==necols) {
+					                		for (RectangularTextContainer content : cells) {
+							                    // Note: Cell.getText() uses \r to concat text chunks
+							                    String text = content.getText().replace("\r", " ");
+							                    if(!text.trim().isBlank()) {
+								                    for (int i=0;i<cols.size();i++) {
+								                    	String colt = cols.get(i).trim();
+									                	if(colt.equals(text.trim())) {
+									                		colhts.put(headers.get(i).trim(), content.getHeight());
+									                		if(highest<content.getHeight()) {
+									                			highest = content.getHeight();
+									                		}
+									                	}
+								                    }
+							                    }
+							                }
+					                		Map<String, String> row = new HashMap<>();
+							                for (int i=0;i<headers.size();i++) {
+							                	String hdrlab = headers.get(i).trim();
+							                	if(StringUtils.isBlank(hdrlab)) {
+							                		hdrlab = "_p"+(i+1);
+							                	}
+												row.put(hdrlab, cols.get(i));
+											}
+							                lst.add(row);
+					                	} else {
+					                		Map<String, String> row = lst.get(lst.size()-1);
+							                for (int i=0;i<headers.size();i++) {
+							                	String hdrlab = headers.get(i).trim();
+							                	if(StringUtils.isBlank(hdrlab)) {
+							                		hdrlab = "_p"+(i+1);
+							                	}
+												row.put(hdrlab, row.get(hdrlab)+" "+cols.get(i));
+											}
+							                //lst.add(row);
+					                	}
+					                }
+								} catch (Exception e) {
+									e.printStackTrace();
+								}
 			                }
 			                wr.write("\n");
 			            }
