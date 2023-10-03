@@ -85,28 +85,28 @@ jobs:
         docker tag $BIN_FF_IMAGE $IMAGE_ID:$VERSION
         docker push $IMAGE_ID:$VERSION
 
-    - name: Build gatf vnc
-      run: |
-        docker build . --file Dockerfile-Gatf-FF-Chrome-VNC --tag $BIN_VNC_IMAGE
-        chmod +x ./ci-test-bin-vnc.sh && ./ci-test-bin-vnc.sh
-    - name: Login to the registry
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
-
-    - name: Push gatf vnc image
-      run: |
-        IMAGE_ID=$BIN_VNC_IMAGE
-        # Change all uppercase to lowercase
-        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-        # Strip git ref prefix from version
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-        # Strip "v" prefix from tag name
-        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-        # Use Docker `latest` tag convention
-        [ "$VERSION" == "master" ] && VERSION=latest
-        echo IMAGE_ID=$IMAGE_ID
-        echo VERSION=$VERSION
-        docker tag $BIN_VNC_IMAGE $IMAGE_ID:$VERSION
-        docker push $IMAGE_ID:$VERSION
+#    - name: Build gatf vnc
+#      run: |
+#        docker build . --file Dockerfile-Gatf-FF-Chrome-VNC --tag $BIN_VNC_IMAGE
+#        chmod +x ./ci-test-bin-vnc.sh && ./ci-test-bin-vnc.sh
+#    - name: Login to the registry
+#      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+#
+#    - name: Push gatf vnc image
+#      run: |
+#        IMAGE_ID=$BIN_VNC_IMAGE
+#        # Change all uppercase to lowercase
+#        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+#        # Strip git ref prefix from version
+#        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+#        # Strip "v" prefix from tag name
+#        #[[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+#        # Use Docker `latest` tag convention
+#        [ "$VERSION" == "master" ] && VERSION=latest
+#        echo IMAGE_ID=$IMAGE_ID
+#        echo VERSION=$VERSION
+#        docker tag $BIN_VNC_IMAGE $IMAGE_ID:$VERSION
+#        docker push $IMAGE_ID:$VERSION
         
     - name: Extract branch name
       shell: bash
