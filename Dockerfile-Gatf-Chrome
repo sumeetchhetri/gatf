@@ -1,6 +1,6 @@
 FROM sumeetchhetri/gatf-jar:latest
 
-FROM ubuntu:20.04
+FROM ubuntu:latest
 
 ENV D_JAVA_HOME /usr/lib/jvm/java-11-openjdk-amd64/
 ENV D_CHROME_DRIVER /usr/bin/chromedriver
@@ -9,11 +9,14 @@ ENV SCREEN_WIDTH 1360
 ENV SCREEN_HEIGHT 1020
 ENV SCREEN_DEPTH 24
 ENV SCREEN_DPI 96
+ENV NODE_MAJOR 20
   
 ARG DEBIAN_FRONTEND=noninteractive
 
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates curl openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools build-essential software-properties-common xvfb fluxbox wmctrl gnupg nodejs && rm -rf /var/lib/apt/lists/*
+RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates ca-certificates curl gnupg openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools build-essential software-properties-common xvfb fluxbox wmctrl && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt update -yqq && apt install -yqq nodejs
 RUN npm install -g autocannon
 
 #============================================

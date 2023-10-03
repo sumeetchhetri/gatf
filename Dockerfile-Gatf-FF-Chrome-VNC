@@ -1,3 +1,4 @@
+#Not used and needed anymore, selnoid/vnc images and selenoid-ui does the job already
 FROM sumeetchhetri/gatf-jar:latest
 
 FROM dorowu/ubuntu-desktop-lxde-vnc
@@ -13,8 +14,10 @@ ENV DISPLAY :1
 ARG DEBIAN_FRONTEND=noninteractive
 
 RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-RUN apt update -y && apt install -y zlib1g-dev ca-certificates curl openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools nodejs && rm -rf /var/lib/apt/lists/*
+RUN apt update -y && apt install -y zlib1g-dev ca-certificates ca-certificates curl gnupg openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt update -yqq && apt install -yqq nodejs
 RUN npm install -g autocannon
 
 #============================================
