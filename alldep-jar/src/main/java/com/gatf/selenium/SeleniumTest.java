@@ -1275,13 +1275,14 @@ public abstract class SeleniumTest {
 					} else {
 						System.out.println(cause.getMessage());
 					}
-					if(!this.isContinue) {
-						try {
-							stImg = img;
-							java.lang.System.out.println(img);
-							screenshotAsFile(d, img);
-						} catch (Exception e) {
+					try {
+						stImg = img;
+						java.lang.System.out.println(img);
+						screenshotAsFile(d, img);
+						if (d instanceof JavascriptExecutor) {
+							((JavascriptExecutor)d).executeScript("window.scrollTo(0,0)");
 						}
+					} catch (Exception e) {
 					}
 				}
 			} else {

@@ -2466,12 +2466,17 @@ public class Command {
             			String[] nparts = pstr.trim().split("[\t ]+");
             			for (int i = 0; i < nparts.length; i++) {
     						String param = unSantizedUnQuoted(nparts[i].trim(), state);
-    						args += param + " ";
-    						String[] pdet = param.split(":");
-							if(pdet.length!=2) {
-								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+    						if(param.indexOf(":")==-1) {
+    							if(subt.params.size()==1 && nparts.length==1) {}
+    							else {
+    								throwError(fileLineDetails, new RuntimeException("Invalid parameter syntax, please use param-name:param-value syntax"));
+    							}
 							}
-							if(subt.params.contains(pdet[0].trim())) {
+    						args += param + " ";
+    						String[] pdet = new String[] {param.substring(0, param.indexOf(":")), param.substring(param.indexOf(":")+1)};
+    						if(subt.params.size()==1 && nparts.length==1) {
+    							params.put(subt.params.iterator().next(), pdet[1].trim().isEmpty()?param:pdet[1]);
+    						} else if(subt.params.contains(pdet[0].trim())) {
 								if(params.containsKey(pdet[0].trim())) {
 									throwError(fileLineDetails, new RuntimeException("Duplicate parameter name `"+pdet[0].trim()+"`"));
 								}

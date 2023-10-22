@@ -1,0 +1,19 @@
+FROM selenoid/_BROWSER_:_VERSION_
+
+ENV NODE_MAJOR 20
+
+USER root
+RUN apt-get update -y && apt --fix-broken -y install && apt-get install -y curl gnupg && mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt-get update -y && apt-get install nodejs -y
+RUN mkdir /seltest
+COPY dyn-proxy.js /seltest
+COPY entrypoint_so.sh /
+RUN chmod +x entrypoint_so.sh /seltest/dyn-proxy.js
+RUN chmod -R 777 /seltest 
+
+USER selenium
+
+EXPOSE 4444 8001
+ENTRYPOINT ["/entrypoint_so.sh"]

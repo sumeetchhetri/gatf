@@ -1,6 +1,6 @@
 CHROME_VERSION=117.0
-FF_VERSION=117.0
-OPERA_VERSION=95.0
+FF_VERSION=118.0
+OPERA_VERSION=103.0
 
 set -x
 rm -rf temp
@@ -33,17 +33,17 @@ docker build -f Dockerfile-firefox --tag sumeetchhetri/vnc:firefox_$FF_VERSION .
 docker push sumeetchhetri/vnc:firefox_$FF_VERSION
 cd -
 
-#rm -rf temp
-#mkdir temp
-#cd temp
-#cp ../dyn-proxy.js .
-#wget -q https://raw.githubusercontent.com/aerokube/images/master/static/opera/entrypoint.sh
-#cp ../Dockerfile-selenoid-browser.tmpl Dockerfile-opera
-#sed -i'' -e 's|_BROWSER_|opera|g' Dockerfile-opera
-#sed -i'' -e "s|_VERSION_|$OPERA_VERSION|g" Dockerfile-opera
-#mv entrypoint.sh entrypoint_so.sh
-#sed -i'' -e 's|wait|cd /seltest \&\& npm i http http-proxy \&\& node dyn-proxy.js \&\n\nwait|g' entrypoint_so.sh
-#docker build -f Dockerfile-opera --tag sumeetchhetri/vnc:opera_$OPERA_VERSION .
-#docker tag sumeetchhetri/vnc sumeetchhetri/vnc:opera_$OPERA_VERSION
-#docker push sumeetchhetri/vnc:opera_$OPERA_VERSION
-#cd -
+rm -rf temp
+mkdir temp
+cd temp
+cp ../dyn-proxy.js .
+wget -q https://raw.githubusercontent.com/aerokube/images/master/static/opera/entrypoint.sh
+cp ../Dockerfile-selenoid-opera.tmpl Dockerfile-opera
+sed -i'' -e 's|_BROWSER_|opera|g' Dockerfile-opera
+sed -i'' -e "s|_VERSION_|$OPERA_VERSION|g" Dockerfile-opera
+mv entrypoint.sh entrypoint_so.sh
+sed -i'' -e 's|wait|cd /seltest \&\& npm i http http-proxy \&\& node dyn-proxy.js \&\n\nwait|g' entrypoint_so.sh
+docker build -f Dockerfile-opera --tag sumeetchhetri/vnc:opera_$OPERA_VERSION .
+docker tag sumeetchhetri/vnc sumeetchhetri/vnc:opera_$OPERA_VERSION
+docker push sumeetchhetri/vnc:opera_$OPERA_VERSION
+cd -
