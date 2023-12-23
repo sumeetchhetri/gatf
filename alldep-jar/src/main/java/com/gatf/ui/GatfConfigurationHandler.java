@@ -62,8 +62,8 @@ public class GatfConfigurationHandler extends HttpHandler {
     				GatfConfiguration gatfConfig = GatfConfigToolUtil.getGatfConfiguration(mojo, null);
         			configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
     			}
-    			response.setContentType(MediaType.APPLICATION_JSON);
-	            response.setContentLength(configJson.length());
+    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+	            response.setContentLength(configJson.getBytes("UTF-8").length);
 	            response.getWriter().write(configJson);
 	            response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {
@@ -79,9 +79,9 @@ public class GatfConfigurationHandler extends HttpHandler {
         			if(executorMojo instanceof GatfTestCaseExecutorUtil) {
     					try {
     						((GatfTestCaseExecutorUtil)executorMojo).initilaizeContext(gatfConfig, true);
-    						initializeMojoProps(executorMojo, mojo);response.setContentType(MediaType.APPLICATION_JSON);
+    						initializeMojoProps(executorMojo, mojo);
     						String configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
-    						response.setContentType(MediaType.APPLICATION_JSON);
+    						response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
     			            response.setContentLength(configJson.length());
     			            response.getWriter().write(configJson);
     					} catch (Throwable e) {
@@ -94,9 +94,9 @@ public class GatfConfigurationHandler extends HttpHandler {
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfiguration gatfConfig = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
         					GatfConfiguration.class);
-    				GatfConfigToolUtil.getGatfConfiguration(mojo, gatfConfig);response.setContentType(MediaType.APPLICATION_JSON);
+    				GatfConfigToolUtil.getGatfConfiguration(mojo, gatfConfig);
     				String configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
-    				response.setContentType(MediaType.APPLICATION_JSON);
+    				response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
     	            response.setContentLength(configJson.length());
     	            response.getWriter().write(configJson);
     			}

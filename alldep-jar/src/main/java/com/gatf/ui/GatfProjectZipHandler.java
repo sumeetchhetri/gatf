@@ -64,7 +64,7 @@ public class GatfProjectZipHandler extends HttpHandler {
     	if(res.size()>0)
     	{
     		String configJson = WorkflowContextHandler.OM.writeValueAsString(res);
-        	response.setContentLength(configJson.length());
+        	response.setContentLength(configJson.getBytes("UTF-8").length);
             response.getWriter().write(configJson);
 			response.setStatus(HttpStatus.OK_200);
     	}

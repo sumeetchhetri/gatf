@@ -100,8 +100,8 @@ public class GatfMiscHandler extends HttpHandler {
 				miscMap.put("providercls", dataLst);
     			
     			String configJson = WorkflowContextHandler.OM.writeValueAsString(miscMap);
-    			response.setContentType(MediaType.APPLICATION_JSON);
-	            response.setContentLength(configJson.length());
+    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+	            response.setContentLength(configJson.getBytes("UTF-8").length);
 	            response.getWriter().write(configJson);
 	            response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {

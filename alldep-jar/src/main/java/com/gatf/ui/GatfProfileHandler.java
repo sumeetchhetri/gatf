@@ -68,8 +68,8 @@ public class GatfProfileHandler  extends HttpHandler {
 					DataSourceProfiler profiler = new DataSourceProfiler(executorMojo.getContext());
 					Map<String, List<List<String>>> retval = profiler.getProfileStats(dsnames);
 					String configJson = WorkflowContextHandler.OM.writeValueAsString(retval);
-	    			response.setContentType(MediaType.APPLICATION_JSON);
-		            response.setContentLength(configJson.length());
+	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+		            response.setContentLength(configJson.getBytes("UTF-8").length);
 		            response.getWriter().write(configJson);
 		            response.setStatus(HttpStatus.OK_200);
 				} catch (Exception e) {

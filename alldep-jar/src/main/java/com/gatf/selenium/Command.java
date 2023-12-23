@@ -19,6 +19,7 @@ import java.awt.event.KeyEvent;
 import java.io.File;
 import java.io.FileInputStream;
 import java.lang.reflect.Method;
+import java.security.Security;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -44,6 +45,7 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.text.StringEscapeUtils;
@@ -81,6 +83,7 @@ public class Command {
         long timeoutSleepGranularity = 1000;
        
         int modeExecType = 0;
+        boolean isSTGenPhase = false;
         boolean modeEnableGlobalTimeouts = true;
         boolean modeEnableConcurrentWebDriver = false;
 
@@ -854,6 +857,10 @@ public class Command {
             comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {
             comd = new EleScreenshotCommand(cmd.substring(15).trim(), cmdDetails, state, false);
+        } else if (cmd.toLowerCase().startsWith("imgsave ")) {
+            comd = new SaveImageCommand(cmd.substring(8).trim(), cmdDetails, state, false);
+        } else if (cmd.toLowerCase().startsWith("readimgtext ")) {
+            comd = new ReadImageTextCommand(cmd.substring(12).trim(), cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("alert ")) {
             comd = new AlertCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("alert")) {
@@ -1588,7 +1595,7 @@ public class Command {
     String selcode(String varnm) {
         return "";
     }
-
+    
     String javacode() {
         StringBuilder b = new StringBuilder();
         b.append("package com.gatf.selenium;\n");
@@ -1616,6 +1623,7 @@ public class Command {
         b.append("import org.openqa.selenium.OutputType;\n");
         b.append("import com.gatf.executor.core.AcceptanceTestContext;\n");
         b.append("import com.gatf.selenium.SeleniumTest;\n");
+        b.append("import com.gatf.selenium.SeleniumTest.Util;\n");
         b.append("import com.gatf.selenium.SeleniumTestSession;\n");
         b.append("import org.openqa.selenium.Dimension;\n");
         b.append("import org.openqa.selenium.Point;\n");
@@ -1804,6 +1812,7 @@ public class Command {
         b.append("___ocw___ = ___cw___;\n");
         b.append("List<WebElement> ___ce___ = null;\n");
         int subtestcount = 0;
+        state.isSTGenPhase = false;
         for (Command c : children) {
             if((c instanceof RequireCommand) || (c instanceof BrowserCommand) || (c instanceof ModeCommand) || (c instanceof ConfigPropsCommand) || (c instanceof SubTestCommand)) {
                 continue;
@@ -1827,6 +1836,7 @@ public class Command {
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{");
+        state.isSTGenPhase = true;
         //b.append("\ntry{");
         //b.append(ex+".printStackTrace();\n");
         //b.append("java.lang.System.out.println(\"_main_exec.png\");");
@@ -2406,6 +2416,7 @@ public class Command {
         Integer sessionId = null;
         String args = "";
         Map<String, String> params = new HashMap<String, String>();
+        String[] lazyState = null;
         ExecSubTestCommand(Object[] cmdDetails, CommandState state) {
         	super(cmdDetails, state);
         }
@@ -2430,10 +2441,14 @@ public class Command {
 				}
             }
             if(subt==null) {
-            	throwError(fileLineDetails, new RuntimeException("No func/subtest with that name found - " + name));
+            	lazyState = parts;
+            	return;
+            	//throwError(fileLineDetails, new RuntimeException("No func/subtest with that name found - " + name));
             }
-            
-            if(parts.length>1) {
+            postProcess(parts);
+        }
+    	private void postProcess(String[] parts) {
+    		if(parts.length>1) {
             	String pstr = "";
             	if(parts[1].startsWith("(")) {
             		if(!parts[1].equals("(")) {
@@ -2552,11 +2567,30 @@ public class Command {
 	            }*/
 	            state.addSubtest(this);
             }
-        }
+    	}
         String javacode() {
             return javacodesubtest(false);
         }
         String javacodesubtest(boolean initvars) {
+        	if(lazyState!=null) {
+        		for (Command c : state.allSubTests) {
+                	SubTestCommand st = (SubTestCommand)c;
+    				if(st.name.equalsIgnoreCase(name)) {
+    					subt = st;
+    					if(StringUtils.isBlank(sessionName)) {
+    						sessionName = subt.sessionName;
+    					}
+    					if(sessionId==null) {
+    						sessionId = subt.sessionId;
+    					}
+    					break;
+    				}
+                }
+                if(subt==null) {
+                	throwError(fileLineDetails, new RuntimeException("No func/subtest with that name found - " + name));
+                }
+                postProcess(lazyState);
+        	}
             StringBuilder b = new StringBuilder();
             if(!subt.isAFunc) {
 	            if(state.modeExecType==2) {
@@ -2757,8 +2791,9 @@ public class Command {
             return b.toString();
         }*/
         String javacodeint() {
+        	if(!state.isSTGenPhase) return "";
             StringBuilder b = new StringBuilder();
-            b.append("List<WebElement> " + fName + "(String __sfname__, WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) {\n");
+            b.append("List<WebElement> " + fName + "(String __sfname__, WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) throws Throwable {\n");
             b.append("List<WebElement> ___ce___ = null;\n");
             if(!children.isEmpty())
             {
@@ -2859,6 +2894,9 @@ public class Command {
                 if(pcomd==null) {
                 	if(this.val.startsWith("readfile ")) {
                     	rcmd = new ReadFileCommand(this.val.substring(9), cmdDetails, state);
+                    	this.val = null;
+                    } else if(this.val.startsWith("readimgtext ")) {
+                    	rcmd = new ReadFileCommand(this.val.substring(12), cmdDetails, state);
                     	this.val = null;
                     }
                 }
@@ -3021,6 +3059,82 @@ public class Command {
 				"Examples :-",
 	    		"\tele-screenshot id@'eleid'",
 	    		"\tele-screenshot id@'eleid' '/path/to/image/file/file.png'"
+            };
+        }
+    }
+
+    public static class SaveImageCommand extends FindCommandImpl {
+        String fpath;
+        boolean isTmp = false;
+        SaveImageCommand(String val, Object[] cmdDetails, CommandState state, boolean isTmp) {
+            super(cmdDetails, state);
+            String[] parts = val.split("[\t ]+");
+            if(parts.length==1) {
+                fpath = System.nanoTime()+".png";
+                cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+            } else {
+            	cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+                fpath = unSantizedUnQuoted(parts[1].trim(), state);
+            }
+            this.isTmp = isTmp;
+        }
+        String toCmd() {
+            return "imgsave \"" + fpath + "\"";
+        }
+        String javacode() {
+            String filepath = "evaluate(\""+esc(fpath)+"\")";
+            if(isTmp) {
+            	filepath = "getOutDir() + java.io.File.separator + evaluate(\"" + esc(fpath) + "\")";
+            }
+            StringBuilder b = new StringBuilder();
+            b.append(cond.javacodeonly());
+            b.append("saveImageToFile(get___d___(), ___ce___.get(0), "+filepath+");\n");
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Save element image to file",
+				"\timgsave {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"Examples :-",
+	    		"\timgsave id@'eleid'",
+	    		"\timgsave id@'eleid' '/path/to/image/file/file.png'"
+            };
+        }
+    }
+
+    public static class ReadImageTextCommand extends FindCommandImpl {
+        String varname, fpath;
+        ReadImageTextCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.split("[\t ]+");
+            cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+            if(parts.length<2)
+            	throwParseError(cmdDetails, new RuntimeException("variable name should be provided.."));
+            
+            varname = unSantizedUnQuoted(parts[1].trim(), state);
+            fpath = System.nanoTime()+".png";
+            if(parts.length>2) {
+                fpath = unSantizedUnQuoted(parts[2].trim(), state);
+            }
+        }
+        String toCmd() {
+            return "readimgtext " + varname + " \"" + fpath + "\"";
+        }
+        String javacode() {
+            String filepath = "evaluate(\""+esc(fpath)+"\")";
+            StringBuilder b = new StringBuilder();
+            b.append(cond.javacodeonly());
+            String cd = varname.startsWith("@")?"\n___cxt___add_param__(\""+varname.substring(1)+"\", readImageText(get___d___(), ___ce___.get(0), "+filepath+"));":"\n___add_var__(\""+varname+"\", readImageText(get___d___(), ___ce___.get(0), "+filepath+"));\n";
+            b.append(cd);
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Read text from an element image using OCR (Captcha)",
+				"\treadimgtext {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"Examples :-",
+	    		"\treadimgtext somevar id@'eleid'",
+	    		"\treadimgtext captchatext id@'eleid' '/path/to/image/file/file.png'"
             };
         }
     }
@@ -3505,7 +3619,7 @@ public class Command {
             }
             return b.toString();
         }
-        static String getFp(List<FindCommand> conds, List<Command> children, boolean negation, CommandState state, String vrd) {
+        static String getFp(Command ifcmd, List<FindCommand> conds, List<Command> children, boolean negation, CommandState state, String vrd) {
             StringBuilder b = new StringBuilder();
             String ex = state.evarname();
             b.append("try{\n");
@@ -3553,7 +3667,7 @@ public class Command {
             state.pushifcnt();
             String vrd = state.currvarnameifcnt();
             b.append("boolean "+vrd+" = false;");
-            b.append(getFp(conds, children, negation, state, vrd));
+            b.append(getFp(this, conds, children, negation, state, vrd));
             if(elseifs.size()>0)
             {
                 for (int i=0;i<elseifs.size();i++) {
@@ -3628,7 +3742,7 @@ public class Command {
         String javacode() {
             StringBuilder b = new StringBuilder();
             String vrd = state.currvarnameifcnt();
-            b.append(IfCommand.getFp(conds, children, negation, state, vrd));
+            b.append(IfCommand.getFp(this, conds, children, negation, state, vrd));
             return b.toString();
         }
         public static String[] toSampleSelCmd() {
@@ -4191,7 +4305,7 @@ public class Command {
 	            b.append("\n"+loopname+"++;");
 	            b.append("\n}");
             }
-            b.append("\n} catch(Exception e) {throw new RuntimeException(\"Unable to read file\");}");
+            b.append("\n} catch(Exception e) {throw new RuntimeException(\"Unable to read file\", e);}");
             if(!isBinary) b.append("finally {if("+brl+"!=null) {try{"+brl+".close();}catch(Exception e){}}}");
             b.append("\nset__loopcontext__("+pstn+");");
             return b.toString();
@@ -8743,6 +8857,26 @@ public class Command {
             if(selConf.getDriverName()!=null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
+        }
+        
+        //System.setProperty("java.home", configuration.getJavaHome());
+        System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
+        Security.setProperty("crypto.policy", "unlimited");
+        System.setProperty("webdriver.http.factory", "jdk-http-client");
+        if(!SystemUtils.IS_OS_WINDOWS) {
+        	System.setProperty("jna.library.path", "/usr/local/lib:/usr/lib");
+        }
+        
+        if(config.getExtraProperties()!=null) {
+        	if(config.getExtraProperties().containsKey("jdk.tls.client.protocols")) {
+        		System.setProperty("jdk.tls.client.protocols", config.getExtraProperties().get("jdk.tls.client.protocols"));
+        	} else if(config.getExtraProperties().containsKey("crypto.policy")) {
+        		System.setProperty("crypto.policy", config.getExtraProperties().get("crypto.policy"));
+        	} else if(config.getExtraProperties().containsKey("webdriver.http.factory")) {
+        		System.setProperty("webdriver.http.factory", config.getExtraProperties().get("webdriver.http.factory"));
+        	} else if(config.getExtraProperties().containsKey("jna.library.path")) {
+        		System.setProperty("jna.library.path", config.getExtraProperties().get("jna.library.path"));
+        	}
         }
         
         AcceptanceTestContext c = new AcceptanceTestContext(); 

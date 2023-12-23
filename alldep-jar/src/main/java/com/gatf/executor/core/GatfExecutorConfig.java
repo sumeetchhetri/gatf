@@ -158,6 +158,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String autocannonPath;
     
+    private Map<String, String> extraProperties = new HashMap<String, String>();  
+    
     @JsonIgnore
 	@XmlTransient
 	private int retryCounter = 0;
@@ -668,6 +670,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setAutocannonPath(String autocannonPath) {
 		this.autocannonPath = autocannonPath;
+	}
+
+	public Map<String, String> getExtraProperties() {
+		return extraProperties;
+	}
+
+	public void setExtraProperties(Map<String, String> extraProperties) {
+		this.extraProperties = extraProperties;
 	}
 
 	public int getRetryCounter() {

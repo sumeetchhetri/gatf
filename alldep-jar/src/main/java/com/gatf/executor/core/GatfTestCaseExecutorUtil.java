@@ -46,6 +46,7 @@ import org.apache.commons.io.filefilter.FalseFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.SystemUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
@@ -614,10 +615,26 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 System.setProperty(selConf.getDriverName(), selConf.getPath());
             }
         }
+        
         //System.setProperty("java.home", configuration.getJavaHome());
         System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
         Security.setProperty("crypto.policy", "unlimited");
         System.setProperty("webdriver.http.factory", "jdk-http-client");
+        if(!SystemUtils.IS_OS_WINDOWS) {
+        	System.setProperty("jna.library.path", "/usr/local/lib:/usr/lib");
+        }
+        
+        if(configuration.getExtraProperties()!=null) {
+        	if(configuration.getExtraProperties().containsKey("jdk.tls.client.protocols")) {
+        		System.setProperty("jdk.tls.client.protocols", configuration.getExtraProperties().get("jdk.tls.client.protocols"));
+        	} else if(configuration.getExtraProperties().containsKey("crypto.policy")) {
+        		System.setProperty("crypto.policy", configuration.getExtraProperties().get("crypto.policy"));
+        	} else if(configuration.getExtraProperties().containsKey("webdriver.http.factory")) {
+        		System.setProperty("webdriver.http.factory", configuration.getExtraProperties().get("webdriver.http.factory"));
+        	} else if(configuration.getExtraProperties().containsKey("jna.library.path")) {
+        		System.setProperty("jna.library.path", configuration.getExtraProperties().get("jna.library.path"));
+        	}
+        }
 
         try {
             SeleniumCodeGeneratorAndUtil.clean();
@@ -2341,10 +2358,26 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     System.setProperty(selConf.getDriverName(), selConf.getPath());
                 }
             }
+            
             //System.setProperty("java.home", configuration.getJavaHome());
             System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
             Security.setProperty("crypto.policy", "unlimited");
             System.setProperty("webdriver.http.factory", "jdk-http-client");
+            if(!SystemUtils.IS_OS_WINDOWS) {
+            	System.setProperty("jna.library.path", "/usr/local/lib:/usr/lib");
+            }
+            
+            if(dContext.getConfig().getExtraProperties()!=null) {
+            	if(dContext.getConfig().getExtraProperties().containsKey("jdk.tls.client.protocols")) {
+            		System.setProperty("jdk.tls.client.protocols", dContext.getConfig().getExtraProperties().get("jdk.tls.client.protocols"));
+            	} else if(dContext.getConfig().getExtraProperties().containsKey("crypto.policy")) {
+            		System.setProperty("crypto.policy", dContext.getConfig().getExtraProperties().get("crypto.policy"));
+            	} else if(dContext.getConfig().getExtraProperties().containsKey("webdriver.http.factory")) {
+            		System.setProperty("webdriver.http.factory", dContext.getConfig().getExtraProperties().get("webdriver.http.factory"));
+            	} else if(dContext.getConfig().getExtraProperties().containsKey("jna.library.path")) {
+            		System.setProperty("jna.library.path", dContext.getConfig().getExtraProperties().get("jna.library.path"));
+            	}
+            }
 
             try {
                 SeleniumCodeGeneratorAndUtil.clean();

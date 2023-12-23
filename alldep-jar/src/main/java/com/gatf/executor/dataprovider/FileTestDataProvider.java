@@ -108,6 +108,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		build.append("Provider configuration [\n");
 		build.append(String.format("filePath is %s\n", filePath));
 		build.append(String.format("fileType is %s\n", fileType));
+		build.append(String.format("args[2] is %s\n", provider.getArgs().length>2?provider.getArgs()[2]:null));
 		build.append(String.format("variableNames is %s]", variableNames));
 		logger.info(build.toString());
 		
@@ -152,18 +153,24 @@ public class FileTestDataProvider implements TestDataProvider {
 	private void handleCsvFamilyFile(File provFile, String[] args, String fileType, List<String> variableNamesArr,  List<Map<String, String>> result) {
 		List<String[]> list = new ArrayList<String[]>();
 		try {
+			boolean header = true;
+			if(args.length>2 && args[2].trim().toLowerCase().matches("header=(true|false|yes|no|on|off|1|0)")) {
+				header = args[2].trim().toLowerCase().matches("header=(false|no|off|0)");
+			}
 			if(fileType.equalsIgnoreCase("csv")) {
 				char splitStr = ',';
-				if(args.length>2 && args[2].trim().matches("separator=(.*)")) {
+				if(args.length>2 && args[2].trim().toLowerCase().matches("separator=(.*)")) {
 					splitStr = args[2].trim().charAt(10);
 				}
 				list = readCsvFamilyFile(fileType, provFile, splitStr, -1);
+				if(header) list.remove(0);
 			} else if(fileType.equalsIgnoreCase("xls") || fileType.equalsIgnoreCase("xlsx")) {
 				int sheet = 0;
-				if(args.length>2 && args[2].trim().matches("sheet=([0-9]+)")) {
+				if(args.length>2 && args[2].trim().toLowerCase().matches("sheet=([0-9]+)")) {
 					sheet = Integer.parseInt(args[2].trim().substring(6));
 				}
 				list = readCsvFamilyFile(fileType, provFile, ',', sheet);
+				if(header) list.remove(0);
 			}
 			
 			int counter = 1;

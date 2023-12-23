@@ -103,8 +103,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
 					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
-        			response.setContentType(MediaType.APPLICATION_XML);
-		            response.setContentLength(text.length());
+        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(!isStarted.get()) {
@@ -200,8 +200,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					}
 					_executorThread.start();
 					String text = "{\"error\": \"Execution Started\", \"loadTestingEnabled\": "+isLoadTestingEnabled+"}";
-        			response.setContentType(MediaType.APPLICATION_XML);
-		            response.setContentLength(text.length());
+        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(isDone.get()) {
@@ -221,7 +221,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					if(leftOver.get()!=null) {
 						text = new String(leftOver.get(), "UTF-8").replaceFirst("Execution already in progress..", "Execution completed, check Reports Section").getBytes("UTF-8");
 					}
-        			response.setContentType(MediaType.APPLICATION_XML);
+        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
 		            response.setContentLength(text.length);
 		            response.getOutputStream().write(text);
         			response.setStatus(HttpStatus.OK_200);
@@ -253,8 +253,8 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
 					
 					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
-        			response.setContentType(MediaType.APPLICATION_XML);
-		            response.setContentLength(text.length());
+        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else {

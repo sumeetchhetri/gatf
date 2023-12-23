@@ -187,8 +187,8 @@ public class GatfTestCaseHandler extends HttpHandler {
     		try {
     		    if(isSelTc && !isApiIntType) {
     		        String data = FileUtils.readFileToString(new File(filePath), "UTF-8");
-                    response.setContentType(MediaType.TEXT_PLAIN);
-                    response.setContentLength(data.length());
+                    response.setContentType(MediaType.TEXT_PLAIN + "; charset=utf-8");
+                    response.setContentLength(data.getBytes("UTF-8").length);
                     response.getWriter().write(data);
     		    } else {
         			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
@@ -244,8 +244,8 @@ public class GatfTestCaseHandler extends HttpHandler {
         				}
         			}
         			String json = WorkflowContextHandler.OM.writeValueAsString(tcsn);
-        			response.setContentType(MediaType.APPLICATION_JSON);
-    	            response.setContentLength(json.length());
+        			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+    	            response.setContentLength(json.getBytes("UTF-8").length);
     	            response.getWriter().write(json);
     		    }
         		response.setStatus(HttpStatus.OK_200);

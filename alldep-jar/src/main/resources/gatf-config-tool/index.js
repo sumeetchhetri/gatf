@@ -1705,26 +1705,16 @@ function loadTestCaseFileEditor() {
 	});
 	ceeditor.on('changes', function(cm) {
 		const fedidi = sha256(currtestcasefile);
-		if($('#'+fedidi).data('content')!=cm.getValue() && $('#'+fedidi).find('.dirty').length==0) {
+		if($('#'+fedidi).data('content')!=cm.getValue()) {
 			$('#'+fedidi).data('content', cm.getValue());
-			$('#'+fedidi).append('<span class="dirty" style="position: absolute;top: 0px;left: 5px;font-size: 15px;color: #df5d1e;">*<span>');
+			if($('#'+fedidi).find('.dirty').length==0) {
+				$('#'+fedidi).append('<span class="dirty" style="position: absolute;top: 0px;left: 5px;font-size: 15px;color: #df5d1e;">*<span>');
+			}
 			if(celines!=ceeditor.lineCount()) {
 				celines = ceeditor.lineCount();
 				setTimeout(function() {
 					editorEvents();
 				}, 100);
-			}
-		} else if($('#'+fedidi).data('content')!=cm.getValue() && $('#'+fedidi).find('.dirty').length>0) {
-			$('#'+fedidi).data('content', cm.getValue());
-			if($('#'+fedidi).data('content')==cm.getValue()) {
-				$('#'+fedidi).find('.dirty').remove();
-			} else {
-				if(celines!=ceeditor.lineCount()) {
-					celines = ceeditor.lineCount();
-					setTimeout(function() {
-						editorEvents();
-					}, 100);
-				}
 			}
 		} else if($('#'+fedidi).data('content')==cm.getValue() && $('#'+fedidi).find('.dirty').length>0) {
 			$('#'+fedidi).find('.dirty').remove();
@@ -2114,22 +2104,25 @@ function startInitConfigTool(func) {
 							                                className: 'btn-danger'
 						                                }
 					                                },
-					                                callback: function (result) {
-					                                	if(!result) {
-					                                		if(ceeditor) ceeditor.toTextArea();
-					                                		$('#req-txtarea').val($('#'+fedidi).data('content'));
-						                                    loadTestCaseFileEditor();
-						                                    $.unblockUI();
-					                                	} else {
-					                                		$('#'+fedidi).find('.dirty').remove();
-					                                		//$('#req-txtarea').addClass('hidden');
-					                                		ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(content) {
-					                                			if(ceeditor) ceeditor.toTextArea();
-					                                    		$('#req-txtarea').val(content);
+					                                callback: function (cfile) {
+														return function(result) {
+															const fed_id = sha256(cfile);
+						                                	if(!result) {
+						                                		if(ceeditor) ceeditor.toTextArea();
+						                                		$('#req-txtarea').val($('#'+fed_id).data('content'));
 							                                    loadTestCaseFileEditor();
-				                                    		}, null);
-					                                	}
-					                                }
+							                                    $.unblockUI();
+						                                	} else {
+						                                		$('#'+fed_id).find('.dirty').remove();
+						                                		//$('#req-txtarea').addClass('hidden');
+						                                		ajaxCall(true, "GET", "testcases?testcaseFileName=" + cfile, "", "", {}, function(content) {
+						                                			if(ceeditor) ceeditor.toTextArea();
+						                                    		$('#req-txtarea').val(content);
+								                                    loadTestCaseFileEditor();
+					                                    		}, null);
+						                                	}
+						                                };
+					                                }(currtestcasefile)
 					                        	});
 	                                    	} else {
 	                                    		//$('#req-txtarea').addClass('hidden');
@@ -2158,15 +2151,18 @@ function startInitConfigTool(func) {
 						                                className: 'btn-danger'
 					                                }
 				                                },
-				                                callback: function (result) {
-				                                	if(!result) {
-				                                		$('#req-txtarea').val($('#'+fedid).data('content'));
-				                                	} else {
-				                                		$('#'+fedid).find('.dirty').remove();
-				                                	}
-				                                	loadTestCaseFileEditor();
-				                                	$.unblockUI();
-				                                }
+				                                callback: function (cfile) {
+													return function(result) {
+														const fed_id = sha256(cfile);
+					                                	if(!result) {
+					                                		$('#req-txtarea').val($('#'+fed_id).data('content'));
+					                                	} else {
+					                                		$('#'+fed_id).find('.dirty').remove();
+					                                	}
+					                                	loadTestCaseFileEditor();
+					                                	$.unblockUI();
+					                                };
+				                                }(currtestcasefile)
 				                        	});
                                     	} else {
                                 			loadTestCaseFileEditor();
@@ -2348,7 +2344,10 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), function(tcf){
 		return function(data) {
             if (data && tcf.toLowerCase().endsWith(".sel")) {
-            	if(tcf!=data.error[2]) {
+				if(!data["error"]) {
+					showErrorAlert(data);
+					return;
+				} else if(tcf!=data.error[2]) {
             		fromErroredFile = data;
             		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
             	} else {
@@ -3317,6 +3316,21 @@ function configuration() {
             },
             "autocannonPath": {
                 "type": "string"
+            },
+            "extraProperties": {
+                "label": {
+                    "type": "section",
+                    "value": "Additional Properties"
+                },
+                "type": "map",
+                "types": {
+                    "key": {
+                        "type": "string"
+                    },
+                    "value": {
+                        "type": "string"
+                    }
+                }
             }
         }
     };

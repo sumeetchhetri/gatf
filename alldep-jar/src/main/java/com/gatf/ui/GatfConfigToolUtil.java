@@ -108,8 +108,8 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 							String token = Base64.encodeBase64String(UUID.randomUUID().toString().getBytes("UTF-8"));
 							String tkjson = "{\"token\": \""+token+"\"}";
 							authTokens.put(token, System.currentTimeMillis());
-							response.setContentType(MediaType.APPLICATION_JSON);
-				            response.setContentLength(tkjson.length());
+							response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+				            response.setContentLength(tkjson.getBytes("UTF-8").length);
 				            response.getWriter().write(tkjson);
 				            response.setStatus(HttpStatus.OK_200);
 						} catch (Exception e) {
@@ -456,7 +456,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			Map<String, Object> h = new HashMap<>();
 			h.put("error", ((GatfRunTimeError)e).getDetails());
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
-			response.setContentType(MediaType.APPLICATION_JSON);
+			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		} else if(e instanceof GatfRunTimeErrors) {
 			GatfRunTimeErrors errs = (GatfRunTimeErrors)e;
 			Set<String> uniq = new HashSet<>();
@@ -479,9 +479,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			}
 			h.put("others", others);
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
-			response.setContentType(MediaType.APPLICATION_JSON);
+			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		}
-		response.setContentLength(configJson.length());
+		response.setContentLength(configJson.getBytes("UTF-8").length);
         response.getWriter().write(configJson);
 		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);
 		if(status==null)e.printStackTrace();
@@ -490,8 +490,8 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	protected static void handleErrorJson(Throwable e, Response response, HttpStatus status) throws IOException
 	{
 		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
-		response.setContentType(MediaType.APPLICATION_XML);
-		response.setContentLength(configJson.length());
+		response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+		response.setContentLength(configJson.getBytes("UTF-8").length);
         response.getWriter().write(configJson);
 		response.setStatus(status==null?HttpStatus.INTERNAL_SERVER_ERROR_500:status);
 		if(status==null)e.printStackTrace();

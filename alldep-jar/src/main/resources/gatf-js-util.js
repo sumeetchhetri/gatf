@@ -102,6 +102,16 @@ window.GatfUtil = new function() {
 		return result;
 	},
 	
+	this.imageAsBase64 = function(img) {
+		var c = document.createElement('canvas');
+		//var img = document.getElementById('Img1');
+		c.height = img.naturalHeight;
+		c.width = img.naturalWidth;
+		var ctx = c.getContext('2d');
+		ctx.drawImage(img, 0, 0, c.width, c.height);
+		return c.toDataURL();
+	}
+	
 	this.check = function() {
 		return "Success";	
 	}

@@ -96,8 +96,8 @@ public class GatfReportsHandler extends HttpHandler {
 			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
 			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
-			    	response.setContentType(MediaType.APPLICATION_JSON);
-			        response.setContentLength(status.length());
+			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			        response.setContentLength(status.getBytes("UTF-8").length);
 			        response.getWriter().write(status);
 			        response.setStatus(HttpStatus.OK_200);
 			        return;
@@ -134,7 +134,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    Object[] out = executeTest(request, gatfConfig, tcReport, action, testcaseFileName, testCaseName, isServerLogsApi, isExternalLogsApi, 
 			    		0, false, selDbgline, setBreakpoint, selDbgBrkRemove, sessionId);
 			    if(out[1]!=null) {
-			        response.setContentType(out[2].toString());
+			        response.setContentType(out[2].toString() + "; charset=utf-8");
 			        response.setContentLength(((byte[])out[1]).length);
 			        response.getOutputStream().write((byte[])out[1]);
 			    }

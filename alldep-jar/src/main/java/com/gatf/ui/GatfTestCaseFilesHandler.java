@@ -242,8 +242,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 							}
 						}
 						String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {filePath});
-		    			response.setContentType(MediaType.APPLICATION_JSON);
-			            response.setContentLength(json.length());
+		    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			            response.setContentLength(json.getBytes("UTF-8").length);
 			            response.getWriter().write(json);
 		    			response.setStatus(HttpStatus.OK_200);
 						return;
@@ -253,8 +253,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					executorMojo.initilaizeContext(gatfConfig, true);
 					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext(), null);
 					String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {fld[5], fld[1]});
-	    			response.setContentType(MediaType.APPLICATION_JSON);
-		            response.setContentLength(json.length());
+	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+		            response.setContentLength(json.getBytes("UTF-8").length);
 		            response.getWriter().write(json);
 	    			response.setStatus(HttpStatus.OK_200);
 					return;
@@ -313,8 +313,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 				}
     			
     			String json = WorkflowContextHandler.OM.writeValueAsString(fileNames);
-    			response.setContentType(MediaType.APPLICATION_JSON);
-	            response.setContentLength(json.length());
+    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+	            response.setContentLength(json.getBytes("UTF-8").length);
 	            response.getWriter().write(json);
     			response.setStatus(HttpStatus.OK_200);
 			} catch (Exception e) {

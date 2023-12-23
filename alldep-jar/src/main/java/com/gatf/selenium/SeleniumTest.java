@@ -18,6 +18,7 @@ package com.gatf.selenium;
 import java.awt.AWTException;
 import java.awt.image.BufferedImage;
 import java.io.BufferedWriter;
+import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -73,6 +74,7 @@ import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.joda.time.DateTime;
+import org.joda.time.format.DateTimeFormat;
 import org.openqa.selenium.Alert;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Capabilities;
@@ -135,6 +137,9 @@ import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
 import io.github.bonigarcia.wdm.WebDriverManager;
+import jakarta.xml.bind.DatatypeConverter;
+import net.sourceforge.tess4j.ITesseract;
+import net.sourceforge.tess4j.Tesseract1;
 import okhttp3.Call;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -1320,6 +1325,8 @@ public abstract class SeleniumTest {
 						}
 					} catch (Exception e) {
 					}
+				} else if(cause instanceof RuntimeException) {
+					cause.printStackTrace();
 				}
 				this.logs.put("gatf", new SerializableLogEntries(entries));
 			}
@@ -1587,7 +1594,7 @@ public abstract class SeleniumTest {
 		}
 		catch (Exception e)
 		{
-			throw new RuntimeException("Invalid browser name specified");
+			throw new RuntimeException("Invalid browser name specified", e);
 		}
 	}
 	
@@ -2125,7 +2132,7 @@ public abstract class SeleniumTest {
 				Pdf pdf = ((PrintsPage)pdr).print(po);
 				IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
 				if(extractText && new File(filePath).exists()) {
-					extractTextFromPdf(filePath, colsep);
+					extractTextFromPdf(filePath, colsep, 0, 0);
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
@@ -2143,11 +2150,23 @@ public abstract class SeleniumTest {
 		return new ArrayList<List<Map<String, String>>>();
 	}
 	@SuppressWarnings("rawtypes")
-	protected static void extractTextFromPdf(String filePath, String colSep) {
+	/**
+	 * 
+	 * @param filePath
+	 * @param colSep
+	 * @param headerMode
+	 * @param skippages
+	 * 
+	 * headerMode = 0 -> Table wise header
+	 * headerMode = 1 -> Single header found on the first table across all pages
+	 * headerMode = 2 -> No headers enabled
+	 */
+	protected static void extractTextFromPdf(String filePath, String colSep, int headerMode, int skippages) {
 		try {
+			if(skippages<=0) skippages = 0;
 			PDDocument doc = PDDocument.load(new File(filePath));
-			System.out.println(doc.getNumberOfPages());
-			System.out.println(doc.isEncrypted());
+			System.out.println("Number pf pages in pdf: " + doc.getNumberOfPages());
+			System.out.println("Is pdf encrypted: " + doc.isEncrypted());
 			Writer wr = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filePath+".txt")));
 			
 			/*PDFTextStripper stripper = new PDFTextStripper();
@@ -2163,17 +2182,26 @@ public abstract class SeleniumTest {
 			PageIterator pi = oedoc.extract();
 			SpreadsheetExtractionAlgorithm sea = new SpreadsheetExtractionAlgorithm();
 			int pn = 1;
+			List<String> headers = null;
+			List<Map<String, String>> lst = null;
+			if(headerMode==2) {
+				lst = new ArrayList<Map<String, String>>();
+				_pdtTables.get(fk).add(lst);
+			}
 			while (pi.hasNext()) {
 				Page page = pi.next();
+				if(skippages-->0) continue;
 				List<Table> table = sea.extract(page);
 				if(table!=null && table.size()>0) {
 					int tb = 1;
+					//Set<String> headerSet = new HashSet<>();
 					for(Table tables: table) {
-						List<String> headers = null;
+						if(headerMode==0) {
+							headers = null;
+						}
 						int nehdrs = 0;
-						Map<String, Double> colhts = new HashMap<>();
-						double highest = 0;
-						List<Map<String, String>> lst = null;
+						//Map<String, Double> colhts = new HashMap<>();
+						//double highest = 0;
 						wr.write("============== Page ["+pn+"], Table ["+tb+"] Starts ==============\n");
 			            List<List<RectangularTextContainer>> rows = tables.getRows();
 			            // iterate over the rows of the table
@@ -2192,14 +2220,18 @@ public abstract class SeleniumTest {
 			                }
 			                if(txtfound) {
 			                	try {
-					                if(headers==null) {
+					                if(headers==null && headerMode<2) {
 					                	headers = cols;
+					                	//headerSet.add(StringUtils.join(headers, "$$$$$%%%%&&&&))))((((----"));
 					                	nehdrs = necols;
 				                		lst = new ArrayList<Map<String, String>>();
 										_pdtTables.get(fk).add(lst);
 					                } else {
-					                	if(nehdrs==necols) {
-					                		for (RectangularTextContainer content : cells) {
+					                	/*if(nehdrs<necols) {
+					                		headers = cols;
+						                	nehdrs = necols;
+					                	} else*/ if(nehdrs<=necols) {
+					                		/*for (RectangularTextContainer content : cells) {
 							                    // Note: Cell.getText() uses \r to concat text chunks
 							                    String text = content.getText().replace("\r", " ");
 							                    if(!text.trim().isBlank()) {
@@ -2213,26 +2245,62 @@ public abstract class SeleniumTest {
 									                	}
 								                    }
 							                    }
-							                }
+							                }*/
 					                		Map<String, String> row = new HashMap<>();
-							                for (int i=0;i<headers.size();i++) {
-							                	String hdrlab = headers.get(i).trim();
-							                	if(StringUtils.isBlank(hdrlab)) {
-							                		hdrlab = "_p"+(i+1);
-							                	}
-												row.put(hdrlab, cols.get(i));
-											}
+					                		if(headerMode==2) {
+								                for (int i=0;i<cols.size();i++) {
+								                	String hdrlab = "_p"+(i+1);
+													row.put(hdrlab, cols.get(i));
+												}
+					                		} else {
+								                for (int i=0;i<headers.size();i++) {
+								                	String hdrlab = headers.get(i).trim();
+								                	if(StringUtils.isBlank(hdrlab)) {
+								                		hdrlab = "_p"+(i+1);
+								                	}
+													row.put(hdrlab, cols.size()>i?cols.get(i):null);
+												}
+					                		}
 							                lst.add(row);
 					                	} else {
-					                		Map<String, String> row = lst.get(lst.size()-1);
-							                for (int i=0;i<headers.size();i++) {
-							                	String hdrlab = headers.get(i).trim();
-							                	if(StringUtils.isBlank(hdrlab)) {
-							                		hdrlab = "_p"+(i+1);
-							                	}
-												row.put(hdrlab, row.get(hdrlab)+" "+cols.get(i));
-											}
-							                //lst.add(row);
+					                		if(lst.size()==0) {
+					                			Map<String, String> row = new HashMap<>();
+					                			if(headerMode==2) {
+									                for (int i=0;i<cols.size();i++) {
+									                	String hdrlab = "_p"+(i+1);
+														row.put(hdrlab, cols.get(i));
+													}
+						                		} else {
+									                for (int i=0;i<headers.size();i++) {
+									                	String hdrlab = headers.get(i).trim();
+									                	if(StringUtils.isBlank(hdrlab)) {
+									                		hdrlab = "_p"+(i+1);
+									                	}
+														row.put(hdrlab, cols.size()>i?cols.get(i):null);
+													}
+						                		}
+								                lst.add(row);
+					                		} else {
+						                		Map<String, String> row = lst.get(lst.size()-1);
+						                		if(headerMode==2) {
+									                for (int i=0;i<cols.size();i++) {
+									                	String hdrlab = "_p"+(i+1);
+									                	if(StringUtils.isNotBlank(cols.get(i))) {
+									                		row.put(hdrlab, row.get(hdrlab)+"<<<<NEW_LINE>>>>"+cols.get(i));
+									                	}
+													}
+						                		} else {
+									                for (int i=0;i<headers.size();i++) {
+									                	String hdrlab = headers.get(i).trim();
+									                	if(StringUtils.isBlank(hdrlab)) {
+									                		hdrlab = "_p"+(i+1);
+									                	}
+									                	if(StringUtils.isNotBlank(cols.get(i))) {
+									                		row.put(hdrlab, row.get(hdrlab)+"<<<<NEW_LINE>>>>"+cols.get(i));
+									                	}
+													}
+						                		}
+					                		}
 					                	}
 					                }
 								} catch (Exception e) {
@@ -2249,6 +2317,7 @@ public abstract class SeleniumTest {
 			}
 			
 			wr.write("============== Full Page Content Starts ==============\n");
+			FileUtils.writeStringToFile(new File(filePath+".json"), WorkflowContextHandler.OM.writeValueAsString(_pdtTables.get(fk)),"UTF-8");
 			PDFTextStripper stripper = new PDFTextStripper();
 			String content = stripper.getText(doc);
 			wr.write(content);
@@ -2314,7 +2383,7 @@ public abstract class SeleniumTest {
 			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
 			res.close();
 			if(extractText && new File(filePath).exists()) {
-				extractTextFromPdf(filePath, colsep);
+				extractTextFromPdf(filePath, colsep, 0, 0);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -3355,6 +3424,42 @@ public abstract class SeleniumTest {
 			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
 		}
 	}
+
+	protected void saveImageToFile(WebDriver webDriver, WebElement element, String filepath) throws IOException {
+		if(element!=null && element.getTagName().equalsIgnoreCase("img")) {
+			BufferedImage originalImage = ImageIO.read(new URL(element.getAttribute("src")));
+			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
+		}
+	}
+
+	private static ITesseract instance = null;
+	protected String readImageText(WebDriver webDriver, WebElement element, String filepath) throws IOException {
+		try {
+			if(instance==null) {
+				instance = new Tesseract1();
+				instance.setDatapath(___cxt___.getGatfExecutorConfig().getExtraProperties().get("tesseract.training.data.path"));
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("Unable to initialize tesseract engine");
+		}
+		if(element!=null && element.getTagName().equalsIgnoreCase("img") && instance!=null) {
+			BufferedImage bufferedImage = null;
+			if (webDriver instanceof JavascriptExecutor) {
+				String str = (String) ((JavascriptExecutor) webDriver).executeScript("return window.GatfUtil.imageAsBase64(arguments[0])", element);
+				byte[] imagedata = DatatypeConverter.parseBase64Binary(str.substring(str.indexOf(",") + 1));
+				bufferedImage = ImageIO.read(new ByteArrayInputStream(imagedata));
+			} else {
+				bufferedImage = ImageIO.read(new URL(element.getAttribute("src")));
+				ImageIO.write(bufferedImage, "png", new FileOutputStream(filepath));
+			}
+			try {
+				return instance.doOCR(bufferedImage);
+			} catch (Exception e) {
+				throw new RuntimeException("Unable to extract text from image file");
+			}
+		}
+		throw new RuntimeException("not a valid image element");
+	}
 	
 	protected String getOutDir() {
 		return ___cxt___.getOutDirPath();
@@ -4016,6 +4121,9 @@ public abstract class SeleniumTest {
 		}
 		public static String g(UtilDateFS f1, int p1, String fmt1, UtilDateFS f2, int p2, String fmt2, String del) {
 			return StringUtils.joinWith(del, f1.f(p1, fmt1), f2.f(p2, fmt2));
+		}
+		public static String pnf(String date, String informat, String outformat) {
+			return DateTime.parse(date, DateTimeFormat.forPattern(informat)).toString(outformat);
 		}
 	}
 	
