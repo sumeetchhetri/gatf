@@ -39,6 +39,7 @@ import com.gatf.executor.dataprovider.InlineValueTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
+import com.gatf.executor.dataprovider.StateFulFileTestDataProvider;
 
 public class GatfMiscHandler extends HttpHandler {
 
@@ -95,6 +96,7 @@ public class GatfMiscHandler extends HttpHandler {
 				dataLst = new ArrayList<String>();
 				dataLst.add("");
 				dataLst.add(FileTestDataProvider.class.getName());
+				dataLst.add(StateFulFileTestDataProvider.class.getName());
 				dataLst.add(InlineValueTestDataProvider.class.getName());
 				dataLst.add(RandomValueTestDataProvider.class.getName());
 				miscMap.put("providercls", dataLst);

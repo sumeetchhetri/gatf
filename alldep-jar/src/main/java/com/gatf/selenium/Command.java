@@ -385,6 +385,7 @@ public class Command {
     @SuppressWarnings("serial")
     public static class GatfSelCodeParseError extends GatfRunTimeError {
     	Object[] details;
+    	List<GatfSelCodeParseError> multiple = new ArrayList<GatfSelCodeParseError>();
         public GatfSelCodeParseError(String message, Object[] o) {
             super(message);
             details = new Object[] {o[0], o[1], o[5], ""};
@@ -393,8 +394,15 @@ public class Command {
             super(message, e);
             details = new Object[] {o[0], o[1], o[5], e.getMessage()};
         }
+        public GatfSelCodeParseError(List<GatfSelCodeParseError> errs) {
+            super("");
+            multiple = errs;
+        }
         public Object[] getDetails() {
         	return details;
+        }
+        public List<GatfSelCodeParseError> getAllErrors() {
+        	return multiple;
         }
     }
 
@@ -415,7 +423,7 @@ public class Command {
         throw new GatfSelCodeParseError("Error parsing command at line "+fileLineDetails[1]+" in file "+fileLineDetails[2]+" ("+fileLineDetails[0].toString().trim()+")", o);
     }
 
-    static void throwParseErrorS(Object[] o, Throwable e) {
+    static void throwParseErrorS(Object[] o, Throwable e) throws GatfSelCodeParseError {
         if(e!=null) {
             throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o, e);
         }
@@ -861,6 +869,14 @@ public class Command {
             comd = new SaveImageCommand(cmd.substring(8).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("readimgtext ")) {
             comd = new ReadImageTextCommand(cmd.substring(12).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("ocr ")) {
+            comd = new ReadImageTextCommand(cmd.substring(4).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("readqrbar ")) {
+            comd = new ReadQRCodeBarCodeCommand(cmd.substring(10).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("qrcode ")) {
+            comd = new ReadQRCodeBarCodeCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("barcode ")) {
+            comd = new ReadQRCodeBarCodeCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("alert ")) {
             comd = new AlertCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if(cmd.toLowerCase().startsWith("alert")) {
@@ -1003,7 +1019,7 @@ public class Command {
         return comd;
     }
     
-    static ImmutablePair<Command, Object[]> nextCommand(Command parent, ListIterator<Object[]> iter, CommandState state) {
+    static ImmutablePair<Command, Object[]> nextCommand(Command parent, ListIterator<Object[]> iter, CommandState state) throws GatfSelCodeParseError {
     	Command tmp = null;
         Object[] o = iter.next();
         
@@ -1029,361 +1045,372 @@ public class Command {
         return new ImmutablePair<Command, Object[]>(tmp, o);
     }
 
-    static void get(Command parent, ListIterator<Object[]> iter, CommandState state) throws Exception {
+    static void get(Command parent, ListIterator<Object[]> iter, CommandState state, List<GatfSelCodeParseError> allSynErrs) throws Exception {
         while(iter.hasNext()) {
-        	ImmutablePair<Command, Object[]> ip = nextCommand(parent, iter, state);
+        	ImmutablePair<Command, Object[]> ip = null;
+        	try {
+				ip = nextCommand(parent, iter, state);
+			} catch (GatfSelCodeParseError e) {
+				allSynErrs.add(e);
+				continue;
+			}
+        	
             Command tmp = ip.left;
             Object[] o = ip.right;
             
-            if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
-            	throwParseErrorS(o, new RuntimeException("Nested subtests/functions not allowed"));
-            }
-            if(tmp instanceof SubTestCommand) {
-            	if(!parent.isTop) {
-                	throwParseErrorS(o, new RuntimeException("subtests/functions are allowed only at the top level"));
+            try {
+                if(parent instanceof SubTestCommand && tmp instanceof SubTestCommand) {
+                	throwParseErrorS(o, new RuntimeException("Nested subtests/functions not allowed"));
                 }
-            }
-            if(parent instanceof FrameCommand && tmp instanceof FrameCommand) {
-            	//throwParseErrorS(o, new RuntimeException("Nested frame scopes not allowed"));
-            }
-            if(parent instanceof TabCommand && tmp instanceof TabCommand) {
-            	//throwParseErrorS(o, new RuntimeException("Nested tab scopes not allowed"));
-            }
-            if(parent instanceof WindowCommand && tmp instanceof WindowCommand) {
-            	//throwParseErrorS(o, new RuntimeException("Nested window scopes not allowed"));
-            }
-            if(parent instanceof ValueListCommand) {
-            	if(!(tmp instanceof ValueCommand) && !(tmp instanceof EndValueListCommand)) {
-            		throwParseErrorS(o, new RuntimeException("ValueList command can only contain values"));
-            	}
-            }
+                if(tmp instanceof SubTestCommand) {
+                	if(!parent.isTop) {
+                    	throwParseErrorS(o, new RuntimeException("subtests/functions are allowed only at the top level"));
+                    }
+                }
+                if(parent instanceof FrameCommand && tmp instanceof FrameCommand) {
+                	//throwParseErrorS(o, new RuntimeException("Nested frame scopes not allowed"));
+                }
+                if(parent instanceof TabCommand && tmp instanceof TabCommand) {
+                	//throwParseErrorS(o, new RuntimeException("Nested tab scopes not allowed"));
+                }
+                if(parent instanceof WindowCommand && tmp instanceof WindowCommand) {
+                	//throwParseErrorS(o, new RuntimeException("Nested window scopes not allowed"));
+                }
+                if(parent instanceof ValueListCommand) {
+                	if(!(tmp instanceof ValueCommand) && !(tmp instanceof EndValueListCommand)) {
+                		throwParseErrorS(o, new RuntimeException("ValueList command can only contain values"));
+                	}
+                }
 
-            if(tmp instanceof IfCommand || tmp instanceof ElseCommand || tmp instanceof ElseIfCommand 
-                    || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
-                    || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
-                    || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
-            	ImmutablePair<Command, Object[]> ipn = nextCommand(tmp, iter, state);
-                Command tmpn = ipn.left;
-                Object[] on = ipn.right;
-            	if(!(tmpn instanceof StartCommand) && !(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) && !(tmp instanceof PluginCommand) 
-            			&& !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand) && (!(tmp instanceof TransientProviderCommand) 
-            			|| (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy))) {
-            		boolean err = true;
-                	if(tmp instanceof IfCommand || tmp instanceof ElseCommand) {
-                		if(tmpn instanceof ValueListCommand) {
-                			get(tmpn, iter, state);
-                			if(tmpn.children.size()==0 || !(tmpn.children.get(tmpn.children.size()-1) instanceof EndValueListCommand)) {
-                            	throwParseErrorS(o, new RuntimeException("ValueList command should close with a EndCommand `]`"));
-                            }
-                			ipn = nextCommand(tmp, iter, state);
-                			Command tmpn1 = ipn.left;
-                            err = !(tmpn1 instanceof StartCommand);
-                            if(tmpn1 instanceof StartCommand) {
-                            	tmp.children.add(tmpn);
-                            	tmpn = tmpn1;
-                            }
-                		}
-                	}
-                	if(err) {
-                		throwError(on, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
-                	}
-                	
+                if(tmp instanceof IfCommand || tmp instanceof ElseCommand || tmp instanceof ElseIfCommand 
+                        || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
+                        || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
+                        || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
+                	ImmutablePair<Command, Object[]> ipn = nextCommand(tmp, iter, state);
+                    Command tmpn = ipn.left;
+                    Object[] on = ipn.right;
+                	if(!(tmpn instanceof StartCommand) && !(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) && !(tmp instanceof PluginCommand) 
+                			&& !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand) && (!(tmp instanceof TransientProviderCommand) 
+                			|| (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy))) {
+                		boolean err = true;
+                    	if(tmp instanceof IfCommand || tmp instanceof ElseCommand) {
+                    		if(tmpn instanceof ValueListCommand) {
+                    			get(tmpn, iter, state, allSynErrs);
+                    			if(tmpn.children.size()==0 || !(tmpn.children.get(tmpn.children.size()-1) instanceof EndValueListCommand)) {
+                                	throwParseErrorS(o, new RuntimeException("ValueList command should close with a EndCommand `]`"));
+                                }
+                    			ipn = nextCommand(tmp, iter, state);
+                    			Command tmpn1 = ipn.left;
+                                err = !(tmpn1 instanceof StartCommand);
+                                if(tmpn1 instanceof StartCommand) {
+                                	tmp.children.add(tmpn);
+                                	tmpn = tmpn1;
+                                }
+                    		}
+                    	}
+                    	if(err) {
+                    		throwError(on, new RuntimeException(tmp.getClass().getName().replace("com.gatf.selenium.Command$", "") + " should have a proceeding block"));
+                    	}
+                    	
+                    	parent.children.add(tmp);
+                    	if(tmpn instanceof StartCommand) {
+        	        		get(tmp, iter, state, allSynErrs);
+        	        		tmp.children.remove(tmp.children.size()-1);
+        	        		state.ends--;
+                    	} else {
+                    		iter.previous();
+        	        		get(parent, iter, state, allSynErrs);
+                    	}
+                    	
+                    	if(tmp instanceof PluginCommand) {
+                            ((PluginCommand)tmp).reconcile();
+                        } else if(tmp instanceof VarCommand) {
+                        	((VarCommand)tmp).reconcile();
+                        }
+            		} else if(!(tmpn instanceof StartCommand) && (tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
+                        || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand)) {
+            			iter.previous();
+                    	parent.children.add(tmp);
+                    	
+                    	if(tmp instanceof PluginCommand) {
+                            ((PluginCommand)tmp).reconcile();
+                        } else if(tmp instanceof VarCommand) {
+                        	((VarCommand)tmp).reconcile();
+                        }
+            		} else {
+                    	parent.children.add(tmp);
+                    	if(tmpn instanceof StartCommand) {
+        	        		get(tmp, iter, state, allSynErrs);
+        	        		tmp.children.remove(tmp.children.size()-1);
+        	        		state.ends--;
+                    	} else {
+                    		iter.previous();
+        	        		get(parent, iter, state, allSynErrs);
+                    	}
+            		}
+                } else if(tmp instanceof ValueListCommand) {
                 	parent.children.add(tmp);
-                	if(tmpn instanceof StartCommand) {
-    	        		get(tmp, iter, state);
-    	        		tmp.children.remove(tmp.children.size()-1);
-    	        		state.ends--;
-                	} else {
-                		iter.previous();
-    	        		get(parent, iter, state);
-                	}
-                	
-                	if(tmp instanceof PluginCommand) {
-                        ((PluginCommand)tmp).reconcile();
-                    } else if(tmp instanceof VarCommand) {
-                    	((VarCommand)tmp).reconcile();
+                    get(tmp, iter, state, allSynErrs);
+                    if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndValueListCommand)) {
+                    	throwParseErrorS(o, new RuntimeException("ValueListCommand command should close with a EndCommand `]`"));
                     }
-        		} else if(!(tmpn instanceof StartCommand) && (tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
-                    || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand)) {
-        			iter.previous();
-                	parent.children.add(tmp);
-                	
-                	if(tmp instanceof PluginCommand) {
-                        ((PluginCommand)tmp).reconcile();
-                    } else if(tmp instanceof VarCommand) {
-                    	((VarCommand)tmp).reconcile();
-                    }
-        		} else {
-                	parent.children.add(tmp);
-                	if(tmpn instanceof StartCommand) {
-    	        		get(tmp, iter, state);
-    	        		tmp.children.remove(tmp.children.size()-1);
-    	        		state.ends--;
-                	} else {
-                		iter.previous();
-    	        		get(parent, iter, state);
-                	}
-        		}
-            } else if(tmp instanceof ValueListCommand) {
-            	parent.children.add(tmp);
-                get(tmp, iter, state);
-                if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndValueListCommand)) {
-                	throwParseErrorS(o, new RuntimeException("ValueListCommand command should close with a EndCommand `]`"));
-                }
-            } else if(tmp instanceof StartCommand) {
-            	state.starts++;
-            	int stindx = parent.children.size();
-                parent.children.add(tmp);
-                get(parent, iter, state);
-                boolean flag = false;
-                for (int i = stindx+1; i < parent.children.size(); i++) {
-                	if(parent.children.get(i) instanceof EndCommand) {
-                    	flag = true;
-                    }
-				}
-                if(!flag) {
-                	throwParseErrorS(o, new RuntimeException("StartCommand command should close with a EndCommand `}`"));
-                }
-            } else if(tmp instanceof MultiCommentCommand) {
-                parent.children.add(tmp);
-                get(tmp, iter, state);
-                if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndMultiCommentCommand)) {
-                	throwParseErrorS(o, new RuntimeException("MultiCommentCommand command should close with a EndMultiCommentCommand `*/`"));
-                }
-            }  else if(tmp instanceof CodeCommand) {
-                parent.children.add(tmp);
-                get(tmp, iter, state);
-                if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndCodeCommand)) {
-                	throwParseErrorS(o, new RuntimeException("CodeCommand command should close with a EndCodeCommand `>>>|end code`"));
-                }
-            } /*else if((tmp instanceof CommentCommand && state.commentStart) || tmp instanceof CodeCommand) {
-                if(tmp instanceof CommentCommand) {
-                    ((CommentCommand)tmp).b.append(((ValueCommand)tmp.children.get(0)).value+"\n");
-                }
-                get(tmp, iter, state);
-                parent.children.add(tmp);
-            }*/ else if(tmp instanceof EndMultiCommentCommand) {
-            	if(parent instanceof MultiCommentCommand) {
-            		 ((MultiCommentCommand)parent).b.append(state.unsanitize(((EndMultiCommentCommand)tmp).value)+"\n");
-            	}
-            	parent.children.add(tmp);
-                if(!parent.isTop) {
-                	return;
-                }
-            } else if(tmp instanceof EndCommand) {
-                parent.children.add(tmp);
-                state.ends++;
-                if(!parent.isTop) {
-                	return;
-                }
-            } else if(tmp instanceof EndCodeCommand) {
-                parent.children.add(tmp);
-                if(!parent.isTop) {
-                	return;
-                }
-            } else if(tmp instanceof EndValueListCommand) {
-                parent.children.add(tmp);
-                if(!parent.isTop) {
-                	return;
-                }
-            } else if(tmp instanceof ImportCommand) {
-            	String parentPath = state.basePath;
-                if(StringUtils.isNotBlank(o[3].toString())) {
-                    parentPath = o[3].toString();
-                }
-                File f = new File(parentPath + File.separator + ((ImportCommand)tmp).name);
-                if(!f.exists()) {
-                    f = new File(state.basePath + File.separator + ((ImportCommand)tmp).name);
-                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                    	if(state.testcaseDir.trim().equals(".")) {
-                    		f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
-                    	} else {
-                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ImportCommand)tmp).name);
-                    	}
-                    }
-                }
-                if(!f.exists()) {
-                	f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
-                }
-                if(!f.exists()) {
-                    throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
-                }
-                if(state.visitedFiles.contains(f.getAbsolutePath())) {
-                    throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
-                }
-                String currBasePath = state.basePath;
-                state.basePath = f.getParent();
-                Command imported = Command.read(f.getAbsolutePath(), state);
-                for (Command cmd : imported.children) {
-					if(cmd instanceof SubTestCommand) {
-						parent.children.add(cmd);
-						//SubTestCommand st = (SubTestCommand)cmd;
-						//st.state = state;
-						//st.fName = "__st__" + state.NUMBER_ST++;
-						//if(!st.hasName) {
-					    //    st.name = "Subtest " + (state.NUMBER_ST - 1);
-						//}
-						//state.addSubtest((SubTestCommand)cmd);
-					}
-				}
-                state.basePath = currBasePath;
-            } else if(tmp instanceof IncludeCommand) {
-                String parentPath = state.basePath;
-                if(StringUtils.isNotBlank(o[3].toString())) {
-                    parentPath = o[3].toString();
-                }
-                File f = new File(parentPath + File.separator + ((IncludeCommand)tmp).name);
-                if(!f.exists()) {
-                    f = new File(state.basePath + File.separator + ((IncludeCommand)tmp).name);
-                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                    	if(state.testcaseDir.trim().equals(".")) {
-                    		f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
-                    	} else {
-                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((IncludeCommand)tmp).name);
-                    	}
-                    }
-                }
-                if(!f.exists()) {
-                	f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
-                }
-                if(!f.exists()) {
-                    throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
-                }
-                if(state.visitedFiles.contains(f.getAbsolutePath())) {
-                    throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
-                }
-                state.visitedFiles.add(f.getAbsolutePath());
-                List<String> commands = FileUtils.readLines(f, "UTF-8");
-                int cnt = 1;
-                String fnm = ((IncludeCommand)tmp).name;
-                if(fnm.lastIndexOf("\\")!=-1) {
-                    fnm = fnm.substring(0, fnm.lastIndexOf("\\")+1);
-                } else if(fnm.lastIndexOf("/")!=-1) {
-                    fnm = fnm.substring(0, fnm.lastIndexOf("/")+1);
-                }
-                
-                String relfn = f.getName();
-                if(StringUtils.isNotBlank(state.origBasePath)) {
-                	String path = state.origBasePath.trim();
-                	if(StringUtils.isNotBlank(state.testcaseDir) && !state.testcaseDir.trim().equals(".")) {
-                		path += File.separator + state.testcaseDir.trim();
-                	}
-                	relfn = f.getAbsolutePath().replace(path, "");
-                	if(relfn.startsWith(File.separator)) {
-                		relfn = relfn.substring(1);
-                	}
-                }
-                
-                for (String c : commands) {
-                    iter.add(new Object[]{c, cnt++, f, f.getParentFile().getAbsolutePath(), state, relfn});
-                }
-                for (@SuppressWarnings("unused") String c : commands) {
-                    iter.previous();
-                }
-            } else if(tmp instanceof ConfigPropsCommand) {
-                String parentPath = state.basePath;
-                if(StringUtils.isNotBlank(o[3].toString())) {
-                    parentPath = o[3].toString();
-                }
-                File f = new File(parentPath + File.separator + ((ConfigPropsCommand)tmp).name);
-                if(!f.exists()) {
-                    f = new File(state.basePath + File.separator + ((ConfigPropsCommand)tmp).name);
-                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                    	if(state.testcaseDir.trim().equals(".")) {
-                    		f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
-                    	} else {
-                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ConfigPropsCommand)tmp).name);
-                    	}
-                    }
-                }
-                if(!f.exists()) {
-                	f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
-                }
-                if(!f.exists()) {
-                    throwParseErrorS(o, new RuntimeException("Config properties file not found in any of the search paths"));
-                }
-                Properties tprops = new Properties();
-                try {
-					tprops.load(new FileInputStream(f));
-				} catch (Exception e) {
-					throwError(o, new RuntimeException("Config properties file not a valid properties file"));
-				}
-                state.configProps = tprops;
-                if(!parent.isTop) {
-                	throwParseErrorS(o, new RuntimeException("mode command allowed only at the top level"));
-                }
-                parent.children.add(tmp);
-            } else if(tmp instanceof DynPropsCommand) {
-                String parentPath = state.basePath;
-                if(StringUtils.isNotBlank(o[3].toString())) {
-                    parentPath = o[3].toString();
-                }
-                File f = new File(parentPath + File.separator + ((DynPropsCommand)tmp).name);
-                if(!f.exists()) {
-                    f = new File(state.basePath + File.separator + ((DynPropsCommand)tmp).name);
-                    if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
-                    	if(state.testcaseDir.trim().equals(".")) {
-                    		f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
-                    	} else {
-                    		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
-                    	}
-                    }
-                }
-                if(!f.exists()) {
-                	f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
-                }
-                if(!f.exists()) {
-                    throwParseErrorS(o, new RuntimeException("Dynamic properties file not found in any of the search paths"));
-                }
-                Properties tprops = new Properties();
-                try {
-					tprops.load(new FileInputStream(f));
-					if(tprops.size()>0) {
-						@SuppressWarnings("unchecked")
-		                Enumeration<String> enums = (Enumeration<String>) tprops.propertyNames();
-		                while (enums.hasMoreElements()) {
-		                	String key = enums.nextElement();
-		                    String value = tprops.getProperty(key);
-		                	state.dynProps.put(key, value);
-		                }
-					}
-				} catch (Exception e) {
-					throwError(o, new RuntimeException("Dynamic properties file not a valid properties file"));
-				}
-            } else {
-                if(parent instanceof CodeCommand) {
-                    ((CodeCommand)parent).b.append(((ValueCommand)tmp).value+"\n");
-                } else if(parent instanceof MultiCommentCommand) {
-                    ((MultiCommentCommand)parent).b.append(state.unsanitize(((ValueCommand)tmp).value)+"\n");
-                } else if(tmp instanceof BrowserCommand) {
-                    state.started = true;
-                    if(state.modeExecType==0) {
-                        state.modeExecType = 1;
-                    }
-                    if(!parent.isTop) {
-                    	throwParseErrorS(o, new RuntimeException("open command allowed only at the top level"));
-                    }
+                } else if(tmp instanceof StartCommand) {
+                	state.starts++;
+                	int stindx = parent.children.size();
                     parent.children.add(tmp);
-                } else if(tmp instanceof ModeCommand) {
-                    if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
-                        throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
+                    get(parent, iter, state, allSynErrs);
+                    boolean flag = false;
+                    for (int i = stindx+1; i < parent.children.size(); i++) {
+                    	if(parent.children.get(i) instanceof EndCommand) {
+                        	flag = true;
+                        }
+    				}
+                    if(!flag) {
+                    	throwParseErrorS(o, new RuntimeException("StartCommand command should close with a EndCommand `}`"));
                     }
-                    state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
-                    state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeExecType;
+                } else if(tmp instanceof MultiCommentCommand) {
+                    parent.children.add(tmp);
+                    get(tmp, iter, state, allSynErrs);
+                    if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndMultiCommentCommand)) {
+                    	throwParseErrorS(o, new RuntimeException("MultiCommentCommand command should close with a EndMultiCommentCommand `*/`"));
+                    }
+                }  else if(tmp instanceof CodeCommand) {
+                    parent.children.add(tmp);
+                    get(tmp, iter, state, allSynErrs);
+                    if(tmp.children.size()==0 || !(tmp.children.get(tmp.children.size()-1) instanceof EndCodeCommand)) {
+                    	throwParseErrorS(o, new RuntimeException("CodeCommand command should close with a EndCodeCommand `>>>|end code`"));
+                    }
+                } /*else if((tmp instanceof CommentCommand && state.commentStart) || tmp instanceof CodeCommand) {
+                    if(tmp instanceof CommentCommand) {
+                        ((CommentCommand)tmp).b.append(((ValueCommand)tmp.children.get(0)).value+"\n");
+                    }
+                    get(tmp, iter, state);
+                    parent.children.add(tmp);
+                }*/ else if(tmp instanceof EndMultiCommentCommand) {
+                	if(parent instanceof MultiCommentCommand) {
+                		 ((MultiCommentCommand)parent).b.append(state.unsanitize(((EndMultiCommentCommand)tmp).value)+"\n");
+                	}
+                	parent.children.add(tmp);
+                    if(!parent.isTop) {
+                    	return;
+                    }
+                } else if(tmp instanceof EndCommand) {
+                    parent.children.add(tmp);
+                    state.ends++;
+                    if(!parent.isTop) {
+                    	return;
+                    }
+                } else if(tmp instanceof EndCodeCommand) {
+                    parent.children.add(tmp);
+                    if(!parent.isTop) {
+                    	return;
+                    }
+                } else if(tmp instanceof EndValueListCommand) {
+                    parent.children.add(tmp);
+                    if(!parent.isTop) {
+                    	return;
+                    }
+                } else if(tmp instanceof ImportCommand) {
+                	String parentPath = state.basePath;
+                    if(StringUtils.isNotBlank(o[3].toString())) {
+                        parentPath = o[3].toString();
+                    }
+                    File f = new File(parentPath + File.separator + ((ImportCommand)tmp).name);
+                    if(!f.exists()) {
+                        f = new File(state.basePath + File.separator + ((ImportCommand)tmp).name);
+                        if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        	if(state.testcaseDir.trim().equals(".")) {
+                        		f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
+                        	} else {
+                        		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ImportCommand)tmp).name);
+                        	}
+                        }
+                    }
+                    if(!f.exists()) {
+                    	f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
+                    }
+                    if(!f.exists()) {
+                        throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
+                    }
+                    if(state.visitedFiles.contains(f.getAbsolutePath())) {
+                        throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
+                    }
+                    String currBasePath = state.basePath;
+                    state.basePath = f.getParent();
+                    Command imported = Command.read(f.getAbsolutePath(), state);
+                    for (Command cmd : imported.children) {
+    					if(cmd instanceof SubTestCommand) {
+    						parent.children.add(cmd);
+    						//SubTestCommand st = (SubTestCommand)cmd;
+    						//st.state = state;
+    						//st.fName = "__st__" + state.NUMBER_ST++;
+    						//if(!st.hasName) {
+    					    //    st.name = "Subtest " + (state.NUMBER_ST - 1);
+    						//}
+    						//state.addSubtest((SubTestCommand)cmd);
+    					}
+    				}
+                    state.basePath = currBasePath;
+                } else if(tmp instanceof IncludeCommand) {
+                    String parentPath = state.basePath;
+                    if(StringUtils.isNotBlank(o[3].toString())) {
+                        parentPath = o[3].toString();
+                    }
+                    File f = new File(parentPath + File.separator + ((IncludeCommand)tmp).name);
+                    if(!f.exists()) {
+                        f = new File(state.basePath + File.separator + ((IncludeCommand)tmp).name);
+                        if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        	if(state.testcaseDir.trim().equals(".")) {
+                        		f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
+                        	} else {
+                        		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((IncludeCommand)tmp).name);
+                        	}
+                        }
+                    }
+                    if(!f.exists()) {
+                    	f = new File(state.origBasePath + File.separator + ((IncludeCommand)tmp).name);
+                    }
+                    if(!f.exists()) {
+                        throwParseErrorS(o, new RuntimeException("Include script not found in any of the search paths"));
+                    }
+                    if(state.visitedFiles.contains(f.getAbsolutePath())) {
+                        throwParseErrorS(o, new RuntimeException("Possible include script recursion observed"));
+                    }
+                    state.visitedFiles.add(f.getAbsolutePath());
+                    List<String> commands = FileUtils.readLines(f, "UTF-8");
+                    int cnt = 1;
+                    String fnm = ((IncludeCommand)tmp).name;
+                    if(fnm.lastIndexOf("\\")!=-1) {
+                        fnm = fnm.substring(0, fnm.lastIndexOf("\\")+1);
+                    } else if(fnm.lastIndexOf("/")!=-1) {
+                        fnm = fnm.substring(0, fnm.lastIndexOf("/")+1);
+                    }
                     
-                    state.modeEnableGlobalTimeouts = ((ModeCommand)tmp).enableGlobalTimeouts;
+                    String relfn = f.getName();
+                    if(StringUtils.isNotBlank(state.origBasePath)) {
+                    	String path = state.origBasePath.trim();
+                    	if(StringUtils.isNotBlank(state.testcaseDir) && !state.testcaseDir.trim().equals(".")) {
+                    		path += File.separator + state.testcaseDir.trim();
+                    	}
+                    	relfn = f.getAbsolutePath().replace(path, "");
+                    	if(relfn.startsWith(File.separator)) {
+                    		relfn = relfn.substring(1);
+                    	}
+                    }
+                    
+                    for (String c : commands) {
+                        iter.add(new Object[]{c, cnt++, f, f.getParentFile().getAbsolutePath(), state, relfn});
+                    }
+                    for (@SuppressWarnings("unused") String c : commands) {
+                        iter.previous();
+                    }
+                } else if(tmp instanceof ConfigPropsCommand) {
+                    String parentPath = state.basePath;
+                    if(StringUtils.isNotBlank(o[3].toString())) {
+                        parentPath = o[3].toString();
+                    }
+                    File f = new File(parentPath + File.separator + ((ConfigPropsCommand)tmp).name);
+                    if(!f.exists()) {
+                        f = new File(state.basePath + File.separator + ((ConfigPropsCommand)tmp).name);
+                        if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        	if(state.testcaseDir.trim().equals(".")) {
+                        		f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
+                        	} else {
+                        		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((ConfigPropsCommand)tmp).name);
+                        	}
+                        }
+                    }
+                    if(!f.exists()) {
+                    	f = new File(state.origBasePath + File.separator + ((ConfigPropsCommand)tmp).name);
+                    }
+                    if(!f.exists()) {
+                        throwParseErrorS(o, new RuntimeException("Config properties file not found in any of the search paths"));
+                    }
+                    Properties tprops = new Properties();
+                    try {
+    					tprops.load(new FileInputStream(f));
+    				} catch (Exception e) {
+    					throwError(o, new RuntimeException("Config properties file not a valid properties file"));
+    				}
+                    state.configProps = tprops;
                     if(!parent.isTop) {
                     	throwParseErrorS(o, new RuntimeException("mode command allowed only at the top level"));
                     }
                     parent.children.add(tmp);
-                } else if(tmp instanceof SleepCommand) {
-                    parent.children.add(tmp);
-                } else if(tmp instanceof CommentCommand) {
-                    parent.children.add(tmp);
+                } else if(tmp instanceof DynPropsCommand) {
+                    String parentPath = state.basePath;
+                    if(StringUtils.isNotBlank(o[3].toString())) {
+                        parentPath = o[3].toString();
+                    }
+                    File f = new File(parentPath + File.separator + ((DynPropsCommand)tmp).name);
+                    if(!f.exists()) {
+                        f = new File(state.basePath + File.separator + ((DynPropsCommand)tmp).name);
+                        if(!f.exists() && StringUtils.isNotBlank(state.testcaseDir)) {
+                        	if(state.testcaseDir.trim().equals(".")) {
+                        		f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
+                        	} else {
+                        		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
+                        	}
+                        }
+                    }
+                    if(!f.exists()) {
+                    	f = new File(state.origBasePath + File.separator + ((DynPropsCommand)tmp).name);
+                    }
+                    if(!f.exists()) {
+                        throwParseErrorS(o, new RuntimeException("Dynamic properties file not found in any of the search paths"));
+                    }
+                    Properties tprops = new Properties();
+                    try {
+    					tprops.load(new FileInputStream(f));
+    					if(tprops.size()>0) {
+    						@SuppressWarnings("unchecked")
+    		                Enumeration<String> enums = (Enumeration<String>) tprops.propertyNames();
+    		                while (enums.hasMoreElements()) {
+    		                	String key = enums.nextElement();
+    		                    String value = tprops.getProperty(key);
+    		                	state.dynProps.put(key, value);
+    		                }
+    					}
+    				} catch (Exception e) {
+    					throwError(o, new RuntimeException("Dynamic properties file not a valid properties file"));
+    				}
                 } else {
-                    parent.children.add(tmp);
+                    if(parent instanceof CodeCommand) {
+                        ((CodeCommand)parent).b.append(((ValueCommand)tmp).value+"\n");
+                    } else if(parent instanceof MultiCommentCommand) {
+                        ((MultiCommentCommand)parent).b.append(state.unsanitize(((ValueCommand)tmp).value)+"\n");
+                    } else if(tmp instanceof BrowserCommand) {
+                        state.started = true;
+                        if(state.modeExecType==0) {
+                            state.modeExecType = 1;
+                        }
+                        if(!parent.isTop) {
+                        	throwParseErrorS(o, new RuntimeException("open command allowed only at the top level"));
+                        }
+                        parent.children.add(tmp);
+                    } else if(tmp instanceof ModeCommand) {
+                        if(!((ModeCommand)tmp).name.toLowerCase().matches("normal|integration")) {
+                            throwParseErrorS(o, new RuntimeException("mode can have only 2 options normal or integration"));
+                        }
+                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("integration")?2:0;
+                        state.modeExecType = ((ModeCommand)tmp).name.toLowerCase().matches("normal")?1:state.modeExecType;
+                        
+                        state.modeEnableGlobalTimeouts = ((ModeCommand)tmp).enableGlobalTimeouts;
+                        if(!parent.isTop) {
+                        	throwParseErrorS(o, new RuntimeException("mode command allowed only at the top level"));
+                        }
+                        parent.children.add(tmp);
+                    } else if(tmp instanceof SleepCommand) {
+                        parent.children.add(tmp);
+                    } else if(tmp instanceof CommentCommand) {
+                        parent.children.add(tmp);
+                    } else {
+                        parent.children.add(tmp);
+                    }
                 }
-            }
+			} catch (GatfSelCodeParseError e) {
+				allSynErrs.add(e);
+			}
         }
     }
 
@@ -1441,10 +1468,15 @@ public class Command {
         }
 
         tcmd.isTop = true;
-        get(tcmd, lio.listIterator(), state);
+        List<GatfSelCodeParseError> allSynErrs = new ArrayList<>();
+        get(tcmd, lio.listIterator(), state, allSynErrs);
         mergeIfElses(tcmd);
         if(state.starts!=state.ends) {
         	throwParseErrorS(lio.get(0), new RuntimeException("Blocks not balanced..."));
+        } else if(allSynErrs.size()>0) {
+        	GatfSelCodeParseError err = new GatfSelCodeParseError(allSynErrs);
+        	err.multiple = allSynErrs;
+        	throw err;
         }
 
         Collections.sort(tcmd.children, new Comparator<Command>() {
@@ -1646,7 +1678,7 @@ public class Command {
         b.append("import org.junit.Assert;\n");
         b.append("import org.openqa.selenium.Keys;\n");
         b.append("import ru.yandex.qatools.ashot.AShot;\n");
-        b.append("import ru.yandex.qatools.ashot.shooting.ShootingStrategies;\n\n");
+        b.append("import ru.yandex.qatools.ashot.shooting.ShootingStrategies;\n\n@SuppressWarnings({\"unused\", \"unchecked\", \"serial\"})\n");
         b.append("/*GATF_ST_CLASS_START_*/public class "+className+" extends SeleniumTest implements Serializable {\n");
         b.append("public "+className+"(AcceptanceTestContext ___cxt___, int index) {\n/*GATF_ST_CLASS_INIT_*/super(\""+esc(name)+"\", ___cxt___, index);\n}\n");
         b.append("public void close() {\n/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();\n}\n");
@@ -1895,6 +1927,7 @@ public class Command {
             code = code.replace("@index", "get__loopcontext__indx()");
             code = code.replace("@line", "get__loopcontext__var(\"a1\")");
             code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1)");
+            code = code.replaceAll("@cntxtVar\\(([a-zA-Z0-9_]+)\\)", "___add_var__(\"$1\", $1)");
             Matcher m = p.matcher(code);
             String fcode = "";
             int start = 0;
@@ -1988,6 +2021,7 @@ public class Command {
     public static class CodeCommand extends Command {
         static Pattern p = Pattern.compile("\\$([v|V]*)\\{([a-zA-Z0-9_]+)\\}");
         static Pattern p1 = Pattern.compile("@cntxtParam\\([a-zA-Z0-9_]+\\)");
+        static Pattern p2 = Pattern.compile("@cntxtVar\\([a-zA-Z0-9_]+\\)");
         //For the code command there are only value childrens which are directly appended to the builder
         StringBuilder b = new StringBuilder();
         String lang = "java";
@@ -2022,7 +2056,8 @@ public class Command {
 				"\t6. @printProv - Print Provider data (Java only)",
 				"\t7. @print - System.out.println (Java only)",
 				"\t8. @index - Current provider index under iteration (Java only)",
-				"\t9. @cntxtParam - Add variable to current context",
+				"\t9. @cntxtParam - Add string variable to current context",
+				"\t9. @cntxtVar - Add variable to current context",
 				"Examples :-",
 				"\t<<<(java) a,b,c\n\tSystem.out.println(a);\n\t>>>",
 				"\t<<<(js) a,b,c\n\tconsole.log(a);\n\t>>>",
@@ -2044,6 +2079,7 @@ public class Command {
                 code = code.replace("@printProv", "___cxt___print_provider__");
                 code = code.replace("@print", "System.out.println");
                 code = code.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", $1)");
+                code = code.replaceAll("@cntxtVar\\(([a-zA-Z0-9_]+)\\)", "___add_var__(\"$1\", $1)");
                 String args = "";
                 for (String arg : arglist)
                 {
@@ -2076,6 +2112,15 @@ public class Command {
                 {
                     code = code.replace(s, "");
                 }
+                m = p2.matcher(code);
+                List<String> ms1 = new ArrayList<String>();
+                while(m.find()) {
+                	ms1.add(m.group());
+                }
+                for (String s : ms1)
+                {
+                    code = code.replace(s, "");
+                }
                 gcode += "Binding __b = new Binding();\n";
                 for (String arg : arglist)
                 {
@@ -2100,6 +2145,10 @@ public class Command {
                 for (String s : ms)
                 {
                     gcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __gs.getVariable(\"$1\").toString());\n");
+                }
+                for (String s : ms1)
+                {
+                    gcode += s.replaceAll("@cntxtVar\\(([a-zA-Z0-9_]+)\\)", "___add_var__(\"$1\", __gs.getVariable(\"$1\"));\n");
                 }
                 return gcode;
             } else if(lang.equals("js")) {
@@ -2138,6 +2187,15 @@ public class Command {
                 {
                     code = code.replace(s, "");
                 }
+                m = p2.matcher(code);
+                List<String> ms1 = new ArrayList<String>();
+                while(m.find()) {
+                	ms1.add(m.group());
+                }
+                for (String s : ms1)
+                {
+                    code = code.replace(s, "");
+                }
                 rcode += "ScriptingContainer __rs = new ScriptingContainer(LocalVariableBehavior.PERSISTENT);\n";
                 for (String arg : arglist)
                 {
@@ -2162,6 +2220,10 @@ public class Command {
                 {
                     rcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __rs.get(\"$1\").toString());\n");
                 }
+                for (String s : ms1)
+                {
+                	rcode += s.replaceAll("@cntxtVar\\(([a-zA-Z0-9_]+)\\)", "___add_var__(\"$1\", __rs.get(\"$1\"));\n");
+                }
                 return rcode;
             } else if(lang.equals("python")) {
                 String pcode = "";
@@ -2171,6 +2233,15 @@ public class Command {
                     ms.add(m.group());
                 }
                 for (String s : ms)
+                {
+                    code = code.replace(s, "");
+                }
+                m = p2.matcher(code);
+                List<String> ms1 = new ArrayList<String>();
+                while(m.find()) {
+                	ms1.add(m.group());
+                }
+                for (String s : ms1)
                 {
                     code = code.replace(s, "");
                 }
@@ -2198,6 +2269,10 @@ public class Command {
                 for (String s : ms)
                 {
                     pcode += s.replaceAll("@cntxtParam\\(([a-zA-Z0-9_]+)\\)", "___cxt___add_param__(\"$1\", __rs.get(\"$1\").toString());\n");
+                }
+                for (String s : ms1)
+                {
+                	pcode += s.replaceAll("@cntxtVar\\(([a-zA-Z0-9_]+)\\)", "___add_var__(\"$1\", __rs.get(\"$1\"));\n");
                 }
                 return pcode;
             }
@@ -3131,10 +3206,53 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Read text from an element image using OCR (Captcha)",
-				"\treadimgtext {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"\treadimgtext {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}",
+				"\tocr {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}",
 				"Examples :-",
-	    		"\treadimgtext somevar id@'eleid'",
-	    		"\treadimgtext captchatext id@'eleid' '/path/to/image/file/file.png'"
+	    		"\treadimgtext id@'eleid' somevar",
+	    		"\tocr id@'eleid' somevar",
+	    		"\treadimgtext id@'eleid' captchatext '/path/to/image/file/file.png'"
+            };
+        }
+    }
+
+    public static class ReadQRCodeBarCodeCommand extends FindCommandImpl {
+        String varname, fpath;
+        ReadQRCodeBarCodeCommand(String val, Object[] cmdDetails, CommandState state) {
+            super(cmdDetails, state);
+            String[] parts = val.split("[\t ]+");
+            cond = new FindCommand(parts[0].trim(), fileLineDetails, state);
+            if(parts.length<2)
+            	throwParseError(cmdDetails, new RuntimeException("variable name should be provided.."));
+            
+            varname = unSantizedUnQuoted(parts[1].trim(), state);
+            fpath = System.nanoTime()+".png";
+            if(parts.length>2) {
+                fpath = unSantizedUnQuoted(parts[2].trim(), state);
+            }
+        }
+        String toCmd() {
+            return "readqrbar " + varname + " \"" + fpath + "\"";
+        }
+        String javacode() {
+            String filepath = "evaluate(\""+esc(fpath)+"\")";
+            StringBuilder b = new StringBuilder();
+            b.append(cond.javacodeonly());
+            String cd = varname.startsWith("@")?"\n___cxt___add_param__(\""+varname.substring(1)+"\", readQrBarCode(get___d___(), ___ce___.get(0), "+filepath+"));":"\n___add_var__(\""+varname+"\", readQrBarCode(get___d___(), ___ce___.get(0), "+filepath+"));\n";
+            b.append(cd);
+            return b.toString();
+        }
+        public static String[] toSampleSelCmd() {
+        	return new String[] {
+				"Read text from a QR code or a Bar code",
+				"\treadqrbar {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"\tqrcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"\tbarcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"Examples :-",
+	    		"\treadqrbar somevar id@'eleid'",
+	    		"\tqrcode somevar id@'eleid'",
+	    		"\tbarcode somevar id@'eleid'",
+	    		"\treadqrbar captchatext id@'eleid' '/path/to/image/file/file.png'"
             };
         }
     }
@@ -3883,7 +4001,7 @@ public class Command {
                 b.append("\nadd__loopcontext__arg(\"i\","+varitr+");\n");
                 b.append("final SearchContext "+state.currvarnameparc()+" = "+state.currvarname()+";");
                 String vr = state.currvarname();
-                b.append("\n@SuppressWarnings(\"serial\")\nList<WebElement> "+ state.thisat()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
+                b.append("\nList<WebElement> "+ state.thisat()+" = new java.util.ArrayList<WebElement>(){{add("+vr+");}};");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     b.append(c.javacode());
@@ -4155,14 +4273,14 @@ public class Command {
             {
                 state.loopCounter++;
                 if(type==ProviderType.InlineSQL) {
-                	name = dsn+query;
-                	b.append("int "+state.varname()+" = getSQLProviderTestDataMap(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                	name = UUID.randomUUID().toString();
+                	b.append("int "+state.varname()+" = getSQLProviderTestDataMap(\""+esc(name)+"\", \""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
                 } else if(type==ProviderType.InlineMongo) {
-                	name = dsn+collName+query;
-                	b.append("int "+state.varname()+" = getMongoProviderTestDataMap(\""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(collName)+"\", \""+esc(StringUtils.join(props, ","))+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                	name = UUID.randomUUID().toString();
+                	b.append("int "+state.varname()+" = getMongoProviderTestDataMap(\""+esc(name)+"\", \""+esc(dsn)+"\", evaluate(\""+esc(query)+"\"), \""+esc(collName)+"\", \""+esc(StringUtils.join(props, ","))+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
                 } else if(type==ProviderType.InlineFile) {
-                	name = "file://" + filePath;
-                	b.append("int "+state.varname()+" = getFileProviderTestDataMap(\""+esc(filePath)+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
+                	name = UUID.randomUUID().toString();
+                	b.append("int "+state.varname()+" = getFileProviderTestDataMap(\""+esc(name)+"\", \""+esc(filePath)+"\", \""+esc(StringUtils.join(vars, ","))+"\").size();\n");
                 } else {
                 	b.append("int "+state.varname()+" = getProviderTestDataMap(\""+esc(name)+"\").size();\n");
                 }
@@ -4515,12 +4633,10 @@ public class Command {
             String loopname = state.varname();
             List<String> ssl = Arrays.asList(varname.split("[\t ]*,[\t ]*"));
             b.append("\nfor(int " + loopname + "=0;"+loopname+"<" + provname + ".size();"+loopname+"++) {");
-            b.append("\nMap<String, String> __mp = new java.util.HashMap<String, String>();");
             for (int i=0;i<ssl.size();i++)
             {
-                b.append("\n__mp.put(\""+ssl.get(i)+"\", " + provname + ".get(" + loopname + ")["+i+"]);\n"); 
+            	b.append("\naddToProviderTestDataMap(\""+value+"\", \""+ssl.get(i)+"\", " + provname + ".get(" + loopname + ")["+i+"]);\n"); 
             }
-            b.append("getProviderTestDataMap(\""+value+"\").add(__mp);\n");
             b.append("}");
             ProviderLoopCommand plc = new ProviderLoopCommand(value, fileLineDetails, state, false, ProviderType.Provided);
             plc.children = children;
@@ -8978,9 +9094,9 @@ public class Command {
     		System.out.println("\n");
 		}
 
-    	validateSel(new String[] {"-validate-sel", "data/test.sel",
-        		"/path/to/project/gatf-config.xml",
-        		"/path/to/project/", "true"}, null, false);
+    	validateSel(new String[] {"-validate-sel", "data/t3.sel",
+        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample/gatf-config.xml",
+        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample", "true"}, null, true);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);

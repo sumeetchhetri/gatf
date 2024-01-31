@@ -158,7 +158,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 		provider.setQueryStr(queryStr);
 		provider.setArgs(new String[] {collectionName});
 		provider.setSourceProperties(propertyNames);
-		provider.setProviderName(vars);
+		provider.setProviderProperties(vars);
 		return provide(provider, context);
 	}
 	

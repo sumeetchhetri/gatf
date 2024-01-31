@@ -54,6 +54,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.generator.core.GatfTestGeneratorUtil;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeErrors;
@@ -462,13 +463,26 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			Set<String> uniq = new HashSet<>();
 			List<Object[]> alldets = new ArrayList<>();
 			for (int i=0;i<errs.getAll().size();i++) {
-				String key = "";
-				for (Object o : errs.getAll().get(i).getDetails()) {
-					key += o!=null?o.toString():"";
-				}
-				if(!uniq.contains(key)) {
-					alldets.add(errs.getAll().get(i).getDetails());
-					uniq.add(key);
+				if(errs.getAll().get(i) instanceof GatfSelCodeParseError && ((GatfSelCodeParseError)errs.getAll().get(i)).getAllErrors().size()>0) {
+					for(GatfSelCodeParseError ge : ((GatfSelCodeParseError)errs.getAll().get(i)).getAllErrors()) {
+						String key = "";
+						for (Object o : ge.getDetails()) {
+							key += o!=null?o.toString():"";
+						}
+						if(!uniq.contains(key)) {
+							alldets.add(ge.getDetails());
+							uniq.add(key);
+						}
+					}
+				} else {
+					String key = "";
+					for (Object o : errs.getAll().get(i).getDetails()) {
+						key += o!=null?o.toString():"";
+					}
+					if(!uniq.contains(key)) {
+						alldets.add(errs.getAll().get(i).getDetails());
+						uniq.add(key);
+					}
 				}
 			}
 			Map<String, Object> h = new HashMap<>();

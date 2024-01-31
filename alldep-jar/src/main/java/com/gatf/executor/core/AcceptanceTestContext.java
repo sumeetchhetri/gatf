@@ -55,6 +55,7 @@ import com.gatf.executor.dataprovider.InlineValueTestDataProvider;
 import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
+import com.gatf.executor.dataprovider.StateFulFileTestDataProvider;
 import com.gatf.executor.dataprovider.TestDataHook;
 import com.gatf.executor.dataprovider.TestDataProvider;
 import com.gatf.executor.dataprovider.TestDataSource;
@@ -125,6 +126,13 @@ public class AcceptanceTestContext {
 	private ClassLoader projectClassLoader;
 	
 	private Map<String, Method> prePostTestCaseExecHooks = new HashMap<String, Method>();
+
+	private final Map<String, GatfTestDataProvider> providerMetaDataMap = new HashMap<>();
+	private final Map<String, List<Map<String, String>>> providerTestDataMap = new HashMap<String, List<Map<String,String>>>();
+	
+	//In case of stateful file test data providers, only a hash of the current file contents is maintained so that any other
+	//calling module can check against the state of this file.
+	private final Map<String, String> fileProviderStateMap = new HashMap<String, String>();
 	
 	public static final UrlValidator URL_VALIDATOR = new UrlValidator(new String[]{"http","https"}, UrlValidator.ALLOW_LOCAL_URLS);
 	
@@ -172,20 +180,33 @@ public class AcceptanceTestContext {
 	public ClassLoader getProjectClassLoader() {
 		return projectClassLoader;
 	}
-
-	private final Map<String, List<Map<String, String>>> providerTestDataMap = new HashMap<String, List<Map<String,String>>>();
-	private final Map<String, String> fileProviderStateMap = new HashMap<String, String>();
 	
 	public List<Map<String, String>> getProviderTestDataMap(String providerName) {
-	    if(liveProviders.containsKey(providerName))
-        {
-            GatfTestDataProvider provider = liveProviders.get(providerName);
-            return getProviderData(provider, null);
-        }
-	    else 
-	    {
-	        return providerTestDataMap.get(providerName);
-	    }
+	    return getAnyProviderData(providerName, null);
+	}
+	
+	public List<Map<String, String>> getLiveProviderData(String provName, TestCase testCase)
+	{
+		GatfTestDataProvider provider = providerMetaDataMap.get(provName);
+		if(provider!=null && provider.isLive() && provider.isEnabled()) {
+			return fetchProviderData(provider, testCase);
+		}
+		return new ArrayList<Map<String, String>>();
+	}
+	
+	public List<Map<String, String>> getAnyProviderData(String provName, TestCase testCase)
+	{
+		GatfTestDataProvider provider = providerMetaDataMap.get(provName);
+		if(provider==null) return null;
+		if(provider.isLive() && provider.isEnabled())
+		{
+			return fetchProviderData(provider, testCase);
+		}
+		else if(provider.isEnabled())
+		{
+			return providerTestDataMap.get(provName);
+		}
+		return new ArrayList<Map<String, String>>();
 	}
 	
 	public String getFileProviderHash(String name) {
@@ -193,12 +214,6 @@ public class AcceptanceTestContext {
 	        return fileProviderStateMap.get(name);
 	    }
 	    return null;
-	}
-	
-	public void newProvider(String name) {
-	    if(!providerTestDataMap.containsKey(name)) {
-	        providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
-	    }
 	}
 	
 	private final Map<String, TestDataSource> dataSourceMap = new HashMap<String, TestDataSource>();
@@ -213,7 +228,6 @@ public class AcceptanceTestContext {
 	
 	private final PerformanceTestCaseExecutor performanceTestCaseExecutor = new PerformanceTestCaseExecutor();
 	
-	private final Map<String, GatfTestDataProvider> liveProviders = new HashMap<String, GatfTestDataProvider>();
 
 	public SingleTestCaseExecutor getSingleTestCaseExecutor() {
 		return singleTestCaseExecutor;
@@ -940,7 +954,7 @@ public class AcceptanceTestContext {
 			
 			Assert.assertNotNull("Provider properties is not defined", provider.getProviderProperties());
 			
-			Assert.assertNull("Duplicate Provider name found", providerTestDataMap.get(provider.getProviderName()));
+			Assert.assertFalse("Duplicate Provider name found", providerMetaDataMap.containsKey(provider.getProviderName()));
 			
 			TestDataSource dataSource = null;
 			if(provider.getDataSourceName()!=null && provider.getProviderClass()==null)
@@ -975,32 +989,33 @@ public class AcceptanceTestContext {
 				provider.setEnabled(true);
 			}
 			
+			providerMetaDataMap.put(provider.getProviderName(), provider);
+			
 			if(!provider.isEnabled()) {
 				logger.info("Provider " + provider.getProviderName() + " is Disabled...");
 				continue;
 			}
 			
 			if(provider.isLive()) {
-				liveProviders.put(provider.getProviderName(), provider);
 				logger.info("Provider " + provider.getProviderName() + " is a Live one...");
 				continue;
 			}
 			
-			List<Map<String, String>> testData = getProviderData(provider, null);
-			if(gatfExecutorConfig.isSeleniumExecutor() && gatfExecutorConfig.getConcurrentUserSimulationNum()>1) {
+			List<Map<String, String>> testData = fetchProviderData(provider, null);
+			if(StateFulFileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim()) && gatfExecutorConfig.getConcurrentUserSimulationNum()>1) {
 			    for (int i = 0; i < gatfExecutorConfig.getConcurrentUserSimulationNum(); i++)
                 {
-			        if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim())) {
-			            if(i==0) {
-			                providerTestDataMap.put(provider.getProviderName()+(i+1), testData);
-			                continue;
-			            }
+			        if(StateFulFileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim())) {
 			            GatfTestDataProvider tp = new GatfTestDataProvider(provider);
 	                    tp.setProviderName(provider.getProviderName()+(i+1));
-	                    tp.getArgs()[0] = tp.getArgs()[0] + i;
+	                    tp.getArgs()[0] = tp.getArgs()[0].substring(0, tp.getArgs()[0].lastIndexOf(".")) + "_" + (i+1) + tp.getArgs()[0].substring(tp.getArgs()[0].lastIndexOf("."));
+	                    
+
+	            		fileProviderStateMap.put(provider.getProviderName(), new FileTestDataProvider().getHash(provider, this));
+	                    
 	                    try {
 	                        logger.info("Concurrent simulation scenario #"+(i+1)+" fetching provider with filePath "+tp.getArgs()[0]);
-	                        List<Map<String, String>> testDataT = getProviderData(tp, null);
+	                        List<Map<String, String>> testDataT = fetchProviderData(tp, null);
 	                        if(testDataT==null) {
 	                            testDataT = testData;
 	                        }
@@ -1019,33 +1034,14 @@ public class AcceptanceTestContext {
 		}
 	}
 	
-	public List<Map<String, String>> getLiveProviderData(String provName, TestCase testCase)
-	{
-		GatfTestDataProvider provider = liveProviders.get(provName);
-		return getProviderData(provider, testCase);
-	}
-	
-	public List<Map<String, String>> getAnyProviderData(String provName, TestCase testCase)
-	{
-		if(liveProviders.containsKey(provName))
-		{
-			GatfTestDataProvider provider = liveProviders.get(provName);
-			return getProviderData(provider, testCase);
-		}
-		else
-		{
-			return providerTestDataMap.get(provName);
-		}
-	}
-	
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	private List<Map<String, String>> getProviderData(GatfTestDataProvider provider, TestCase testCase) {
+	private List<Map<String, String>> fetchProviderData(GatfTestDataProvider provider, TestCase testCase) {
 		TestDataSource dataSource = dataSourceMap.get(provider.getDataSourceName());
 		
 		TestDataProvider testDataProvider = null;
 		List<Map<String, String>> testData = null;
 		if(provider.getProviderClass()!=null) {
-			if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim())) {
+			if(FileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim()) || StateFulFileTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim())) {
 				testDataProvider = new FileTestDataProvider();
 			} else if(InlineValueTestDataProvider.class.getCanonicalName().equals(provider.getProviderClass().trim())) {
 				testDataProvider = new InlineValueTestDataProvider();
@@ -1090,9 +1086,6 @@ public class AcceptanceTestContext {
 		}
 		
 		testData = testDataProvider.provide(provider, this);
-		if(testDataProvider instanceof FileTestDataProvider) {
-			fileProviderStateMap.put(provider.getProviderName(), ((FileTestDataProvider)testDataProvider).getHash(provider, this));
-		}
 		return testData;
 	}
 

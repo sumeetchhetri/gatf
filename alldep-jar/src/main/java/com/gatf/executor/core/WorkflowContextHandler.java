@@ -259,7 +259,7 @@ public class WorkflowContextHandler {
 	public String evaluateTemplate(TestCase testCase, String template, AcceptanceTestContext acontext) {
 		StringWriter writer = new StringWriter();
 		try {
-			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);
+			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);//-3 will be overriden by testCase.getSimulationNumber()
 			if(testCase!=null && !nmap.isEmpty()) {
 				if(template!=null) {
 					VelocityContext context = new VelocityContext(new HashMap<String, Object>(nmap));
@@ -291,7 +291,7 @@ public class WorkflowContextHandler {
 	public void handleContextVariables(TestCase testCase, Map<String, String> variableMap, AcceptanceTestContext acontext) 
 			throws Exception {
 		
-		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap, -3);
+		Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, variableMap, -3);//-3 will be overriden by testCase.getSimulationNumber()
 		
 		VelocityContext context = new VelocityContext(new HashMap<String, Object>(nmap));
 		DataProviderAccessor dpa = new DataProviderAccessor(acontext, testCase);
@@ -354,7 +354,7 @@ public class WorkflowContextHandler {
 	public boolean velocityValidate(TestCase testCase, String template, Map<String, String> smap, 
 			AcceptanceTestContext acontext) {
 		if(testCase!=null && template!=null) {
-			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);
+			Map<String, String> nmap = getGlobalSuiteAndTestLevelParameters(testCase, null, -3);//-3 will be overriden by testCase.getSimulationNumber()
 			if(smap!=null) {
 				nmap.putAll(smap);
 			}

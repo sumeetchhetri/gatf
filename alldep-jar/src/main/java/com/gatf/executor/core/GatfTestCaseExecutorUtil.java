@@ -596,7 +596,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     		session.setSrcCode(retvals[1].toString());
     	} catch (GatfSelCodeParseError e) {
     		e.printStackTrace();
-    		throw new RuntimeException("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
+    		logger.severe("Unable to compile seleasy script " + selscript + ", " + e.getMessage());
+    		if(e.getAllErrors()!=null && e.getAllErrors().size()>0) {
+    			GatfRunTimeErrors errs = new GatfRunTimeErrors(e.getAllErrors());
+    			throw errs;
+    		} else {
+    			throw e;
+    		}
+    		//throw e;
     	} catch (Exception e) {
     		e.printStackTrace();
     		throw new RuntimeException("Unable to compile seleasy script " + selscript);
@@ -733,7 +740,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         		testClassNames.add(dyn.getClass().getName());
         	} catch (GatfSelCodeParseError e) {
         		e.printStackTrace();
-        		allErrors.add(e);
+        		if(e.getAllErrors()!=null && e.getAllErrors().size()>0) {
+        			allErrors.addAll(e.getAllErrors());
+        		} else {
+        			allErrors.add(e);
+        		}
         		//throw e;
         	} catch (Exception e) {
         		e.printStackTrace();

@@ -121,7 +121,7 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 	public List<Map<String, String>> provide(String queryStr, String vars, AcceptanceTestContext context) {
 		GatfTestDataProvider provider = new GatfTestDataProvider();
 		provider.setQueryStr(queryStr);
-		provider.setProviderName(vars);
+		provider.setProviderProperties(vars);
 		return provide(provider, context);
 	}
 	

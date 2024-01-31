@@ -958,6 +958,7 @@ function executionHandler(method, shwPp, pluginType) {
     }
     ajaxCall(false, method, "execute?pluginType=" + pluginType, cdttype, cdt, {}, function(shwPp, pluginType) {
         return function(data) {
+			errdFilesReport = {};
             if (shwPp) alert(data);
             if (data.error == 'Execution already in progress..' || data.error == "Execution completed, check Reports Section") {
                 if (data.error == "Execution completed, check Reports Section") {
@@ -1037,13 +1038,17 @@ function executionHandler(method, shwPp, pluginType) {
         };
     }(shwPp, pluginType), function(shwPp, pluginType) {
         return function(data) {
+			errdFilesReport = {};
             if (shwPp) alert(data.error);
             if (data.error && data.error[2] && data.error[2].indexOf(".sel")!=-1) {
 				if(data.others && data.others.length>0) {
-					errdFilesReport = new Set();
-					errdFilesReport.add([data.error[1], data.error[2]]);
+					errdFilesReport[data.error[2]] = new Set();
+					errdFilesReport[data.error[2]].push([data.error[1], data.error[3]]);
+					//errdFilesReport.add([data.error[1], data.error[2]]);
 					for(const v of data.others) {
-						errdFilesReport.add([v[1], v[2]]);
+						if(!errdFilesReport[v[2]]) errdFilesReport[v[2]] = new Set();
+						errdFilesReport[v[2]].push([v[1], v[3]]);
+						//errdFilesReport.add([v[1], v[2]]);
 					}
 					$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
 				} else {
@@ -1694,7 +1699,14 @@ function loadTestCaseFileEditor() {
 		tabSize: 4,
 		matchBrackets: true,
 		styleActiveLine: true,
-		extraKeys: {"Ctrl-Space": "autocomplete", "Ctrl-B": function(cm) {cm.foldCode(cm.getCursor());}},
+		extraKeys: {
+			"Ctrl-Space": "autocomplete",
+			"Cmd-Space": "autocomplete", 
+			"Ctrl-B": function(cm) {cm.foldCode(cm.getCursor());},
+			"Cmd-B": function(cm) {cm.foldCode(cm.getCursor());},
+			"Ctrl-S": function(cm){execTc('post', onsucctcnmupdt, null);},
+			"Cmd-S": function(cm){execTc('post', onsucctcnmupdt, null);}
+		},
 		foldGutter: true,
 		mode: 'text/x-seleasy',
 		gutters: ["CodeMirror-linenumbers", "breakpoints", "CodeMirror-foldgutter"],
@@ -1728,23 +1740,26 @@ function loadTestCaseFileEditor() {
 	celinedetails = undefined;
 	const fedidi = sha256(currtestcasefile);
 	$('#'+fedidi).data('content', ceeditor.getValue());
-	if(fromErroredFile) {
-		errdFilesReport = new Set();
-		errdFilesReport.add([fromErroredFile.error[1], fromErroredFile.error[2]]);
-		function makeMarker() {
+	if(errdFilesReport && errdFilesReport[currtestcasefile]) {
+		function makeMarker(errt) {
 			var marker = document.createElement("div");
 			marker.style.color = "red";
 			marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+			$(marker).attr('title', errt);
+			//marker.setAttribute('title', errt);
 			return marker;
 		}
-		currtestcasefile = fromErroredFile.error[2];
+		//currtestcasefile = fromErroredFile.error[2];
     	$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
 		$('#heading_main').html('Manage Tests >> ' + currtestcasefile);
-		ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker());
-		$('.error_mark_icon').attr('title', fromErroredFile.error[3]);
+		//ceeditor.setGutterMarker(fromErroredFile["error"][1]-1, "breakpoints", makeMarker(fromErroredFile.error[3]));
+		for(const oter of errdFilesReport[currtestcasefile]) {
+			ceeditor.setGutterMarker(oter[0]-1, "breakpoints", makeMarker(oter[1]));
+		}
+		//$('.error_mark_icon').attr('title', fromErroredFile.error[3]);
 		showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
 		//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
-		fromErroredFile = undefined;
+		//fromErroredFile = undefined;
 	}
 	if(currtestcasefile.toLowerCase().endsWith(".props")) {
 		$('[id="play_test_case"]').addClass('hidden');
@@ -2261,12 +2276,15 @@ function onsucctcnmupdt() {
     ac = ac.substring(0, ac.lastIndexOf("=") + 1) + tc;
     $('#ExampleBeanServiceImpl_form').attr("action", ac);
     $('#93be7b20299b11e281c10800200c9a66_URL').val(ac);
-    if(errdFilesReport && errdFilesReport.size>0 && ceeditor) {
-		for(const v of errdFilesReport) {
-			if($('#heading_main').text().endsWith(v[1])) {
-				ceeditor.setGutterMarker(v[0]-1, "breakpoints", null);
+    if(errdFilesReport && Object.keys(errdFilesReport).length>0 && ceeditor) {
+		for(const v of Object.keys(errdFilesReport)) {
+			if($('#heading_main').text().endsWith(v)) {
+				for(const vo of errdFilesReport[v]) {
+					ceeditor.setGutterMarker(vo[0]-1, "breakpoints", null);
+				}
 			}
 		}
+		delete errdFilesReport[currtestcasefile];
 	}
 	if($('#heading_main').text().startsWith("Manage Tests")) {
 		if(isSeleniumExecutor) {
@@ -2315,14 +2333,15 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
     }
 }
 
-var fromErroredFile;
+//var fromErroredFile;
 function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
-	fromErroredFile = undefined;
+	//fromErroredFile = undefined;
     var isserverlogfile = isServerLogsApi ? "&isServerLogsApi=true" : "";
     isserverlogfile += isExternalLogsApi ? "&isExternalLogsApi=true" : "";
     ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
         return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
+				errdFilesReport = {};
                 $("#myModalB").html('Test Report for script ' + tcf);
                 $("#myModalB").html('<iframe src="reports/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
                 $("#myModal").modal();
@@ -2344,31 +2363,48 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
     }(tcf), function(tcf){
 		return function(data) {
             if (data && tcf.toLowerCase().endsWith(".sel")) {
+				if(data["error"]) {
+					errdFilesReport = {};
+					errdFilesReport[data.error[2]] = new Set();
+					errdFilesReport[data.error[2]].add([data.error[1], data.error[3]]);
+					if(data["others"] && data["others"].length>0) {
+						for(const oter of data.others) {
+							if(!errdFilesReport[oter[2]]) errdFilesReport[oter[2]] = new Set();
+							errdFilesReport[oter[2]].add([oter[1], oter[3]]);
+						}
+					}
+				}
 				if(!data["error"]) {
 					showErrorAlert(data);
 					return;
 				} else if(tcf!=data.error[2]) {
-            		fromErroredFile = data;
             		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
             	} else {
-					errdFilesReport = new Set();
-					errdFilesReport.add([data.error[1], data.error[2]]);
-					function makeMarker() {
+					function makeMarker(errt) {
 						var marker = document.createElement("div");
 						marker.style.color = "red";
 						marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+						$(marker).attr('title', errt);
 						return marker;
 					}
 					currtestcasefile = data.error[2];
 					$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
-					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-					$('.error_mark_icon').attr('title', data.error[3]);
+					ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker(data.error[3]));
+					if(data["others"] && data["others"].length>0) {
+						for(const oter of data.others) {
+							ceeditor.setGutterMarker(oter[1]-1, "breakpoints", makeMarker(oter[3]));
+						}
+					}
+					
+					//$('.error_mark_icon').attr('title', data.error[3]);
 					showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
 					//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
-				$("#myModalB").html('Test Report for script ' + tcf);
-                $("#myModalB").html('<iframe src="reports/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
-                $("#myModal").modal();
+				$.get('reports/selenium-index.html', function() {
+					$("#myModalB").html('Test Report for script ' + tcf);
+	                $("#myModalB").html('<iframe src="reports/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
+	                $("#myModal").modal();
+				});
 			} else if(data) {
 				showErrorAlert(data);
 			} else {
@@ -2402,7 +2438,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		tabSize: 4,
 		matchBrackets: true,
 		styleActiveLine: true,
-		readOnly: 'nocursor',
+		//readOnly: 'nocursor',
 		//extraKeys: {"Ctrl-B": function(cm){ cm.foldCode(cm.getCursor()); }},
     	foldGutter: true,
 		mode: 'text/x-seleasy',
@@ -2460,8 +2496,43 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		    }(tcf), null);
 		}
 	});
+	const stop = function(cm) {
+		ajaxCall(true, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+	        return function(data) {
+	        	if(data["s"]===false) {
+	        		alert(data);
+	        	} else {
+	        		cstate = -5;
+	        		$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Debugger Suspending...</h3>' }, $('.CodeMirror'));
+	        		line = data["n"]*1 - 1;
+	        		if(prevline!=data["p"]-1) {
+		        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+	        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
+		        		prevline = data["p"]*1 - 1;
+		        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+		        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        	}
+	        	}
+	        };
+	    }(tcf), null);
+    };
+    const term = function(cm) {
+		ajaxCall(true, "PUT", "/reports?action=debug&line=-6&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		        return function(data) {
+		        	if(data["s"]===false) {
+		        		alert(data);
+		        	} else {
+		        		cstate = -6;
+		        		//alert("Debug session ended");
+		        		$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Debugger Disconnecting...</h3>' }, $('.CodeMirror'));
+		        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+		        		prevline = 0;
+		        	}
+		        };
+		    }(tcf), null);	
+	};
 	ceeditor.setOption("extraKeys", {
-		F5: function(cm) {
+		"F5": function(cm) {
 			ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile+"&sline="+ceeditor.getLine(prevline), "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
@@ -2481,7 +2552,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        };
 		    }(tcf), null);
 	  	},
-		F7: function(cm) {
+		"F7": function(cm) {
 			ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
@@ -2501,7 +2572,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        };
 		    }(tcf), null);
 	  	},
-		F6: function(cm) {
+		"F6": function(cm) {
 			ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
@@ -2521,7 +2592,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        };
 		    }(tcf), null);
 	  	},
-	  	F8: function(cm) {
+	  	"F8": function(cm) {
 	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
@@ -2541,41 +2612,10 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        };
 		    }(tcf), null);
 	  	},
-	  	'Ctrl-C': function(cm) {
-	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
-		        return function(data) {
-		        	if(data["s"]===false) {
-		        		alert(data);
-		        	} else {
-		        		cstate = -5;
-		        		$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Debugger Suspending...</h3>' }, $('.CodeMirror'));
-		        		line = data["n"]*1 - 1;
-		        		if(prevline!=data["p"]-1) {
-			        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
-		        			ceeditor.setGutterMarker(prevline, "breakpoints", null);
-			        		prevline = data["p"]*1 - 1;
-			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
-			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
-			        	}
-		        	}
-		        };
-		    }(tcf), null);
-	  	},
-	  	'Ctrl-X': function(cm) {
-	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-6&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
-		        return function(data) {
-		        	if(data["s"]===false) {
-		        		alert(data);
-		        	} else {
-		        		cstate = -6;
-		        		//alert("Debug session ended");
-		        		$.blockUI({ message: '<h3><img src="resources/busy.gif" /> Debugger Disconnecting...</h3>' }, $('.CodeMirror'));
-		        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
-		        		prevline = 0;
-		        	}
-		        };
-		    }(tcf), null);
-	  	}
+	  	'Ctrl-C': stop,
+	  	'Cmd-C': stop,
+	  	'Ctrl-X': term,
+	  	'Cmd-X': term
 	});
 	if(chkIntv==null) {
 		ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
@@ -2666,12 +2706,12 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 function getErroredSeleasyScripts() {
     $('#heading_main').html('Errored Scripts');
     $('#ExampleBeanServiceImpl_form').html('');
-    if(errdFilesReport && errdFilesReport.size>0) {
+    if(errdFilesReport && Object.keys(errdFilesReport).length>0) {
 		var htm = '<table id="errdselscr" class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black">';
         var ttable;
         htm += '<thead><tr><th style="color:black">File</th><th style="color:black">Line No</th></tr></thead><tbody>';
-		for(const v of errdFilesReport) {
-			htm += '<tr><td>'+v[1]+'</td><td class="errdss">'+v[0]+'</td></tr>';
+		for(const v of Object.keys(errdFilesReport)) {
+			htm += '<tr><td>'+v+'</td><td class="errdss">'+errdFilesReport[v][0][0]+'</td></tr>';
 		}
 		htm += '</tbody></table><p>&nbsp;</p><p>&nbsp;</p>';
         $('#ExampleBeanServiceImpl_form').append(htm);

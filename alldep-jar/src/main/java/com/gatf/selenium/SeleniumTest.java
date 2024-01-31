@@ -131,6 +131,12 @@ import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
 import com.github.dockerjava.api.DockerClient;
 import com.google.common.io.Resources;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.LuminanceSource;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
 import com.jayway.jsonpath.JsonPath;
 
 import io.appium.java_client.AppiumDriver;
@@ -540,42 +546,60 @@ public abstract class SeleniumTest {
 		}
 	}
 
+	protected void addToTopLevelProviderTestDataMap(String name, String value) {
+		getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).put(name, value);
+	}
+
 	protected void newProvider(String name) {
+		name = getPn(name);
 		if(!getSession().providerTestDataMap.containsKey(name)) {
 			getSession().providerTestDataMap.put(name, new ArrayList<Map<String,String>>());
 		}
 	}
+	
+	protected List<Map<String, String>> setProviderTestDataMap(String pname, List<Map<String, String>> values) {
+		pname = getPn(pname);
+		getSession().providerTestDataMap.put(pname, values);
+		return values;
+	}
 
-	protected void delProvider(String name) {
-		if(getSession().providerTestDataMap.containsKey(name)) {
-			getSession().providerTestDataMap.remove(name);
+	protected void addToProviderTestDataMap(String pname, String name, String value) {
+		pname = getPn(pname);
+		if(getSession().providerTestDataMap.containsKey(pname)) {
+			getSession().providerTestDataMap.get(pname).get(0).put(name, value);
 		}
 	}
 
-	protected void addToTopLevelProviderTestDataMap(String name, String value) {
-		getSession().providerTestDataMap.get(TOP_LEVEL_PROV_NAME).get(0).put(name, value);
+	protected void delProvider(String name) {
+		name = getPn(name);
+		if(getSession().providerTestDataMap.containsKey(name)) {
+			getSession().providerTestDataMap.remove(name);
+		}
 	}
 
 	protected List<Map<String, String>> getProviderTestDataMap(String name) {
 		return getAllProviderData(getPn(name));
 	}
 
-	protected List<Map<String, String>> getSQLProviderTestDataMap(String dsn, String query, String vars) {
+	protected List<Map<String, String>> getSQLProviderTestDataMap(String name, String dsn, String query, String vars) {
 		SQLDatabaseTestDataSource sdt = ___cxt___.getSQLDSN(dsn);
 		if(sdt!=null) {
-			getSession().providerTestDataMap.put(dsn+query, sdt.provide(query, vars, ___cxt___));
-			return getSession().providerTestDataMap.get(dsn+query);
+			return setProviderTestDataMap(name, sdt.provide(query, vars, ___cxt___));
 		}
 		throw new RuntimeException("No SQL DSN found with the name " + dsn);
 	}
 
-	protected List<Map<String, String>> getMongoProviderTestDataMap(String dsn, String query, String collName, String properties, String vars) {
+	protected List<Map<String, String>> getMongoProviderTestDataMap(String name, String dsn, String query, String collName, String properties, String vars) {
 		MongoDBTestDataSource sdt = ___cxt___.getMongoDSN(dsn);
 		if(sdt!=null) {
-			getSession().providerTestDataMap.put(dsn+query, sdt.provide(query, collName, properties, vars, ___cxt___));
-			return getSession().providerTestDataMap.get(dsn+query);
+			return setProviderTestDataMap(name, sdt.provide(query, collName, properties, vars, ___cxt___));
 		}
 		throw new RuntimeException("No Mongo DSN found with the name " + dsn);
+	}
+
+	protected List<Map<String, String>> getFileProviderTestDataMap(String name, String filePath, String vars) {
+		if(!new File(filePath).exists()) throw new RuntimeException("No file found with at path " + filePath);
+		return setProviderTestDataMap(name, FileTestDataProvider.provide(filePath, vars, ___cxt___));
 	}
 	
 	protected boolean executeQuery(String dsn, String query) {
@@ -584,10 +608,6 @@ public abstract class SeleniumTest {
 			return tds.execute(query);
 		}
 		return false;
-	}
-
-	protected List<Map<String, String>> getFileProviderTestDataMap(String filePath, String vars) {
-		return FileTestDataProvider.provide(filePath, vars, ___cxt___);
 	}
 
 	protected String getFileProviderHash(String name) {
@@ -748,6 +768,7 @@ public abstract class SeleniumTest {
 					if((provName.startsWith("\"") && provName.endsWith("\"")) || (provName.startsWith("'") && provName.endsWith("'"))) {
 						provName = provName.substring(1, provName.length()-1);
 					}
+					provName = getPn(provName);
 					if(getSession().providerTestDataMap.containsKey(provName)) {
 						foundProvRef = true;
 						tmpln = tmpln.replace(tmpl.substring(m.start(), m.end()), "${"+ivp+"}");
@@ -3450,12 +3471,42 @@ public abstract class SeleniumTest {
 				bufferedImage = ImageIO.read(new ByteArrayInputStream(imagedata));
 			} else {
 				bufferedImage = ImageIO.read(new URL(element.getAttribute("src")));
+			}
+			
+			if(StringUtils.isNotBlank(filepath)) {
 				ImageIO.write(bufferedImage, "png", new FileOutputStream(filepath));
 			}
+			
 			try {
 				return instance.doOCR(bufferedImage);
 			} catch (Exception e) {
 				throw new RuntimeException("Unable to extract text from image file");
+			}
+		}
+		throw new RuntimeException("not a valid image element");
+	}
+	
+	protected String readQrBarCode(WebDriver webDriver, WebElement element, String filepath) throws IOException {
+		if(element!=null && webDriver instanceof JavascriptExecutor) {
+			BufferedImage bufferedImage = null;
+			String str = (String) ((JavascriptExecutor) webDriver).executeAsyncScript("window.GatfUtil.elementToBase64(arguments[0], arguments[arguments.length-1])", element);
+			byte[] imagedata = DatatypeConverter.parseBase64Binary(str.substring(str.indexOf(",") + 1));
+			bufferedImage = ImageIO.read(new ByteArrayInputStream(imagedata));
+			/*} else {
+				bufferedImage = ImageIO.read(new URL(element.getAttribute("src")));
+			}*/
+			
+			if(StringUtils.isNotBlank(filepath)) {
+				ImageIO.write(bufferedImage, "png", new FileOutputStream(filepath));
+			}
+			
+			try {
+				LuminanceSource source = new BufferedImageLuminanceSource(bufferedImage);
+			    BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(source));
+			    Result result = new MultiFormatReader().decode(bitmap);
+			    return result.getText();
+			} catch (Exception e) {
+				throw new RuntimeException("Unable to read QR/Barcode from image file");
 			}
 		}
 		throw new RuntimeException("not a valid image element");
@@ -3504,11 +3555,11 @@ public abstract class SeleniumTest {
 	
 	@SuppressWarnings("serial")
 	public static class GatfRunTimeErrors extends RuntimeException {
-		private List<GatfRunTimeError> errors;
-		public GatfRunTimeErrors(List<GatfRunTimeError> errors) {
+		private List<? extends GatfRunTimeError> errors;
+		public GatfRunTimeErrors(List<? extends GatfRunTimeError> errors) {
 			this.errors = errors;
 		}
-		public List<GatfRunTimeError> getAll() {
+		public List<? extends GatfRunTimeError> getAll() {
 			return errors;
 		}
 	}
