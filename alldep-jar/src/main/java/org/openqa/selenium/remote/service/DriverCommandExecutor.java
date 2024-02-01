@@ -19,8 +19,6 @@ package org.openqa.selenium.remote.service;
 
 import static org.openqa.selenium.concurrent.ExecutorServices.shutdownGracefully;
 
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Throwables;
 import java.io.Closeable;
 import java.io.IOException;
 import java.net.ConnectException;
@@ -129,7 +127,7 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
                   com.gatf.selenium.SeleniumTest.IN_DOCKER.set(IN_DOCKER);
                   return invokeExecute(command);
                 } catch (Throwable t) {
-                  Throwable rootCause = Throwables.getRootCause(t);
+                  Throwable rootCause = rootCause(t);
                   if (rootCause instanceof IllegalStateException
                       && "Closed".equals(rootCause.getMessage())) {
                     return null;
@@ -138,7 +136,8 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
                       && "Connection refused".equals(rootCause.getMessage())) {
                     throw new WebDriverException("The driver server has unexpectedly died!", t);
                   }
-                  Throwables.throwIfUnchecked(t);
+                  if (t instanceof Error) throw (Error) t;
+                  if (t instanceof RuntimeException) throw (RuntimeException) t;
                   throw new WebDriverException(t);
                 } finally {
                   com.gatf.selenium.SeleniumTest.IN_DOCKER.remove();
@@ -149,7 +148,11 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
       CompletableFuture<Response> processFinished =
           CompletableFuture.supplyAsync(
               () -> {
-                service.process.waitFor(service.getTimeout().toMillis());
+                try {
+                  service.process.waitFor(service.getTimeout());
+                } catch (InterruptedException ex) {
+                  Thread.currentThread().interrupt();
+                }
                 return null;
               },
               executorService);
@@ -174,7 +177,7 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
       try {
         return invokeExecute(command);
       } catch (Throwable t) {
-        Throwable rootCause = Throwables.getRootCause(t);
+        Throwable rootCause = rootCause(t);
         if (rootCause instanceof ConnectException
             && "Connection refused".equals(rootCause.getMessage())
             && !service.isRunning()) {
@@ -189,13 +192,30 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
             // fall through
           }
         }
-        Throwables.throwIfUnchecked(t);
+        if (t instanceof Error) throw (Error) t;
+        if (t instanceof RuntimeException) throw (RuntimeException) t;
         throw new WebDriverException(t);
       }
     }
   }
 
-  @VisibleForTesting
+  private static Throwable rootCause(Throwable throwable) {
+    Throwable cause = throwable;
+
+    for (int i = 0; i < 99; i++) {
+      Throwable peek = cause.getCause();
+
+      if (peek != null) {
+        cause = peek;
+      } else {
+        return cause;
+      }
+    }
+
+    throw new IllegalArgumentException("to many causes or recursive causes");
+  }
+
+  /** visible for testing only */
   Response invokeExecute(Command command) throws IOException {
     return super.execute(command);
   }

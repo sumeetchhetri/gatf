@@ -92,16 +92,16 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v116.dom.DOM;
-import org.openqa.selenium.devtools.v116.dom.model.Node;
-import org.openqa.selenium.devtools.v116.dom.model.NodeId;
-import org.openqa.selenium.devtools.v116.fetch.Fetch;
-import org.openqa.selenium.devtools.v116.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v116.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v116.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v116.log.Log;
-import org.openqa.selenium.devtools.v116.network.Network;
-import org.openqa.selenium.devtools.v116.network.model.ResourceType;
+import org.openqa.selenium.devtools.v121.dom.DOM;
+import org.openqa.selenium.devtools.v121.dom.model.Node;
+import org.openqa.selenium.devtools.v121.dom.model.NodeId;
+import org.openqa.selenium.devtools.v121.fetch.Fetch;
+import org.openqa.selenium.devtools.v121.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v121.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v121.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v121.log.Log;
+import org.openqa.selenium.devtools.v121.network.Network;
+import org.openqa.selenium.devtools.v121.network.model.ResourceType;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -354,6 +354,22 @@ public abstract class SeleniumTest {
 		
 		if(isDocker) {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
+			switch(browserName) {
+				//Should be same as the max devtools version that we support
+				//above - import org.openqa.selenium.devtools.v121.dom.DOM;
+				case "chrome": {
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_121.0");
+					break;
+				}
+				case "firefox": {
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:firefox_121.0");
+					break;
+				}
+				case "opera": {
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:opera_105.0");
+					break;
+				}
+			}
 			wdm.config().setDockerTimezone(ZoneId.systemDefault().toString());
 			//wdm.config().setDockerShmSize("2g");
 			wdm.capabilities(capabilities).browserInDocker();
@@ -3680,7 +3696,7 @@ public abstract class SeleniumTest {
 			BROWSER_FEATURES.put(sessionId+".NWCONSOLE", lognw);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v116.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v121.security.Security.setIgnoreCertificateErrors(true));
 			if(logconsole) {
 				devTools.send(Log.enable());
 				devTools.addListener(Log.entryAdded(), logEntry -> {
@@ -3806,7 +3822,7 @@ public abstract class SeleniumTest {
 						}
 						headerMap.put(he.getName(), he.getValue());
 					}
-					org.openqa.selenium.devtools.v116.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+					org.openqa.selenium.devtools.v121.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 					String body = firsb.getBody();
 					if(firsb.getBase64Encoded()) {
 						try {

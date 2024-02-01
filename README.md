@@ -325,7 +325,7 @@ It uses a highly performant asynchronous http client library - async-http-client
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -executor /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.0.jar -executor /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -335,7 +335,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -selenium /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.0.jar -selenium /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -345,7 +345,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For validating test script for RPA (selenium), use the following command,
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.0.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -355,7 +355,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For running gatf in distributed mode as a listener, use the following command,
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -listener
+java -jar gatf-alldep-3.0.0.jar -listener
 ```
 
 ```sh
@@ -1114,12 +1114,12 @@ Break from loop
 
 
 Read text from an element image using OCR (Captcha)
-	readimgtext {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}
-	ocr {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}
+	readimgtext {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
+	ocr {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
 Examples :-
-	readimgtext somevar id@'eleid'
-	ocr somevar id@'eleid'
-	readimgtext captchatext id@'eleid' '/path/to/image/file/file.png'
+	readimgtext id@'eleid' somevar
+	ocr id@'eleid' somevar
+	readimgtext id@'eleid' captchatext '/path/to/image/file/file.png'
 
 
 Js Variable definition
@@ -1145,14 +1145,14 @@ Examples :-
 
 
 Read text from a QR code or a Bar code
-	readqrbar {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}
-	qrcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}
-	barcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}
+	readqrbar {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
+	qrcode {element-selector} {varname}  {optional image-file-path-to-save-screenshot-to}
+	barcode {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
 Examples :-
-	readqrbar somevar id@'eleid'
-	qrcode somevar id@'eleid'
-	barcode somevar id@'eleid'
-	readqrbar captchatext id@'eleid' '/path/to/image/file/file.png'
+	readqrbar id@'eleid' somevar
+	qrcode id@'eleid' somevar
+	barcode id@'eleid' somevar
+	readqrbar id@'eleid' captchatext '/path/to/image/file/file.png'
 
 
 Clear element value
@@ -1347,7 +1347,7 @@ Gatf also provides with a User Interface for managing and executing test cases o
 <br>
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -configtool 9080 0.0.0.0 .
+java -jar gatf-alldep-3.0.0.jar -configtool 9080 0.0.0.0 .
 ```
 
 ```sh
@@ -1546,7 +1546,7 @@ jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader
 <br>
 
 ```sh
-java -jar gatf-alldep-2.0.2.jar -generator /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.0.jar -generator /workdir/path/to/gatf/config.xml
 ```
 
 ```sh

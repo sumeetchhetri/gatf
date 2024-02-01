@@ -679,7 +679,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         		List<String> sfiles = new ArrayList<>();
         		if(new File(configuration.getSeleniumScript()).exists()) {
         			File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
-        			Iterator<File> iter = FileUtils.iterateFiles(testCaseDirectory, new WildcardFileFilter("*.sel"), TrueFileFilter.INSTANCE);
+        			Iterator<File> iter = FileUtils.iterateFiles(testCaseDirectory, WildcardFileFilter.builder().setWildcards("*.sel").get(), TrueFileFilter.INSTANCE);
         	    	while(iter.hasNext()) {
         	    		sfiles.add(iter.next().getAbsolutePath());
         	    	}
