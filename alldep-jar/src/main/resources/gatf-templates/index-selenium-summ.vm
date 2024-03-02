@@ -5,11 +5,11 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 		<title>GATF - Test Reports</title>
-		<link href="css/bootstrap.min.css" rel="stylesheet">
+		<link href="../css/bootstrap.min.css" rel="stylesheet">
 
 		<!-- Page-Level Plugin CSS - Tables -->
-		<link href="css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
-		<!--link href="css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
+		<link href="../css/plugins/dataTables/dataTables.min.css" rel="stylesheet">
+		<!--link href="../css/plugins/dataTables/dataTables.tableTools.css" rel="stylesheet" -->
 		
 		
 		<style>
@@ -179,34 +179,34 @@
 
 
 		<!-- Core Scripts - Include with every page -->
-		<script src="js/jquery-3.6.0.min.js"></script>
-		<script src="js/bootstrap.min.js"></script>
+		<script src="../js/jquery-3.6.0.min.js"></script>
+		<script src="../js/bootstrap.min.js"></script>
 
 		<!-- Page-Level Plugin Scripts - Flot -->
-		<!--[if lte IE 8]><script src="js/excanvas.min.js"></script><![endif]-->
-		<script src="js/plugins/flot/jquery.flot.js"></script>
-		<script src="js/plugins/flot/jquery.flot.tooltip.min.js"></script>
-		<script src="js/plugins/flot/jquery.flot.resize.js"></script>
-		<script src="js/plugins/flot/jquery.flot.pie.js"></script>
-		<script src="js/plugins/flot/jquery.flot.categories.js"></script>
-		<script src="js/plugins/flot/jquery.flot.orderBars.js"></script>
+		<!--[if lte IE 8]><script src="../js/excanvas.min.js"></script><![endif]-->
+		<script src="../js/plugins/flot/jquery.flot.js"></script>
+		<script src="../js/plugins/flot/jquery.flot.tooltip.min.js"></script>
+		<script src="../js/plugins/flot/jquery.flot.resize.js"></script>
+		<script src="../js/plugins/flot/jquery.flot.pie.js"></script>
+		<script src="../js/plugins/flot/jquery.flot.categories.js"></script>
+		<script src="../js/plugins/flot/jquery.flot.orderBars.js"></script>
 
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/jquery.dataTables.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/dataTables.buttons.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/jszip.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/pdfmake.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/vfs_fonts.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.html5.min.js"></script>
-		<script type="text/javascript" language="javascript" src="js/plugins/dataTables/buttons.print.min.js"></script>
-		<!--script src="js/plugins/dataTables/jquery.dataTables.js"></script>
-		<script src="js/plugins/dataTables/dataTables.bootstrap.js"></script>
-		<script type="text/javascript" src="js/plugins/dataTables/dataTables.tableTools.js"></script-->
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/jquery.dataTables.min.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/dataTables.buttons.min.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/jszip.min.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/pdfmake.min.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/vfs_fonts.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/buttons.html5.min.js"></script>
+		<script type="text/javascript" language="javascript" src="../js/plugins/dataTables/buttons.print.min.js"></script>
+		<!--script src="../js/plugins/dataTables/jquery.dataTables.js"></script>
+		<script src="../js/plugins/dataTables/dataTables.bootstrap.js"></script>
+		<script type="text/javascript" src="../js/plugins/dataTables/dataTables.tableTools.js"></script-->
 
-		<script type="text/javascript" src="js/prettify.js"></script>
-		<script type="text/javascript" src="js/vkbeautify.js"></script>
-		<link href="css/prettify.css" rel="stylesheet">
-		<script type="text/javascript" src="js/diff_match_patch.js"></script>
-        <script type="text/javascript" src="js/jss.min.js"></script>
+		<script type="text/javascript" src="../js/prettify.js"></script>
+		<script type="text/javascript" src="../js/vkbeautify.js"></script>
+		<link href="../css/prettify.css" rel="stylesheet">
+		<script type="text/javascript" src="../js/diff_match_patch.js"></script>
+        <script type="text/javascript" src="../js/jss.min.js"></script>
 		
 		<script>
 			function rgb2hex(ele){

@@ -35,7 +35,6 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -50,11 +49,14 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.commons.text.StringEscapeUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
 import org.custommonkey.xmlunit.XMLAssert;
+import org.joda.time.DateTime;
 import org.skyscreamer.jsonassert.JSONAssert;
 
 import com.AlphanumComparator;
@@ -102,16 +104,24 @@ public class ReportHandler {
 	
 	public static String MY_URL = "http://localhost:9080";
 	
-	public ReportHandler(String node, String identifier) {
-		/*if(node!=null && identifier!=null)
-		{
-			distributedTestStatus = new DistributedTestStatus();
-			distributedTestStatus.setNode(node);
-			distributedTestStatus.setIdentifier(identifier);
-		}*/
+	private static final Map<String, String> runs = new ConcurrentHashMap<>();
+	
+	public static void pushPath(String path, String type) {
+		runs.put(path, type);
 	}
 	
-	private static Logger logger = Logger.getLogger(ReportHandler.class.getSimpleName());
+	public static List<String> getPaths(String type) {
+		List<String> out = new ArrayList<>();
+		for (String path : runs.keySet()) {
+			if(type.equals(runs.get(path))) {
+				out.add(path);
+			}
+		}
+		Collections.reverse(out);
+		return out;
+	}
+	
+	private static Logger logger = LogManager.getLogger(ReportHandler.class.getSimpleName());
 	
 	private final Map<String, ConcurrentLinkedQueue<TestCaseReport>> finalTestResults = 
 			new ConcurrentHashMap<String, ConcurrentLinkedQueue<TestCaseReport>>();
@@ -148,7 +158,11 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doFinalLoadTestReport(String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
+	private static String getPath(File resource, String path) {
+		return resource.getAbsolutePath() + File.separator + path;
+	}
+	
+	public static void doFinalLoadTestReport(String path, String prefix, TestSuiteStats testSuiteStats, AcceptanceTestContext acontext,
 			List<String> nodes, List<String> nodeurls, List<LoadTestResource> loadTestResources)
 	{
 		VelocityContext context = new VelocityContext();
@@ -176,7 +190,7 @@ public class ReportHandler {
 		{
         	File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
-            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
             engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
@@ -186,7 +200,7 @@ public class ReportHandler {
             if(prefix==null)
             	prefix = "";
             
-            String filenm = resource.getAbsolutePath() + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index.html";
+            String filenm = getPath(resource, path) + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -200,7 +214,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public void doFinalDistributedLoadTestReport(AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
+	public void doFinalDistributedLoadTestReport(String path, AcceptanceTestContext acontext, List<TestSuiteStats> suiteStats, 
 			List<List<LoadTestResource>> loadTestResources, List<String> nodes)
 	{
 		VelocityContext context = new VelocityContext();
@@ -212,14 +226,14 @@ public class ReportHandler {
 		{
 			File resource = acontext.getOutDir();
             VelocityEngine engine = new VelocityEngine();
-            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
             engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/distributed-index-load.vm", "UTF-8", context, writer);
             
-            String filenm = resource.getAbsolutePath() + File.separator + "index.html";
+            String filenm = getPath(resource, path) + File.separator + "index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -228,7 +242,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public TestSuiteStats doLoadTestReporting(AcceptanceTestContext acontext, long startTime, TestExecutionPercentile testPercentiles,
+	public TestSuiteStats doLoadTestReporting(String path, AcceptanceTestContext acontext, long startTime, TestExecutionPercentile testPercentiles,
 			TestExecutionPercentile runPercentiles)
 	{
 		TestSuiteStats testSuiteStats = new TestSuiteStats();
@@ -380,7 +394,7 @@ public class ReportHandler {
         }
         catch (IOException ioe)
         {
-        	logger.severe(ExceptionUtils.getStackTrace(ioe));
+        	logger.error(ExceptionUtils.getStackTrace(ioe));
             return;
         }
     }
@@ -458,7 +472,7 @@ public class ReportHandler {
         }
         catch (IOException ioe)
         {
-        	logger.severe(ExceptionUtils.getStackTrace(ioe));
+        	logger.error(ExceptionUtils.getStackTrace(ioe));
             return;
         }
     }
@@ -487,7 +501,7 @@ public class ReportHandler {
 		return false;
 	}
 
-	public void doConcurrentRunReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, int runNumber,
+	public void doConcurrentRunReporting(String path, AcceptanceTestContext acontext, long startTime, String reportFileName, int runNumber,
 			boolean unzipFile, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles, 
 			String distRunPrefix) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
@@ -648,7 +662,7 @@ public class ReportHandler {
 			                }*/
 			                
 			                VelocityEngine engine = new VelocityEngine();
-			                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+			                engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
 			                engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
 			                engine.init();
 			                
@@ -669,7 +683,7 @@ public class ReportHandler {
 			                	reportFileName = "index1.html";
 			                }
 			                
-			                String filenm = resource.getAbsolutePath() + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+			                String filenm = getPath(resource, path) + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
 			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
 			                fwriter.write(writer.toString());
 			                fwriter.close();
@@ -714,7 +728,7 @@ public class ReportHandler {
 			getFinalTestResults().get(distRunPrefix + "-" + runNumber).clear();
 	}
 
-	public TestSuiteStats doReportingIndex(AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, 
+	public TestSuiteStats doReportingIndex(String path, AcceptanceTestContext acontext, long suiteStartTime, String reportFileName, 
 			int numberOfRuns, String prefix, boolean isLoadTestingEnabled) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		
@@ -766,7 +780,7 @@ public class ReportHandler {
             {
             	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
-                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
                 engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
@@ -781,7 +795,7 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                String filenm = resource.getAbsolutePath() + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                String filenm = getPath(resource, path) + File.separator + reportFileName.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -799,7 +813,7 @@ public class ReportHandler {
 		return testSuiteStats;
 	}
 
-	public TestSuiteStats doReporting(AcceptanceTestContext acontext, long startTime, String reportFileName, String prefix,
+	public TestSuiteStats doReporting(String path, AcceptanceTestContext acontext, long startTime, String reportFileName, String prefix,
 			boolean isLoadTestingEnabled, TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
 		GatfExecutorConfig config = acontext.getGatfExecutorConfig();
 		int total = 0, failed = 0, totruns = 0, failruns = 0, skipped = 0;
@@ -1007,7 +1021,7 @@ public class ReportHandler {
                 }*/
                 
                 VelocityEngine engine = new VelocityEngine();
-                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
                 engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
@@ -1022,7 +1036,7 @@ public class ReportHandler {
                 StringWriter writer = new StringWriter();
                 engine.mergeTemplate("/gatf-templates/index.vm", "UTF-8", context, writer);
 
-                String filenm = resource.getAbsolutePath() + File.separator + orf.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
+                String filenm = getPath(resource, path) + File.separator + orf.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -1040,7 +1054,7 @@ public class ReportHandler {
 		return testSuiteStats;
 	}
 
-	public static void doTAReporting(String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled,
+	public static void doTAReporting(String path, String prefix, AcceptanceTestContext acontext, boolean isLoadTestingEnabled,
 			TestExecutionPercentile testPercentiles, TestExecutionPercentile runPercentiles) {
 		Map<String, List<Long>> testPercentileValues = testPercentiles.getPercentileTimes();
 		Map<String, List<Long>> runPercentileValues = runPercentiles.getPercentileTimes();
@@ -1092,7 +1106,7 @@ public class ReportHandler {
             {
             	File resource = acontext.getOutDir();
                 VelocityEngine engine = new VelocityEngine();
-                engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+                engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
                 engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
                 engine.init();
                 
@@ -1103,7 +1117,7 @@ public class ReportHandler {
 
                 prefix = prefix==null?"":prefix;
                 
-                String filenm = resource.getAbsolutePath() + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index-ta.html";
+                String filenm = getPath(resource, path) + File.separator + prefix.replaceAll("[^a-zA-Z0-9-_\\.]", "_") + "index-ta.html";
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
@@ -1118,7 +1132,7 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doSeleniumSummaryTestReport(Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
+	public static void doSeleniumSummaryTestReport(String path, Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
     {
         VelocityContext context = new VelocityContext();
         try
@@ -1134,16 +1148,16 @@ public class ReportHandler {
             }*/
             
             VelocityEngine engine = new VelocityEngine();
-            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
             engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-summ.vm", "UTF-8", context, writer);
             
-            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
-            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
-            String filenm = resource.getAbsolutePath() + File.separator + runPrefix + "-" + loadTestRunNum + "-selenium-index" + rtid + ".html";
+            //String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            //		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = getPath(resource, path) + File.separator + runPrefix + "-" + loadTestRunNum + "-selenium-index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -1152,25 +1166,43 @@ public class ReportHandler {
         }
     }
 	
-	public static void doSeleniumFinalTestReport(Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext)
+	public static void doSeleniumFinalTestReport(String path, Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext, GatfExecutorConfig config, int failed)
     {
         VelocityContext context = new VelocityContext();
         try
         {
+        	int prc = 0;
+        	if(acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0) {
+        		prc = acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount() + acontext.getGatfExecutorConfig().getRetryCounter();
+        	} else if(acontext.getGatfExecutorConfig().getRetryCounter()>0) {
+        		prc = acontext.getGatfExecutorConfig().getRetryCounter();
+        	}
+        	
+        	Map<Integer, String> retries = new HashMap<>();
+        	
+        	if(prc>0 && failed>0) {
+	        	for (int rc=1;rc<prc;rc++) {
+	        		retries.put(rc, config.getSessionId()+"-"+rc);
+				}
+        	}
+        	
             context.put("indexes", indexes);
+            context.put("retries", retries);
+            context.put("at1", config.getSessionId());
+            context.put("dt", new DateTime().toString("dd/MM/yyyy hh:mm:ss"));
             File resource = acontext.getOutDir();
             
             VelocityEngine engine = new VelocityEngine();
-            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
             engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/selenium-final-index.vm", "UTF-8", context, writer);
             
-            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
-            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
-            String filenm = resource.getAbsolutePath() + File.separator + "selenium-index" + rtid+ ".html";
+            //String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            //		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = getPath(resource, path) + File.separator + "selenium-index.html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
@@ -1185,7 +1217,7 @@ public class ReportHandler {
     	unzipZipFile(gctzip, path);
 	}*/
     
-    public static void doSeleniumTestReport(String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
+    public static void doSeleniumTestReport(String path, String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
     {
         VelocityContext context = new VelocityContext();
         File resource = acontext.getOutDir();
@@ -1208,16 +1240,16 @@ public class ReportHandler {
             context.put("StringEscapeUtils", StringEscapeUtils.class);
             
             VelocityEngine engine = new VelocityEngine();
-            engine.setProperty(RuntimeConstants.RESOURCE_LOADER, "classpath");
+            engine.setProperty(RuntimeConstants.RESOURCE_LOADERS, "classpath");
             engine.setProperty("resource.loader.classpath.class", ClasspathResourceLoader.class.getName());
             engine.init();
             
             StringWriter writer = new StringWriter();
             engine.mergeTemplate("/gatf-templates/index-selenium-tr.vm", "UTF-8", context, writer);
             
-            String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
-            		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
-            String filenm = resource.getAbsolutePath() + File.separator + prefix + rtid + ".html";
+            //String rtid = (acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0 && acontext.getGatfExecutorConfig().getRetryCounter()>0)?
+            //		("-"+acontext.getGatfExecutorConfig().getRetryCounter()):"";
+            String filenm = getPath(resource, path) + File.separator + prefix + ".html";
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();

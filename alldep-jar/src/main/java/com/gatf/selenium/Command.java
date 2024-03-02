@@ -1473,7 +1473,7 @@ public class Command {
         mergeIfElses(tcmd);
         if(state.starts!=state.ends) {
         	throwParseErrorS(lio.get(0), new RuntimeException("Blocks not balanced..."));
-        } else if(allSynErrs.size()>0) {
+        } else if(allSynErrs.size()>0) {allSynErrs.get(0).getCause().printStackTrace();
         	GatfSelCodeParseError err = new GatfSelCodeParseError(allSynErrs);
         	err.multiple = allSynErrs;
         	throw err;
@@ -7489,7 +7489,7 @@ public class Command {
         String expr2;
         String expr3;
         static final String ALLCMDS = "click|clickandhold|clickhold|release|dblclick|doubleclick|contextclick|rightclick|movetoelement|moveto|keydown|keyup"
-                + "|sendkeys|type|chord|randomize|draganddrop|dragdrop|draganddrop1|dragdrop1|movebyoffset|moveby|";
+                + "|sendkeys|type|chord|randomize|draganddrop|dragdrop|draganddrop1|dragdrop1|movebyoffset|moveby|sleep|";
         public ActionsCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
@@ -7616,7 +7616,7 @@ public class Command {
         			}
                     
                     try {
-                    	cmd.expr3 = unSantizedUnQuoted(t[counter+1], state);
+                    	cmd.expr3 = unSantizedUnQuoted(t[counter], state);
                         Long.parseLong(cmd.expr3);
         				++counter;
         			} catch (Exception e) {
@@ -7625,6 +7625,14 @@ public class Command {
         				}
         				cmd.expr3 = null;
         			}
+                } else if(t[counter].toLowerCase().equals("sleep")) { 
+                	cmd.action = "sleep";
+                	try {
+						Long.valueOf(unSantizedUnQuoted(t[counter+1], state));
+						cmd.expr1 = unSantizedUnQuoted(t[++counter], state);
+					} catch (Exception e) {
+						throwParseError(null, new RuntimeException("Invalid sleep duration"));
+					}
                 } else {
                     throwParseError(null, new RuntimeException("Invalid action ["+t[counter]+"] specified, should be one of (click|clickhold|clickAndHold|release|doubleClick|dblclick|contextClick|rightclick|keyDown|keyUp|sendKeys|type|randomize|moveToElement|dragAndDrop|dragdrop|moveByOffset|moveby)"));
                 }
@@ -7776,6 +7784,11 @@ public class Command {
                     b.append("\n"+acnm+"."+action+"("+ck+", "+ck1+");");
                 } catch (Exception e) {
                     throwParseError(null, new RuntimeException("xOffset and yOffset need to be integer values for moveByOffset"));
+                }
+            } else if(action.toLowerCase().matches("sleep")) {
+                try {
+                    b.append("\nsleep("+expr1+");");
+                } catch (Exception e) {
                 }
             }
             if(!children.isEmpty()) {
@@ -9095,8 +9108,8 @@ public class Command {
 		}
 
     	validateSel(new String[] {"-validate-sel", "data/t3.sel",
-        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample/gatf-config.xml",
-        		"/Users/sumeetc/Projects/GitHub/gatf/alldep-jar/sample", "true"}, null, true);
+    			"/path/to/project/gatf-config.xml",
+        		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);

@@ -495,9 +495,9 @@ public class GatfTestCaseExecutorMojo extends AbstractMojo implements GatfPlugin
 	}
 
 	@Override
-	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+	public void doSeleniumTest(GatfPluginConfig configuration, List<String> files) throws Exception {
 		util.setFcl(fcl);
-		util.doSeleniumTest(configuration, files);
+		util.doSeleniumTest((GatfExecutorConfig) configuration, files);
 	}
 
 	@Override

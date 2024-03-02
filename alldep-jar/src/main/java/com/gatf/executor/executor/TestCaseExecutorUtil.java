@@ -29,7 +29,9 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -85,7 +87,7 @@ import okhttp3.Response;
  */
 public class TestCaseExecutorUtil {
 
-	private Logger logger = Logger.getLogger(TestCaseExecutorUtil.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(TestCaseExecutorUtil.class.getSimpleName());
 	
 	private static final JSONResponseValidator jsonResponseValidator = new JSONResponseValidator();
 	
@@ -209,15 +211,15 @@ public class TestCaseExecutorUtil {
 					}
 					
 					if(!type.equalsIgnoreCase("text") && !type.equalsIgnoreCase("file")) {
-						logger.severe("Invalid type specified for file upload...skipping value - " + filedet);
+						logger.error("Invalid type specified for file upload...skipping value - " + filedet);
 						continue;
 					}
 					if(fileNmOrTxt.isEmpty()) {
-						logger.severe("No file/text specified for file upload...skipping value - " + filedet);
+						logger.error("No file/text specified for file upload...skipping value - " + filedet);
 						continue;
 					}
 					if(contType.isEmpty() && type.equalsIgnoreCase("text")) {
-						logger.severe("No mime-type specified...skipping value - " + filedet);
+						logger.error("No mime-type specified...skipping value - " + filedet);
 						continue;
 					}
 					
@@ -241,7 +243,7 @@ public class TestCaseExecutorUtil {
 								testCase.getSoapParameterValues().put(controlname, fileContents);
 							}
 						} catch (Exception e) {
-							logger.severe("No file found for file upload...skipping value - " + filedet);
+							logger.error("No file found for file upload...skipping value - " + filedet);
 							continue;
 						}
 					} else {

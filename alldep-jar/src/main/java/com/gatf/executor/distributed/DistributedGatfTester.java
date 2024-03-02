@@ -24,9 +24,10 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.FutureTask;
-import java.util.logging.Logger;
 
 import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -38,7 +39,7 @@ import com.gatf.executor.report.RuntimeReportUtil;
 
 public class DistributedGatfTester {
 
-	private static final Logger logger = Logger.getLogger(DistributedGatfTester.class.getSimpleName());
+	private static final Logger logger = LogManager.getLogger(DistributedGatfTester.class.getSimpleName());
 	
 	public static class DistributedConnection {
 		private Socket sock;

@@ -5,15 +5,15 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 		<title>GATF - Test Reports</title>
-		<link href="css/bootstrap.min.css" rel="stylesheet">
+		<link href="../css/bootstrap.min.css" rel="stylesheet">
 		
 		<!-- Core Scripts - Include with every page -->
-		<script src="js/jquery-3.6.0.min.js"></script>
-		<script src="js/bootstrap.min.js"></script>
+		<script src="../js/jquery-3.6.0.min.js"></script>
+		<script src="../js/bootstrap.min.js"></script>
 
-		<script type="text/javascript" src="js/prettify.js"></script>
-		<script type="text/javascript" src="js/vkbeautify.js"></script>
-        <script type="text/javascript" src="js/jss.min.js"></script>
+		<script type="text/javascript" src="../js/prettify.js"></script>
+		<script type="text/javascript" src="../js/vkbeautify.js"></script>
+        <script type="text/javascript" src="../js/jss.min.js"></script>
 		
 		<style>
 			.flot-x-axis div.flot-tick-label { 
@@ -174,7 +174,7 @@ $StringEscapeUtils.escapeHtml(${selLogL.getMessage()})
 				currTheme = localStorage.getItem("theme");
 				
 				var lnk=document.createElement('link');
-				lnk.href=currTheme=="default"?'css/prettify.css':'css/code-prettify-theme.css';
+				lnk.href=currTheme=="default"?'../css/prettify.css':'../css/code-prettify-theme.css';
 				lnk.rel='stylesheet';
 				lnk.type='text/css';
 				(document.head||document.documentElement).appendChild(lnk);

@@ -16,11 +16,10 @@
 package com.gatf.ui;
 
 import java.io.File;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
-import org.glassfish.grizzly.Grizzly;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
@@ -37,7 +36,7 @@ import org.glassfish.grizzly.utils.ArraySet;
  */
 public class CacheLessStaticHttpHandler extends StaticHttpHandler {
 	
-	private static final Logger LOGGER = Grizzly.logger(CacheLessStaticHttpHandler.class);
+	private static final Logger LOGGER = LogManager.getLogger(CacheLessStaticHttpHandler.class);
 
 	protected final ArraySet<File> docRoots = new ArraySet<File>(File.class);
 	
@@ -109,9 +108,7 @@ public class CacheLessStaticHttpHandler extends StaticHttpHandler {
         }
 
         if (!found) {
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.log(Level.FINE, "File not found {0}", resource);
-            }
+            LOGGER.trace("File not found {0}", resource);
             return false;
         }
 
@@ -119,10 +116,8 @@ public class CacheLessStaticHttpHandler extends StaticHttpHandler {
         
         // If it's not HTTP GET - return method is not supported status
         if (!Method.GET.equals(request.getMethod())) {
-            if (LOGGER.isLoggable(Level.FINE)) {
-                LOGGER.log(Level.FINE, "File found {0}, but HTTP method {1} is not allowed",
-                        new Object[] {resource, request.getMethod()});
-            }
+            LOGGER.trace("File found {0}, but HTTP method {1} is not allowed",
+                    new Object[] {resource, request.getMethod()});
             response.setStatus(HttpStatus.METHOD_NOT_ALLOWED_405);
             response.setHeader(Header.Allow, "GET");
             return true;

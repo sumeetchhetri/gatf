@@ -34,7 +34,7 @@ import com.gatf.executor.core.TestCase;
  * Defines contract to find all test cases from files inside a given test case directory
  */
 public abstract class TestCaseFinder {
-
+	
 	public enum TestCaseFileType
 	{
 		XML(".xml"),
@@ -109,18 +109,22 @@ public abstract class TestCaseFinder {
 		String[] orderedFiles = considerConfig?context.getGatfExecutorConfig().getOrderedFiles():null;
 		boolean isOrderByFileName = considerConfig?context.getGatfExecutorConfig().isOrderByFileName():false;
 		
+		final String bspap = dir.getAbsolutePath();
 		FilenameFilter filter = new FilenameFilter() {
 			public boolean accept(File folder, String name) {
+				if(new File(folder, name).isDirectory()) return false;
+				String absname = new File(folder, name).getAbsolutePath().replaceFirst(bspap+File.separator, "");
 				if(targetFileNames!=null && targetFileNames.size()>0)
 				{
 					for (String tfileName : targetFileNames) {
-						return name.equalsIgnoreCase(tfileName) && name.toLowerCase().endsWith(getFileType().ext);
+						if(absname.equalsIgnoreCase(tfileName) && absname.toLowerCase().endsWith(getFileType().ext))
+							return true;
 					}
 					return false;
 				}
 				else
 				{
-					return name.toLowerCase().endsWith(getFileType().ext);
+					return absname.toLowerCase().endsWith(getFileType().ext);
 				}
 			}
 		};
@@ -280,11 +284,11 @@ public abstract class TestCaseFinder {
 		}
 	}
 	
-	public static List<File> filterValidTestCaseFiles(List<File> testFiles, boolean isSeleniumExec)
+	public static List<File> filterValidTestCaseFiles(List<File> testFiles)
 	{
 		List<File> allFiles = new ArrayList<File>();
 		for (File file : testFiles) {
-		    if(isSeleniumExec && (file.getName().toLowerCase().endsWith(".sel") || file.getName().toLowerCase().endsWith(".props"))) {
+		    if(file.getName().toLowerCase().endsWith(".sel") || file.getName().toLowerCase().endsWith(".props")) {
 		        allFiles.add(file);
 		        continue;
 		    }
@@ -292,7 +296,8 @@ public abstract class TestCaseFinder {
 				new XMLTestCaseFinder().resolveTestCases(file);
 				allFiles.add(file);
 			} catch (Exception e) {
-				e.printStackTrace();
+				//logger.error("Unable to resolve test cases from file " + file.getAbsolutePath());
+				//e.printStackTrace();
 			}
 		}
 		return allFiles;

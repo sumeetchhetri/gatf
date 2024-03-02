@@ -36,6 +36,6 @@ public interface GatfPlugin {
 	List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames, List<String> targetFileNames);
 	TestCase getAuthTestCase();
 	void invokeServerLogApi(boolean success, TestCaseReport testCaseReport, TestCaseExecutorUtil testCaseExecutorUtil, boolean isFetchFailureLogs);
-	void doSeleniumTest(GatfExecutorConfig configuration, List<String> files);
+	void doSeleniumTest(GatfPluginConfig configuration, List<String> files) throws Exception;
 	GatfSelDebugger debugSeleniumTest(GatfExecutorConfig configuration, String selscript, String configPath);
 }

@@ -652,6 +652,7 @@ function printResponse(msg, jqXhr, contentTypeHeader)
 	$('#status').html(resp);
 }
 
+let blkcount = 0;
 function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 {
 	if(debugEnabled)alert('Start Execute Test method call...');
@@ -750,6 +751,8 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 			content = document.querySelector('.CodeMirror').CodeMirror.getValue();
 		}
 	}
+	blkcount++;
+	console.log(blkcount);
 	if(contType.indexOf('json')!=-1 || contType.indexOf('text/plain')!=-1) 
 	{
 		var processDataflag = false;
@@ -780,7 +783,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 		  contentType: contType,
 		  data: content
 		}).done(function(msg,statusText,jqXhr) {
-		  $.unblockUI();
+		  blkcount--;
+		  console.log(blkcount);
+          if (blkcount==0) $.unblockUI();
 		  var end = new Date().getTime();
 		  var time = end - start;
 		  $('#restime').html(time+" ms");
@@ -847,7 +852,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 			adjustHeight();
 		   if(succFunc!=null)succFunc(jqXhr);			  
 		}).fail(function(jqXhr, textStatus, msg) {
-		  $.unblockUI();
+		  blkcount--;
+		  console.log(blkcount);
+          if (blkcount==0) $.unblockUI();
 		  var end = new Date().getTime();
 		  var time = end - start;
 		  $('#restime').html(time+" ms");
@@ -880,7 +887,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 			  processData: false,
 			  url: url
 			}).done(function(msg,statusText,jqXhr) {
-			  $.unblockUI();
+			  blkcount--;
+			  console.log(blkcount);
+        	  if (blkcount==0) $.unblockUI();
 			  var end = new Date().getTime();
 			  var time = end - start;
 		      $('#restime').html(time+" ms");
@@ -945,7 +954,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 				  adjustHeight();
 			  if(succFunc!=null)succFunc(jqXhr);
 			}).fail(function(jqXhr, textStatus, msg) {
-              $.unblockUI();
+              blkcount--;
+              console.log(blkcount);
+        	  if (blkcount==0) $.unblockUI();
 			  var end = new Date().getTime();
 		      var time = end - start;
 		      $('#restime').html(time+" ms");
@@ -992,7 +1003,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 			  contentType: contType,
 			  data: content
 			}).done(function(msg,statusText,jqXhr) {
-              $.unblockUI();
+              blkcount--;
+              console.log(blkcount);
+        	  if (blkcount==0) $.unblockUI();
 			  var end = new Date().getTime();
 		      var time = end - start;
 		      $('#restime').html(time+" ms");
@@ -1057,7 +1070,9 @@ function executeTest(urlid,meth,contType,formName,succFunc,failFunc)
 				  adjustHeight();
 			  if(succFunc!=null)succFunc(jqXhr);
 			}).fail(function(jqXhr, textStatus, msg) {
-			  $.unblockUI();
+			  blkcount--;
+			  console.log(blkcount);
+        	  if (blkcount==0) $.unblockUI();
 			  var end = new Date().getTime();
 		      var time = end - start;
 		      $('#restime').html(time+" ms");

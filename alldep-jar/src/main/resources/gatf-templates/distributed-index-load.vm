@@ -4,7 +4,7 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 		<title>GATF - Distributed Load Test Reports</title>
-		<link href="css/bootstrap.min.css" rel="stylesheet">		
+		<link href="../css/bootstrap.min.css" rel="stylesheet">		
 		<style>
 			#wrapper {
 				width: 100%;
@@ -53,9 +53,9 @@
 		<!-- /#wrapper -->
 
 		<!-- Core Scripts - Include with every page -->
-		<script src="js/jquery-3.6.0.min.js"></script>
-		<script src="js/bootstrap.min.js"></script>
-        <script type="text/javascript" src="js/jss.min.js"></script>
+		<script src="../js/jquery-3.6.0.min.js"></script>
+		<script src="../js/bootstrap.min.js"></script>
+        <script type="text/javascript" src="../js/jss.min.js"></script>
 		<script>
 			function rgb2hex(ele){
 				rgb = $(ele).css('background-color').match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
@@ -137,7 +137,7 @@
 				currTheme = localStorage.getItem("theme");
 				
 				var lnk=document.createElement('link');
-				lnk.href=currTheme=="default"?'css/prettify.css':'css/code-prettify-theme.css';
+				lnk.href=currTheme=="default"?'../css/prettify.css':'../css/code-prettify-theme.css';
 				lnk.rel='stylesheet';
 				lnk.type='text/css';
 				(document.head||document.documentElement).appendChild(lnk);
@@ -165,16 +165,16 @@
 					 var fmt = new DateFmt();
 					 var html = '';
 					 #foreach($loadTestResource in $loadTestResources.get($index))
-						{
-							var timems = '$loadTestResource.getUrl()';
-							if(timems.indexOf("-")==-1)
-								timems = timems.substring(0, timems.indexOf("."));
-							else
-								timems = timems.substring(timems.lastIndexOf("-")+1, timems.indexOf("."));
-							var date = new Date(parseInt(timems));
-							var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
-							html += '<li><a href="$loadTestResource.getUrl()">$loadTestResource.getTitle() ('+dtstr+')</a></li>';
-					 	}
+					 {
+						var timems = '$loadTestResource.getUrl()';
+						if(timems.indexOf("-")==-1)
+							timems = timems.substring(0, timems.indexOf("."));
+						else
+							timems = timems.substring(timems.lastIndexOf("-")+1, timems.indexOf("."));
+						var date = new Date(parseInt(timems));
+						var dtstr = fmt.format(date,"%d-%n-%y %H:%M:%S")
+						html += '<li><a href="$loadTestResource.getUrl()">$loadTestResource.getTitle() ('+dtstr+')</a></li>';
+				 	 }
 					 #end
 					 $('#stats-pre-ele1$index').html(html);
 					 

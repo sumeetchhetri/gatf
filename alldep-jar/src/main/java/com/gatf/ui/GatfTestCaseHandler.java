@@ -92,7 +92,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			filePath = basepath + File.separator + testcaseFileName;
 		}
 		
-		boolean isSelTc = gatfConfig.isSeleniumExecutor();
+		boolean isSelTc = testcaseFileName.toLowerCase().endsWith(".sel");
 		
 		boolean isUpdate = request.getMethod().equals(Method.PUT);
 		if(!isApiIntType && !isSelTc && request.getMethod().equals(Method.DELETE)) {

@@ -223,7 +223,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					}
     			}
 				
-    			if(gatfConfig.isSeleniumExecutor() && StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(referencedFile)) {
+    			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(referencedFile)) {
     				GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
 					executorMojo.initilaizeContext(gatfConfig, true);
 					File tfl = executorMojo.getContext().getResourceFile(testcaseFileName);
@@ -248,7 +248,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 		    			response.setStatus(HttpStatus.OK_200);
 						return;
 					}
-    			} else if(gatfConfig.isSeleniumExecutor() && StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(possibleSubtestFuncCall)) {
+    			} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(possibleSubtestFuncCall)) {
 					GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
 					executorMojo.initilaizeContext(gatfConfig, true);
 					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext(), null);
@@ -261,7 +261,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 				}
 				
 				List<String[]> fileNames = new ArrayList<String[]>();
-    			if(gatfConfig.isSeleniumExecutor() && gatfConfig.isSeleniumModuleTests()) {
+    			if(gatfConfig.isSeleniumModuleTests()) {
 		        	File mdir = new File(dirPath);
 		        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
 		        	for (File f : dirs) {
@@ -285,31 +285,31 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 	    			if(fileLst.size()>0) {
 	    				fileNames.add(new String[] {"selenium-apis.xml", null});
 	    			}
-				} else {
-					FilenameFilter filter = new FilenameFilter() {
-	    				public boolean accept(File folder, String name) {
-	    					return (!gatfConfig.isSeleniumExecutor() && name.toLowerCase().endsWith(".xml")) 
-	    					        || (gatfConfig.isSeleniumExecutor() && (name.toLowerCase().endsWith(".sel") 
-	    					        || name.toLowerCase().endsWith(".props") || name.toLowerCase().equalsIgnoreCase("selenium-apis.xml")));
-	    				}
-	    			};
-	    			
-	    			File dirFPath = new File(dirPath);
-	    			List<File> fileLst = new ArrayList<File>();
-	    			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
-	    			
-	    			List<File> allFiles = TestCaseFinder.filterFiles(gatfConfig.getIgnoreFiles(), fileLst, dirFPath);
-	    			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles, gatfConfig.isSeleniumExecutor());
-	    			
-	    			for (File file : allFiles) {
-	    				String ext = "";
-	    				try {
-	    					ext = FileUtils.readFileToString(new File(file.getAbsolutePath()+".attr"), "UTF-8");
-	    					ext = new String(Base64.getDecoder().decode(ext.getBytes("UTF-8")), "UTF-8");
-						} catch (Exception e) {
-						}
-	    				fileNames.add(new String[] {TestCaseFinder.getRelativePath(file, dirFPath), ext});
+    			}
+    			
+				FilenameFilter filter = new FilenameFilter() {
+    				public boolean accept(File folder, String name) {
+    					return (name.toLowerCase().endsWith(".xml")) 
+    					        || (!gatfConfig.isSeleniumModuleTests() && (name.toLowerCase().endsWith(".sel") 
+    					        || name.toLowerCase().endsWith(".props") || name.toLowerCase().equalsIgnoreCase("selenium-apis.xml")));
+    				}
+    			};
+    			
+    			File dirFPath = new File(dirPath);
+    			List<File> fileLst = new ArrayList<File>();
+    			TestCaseFinder.getFiles(dirFPath, filter, fileLst);
+    			
+    			List<File> allFiles = TestCaseFinder.filterFiles(gatfConfig.getIgnoreFiles(), fileLst, dirFPath);
+    			allFiles = TestCaseFinder.filterValidTestCaseFiles(allFiles);
+    			
+    			for (File file : allFiles) {
+    				String ext = "";
+    				try {
+    					ext = FileUtils.readFileToString(new File(file.getAbsolutePath()+".attr"), "UTF-8");
+    					ext = new String(Base64.getDecoder().decode(ext.getBytes("UTF-8")), "UTF-8");
+					} catch (Exception e) {
 					}
+    				fileNames.add(new String[] {TestCaseFinder.getRelativePath(file, dirFPath), ext});
 				}
     			
     			String json = WorkflowContextHandler.OM.writeValueAsString(fileNames);

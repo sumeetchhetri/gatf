@@ -28,10 +28,11 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.logging.Logger;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -46,7 +47,7 @@ import com.gatf.selenium.SeleniumTest;
 
 public class DistributedGatfListener {
 
-	private static final Logger logger = Logger.getLogger(DistributedGatfListener.class.getSimpleName());
+	private static final Logger logger = LogManager.getLogger(DistributedGatfListener.class.getSimpleName());
 	
 	public static void main(String[] args) throws Exception {
 		String workingDir = System.getProperty("user.dir");
@@ -191,11 +192,11 @@ public class DistributedGatfListener {
 					String[] localJavaVersion = System.getProperty("java.version").split("\\.");
 					if(remoteJavaVersion[0].equals(localJavaVersion[0])) {
 					    if(remoteJavaVersion[1].compareTo(localJavaVersion[1])>0) {
-					        logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+					        logger.error("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
 					        throw new RuntimeException("Invalid java version found");
 					    }
 					} else if(remoteJavaVersion[0].compareTo(localJavaVersion[0])>0) {
-					    logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+					    logger.error("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
 					    throw new RuntimeException("Invalid java version found");
 					}
 					
@@ -330,11 +331,11 @@ public class DistributedGatfListener {
                 String[] localJavaVersion = System.getProperty("java.version").split("\\.");
                 if(remoteJavaVersion[0].equals(localJavaVersion[0])) {
                     if(remoteJavaVersion[1].compareTo(localJavaVersion[1])>0) {
-                        logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+                        logger.error("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
                         throw new RuntimeException("Invalid java version found");
                     }
                 } else if(remoteJavaVersion[0].compareTo(localJavaVersion[0])>0) {
-                    logger.severe("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
+                    logger.error("Local java version is less than the remote java version, please upgrade local java to version >= " + context.getConfig().getJavaVersion());
                     throw new RuntimeException("Invalid java version found");
                 }
 				

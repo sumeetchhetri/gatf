@@ -169,7 +169,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			@Override
 			public GatfPlugin apply(String type) {
 				GatfPlugin gp = null;
-				if(type.equals("executor"))
+				if(type.startsWith("executor-"))
 				{
 					gp = new GatfTestCaseExecutorUtil();
 				}
@@ -455,6 +455,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		String configJson = e.getMessage()==null?ExceptionUtils.getStackTrace(e):e.getMessage();
 		if(e instanceof GatfRunTimeError) {
 			Map<String, Object> h = new HashMap<>();
+	        h.put("paths", ReportHandler.getPaths("sel"));
 			h.put("error", ((GatfRunTimeError)e).getDetails());
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
 			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
@@ -492,6 +493,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 				others.add(alldets.get(i));
 			}
 			h.put("others", others);
+	        h.put("paths", ReportHandler.getPaths("sel"));
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
 			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		}

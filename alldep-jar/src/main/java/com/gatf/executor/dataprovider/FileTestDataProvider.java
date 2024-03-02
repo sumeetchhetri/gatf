@@ -26,7 +26,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -36,6 +35,8 @@ import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
@@ -59,7 +60,7 @@ import au.com.bytecode.opencsv.CSVReader;
  */
 public class FileTestDataProvider implements TestDataProvider {
 	
-	private Logger logger = Logger.getLogger(FileTestDataProvider.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(FileTestDataProvider.class.getSimpleName());
 	
 	public static List<Map<String, String>> provide(String filePath, String variableNames, AcceptanceTestContext context) {
 		GatfTestDataProvider provider = new GatfTestDataProvider();

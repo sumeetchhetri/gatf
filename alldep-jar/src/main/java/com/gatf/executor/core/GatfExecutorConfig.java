@@ -138,6 +138,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private Integer seleniumScriptRetryCount = 0;
 	
+	private String sessionId;
+	
 	private SeleniumDriverConfig[] seleniumDriverConfigs = new SeleniumDriverConfig[] {};
 	
 	private String seleniumLoggerPreferences;
@@ -568,6 +570,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setSeleniumScriptRetryCount(Integer seleniumScriptRetryCount) {
 		this.seleniumScriptRetryCount = seleniumScriptRetryCount;
+	}
+
+	public String getSessionId() {
+		return sessionId;
+	}
+
+	public void setSessionId(String sessionId) {
+		this.sessionId = sessionId;
 	}
 
 	public SeleniumDriverConfig[] getSeleniumDriverConfigs() {

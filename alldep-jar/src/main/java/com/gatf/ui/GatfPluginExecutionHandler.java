@@ -41,6 +41,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 import com.gatf.generator.core.GatfConfiguration;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
@@ -77,18 +78,22 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	GatfPluginConfig gatfConfig = null;
     	final String pluginType = request.getParameter("pluginType");
+    	Map<String, Object> out = new HashMap<>();
 		try {
 			gatfConfig = getGatfPluginConfig(pluginType, mojo);
 			if(request.getMethod().equals(Method.GET) ) {
 				if(isStarted.get()) {
-					if(pluginType.equals("executor")) {
+					if(pluginType.startsWith("executor-")) {
 						byte[] status = RuntimeReportUtil.getEntry();
-						if(status==null)
-							throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
-						else
+						if(status==null) {
+							out.put("error", "Execution already in progress..");
+							throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
+						} else {
 							throw new RuntimeException(new String(status, "UTF-8"));
+						}
 					}
-					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
+					out.put("error", "Execution already in progress..");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				} else if(isDone.get()) {
 					isDone.set(false);
 					isStarted.set(false);
@@ -99,18 +104,24 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						isJsonErr.set(false);
 						throw new RuntimeException(temp);
 					}
-					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
+					if(StringUtils.isNotBlank(temp)) {
+						out.put("error", "Execution failed with Error - " + temp);
+						throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
+					}
 					
-					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
-        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+					out.put("error", "Execution completed, check Reports Section");
+					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					String text = WorkflowContextHandler.OM.writeValueAsString(out);
+        			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(!isStarted.get()) {
-					throw new RuntimeException("{\"error\": \"Please Start the Execution....\"}");
+					out.put("error", "Please Start the Execution..");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				} else {
-					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
+					out.put("error", "Unknown Error..");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				}
 			}
 			else if(request.getMethod().equals(Method.PUT)) {
@@ -121,7 +132,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					leftOver.set(null);
 					isStarted.set(true);
 					isJsonErr.set(false);
-					if(pluginType.equals("executor")) {
+					if(pluginType.startsWith("executor-")) {
 						RuntimeReportUtil.registerConfigUI();
 					}
 					final GatfPluginConfig config = gatfConfig;
@@ -129,7 +140,11 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						public void run() {
 							GatfPlugin executorMojo = f.apply(pluginType);
     						try {
-								executorMojo.doExecute(config, files);
+    							if(pluginType.equals("executor-api")) {
+    								executorMojo.doExecute(config, files);
+    							} else {
+    								executorMojo.doSeleniumTest(config, files);
+    							}
 								initializeMojoProps(executorMojo, mojo);
 							} catch (Throwable e) {
 								e.printStackTrace();
@@ -177,7 +192,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
     						isDone.set(true);
 							isStarted.set(false);
 
-							if(pluginType.equals("executor")) {
+							if(pluginType.startsWith("executor-")) {
 								byte[] status = RuntimeReportUtil.getEntry();
 								if(status!=null && status.length>0) {
 									leftOver.set(status);
@@ -199,8 +214,10 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						isLoadTestingEnabled = econfig.isLoadTestingEnabled() && econfig.getLoadTestingTime() > 10000 && !econfig.isCompareEnabled();
 					}
 					_executorThread.start();
-					String text = "{\"error\": \"Execution Started\", \"loadTestingEnabled\": "+isLoadTestingEnabled+"}";
-        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+					out.put("error", "Execution Started");
+					out.put("loadTestingEnabled", isLoadTestingEnabled);
+					String text = WorkflowContextHandler.OM.writeValueAsString(out);
+        			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
@@ -214,31 +231,38 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						isJsonErr.set(false);
 						throw new RuntimeException(temp);
 					}
-					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
+					if(StringUtils.isNotBlank(temp)) {
+						out.put("error", "Execution failed with Error - " + temp);
+						throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
+					}
 					
-					byte[] text = "{\"error\": \"Execution completed, check Reports Section\"}".getBytes("UTF-8");
+					out.put("error", "Execution completed, check Reports Section");
+					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					byte[] text = WorkflowContextHandler.OM.writeValueAsBytes(out);
 					if(leftOver.get()!=null) {
 						text = new String(leftOver.get(), "UTF-8").replaceFirst("Execution already in progress..", "Execution completed, check Reports Section").getBytes("UTF-8");
 					}
-        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+        			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.length);
 		            response.getOutputStream().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else if(isStarted.get()) {
-					throw new RuntimeException("{\"error\": \"Execution already in progress..\"}");
+					out.put("error", "Execution already in progress..");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				} else {
-					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
+					out.put("error", "Unknown Error...");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				}
         	} else if(request.getMethod().equals(Method.DELETE) ) {
-        		if(pluginType.equals("executor")) {
+        		if(pluginType.startsWith("executor-")) {
 					RuntimeReportUtil.unRegisterConfigUI();
 				}
         		if(isStarted.get() && _executorThread!=null) {
         			_executorThread.interrupt();
         			_executorThread = null;
 				} else if(!isStarted.get()) {
-					throw new RuntimeException("{\"error\": \"Testcase execution is not in progress...\"}");
+					out.put("error", "Testcase execution is not in progress...");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				} else if(isDone.get()) {
 					isDone.set(false);
 					isStarted.set(false);
@@ -249,16 +273,21 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					if(isJsonErr.get()) {
 						throw new RuntimeException(temp);
 					}
-					if(StringUtils.isNotBlank(temp))
-						throw new RuntimeException("{\"error\": \"Execution failed with Error - " + temp + "\"}");
+					if(StringUtils.isNotBlank(temp)) {
+						out.put("error", "Execution failed with Error - " + temp);
+						throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
+					}
 					
-					String text = "{\"error\": \"Execution completed, check Reports Section\"}";
-        			response.setContentType(MediaType.APPLICATION_XML + "; charset=utf-8");
+					out.put("error", "Execution completed, check Reports Section");
+					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					String text = WorkflowContextHandler.OM.writeValueAsString(out);
+        			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.getBytes("UTF-8").length);
 		            response.getWriter().write(text);
         			response.setStatus(HttpStatus.OK_200);
 				} else {
-					throw new RuntimeException("{\"error\": \"Unknown Error...\"}");
+					out.put("error", "Unknown Error..");
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				}
         	}
 		} catch (Exception e) {
@@ -269,7 +298,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 	
 	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojoInt mojo) throws Exception
 	{
-		if(type.equals("executor"))
+		if(type.startsWith("executor-"))
 		{
 			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
 			return gatfConfig;

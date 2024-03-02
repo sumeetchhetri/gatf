@@ -71,6 +71,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
+import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.joda.time.DateTime;
@@ -80,6 +81,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.Capabilities;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
+import org.openqa.selenium.NoSuchWindowException;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.Pdf;
 import org.openqa.selenium.Point;
@@ -810,6 +812,9 @@ public abstract class SeleniumTest {
 			initTmplMap(_mt);
 			System.out.println("Evaluating expression ["+evaluate(eval)+"]");
 			String ret = ___cxt___.getWorkflowContextHandler().templatize(_mt, "#if("+evaluate(eval) + ") true #else false #end");
+			if(!ret.toLowerCase().trim().equals("true")) {
+				System.out.println("Failing condition -- " + evaluate(eval));
+			}
 			return ret.toLowerCase().trim().equals("true");
 		} catch (Exception e) {
 		}
@@ -3707,7 +3712,7 @@ public abstract class SeleniumTest {
 		}
 		
 		if(logdebug) {
-			java.util.logging.Logger.getGlobal().setLevel(Level.ALL);
+			Configurator.setRootLevel(org.apache.logging.log4j.Level.ALL);
 		}
 		
 		DRV_FEATURES.put(sessionId, new ConcurrentHashMap<String, String>());
@@ -3775,7 +3780,7 @@ public abstract class SeleniumTest {
 		} catch (Exception e) {
 			try {
 				((JavascriptExecutor)driver).executeScript(IOUtils.toString(getClass().getResourceAsStream("/gatf-js-util.js"), "UTF-8"));
-			} catch (IOException e1) {
+			} catch (IOException | NoSuchWindowException e1) {
 			}
 		}
 	}

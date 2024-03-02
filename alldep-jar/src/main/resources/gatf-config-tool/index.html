@@ -37,7 +37,9 @@
                             <input style="width:300px" type="text" class="form-control" placeholder="Search" name="srch-term" id="srch-term">
                         </div>
                     </form>
-                    <ul class="nav navbar-nav navbar-right">
+                    <ul class="nav navbar-nav navbar-right" id="float_action_bar">
+						<button type="button" style="display:none;position:absolute;top:13px;right:150px;" class="top_sel_but" id="play_test_case" class="">▶</button>
+						<button type="button" style="display:none;position:absolute;top:13px;right:100px;" class="top_sel_but" id="debug_test_case" class="">| |</button>
                     	<button type="button" style="display:none;position:absolute;top:13px;right:50px;" id="hdtpi" click-event="hideTopNav()">⇑</button>
                     	<button type="button" style="position:absolute;top:13px;right:50px;" id="sdtpi" click-event="showTopNav()">⇓</button>
                         <img src="images/dm.png" id="dmmode" style="width: 40px;height: 40px;padding: 5px;margin-top: 5px;"/>
@@ -146,7 +148,8 @@
                                         </div>
                                         <div id="leftNavCollapse5" class="accordion-body collapse in" style="margin-left:20px">
                                             <div class="accordion-inner">
-                                                <a href="#" class="list-group-item asideLink" click-event="executeHtml('executor')">&nbsp;Executor</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="executeHtml('executor-api')">&nbsp;API Tests Executor</a>
+                                                <a href="#" class="list-group-item asideLink" click-event="executeHtml('executor-sel')">&nbsp;UI Tests Executor</a>
                                                 <!--  a href="#" class="list-group-item asideLink" click-event="executeHtml('generator')">&nbsp;Generator</a-->
                                             </div>
                                         </div>

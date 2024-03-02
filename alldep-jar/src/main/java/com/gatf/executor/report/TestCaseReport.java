@@ -91,6 +91,8 @@ public class TestCaseReport implements Serializable {
 	private List<String> aexpectedNodes = new ArrayList<String>();
 	
 	private String serverLogs;
+	
+	private List<String> paths;
 
 	@XmlTransient
 	@JsonIgnore
@@ -318,6 +320,14 @@ public class TestCaseReport implements Serializable {
 
 	public void setServerLogs(String serverLogs) {
 		this.serverLogs = serverLogs;
+	}
+
+	public List<String> getPaths() {
+		return paths;
+	}
+
+	public void setPaths(List<String> paths) {
+		this.paths = paths;
 	}
 
 	public List<Map<String, Object>> getPerfResult() {

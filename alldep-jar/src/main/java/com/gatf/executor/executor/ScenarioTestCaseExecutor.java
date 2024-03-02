@@ -19,9 +19,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.logging.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
@@ -37,7 +38,7 @@ import com.gatf.executor.validator.ResponseValidator;
  */
 public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 
-	private Logger logger = Logger.getLogger(ScenarioTestCaseExecutor.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(ScenarioTestCaseExecutor.class.getSimpleName());
 	
 	public List<TestCaseReport> execute(TestCase testCase, TestCaseExecutorUtil testCaseExecutorUtil) {
 

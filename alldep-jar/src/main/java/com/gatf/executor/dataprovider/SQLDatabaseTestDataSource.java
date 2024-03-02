@@ -24,7 +24,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.Assert;
@@ -38,7 +40,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
  */
 public class SQLDatabaseTestDataSource extends TestDataSource {
 
-	private Logger logger = Logger.getLogger(SQLDatabaseTestDataSource.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(SQLDatabaseTestDataSource.class.getSimpleName());
 	
 	private String jdbcUrl, dbUserName, dbPassword;
 	

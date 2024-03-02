@@ -82,6 +82,18 @@ public class GatfReportsHandler extends HttpHandler {
 				new File(dirPath).mkdir();
 			}
 			if(request.getMethod().equals(Method.GET) ) {
+				String action = request.getParameter("action");
+				String type = request.getParameter("type");
+				if(StringUtils.isNotBlank(action) && action.equals("paths") && StringUtils.isNotBlank(type)) {
+					Map<String, Object> out = new HashMap<>();
+					out.put("paths", ReportHandler.getPaths(type));
+					String text = WorkflowContextHandler.OM.writeValueAsString(out);
+			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			        response.setContentLength(text.getBytes("UTF-8").length);
+			        response.getWriter().write(text);
+			        response.setStatus(HttpStatus.OK_200);
+			        return;
+				}
 			    new CacheLessStaticHttpHandler(GatfConfigToolUtil.authSrc!=null, dirPath).service(request, response);
 			} else if(request.getMethod().equals(Method.PUT) ) {
 			    String action = request.getParameter("action");
@@ -526,6 +538,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 if(testcaseFileName.toLowerCase().endsWith(".sel")) {
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
+                    Map<String, Object> out = new HashMap<>();
                     if(action.equals("debug")) {
                     	if(selDbgline<-8) {
                     		String cont = "Fail: Invalid debug command";
@@ -553,7 +566,6 @@ public class GatfReportsHandler extends HttpHandler {
     	                    executorMojo.initilaizeContext(gatfConfig, true);
     	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
     	                    dbgSessions.put(sessionId, dbgSession);
-    	                    Map<String, Object> out = new HashMap<>();
     	                    out.put("s", true);
     	                    out.put("c", dbgSession.getSrcCode());
     	                    out.put("l", dbgSession.getDebuggableLines());
@@ -561,7 +573,6 @@ public class GatfReportsHandler extends HttpHandler {
     	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	} else {
-    	                    Map<String, Object> out = new HashMap<>();
                     		if(dbgSession==null) {
         	                    out.put("s", false);
         	                    out.put("m", "No Debug session running for script " + testcaseFileName);
@@ -653,6 +664,7 @@ public class GatfReportsHandler extends HttpHandler {
     	                    out.put("s", true);
     	                    out.put("p", dbgSession.getPrevLine());
     	                    out.put("n", dbgSession.getNextLine());
+    	                    out.put("paths", ReportHandler.getPaths("sel"));
     	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
@@ -660,7 +672,10 @@ public class GatfReportsHandler extends HttpHandler {
 	                    executorMojo.initilaizeContext(gatfConfig, true);
                     	executorMojo.doSeleniumTest(gatfConfig, null);
                     	String cont = "Please check Reports section for the selenium test results";
-                        return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
+	                    out.put("msg", cont);
+	                    out.put("paths", ReportHandler.getPaths("sel"));
+	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+                        return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     }
                 }
                 
@@ -783,6 +798,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 TestCaseReport report = reports.get(0);
                 ReportHandler.populateRequestResponseHeaders(report);
+                report.setPaths(ReportHandler.getPaths("api"));
                 byte[] configJson = WorkflowContextHandler.OM.writeValueAsBytes(report);
                 return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, report};
             }
@@ -798,6 +814,6 @@ public class GatfReportsHandler extends HttpHandler {
 				dbgSessions.remove(sessId);
 				dbgSession.destroy();
 			}
-		}	
+		}
 	}
 }

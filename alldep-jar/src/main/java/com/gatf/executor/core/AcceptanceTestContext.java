@@ -17,6 +17,7 @@ package com.gatf.executor.core;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
@@ -28,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.xml.namespace.QName;
@@ -38,6 +38,8 @@ import javax.xml.parsers.DocumentBuilderFactory;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.validator.routines.UrlValidator;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.junit.Assert;
@@ -65,6 +67,7 @@ import com.gatf.executor.executor.ScenarioTestCaseExecutor;
 import com.gatf.executor.executor.SingleTestCaseExecutor;
 import com.gatf.executor.finder.TestCaseFinder;
 import com.gatf.executor.finder.XMLTestCaseFinder;
+import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.simulators.EmailGateway;
 import com.gatf.simulators.EmbHttpServer;
@@ -77,7 +80,7 @@ import com.gatf.ui.GatfConfigToolMojoInt;
  */
 public class AcceptanceTestContext {
 
-	private Logger logger = Logger.getLogger(AcceptanceTestContext.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(AcceptanceTestContext.class.getSimpleName());
 	
 	public final static String
 	    PROP_SOAP_ACTION_11 = "SOAPAction",
@@ -351,7 +354,7 @@ public class AcceptanceTestContext {
 				
 				if(method.getParameterTypes().length!=1 || !method.getParameterTypes()[0].equals(TestCase.class))
 				{
-					logger.severe("PreTestCaseExecutionHook annotated methods should " +
+					logger.error("PreTestCaseExecutionHook annotated methods should " +
 							"confirm to the method signature - `public static void {methodName} (" +
 							"TestCase testCase)`");
 					return claz;
@@ -377,7 +380,7 @@ public class AcceptanceTestContext {
 				
 				if(method.getParameterTypes().length!=1 || !method.getParameterTypes()[0].equals(TestCaseReport.class))
 				{
-					logger.severe("PostTestCaseExecutionHook annotated methods should " +
+					logger.error("PostTestCaseExecutionHook annotated methods should " +
 							"confirm to the method signature - `public static void {methodName} (" +
 							"TestCaseReport testCaseReport)`");
 					return claz;
@@ -523,26 +526,58 @@ public class AcceptanceTestContext {
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 					if(flag)
 					{
-						removeFolder(resource);
-						File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-						nresource.mkdirs();
-						nresource.setReadable(true, false);
-						nresource.setWritable(true, false);
-						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+						List<String> paths1 = ReportHandler.getPaths("api");
+						List<String> paths2 = ReportHandler.getPaths("sel");
+						if(paths1.size()==0 || paths2.size()==0) {
+							removeFolder(resource);
+							File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+							nresource.mkdirs();
+							nresource.setReadable(true, false);
+							nresource.setWritable(true, false);
+							Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+						} else {
+							String[] dirs = resource.list(new FilenameFilter() {
+					            @Override
+					            public boolean accept(File dir, String name) {
+					                return new File(dir, name).isDirectory();
+					            }
+					        });
+							for (String name : dirs) {
+								if(name.length()==36 && !paths1.contains(name) && !paths2.contains(name)) {
+									removeFolder(new File(resource, name));
+								}
+							}
+						}
 					}
 				}
 				else
 				{
-					File resource = new File(System.getProperty("user.dir"));
-					File file = new File(resource, gatfExecutorConfig.getOutFilesDir());
-					if(flag)
-					{
-						removeFolder(file);
-						File nresource = new File(resource, gatfExecutorConfig.getOutFilesDir());
-						nresource.mkdir();
-						nresource.setReadable(true, false);
-						nresource.setWritable(true, false);
-						Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+					File basePath = new File(System.getProperty("user.dir"));
+					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+					List<String> paths1 = ReportHandler.getPaths("api");
+					List<String> paths2 = ReportHandler.getPaths("sel");
+					if(paths1.size()==0 || paths2.size()==0) {
+						if(flag)
+						{
+							removeFolder(resource);
+							File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+							nresource.mkdir();
+							nresource.setReadable(true, false);
+							nresource.setWritable(true, false);
+							Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+						}
+					} else {
+						String[] dirs = resource.list(new FilenameFilter() {
+				            @Override
+				            public boolean accept(File dir, String name) {
+				                return new File(dir, name).isDirectory();
+				            }
+				        });
+						for (String name : dirs) {
+							if(name.length()==36 && !paths1.contains(name) && !paths2.contains(name)) {
+								removeFolder(new File(resource, name));
+							}
+						}
 					}
 				}
 			} catch (Exception e) {
@@ -552,15 +587,34 @@ public class AcceptanceTestContext {
 		}
 		else
 		{
-			File resource = new File(System.getProperty("user.dir"));
-			if(flag)
-			{
-				removeFolder(resource);
-				File nresource = new File(System.getProperty("user.dir"), "out");
-				nresource.mkdir();
-				nresource.setReadable(true, false);
-				nresource.setWritable(true, false);
+			File basePath = new File(System.getProperty("user.dir"));
+			File resource = new File(basePath, "out");
+			List<String> paths1 = ReportHandler.getPaths("api");
+			List<String> paths2 = ReportHandler.getPaths("sel");
+			if(paths1.size()==0 || paths2.size()==0) {
+				if(flag)
+				{
+					removeFolder(resource);
+					File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+					nresource.mkdir();
+					nresource.setReadable(true, false);
+					nresource.setWritable(true, false);
+					Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+				}
+			} else {
+				String[] dirs = resource.list(new FilenameFilter() {
+		            @Override
+		            public boolean accept(File dir, String name) {
+		                return new File(dir, name).isDirectory();
+		            }
+		        });
+				for (String name : dirs) {
+					if(name.length()==36 && !paths1.contains(name) && !paths2.contains(name)) {
+						removeFolder(new File(resource, name));
+					}
+				}
 			}
+			
 			gatfExecutorConfig.setOutFilesDir("out");
 			gatfExecutorConfig.setOutFilesBasePath(System.getProperty("user.dir"));
 		}
@@ -762,7 +816,7 @@ public class AcceptanceTestContext {
 					} catch (Throwable e) {
 					}
 					if(!flag) {
-						logger.severe("Shutdown DataSourceHook execution for " + dataSourceHook.getHookName()
+						logger.error("Shutdown DataSourceHook execution for " + dataSourceHook.getHookName()
 								+ " failed, queryString = " + query);
 					}
 				}
@@ -939,7 +993,7 @@ public class AcceptanceTestContext {
 					} catch (Throwable e) {
 					}
 					if(!flag) {
-						logger.severe("Startup DataSourceHook execution for " + dataSourceHook.getHookName()
+						logger.error("Startup DataSourceHook execution for " + dataSourceHook.getHookName()
 								+ " failed, queryString = " + query);
 					}
 				}
@@ -1021,11 +1075,11 @@ public class AcceptanceTestContext {
 	                        }
 	                        providerTestDataMap.put(tp.getProviderName(), testDataT);
 	                    } catch (Throwable e) {
-	                        logger.severe("Cannot find data provider for the concurrent simulation scenario #"+(i+1)+" with name " + tp.getProviderName());
+	                        logger.error("Cannot find data provider for the concurrent simulation scenario #"+(i+1)+" with name " + tp.getProviderName());
 	                        providerTestDataMap.put(tp.getProviderName(), testData);
 	                    }
 			        } else {
-			            logger.severe("Concurrent simulation scenarios need file data providers");
+			            logger.error("Concurrent simulation scenarios need file data providers");
 			        }
                 }
 			} else {

@@ -19,12 +19,13 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.bson.Document;
 import org.junit.Assert;
 
@@ -44,7 +45,7 @@ import com.mongodb.client.result.UpdateResult;
  */
 public class MongoDBTestDataSource extends TestDataSource {
 
-	private Logger logger = Logger.getLogger(MongoDBTestDataSource.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(MongoDBTestDataSource.class.getSimpleName());
 	
 	String addresses = null;
 	

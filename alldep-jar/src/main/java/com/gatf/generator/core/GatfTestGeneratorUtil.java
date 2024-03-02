@@ -48,7 +48,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.logging.Logger;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
@@ -59,6 +58,8 @@ import javax.xml.namespace.QName;
 
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
@@ -124,7 +125,7 @@ import com.gatf.ui.GatfConfigToolUtil;
  */
 public class GatfTestGeneratorUtil implements GatfPlugin {
 
-	private Logger logger = Logger.getLogger(GatfTestGeneratorUtil.class.getSimpleName());
+	private Logger logger = LogManager.getLogger(GatfTestGeneratorUtil.class.getSimpleName());
 
     private boolean debugEnabled;
 	
@@ -577,7 +578,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	                            	consumes = "";
 	                            }
                             } catch (Exception e) {
-                            	logger.severe(ExceptionUtils.getStackTrace(e));
+                            	logger.error(ExceptionUtils.getStackTrace(e));
                             }
                             
                             if(consumes!=null && !consumes.trim().isEmpty()) {
@@ -672,7 +673,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
         }
         catch (Exception e)
         {
-            logger.severe(ExceptionUtils.getStackTrace(e));
+            logger.error(ExceptionUtils.getStackTrace(e));
         }
     }
 
@@ -813,7 +814,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	            viewField.setValue(getObject(clas, heirarchies));
         	}
     	} catch (Exception e) {
-    		logger.severe(ExceptionUtils.getStackTrace(e));
+    		logger.error(ExceptionUtils.getStackTrace(e));
     		logger.info("Invalid class, cannot be represented as a form/object in a test case - class name = " + claz);
     	}
         return viewField;
@@ -870,7 +871,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 			if(isPrimitive(claz)) {
 				return getPrimitiveValue(claz);
 			}
-			logger.severe("No public no-args constructor found for class " + claz.getName());
+			logger.error("No public no-args constructor found for class " + claz.getName());
 			return null;
 		}
     	
@@ -1065,7 +1066,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	    	if(k==null && isDebugEnabled()) {
 	    		logger.info(types[0].toString());
 	    		logger.info(types[1].toString());
-	    		logger.severe("Null key " + types[0]);
+	    		logger.error("Null key " + types[0]);
 	    	}
 	    	if(k!=null) {
 	    	    ((Map)object).put(k, v);
@@ -1144,6 +1145,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 
     public static void main(String[] args) throws Exception
     {
+    	System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
     	boolean showHelp = false;
     	if(args.length>=1) {
     		if(args.length>1 && args[0].equals("-generator") && !args[1].trim().isEmpty())
@@ -1297,7 +1299,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                         }
                         else
                         {
-                            logger.severe("Error:package not found - " + item);
+                            logger.error("Error:package not found - " + item);
                         }
                     }
                     else
@@ -1309,7 +1311,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                         }
                         catch (Exception e)
                         {
-                            logger.severe("Error:class not found - " + item);
+                            logger.error("Error:class not found - " + item);
                         }
                     }
                 }
@@ -1483,7 +1485,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 	}
 
 	@Override
-	public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) {
+	public void doSeleniumTest(GatfPluginConfig configuration, List<String> files) {
 	}
 
 	@Override
