@@ -1308,14 +1308,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             tclgenerator.start();
         }
 
-        initilaizeContext(configuration, true);
-
         List<DistributedConnection> distConnections = null;
 
         if (configuration.isSeleniumExecutor()) {
             doSeleniumTest(configuration, files);
             return;
         }
+        
+        initilaizeContext(configuration, true);
         
         String path = initOutFolderAndGetPath(context, null, "api");
 

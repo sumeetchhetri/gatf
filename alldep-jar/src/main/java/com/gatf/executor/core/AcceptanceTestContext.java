@@ -528,7 +528,7 @@ public class AcceptanceTestContext {
 					{
 						List<String> paths1 = ReportHandler.getPaths("api");
 						List<String> paths2 = ReportHandler.getPaths("sel");
-						if(paths1.size()==0 || paths2.size()==0) {
+						if(paths1.size()==0 && paths2.size()==0) {
 							removeFolder(resource);
 							File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 							nresource.mkdirs();
@@ -556,7 +556,7 @@ public class AcceptanceTestContext {
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 					List<String> paths1 = ReportHandler.getPaths("api");
 					List<String> paths2 = ReportHandler.getPaths("sel");
-					if(paths1.size()==0 || paths2.size()==0) {
+					if(paths1.size()==0 && paths2.size()==0) {
 						if(flag)
 						{
 							removeFolder(resource);

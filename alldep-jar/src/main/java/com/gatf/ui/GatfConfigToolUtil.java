@@ -169,7 +169,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			@Override
 			public GatfPlugin apply(String type) {
 				GatfPlugin gp = null;
-				if(type.startsWith("executor-"))
+				if(type.startsWith("executor"))
 				{
 					gp = new GatfTestCaseExecutorUtil();
 				}

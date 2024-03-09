@@ -1306,7 +1306,7 @@ function openWind(ele) {
 }
 
 function execSelectedFileTests(testfilen) {
-    if (testfilen != null) {
+    if (testfilen!=null && (testfilen.toLowerCase().endsWith(".sel") || testfilen.toLowerCase().endsWith(".xml"))) {
         execFiles = new Array();
         execFiles.push(testfilen);
 	    calledbytestfpage = true;
@@ -1314,7 +1314,9 @@ function execSelectedFileTests(testfilen) {
 	    executeHtml(plugintype);
 	    executionHandler('PUT', true, plugintype);
 	    execFiles = new Array();
-    }
+    } else {
+		alert("Please select valid test case files to execute");
+	}
     seltestfailed = false;
     return false;
 }
@@ -1326,7 +1328,10 @@ function execSelectedFiles(ele) {
 	//let all = $('#select_all_tcs').is(":checked");
 	for(const tr of tests) {
 		if($(tr).find('td').eq(0).find('input').is(":checked") && $(tr).find('td>a.asideLink1').length>0) {
-			execFilesT.push([$(tr).find('td>a.asideLink1').next('input').val(), $(tr).find('.seqno').val()]);
+			const fnm = $(tr).find('td>a.asideLink1').next('input').val();
+			if(fnm.toLowerCase().endsWith(".sel") || fnm.toLowerCase().endsWith(".xml")) {
+				execFilesT.push([fnm, $(tr).find('.seqno').val()]);
+			}
 		}
 	}
 	execFilesT.sort(function(a, b) {
@@ -1342,7 +1347,7 @@ function execSelectedFiles(ele) {
 	    executionHandler('PUT', true, plugintype);
 	    execFiles = new Array();
 	} else {
-		alert("Please select test case files to execute");
+		alert("Please select valid test case files to execute");
 	}
 	seltestfailed = false;
     return false;
@@ -2142,7 +2147,7 @@ function startInitConfigTool(func) {
                             currtestcases = [''];
                             ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(data1) {
                                 var htmm = '<button type="button" class="plusminuslist" click-event=\"addTestCase(true, null, \'\', null, false, false)\">Add New Testcase</button><br/></br/>';
-                                if (currtestcasefile.toLowerCase().endsWith(".sel")) {
+                                if (currtestcasefile.toLowerCase().endsWith(".sel") || currtestcasefile.toLowerCase().endsWith(".props") || currtestcasefile.toLowerCase().endsWith(".csv")) {
                                     htmm = "";
                                     if(ceeditor) {
                                     	if($('#req-txtarea').length>0) {
@@ -2423,7 +2428,7 @@ function onsucctcnmupdt() {
 		delete errdFilesReport[currtestcasefile];
 	}
 	if($('#heading_main').text().startsWith("Manage Tests")) {
-		if(currtestcasefile.toLowerCase().endsWith(".sel")) {
+		if(currtestcasefile.toLowerCase().endsWith(".sel") || currtestcasefile.toLowerCase().endsWith(".props") || currtestcasefile.toLowerCase().endsWith(".csv")) {
 			const fedidi = sha256(currtestcasefile);
 			$('#'+fedidi).find('.dirty').remove();
 		} else {

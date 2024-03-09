@@ -195,7 +195,7 @@ public class GatfReportsHandler extends HttpHandler {
                     throw new RuntimeException("Testcase does not exist");
                 }
                 
-                GatfPlugin executorMojo = f.apply("executor");
+                GatfPlugin executorMojo = f.apply("executor-api");
 
                 lock.lock();
                 
@@ -337,7 +337,7 @@ public class GatfReportsHandler extends HttpHandler {
             {
                 AcceptanceTestContext context = null;
                 try {
-                	GatfPlugin executorMojo = f.apply("executor");
+                	GatfPlugin executorMojo = f.apply("executor-api");
                     executorMojo.initilaizeContext(gatfConfig, false);
                     context = executorMojo.getContext();
                 } catch (Exception e) {
@@ -403,7 +403,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 AcceptanceTestContext context = null;
                 try {
-                	GatfPlugin executorMojo = f.apply("executor");
+                	GatfPlugin executorMojo = f.apply("executor-api");
                     executorMojo.initilaizeContext(gatfConfig, false);
                     context = executorMojo.getContext();
                 } catch (Exception e) {
@@ -532,7 +532,7 @@ public class GatfReportsHandler extends HttpHandler {
                     }
                 }
 
-                GatfPlugin executorMojo = f.apply("executor");
+                GatfPlugin executorMojo = f.apply("executor-"+(testcaseFileName.toLowerCase().endsWith(".sel")?"sel":"api"));
                 
                 lock.lock();
                 
@@ -669,7 +669,6 @@ public class GatfReportsHandler extends HttpHandler {
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
                     } else {
-	                    executorMojo.initilaizeContext(gatfConfig, true);
                     	executorMojo.doSeleniumTest(gatfConfig, null);
                     	String cont = "Please check Reports section for the selenium test results";
 	                    out.put("msg", cont);

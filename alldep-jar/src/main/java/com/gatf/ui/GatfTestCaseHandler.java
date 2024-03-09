@@ -92,10 +92,11 @@ public class GatfTestCaseHandler extends HttpHandler {
 			filePath = basepath + File.separator + testcaseFileName;
 		}
 		
-		boolean isSelTc = testcaseFileName.toLowerCase().endsWith(".sel");
+		boolean isNotXml = !testcaseFileName.toLowerCase().endsWith(".xml");
+		boolean isNotSel = !testcaseFileName.toLowerCase().endsWith(".sel");
 		
 		boolean isUpdate = request.getMethod().equals(Method.PUT);
-		if(!isApiIntType && !isSelTc && request.getMethod().equals(Method.DELETE)) {
+		if(!isApiIntType && isNotSel && request.getMethod().equals(Method.DELETE)) {
     		try {
     			String testCaseName = request.getHeader("testcasename");
     			List<TestCase> tcs = new XMLTestCaseFinder().resolveTestCases(new File(filePath));
@@ -115,9 +116,9 @@ public class GatfTestCaseHandler extends HttpHandler {
     		} catch (Exception e) {
     			GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
 			}
-		} else if(request.getMethod().equals(Method.POST) || (isUpdate && !isSelTc)) {
+		} else if(request.getMethod().equals(Method.POST) || (isUpdate && isNotSel)) {
     		try {
-    		    if(isSelTc && !isApiIntType) {
+    		    if(isNotXml ) {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
@@ -185,7 +186,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
     	} else if(request.getMethod().equals(Method.GET)) {
     		try {
-    		    if(isSelTc && !isApiIntType) {
+    		    if(isNotXml) {
     		        String data = FileUtils.readFileToString(new File(filePath), "UTF-8");
                     response.setContentType(MediaType.TEXT_PLAIN + "; charset=utf-8");
                     response.setContentLength(data.getBytes("UTF-8").length);
