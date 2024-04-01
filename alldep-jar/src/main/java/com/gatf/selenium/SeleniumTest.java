@@ -508,18 +508,11 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	/*protected void addSubTest(String browserName, String stname, boolean isAFunc) {
-		if(isAFunc) return;
-		if(getSession().__result__.containsKey(browserName)) {
-			if(!getSession().__result__.get(getSession().browserName).__cresult__.containsKey(stname)) {
-				getSession().__result__.get(browserName).__cresult__.put(stname, null);
-			} else {
-				throw new RuntimeException("Duplicate subtest defined");
-			}
-		} else {
-			throw new RuntimeException("Invalid browser specified");
+	protected void addSubTest(String stname) {
+		for (SeleniumTestSession s : sessions) {
+			s.__result__.get(s.browserName).__cresult_or__.put(stname, null);
 		}
-	}*/
+	}
 
 	protected void startTest() {
 		if(getSession().__teststarttime__==0) {
@@ -1008,9 +1001,10 @@ public abstract class SeleniumTest {
 		getSession().__provdetails__.remove(getPn(__provname__));
 	}
 
-	protected void set__subtestname__(String __subtestname__)
+	protected void set__subtestname__(String stname, String __subtestname__)
 	{
 		if(__subtestname__!=null) {
+			getSession().__result__.get(getSession().browserName).__cresult_or__.remove(stname);
 			if(getSession().__provdetails__.size()>0) {
 				String fstn = "";
 				ArrayList<String> keys = new ArrayList<String>(getSession().__provdetails__.keySet());
@@ -1024,7 +1018,6 @@ public abstract class SeleniumTest {
 			}
 		}
 		getSession().__subtestexecutiontime__ = System.nanoTime();
-		getSession().__result__.get(getSession().browserName).__cresult__.put(__subtestname__, null);
 		getSession().__subtestname__ = __subtestname__;
 	}
 	
@@ -1037,7 +1030,7 @@ public abstract class SeleniumTest {
 		return getSession().__subtestname__;
 	}
 	
-	protected void set__funcname__(String __funcname__)
+	protected void set__funcname__(String stname, String __funcname__)
 	{
 		getSession().__funcname__ = __funcname__;
 	}
@@ -1195,7 +1188,12 @@ public abstract class SeleniumTest {
 
 	public abstract SeleniumTest copy(AcceptanceTestContext ctx, int index);
 
-	public abstract List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception;
+	private String outPath;
+	protected void setOutPath(String path) {
+		this.outPath = path;
+	}
+	
+	public abstract List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception;
 
 	/*protected boolean checkifSessionIdExistsInSet(Set<String> st, String sname, String sid) {
         if(sname==null && sid==null)return true;
@@ -3533,8 +3531,9 @@ public abstract class SeleniumTest {
 		throw new RuntimeException("not a valid image element");
 	}
 	
+	
 	protected String getOutDir() {
-		return ___cxt___.getOutDirPath();
+		return ___cxt___.getOutDirPath() + File.separator + outPath;
 	}
 	
 	public static void main(String[] args) throws Exception {
@@ -3562,7 +3561,7 @@ public abstract class SeleniumTest {
         	System.out.println(dyn!=null?"SUCCESS":"FAILURE");
             if(dyn!=null) {
             	try {
-                    dyn.execute(lp);
+                    dyn.execute(lp, "");
                 } catch (Throwable e) {
                 }
                 dyn.quitAll();
@@ -4218,7 +4217,7 @@ public abstract class SeleniumTest {
 	protected void checkMail(String tname, String from, String to, String subject, String content, int timeout) {
 		String stname = get__subtestname__();
 		try {
-			set__subtestname__(tname);
+			set__subtestname__(tname, tname);
 			if(___cxt___.simulatorEventCheck("mail", new Object[] {from, to, subject, content, timeout})) {
 				throw new PassSubTestException(tname);
 			}
@@ -4231,7 +4230,7 @@ public abstract class SeleniumTest {
 	protected boolean checkHttpRequest(String tname, String from, String to, String content, int timeout) {
 		String stname = get__subtestname__();
 		try {
-			set__subtestname__(tname);
+			set__subtestname__(tname, tname);
 			if(___cxt___.simulatorEventCheck("http", new Object[] {from, to, content, timeout})) {
 				throw new PassSubTestException(tname);
 			}

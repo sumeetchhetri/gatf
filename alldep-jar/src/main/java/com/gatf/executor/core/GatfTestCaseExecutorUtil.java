@@ -1118,7 +1118,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 try {
                 	System.out.println("[" +Thread.currentThread().getName()+"]=======================Started execution gatf test case " + dyn.getName() + "=======================");
                     summLst.put((String) retvals[0], new LinkedHashMap<String, List<Object[]>>());
-                    sessions = dyn.execute(lp);
+                    sessions = dyn.execute(lp, path);
                 } catch (FailureException e) {
                     sessions = dyn.get__sessions__();
                 } catch (Throwable e) {
@@ -2623,12 +2623,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         private AcceptanceTestContext context;
         private List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
         private LoggingPreferences lp;
+        private String path;
 
-        public ConcSeleniumTestDT(int index, AcceptanceTestContext context, List<SeleniumTest> tests, LoggingPreferences lp) {
+        public ConcSeleniumTestDT(String path, int index, AcceptanceTestContext context, List<SeleniumTest> tests, LoggingPreferences lp) {
             this.index = index;
             this.context = context;
             this.tests = tests;
             this.lp = lp;
+            this.path = path;
         }
 
         @Override
@@ -2638,7 +2640,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 SeleniumTest dyn = tests.get(i).copy(context, index + 1);
                 List<SeleniumTestSession> result = null;
                 try {
-                    result = dyn.execute(lp);
+                    result = dyn.execute(lp, path);
                     lglist.add(result);
                 } catch (FailureException e) {
                 	lglist.add(dyn.get__sessions__());

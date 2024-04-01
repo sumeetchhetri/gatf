@@ -56,6 +56,7 @@ public class SeleniumTestSession implements Serializable {
         SeleniumTestResult result;
 
         Map<String, SeleniumTestResult>  __cresult__ = new LinkedHashMap<String, SeleniumTestResult>();
+        Map<String, SeleniumTestResult>  __cresult_or__ = new LinkedHashMap<String, SeleniumTestResult>();
 
         public SeleniumTestResult getResult()
         {
@@ -64,6 +65,7 @@ public class SeleniumTestSession implements Serializable {
 
         public Map<String, SeleniumTestResult> getSubTestResults()
         {
+        	__cresult__.putAll(__cresult_or__);
             return __cresult__;
         }
 

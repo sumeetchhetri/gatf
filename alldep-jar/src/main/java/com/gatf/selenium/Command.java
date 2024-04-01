@@ -165,7 +165,7 @@ public class Command {
 			}
             subtestDups.add(st.name);
             allSubTests.add(st);
-            subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true, st.isAFunc});
+            //subtestDetails.add(new Object[]{st.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.fName, true, st.isAFunc});
         }
         
         void addSubtest(ExecSubTestCommand st) {
@@ -1776,34 +1776,18 @@ public class Command {
 	        	}
             }
         }
-        b.append("public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {\n");
+        b.append("public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception {\nthis.setOutPath(outPath);\n");
         b.append("/*GATF_ST_START_*/");
         for (Object[] brn : bn)
         {
         	String bsessionName =  (String)brn[1];
-            String bsessionId =  (String)brn[2];
-            //b.append("java.util.Set<String> "+state.varnameat()+" = addTest("+(StringUtils.isNotBlank(brn[1])?("\""+esc(brn[1])+"\""):"null")+", \""+esc(brn[0])+"\");\n");
             b.append("addTest("+(StringUtils.isNotBlank(bsessionName)?("\""+esc(bsessionName)+"\""):"null")+", \""+esc(brn[0].toString())+"\");\n");
-            for (Object[] st : state.subtestDetails)
-            {
-                String sessionName = StringUtils.isNotBlank((String)st[1])?(String)st[1]:null;
-                String sessionId = null;
-                try {
-                	sessionId = Integer.parseInt((String)st[2])+"";
-                } catch (Exception e) {
-                }
-                //b.append("if(checkifSessionIdExistsInSet("+state.currvarnameat()+", "
-                //            +(sessionName!=null?"\""+esc(sessionName)+"\"":"null")+", "
-                //            +(sessionId!=null?"\""+sessionId+"\"":"null") + ")) {");
-                if(((bsessionName!=null && bsessionName.equalsIgnoreCase(sessionName)) || bsessionId.equalsIgnoreCase(sessionId)) || (sessionName==null && sessionId==null)) {
-                	if((Boolean)st[5]) {
-		                //b.append("setSession("+(bsessionName!=null?"\""+esc(bsessionName)+"\"":"null")+", "
-		                //            +(bsessionId!=null?bsessionId:"-1")+", false);\n");
-		                //b.append("addSubTest(\""+esc(brn[0].toString())+"\", \""+esc((String)st[0])+"\", "+(Boolean)st[6]+");\n\n");
-                	}
-                }
-                //b.append("}\n");
-            }
+        }
+        for (Object[] st : state.subtestDetails)
+        {
+        	if(!(Boolean)st[6]) {
+        		b.append("addSubTest(\""+esc((String)st[0])+"\");\n\n");
+        	}
         }
         b.append("\n\n");
         
@@ -2876,7 +2860,7 @@ public class Command {
             	b.append(genDebugInfo(this));
             	String pstn = state.varnamerandom();
                 b.append("String "+pstn+" = get__"+(!isAFunc?"subtest":"func")+"name__();\n");
-            	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(__sfname__);\n");
+            	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(\""+name+"\", __sfname__);\n");
                 b.append("\ntry {\n");
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
@@ -9032,7 +9016,7 @@ public class Command {
             	if(testExecution) {
             		try {
             			final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(config);
-						dyn.execute(lp);
+						dyn.execute(lp, "");
 					} catch (Exception e) {
 						e.printStackTrace();
 					} finally {
@@ -9107,8 +9091,8 @@ public class Command {
     		System.out.println("\n");
 		}
 
-    	validateSel(new String[] {"-validate-sel", "data/t3.sel",
-    			"/path/to/project/gatf-config.xml",
+    	validateSel(new String[] {"-validate-sel", "data/test.sel",
+        		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",

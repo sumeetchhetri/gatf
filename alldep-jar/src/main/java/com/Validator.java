@@ -39,7 +39,7 @@ implements Serializable {
 
 		final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(config);
 		Validator v = new Validator(c, 0);
-		v.execute(lp);
+		v.execute(lp, "");
 	}
 
 	public Validator(AcceptanceTestContext ___cxt___, int index) {
@@ -67,7 +67,8 @@ implements Serializable {
 		___dc___.setExperimentalOption("prefs", __prefs);
 		set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
 	}
-	public List<SeleniumTestSession> execute(LoggingPreferences ___lp___) throws Exception {
+	public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String path) throws Exception {
+		this.setOutPath(path);
 		addTest(null, "chrome");
 		setSession(null, 0, true);
 		quit();
