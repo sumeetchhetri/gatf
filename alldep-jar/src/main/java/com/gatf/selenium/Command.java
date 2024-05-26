@@ -73,6 +73,7 @@ public class Command {
         boolean commentStart = false, codeStart = false, started = false;
         String origBasePath = "";
         String basePath = "";
+        boolean isImportedFile = false;
         String testcaseDir = "";
         int concExec = 0;
         int starts = 0;
@@ -169,7 +170,9 @@ public class Command {
         }
         
         void addSubtest(ExecSubTestCommand st) {
-            subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAFunc});
+            if(!st.state.isImportedFile) {
+            	subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAFunc});
+            }
         }
         Map<String, String> qss = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
@@ -1237,6 +1240,7 @@ public class Command {
                     }
                     String currBasePath = state.basePath;
                     state.basePath = f.getParent();
+                    state.isImportedFile = true;
                     Command imported = Command.read(f.getAbsolutePath(), state);
                     for (Command cmd : imported.children) {
     					if(cmd instanceof SubTestCommand) {
@@ -1251,6 +1255,7 @@ public class Command {
     					}
     				}
                     state.basePath = currBasePath;
+                    state.isImportedFile = false;
                 } else if(tmp instanceof IncludeCommand) {
                     String parentPath = state.basePath;
                     if(StringUtils.isNotBlank(o[3].toString())) {

@@ -756,7 +756,7 @@ public class TestCase implements Serializable {
 				workflowContextParameterMap.entrySet(), maxLen) : null);
 		builder.append("\nsequence=");
 		builder.append(sequence);
-		builder.append("\nfilesToUpload=");
+		builder.append("\nmultipartContent=");
 		builder.append(multipartContent != null ? toString(multipartContent, maxLen)
 				: null);
 		builder.append("\noutFileName=");

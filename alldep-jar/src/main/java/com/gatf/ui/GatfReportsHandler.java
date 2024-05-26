@@ -86,7 +86,7 @@ public class GatfReportsHandler extends HttpHandler {
 				String type = request.getParameter("type");
 				if(StringUtils.isNotBlank(action) && action.equals("paths") && StringUtils.isNotBlank(type)) {
 					Map<String, Object> out = new HashMap<>();
-					out.put("paths", ReportHandler.getPaths(type));
+					ReportHandler.updatePaths(type, out);
 					String text = WorkflowContextHandler.OM.writeValueAsString(out);
 			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 			        response.setContentLength(text.getBytes("UTF-8").length);
@@ -224,7 +224,9 @@ public class GatfReportsHandler extends HttpHandler {
                 TestCase found = new TestCase(origfound);
                 found.setSimulationNumber(index);
                 found.setSourcefileName(testcaseFileName);
-                found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+                if(StringUtils.isBlank(found.getBaseUrl())) {
+                	found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+                }
                 found.setLogicalValidations(null);
                 found.setExecuteOnCondition(null);
                 found.setPreWaitMs(0L);
@@ -664,7 +666,7 @@ public class GatfReportsHandler extends HttpHandler {
     	                    out.put("s", true);
     	                    out.put("p", dbgSession.getPrevLine());
     	                    out.put("n", dbgSession.getNextLine());
-    	                    out.put("paths", ReportHandler.getPaths("sel"));
+    	                    ReportHandler.updatePaths("sel", out);
     	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
@@ -672,7 +674,7 @@ public class GatfReportsHandler extends HttpHandler {
                     	executorMojo.doSeleniumTest(gatfConfig, null);
                     	String cont = "Please check Reports section for the selenium test results";
 	                    out.put("msg", cont);
-	                    out.put("paths", ReportHandler.getPaths("sel"));
+	                    ReportHandler.updatePaths("sel", out);
 	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
                         return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     }
@@ -703,7 +705,9 @@ public class GatfReportsHandler extends HttpHandler {
                     TestCase found = new TestCase(origfound);
                     found.setSimulationNumber(0);
                     found.setSourcefileName(testcaseFileName);
-                    found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+                    if(StringUtils.isBlank(found.getBaseUrl())) {
+                    	found.setBaseUrl(context.getGatfExecutorConfig().getBaseUrl());
+                    }
                     found.setLogicalValidations(null);
                     found.setExecuteOnCondition(null);
                     
@@ -797,7 +801,7 @@ public class GatfReportsHandler extends HttpHandler {
                 
                 TestCaseReport report = reports.get(0);
                 ReportHandler.populateRequestResponseHeaders(report);
-                report.setPaths(ReportHandler.getPaths("api"));
+                report.setPaths(ReportHandler.getRDirs("api"));
                 byte[] configJson = WorkflowContextHandler.OM.writeValueAsBytes(report);
                 return new Object[]{HttpStatus.OK_200, configJson, MediaType.APPLICATION_JSON, report};
             }

@@ -331,8 +331,12 @@ public class TestCaseExecutorUtil {
 							turl += "?" + authParams[0] + "=" + userVal;
 						}
 					}
-				} else {
+				} else if(authParams[1].equals("postparam")) {
 					content = authParams[0] + "=" + userVal + "&";
+				} else if(authParams[1].equals("content")) {
+					String tcon = testCase.getAcontent();
+					tcon = tcon.replaceAll("\\{"+authParams[0]+"\\}", userVal);
+					content = tcon;
 				}
 				
 				if(authParams[3].equals("header")) {
@@ -349,11 +353,15 @@ public class TestCaseExecutorUtil {
 							turl += "?" + authParams[2] + "=" + passwordVal;
 						}
 					}
-				} else {
-					content += authParams[0] + "=" + passwordVal + "&";
-				}
+				} else if(authParams[3].equals("postparam")) {
+					content += authParams[2] + "=" + passwordVal + "&";
+				} else if(authParams[1].equals("content")) {
+					String tcon = testCase.getAcontent();
+					tcon = tcon.replaceAll("\\{"+authParams[2]+"\\}", passwordVal);
+					content = tcon;
+				} 
 				
-				testCase.setContent(content);
+				testCase.setAcontent(content);
 				if(StringUtils.isNotBlank(content)) {
 					body = RequestBody.create(content, null);
 				}

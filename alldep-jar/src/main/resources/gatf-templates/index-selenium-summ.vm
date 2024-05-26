@@ -92,9 +92,15 @@
 	</head>
 
 	<body>
+		<div id="ret_links">
+			<table class="table table-striped table-bordered table-hover" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word; ">
+				<tbody><tr></tr></tbody>
+			</table>
+		</div>
 		<div id="wrapper">		 
 			<div id="page-wrapper">
-				<br/><br/>
+				<br/>
+				<br/>
 				<div class="row">
 					<div class="col-lg-2 text-center">Time <span class="badge" id="t_time"></span></div>
 					<div class="col-lg-2 text-center">TOTAL <span class="badge progress-bar-info filter" data-filter="total" id="t_count"></span></div>
@@ -207,8 +213,10 @@
 		<link href="../css/prettify.css" rel="stylesheet">
 		<script type="text/javascript" src="../js/diff_match_patch.js"></script>
         <script type="text/javascript" src="../js/jss.min.js"></script>
+        <script type="text/javascript" src="../${sessionId}.js"></script>
 		
 		<script>
+			var attempt_ = ${attempt};
 			function rgb2hex(ele){
 				rgb = $(ele).css('background-color').match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
 				return ("#" +
@@ -256,6 +264,30 @@
 				initReport(mainnode);
 				if(localStorage.getItem("theme")) {
 					darkMode(localStorage.getItem("theme"));
+				}
+				postInit();
+				
+				function postInit() {
+					if(sessInfo_ && sessInfo_.length>0) {
+						let htm__ = '';
+						for(const a of sessInfo_) {
+							let styl_ = '';
+							if(a[2]+1==attempt_) styl_ = 'style="background-color:#ccc !important;"';
+							htm__ += `<td ${styl_}><div><a href="/reports/${a[1]}/selenium-index.html">${a[0]}</a>&nbsp;&nbsp;<span class="badge progress-bar-danger">${a[3]}</span></div>
+							<div>&nbsp;</div><table class="in_table hidden"><thead><tr><td>File</td><td>Failed</td></tr></thead><tbody>`;
+							for(const b of Object.keys(a[4])) {
+								htm__ += '<tr><td colspan="2">Run - '+b+'</td></tr>';
+								for(const b1 of Object.keys(a[4][b])) {
+									htm__ += '<tr><td>'+b1+'</td><td>'+a[4][b][b1][0]+'/'+a[4][b][b1][2]+'</td></tr>';
+								}
+							}
+							htm__ += '</tbody></table>';
+						}
+						$('#ret_links').find('table>tbody>tr').html(htm__);
+						$('#ret_links').find('.progress-bar-danger').on('click', function() {
+							$(this).parent().parent().find('table').toggleClass('hidden');
+						});
+					}
 				}
 				
 				function initReport(mainnode) {

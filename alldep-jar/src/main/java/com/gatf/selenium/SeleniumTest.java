@@ -3435,8 +3435,7 @@ public abstract class SeleniumTest {
 			float windowDPR = 1.75f;
 			if (webDriver instanceof JavascriptExecutor) {
 				Object output = ((JavascriptExecutor) webDriver).executeScript("return window.devicePixelRatio");
-				String value = String.valueOf(output);
-				windowDPR = Float.parseFloat(value);
+				windowDPR = Float.parseFloat(String.valueOf(output));
 			}
 			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(windowDPR), 100)).takeScreenshot(webDriver);
 			BufferedImage originalImage = fpScreenshot.getImage();
@@ -3456,8 +3455,7 @@ public abstract class SeleniumTest {
 			float windowDPR = 1.75f;
 			if (webDriver instanceof JavascriptExecutor) {
 				Object output = ((JavascriptExecutor) webDriver).executeScript("return window.devicePixelRatio");
-				String value = String.valueOf(output);
-				windowDPR = Float.parseFloat(value);
+				windowDPR = Float.parseFloat(String.valueOf(output));
 			}
 			Screenshot fpScreenshot = new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(windowDPR), 100)).takeScreenshot(webDriver, element);
 			BufferedImage originalImage = fpScreenshot.getImage();

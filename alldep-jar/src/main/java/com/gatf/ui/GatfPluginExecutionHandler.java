@@ -110,7 +110,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					}
 					
 					out.put("error", "Execution completed, check Reports Section");
-					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					ReportHandler.updatePaths(pluginType.startsWith("executor-api")?"api":"sel", out);
 					String text = WorkflowContextHandler.OM.writeValueAsString(out);
         			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.getBytes("UTF-8").length);
@@ -237,7 +237,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					}
 					
 					out.put("error", "Execution completed, check Reports Section");
-					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					ReportHandler.updatePaths(pluginType.startsWith("executor-api")?"api":"sel", out);
 					byte[] text = WorkflowContextHandler.OM.writeValueAsBytes(out);
 					if(leftOver.get()!=null) {
 						text = new String(leftOver.get(), "UTF-8").replaceFirst("Execution already in progress..", "Execution completed, check Reports Section").getBytes("UTF-8");
@@ -279,7 +279,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 					}
 					
 					out.put("error", "Execution completed, check Reports Section");
-					out.put("paths", ReportHandler.getPaths(pluginType.startsWith("executor-api")?"api":"sel"));
+					ReportHandler.updatePaths(pluginType.startsWith("executor-api")?"api":"sel", out);
 					String text = WorkflowContextHandler.OM.writeValueAsString(out);
         			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(text.getBytes("UTF-8").length);

@@ -526,8 +526,8 @@ public class AcceptanceTestContext {
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
 					if(flag)
 					{
-						List<String> paths1 = ReportHandler.getPaths("api");
-						List<String> paths2 = ReportHandler.getPaths("sel");
+						List<String> paths1 = ReportHandler.getRDirs("api");
+						List<String> paths2 = ReportHandler.getRDirs("sel");
 						if(paths1.size()==0 && paths2.size()==0) {
 							removeFolder(resource);
 							File nresource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
@@ -554,8 +554,8 @@ public class AcceptanceTestContext {
 				{
 					File basePath = new File(System.getProperty("user.dir"));
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
-					List<String> paths1 = ReportHandler.getPaths("api");
-					List<String> paths2 = ReportHandler.getPaths("sel");
+					List<String> paths1 = ReportHandler.getRDirs("api");
+					List<String> paths2 = ReportHandler.getRDirs("sel");
 					if(paths1.size()==0 && paths2.size()==0) {
 						if(flag)
 						{
@@ -589,8 +589,8 @@ public class AcceptanceTestContext {
 		{
 			File basePath = new File(System.getProperty("user.dir"));
 			File resource = new File(basePath, "out");
-			List<String> paths1 = ReportHandler.getPaths("api");
-			List<String> paths2 = ReportHandler.getPaths("sel");
+			List<String> paths1 = ReportHandler.getRDirs("api");
+			List<String> paths2 = ReportHandler.getRDirs("sel");
 			if(paths1.size()==0 || paths2.size()==0) {
 				if(flag)
 				{

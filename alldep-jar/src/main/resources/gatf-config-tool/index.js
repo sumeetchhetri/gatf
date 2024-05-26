@@ -242,7 +242,7 @@ var schema = {
         "sequence": {
             "type": "integer"
         },
-        "filesToUpload": {
+        "multipartContent": {
             "type": "array",
             "items": {
                 "nolabel": true,
@@ -954,6 +954,7 @@ var execFiles = new Array();
 var errdFilesReport;
 
 function executionHandler(method, shwPp, pluginType) {
+	if($('#lftpanel').find('.blockUI').length==0) $.blockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
     var cdt = '';
     var cdttype = '';
     if (method == 'PUT' && pluginType.startsWith('executor')) {
@@ -986,9 +987,9 @@ function executionHandler(method, shwPp, pluginType) {
 							//errdFilesReport.add([v[1], v[2]]);
 						}
 						$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
+						$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 					} else {
 						$('[tcfname="'+data.error[2]+'"]').trigger('click');
-						if($('.blockUI').length==0) $.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
 						setTimeout(function() {
 							function makeMarker() {
 								var marker = document.createElement("div");
@@ -997,7 +998,7 @@ function executionHandler(method, shwPp, pluginType) {
 								return marker;
 							}
 							ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-							$.unblockUI();
+							$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 						}, 2000);
 					}
 					return;
@@ -1012,6 +1013,7 @@ function executionHandler(method, shwPp, pluginType) {
                         saveAsPngFile();
                     });
                     if(seltestfailed) $("#image_status").attr("src", "resources/red.png");
+					$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
                 } else {
                     setTimeout(function(pluginType) {
                         return function() {
@@ -1123,9 +1125,9 @@ function executionHandler(method, shwPp, pluginType) {
 						//errdFilesReport.add([v[1], v[2]]);
 					}
 					$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
+					$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 				} else {
 					$('[tcfname="'+data.error[2]+'"]').trigger('click');
-					if($('.blockUI').length==0) $.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
 					setTimeout(function() {
 						function makeMarker() {
 							var marker = document.createElement("div");
@@ -1134,7 +1136,7 @@ function executionHandler(method, shwPp, pluginType) {
 							return marker;
 						}
 						ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker());
-						$.unblockUI();
+						$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 					}, 2000);
 				}
 				return;
@@ -1150,6 +1152,7 @@ function executionHandler(method, shwPp, pluginType) {
                         saveAsPngFile();
                     });
                     if(seltestfailed) $("#image_status").attr("src", "resources/red.png");
+					$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
                 } else {
                     setTimeout(function(pluginType) {
                         return function() {
@@ -1469,25 +1472,45 @@ function addTcFileHTml(foldername, tcfiles) {
 	initEvents($('#ExampleBeanServiceImpl_form'));
 	
     $('#heading_main').html(`<span>Manage Tests</span><a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'all\')">All</a>
-    	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'sel\')">UI</a>
-    	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'api\')">API</a>`);
+    	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'sel\')">sel</a>
+    	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'api\')">api</a>
+    	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'props\')">props</a>`);
 }
 
 function filterTestsByType(type) {
-	let tcfiles;
+	/*let tcfiles;
 	if(type=='sel') {
 		tcfiles = [];
 		for(const tgf of alltestcasefiles) {
-			if(tgf[0].toLowerCase().endsWith(".sel") || tgf[0].toLowerCase().endsWith(".props") || tgf[0].toLowerCase().endsWith(".csv") || tgf[0].toLowerCase().endsWith(".json")) tcfiles.push(tgf);
+			if(tgf[0].toLowerCase().endsWith(".sel")) tcfiles.push(tgf);
 		}
-	}
-	else if(type=='api') {
+	} else if(type=='api') {
 		tcfiles = [];
 		for(const tgf of alltestcasefiles) {
 			if(tgf[0].toLowerCase().endsWith(".xml") || tgf[0].toLowerCase().endsWith(".csv") || tgf[0].toLowerCase().endsWith(".json")) tcfiles.push(tgf);
 		}
+	} else if(type=='props') {
+		tcfiles = [];
+		for(const tgf of alltestcasefiles) {
+			if(tgf[0].toLowerCase().endsWith(".props")) tcfiles.push(tgf);
+		}
 	}
-	addTcFileHTml(undefined, tcfiles);
+	addTcFileHTml(undefined, tcfiles);*/
+	$('#ExampleBeanServiceImpl_form').children('table').children('tbody').children('tr').each(function() {
+		const tgf = $(this).find('.asideLink1').text();
+		if(type=='sel') {
+			if(!tgf.toLowerCase().endsWith(".sel")) $(this).addClass('hidden');
+			else $(this).removeClass('hidden');
+		} else if(type=='api') {
+			if(!tgf.toLowerCase().endsWith(".xml") && !tgf.toLowerCase().endsWith(".csv") && !tgf.toLowerCase().endsWith(".json")) $(this).addClass('hidden');
+			else $(this).removeClass('hidden');
+		} else if(type=='props') {
+			if(!tgf.toLowerCase().endsWith(".props")) $(this).addClass('hidden');
+			else $(this).removeClass('hidden');
+		} else {
+			$(this).removeClass('hidden');
+		}
+	});
 }
 
 function manageRenameFile(tcid) {
@@ -2484,7 +2507,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             if (tcf.toLowerCase().endsWith(".sel")) {
 				errdFilesReport = {};
                 $("#myModalB").html('Test Report for script ' + tcf);
-                $("#myModalB").html('<iframe src="/reports/'+data.paths[0]+'/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
+                $("#myModalB").html('<iframe src="/reports/'+Object.values(data.paths[0])[0][0].left+'/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
                 $("#myModal").modal();
                 return;
             }
@@ -2541,7 +2564,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
 					//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
-				let path = data.paths[0];
+				let path = Object.values(data.paths[0])[0][0].left;
 				$.get('/reports/'+path+'/selenium-index.html', function() {
 					$("#myModalB").html('Test Report for script ' + tcf);
 	                $("#myModalB").html('<iframe src="/reports/'+path+'/selenium-index.html" style="width:100%;height:500px;border:none;"></iframe>');
@@ -3681,7 +3704,7 @@ function getReports() {
 	errdFilesReport = {};
     ajaxCall(true, "GET", "reports?action=paths&type=api", "", "", {}, function(data) {
 		if(data && data['paths'] && data.paths.length>0)
-			document.location = "/reports/"+data.paths[0]+"/index.html";
+			document.location = "/reports/"+Object.values(data.paths[0])[0][0].left+"/index.html";
 		else
 			alert("No Reports found...");
     }, function(data) {
@@ -3695,7 +3718,7 @@ function getSeleniumReports() {
 	errdFilesReport = {};
     ajaxCall(true, "GET", "reports?action=paths&type=sel", "", "", {}, function(data) {
 		if(data && data['paths'] && data.paths.length>0)
-			document.location = "/reports/"+data.paths[0]+"/selenium-index.html";
+			document.location = "/reports/"+Object.values(data.paths[0])[0][0].left+"/selenium-index.html";
 		else
 			alert("No Reports found...");
     }, function(data) {
@@ -3743,7 +3766,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
 	if(blockUi) blkcount++;
 	console.log(blkcount);
     if (blockUi) {
-	    $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
+	    if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
 	}
     $.ajax({
         headers: vheaders,

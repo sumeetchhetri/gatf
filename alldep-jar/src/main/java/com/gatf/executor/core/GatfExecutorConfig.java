@@ -138,7 +138,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private Integer seleniumScriptRetryCount = 0;
 	
-	private String sessionId;
+	private Long sessionId;
 	
 	private SeleniumDriverConfig[] seleniumDriverConfigs = new SeleniumDriverConfig[] {};
 	
@@ -572,11 +572,11 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.seleniumScriptRetryCount = seleniumScriptRetryCount;
 	}
 
-	public String getSessionId() {
+	public Long getSessionId() {
 		return sessionId;
 	}
 
-	public void setSessionId(String sessionId) {
+	public void setSessionId(Long sessionId) {
 		this.sessionId = sessionId;
 	}
 
@@ -748,8 +748,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 			Assert.assertTrue("Invalid auth password param name mode specified, should be one of (header,queryparam,header)", 
 					getAuthParamDetails()[3].equalsIgnoreCase("queryparam") ||
 					getAuthParamDetails()[3].equalsIgnoreCase("postparam") ||
-					getAuthParamDetails()[3].equalsIgnoreCase("header"));
-			
+					getAuthParamDetails()[3].equalsIgnoreCase("header") ||
+					getAuthParamDetails()[3].equalsIgnoreCase("content"));
 		}
 		
 		if(isSoapAuthEnabled()) {

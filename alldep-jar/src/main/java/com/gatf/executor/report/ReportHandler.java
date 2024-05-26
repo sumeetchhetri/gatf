@@ -33,9 +33,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -105,20 +108,87 @@ public class ReportHandler {
 	
 	public static String MY_URL = "http://localhost:9080";
 	
-	private static final Map<String, String> runs = Collections.synchronizedMap(new LinkedHashMap<>());
+	private static final Map<String, Map<Long, Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>>>> allRuns = new ConcurrentHashMap<>();
 	
-	public static void pushPath(String path, String type) {
-		runs.put(path, type);
+	static {
+		allRuns.put("api", new ConcurrentHashMap<>());
+		allRuns.put("sel", new ConcurrentHashMap<>());
 	}
 	
-	public static List<String> getPaths(String type) {
-		List<String> out = new ArrayList<>();
-		for (String path : runs.keySet()) {
-			if(type.equals(runs.get(path))) {
-				out.add(path);
+	public static void pushPath(Long sessionId, int attempt, String path, String type) {
+		allRuns.get(type).putIfAbsent(sessionId, new ConcurrentHashMap<>());
+		allRuns.get(type).get(sessionId).put(path, new ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>(attempt, new AtomicInteger(), new ConcurrentHashMap<>()));
+	}
+	
+	public static void addPathFailures(Long sessionId, String path, String type, int failures, Map<String, Map<String, Integer[]>> sinfos) {
+		allRuns.get(type).get(sessionId).get(path).getMiddle().addAndGet(failures);
+		allRuns.get(type).get(sessionId).get(path).getRight().putAll(sinfos);
+		for(String key: sinfos.keySet()) {
+			if(allRuns.get(type).get(sessionId).get(path).getRight().containsKey(key)) {
+				allRuns.get(type).get(sessionId).get(path).getRight().get(key).putAll(sinfos.get(key));
+			} else {
+				allRuns.get(type).get(sessionId).get(path).getRight().put(key, sinfos.get(key));
 			}
 		}
-		Collections.reverse(out);
+	}
+	
+	public static void updatePaths(String type, Map<String, Object> out) {
+		List<ImmutablePair<Long, List<ImmutableTriple<String, Integer, Integer>>>> spaths = new ArrayList<>();
+		Map<Long, Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>>> sessions = allRuns.get(type);
+		List<Long> sessIds = new ArrayList<>(sessions.keySet());
+		Collections.sort(sessIds);
+		Collections.reverse(sessIds);
+		for(Long sid : sessIds) {
+			ImmutablePair<Long, List<ImmutableTriple<String, Integer, Integer>>> spth = new ImmutablePair<>(sid, new ArrayList<>());
+			if(sessions.get(sid).size()==1) {
+				Map.Entry<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>> e = sessions.get(sid).entrySet().iterator().next();
+				spth.getRight().add(new ImmutableTriple<String, Integer, Integer>(e.getKey(), e.getValue().getLeft(), e.getValue().getMiddle().get()));
+			} else {
+				Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>> sortedMap = sessions.get(sid).entrySet().stream().sorted(Comparator.comparingInt(a -> a.getValue().getMiddle().get()))
+						.collect(Collectors.toMap(Entry::getKey, Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+				sortedMap.entrySet().stream().forEach(e -> {
+					spth.getRight().add(new ImmutableTriple<String, Integer, Integer>(e.getKey(), e.getValue().getLeft(), e.getValue().getMiddle().get()));
+				});
+			}
+			spaths.add(spth);
+		}
+		out.put("paths", spaths);
+	}
+	
+	public static List<Object[]> getSessPaths(String type, Long sessionId) {
+		List<Object[]> out = new ArrayList<>();
+		Map<Long, Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>>> sessions = allRuns.get(type);
+		List<Long> sessIds = new ArrayList<>(sessions.keySet());
+		if(sessIds.contains(sessionId)) {
+			if(sessions.get(sessionId).size()==1) {
+				Map.Entry<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>> e = sessions.get(sessionId).entrySet().iterator().next();
+				out.add(new Object[] {"First Attempt", e.getKey(), e.getValue().getLeft(), e.getValue().getMiddle().get(), e.getValue().getRight()});
+			} else {
+				Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>> sortedMap = sessions.get(sessionId).entrySet().stream().sorted(Comparator.comparingInt(a -> a.getValue().getLeft()))
+						.collect(Collectors.toMap(Entry::getKey, Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+				sortedMap.entrySet().stream().forEach(e -> {
+					out.add(new Object[] {(out.size()==0?"First Attempt":"Retry Attempt - " + (e.getValue().getLeft())) , e.getKey(), e.getValue().getLeft(), e.getValue().getMiddle().get(), e.getValue().getRight()});
+				});
+			}
+		}
+		return out;
+	}
+	
+	public static List<String> getRDirs(String type) {
+		List<String> out = new ArrayList<>();
+		Map<Long, Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>>> sessions = allRuns.get(type);
+		List<Long> sessIds = new ArrayList<>(sessions.keySet());
+		Collections.sort(sessIds);
+		Collections.reverse(sessIds);
+		for(Long sid : sessIds) {
+			if(sessions.get(sid).size()==1) {
+				out.add(sessions.get(sid).keySet().iterator().next());
+			} else {
+				Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>> sortedMap = sessions.get(sid).entrySet().stream().sorted(Comparator.comparingInt(a -> a.getValue().getMiddle().get()))
+						.collect(Collectors.toMap(Entry::getKey, Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+				sortedMap.keySet().stream().forEach(e -> out.add(e));
+			}
+		}
 		return out;
 	}
 	
@@ -1133,12 +1203,16 @@ public class ReportHandler {
 		}
 	}
 	
-	public static void doSeleniumSummaryTestReport(String path, Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
+	public static void doSeleniumSummaryTestReport(Long sessionId, Integer attempt, String path, Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap, 
+			Map<String, List<Map<String, Map<String, Integer[]>>>> sinfoMap, AcceptanceTestContext acontext, int loadTestRunNum, String runPrefix)
     {
         VelocityContext context = new VelocityContext();
         try
         {
             context.put("testsMap", summLstMap);
+            context.put("sessionId", sessionId);
+            context.put("attempt", attempt);
+            context.put("sinfoMap", sinfoMap);
             
             File resource = acontext.getOutDir();
             //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
@@ -1167,12 +1241,12 @@ public class ReportHandler {
         }
     }
 	
-	public static void doSeleniumFinalTestReport(String path, Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext, GatfExecutorConfig config, int failed)
+	public static void doSeleniumFinalTestReport(Long sessionId, Integer attempt, String path, Map<String, Map<Integer, String>> indexes, AcceptanceTestContext acontext, GatfExecutorConfig config, int failed)
     {
         VelocityContext context = new VelocityContext();
         try
         {
-        	int prc = 0;
+        	/*int prc = 0;
         	if(acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount()>0) {
         		prc = acontext.getGatfExecutorConfig().getSeleniumScriptRetryCount() + acontext.getGatfExecutorConfig().getRetryCounter();
         	} else if(acontext.getGatfExecutorConfig().getRetryCounter()>0) {
@@ -1185,11 +1259,14 @@ public class ReportHandler {
 	        	for (int rc=1;rc<prc;rc++) {
 	        		retries.put(rc, config.getSessionId()+"-"+rc);
 				}
-        	}
+        	}*/
         	
             context.put("indexes", indexes);
-            context.put("retries", retries);
-            context.put("at1", config.getSessionId());
+            context.put("sessionId", sessionId);
+            context.put("attempt", attempt);
+            //List<Object[]> out = getSessPaths("sel", sessionId);
+            //context.put("retries", out);
+            //context.put("at1", config.getSessionId());
             context.put("dt", new DateTime().toString("dd/MM/yyyy hh:mm:ss"));
             File resource = acontext.getOutDir();
             
@@ -1211,6 +1288,19 @@ public class ReportHandler {
             e.printStackTrace();
         }
     }
+	
+	public static void writeSessInfo(Long sessionId, AcceptanceTestContext acontext) {
+		File resource = acontext.getOutDir();
+		try {
+			List<Object[]> out = getSessPaths("sel", sessionId);
+			String filenm = resource.getAbsolutePath() + File.separator + sessionId + ".js";
+            BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
+            fwriter.write("var sessInfo_ = " + WorkflowContextHandler.OM.writeValueAsString(out) + ";\n");
+            fwriter.close();
+		} catch (Exception e) {
+		}
+		
+	}
 	
 	/*private static void unzipGatfResources(InputStream resourcesIS, String path) throws IOException {
 		File gctzip = File.createTempFile("gatf-resources-"+UUID.randomUUID(), ".zip");
