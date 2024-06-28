@@ -20,6 +20,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
+import java.nio.charset.Charset;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
@@ -29,9 +30,6 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -52,6 +50,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.Assert;
 import org.w3c.dom.Document;
 
@@ -73,12 +73,16 @@ import com.gatf.executor.validator.XMLResponseValidator;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.ConnectionPool;
+import okhttp3.Headers;
 import okhttp3.MultipartBody;
 import okhttp3.MultipartBody.Part;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
+import okhttp3.logging.HttpLoggingInterceptor;
+import okhttp3.logging.HttpLoggingInterceptor.Level;
+import okio.Buffer;
 
 /**
  * @author Sumeet Chhetri
@@ -148,6 +152,11 @@ public class TestCaseExecutorUtil {
 				.followRedirects(true).followSslRedirects(true)
 				.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
 		
+		if(context.getGatfExecutorConfig().isDebugEnabled()) {
+			builder.addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
+			//builder.addInterceptor(new CurlLoggingInterceptor());
+		}
+		
 		trustAllCertificates(builder);
 		
 		client = builder.build();
@@ -160,6 +169,14 @@ public class TestCaseExecutorUtil {
 	{
 		TestCaseExecutorUtil util = new TestCaseExecutorUtil();
 		OkHttpClient.Builder builder = new OkHttpClient.Builder();
+		builder.connectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
+			.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
+			.followRedirects(true).followSslRedirects(true)
+			.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
+		if(context.getGatfExecutorConfig().isDebugEnabled()) {
+			builder.addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
+			//builder.addInterceptor(new CurlLoggingInterceptor());
+		}
 		trustAllCertificates(builder);
 		util.client = builder.build();
 		util.context = context;
@@ -182,7 +199,7 @@ public class TestCaseExecutorUtil {
 	 * @throws Exception
 	 * Handle the request content, handle flows for rest and soap separately...
 	 */
-	private void handleRequestContent(TestCase testCase, Request.Builder builder) throws Exception
+	private void handleRequestContent(TestCase testCase, Request.Builder builder, StringBuilder curlAddPars) throws Exception
 	{
 		RequestBody body = null;
 		//Set the request body first
@@ -229,6 +246,7 @@ public class TestCaseExecutorUtil {
 							if(!testCase.isSoapBase())
 							{
 								mb.addPart(Part.createFormData(controlname, fileNmOrTxt, RequestBody.create(file, null)));
+								curlAddPars.append(String.format("-F \"%s=@%s\" ", controlname, file.getAbsolutePath()));
 							}
 							else
 							{
@@ -242,6 +260,7 @@ public class TestCaseExecutorUtil {
 								}
 								testCase.getSoapParameterValues().put(controlname, fileContents);
 							}
+							
 						} catch (Exception e) {
 							logger.error("No file found for file upload...skipping value - " + filedet);
 							continue;
@@ -250,6 +269,7 @@ public class TestCaseExecutorUtil {
 						if(!testCase.isSoapBase())
 						{
 							mb.addPart(Part.createFormData(controlname, fileNmOrTxt));
+							curlAddPars.append(String.format("-F \"%s='%s'\" ", controlname, fileNmOrTxt.replace("\n", "\\n").replace("'", "\\'")));
 						}
 						else
 						{
@@ -278,6 +298,7 @@ public class TestCaseExecutorUtil {
 			else
 			{
 				content = FileUtils.readFileToString(file, "UTF-8");
+				curlAddPars.append(String.format("--data-raw \"%s=@%s\" ", file.getAbsolutePath()));
 			}
 			body = RequestBody.create(content, null);
 		}
@@ -337,6 +358,7 @@ public class TestCaseExecutorUtil {
 					String tcon = testCase.getAcontent();
 					tcon = tcon.replaceAll("\\{"+authParams[0]+"\\}", userVal);
 					content = tcon;
+					testCase.setAcontent(content);
 				}
 				
 				if(authParams[3].equals("header")) {
@@ -359,6 +381,7 @@ public class TestCaseExecutorUtil {
 					String tcon = testCase.getAcontent();
 					tcon = tcon.replaceAll("\\{"+authParams[2]+"\\}", passwordVal);
 					content = tcon;
+					testCase.setAcontent(content);
 				} 
 				
 				testCase.setAcontent(content);
@@ -509,6 +532,47 @@ public class TestCaseExecutorUtil {
 		builder.method(testCase.getMethod().toUpperCase(), body);
 	}
 	
+	private String curlize(Request request, String curlOptions, boolean isLog) throws IOException {
+		String curlCmd = "curl";
+        curlCmd += " -X " + request.method();
+        if (curlOptions != null) {
+            curlCmd += " " + curlOptions;
+        }
+
+        boolean compressed = false;
+        Headers headers = request.headers();
+        for (int i = 0, count = headers.size(); i < count; i++) {
+            String name = headers.name(i);
+            String value = headers.value(i);
+            if ("Accept-Encoding".equalsIgnoreCase(name) && "gzip".equalsIgnoreCase(value)) {
+                compressed = true;
+            }
+            curlCmd += " -H " + "\"" + name + ": " + value + "\"";
+        }
+
+        RequestBody requestBody = request.body();
+        if (requestBody != null) {
+            Buffer buffer = new Buffer();
+            requestBody.writeTo(buffer);
+            Charset charset = Charset.forName("UTF-8");
+            okhttp3.MediaType contentType = requestBody.contentType();
+            if (contentType != null) {
+                charset = contentType.charset(charset);
+            }
+            // try to keep to a single line and use a subshell to preserve any line breaks
+            curlCmd += " --data $'" + buffer.readString(charset).replace("\n", "\\n").replace("'", "\\'") + "'";
+        }
+
+        curlCmd += ((compressed) ? " --compressed " : " ") + request.url();
+
+        if(isLog) {
+	        logger.info("╭--- cURL (" + request.url() + ")");
+	        logger.info(curlCmd);
+	        logger.info("╰--- (copy and paste the above line to a terminal)");
+        }
+        return curlCmd;
+	}
+	
 	public CompletableFuture<TestCaseReport> executeTestCase(TestCase testCase, TestCaseReport testCaseReport)
 	{
 		long start = System.currentTimeMillis();
@@ -535,14 +599,20 @@ public class TestCaseExecutorUtil {
 				}
 			}
 			
-			handleRequestContent(testCase, builder);
-			builder.header("Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
+			StringBuilder curlAddPars = new StringBuilder();
+			handleRequestContent(testCase, builder, curlAddPars);
 			
+			boolean hasReferer = false;
 			if(testCase.getHeaders()!=null)
 			{
 				for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
 					builder = builder.addHeader(entry.getKey(), entry.getValue());
+					hasReferer |= entry.getKey().equalsIgnoreCase("Referer");
 				}
+			}
+			
+			if(!hasReferer) {builder.setTags$okhttp(null);
+				builder.header("Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
 			}
 			
 			testCaseReport.setTestCase(testCase);
@@ -551,6 +621,9 @@ public class TestCaseExecutorUtil {
 			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks() && testCase.getPreWaitMs()!=null && testCase.getPreWaitMs()>0) {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
+			
+			String curlCmd = curlize(request, curlAddPars.toString(), (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
+			testCaseReport.setCurlCmd(curlCmd);
 			
 			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().equals("none")) {
 				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
@@ -646,81 +719,85 @@ public class TestCaseExecutorUtil {
 
 		@Override
 		public void onResponse(Call call, Response response) throws IOException {
-			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-			
-			if(testCase.getExpectedResContentType()!=null)
-			{
-				if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty()
-						&& response.headers().values(HttpHeaders.CONTENT_TYPE)!=null 
-						&& response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)
-							.indexOf(testCase.getExpectedResContentType())!=0)
+			try {
+				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
+				
+				if(testCase.getExpectedResContentType()!=null)
 				{
-					testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
-							+"] does not match actual content type ["+response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)+"]");
-					testCaseReport.setStatus(TestStatus.Failed.status);
-					testCaseReport.setFailureReason(TestFailureReason.InvalidContentType.status);
-					if(testCase.isAbortOnInvalidContentType())
+					if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty()
+							&& response.headers().values(HttpHeaders.CONTENT_TYPE)!=null && response.headers().values(HttpHeaders.CONTENT_TYPE).size()>0
+							&& response.headers().values(HttpHeaders.CONTENT_TYPE).get(0).indexOf(testCase.getExpectedResContentType())!=0)
 					{
-						response.body().close();
-						future.complete(testCaseReport);
-						return;
+						testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
+								+"] does not match actual content type ["+response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)+"]");
+						testCaseReport.setStatus(TestStatus.Failed.status);
+						testCaseReport.setFailureReason(TestFailureReason.InvalidContentType.status);
+						if(testCase.isAbortOnInvalidContentType())
+						{
+							response.body().close();
+							future.complete(testCaseReport);
+							return;
+						}
 					}
 				}
-			}
-			else if(response.headers().values(HttpHeaders.CONTENT_TYPE)!=null)
-			{
-				testCase.setExpectedResContentType(response.headers().values(HttpHeaders.CONTENT_TYPE).get(0));
-			}
-			
-			String contType = testCase.getExpectedResContentType();
-			testCaseReport.setResponseContentType(contType);
-			
-			testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-			if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
-					|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
-					|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
-			{
-				testCaseReport.setResponseContent(response.body().string());
-			}
-			else if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
-			{
-				testCaseReport.setResponseContent(response.body().string());
-			}
-			
-			testCaseReport.setResHeaders(response.headers().toMultimap());
-			if(!testCase.isSoapBase()) {
-				if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
+				else if(response.headers().values(HttpHeaders.CONTENT_TYPE)!=null && response.headers().values(HttpHeaders.CONTENT_TYPE).size()>0)
 				{
-					jsonResponseValidator.validate(response, testCase, testCaseReport, context);
+					testCase.setExpectedResContentType(response.headers().values(HttpHeaders.CONTENT_TYPE).get(0));
 				}
-				else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
-						|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
+				
+				String contType = testCase.getExpectedResContentType();
+				testCaseReport.setResponseContentType(contType);
+				
+				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
+				if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
+						|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
+						|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
 				{
-					xmlResponseValidator.validate(response, testCase, testCaseReport, context);
+					testCaseReport.setResponseContent(response.body().string());
 				}
-				else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
-						|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
+				else if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
 				{
-					textResponseValidator.validate(response, testCase, testCaseReport, context);
+					testCaseReport.setResponseContent(response.body().string());
 				}
-				else
-				{
-					noContentResponseValidator.validate(response, testCase, testCaseReport, context);
-					testCaseReport.setStatus(TestStatus.Success.status);
+				
+				testCaseReport.setResHeaders(response.headers().toMultimap());
+				if(!testCase.isSoapBase()) {
+					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
+					{
+						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
+					}
+					else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
+							|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
+					{
+						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
+					}
+					else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
+							|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
+					{
+						textResponseValidator.validate(response, testCase, testCaseReport, context);
+					}
+					else
+					{
+						noContentResponseValidator.validate(response, testCase, testCaseReport, context);
+						testCaseReport.setStatus(TestStatus.Success.status);
+					}
+				} else {
+					soapResponseValidator.validate(response, testCase, testCaseReport, context);
 				}
-			} else {
-				soapResponseValidator.validate(response, testCase, testCaseReport, context);
+				
+				if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
+						&& testCase.getPostWaitMs()>0) {
+					try {
+						Thread.sleep(testCase.getPostWaitMs());
+					} catch (InterruptedException e1) {
+					}
+				}
+				
+				future.complete(testCaseReport);
+				
+			} catch (Throwable ex) {
+				future.completeExceptionally(ex);
 			}
-			
-			if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
-					&& testCase.getPostWaitMs()>0) {
-				try {
-					Thread.sleep(testCase.getPostWaitMs());
-				} catch (InterruptedException e1) {
-				}
-			}
-			
-			future.complete(testCaseReport);
 		}
 		
 		public static boolean isMatchesContentType(MediaType md, String contType) {

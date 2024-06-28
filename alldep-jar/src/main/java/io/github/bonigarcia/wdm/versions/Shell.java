@@ -78,9 +78,8 @@ public class Shell {
         	if(!SystemUtils.IS_OS_WINDOWS && command.length==2 && command[0].equals("docker") && command[1].equals("info")) {
         		command = new String[] { "bash", "-c", "export PATH=/usr/local/bin:$PATH && docker info"};
         	}
-        	ProcessBuilder pb = new ProcessBuilder(command);
-            pb.directory(folder).redirectErrorStream();
-            Process process = pb.start();
+            Process process = new ProcessBuilder(command).directory(folder)
+                    .redirectErrorStream(false).start();
             process.waitFor();
             output = IOUtils.toString(process.getInputStream(), UTF_8);
         } catch (Exception e) {

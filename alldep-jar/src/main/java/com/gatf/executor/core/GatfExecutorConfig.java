@@ -274,32 +274,48 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.numConcurrentExecutions = numConcurrentExecutions;
 	}
 
+	private String[] authExtractAuth_ = null;
 	public String[] getAuthExtractAuthParams() {
 		if(authExtractAuth!=null) {
-			return authExtractAuth.split(",");
+			authExtractAuth_ = authExtractAuth.trim().split(",");
+			for (int i=0;i<authExtractAuth_.length;i++) {
+				authExtractAuth_[i] = authExtractAuth_[i].trim();
+			}
 		}
-		return null;
+		return authExtractAuth_;
 	}
 	
+	private String[] serverLogsApiAuthExtractAuth_ = null;
 	public String[] getServerApiAuthExtractAuthParams() {
 		if(serverLogsApiAuthExtractAuth!=null) {
-			return serverLogsApiAuthExtractAuth.split(",");
+			serverLogsApiAuthExtractAuth_ = serverLogsApiAuthExtractAuth.trim().split(",");
+			for (int i=0;i<serverLogsApiAuthExtractAuth_.length;i++) {
+				serverLogsApiAuthExtractAuth_[i] = serverLogsApiAuthExtractAuth_[i].trim();
+			}
 		}
-		return null;
+		return serverLogsApiAuthExtractAuth_;
 	}
 	
+	private String[] authParamsDetails_ = null;
 	public String[] getAuthParamDetails() {
 		if(authParamsDetails!=null) {
-			return authParamsDetails.split(",");
+			authParamsDetails_ = authParamsDetails.trim().split(",");
+			for (int i=0;i<authParamsDetails_.length;i++) {
+				authParamsDetails_[i] = authParamsDetails_[i].trim();
+			}
 		}
-		return null;
+		return authParamsDetails_;
 	}
 	
+	private String[] soapAuthExtractAuth_ = null;
 	public String[] getSoapAuthExtractAuthParams() {
 		if(soapAuthExtractAuth!=null) {
-			return soapAuthExtractAuth.split(",");
+			soapAuthExtractAuth_ = soapAuthExtractAuth.trim().split(",");
+			for (int i=0;i<soapAuthExtractAuth_.length;i++) {
+				soapAuthExtractAuth_[i] = soapAuthExtractAuth_[i].trim();
+			}
 		}
-		return null;
+		return soapAuthExtractAuth_;
 	}
 	
 	public Boolean isEnabled() {
@@ -743,7 +759,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 			Assert.assertTrue("Invalid auth user param name mode specified, should be one of (header,postparam,queryparam)", 
 					getAuthParamDetails()[1].equalsIgnoreCase("header") ||
 					getAuthParamDetails()[1].equalsIgnoreCase("postparam") ||
-					getAuthParamDetails()[1].equalsIgnoreCase("queryparam"));
+					getAuthParamDetails()[1].equalsIgnoreCase("queryparam") ||
+					getAuthParamDetails()[1].equalsIgnoreCase("content"));
 			Assert.assertTrue("Invalid auth password param name", !getAuthParamDetails()[2].isEmpty());
 			Assert.assertTrue("Invalid auth password param name mode specified, should be one of (header,queryparam,header)", 
 					getAuthParamDetails()[3].equalsIgnoreCase("queryparam") ||

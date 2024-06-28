@@ -35,9 +35,14 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.XMLTestCaseFinder;
+import com.gatf.selenium.Command;
+import com.gatf.selenium.Command.GatfSelCodeParseError;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
+import com.gatf.selenium.SeleniumTest.GatfRunTimeErrors;
 
 public class GatfTestCaseHandler extends HttpHandler {
 
@@ -122,6 +127,24 @@ public class GatfTestCaseHandler extends HttpHandler {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
+    		    	try {
+        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
+    					executorMojo.initilaizeContext(gatfConfig, true);
+        		    	Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), true);
+					}  catch (GatfSelCodeParseError e) {
+						List<GatfRunTimeError> allErrors = new ArrayList<>();
+		        		e.printStackTrace();
+		        		if(e.getAllErrors()!=null && e.getAllErrors().size()>0) {
+		        			allErrors.addAll(e.getAllErrors());
+		        		} else {
+		        			allErrors.add(e);
+		        		}
+		        		GatfConfigToolUtil.handleError(new GatfRunTimeErrors(allErrors), response, null);
+		        		return;
+		        	} catch (Exception e) {
+						GatfConfigToolUtil.handleError(e, response, null);
+						return;
+					}
     		    } else {
         		    String testCaseName = request.getParameter("tcName");
         			TestCase testCase = WorkflowContextHandler.OM.readValue(request.getInputStream(), 

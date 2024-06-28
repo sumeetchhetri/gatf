@@ -9,7 +9,6 @@
 	<classpathentry kind="src" path="alldep-jar/src/main/resources"/>
 	<classpathentry kind="src" path="alldep-jar/src/main/java"/>
 	<classpathentry kind="src" path="plugin/src/main/java"/>
-	<classpathentry kind="src" path="alldep-jar/src/test/java"/>
 	<classpathentry exported="true" kind="src" path="/gatf-plugin"/>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER">
 		<attributes>

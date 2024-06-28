@@ -29,6 +29,7 @@ import static io.github.bonigarcia.wdm.config.DriverManagerType.OPERA;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.LINUX;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.MAC;
 import static io.github.bonigarcia.wdm.config.OperatingSystem.WIN;
+import static io.github.bonigarcia.wdm.docker.DockerService.NETWORK_HOST;
 import static io.github.bonigarcia.wdm.online.Downloader.deleteFile;
 import static io.github.bonigarcia.wdm.versions.Shell.runAndWait;
 import static io.github.bonigarcia.wdm.versions.VersionDetector.getWdmVersion;
@@ -163,6 +164,7 @@ public abstract class WebDriverManager {
     protected static final String SLASH = "/";
     protected static final String DASH = "-";
     protected static final String LATEST_RELEASE = "LATEST_RELEASE";
+    protected static final String CFT_LABEL = "chrome-for-testing-public";
     protected static final NamespaceContext S3_NAMESPACE_CONTEXT = new S3NamespaceContext();
     protected static final String IN_DOCKER = "-in-docker";
     protected static final String CLI_SERVER = "server";
@@ -462,6 +464,16 @@ public abstract class WebDriverManager {
                         + " is not available in Docker Android");
     }
 
+    public WebDriverManager dockerEnvVariables(String... defaultEnvs) {
+        config().setDockerEnvVariables(defaultEnvs);
+        return this;
+    }
+
+    public WebDriverManager dockerDefaultArgs(String defaultArgs) {
+        config().setDockerDefaultArgs(defaultArgs);
+        return this;
+    }
+
     public WebDriverManager dockerDaemonUrl(String daemonUrl) {
         config().setDockerDaemonUrl(daemonUrl);
         return this;
@@ -469,6 +481,11 @@ public abstract class WebDriverManager {
 
     public WebDriverManager dockerNetwork(String network) {
         config().setDockerNetwork(network);
+        return this;
+    }
+
+    public WebDriverManager dockerNetworkHost() {
+        config().setDockerNetwork(NETWORK_HOST);
         return this;
     }
 
@@ -529,6 +546,11 @@ public abstract class WebDriverManager {
 
     public WebDriverManager avoidShutdownHook() {
         config().setAvoidShutdownHook(true);
+        return this;
+    }
+
+    public WebDriverManager avoidExternalConnections() {
+        config().setAvoidExternalConnections(true);
         return this;
     }
 
@@ -755,11 +777,6 @@ public abstract class WebDriverManager {
         return this;
     }
 
-    public WebDriverManager avoidReadReleaseFromRepository() {
-        config().setAvoidReadReleaseFromRepository(true);
-        return this;
-    }
-
     public WebDriverManager avoidTmpFolder() {
         config().setAvoidTmpFolder(true);
         return this;
@@ -786,18 +803,8 @@ public abstract class WebDriverManager {
         return this;
     }
 
-    public WebDriverManager useLocalVersionsPropertiesFirst() {
-        config().setVersionsPropertiesOnlineFirst(false);
-        return this;
-    }
-
     public WebDriverManager useLocalCommandsPropertiesFirst() {
         config().setCommandsPropertiesOnlineFirst(false);
-        return this;
-    }
-
-    public WebDriverManager versionsPropertiesUrl(URL url) {
-        config().setVersionsPropertiesUrl(url);
         return this;
     }
 
@@ -1223,10 +1230,6 @@ public abstract class WebDriverManager {
                 optionalDriverVersion = getDriverVersionFromRepository(
                         optionalBrowserVersion);
             }
-            if (!optionalDriverVersion.isPresent()) {
-                optionalDriverVersion = getVersionDetector()
-                        .getDriverVersionFromProperties(preferenceKey);
-            }
             if (optionalDriverVersion.isPresent()) {
                 driverVersion = optionalDriverVersion.get();
                 log.info("Using {} {} (resolved driver for {} {})",
@@ -1270,9 +1273,18 @@ public abstract class WebDriverManager {
         if (driverVersion.startsWith(".")) {
             driverVersion = driverVersion.substring(1);
         }
-        UrlHandler urlHandler = createUrlHandler(driverVersion);
-        URL url = urlHandler.getCandidateUrl();
-        downloadedDriverVersion = urlHandler.getDriverVersion();
+
+        URL url;
+        Optional<URL> optionalURL = buildUrl(driverVersion);
+        if (config.isAvoidExternalConnections() && optionalURL.isPresent()) {
+            url = optionalURL.get();
+            downloadedDriverVersion = driverVersion;
+        } else {
+            UrlHandler urlHandler = createUrlHandler(driverVersion);
+            url = urlHandler.getCandidateUrl();
+            downloadedDriverVersion = urlHandler.getDriverVersion();
+        }
+
         return downloader.download(url, downloadedDriverVersion,
                 getDriverName(), getDriverManagerType());
     }
@@ -1377,16 +1389,27 @@ public abstract class WebDriverManager {
         return getMirrorUrl().isPresent() && config().isUseMirror();
     }
 
+    protected boolean isChrome() {
+        DriverManagerType managerType = getDriverManagerType();
+        return managerType != null
+                && (managerType == CHROME || managerType == CHROMIUM);
+    }
+
     protected String getCurrentVersion(URL url) {
+        String urlFile = url.getFile();
         if (isUseMirror()) {
-            int i = url.getFile().lastIndexOf(SLASH);
-            int j = url.getFile().substring(0, i).lastIndexOf(SLASH) + 1;
-            return url.getFile().substring(j, i);
+            int i = urlFile.lastIndexOf(SLASH);
+            int j = urlFile.substring(0, i).lastIndexOf(SLASH) + 1;
+            return urlFile.substring(j, i);
+        } else if (urlFile.contains(CFT_LABEL)) {
+            int i = urlFile.indexOf(CFT_LABEL) + CFT_LABEL.length() + 1;
+            int j = urlFile.indexOf(SLASH, i);
+            return urlFile.substring(i, j);
         } else {
             String currentVersion = "";
             String pattern = "/([^/]*?)/[^/]*?" + getShortDriverName();
             Matcher matcher = compile(pattern, CASE_INSENSITIVE)
-                    .matcher(url.getFile());
+                    .matcher(urlFile);
             boolean find = matcher.find();
             if (find) {
                 currentVersion = matcher.group(1);
@@ -1404,18 +1427,7 @@ public abstract class WebDriverManager {
                 driverVersionStr, e.getMessage());
         if (retryCount == 0 && !config().isAvoidFallback()) {
             retryCount++;
-            if (getDriverManagerType() == EDGE
-                    || getDriverManagerType() == CHROME) {
-                config().setAvoidReadReleaseFromRepository(true);
-                clearResolutionCache();
-                log.warn(
-                        "{} ... trying again avoiding reading release from repository",
-                        errorMessage);
-                manage("");
-            } else {
-                retryCount++;
-                fallback(e, errorMessage);
-            }
+            fallback(e, errorMessage);
 
         } else if (retryCount == 1 && !config().isAvoidFallback()) {
             fallback(e, errorMessage);
@@ -1449,10 +1461,14 @@ public abstract class WebDriverManager {
 
         boolean getLatest = isUnknown(driverVersion);
         boolean continueSearchingVersion;
+        boolean isMirrorCfT = isChrome() && isUseMirror()
+                && VersionDetector.isCfT(driverVersion);
 
         do {
             // Filter by driver name
-            urlHandler.filterByDriverName(shortDriverName);
+            if (!isMirrorCfT) {
+                urlHandler.filterByDriverName(shortDriverName);
+            }
 
             // Filter for latest or concrete driver version
             if (getLatest) {
@@ -1488,9 +1504,7 @@ public abstract class WebDriverManager {
             }
 
             // Filter by architecture
-            if (!isEdgeArm64 || !isMac) {
-                urlHandler.filterByArch(architecture);
-            }
+            urlHandler.filterByArch(architecture);
 
             // Rest of filters
             urlHandler.filterByIgnoredVersions(config().getIgnoreVersions());
@@ -1507,11 +1521,23 @@ public abstract class WebDriverManager {
                 candidateUrls = urlHandler.getCandidateUrls();
             }
         } while (continueSearchingVersion);
+
+        if (isMirrorCfT) {
+            List<URL> driversFromMirror = getMirrorUrls(
+                    urlHandler.getCandidateUrl(), "");
+            urlHandler.setCandidateUrls(driversFromMirror);
+            urlHandler.filterByDriverName(shortDriverName);
+        }
+
         return urlHandler;
     }
 
     protected List<URL> getDriversFromMirror(URL driverUrl,
             String driverVersion) throws IOException {
+        if (isChrome() && VersionDetector.isCfT(driverVersion)) {
+            driverUrl = config().getChromeDriverCfTMirrorUrl();
+            config().setChromeDriverCfTMirrorUrl(driverUrl);
+        }
         List<URL> urls = new ArrayList<>();
         if (isNullOrEmpty(driverVersion)) {
             List<URL> mirrorUrls = getMirrorUrls(driverUrl, "");
@@ -1685,11 +1711,10 @@ public abstract class WebDriverManager {
 
     protected Optional<String> getDriverVersionFromRepository(
             Optional<String> driverVersion) {
-        return config().isAvoidReadReleaseFromRepository() ? empty()
-                : getVersionDetector().getDriverVersionFromRepository(
-                        driverVersion, getDriverUrl(), getVersionCharset(),
-                        getDriverName(), getLatestVersionLabel(),
-                        LATEST_RELEASE, getOsLabel());
+        return getVersionDetector().getDriverVersionFromRepository(
+                driverVersion, getDriverUrl(), getVersionCharset(),
+                getDriverName(), getLatestVersionLabel(), LATEST_RELEASE,
+                getOsLabel());
     }
 
     protected URL getDriverUrlCkeckingMirror(URL url) {
@@ -1895,7 +1920,7 @@ public abstract class WebDriverManager {
         WebDriverBrowser driverBrowser = new WebDriverBrowser();
         driverBrowser.addDockerContainer(browserContainer);
         driverBrowser.setSeleniumServerUrl(seleniumServerUrl);
-        log.trace("The Selenium Serverl URL is {}", seleniumServerUrl);
+        log.trace("The Selenium Server URL is {}", seleniumServerUrl);
         driverBrowser.setBrowserContainerId(browserContainer.getContainerId());
         webDriverList.add(driverBrowser);
 

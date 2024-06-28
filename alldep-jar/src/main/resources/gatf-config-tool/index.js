@@ -404,6 +404,11 @@ function decorateList(schema, list, acValue, attrs, nmdef, addclses, label, divs
     return html + ("</select><input " + attrs + " class=\"form-control " + addclses + "\" blur-event=\"validate(this, '" + schema.type + "')\" " + width + " type='hidden'/></div></div>");
 }
 
+function addAndInit(ev, obj) {
+	plusminuslistfunc(ev, obj);
+	initEvents($('#ExampleBeanServiceImpl_form'));
+}
+
 function handleBlankSelect(elem) {
     if (elem.value == "") {
         var parentN = elem.parentNode;
@@ -448,10 +453,10 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
             var sp1 = isAttr + " " + labinpdet;
             var sp2 = addclas + "" + dtcls;
             if (schema.hasOwnProperty('ui') && schema.ui == 'textarea') {
-                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<textarea mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" style=\"width:70%;height:200px;\">" + valut + "</textarea></div>");
+                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<textarea mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" style=\"width:70%;height:200px;\">" + escapeHtml1(valut) + "</textarea></div>");
 
             } else {
-                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<input mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" value=\"" + valut + "\" " + width + " type='text'/></div>");
+                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<input mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" value=\"" + escapeHtml1(valut) + "\" " + width + " type='text'/></div>");
             }
         }
     } else if (schema.type == 'object') {
@@ -505,7 +510,7 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
             if (schema.hasOwnProperty('label') && schema.label != undefined) {
                 slab = '<h4>' + schema.label.value + '</h4><br/>';
             }
-            var html = '<div id="_element_' + hirNm + '" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">' + slab + '<b>' + propLabel + '</b>&nbsp;&nbsp;<button type="button" class="plusminuslist" optype="true" list_value_cls="' + hirNm + '" click-event=\"plusminuslistfunc(event, this)\">Add</button>&nbsp;&nbsp;<button type="button" list_value_cls="' + hirNm + '" class="plusminuslist" optype="false" click-event=\"plusminuslistfunc(event, this)\">Remove</button><br/><br/>';
+            var html = '<div id="_element_' + hirNm + '" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">' + slab + '<b>' + propLabel + '</b>&nbsp;&nbsp;<button type="button" class="plusminuslist" optype="true" list_value_cls="' + hirNm + '" click-event=\"addAndInit(event, this)\">Add</button>&nbsp;&nbsp;<button type="button" list_value_cls="' + hirNm + '" class="plusminuslist" optype="false" click-event=\"addAndInit(event, this)\">Remove</button><br/><br/>';
             var isshowlabel = schema.items.nolabel == undefined ? true : !schema.items.nolabel;
 
             if (vald.length > 0) {
@@ -534,7 +539,7 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
             if (schema.hasOwnProperty('label') && schema.label != undefined) {
                 slab = '<h4>' + schema.label.value + '</h4><br/>';
             }
-            var html = '<div id="_element_' + hirNm + '" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">' + slab + '<b>' + propLabel + '</b>&nbsp;&nbsp;<button type="button" class="plusminuslist" optype="true" list_value_cls="' + hirNm + '" click-event=\"plusminuslistfunc(event, this)\">Add</button>&nbsp;&nbsp;<button type="button" list_value_cls="' + hirNm + '" class="plusminuslist" optype="false" click-event=\"plusminuslistfunc(event, this)\">Remove</button><br/><br/>';
+            var html = '<div id="_element_' + hirNm + '" class="form-elems" style="border:1px dotted black;padding:10px;margin-top:10px;">' + slab + '<b>' + propLabel + '</b>&nbsp;&nbsp;<button type="button" class="plusminuslist" optype="true" list_value_cls="' + hirNm + '" click-event=\"addAndInit(event, this)\">Add</button>&nbsp;&nbsp;<button type="button" list_value_cls="' + hirNm + '" class="plusminuslist" optype="false" click-event=\"addAndInit(event, this)\">Remove</button><br/><br/>';
 
             var isSpan = schema.items.isSpan == undefined ? false : schema.items.isSpan;
             var isshowlabel = schema.items.nolabel == undefined ? true : !schema.items.nolabel;
@@ -1825,11 +1830,23 @@ var editorSynonyms = function(cm, option) {
 	        	}
         	}
         }
-        if(matched.length>0)
-	        return accept({list: matched,
-	             from: CodeMirror.Pos(cursor.line, start),
-	             to: CodeMirror.Pos(cursor.line, end)});
-        return accept(null);
+        if(matched.length>0) {
+	        if(matched[0]=="@call \"subtestname\"") {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&allsubtests=true', "", "", {}, function(out) {
+            		console.log(out);
+					matched = out.length>0?out:["@call \"subtestname\""];
+			        return accept({list: matched,
+			             from: CodeMirror.Pos(cursor.line, start),
+			             to: CodeMirror.Pos(cursor.line, end)});
+        		}, null);
+			} else {
+		        return accept({list: matched,
+		             from: CodeMirror.Pos(cursor.line, start),
+		             to: CodeMirror.Pos(cursor.line, end)});
+		    }
+	    } else {
+        	return accept(null);
+        }
       }, 100)
     })
 }
@@ -2034,6 +2051,36 @@ function editorEvents() {
 	}
 }
 
+function onsavetestfile(data) {
+	data = data.responseJSON;
+	if(!data["error"]) {
+		showErrorAlert(data);
+		return;
+	} else if(currtestcasefile!=data.error[2]) {
+		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+	} else {
+		function makeMarker(errt) {
+			var marker = document.createElement("div");
+			marker.style.color = "red";
+			marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+			$(marker).attr('title', errt);
+			return marker;
+		}
+		currtestcasefile = data.error[2];
+		$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
+		ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker(data.error[3]));
+		if(data["others"] && data["others"].length>0) {
+			for(const oter of data.others) {
+				ceeditor.setGutterMarker(oter[1]-1, "breakpoints", makeMarker(oter[3]));
+			}
+		}
+		
+		//$('.error_mark_icon').attr('title', data.error[3]);
+		showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+		//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
+	}
+}
+
 function startInitConfigTool(func) {
     ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func) {
         return function(data) {
@@ -2189,7 +2236,7 @@ function startInitConfigTool(func) {
 									$('.org_save_butt').remove();
 									bthm = '<button type="button" style="position: absolute;left: 20px;top: 5px;" click-event="gotoBottom()">↓</button> \
 												<button type="button" style="position: absolute;left: 20px;bottom: 25px;" click-event="gotoTop()">↑</button>';
-									$('#float_action_bar').append('<button id="save_test_case" type="button" style="display:none;position:absolute;top:13px;right:200px;" class="top_sel_but post" click-event="execTc(\'post\', onsucctcnmupdt, null)">💾</button>');
+									$('#float_action_bar').append('<button id="save_test_case" type="button" style="display:none;position:absolute;top:13px;right:200px;" class="top_sel_but post" click-event="execTc(\'post\', onsucctcnmupdt, onsavetestfile)">💾</button>');
 									$('.top_sel_but').show();
 									
 									//$('#buttons_cont').append('<button type="button" style="position: absolute;right: 105px;top: 5px;" id="play_test_case" type="submit" class="" type="submit">▶</button><button type="button" style="position: absolute;right: 70px;top: 5px;" id="debug_test_case" type="submit" class="" type="submit">| |</button>');
@@ -2435,6 +2482,7 @@ function showErrorAlert(msg) {
 }
 
 function onsucctcnmupdt() {
+	$('.error_mark_icon').parent().remove();
     var tc = $('input[name="name"]').val();
     var ac = $('#ExampleBeanServiceImpl_form').attr("action");
     ac = ac.substring(0, ac.lastIndexOf("=") + 1) + tc;
@@ -2935,6 +2983,7 @@ function syntaxHighlight1(json) {
 }
 
 function escapeHtml1(s) {
+	if(!isNaN(s)) return s;
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
@@ -2960,7 +3009,7 @@ function getData1(value, contentType) {
             value = JSON.stringify(jsonobj, undefined, 4);
             contentType = 'application/json';
         } catch (e) {
-            //console.error("Parsing error:", e); 
+            value = escapeHtml1(value);
         }
         return printResponse1(value, contentType);
     }
@@ -2979,7 +3028,7 @@ function getTestResultContent1(report) {
     if (undefined != report.requestContentType && report.requestContentType != null)
         reqcnttyp = report.requestContentType;
 
-    var content = '<div><p>Request:</p><pre>Actual Url: ' + report.actualUrl + '</pre><pre>Template Url: ' + report.url + '</pre><pre>' + reqhdrsVal + '</pre>';
+    var content = '<div><p>Request:</p><pre>Curl: ' + report.curlCmd + '</pre><pre>Actual Url: ' + report.actualUrl + '</pre><pre>Template Url: ' + report.url + '</pre><pre>' + reqhdrsVal + '</pre>';
     content += '<pre>' + getData1(report.requestContent, reqcnttyp) + '</pre></div>';
     content += '<div><p>Response:</p><pre>' + responseHeaders + '</pre>';
     if (report.responseStatusCode != undefined) content += '<pre>Status Code: ' + report.responseStatusCode + '</pre>';
@@ -3764,7 +3813,7 @@ function searchLeftNavs(ele) {
 
 function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc) {
 	if(blockUi) blkcount++;
-	console.log(blkcount);
+	//console.log(blkcount);
     if (blockUi) {
 	    if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
 	}
@@ -3784,7 +3833,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         }
         sfunc(data, jqXhr);
         if(blockUi) blkcount--;
-        console.log(blkcount);
+        //console.log(blkcount);
         if (blockUi && blkcount==0) $.unblockUI();
     }).fail(function(jqXhr, textStatus, msg) {
         if (efunc == null) alert(jqXhr.responseText);
@@ -3796,7 +3845,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         }
         if (efunc != null) efunc(data, jqXhr);
         if(blockUi) blkcount--;
-        console.log(blkcount);
+        //console.log(blkcount);
         if (blockUi && blkcount==0) $.unblockUI();
     });
 }

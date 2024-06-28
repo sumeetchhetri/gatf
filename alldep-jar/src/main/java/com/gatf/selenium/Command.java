@@ -380,6 +380,26 @@ public class Command {
 		}
     	return new Object[] {};
     }
+    
+    public static List<String> getSubtestsForFile(String testcaseFileName, AcceptanceTestContext context, boolean withException) throws Exception {
+    	List<String> subtests = new ArrayList<String>();
+    	try {
+    		List<String> commands = new ArrayList<String>();
+    		Command allcmds = Command.read(context.getResourceFile(testcaseFileName), commands, context);
+    		CommandState state = new CommandState();
+    		state.allSubTests = allcmds.state.allSubTests;
+    		for(Command cmd: allcmds.state.allSubTests) {
+    			if(cmd instanceof SubTestCommand) {
+    				SubTestCommand scmd = (SubTestCommand)cmd;
+    				subtests.add("@call \"" + scmd.name.replace('"', '\"') + "\"");
+    			}
+    		}
+		} catch (Exception e) {
+			if(withException) throw e;
+			else e.printStackTrace();
+		}
+    	return subtests;
+    }
 
     public String getClassName() {
         return className;
@@ -1478,7 +1498,8 @@ public class Command {
         mergeIfElses(tcmd);
         if(state.starts!=state.ends) {
         	throwParseErrorS(lio.get(0), new RuntimeException("Blocks not balanced..."));
-        } else if(allSynErrs.size()>0) {allSynErrs.get(0).getCause().printStackTrace();
+        } else if(allSynErrs.size()>0) {
+        	//allSynErrs.get(0).getCause().printStackTrace();
         	GatfSelCodeParseError err = new GatfSelCodeParseError(allSynErrs);
         	err.multiple = allSynErrs;
         	throw err;

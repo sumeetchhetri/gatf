@@ -100,6 +100,8 @@ public class TestCaseReport implements Serializable {
 	
 	private List<Map<String, Object>> perfResult = new ArrayList<Map<String, Object>>();
 	
+	private String curlCmd;
+	
 	public String getWorkflowName() {
 		return workflowName;
 	}
@@ -338,6 +340,14 @@ public class TestCaseReport implements Serializable {
 		this.perfResult = perfResult;
 	}
 
+	public String getCurlCmd() {
+		return curlCmd;
+	}
+
+	public void setCurlCmd(String curlCmd) {
+		this.curlCmd = curlCmd;
+	}
+
 	public TestCaseReport(){}
 	
 	public TestCaseReport(TestCaseReport other) {
@@ -366,6 +376,7 @@ public class TestCaseReport implements Serializable {
 		this.method = other.method;
 		this.failureReason = other.failureReason;
 		this.perfResult = other.perfResult;
+		this.curlCmd = other.curlCmd;
 	}
 
 	@Override
@@ -417,6 +428,8 @@ public class TestCaseReport implements Serializable {
 				: null);
 		builder.append("\ntestIdentifier=");
 		builder.append(testIdentifier);
+		builder.append("\ncurlCmd=");
+		builder.append(curlCmd);
 		builder.append("]\n");
 		return builder.toString();
 	}

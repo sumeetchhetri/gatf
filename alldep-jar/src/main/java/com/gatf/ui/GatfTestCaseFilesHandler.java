@@ -212,6 +212,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			String possibleSubtestFuncCall = request.getParameter("possibleSubtestFuncCall");
     			String referencedFile = request.getParameter("referencedFile");
+    			String allsubtests = request.getParameter("allsubtests");
     			
     			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
@@ -253,6 +254,16 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					executorMojo.initilaizeContext(gatfConfig, true);
 					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext(), null);
 					String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {fld[5], fld[1]});
+	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+		            response.setContentLength(json.getBytes("UTF-8").length);
+		            response.getWriter().write(json);
+	    			response.setStatus(HttpStatus.OK_200);
+					return;
+				} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(allsubtests)) {
+					GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
+					executorMojo.initilaizeContext(gatfConfig, true);
+					List<String> lst = Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), false);
+					String json = WorkflowContextHandler.OM.writeValueAsString(lst);
 	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 		            response.setContentLength(json.getBytes("UTF-8").length);
 		            response.getWriter().write(json);
