@@ -127,7 +127,7 @@ public class GatfTestCaseHandler extends HttpHandler {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
-    		        if(isNotSel) {
+    		        if(!isNotSel) {
 	    		    	try {
 	        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
 	    					executorMojo.initilaizeContext(gatfConfig, true);
