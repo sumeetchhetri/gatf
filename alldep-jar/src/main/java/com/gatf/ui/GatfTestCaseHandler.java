@@ -123,32 +123,33 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && isNotSel)) {
     		try {
-    		    if(isNotXml ) {
+    		    if(isNotXml) {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
-    		    	try {
-        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
-    					executorMojo.initilaizeContext(gatfConfig, true);
-        		    	Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), true);
-					}  catch (GatfSelCodeParseError e) {
-						List<GatfRunTimeError> allErrors = new ArrayList<>();
-		        		e.printStackTrace();
-		        		if(e.getAllErrors()!=null && e.getAllErrors().size()>0) {
-		        			allErrors.addAll(e.getAllErrors());
-		        		} else {
-		        			allErrors.add(e);
-		        		}
-		        		GatfConfigToolUtil.handleError(new GatfRunTimeErrors(allErrors), response, null);
-		        		return;
-		        	} catch (Exception e) {
-						GatfConfigToolUtil.handleError(e, response, null);
-						return;
-					}
+    		        if(isNotSel) {
+	    		    	try {
+	        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
+	    					executorMojo.initilaizeContext(gatfConfig, true);
+	        		    	Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), true);
+						}  catch (GatfSelCodeParseError e) {
+							List<GatfRunTimeError> allErrors = new ArrayList<>();
+			        		e.printStackTrace();
+			        		if(e.getAllErrors()!=null && e.getAllErrors().size()>0) {
+			        			allErrors.addAll(e.getAllErrors());
+			        		} else {
+			        			allErrors.add(e);
+			        		}
+			        		GatfConfigToolUtil.handleError(new GatfRunTimeErrors(allErrors), response, null);
+			        		return;
+			        	} catch (Exception e) {
+							GatfConfigToolUtil.handleError(e, response, null);
+							return;
+						}
+    		        }
     		    } else {
         		    String testCaseName = request.getParameter("tcName");
-        			TestCase testCase = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
-        					TestCase.class);
+        			TestCase testCase = WorkflowContextHandler.OM.readValue(request.getInputStream(), TestCase.class);
         			if(testCase.getName()==null) {
         				throw new RuntimeException("Testcase does not specify name");
         			}

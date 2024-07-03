@@ -1835,7 +1835,21 @@ var editorSynonyms = function(cm, option) {
 				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&allsubtests=true', "", "", {}, function(out) {
             		console.log(out);
 					matched = out.length>0?out:["@call \"subtestname\""];
-			        return accept({list: matched,
+					const nmat = [];
+					for(let m of matched) {
+						m = m.replace(/\s+/, ' ').toLowerCase();
+						word = word.replace(/\s+/, ' ');
+						if(m.startsWith(word)) {
+							nmat.push(m);
+						} else {
+							m = m.replace(/"/, '').replace(/'/, '');
+							word = word.replace(/"/, '').replace(/'/, '');
+							if(m.startsWith(word)) {
+								nmat.push(m);
+							}
+						}
+					}
+			        return accept({list: nmat,
 			             from: CodeMirror.Pos(cursor.line, start),
 			             to: CodeMirror.Pos(cursor.line, end)});
         		}, null);
