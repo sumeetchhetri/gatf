@@ -441,6 +441,29 @@ public class AcceptanceTestContext {
 		return resource;
 	}
 	
+	public File getResourceFile(String filename, String relFilePath) {
+		File basePath = new File(gatfExecutorConfig.getTestCasesBasePath());
+		if(filename==null) return basePath;
+		
+		File relFile = new File(relFilePath);
+		if(new File(relFile.getParentFile(), filename).exists()) {
+			return new File(relFile.getParentFile(), filename);
+		}
+		
+		File resource = null;
+		if(gatfExecutorConfig.getTestCaseDir()!=null) {
+			File testPath = new File(basePath, gatfExecutorConfig.getTestCaseDir());
+		    resource = new File(testPath, filename);
+		}
+        if(resource==null || !resource.exists()) {
+            resource = new File(basePath, filename);
+        }
+        if(resource==null || !resource.exists()) {
+            resource = new File(filename);
+        }
+		return resource;
+	}
+	
 	public File getNewOutResourceFile(String filename) {
 		File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
 		File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
@@ -759,7 +782,7 @@ public class AcceptanceTestContext {
 		if(gatfExecutorConfig.getWsdlLocFile()!=null && !gatfExecutorConfig.getWsdlLocFile().trim().isEmpty())
 			file = getResourceFile(gatfExecutorConfig.getWsdlLocFile());
 		
-		if(file!=null)
+		if(file!=null && file.exists())
 		{
 			Scanner s = new Scanner(file);
 			s.useDelimiter("\n");

@@ -1110,6 +1110,7 @@ public abstract class SeleniumTest {
 
 	public SeleniumTest(String name_, AcceptanceTestContext ___cxt___, int index) {
 		this.___cxt___ = ___cxt___;
+	    this.name = name_;
 		try {
 			File basePath_ = new File(___cxt___.getGatfExecutorConfig().getTestCasesBasePath());
 			if(___cxt___.getGatfExecutorConfig().getTestCaseDir()!=null) {
@@ -1118,9 +1119,7 @@ public abstract class SeleniumTest {
 			} else {
 				basePath = basePath_.getAbsolutePath();
 			}
-		    this.name = name_;
 		} catch (Exception e) {
-			this.name = name_;
 		}
 		this.index = index;
 		//this.properties = ___cxt___.getGatfExecutorConfig().getSelDriverConfigMap().get(name).getProperties();
@@ -1398,7 +1397,7 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void sendKeys(WebDriver driver, WebElement le, String type, String qualifier, String tvalue) {
-		sendKeys(type, qualifier, driver, le, tvalue, ___cxt___);
+		sendKeys(type, qualifier, driver, le, tvalue, ___cxt___, name);
 	}
 	
 	protected static String randomize(String tvalue) {
@@ -1575,7 +1574,7 @@ public abstract class SeleniumTest {
 		return StringUtils.join(vals, " ");
 	}
 
-	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue, AcceptanceTestContext ___cxt___) {
+	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue, AcceptanceTestContext ___cxt___, String name) {
 		if(type.equalsIgnoreCase("randomize")) {
 			if ((le.getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
 					|| (le.getTagName().toLowerCase().matches("textarea"))) {
@@ -1608,7 +1607,7 @@ public abstract class SeleniumTest {
 			}
 		} else {
 			if(tvalue.startsWith("file://")) {
-				tvalue = resolveFile(tvalue.substring(7), ___cxt___);
+				tvalue = resolveFile(tvalue.substring(7), ___cxt___, name);
 			}
 			le.sendKeys(tvalue);
 			jsEvent(wd, le, qualifier);
@@ -2418,6 +2417,13 @@ public abstract class SeleniumTest {
 			System.out.println("Window open intercept got url [" + url + "] for window " + openPos);
 			client = TestCaseExecutorUtil.getClient();
 			new File(filePath).delete();
+			if(!url.startsWith("http://") || !url.startsWith("https://")) {
+				String burl = driver.getCurrentUrl();
+				if(burl.indexOf("#")!=-1) burl = burl.substring(0, burl.indexOf("#"));
+				if(burl.indexOf("?")!=-1) burl = burl.substring(0, burl.indexOf("?"));
+				url = burl + "/" + url;
+				url = url.replace("//", "/");
+			}
 			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
 			Response res = call.execute();
 			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
@@ -2434,9 +2440,9 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	private static String resolveFile(String filePath, AcceptanceTestContext ___cxt___) {
+	private static String resolveFile(String filePath, AcceptanceTestContext ___cxt___, String relFilePath) {
 		if(!new File(filePath).exists()) {
-			File upfl = ___cxt___.getResourceFile(filePath);
+			File upfl = ___cxt___.getResourceFile(filePath, relFilePath);
 			if(!upfl.exists()) {
 				upfl = new File(System.getProperty("user.dir"), filePath);
 				if(!upfl.exists()) {
@@ -2447,6 +2453,8 @@ public abstract class SeleniumTest {
 			} else {
 				filePath = upfl.getAbsolutePath();
 			}
+		} else {
+			filePath = new File(filePath).getAbsolutePath();
 		}
 		return filePath;
 	}
@@ -2454,7 +2462,7 @@ public abstract class SeleniumTest {
 	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
 		initJs(wd);
 		jsFocus(wd, ret.get(0));
-		filePath = resolveFile(filePath, ___cxt___);
+		filePath = resolveFile(filePath, ___cxt___, name);
 		/*if(!new File(filePath).exists()) {
 			File upfl = ___cxt___.getResourceFile(filePath);
 			if(!upfl.exists()) {
@@ -2616,7 +2624,7 @@ public abstract class SeleniumTest {
 			for(final WebElement we: ret) {
 				jsEvent(wd, we, "fo");
 				System.out.println(type + " => " + tvalue);
-				sendKeys(type, qualifier, wd, we, tvalue, ___cxt___);
+				sendKeys(type, qualifier, wd, we, tvalue, ___cxt___, name);
 				//we.sendKeys(tvalue);
 				//jsEvent(wd, we, qualifier);
 				break;

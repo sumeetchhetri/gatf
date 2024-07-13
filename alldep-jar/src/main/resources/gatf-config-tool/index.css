@@ -5,7 +5,7 @@ body {
   -webkit-font-smoothing: antialiased;
   font: normal 14px Roboto,arial,sans-serif;
 }
-.navbar-default {background-color:#f4f4f4;margin-top:50px;border-width:0;z-index:5;}
+.navbar-default {background-color:#f4f4f4;margin-top:50px;border-width:0;z-index:1030;}
 .navbar-default .navbar-nav > .active > a,.navbar-default .navbar-nav > li:hover > a {border:0 solid #4285f4;border-bottom-width:2px;font-weight:800;background-color:transparent;}
 .navbar-default .dropdown-menu {background-color:#ffffff;}
 .navbar-default .dropdown-menu li > a {padding-left:30px;}
@@ -420,4 +420,13 @@ table tr.alt td
 }
 .blockUI h3 {
 	border-bottom-width: 0px;
+}
+.lftpanelafload {
+	position: fixed;top:60px;bottom:0;overflow-y: scroll;scrollbar-width: none;
+}
+.lftpanelhdrafload {
+	position: fixed;z-index:999;width:23%;margin-top:-10px;
+}
+.rgtpanelhdrafload {
+	position: fixed;z-index:999;margin-top:-10px;
 }

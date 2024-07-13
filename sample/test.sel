@@ -75,7 +75,7 @@ var @firstname xpath@"//input[@placeholder="FirstName"]" attr@value
 		sleep 3
 	}
 }
-alias "pre"
+func "pre"
 {
 	sleep 10000
 	{
@@ -102,7 +102,7 @@ alias "pre"
 		sleep 3
 	}
 }
-alias "pre1"
+func "pre1"
 {
 	@call "pre"
 	sleep 10000
@@ -162,7 +162,7 @@ subtest "xyz" ("p1:1" "p2:aaa") one
 		sleep 3
 	}
 }
-alias "bcd"
+func "bcd"
 {
 	sleep 10000
 }
@@ -354,7 +354,7 @@ netapix on POST "https://app.ohumhealthcare.com/demo6_back/api/rest/auth/loginf"
 ??- xpath@"//*[@data-translate='Login']" click
 netapix off json var1@$.token,var2@$.firstname,$.mobileNo
 
-alias "waitldr"
+func "waitldr"
 {
 	??+ id@"some-element"
 }

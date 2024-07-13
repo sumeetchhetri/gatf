@@ -15,13 +15,19 @@
 */
 package com.gatf.ui;
 
+import java.io.File;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.DirectoryFileFilter;
+import org.apache.commons.io.filefilter.NotFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.glassfish.grizzly.http.Method;
 import org.glassfish.grizzly.http.server.HttpHandler;
 import org.glassfish.grizzly.http.server.Request;
@@ -100,6 +106,25 @@ public class GatfMiscHandler extends HttpHandler {
 				dataLst.add(InlineValueTestDataProvider.class.getName());
 				dataLst.add(RandomValueTestDataProvider.class.getName());
 				miscMap.put("providercls", dataLst);
+				
+				String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
+    			String dirPath = basepath;
+    			if(gatfConfig.getTestCaseDir()!=null) {
+	    			dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
+					if(!new File(dirPath).exists()) {
+						new File(dirPath).mkdir();
+					}
+    			}
+    			
+    			Collection<File> dirs = FileUtils.listFilesAndDirs(new File(dirPath), new NotFileFilter(TrueFileFilter.INSTANCE), DirectoryFileFilter.DIRECTORY);
+    			dataLst = new ArrayList<String>();
+				dataLst.add("");
+				for (File dir : dirs) {
+					String dirn = dir.getAbsolutePath().replace(new File(dirPath).getAbsolutePath()+File.separatorChar, "");
+					if(!dirn.startsWith(".") && !dirn.equals(new File(dirPath).getAbsolutePath()))
+						dataLst.add(dirn);
+				}
+				miscMap.put("dirs", dataLst);
     			
     			String configJson = WorkflowContextHandler.OM.writeValueAsString(miscMap);
     			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");

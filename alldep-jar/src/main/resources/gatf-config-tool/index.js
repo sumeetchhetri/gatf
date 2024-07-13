@@ -421,6 +421,14 @@ function handleBlankSelect(elem) {
     }
 }
 
+function updateTextForGeneratedForm() {
+	$('#ExampleBeanServiceImpl_form').find('input[_value],textarea[_value]').each(function() {
+		$(this).val(unescapeHtml1($(this).attr('_value')));
+		$(this).attr('_value', '');
+		$(this).attr('title', $(this).val());
+	});
+}
+
 function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, isObjspan, isshowlabel, isTop, propLabel) {
     if (isPrimitive(schema.type)) {
         var valut = respValue == null ? '' : respValue;
@@ -453,10 +461,10 @@ function generateFromValue(schema, heirar, isnm, addclas, labinpdet, respValue, 
             var sp1 = isAttr + " " + labinpdet;
             var sp2 = addclas + "" + dtcls;
             if (schema.hasOwnProperty('ui') && schema.ui == 'textarea') {
-                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<textarea mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" style=\"width:70%;height:200px;\">" + escapeHtml1(valut) + "</textarea></div>");
+                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<textarea " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" style=\"width:70%;height:200px;\" _value=\""+escapeHtml1(valut)+"\"></textarea></div>");
 
             } else {
-                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<input mo-event=\"showInpTitle(this)\" " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" value=\"" + escapeHtml1(valut) + "\" " + width + " type='text'/></div>");
+                return ("<div " + divstyle + " class=\"form-elems controls\">" + label + "<input " + sp1 + " " + nmdef + " class=\"form-control " + sp2 + "\" blur-event=\"validate(this, '" + schema.type + "')\" _value=\"" + escapeHtml1(valut) + "\" " + width + " type='text'/></div>");
             }
         }
     } else if (schema.type == 'object') {
@@ -713,8 +721,8 @@ function onSuccessLogin(token) {
 			$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 		});
 
-		$(document).off('click').on('click', function(e) {
-		    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON') && $(e.target).attr('click-event')) {
+		$(document).off('click').on('click', function(e) {console.log(e.target.tagName + " " + $(e.target).attr('click-event'));
+		    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON' || e.target.tagName=='SPAN') && $(e.target).attr('click-event')) {
 		        var evt = $(e.target).attr('click-event');
 				execFunction(evt, $(e.target));
 		    }
@@ -726,8 +734,43 @@ function onSuccessLogin(token) {
 				execFunction(evt, $(e.target));
 		    }
 		});
+		$('#tcdirs').on('click', function(e) {
+			e.stopPropagation();
+			return false;
+		});
+		
+		$('#tcdirs').off('change').on('change', function() {
+			if(!$(this).val()) {
+				$('a.asideLink[folder]').attr('status', 'hide');
+				$('#testcasefile-holder').find('a.asideLink').css('background-color', currColor);
+				$('a.asideLink[id]').addClass('hidden');
+				$('._claz').removeClass('hidden');
+				$('a.asideLink[folder*="/"]').addClass('hidden');
+				$('a.asideLink[folder]').each(function() {
+					if($(this).attr('folder').indexOf("/")==-1) $(this).removeClass('hidden');
+				});
+				return;
+			}
+			$('a.asideLink[id]').addClass('hidden');
+			$('a.asideLink[folder]').attr('status', 'hide');
+			$('a.asideLink[folder="'+$(this).val()+'"]').trigger('click');
+			var escapedfolder = $(this).val().replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
+			$('.'+escapedfolder+'_claz').removeClass('hidden');
+			$('#lftpanel').animate({ scrollTop: $('a.asideLink[folder="'+$(this).val()+'"]')[0].offsetTop-100 }, 1000);
+		});
     });
 })();
+		
+/*(function() {
+    var call = Function.prototype.call;
+    Function.prototype.call = function() {
+		console.time(this.name);
+        console.log(this, arguments); // Here you can do whatever actions you want
+        let ret = call.apply(this, arguments);
+        console.timeEnd(this.name);
+        return ret;
+    };
+}());*/
 
 function execFunction(evt, ths) {
 	ths = ths[0];
@@ -822,6 +865,7 @@ function executeHtml(pluginType) {
 	$('.top_sel_but').hide();
 	errdFilesReport = {};
 	$('#editorTabs').html('').addClass('hidden');
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
     var htmm = '<a href="#" class="plusminuslist" click-event=\"seltestfailed = false;executionHandler(\'PUT\', true, \'' + pluginType + '\')\">Start Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'DELETE\', true, \'' + pluginType + '\')\">Stop Execution</a><br/></br/><a href="#" class="plusminuslist" click-event=\"executionHandler(\'GET\', true, \'' + pluginType + '\')\">Check Execution Status</a><br/><br/><image id="image_status" src="resources/yellow.png"/>';
     if (pluginType.startsWith('executor')) {
         if (!calledbytestfpage) {
@@ -861,14 +905,19 @@ function executeHtml(pluginType) {
         $('#heading_main').html('Generate Tests');
         $('#ExampleBeanServiceImpl_form').html(htmm);
     }
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 }
 
 function getExtIntData(extApiFileName, configType) {
 	$('.top_sel_but').hide();
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 	errdFilesReport = {};
 	$('#editorTabs').html('').addClass('hidden');
     var isExternal = configType == 'issuetrackerapi' ? true : false;
-    ajaxCall(true, "GET", "testcases?testcaseFileName=" + extApiFileName + "&configType=" + configType, "", "", {}, function(isExternal, extApiFileName, configType) {
+    ajaxCall(true, "GET", "testcases?testcaseFileName=" + encodeURIComponent(extApiFileName) + "&configType=" + configType, "", "", {}, function(isExternal, extApiFileName, configType) {
         return function(data1) {
         	$('#heading_main').html('Manage ' + (configType == 'issuetrackerapi'?'Issue Tracker APIs':'Server Logs APIs'));
             currtestcasefile = extApiFileName;
@@ -898,6 +947,8 @@ function getExtIntData(extApiFileName, configType) {
                 htmm += '</table>';
                 $('#ExampleBeanServiceImpl_form').html(htmm);
             }
+			$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+			$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
         };
     }(isExternal, extApiFileName, configType), null);
 }
@@ -1364,11 +1415,15 @@ function execSelectedFiles(ele) {
 function hideLeftPanel() {
 	$('#lftpanel').hide();
 	$('#rgtpanel').removeClass('col-md-9').addClass('col-md-12');
+	$('#rgtpanel').removeClass('col-md-offset-3');
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
 }
 
 function showLeftPanel() {
 	$('#lftpanel').show();
 	$('#rgtpanel').removeClass('col-md-12').addClass('col-md-9');
+	$('#rgtpanel').addClass('col-md-offset-3');
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
 }
 
 function hideTopNav() {
@@ -1376,13 +1431,15 @@ function hideTopNav() {
 	$('#sdtpi').show();
 	$('#subnav').hide();
 	$('#main').css('padding-top', '60px');
+	$('#lftpanel').css('top', '60px');
 }
 
 function showTopNav() {
 	$('#hdtpi').show();
 	$('#sdtpi').hide();
 	$('#subnav').show();
-	$('#main').css('padding-top', '120px');
+	$('#main').css('padding-top', '110px');
+	$('#lftpanel').css('top', '110px');
 }
 
 function addRemoveExecFile(ele, testfilen) {
@@ -1405,7 +1462,12 @@ function triggerClick(ele) {
 }
 
 function addTcFileHTml(foldername, tcfiles) {
+	if(foldername) tcfiles = filesGrps[foldername];
+	else tcfiles = filesGrps[""];
+	console.time("addTcFileHTml");
 	$('.top_sel_but').hide();
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 	errdFilesReport = {};
 	$('#editorTabs').html('').addClass('hidden');
 	if(!foldername) {
@@ -1415,11 +1477,13 @@ function addTcFileHTml(foldername, tcfiles) {
     var htmm = '<input type="text" placeholder="File Name" id="tcfile_name_holder_add">&nbsp;&nbsp;<textarea placeholder="Attibutes" id="tcfile_extras" rows="3" style="width: 300px;resize:vertical !important;margin-left: 10px;"></textarea><a style="margin-left: 10px;" href="#" class="plusminuslist" click-event=\"manageTcFileHandler(\'POST\', $(\'#tcfile_name_holder_add\').val(),\'\')\">Add Testcase File</a><br/><span><b style="font-size:11px;">Select All</b><input type="checkbox" id="select_all_tcs" style="margin-left: 7px;"></span></br/>';
     htmm += '<table border="1">';
     let opthtm = '<option value="10000000">-</option>';
-    tcfiles = tcfiles?tcfiles:alltestcasefiles;
+    //tcfiles = tcfiles?tcfiles:alltestcasefiles;
     for (var i = 0; i < tcfiles.length; i++) {
     	let extras = "";
-    	if(tcfiles[i][1]) {
-    		const lines = tcfiles[i][1].split("\n");
+    	const tcext = tcfiles[i]["extra"]?tcfiles[i]["extra"]:tcfiles[i][1];
+    	const tccnm = tcfiles[0]["completeName"]?tcfiles[i]["completeName"]:tcfiles[i][0];
+    	if(tcext) {
+    		const lines = tcext.split("\n")
     		for(const l of lines) {
     			if(l.indexOf("|")!=-1 && (l.split("|")[1].trim().startsWith("https://") || l.split("|")[1].trim().startsWith("http://"))) {
     				extras += '<a target="_blank" href="'+l.split("|")[1].trim()+'">'+l.split("|")[0].trim()+'</a><br/>';
@@ -1433,19 +1497,21 @@ function addTcFileHTml(foldername, tcfiles) {
     		es = "none";
     	}
         var tcid = 'tcf_' + i;
-        if(!foldername || (foldername && tcfiles[i][0].startsWith(foldername))) {
-	        htmm += '<tr><td style="width:3%"><input type="checkbox" click-event="addRemoveExecFile(this,\'' + tcfiles[i][0] + '\')"></td>' + 
+        if(!foldername || (foldername && tccnm.startsWith(foldername))) {
+	        htmm += '<tr><td style="width:3%"><input type="checkbox" click-event="addRemoveExecFile(this,\'' + tccnm + '\')"></td>' + 
 	       			'<td style="width:3%"><select class="seqno"></td>' + 
-	        		'<td class="nmchng" style="width:44%;word-break:break-all;"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + i + '\'))">' + tcfiles[i][0] + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + tcfiles[i][0] + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
-	        		'<td style="width:42%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(tcfiles[i][1]?tcfiles[i][1]:'')+'</textarea>' +
+	        		'<td class="nmchng" style="width:44%;word-break:break-all;"><a href="#" id="' + tcid + '" class="asideLink1" click-event="triggerClick($(\'#tcfile_' + tcfiles[i].i + '\'))">' + tccnm + '</a><input id="inp_' + tcid + '" type="text" style="width:100%;display:none" value="' + tccnm + '" change-event="manageTcFileHandler(\'PUT\', $(\'#' + tcid + '\').html(), this.value)"/></td>' + 
+	        		'<td style="width:42%"><div class="extctt">'+extras+'</div><textarea fid="'+tcid+'" class="editexcont" style="display:'+es+';width:100%;resize:vertical !important" rows="1">'+(tcext?tcext:'')+'</textarea>' +
 	        		'<td style="width:8%"><center><table><tr><td style="text-align: center;border: 0px black;"><button type="button" click-event="manageTcFileHandler(\'DELETE\', $(\'#' + tcid + '\').html(),\'\')">Remove</button></td>' + 
-	        		(tcfiles[i][0].endsWith('.props')?'':'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + tcfiles[i][0] + '\')">Execute</button></td>') + '</tr></table></center></td>'
+	        		(tccnm.endsWith('.props')?'':'<td style="text-align: center;border: 0px black;"><button type="button" click-event="execSelectedFileTests(\'' + tccnm + '\')">Execute</button></td>') + '</tr></table></center></td>'
 	        		'</tr>';
     		opthtm += '<option value="'+(i+1)+'">'+(i+1)+'</option>';
     	}
     }
     htmm += '</table><br/><center><button type="button" click-event="execSelectedFiles(this)">Execute Selected</button></center>';
     $('#ExampleBeanServiceImpl_form').html(htmm);
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
     
     $('#ExampleBeanServiceImpl_form').find('select.seqno').append(opthtm);
     $('.extctt').dblclick(function() {
@@ -1480,6 +1546,7 @@ function addTcFileHTml(foldername, tcfiles) {
     	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'sel\')">sel</a>
     	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'api\')">api</a>
     	<a style="margin-left: 10px;" href="#" class="plusminuslist" click-event="filterTestsByType(\'props\')">props</a>`);
+    console.timeEnd("addTcFileHTml");
 }
 
 function filterTestsByType(type) {
@@ -1536,7 +1603,7 @@ function manageTcFileHandler(method, tcFileName, tcFileNameTo, extt) {
 			return false;
 		}
 	}
-    ajaxCall(true, method, "testcasefiles?testcaseFileName=" + tcFileName + "&testcaseFileNameTo=" + tcFileNameTo + "&extras="+extras, "", "", {}, function(data) {
+    ajaxCall(true, method, "testcasefiles?testcaseFileName=" + encodeURIComponent(tcFileName) + "&testcaseFileNameTo=" + encodeURIComponent(tcFileNameTo) + "&extras="+encodeURIComponent(extras), "", "", {}, function(data) {
         if(data) alert(data);
         startInitConfigTool(addTcFileHTml);
     }, function(data) {
@@ -1547,7 +1614,7 @@ function manageTcFileHandler(method, tcFileName, tcFileNameTo, extt) {
 }
 
 function testcasesHandler(method, index) {
-    ajaxCall(true, method, "testcases?testcaseFileName=" + currtestcasefile, "", "", {
+    ajaxCall(true, method, "testcases?testcaseFileName=" + encodeURIComponent(currtestcasefile), "", "", {
         "testcasename": currtestcases[index + 1]
     }, function(data) {
         alert(data);
@@ -1609,7 +1676,7 @@ var SELEASY=[
 	"require",
 	"sleep 1000",
 	["subtest", " \"subtestname\" (args)\n{\n\t//subtest logic\n}"],
-	"@call \"subtestname\"",
+	"@call ",
 	"@print()",
 	"@driver",
 	"@window",
@@ -1804,11 +1871,35 @@ var editorSynonyms = function(cm, option) {
     return new Promise(function(accept) {
       setTimeout(function() {
         var cursor = cm.getCursor(), line = cm.getLine(cursor.line);
+         let matched = [];
+        if(line.startsWith("@call ")) {
+			ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&allsubtests=true', "", "", {}, function(out) {
+        		//console.log(out);
+				matched = out.length>0?out:["@call \"subtestname\""];
+				const nmat = [];
+				for(let m1 of matched) {
+					let m = m1.replace(/\s+/, ' ').toLowerCase();
+					line = line.replace(/\s+/, ' ');
+					if(m.startsWith(line)) {
+						nmat.push(m1);
+					} else {
+						m = m.replace(/"/, '').replace(/'/, '');
+						line = line.replace(/"/, '').replace(/'/, '');
+						if(m.startsWith(line)) {
+							nmat.push(m1);
+						}
+					}
+				}
+		        return accept({list: nmat,
+		             from: CodeMirror.Pos(cursor.line, start),
+		             to: CodeMirror.Pos(cursor.line, end)});
+    		}, null);
+    		return;
+		}
         var start = cursor.ch, end = cursor.ch;
         while (start && /[^\s\t\n]/.test(line.charAt(start - 1))) --start;
         while (end < line.length && /[^\s\t\n]/.test(line.charAt(end))) ++end;
         var word = line.slice(start, end).toLowerCase();
-        let matched = [];
         for (var i = 0; i < SELEASY.length; i++) {
         	if(typeof SELEASY[i]=='string' && SELEASY[i].startsWith(word)) {
         		matched.push(SELEASY[i]);
@@ -1831,33 +1922,9 @@ var editorSynonyms = function(cm, option) {
         	}
         }
         if(matched.length>0) {
-	        if(matched[0]=="@call \"subtestname\"") {
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&allsubtests=true', "", "", {}, function(out) {
-            		console.log(out);
-					matched = out.length>0?out:["@call \"subtestname\""];
-					const nmat = [];
-					for(let m of matched) {
-						m = m.replace(/\s+/, ' ').toLowerCase();
-						word = word.replace(/\s+/, ' ');
-						if(m.startsWith(word)) {
-							nmat.push(m);
-						} else {
-							m = m.replace(/"/, '').replace(/'/, '');
-							word = word.replace(/"/, '').replace(/'/, '');
-							if(m.startsWith(word)) {
-								nmat.push(m);
-							}
-						}
-					}
-			        return accept({list: nmat,
-			             from: CodeMirror.Pos(cursor.line, start),
-			             to: CodeMirror.Pos(cursor.line, end)});
-        		}, null);
-			} else {
-		        return accept({list: matched,
-		             from: CodeMirror.Pos(cursor.line, start),
-		             to: CodeMirror.Pos(cursor.line, end)});
-		    }
+	        return accept({list: matched,
+	             from: CodeMirror.Pos(cursor.line, start),
+	             to: CodeMirror.Pos(cursor.line, end)});
 	    } else {
         	return accept(null);
         }
@@ -1918,6 +1985,8 @@ function loadTestCaseFileEditor() {
 			$('#'+fedidi).find('.dirty').remove();
 		}
 	});
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 	if(celinedetails) {
 		ceeditor.addLineClass(celinedetails-1, "wrap", "currentHighlight");
 		ceeditor.scrollIntoView({line:celinedetails, char:0}, 200);
@@ -1973,7 +2042,7 @@ function editorEvents() {
 		if(line.trim().startsWith("dynprops ")) {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&referencedFile='+line.trim().substring(9).trim(), "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&referencedFile='+encodeURIComponent(line.trim().substring(9).trim()), "", "", {}, function(out) {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
@@ -1984,7 +2053,7 @@ function editorEvents() {
 		} else if(line.trim().startsWith("config ")) {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&referencedFile='+line.trim().substring(7).trim(), "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&referencedFile='+encodeURIComponent(line.trim().substring(7).trim()), "", "", {}, function(out) {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
@@ -1995,7 +2064,7 @@ function editorEvents() {
 		} else if(line.trim().startsWith("include ")) {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&referencedFile='+line.trim().substring(8).trim(), "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&referencedFile='+encodeURIComponent(line.trim().substring(8).trim()), "", "", {}, function(out) {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
@@ -2006,7 +2075,7 @@ function editorEvents() {
 		} else if(line.trim().startsWith("import ")) {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&referencedFile='+line.trim().substring(7).trim(), "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&referencedFile='+encodeURIComponent(line.trim().substring(7).trim()), "", "", {}, function(out) {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
@@ -2032,7 +2101,7 @@ function editorEvents() {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
 				console.log(possibleSubtestFuncCall);
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&possibleSubtestFuncCall='+possibleSubtestFuncCall, "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&possibleSubtestFuncCall='+encodeURIComponent(possibleSubtestFuncCall), "", "", {}, function(out) {
             		console.log(out);
 					celinedetails = out[1];
 					if(currtestcasefile == out[0]) {
@@ -2049,7 +2118,7 @@ function editorEvents() {
 			$('.CodeMirror-code').children().eq(i).find('pre').css('cursor', 'pointer');
 			$('.CodeMirror-code').children().eq(i).find('pre').off().dblclick(function() {
 				console.log(possibleSubtestFuncCall);
-				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+currtestcasefile+'&possibleSubtestFuncCall='+possibleSubtestFuncCall, "", "", {}, function(out) {
+				ajaxCall(true, "GET", 'testcasefiles?testcaseFileName='+encodeURIComponent(currtestcasefile)+'&possibleSubtestFuncCall='+encodeURIComponent(possibleSubtestFuncCall), "", "", {}, function(out) {
             		console.log(out);
 					celinedetails = out[1];
 					if(currtestcasefile == out[0]) {
@@ -2095,24 +2164,51 @@ function onsavetestfile(data) {
 	}
 }
 
+var filesGrps = [], filesGrpsTop = [];
+function startInitConfigTool_(func) {
+	ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(func) {
+		return function(data) {
+	        isSeleniumExecutor = data.isSeleniumExecutor
+	        //testCaseDir = !data.testCaseDir?'':data.testCaseDir;
+	        startInitConfigToolPost(func);
+	    };
+    }(func), null);
+}
 function startInitConfigTool(func) {
-    ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func) {
+	ajaxCall(true, "GET", "testcasefiles", "", "", {}, function(func) {
         return function(data) {
+			console.time("startInitConfigTool -- ");
             alltestcasefiles = [];
             $('#testcasefile-holder').html('');
             $('#testcasefile-holder').append('<a href="#" click-event="addTcFileHTml()" class="list-group-item asideLink">&nbsp;Manage Testcase Files</a>');
 
-            var filesGrps = [];
+			filesGrps = [];
+			let indx = 1;
             for (var t = 0; t < data.length; t++) {
                 var testname = data[t][0];
                 var folder = "";
                 var fileName = testname;
+                var fldlst = [];
+                var splch = '\\'
                 if (testname.indexOf("\\") != -1) {
                     folder = testname.substring(0, testname.lastIndexOf("\\"));
                     fileName = testname.substring(testname.lastIndexOf("\\") + 1);
+                    fldlst = folder.split("\\");
                 } else if(testname.indexOf("/") != -1) {
+					splch = '/';
                     folder = testname.substring(0, testname.lastIndexOf("/"));
                     fileName = testname.substring(testname.lastIndexOf("/") + 1);
+                    fldlst = folder.split("/");
+				}
+				if(fldlst.length>0) {
+					var fls = "";
+					for(var ol=0;ol<fldlst.length;ol++) {
+						fls += fldlst[ol];
+						if (filesGrps[fls] == undefined) {
+		                    filesGrps[fls] = [];
+		                }
+		                fls += splch;
+					}
 				}
                 if (filesGrps[folder] == undefined) {
                     filesGrps[folder] = [];
@@ -2120,12 +2216,13 @@ function startInitConfigTool(func) {
                 filesGrps[folder].push({
                     fileName: fileName,
                     completeName: testname,
-                    extra: data[t][1]
+                    extra: data[t][1],
+                    i: indx++
                 });
             }
 
             filesGrps = Object.keys(filesGrps).sort().reduce(
-				  (obj, key) => { 
+				  (obj, key) => {
 				    obj[key] = filesGrps[key]; 
 				    return obj;
 				  }, 
@@ -2135,33 +2232,35 @@ function startInitConfigTool(func) {
             var tind = 0;
             for (var folder in filesGrps) {
                 if (filesGrps.hasOwnProperty(folder)) {
+					//if(!((testCaseDir!="" && testCaseDir==folder) || testCaseDir=="")) continue;
                     filesGrps[folder].sort(function(a, b){return a.completeName.localeCompare(b.completeName)});
                     if (folder != "") {
                         var fid = 'folder_' + tind;
-                        $('#testcasefile-holder').append('<a style="text-overflow: ellipsis;overflow: hidden;white-space: nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
+                        if($('#'+fid).length>0) {
+							tind++;
+							fid = 'folder_' + tind;
+						}
+                        $('#testcasefile-holder').append('<a style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
                         $('#' + fid).attr('folder', folder);
                         $('#' + fid).off('click.me').on('click.me', function() {
 							$('.top_sel_but').hide();
-                            var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
+                            var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
                             if ($(this).attr('status') == "show") {
-                                $('.' + escapedfolder + '_claz').hide();
+                                $('.' + escapedfolder + '_claz').addClass('hidden');
                                 $(this).attr('status', 'hide');
                                 $('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
                                 $('.' + escapedfolder + '_claz[folder]').trigger('click');
-                                addTcFileHTml();
                             } else {
 								$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 								$(this).css('background-color', '#ddd');
-                            	$('.' + escapedfolder + '_claz').show();
+                            	$('.' + escapedfolder + '_claz').removeClass('hidden');
                                 $(this).attr('status', 'show');
                                 addTcFileHTml($(this).attr('folder'));
-                                //$('.' + escapedfolder + '_claz[folder]').attr('status', 'show');
-                                //$('.' + escapedfolder + '_claz[folder]').trigger('click');
                             }
                             return false;
                         });
                         $('#' + fid).find('button').off('click.me').on('click.me', function() {
-							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
+							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
 							execFiles = new Array();
 							$('.' + escapedfolder + '_claz').each(function() {
 								execFiles.push($(this).attr('tcfname'));
@@ -2174,62 +2273,69 @@ function startInitConfigTool(func) {
 						});
                     }
 
-                    for (var t = 0; t < filesGrps[folder].length; t++, tind++) {
+                    for (var t = 0; t < filesGrps[folder].length; t++) {
 						alltestcasefiles.push([filesGrps[folder][t].completeName, filesGrps[folder][t].extra]);
                         var testFileName = filesGrps[folder][t].completeName;
                         var fileName = filesGrps[folder][t].fileName;
-                        var id = 'tcfile_' + tind;
-                        if (firstFile == '')
+                        var id = 'tcfile_' + filesGrps[folder][t].i;
+                        if (firstFile == '') {
                             firstFile = id;
-                        if (folder != "") {
-                            var escapedfolder = folder.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
-                            $('#testcasefile-holder').append('<a style="margin-left:20px;display:none" id="' + id + '" href="#" class="list-group-item asideLink ' + escapedfolder + '_claz">↳&nbsp;' + fileName + '</a>');
-                        } else {
-                            $('#testcasefile-holder').append('<a id="' + id + '" href="#" class="list-group-item asideLink">&nbsp;' + testFileName + '</a>');
                         }
-                        let iconn = fileName.endsWith(".props")?"properties.jpg":"testicon.png"; 
+                        if (folder != "") {
+                            var escapedfolder = folder.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
+                            $('#testcasefile-holder').append('<a style="margin-left:20px;" id="' + id + '" href="#" class="hidden list-group-item asideLink ' + escapedfolder + '_claz">↳&nbsp;' + fileName + '</a>');
+                        } else {
+                            $('#testcasefile-holder').append('<a id="' + id + '" href="#" class="_claz list-group-item asideLink">&nbsp;' + testFileName + '</a>');
+                        }
+                        let iconn = fileName.endsWith(".props")?"properties.jpg":"testicon.png";
+                       	const isSel = fileName.endsWith(".sel") || fileName.endsWith(".props");
                         $('#' + id).prepend('<img style="position:absolute;right:5px;top:1px;width:15px" src="images/'+iconn+'"/>');
                         $('#' + id).attr('tcfname', testFileName);
-                        $('#' + id).off('contextmenu').on('contextmenu', function(e) {
-							e.preventDefault();
-							$(this).css('background-color', '#ddd');
-							if($('#testcasefile-holder').data('files')) {
-								$('#testcasefile-holder').data('files').push($(this).attr('tcfname'));
-								if($('#testcasefile-holder').data('files').length==2) {
-									var f1 = $('#testcasefile-holder').data('files')[0], f2 = $('#testcasefile-holder').data('files')[1];
-									$.get("testcases?testcaseFileName=" + f1, function(lhs) {
-										$.get("testcases?testcaseFileName=" + f2, function(rhs) {
-											var diff = Diff.createTwoFilesPatch(f1, f2, lhs, rhs);
-											var diffHtml = Diff2Html.html(diff, {
-												drawFileList: false,
-											    matching: 'lines',
-											    outputFormat: 'side-by-side',
-											});
-											$('#heading_main').html('Compare Files<button style="font-size: 15px;" type="button" class="pull-right">Clear</button>');
-											$('#ExampleBeanServiceImpl_form').html(diffHtml);
-											$('#heading_main').find('button').off('click.me').on('click.me', function() {
-												$('#testcasefile-holder').data('files', []);
-												$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
-												addTcFileHTml();
+                        if(isSel) {
+	                        $('#' + id).off('contextmenu').on('contextmenu', function(e) {
+								e.preventDefault();
+								$(this).css('background-color', '#ddd');
+								if($('#testcasefile-holder').data('files')) {
+									if($('#testcasefile-holder').data('files').indexOf($(this).attr('tcfname'))==-1)
+										$('#testcasefile-holder').data('files').push($(this).attr('tcfname'));
+									if($('#testcasefile-holder').data('files').length==2) {
+										var f1 = $('#testcasefile-holder').data('files')[0], f2 = $('#testcasefile-holder').data('files')[1];
+										$.get("testcases?testcaseFileName=" + f1, function(lhs) {
+											$.get("testcases?testcaseFileName=" + f2, function(rhs) {
+												var diff = Diff.createTwoFilesPatch(f1, f2, lhs, rhs);
+												var diffHtml = Diff2Html.html(diff, {
+													drawFileList: false,
+												    matching: 'lines',
+												    outputFormat: 'side-by-side',
+												});
+												$('#heading_main').html('Compare Files<button style="font-size: 15px;" type="button" class="pull-right">Clear</button>');
+												$('#ExampleBeanServiceImpl_form').html(diffHtml);
+												$('#heading_main').find('button').off('click.me').on('click.me', function() {
+													$('#testcasefile-holder').data('files', []);
+													$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+													addTcFileHTml();
+												});
 											});
 										});
-									});
-									$('#testcasefile-holder').data('files', []);
+										$('#testcasefile-holder').data('files', []);
+									}
 								}
-							} else {
-								$('#testcasefile-holder').data('files', [$(this).attr('tcfname')]);
-							}
-						});
+							});
+						}
                         $('#' + id).off('click.me').on('click.me', function() {
+							$('.top_sel_but').hide();
+							$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+							$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 							$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 							$(this).css('background-color', '#ddd');
 							$(this).css('color', currColor=='#000000'?'white':'black');
 							//$('#srch-term').val($(this).text().trim()).trigger('change');
                             currtestcasefile = $(this).attr('tcfname');
                             $('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
+                            //const fld = currtestcasefile.length>15?(currtestcasefile.substring(0,15)+"..."):currtestcasefile;
                             $('#heading_main').html('Manage Tests >> ' + currtestcasefile);
                             currtestcases = [''];
-                            ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(data1) {
+                            ajaxCall(true, "GET", "testcases?testcaseFileName=" + encodeURIComponent(currtestcasefile), "", "", {}, function(data1) {
                                 var htmm = '<button type="button" class="plusminuslist" click-event=\"addTestCase(true, null, \'\', null, false, false)\">Add New Testcase</button><br/></br/>';
                                 if (currtestcasefile.toLowerCase().endsWith(".sel") || currtestcasefile.toLowerCase().endsWith(".props") || currtestcasefile.toLowerCase().endsWith(".csv")) {
                                     htmm = "";
@@ -2247,10 +2353,14 @@ function startInitConfigTool(func) {
                                     prepareForm("testcases?testcaseFileName=" + currtestcasefile + "&configType=", "POST", "💾", "onsucctcnmupdt", null, true, "sel_test_case");
                                     initEvents($('#ExampleBeanServiceImpl_form'));
                                     
+                                    bthm = '';
 									$('.org_save_butt').remove();
-									bthm = '<button type="button" style="position: absolute;left: 20px;top: 5px;" click-event="gotoBottom()">↓</button> \
-												<button type="button" style="position: absolute;left: 20px;bottom: 25px;" click-event="gotoTop()">↑</button>';
-									$('#float_action_bar').append('<button id="save_test_case" type="button" style="display:none;position:absolute;top:13px;right:200px;" class="top_sel_but post" click-event="execTc(\'post\', onsucctcnmupdt, onsavetestfile)">💾</button>');
+									$('#save_test_case').remove();
+									if(currtestcasefile.toLowerCase().endsWith(".sel")) {
+										$('#float_action_bar').append('<button id="save_test_case" type="button" style="display:none;position:absolute;top:13px;right:200px;" class="top_sel_but post" click-event="execTc(\'post\', onsucctcnmupdt, onsavetestfile)">💾</button>');
+									} else {
+										$('#float_action_bar').append('<button id="save_test_case" type="button" style="display:none;position:absolute;top:13px;right:100px;" class="top_sel_but post" click-event="execTc(\'post\', onsucctcnmupdt, onsavetestfile)">💾</button>');
+									}
 									$('.top_sel_but').show();
 									
 									//$('#buttons_cont').append('<button type="button" style="position: absolute;right: 105px;top: 5px;" id="play_test_case" type="submit" class="" type="submit">▶</button><button type="button" style="position: absolute;right: 70px;top: 5px;" id="debug_test_case" type="submit" class="" type="submit">| |</button>');
@@ -2269,7 +2379,7 @@ function startInitConfigTool(func) {
                                     if($('#'+fedid).length==0) {
                                     	$("#editorTabs").find('li').removeClass('active');
                                     	const fld = currtestcasefile.length>15?(currtestcasefile.substring(0,15)+"..."):currtestcasefile;
-                                    	$("#editorTabs").append('<li id="'+fedid+'" class="active"><a href="#" id="'+fedid+'">'+fld+'<span style="padding-left:10px;font-size:8px;cursor:pointer;" class="btn_close">❌<span></a></li>');
+                                    	$("#editorTabs").append('<li id="'+fedid+'" class="active"><a href="#" id="'+fedid+'_a">'+fld+'<span style="padding-left:10px;font-size:8px;cursor:pointer;" class="btn_close">❌<span></a></li>');
                                     	$('#'+fedid).attr('title', currtestcasefile);
                                     	$('#'+fedid).find('.btn_close').off('click.me').on('click.me', function(event) {
                                     		event.stopPropagation();
@@ -2323,8 +2433,15 @@ function startInitConfigTool(func) {
 						                	}
                                     	});
                                     	$('#'+fedid).off('click.me').on('click.me', function() {
+											$('.top_sel_but').hide();
+											$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+											$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
+											currtestcasefile = $(this).attr('title');
+											$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+											$('#lftpanel').animate({ scrollTop: $('.asideLink[tcfname="'+currtestcasefile+'"]')[0].offsetTop-100 }, 1000);
+											$('.asideLink[tcfname="'+currtestcasefile+'"]').css('background-color', '#ddd');
+											$('.asideLink[tcfname="'+currtestcasefile+'"]').css('color', currColor=='#000000'?'white':'black');
                                     		if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
-                                    		currtestcasefile = $(this).attr('title');
 		                                	const fedidi = sha256(currtestcasefile);
 		                                	$("#editorTabs").find('li').removeClass('active');
                                     		$('#'+fedidi).addClass('active');
@@ -2355,7 +2472,7 @@ function startInitConfigTool(func) {
 						                                	} else {
 						                                		$('#'+fed_id).find('.dirty').remove();
 						                                		//$('#req-txtarea').addClass('hidden');
-						                                		ajaxCall(true, "GET", "testcases?testcaseFileName=" + cfile, "", "", {}, function(content) {
+						                                		ajaxCall(true, "GET", "testcases?testcaseFileName=" + encodeURIComponent(cfile), "", "", {}, function(content) {
 						                                			if(ceeditor) ceeditor.toTextArea();
 						                                    		$('#req-txtarea').val(content);
 								                                    loadTestCaseFileEditor();
@@ -2366,7 +2483,7 @@ function startInitConfigTool(func) {
 					                        	});
 	                                    	} else {
 	                                    		//$('#req-txtarea').addClass('hidden');
-	                                    		ajaxCall(true, "GET", "testcases?testcaseFileName=" + currtestcasefile, "", "", {}, function(content) {
+	                                    		ajaxCall(true, "GET", "testcases?testcaseFileName=" + encodeURIComponent(currtestcasefile), "", "", {}, function(content) {
 	                                    			if(ceeditor) ceeditor.toTextArea();
 		                                    		$('#req-txtarea').val(content);
 				                                    loadTestCaseFileEditor();
@@ -2411,6 +2528,7 @@ function startInitConfigTool(func) {
                                 	}
                                     return;
                                 }
+                                $('#editorTabs').html('').addClass('hidden');
                                 if (data1 != null && data1.length > 0) {
                                     htmm += '<table border="1">';
                                     for (var t1 = 0; t1 < data1.length; t1++) {
@@ -2432,12 +2550,24 @@ function startInitConfigTool(func) {
                                 } else {
                                     $('#ExampleBeanServiceImpl_form').html(htmm);
                                 }
+								$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+								$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
                                 return false;
                             }, null);
                         });
                     }
                 }
             }
+            
+            filesGrpsTop = Object.keys(filesGrps);
+            $('#tcdirs').html('');
+			$('#tcdirs').addClass('hidden');
+            let htms_ = '';
+            for(const fg of filesGrpsTop) {
+				htms_ += '<option value="'+escapeHtml1(fg)+'">'+(fg==""?"ALL":fg)+'</option>';
+			}
+			$('#tcdirs').html(htms_);
+			if(filesGrpsTop.length>0) $('#tcdirs').removeClass('hidden');
             
             /*let result = [];
 			let level = {result};
@@ -2454,26 +2584,35 @@ function startInitConfigTool(func) {
 			
 			$('.asideLink[folder*="/"]').each(function() {
 				$(this).html("↓ " + $(this).html());
-				$(this).hide();
+				$(this).addClass('hidden');
 				const prts = $(this).attr('folder').split(/\/|\\/);
 				prts.splice(-1);
 				const sep = $(this).attr('folder').split('/').length==prts.length?'/':'\\';
-				const ef = prts.join(sep).replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
+				const ef = prts.join(sep).replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
 				$(this).addClass(ef+'_claz');
-				/*let pp = [];
-				for(let i=0;i<prts.length-1;i++) {
-					pp.push(prts[i]);
-					const lbo = pp.join(sep);
-					const efc = lbo.replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_');
-					$(this).addClass(efc+'_claz');
-					$('.'+ef+'_claz').addClass(efc+'_claz');
-				}*/
 			});
             darkMode(localStorage.getItem("theme"));
             if (typeof func == "function") func();
+            
+            if(!doItOnce) {
+				doItOnce = true;
+	            setTimeout(function() {
+					$('#rgtpanel').addClass('col-md-offset-3');
+					$('#rgtpanel>.panel>.panel-heading').addClass('rgtpanelhdrafload');
+		            $('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+					$('#rgtpanel>.panel>.panel-body').css('margin-top', ($('#rgtpanel>.panel>.panel-heading').height()+35)+'px');
+					$('#lftpanel').addClass('lftpanelafload');
+					$('#lftpanel>.panel>.panel-heading').addClass('lftpanelhdrafload');
+					$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
+					$('#lftpanel>.panel>.panel-body').css('margin-top', ($('#lftpanel>.panel>.panel-heading').height()+1)+'px');
+				}, 500);
+			}
+			console.timeEnd("startInitConfigTool -- ");
         };
     }(func), null);
 }
+
+var doItOnce = false;
 
 function showSuccessAlert(msg) {
 	bootbox.alert({
@@ -2530,16 +2669,21 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
     countMap = {};
     if (tcfname == null)
         tcfname = currtestcasefile;
+    $('#save_test_case').remove();
+	$('#float_action_bar').append('<button id="save_test_case" type="button" style="position:absolute;top:13px;right:100px;" class="top_sel_but put" click-event="execTc(\'put\', onsucctcnmupdt, null)">💾</button>');
+									
     if (isNew) {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
+        updateTextForGeneratedForm();
         prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType, 'POST', '💾', "onsucctcnmupdt", null);
 		initEvents($('#ExampleBeanServiceImpl_form'));
     } else {
         document.getElementById('ExampleBeanServiceImpl_form').innerHTML = generateFromValue(schema, '', true, '', '', data, false, true, true, '');
+        updateTextForGeneratedForm();
         prepareForm('testcases?testcaseFileName=' + tcfname + '&configType=' + configType + '&tcName=' + data["name"], 'PUT', '💾', "onsucctcnmupdt", null);
         initEvents($('#ExampleBeanServiceImpl_form'));
         if (tcfname != null && data != null) {
-            $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;right: 100px;top: 55px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button"style="position: absolute;right: 100px;bottom: 135px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
+            $('#ExampleBeanServiceImpl_form').append('<button type="button"style="position: absolute;right: 100px;top: 75px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><button type="button"style="position: absolute;right: 100px;bottom: 30px;" id="play_test_case" type="submit" class="postbigb" type="submit">Test</button><br/><div id="play_result_area"></div>');
             $('[id="play_test_case"]').off('click.me').on('click.me', function(tcfname, name, isServerLogsApi, isExternalLogsApi) {
                 return function() {
                     playTest(tcfname, name, isServerLogsApi, isExternalLogsApi);
@@ -2564,7 +2708,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	//fromErroredFile = undefined;
     var isserverlogfile = isServerLogsApi ? "&isServerLogsApi=true" : "";
     isserverlogfile += isExternalLogsApi ? "&isExternalLogsApi=true" : "";
-    ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+    ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
         return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
 				errdFilesReport = {};
@@ -2702,7 +2846,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			return;
 		}
 		if(info.gutterMarkers) {
-			ajaxCall(true, "PUT", "/reports?action=debug&line=r"+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=r"+n+"&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data["m"]);
@@ -2712,7 +2856,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        };
 		    }(tcf), null);
 		} else {
-			ajaxCall(true, "PUT", "/reports?action=debug&line=b"+n+"&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=b"+n+"&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data["m"]);
@@ -2724,7 +2868,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		}
 	});
 	const stop = function(cm) {
-		ajaxCall(true, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		ajaxCall(true, "PUT", "/reports?action=debug&line=-5&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 	        return function(data) {
 	        	if(data["s"]===false) {
 	        		alert(data);
@@ -2744,7 +2888,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	    }(tcf), null);
     };
     const term = function(cm) {
-		ajaxCall(true, "PUT", "/reports?action=debug&line=-6&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		ajaxCall(true, "PUT", "/reports?action=debug&line=-6&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data);
@@ -2760,7 +2904,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	};
 	ceeditor.setOption("extraKeys", {
 		"F5": function(cm) {
-			ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile+"&sline="+ceeditor.getLine(prevline), "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=-1&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile+"&sline="+ceeditor.getLine(prevline), "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data);
@@ -2780,7 +2924,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		    }(tcf), null);
 	  	},
 		"F7": function(cm) {
-			ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=-2&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data);
@@ -2800,7 +2944,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		    }(tcf), null);
 	  	},
 		"F6": function(cm) {
-			ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+			ajaxCall(true, "PUT", "/reports?action=debug&line=-3&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data);
@@ -2820,7 +2964,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		    }(tcf), null);
 	  	},
 	  	"F8": function(cm) {
-	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+	    	ajaxCall(true, "PUT", "/reports?action=debug&line=-4&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 		        return function(data) {
 		        	if(data["s"]===false) {
 		        		alert(data);
@@ -2845,7 +2989,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	  	'Cmd-X': term
 	});
 	if(chkIntv==null) {
-		ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+		ajaxCall(true, "PUT", "/reports?action=debug&line=0&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 	        return function(data) {
 	        	if(data["s"]===false) {
 	        		//alert(data["m"]);
@@ -2874,7 +3018,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        				$('#debug-controls').addClass('hidden');
 					        //document.removeEventListener('keypress',  cmkp);
 	        			}
-				    	ajaxCall(false, "PUT", "/reports?action=debug&line=-7&testcaseFileName=" + tcf + "&testCaseName=" + tc + isserverlogfile, "", "", {}, function(tcf) {
+				    	ajaxCall(false, "PUT", "/reports?action=debug&line=-7&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
 					        return function(data) {
 					        	if(data["s"]===false) {
 	        						alert(data["m"]);
@@ -2974,6 +3118,8 @@ function getErroredSeleasyScripts() {
 	} else {
 		$('#ExampleBeanServiceImpl_form').html('No Errored Seleasy scripts found...');
 	}
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
     return false;
 }
 
@@ -2999,6 +3145,11 @@ function syntaxHighlight1(json) {
 function escapeHtml1(s) {
 	if(!isNaN(s)) return s;
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function unescapeHtml1(s) {
+	if(!isNaN(s)) return s;
+    return s.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"');
 }
 
 function printResponse1(msg, contentTypeHeader) {
@@ -3076,6 +3227,7 @@ function generatorConfig() {
         return function(data) {
             countMap = {};
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
+            updateTextForGeneratedForm();
             prepareForm('configure?configType=generator', 'POST', jQuery.isEmptyObject(data) ? '💾' : '💾', null, null);
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
@@ -3084,6 +3236,10 @@ function generatorConfig() {
 
 function configuration() {
 	$('.top_sel_but').hide();
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);$('#save_test_case').remove();
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
+	$('#float_action_bar').append('<button id="save_test_case" type="button" style="position:absolute;top:13px;right:100px;" class="top_sel_but post" click-event="execTc(\'post\', onUpdConfig, onUpdConfigFail)">💾</button>');
 	errdFilesReport = {};
 	$('#editorTabs').html('').addClass('hidden');
     $('#heading_main').html('Manage Configuration');
@@ -3096,9 +3252,6 @@ function configuration() {
             "testCasesBasePath": {
                 "type": "string"
             },
-            "testCaseDir": {
-                "type": "string"
-            },
             "outFilesBasePath": {
                 "type": "string"
             },
@@ -3108,8 +3261,8 @@ function configuration() {
             "mailSimulator": {
                 "label": {
                     "type": "section",
-                "value": "Mail Simulator",
-                "border": true
+	                "value": "Mail Simulator",
+	                "border": true
                 },
                 "type": "object",
                 "properties": {
@@ -3609,12 +3762,17 @@ function configuration() {
         return function(data) {
             countMap = {};
             isSeleniumExecutor = data.isSeleniumExecutor
+            //testCaseDir = !data.testCaseDir?'':data.testCaseDir;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
+            updateTextForGeneratedForm();
+			$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+			$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
             prepareForm('configure?configType=executor', 'POST', jQuery.isEmptyObject(data) ? '💾' : '💾', "onUpdConfig", "onUpdConfigFail");
 			initEvents($('#ExampleBeanServiceImpl_form'));
         };
     }(configschema), null);
 }
+//var testCaseDir = "";
 function onUpdConfigFail(data) {
 	showErrorAlert(data.responseText);
 	configuration();
@@ -3764,6 +3922,9 @@ function addFormParm(label) {
 
 function getReports() {
 	$('.top_sel_but').hide();
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 	errdFilesReport = {};
     ajaxCall(true, "GET", "reports?action=paths&type=api", "", "", {}, function(data) {
 		if(data && data['paths'] && data.paths.length>0)
@@ -3778,6 +3939,9 @@ function getReports() {
 
 function getSeleniumReports() {
 	$('.top_sel_but').hide();
+	$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
+	$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
+	$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 	errdFilesReport = {};
     ajaxCall(true, "GET", "reports?action=paths&type=sel", "", "", {}, function(data) {
 		if(data && data['paths'] && data.paths.length>0)
@@ -3806,20 +3970,20 @@ function searchLeftNavs(ele) {
         if (term == '') {
             //$(this).parent().show();
             $('.accordion-body').removeClass('out').addClass('in');
-            $(this).children().show();
+            $(this).children().removeClass('hidden');
         } else {
             var flag = false;
             $(this).children().each(function() {
                 if ($(this).text().search(new RegExp(term, "i")) == -1)
-                    $(this).hide();
+                    $(this).addClass('hidden');
                 else {
                     flag = true;
-                    $(this).show();
+                    $(this).removeClass('hidden');
                 }
             });
             if (flag) {
                 $(this).parent().removeClass('out').addClass('in');
-                $(this).parent().parent().children().eq(0).show();
+                $(this).parent().parent().children().eq(0).removeClass('hidden');
             }
         }
     });
@@ -3849,7 +4013,7 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
         if(blockUi) blkcount--;
         //console.log(blkcount);
         if (blockUi && blkcount==0) $.unblockUI();
-    }).fail(function(jqXhr, textStatus, msg) {
+    }).fail(function(jqXhr) {
         if (efunc == null) alert(jqXhr.responseText);
         var data = jqXhr.responseText;
         try {
@@ -3947,11 +4111,8 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
         });
     }
     let cls = buttonLabel=="Update"?'bigb':'';
-    let rght = 70;
-    let bthm = '<button type="button" style="position: absolute;left: 20px;top: 5px;" click-event="gotoBottom()">↓</button> \
-					<button type="button" style="position: absolute;right: '+rght+'px;top: 5px;" class="org_save_butt ' + method.toLowerCase() + cls + '" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button> \
-					<button type="button" style="position: absolute;left: 20px;bottom: 25px;" click-event="gotoTop()">↑</button> \
-					<button type="button" style="position: absolute;right: 20px;bottom: 25px;" class="' + method.toLowerCase() + cls + '" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button>';
+    let rght = 20;
+    let bthm = '<button type="button" style="position: absolute;left: 20px;bottom: 25px;" class="' + method.toLowerCase() + cls + '" click-event="execTc(\''+method.toLowerCase()+'\', '+succFunc+', '+failFunc+')">' + buttonLabel + '</button>';
     $('#ExampleBeanServiceImpl_form').append(
         '<div class="control-group"> \
 				<label class=""></label> \
@@ -3965,12 +4126,37 @@ function prepareForm(url, method, buttonLabel, succFunc, failFunc, isSelfContain
 }
 
 function gotoTop() {
-	$("html, body").animate({ scrollTop: 0 }, 1000);
+	$("html, body").animate({ scrollTop: 0 }, 10);
+	//scrollEle($('#rgtpanel'), true);
 }
 
 function gotoBottom() {
-	 window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
-	//$("html, body").animate({ scrollTop: 0 }, 1000);
+	 $("html, body").animate({ scrollTop: $('#buttons_cont').offset().top-120 }, 10);
+	 //window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
+	 //scrollEle($('#rgtpanel'), false);
+}
+
+function scrollEle(container, up) {
+    var position = container.scrollTop();
+    var height = container[0].scrollHeight;
+    console.log(position +" "+height);
+    if (up) {
+        // Going up
+        container.animate({ scrollTop: position - height }, 10);
+    } else {
+        // Going down
+        container.animate({ scrollTop: position + height }, 10);
+    }
+}
+
+function gotoTopL() {
+	scrollEle($('#lftpanel'), true);
+	//$('#lftpanel').animate({ scrollTop: $('#leftNavAccordionDiv')[0].offsetTop-100 }, 10);
+}
+
+function gotoBottomL() {
+	 scrollEle($('#lftpanel'), false);
+	 //$('#lftpanel').animate({ scrollTop: $('a[click-event="getErroredSeleasyScripts()"]')[0].offsetTop-100 }, 10);
 }
 
 function gatfHLCodeMirror() {

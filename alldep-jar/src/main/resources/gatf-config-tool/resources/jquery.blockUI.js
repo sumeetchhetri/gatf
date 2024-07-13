@@ -224,6 +224,9 @@
 			css = $.extend({}, $.blockUI.defaults.css, opts.css || {});
 			if (opts.onOverlayClick)
 				opts.overlayCSS.cursor = 'pointer';
+				
+			var pos = 'absolute';
+			if(opts['position']) pos = opts['position'];
 
 			themedCSS = $.extend({}, $.blockUI.defaults.themedCSS, opts.themedCSS || {});
 			msg = msg === undefined ? opts.message : msg;
@@ -263,7 +266,7 @@
 			if (opts.theme)
 				lyr2 = $('<div class="blockUI blockOverlay ui-widget-overlay" style="z-index:'+ (z++) +';display:none"></div>');
 			else
-				lyr2 = $('<div class="blockUI blockOverlay" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;width:100%;height:100%;top:0;left:0"></div>');
+				lyr2 = $('<div class="blockUI blockOverlay" style="z-index:'+ (z++) +';display:none;border:none;margin:0;padding:0;width:100%;height:100%;top:0;left:0;"></div>');
 
 			if (opts.theme && full) {
 				s = '<div class="blockUI ' + opts.blockMsgClass + ' blockPage ui-dialog ui-widget ui-corner-all" style="z-index:'+(z+10)+';display:none;position:fixed">';
@@ -302,7 +305,7 @@
 			// style the overlay
 			if (!opts.theme /*&& (!opts.applyPlatformOpacityRules)*/)
 				lyr2.css(opts.overlayCSS);
-			lyr2.css('position', full ? 'fixed' : 'absolute');
+			lyr2.css('position', opts['position'] ? opts['position'] : 'fixed');
 
 			// make iframe layer transparent in IE
 			if (msie || opts.forceIframe)

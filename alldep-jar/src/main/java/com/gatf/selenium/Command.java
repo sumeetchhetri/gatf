@@ -1495,7 +1495,11 @@ public class Command {
         tcmd.isTop = true;
         List<GatfSelCodeParseError> allSynErrs = new ArrayList<>();
         get(tcmd, lio.listIterator(), state, allSynErrs);
-        mergeIfElses(tcmd);
+        try {
+        	mergeIfElses(tcmd);
+		} catch (GatfSelCodeParseError e) {
+			allSynErrs.add(e);
+		}
         if(state.starts!=state.ends) {
         	throwParseErrorS(lio.get(0), new RuntimeException("Blocks not balanced..."));
         } else if(allSynErrs.size()>0) {
@@ -3836,16 +3840,13 @@ public class Command {
         ElseIfCommand(String cmd, boolean negation, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             this.negation = negation;
-            String[] parts = cmd.trim().split("[\t ]+");
+            String[] parts = cmd.trim().split("&");
             for (String part : parts) {
-            	if(part!=null && !part.trim().isEmpty() && part.charAt(0)==part.charAt(part.length()-1)) {
+            	if(part.charAt(0)==part.charAt(part.length()-1)) {
                     if(part.charAt(0)=='"' || part.charAt(0)=='\'') {
                     	part = part.substring(1, part.length()-1);
                     }
                 }
-            	if(part==null || part.trim().isEmpty()) {
-            		throwParseErrorS(cmdDetails, new RuntimeException("Else if command needs a condition"));
-            	}
             	conds.add(new FindCommand(part, cmdDetails, state));
 			}
         }
@@ -9057,6 +9058,11 @@ public class Command {
             return WorkflowContextHandler.OM.writeValueAsString(mpe);
         } catch (GatfSelCodeParseError e) {
         	e.printStackTrace();
+        	if(e.multiple!=null && e.multiple.size()>0) {
+        		for (GatfSelCodeParseError ec : e.multiple) {
+					ec.printStackTrace();
+				}
+        	}
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
         	mpe.put("error", e.getMessage());

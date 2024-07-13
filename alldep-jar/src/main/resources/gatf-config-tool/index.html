@@ -20,9 +20,15 @@
         <link href="index.css" rel="stylesheet">
     </head>
     <body>
+		<button type="button" style="position: fixed;right: 0px;bottom: 0px;z-index: 99999;" click-event="gotoBottom()"><span click-event="gotoBottom()" class="glyphicon glyphicon-arrow-down"></span></button>
+		<button type="button" style="position: fixed;right: 0px;bottom: 25px;z-index: 99999;" click-event="gotoTop()"><span click-event="gotoTop()" class="glyphicon glyphicon-arrow-up"></span></button>
+        <button type="button" style="position: fixed;left: 0px;bottom: 0px;z-index: 99999;" click-event="gotoBottomL()"><span click-event="gotoBottomL()" class="glyphicon glyphicon-arrow-down"></span></button>
+		<button type="button" style="position: fixed;left: 0px;bottom: 25px;z-index: 99999;" click-event="gotoTopL()"><span click-event="gotoTopL()" class="glyphicon glyphicon-arrow-up"></span></button>
+        <button type="button" style="position: fixed;left: 30px;top: 0px;z-index: 99999;" click-event="showLeftPanel()"><span click-event="showLeftPanel()" class="glyphicon glyphicon-arrow-right"></span></button>
+		<button type="button" style="position: fixed;left: 0px;top: 0px;z-index: 99999;" click-event="hideLeftPanel()"><span click-event="hideLeftPanel()" class="glyphicon glyphicon-arrow-left"></span></button>
         <div id="toptoolbar" class="navbar navbar-fixed-top header">
-            <div class="col-md-12">
-                <div class="navbar-header"> 
+            <div class="col-md-12" style="border-bottom: 1px solid #cccc;">
+                <div class="navbar-header" style="margin-left: 35px;"> 
                     <a href="https://github.com/sumeetchhetri/gatf" class="navbar-brand droppedHover">GATF - Config Tool</a>
                     <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar-collapse1"> 
                     <i class="glyphicon glyphicon-search"></i>
@@ -104,11 +110,10 @@
             <div class="">
                 <div class="col-md-3" id="lftpanel">
                     <div class="panel panel-default">
-                        <div class="panel-heading">
-                        	<button style="position:absolute;top:5px;right:20px" class="pull-right" click-event="hideLeftPanel()" type="button">←</button>
-                            <h4 class="">All Links</h4>
+                        <div class="panel-heading" style="padding-bottom:0px;">
+                            <h4 style="margin-top:30px;">All Links</h4>
                         </div>
-                        <div class="panel-body">
+                        <div class="panel-body" style="padding-top:0px;">
                             <div class="list-group">
                                 <div class="accordion" id="leftNavAccordionDiv">
                                     <div class="accordion-group">
@@ -129,7 +134,7 @@
                                     <div class="accordion-group">
                                         <div class="accordion-heading list-group-item">
                                             <a class="accordion-toggle" data-toggle="collapse" data-parent="#leftNavAccordionDiv" href="#leftNavCollapse3">
-                                            TestCase Files
+                                            TestCase Files <select style="width:50%" class="hidden pull-right" id="tcdirs"></select>
                                             </a>
                                         </div>
                                         <div id="leftNavCollapse3" class="accordion-body collapse in" style="margin-left:20px">
@@ -180,8 +185,7 @@
                 <div class="col-md-9" id="rgtpanel">
                     <div class="panel panel-default">
                         <div class="panel-heading">
-                        	<button style="position:absolute;top:5px;right:20px" class="pull-right" click-event="showLeftPanel()" type="button">→</button>
-                            <h4 style="margin-top:20px" class="" id="heading_main">Manage Testcases </h4>
+                            <h4 style="margin-top:20px;word-wrap: break-word;" class="" id="heading_main">Manage Testcases </h4>
                             <ul id="editorTabs" class="hidden nav nav-tabs"></ul>
                         </div>
                         <div class="panel-body">
