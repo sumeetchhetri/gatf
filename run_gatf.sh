@@ -38,18 +38,18 @@ fi
 
 HOMEDIR=.
 TMPDIR=/tmp
-IMG=gatf-bin:3.0.0
+IMG=gatf-bin:3.0.1
 
 if ! [ "$1" = "chrome" ] && ! [ "$1" = "firefox" ] && ! [ "$1" = "vnc" ] ; then
 	echo "Please provide a valid gatf image namely, chrome, firefox or vnc"
 	exit 1
 fi
 if [ "$1" = "chrome" ]; then
-	IMG="gatf-bin:3.0.0"
+	IMG="gatf-bin:3.0.1"
 elif [ "$1" = "firefox" ]; then
-	IMG="gatf-bin-ff:3.0.0"
+	IMG="gatf-bin-ff:3.0.1"
 elif [ "$1" = "vnc" ]; then
-	IMG="gatf-bin-vnc:3.0.0"
+	IMG="gatf-bin-vnc:3.0.1"
 fi
 
 if ! [ -d "$2" ]; then
