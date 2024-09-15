@@ -31,7 +31,6 @@ import com.fasterxml.jackson.dataformat.xml.deser.FromXmlParser;
  * @author Sumeet Chhetri<br/>
  *
  */
-@SuppressWarnings("serial")
 public class XmlPlugin {
     
     private static XmlMapper xmlMapper = new XmlMapper();

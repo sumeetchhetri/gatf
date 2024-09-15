@@ -108,8 +108,8 @@ function darkMode(theme) {
 		jss.set('table td',{'border': '1px solid #98bf21'});
 		jss.set('a',{'color': '#428bca'});
 		jss.set('.d2h-file-header',{'color': '#000000', 'background-color': '#ffffff'});
-		jss.set('.d2h-code-line del, .d2h-code-side-line del',{'color': '#ffb6ba'});
-		jss.set('.d2h-code-line ins, .d2h-code-side-line ins',{'color': '#97f295'});
+		jss.set('.d2h-code-line del, .d2h-code-side-line del',{'color': 'black'});
+		jss.set('.d2h-code-line ins, .d2h-code-side-line ins',{'color': 'black'});
 		jss.set('.d2h-code-side-line',{'color': '#000000', 'background-color': '#ffffff'});
 		jss.set('.d2h-code-side-linenumber',{'color': '#000000', 'background-color': '#ffffff'});
 		jss.set('.d2h-del',{'background-color': '#fee8e9'});
@@ -2242,6 +2242,7 @@ function startInitConfigTool(func) {
 						}
                         $('#testcasefile-holder').append('<a style="text-overflow:ellipsis;overflow:hidden;white-space:nowrap;" title="'+folder+'" status="hide" id="' + fid + '" href="#" class="list-group-item asideLink">&nbsp;<u>' + folder + '</u><button type="button" class="pull-right">Execute</button></a>');
                         $('#' + fid).attr('folder', folder);
+                        
                         $('#' + fid).off('click.me').on('click.me', function() {
 							$('.top_sel_but').hide();
                             var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
@@ -2259,7 +2260,8 @@ function startInitConfigTool(func) {
                             }
                             return false;
                         });
-                        $('#' + fid).find('button').off('click.me').on('click.me', function() {
+                        console.log('---'+fid + ' button event ' + $('#' + fid).length+ ' ' + $('#' + fid).find('button').length);
+						$('#' + fid).find('button').off('click.b').on('click.b', function() {
 							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
 							execFiles = new Array();
 							$('.' + escapedfolder + '_claz').each(function() {
@@ -2270,6 +2272,7 @@ function startInitConfigTool(func) {
 						    executeHtml(plugintype);
 						    executionHandler('PUT', true, plugintype);
 						    execFiles = new Array();
+                            return false;
 						});
                     }
 
@@ -2295,9 +2298,13 @@ function startInitConfigTool(func) {
 	                        $('#' + id).off('contextmenu').on('contextmenu', function(e) {
 								e.preventDefault();
 								$(this).css('background-color', '#ddd');
-								if($('#testcasefile-holder').data('files')) {
-									if($('#testcasefile-holder').data('files').indexOf($(this).attr('tcfname'))==-1)
+								if($('#testcasefile-holder').length>0) {
+									if(!$('#testcasefile-holder').data('files')) {
+										$('#testcasefile-holder').data('files', []);
+									}
+									if($('#testcasefile-holder').data('files').indexOf($(this).attr('tcfname'))==-1) {
 										$('#testcasefile-holder').data('files').push($(this).attr('tcfname'));
+									}
 									if($('#testcasefile-holder').data('files').length==2) {
 										var f1 = $('#testcasefile-holder').data('files')[0], f2 = $('#testcasefile-holder').data('files')[1];
 										$.get("testcases?testcaseFileName=" + f1, function(lhs) {
@@ -2433,7 +2440,7 @@ function startInitConfigTool(func) {
 						                	}
                                     	});
                                     	$('#'+fedid).off('click.me').on('click.me', function() {
-											$('.top_sel_but').hide();
+											//$('.top_sel_but').hide();
 											$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
 											$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 											currtestcasefile = $(this).attr('title');
@@ -2583,7 +2590,7 @@ function startInitConfigTool(func) {
 			console.log(result);*/
 			
 			$('.asideLink[folder*="/"]').each(function() {
-				$(this).html("↓ " + $(this).html());
+				$(this).find('u').html("↓ " + $(this).find('u').html());
 				$(this).addClass('hidden');
 				const prts = $(this).attr('folder').split(/\/|\\/);
 				prts.splice(-1);

@@ -159,7 +159,6 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 
 	@Override
 	public boolean isAuthenticated(Request request) {
-		// TODO Auto-generated method stub
 		return false;
 	}
 }

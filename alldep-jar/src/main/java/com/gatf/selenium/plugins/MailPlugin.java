@@ -32,7 +32,10 @@ public class MailPlugin {
 	
 	public static void init(AcceptanceTestContext cntxt) {
 		File mailConfFile = cntxt.getResourceFile("mail.properties");
-		ConfigLoader.loadProperties(mailConfFile, true);
+        try {
+            ConfigLoader.loadProperties(mailConfFile, true);
+        } catch (Exception e) {
+        }
 	}
     
     @SuppressWarnings("unchecked")

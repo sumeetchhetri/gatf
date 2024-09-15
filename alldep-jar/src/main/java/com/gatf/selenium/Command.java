@@ -87,6 +87,7 @@ public class Command {
         boolean isSTGenPhase = false;
         boolean modeEnableGlobalTimeouts = true;
         boolean modeEnableConcurrentWebDriver = false;
+        boolean hasNetapixCommand = false;
 
         int NUMBER = 1;
         int NUMBER_COND = 1;
@@ -115,7 +116,6 @@ public class Command {
         String ifcnt = null, pifcnt = null;
 
         List<Object[]> subtestDetails = new ArrayList<Object[]>();
-        @SuppressWarnings("serial")
         Set<String> systemReservedKeys = new HashSet<String>() {{
         	add("loop over");
         	add("begin code in");
@@ -405,7 +405,6 @@ public class Command {
         return className;
     }
 
-    @SuppressWarnings("serial")
     public static class GatfSelCodeParseError extends GatfRunTimeError {
     	Object[] details;
     	List<GatfSelCodeParseError> multiple = new ArrayList<GatfSelCodeParseError>();
@@ -824,9 +823,9 @@ public class Command {
             comd = new WindowCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("frame ")) {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("printpdf ")) {
+        } /*else if (cmd.toLowerCase().startsWith("printpdf ")) {
             comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("mail ")) {
+        }*/ else if (cmd.toLowerCase().startsWith("mail ")) {
             comd = new MailCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("http")) {
             comd = new HttpCommand(cmd.substring(5).trim(), cmdDetails, state);
@@ -834,6 +833,7 @@ public class Command {
             comd = new WindowOpenSaveInterceptJsCommand(cmd.substring(10).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("netapix ")) {
             comd = new NetworkAPIInterceptCommand(cmd.substring(8).trim(), cmdDetails, state);
+            state.hasNetapixCommand = true;
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().matches(typeSwStr) || cmd.toLowerCase().matches(typeExStr) ||cmd.toLowerCase().startsWith("select ") 
@@ -1250,6 +1250,13 @@ public class Command {
                         }
                     }
                     if(!f.exists()) {
+                        f = new File(new File(parentPath).getParent() + File.separator + ((ImportCommand)tmp).name);
+                        parentPath = new File(parentPath).getParent();
+                        if(!f.exists() && new File(parentPath).exists()) {
+                            f = new File(new File(parentPath).getParent() + File.separator + ((ImportCommand)tmp).name);
+                        }
+                    }
+                    if(!f.exists()) {
                     	f = new File(state.origBasePath + File.separator + ((ImportCommand)tmp).name);
                     }
                     if(!f.exists()) {
@@ -1376,6 +1383,13 @@ public class Command {
                         	} else {
                         		f = new File(state.origBasePath + File.separator + state.testcaseDir.trim() + File.separator + ((DynPropsCommand)tmp).name);
                         	}
+                        }
+                    }
+                    if(!f.exists()) {
+                        f = new File(new File(parentPath).getParent() + File.separator + ((DynPropsCommand)tmp).name);
+                        parentPath = new File(parentPath).getParent();
+                        if(!f.exists() && new File(parentPath).exists()) {
+                            f = new File(new File(parentPath).getParent() + File.separator + ((DynPropsCommand)tmp).name);
                         }
                     }
                     if(!f.exists()) {
@@ -1546,6 +1560,9 @@ public class Command {
         CommandState state = new CommandState();
         state.origBasePath = context.getGatfExecutorConfig().getTestCasesBasePath();
         state.basePath = state.origBasePath;
+		if(context.getGatfExecutorConfig().getGatfTestDataConfig()!=null && context.getGatfExecutorConfig().getGatfTestDataConfig().getGlobalVariables()!=null) {
+			state.dynProps.putAll(context.getGatfExecutorConfig().getGatfTestDataConfig().getGlobalVariables());
+		}
         if(context.getGatfExecutorConfig().getTestCaseDir()!=null) {
             state.testcaseDir = context.getGatfExecutorConfig().getTestCaseDir();
         }
@@ -4729,7 +4746,7 @@ public class Command {
                 }
                 config.setArguments(config.getArguments()+ " --ignore-certificate-errors");
                 //if(System.getProperty("webdriver.http.factory")==null) {
-                //	config.setArguments(config.getArguments()+ " --remote-allow-origins=*");
+                config.setArguments(config.getArguments()+ " --remote-allow-origins=*");
                 //}
                 if(!config.getName().equals("chrome")) {
                 	String cargs = config.getArguments();
@@ -4982,7 +4999,7 @@ public class Command {
             else {
                 throwError(fileLineDetails, new RuntimeException("Invalid driver configuration specified, no browser found with name " + config.getName()));
             }
-            b.append("initBrowser(get___d___(), logconsole, logdebug, lognw);\n");
+            b.append("initBrowser(get___d___(), logconsole, logdebug, lognw, "+state.hasNetapixCommand+");\n");
             
             boolean isDocker = "true".equalsIgnoreCase(System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER"));
             if(isDocker) {
@@ -6840,7 +6857,7 @@ public class Command {
             return "printpdf \"" + name + "\"" + (extractText?" text":"");
         }
         String javacode() {
-            return "\nprintToPdf(get___d___(), evaluate(\""+esc(name)+"\"), "+extractText+", \""+esc(colsep)+"\");\n";
+            return "\nprintToPdf(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+", \""+esc(colsep)+"\");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -7046,7 +7063,7 @@ public class Command {
             String[] parts = cmd.trim().split("[\t ]+");
             String mode = unSantizedUnQuoted(parts[0].trim(), state);
             if(StringUtils.isBlank(mode) || !mode.toLowerCase().matches("on|off")) {
-            	throwParseError(null, new RuntimeException("window.open save intercept command needs to be enabled/disabled, valid values on|off"));
+            	throwParseError(null, new RuntimeException("netapix command needs to be enabled/disabled, valid values on|off"));
             }
             start = !mode.equalsIgnoreCase("off");
             if(mode.equalsIgnoreCase("on") && parts.length<2) {

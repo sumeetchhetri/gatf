@@ -91,6 +91,7 @@ public class DistributedGatfTester {
 				conn.ois = ois;
 				conn.oos = oos;
 				logger.info("Sending GATF configuration Successful to node " + node);
+				ois.close();
 			} else {
 				logger.info("Sending GATF configuration Failed to node " + node);
 			}
@@ -102,7 +103,7 @@ public class DistributedGatfTester {
 				try {
 					client.close();
 				} catch (IOException e1) {
-					e1.printStackTrace();
+					//e1.printStackTrace();
 				}
 			}
 		}

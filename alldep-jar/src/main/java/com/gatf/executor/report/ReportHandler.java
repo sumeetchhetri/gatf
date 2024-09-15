@@ -1657,7 +1657,7 @@ public class ReportHandler {
 	                    .showTextAligned("Page " +  pageNum, coordP, footerY, TextAlignment.RIGHT)
 	                    .close();
 	            }
-	            
+	            canvas.close();
 	        }
 	    }
 	}

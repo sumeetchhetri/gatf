@@ -469,7 +469,6 @@ public class TestCaseExecutorUtil {
                 soapAction = soapAction != null ? "\"" + soapAction + "\"" : "";
                 builder.addHeader(AcceptanceTestContext.PROP_SOAP_ACTION_11, soapAction);
                 builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
-                //TODO recheck this later builder.addParameter(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
                 testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
             } else if (request.contains(AcceptanceTestContext.SOAP_1_2_NAMESPACE)) {
                 String contentType = AcceptanceTestContext.MIMETYPE_APPLICATION_XML;

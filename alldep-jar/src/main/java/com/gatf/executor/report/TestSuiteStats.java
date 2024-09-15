@@ -221,7 +221,6 @@ public class TestSuiteStats implements Serializable {
 		return builder.toString();
 	}
 	
-	@SuppressWarnings("serial")
 	public List<Object> toList() {
 		return new ArrayList<Object>() {{
 			add(totalTestCount);

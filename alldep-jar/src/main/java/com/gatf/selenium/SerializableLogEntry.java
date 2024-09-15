@@ -18,7 +18,6 @@ package com.gatf.selenium;
 import java.io.Serializable;
 import java.util.logging.Level;
 
-@SuppressWarnings("serial")
 public class SerializableLogEntry implements Serializable {
 	private final Level level;
 	private final long timestamp;

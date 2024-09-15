@@ -1,0 +1,48 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "java",
+			"env": {
+				"java.jdt.ls.java.home": "/Users/sumeetc/.sdkman/candidates/java/11.0.14-tem"
+			},
+			"name": "ConfigTool",
+			"request": "launch",
+			"mainClass": "com.gatf.generator.core.GatfTestGeneratorUtil",
+			"args": "-configtool 9080 0.0.0.0 alldep-jar/sample",
+			"vmArgs" : "-Djdk.attach.allowAttachSelf=true", //it accepts a string or an array of strings,
+			"projectName": "gatf-alldep-jar"
+		},
+		{
+			"type": "java",
+			"env": {
+				"java.jdt.ls.java.home": "/Users/sumeetc/.sdkman/candidates/java/11.0.14-tem"
+			},
+			"name": "Command",
+			"request": "launch",
+			"mainClass": "com.gatf.selenium.Command",
+			"vmArgs" : "" //it accepts a string or an array of strings
+		},
+		{
+			"type": "java",
+			"env": {
+				"java.jdt.ls.java.home": "/Users/sumeetc/.sdkman/candidates/java/11.0.14-tem"
+			},
+			"name": "DisListener",
+			"request": "launch",
+			"mainClass": "com.gatf.executor.distributed.DistributedGatfListener",
+			"vmArgs" : "" //it accepts a string or an array of strings
+		},
+		{
+			"type": "java",
+			"name": "ConfigTool Debug (Remote)",
+			"projectName": "gatf-alldep-jar",
+			"request": "attach",
+			"hostName": "10.10.4.208",
+			"port": 8000
+		}
+	]
+}

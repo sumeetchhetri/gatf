@@ -39,6 +39,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -94,16 +95,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v125.dom.DOM;
-import org.openqa.selenium.devtools.v125.dom.model.Node;
-import org.openqa.selenium.devtools.v125.dom.model.NodeId;
-import org.openqa.selenium.devtools.v125.fetch.Fetch;
-import org.openqa.selenium.devtools.v125.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v125.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v125.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v125.log.Log;
-import org.openqa.selenium.devtools.v125.network.Network;
-import org.openqa.selenium.devtools.v125.network.model.ResourceType;
+import org.openqa.selenium.devtools.v124.dom.DOM;
+import org.openqa.selenium.devtools.v124.dom.model.Node;
+import org.openqa.selenium.devtools.v124.dom.model.NodeId;
+import org.openqa.selenium.devtools.v124.fetch.Fetch;
+import org.openqa.selenium.devtools.v124.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v124.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v124.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v124.log.Log;
+import org.openqa.selenium.devtools.v124.network.Network;
+import org.openqa.selenium.devtools.v124.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v124.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -163,7 +165,6 @@ import technology.tabula.Table;
 import technology.tabula.extractors.SpreadsheetExtractionAlgorithm;
 
 public abstract class SeleniumTest {
-	@SuppressWarnings("serial")
 	protected final static Map<String, Level> LOG_LEVEL_BY_NAME_MAP = new HashMap<String, Level>(){{
 		put(Level.ALL.getName().toLowerCase(), Level.ALL);
 		put(Level.CONFIG.getName().toLowerCase(), Level.CONFIG);
@@ -175,7 +176,6 @@ public abstract class SeleniumTest {
 		put(Level.SEVERE.getName().toLowerCase(), Level.SEVERE);
 		put(Level.WARNING.getName().toLowerCase(), Level.WARNING);
 	}};
-	@SuppressWarnings("serial")
 	protected final static HashSet<String> LOG_TYPES_SET = new HashSet<String>() {{
 		add(LogType.BROWSER);
 		add(LogType.CLIENT);
@@ -358,7 +358,7 @@ public abstract class SeleniumTest {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			switch(browserName) {
 				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v125.dom.DOM;
+				//above - import org.openqa.selenium.devtools.v124.dom.DOM;
 				case "chrome": {
 					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_125.0");
 					break;
@@ -465,7 +465,7 @@ public abstract class SeleniumTest {
 		this.timeoutSleepGranularity = timeoutSleepGranularity; 
 	}
 	
-	private static final Map<String, Boolean> BROWSER_FEATURES = new ConcurrentHashMap<String, Boolean>();
+	private final Map<String, Boolean> BROWSER_FEATURES = new ConcurrentHashMap<String, Boolean>();
 
 	protected void nextSession() {
 		if(sessions.size()>sessionNum+1) {
@@ -473,7 +473,6 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	@SuppressWarnings("serial")
 	protected Set<String> addTest(String sessionName, String browserName) {
 		final SeleniumTestSession s = new SeleniumTestSession();
 		s.sessionName = sessionName==null?Integer.toHexString(sessionNum+1):sessionName;
@@ -1165,6 +1164,10 @@ public abstract class SeleniumTest {
 					}
 				}
 				sess.___dqs___.set(indx, true);
+				if(d instanceof HasDevTools) {
+					DevTools devTools = ((HasDevTools)d).getDevTools();
+					devTools.disconnectSession();
+				}
 			}
 		}
 	}
@@ -2046,7 +2049,7 @@ public abstract class SeleniumTest {
 		return getElements(d, sc, finder, null, null, ce);
 	}
 
-	@SuppressWarnings({ "serial", "unchecked" })
+	@SuppressWarnings({ "unchecked" })
 	protected static List<WebElement> getElements(WebDriver d, SearchContext sc, String finder, String finder1, String relative, List<WebElement> ce) {
 		finder = finder.trim();
 		String by = finder.indexOf("@")!=-1?finder.substring(0, finder.indexOf("@")).trim():finder;
@@ -2164,8 +2167,40 @@ public abstract class SeleniumTest {
 		return el;
 	}
 	
+	//Unused for now....does not work correctly--- use wopensave instead
 	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText, String colsep) {
-		if(pdr instanceof PrintsPage) {
+		if(pdr instanceof HasDevTools) {///only prints the main page/tab
+			DevTools devTools = ((HasDevTools)pdr).getDevTools();
+			// Set up PDF print options
+            // Execute prin//
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v124.page.Page.printToPDF(
+                Optional.of(false),     // landscape
+                Optional.of(true),      // displayHeaderFooter
+                Optional.of(true),      // printBackground
+                Optional.empty(),       // scale
+                Optional.empty(),      // paperWidth (A4 width in inches)
+                Optional.empty(),     // paperHeight (A4 height in inches)
+                Optional.empty(),       // marginTop
+                Optional.empty(),       // marginBottom
+                Optional.empty(),       // marginLeft
+                Optional.empty(),       // marginRight
+                Optional.empty(),     // pageRanges
+                Optional.empty(),       // headerTemplate
+                Optional.empty(),       // footerTemplate
+                Optional.of(false),     // preferCSSPageSize
+                Optional.empty(),      // transferMode
+                Optional.empty(),       // generateTaggedPDF
+                Optional.empty()        // generateDocumentOutline
+            ));
+			try {
+				IOUtils.write(Base64.getDecoder().decode(pdfResponse.getData()), new FileOutputStream(filePath));
+				if(extractText && new File(filePath).exists()) {
+					extractTextFromPdf(filePath, colsep, 0, 0);
+				}
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		} else if(pdr instanceof PrintsPage) {//only prints the print viewport....useless
 			try {
 				PrintOptions po = new PrintOptions();
 				Pdf pdf = ((PrintsPage)pdr).print(po);
@@ -2175,6 +2210,17 @@ public abstract class SeleniumTest {
 				}
 			} catch (Exception e) {
 				e.printStackTrace();
+			}
+		} else if(pdr.getCurrentUrl().startsWith("blob:")) {///returns 0 with the xhr fetch method
+			System.out.println(pdr.getCurrentUrl());
+			String data = readBlob(pdr, pdr.getCurrentUrl());
+			try {
+				data = new String(org.apache.commons.codec.binary.Base64.decodeBase64(data), "UTF-8");
+				IOUtils.write(data, new FileOutputStream(filePath), "UTF-8");
+				if(extractText && new File(filePath).exists()) {
+					extractTextFromPdf(filePath, colsep, 0, 0);
+				}
+			} catch(Exception e) {
 			}
 		}
 	}
@@ -2417,12 +2463,21 @@ public abstract class SeleniumTest {
 			System.out.println("Window open intercept got url [" + url + "] for window " + openPos);
 			client = TestCaseExecutorUtil.getClient();
 			new File(filePath).delete();
-			if(!url.startsWith("http://") || !url.startsWith("https://")) {
+			if(url.startsWith("blob:")) {
+				String data = (String)((JavascriptExecutor)driver).executeScript("return await window.GatfUtil.wopenBlobToBase64('"+url+"')");
+				data = data.substring(data.indexOf(",")+1);
+				IOUtils.write(Base64.getDecoder().decode(data), new FileOutputStream(filePath));
+				if(extractText && new File(filePath).exists()) {
+					extractTextFromPdf(filePath, colsep, 0, 0);
+				}
+				return;
+			} else if(!url.startsWith("http://") && !url.startsWith("https://")) {
 				String burl = driver.getCurrentUrl();
 				if(burl.indexOf("#")!=-1) burl = burl.substring(0, burl.indexOf("#"));
 				if(burl.indexOf("?")!=-1) burl = burl.substring(0, burl.indexOf("?"));
-				url = burl + "/" + url;
-				url = url.replace("//", "/");
+				if(!burl.trim().endsWith("/")) burl += "/";
+				if(url.trim().startsWith("/")) url = url.substring(1);
+				url = burl + url;
 			}
 			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
 			Response res = call.execute();
@@ -2493,7 +2548,6 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)wd).getDevTools();
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)wd).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
-				devTools.createSession();
 				Node node = devTools.send(DOM.getDocument(Optional.empty(), Optional.empty()));
 				NodeId nodeId = devTools.send(DOM.querySelector(node.getNodeId(), cssSelctor));
 				List<String> files = new ArrayList<String>();
@@ -2518,8 +2572,6 @@ public abstract class SeleniumTest {
 				((org.openqa.selenium.chrome.ChromeDriver)get___d___()).executeCdpCommand("DOM.setFileInputFiles", setIfArgs);*/
 			} catch (Exception e) {
 				e.printStackTrace();
-			} finally {
-				devTools.disconnectSession();
 			}
 		} else {
 			if(count>1) {
@@ -3510,6 +3562,37 @@ public abstract class SeleniumTest {
 		}
 		throw new RuntimeException("not a valid image element");
 	}
+
+	protected String readBlob(WebDriver webDriver, String burl) {
+		if(webDriver instanceof JavascriptExecutor) {
+			try {
+				@SuppressWarnings("unused")
+				String script = " "
+					+ "var uri = arguments[0];"
+					+ "var callback = arguments[1];"
+					+ "var toBase64 = function(buffer){for(var r,n=new Uint8Array(buffer),t=n.length,a=new Uint8Array(4*Math.ceil(t/3)),i=new Uint8Array(64),o=0,c=0;64>c;++c)i[c]='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.charCodeAt(c);for(c=0;t-t%3>c;c+=3,o+=4)r=n[c]<<16|n[c+1]<<8|n[c+2],a[o]=i[r>>18],a[o+1]=i[r>>12&63],a[o+2]=i[r>>6&63],a[o+3]=i[63&r];return t%3===1?(r=n[t-1],a[o]=i[r>>2],a[o+1]=i[r<<4&63],a[o+2]=61,a[o+3]=61):t%3===2&&(r=(n[t-2]<<8)+n[t-1],a[o]=i[r>>10],a[o+1]=i[r>>4&63],a[o+2]=i[r<<2&63],a[o+3]=61),new TextDecoder('ascii').decode(a)};"
+					+ "var xhr = new XMLHttpRequest();"
+					+ "xhr.responseType = 'arraybuffer';"
+					+ "xhr.onload = function(){ callback(toBase64(xhr.response)) };"
+					+ "xhr.onerror = function(){ callback(uri) };"
+					+ "xhr.open('GET', uri);"
+					+ "xhr.send();"; 
+				String string2 = "const blob = await fetch(document.location).then(res => res.blob());"
+					+ "function blobToBase64(blob) {"
+					+ "	return new Promise((resolve, _) => {"
+					+ "		const reader = new FileReader();"
+					+ "		reader.onloadend = () => resolve(reader.result);"
+					+ "		reader.readAsDataURL(blob);"
+					+ "	});"
+					+ "}return await blobToBase64(blob);";
+				Object result = ((JavascriptExecutor) webDriver).executeScript(string2);
+				return result.toString();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return "";
+	}
 	
 	protected String readQrBarCode(WebDriver webDriver, WebElement element, String filepath) throws IOException {
 		if(element!=null && webDriver instanceof JavascriptExecutor) {
@@ -3579,7 +3662,6 @@ public abstract class SeleniumTest {
         }
     }
 	
-	@SuppressWarnings("serial")
 	public static class GatfRunTimeErrors extends RuntimeException {
 		private List<? extends GatfRunTimeError> errors;
 		public GatfRunTimeErrors(List<? extends GatfRunTimeError> errors) {
@@ -3589,8 +3671,6 @@ public abstract class SeleniumTest {
 			return errors;
 		}
 	}
-	
-	@SuppressWarnings("serial")
 	public static abstract class GatfRunTimeError extends RuntimeException {
 		Object[] details;
 		Throwable err;
@@ -3614,7 +3694,6 @@ public abstract class SeleniumTest {
 		//}
 	}
 	
-	@SuppressWarnings("serial")
 	public static abstract class ValidSubTestException extends GatfRunTimeError {
 		public ValidSubTestException(String msg) {
 			super(msg);
@@ -3624,21 +3703,18 @@ public abstract class SeleniumTest {
         }
 	}
 	
-	@SuppressWarnings("serial")
 	public static class PassSubTestException extends ValidSubTestException {
 		public PassSubTestException(String msg) {
 			super(msg);
 		}
 	}
 	
-	@SuppressWarnings("serial")
 	public static class WarnSubTestException extends ValidSubTestException {
 		public WarnSubTestException(String msg) {
 			super(msg);
 		}
 	}
 	
-	@SuppressWarnings("serial")
 	public static class FailSubTestException extends GatfRunTimeError {
 		public FailSubTestException(String msg) {
 			super(msg);
@@ -3648,7 +3724,6 @@ public abstract class SeleniumTest {
         }
 	}
 	
-	@SuppressWarnings("serial")
 	public static class SubTestException extends GatfRunTimeError {
 		public SubTestException(String stName, Throwable cause) {
 			super(cause.getMessage());
@@ -3659,7 +3734,6 @@ public abstract class SeleniumTest {
         }
 	}
 	
-	@SuppressWarnings("serial")
 	public static class FailureException extends GatfRunTimeError {
 		Throwable err;
 		public FailureException(Throwable cause) {
@@ -3674,7 +3748,6 @@ public abstract class SeleniumTest {
         }
 	}
 	
-	@SuppressWarnings("serial")
 	public static class XPathException extends GatfRunTimeError {
 		Throwable err;
 		public XPathException(Throwable cause) {
@@ -3695,8 +3768,10 @@ public abstract class SeleniumTest {
 		d.navigate().refresh();
 		waitForReady(d);
 	}
-	
-	protected void initBrowser(WebDriver driver, boolean logconsole, boolean logdebug, boolean lognw) {
+
+	private final List<String> tabList = Collections.synchronizedList(new ArrayList<>());
+
+	protected void initBrowser(WebDriver driver, boolean logconsole, boolean logdebug, boolean lognw, boolean hasNetapixCommand) {
 		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
@@ -3706,14 +3781,83 @@ public abstract class SeleniumTest {
 			BROWSER_FEATURES.put(sessionId+".NWCONSOLE", lognw);
 			devTools.createSession();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v125.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v124.security.Security.setIgnoreCertificateErrors(true));
+			
 			if(logconsole) {
 				devTools.send(Log.enable());
 				devTools.addListener(Log.entryAdded(), logEntry -> {
 					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
 				});
 			}
-			devTools.disconnectSession();
+
+			devTools.addListener(Target.targetCreated(), targetCreatedEvent -> {
+				if ("page".equals(targetCreatedEvent.getType())) {
+					tabList.add(targetCreatedEvent.getTargetId().toString());
+					System.out.println("New Tab Opened: " + targetCreatedEvent.getTitle() + " (" + targetCreatedEvent.getUrl() + ")");
+				}
+			});
+
+			devTools.addListener(Target.targetDestroyed(), targetId -> {
+				int tgid = -1;
+				for(int i=0;i<tabList.size();i++) {
+					if(tabList.get(i).equals(targetId.toString())) {
+						tgid = i;
+						break;
+					}
+				}
+				if(tgid!=-1) tabList.remove(tgid);
+			});
+
+			if(hasNetapixCommand) {
+				/*
+				* Fetch requestpaused will only work if you do it right at the begnning when the first session is created
+				*/
+				List<RequestPattern> lrp = new ArrayList<>();
+				lrp.add(new RequestPattern(Optional.of("*"), Optional.empty(), Optional.of(RequestStage.RESPONSE)));
+				devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
+				devTools.addListener(Fetch.requestPaused(), requestPaused -> {
+					if(NETWORK_INSPECTION.containsKey(sessionId)) {
+						String url = NETWORK_INSPECTION.get(sessionId)[1].toString();
+						String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
+						//System.out.println("---" + requestPaused.getRequestId().toString());
+						System.out.println(String.format("Captured Network Response for [%s] -> %d", requestPaused.getRequestId().toString(), 
+								requestPaused.getResponseStatusCode().get()));
+						//requestPaused.getRequestId()
+						String rurl = requestPaused.getRequest().getUrl();
+						rurl = rurl.indexOf("?")!=-1?rurl.substring(0, rurl.indexOf("?")):rurl;
+						if(requestPaused.getRequest().getMethod().equalsIgnoreCase(NETWORK_INSPECTION.get(sessionId)[0].toString()) && rurl.equalsIgnoreCase(murl)) {
+							System.out.println("Matched inspection request [" + NETWORK_INSPECTION.get(sessionId)[0].toString() + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
+							List<HeaderEntry> headers = requestPaused.getResponseHeaders().get();
+							String mimeType = null;
+							Map<String, Object> headerMap = new HashMap<>();
+							for(HeaderEntry he: headers) {
+								if(he.getName().equalsIgnoreCase("content-type")) {
+									mimeType = he.getValue();
+									if(mimeType.indexOf(";")!=-1) {
+										mimeType = mimeType.substring(0, mimeType.indexOf(";"));
+									}
+								}
+								headerMap.put(he.getName(), he.getValue());
+							}
+							org.openqa.selenium.devtools.v124.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							String body = firsb.getBody();
+							if(firsb.getBase64Encoded()) {
+								try {
+									body = new String(org.apache.commons.codec.binary.Base64.decodeBase64(body), "UTF-8");
+								} catch (UnsupportedEncodingException e) {
+								}
+							}
+							NETWORK_INSPECTION.get(sessionId)[2] = requestPaused.getRequestId().toString();
+							NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {requestPaused.getResponseStatusCode().get(), headerMap, mimeType, body};
+						}
+					}
+					try {
+						devTools.send(Fetch.continueResponse(requestPaused.getRequestId(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
+					} catch(Exception e) {
+						System.out.println();
+					}
+				});
+			}
 		}
 		
 		if(logdebug) {
@@ -3755,26 +3899,6 @@ public abstract class SeleniumTest {
 		}
 	}
 	
-	/*protected void initCdp(WebDriver driver) {
-		if(driver instanceof HasDevTools) {
-			DevTools devTools = ((HasDevTools)driver).getDevTools();
-			String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
-
-			waitForReady(driver);
-			
-			devTools.createSession();
-			
-			if(BROWSER_FEATURES.get(sessionId+".LOGCONSOLE")) {
-				devTools.send(Log.enable());
-				devTools.addListener(Log.entryAdded(), logEntry -> {
-					System.out.println("Browser Console Log ["+logEntry.getLevel()+"]: "+logEntry.getText());
-				});
-			}
-			
-			devTools.disconnectSession();
-		}
-	}*/
-	
 	protected void initJs(WebDriver driver) {
 		try {
 			if(driver instanceof JavascriptExecutor) {
@@ -3790,7 +3914,7 @@ public abstract class SeleniumTest {
 		}
 	}
 
-	private static final Map<String, Object[]> NETWORK_INSPECTION = new ConcurrentHashMap<>();
+	private final Map<String, Object[]> NETWORK_INSPECTION = new ConcurrentHashMap<>();
 	
 	protected void networkApiInspectPre(WebDriver driver, String method, String url) {
 		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
@@ -3800,51 +3924,52 @@ public abstract class SeleniumTest {
 			throw new RuntimeException("Only one inspection allowed at a time, no nested or simultaneous interceptions allowed.");
 		}
 		
-		final String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
+		//final String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();
-			
-			devTools.createSession();
-		
-			RequestPattern rp = new RequestPattern(Optional.of("*"), Optional.of(ResourceType.XHR), Optional.of(RequestStage.RESPONSE));
-			List<RequestPattern> lrp = new ArrayList<>();
-			lrp.add(rp);
+
+			/*List<RequestPattern> lrp = new ArrayList<>();
+			lrp.add(new RequestPattern(Optional.of("*"), Optional.empty(), Optional.of(RequestStage.RESPONSE)));
 			devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
+
+			devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));*/
+
 			
-			System.out.println("Starting network inspection on CDP session " + devTools.getCdpSession().toString());
-			devTools.addListener(Fetch.requestPaused(), requestPaused -> {
-				System.out.println(String.format("Captured Network Response for [%s] -> %d", requestPaused.getRequestId().toString(), 
-						requestPaused.getResponseStatusCode().get()));
-				//requestPaused.getRequestId()
-				String rurl = requestPaused.getRequest().getUrl();
-				rurl = rurl.indexOf("?")!=-1?rurl.substring(0, rurl.indexOf("?")):rurl;
-				if(requestPaused.getRequest().getMethod().equalsIgnoreCase(method) && rurl.equalsIgnoreCase(murl)) {
+
+			/*devTools.addListener(Network.requestWillBeSent(), requestSent -> {
+				if (requestSent.getType().get().equals(ResourceType.XHR)) {
+					String rurl = requestSent.getRequest().getUrl();
+					rurl = rurl.indexOf("?")!=-1?rurl.substring(0, rurl.indexOf("?")):rurl;
+					if(requestSent.getRequest().getMethod().equalsIgnoreCase(method) && rurl.equalsIgnoreCase(murl)) {
+						System.out.println("Matched inspection request [" + method + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
+						NETWORK_INSPECTION.get(sessionId)[2] = requestSent.getRequestId().toString();
+					}
+				}
+			});
+			devTools.addListener(Network.responseReceived(), responseReceived -> {
+				if(NETWORK_INSPECTION.containsKey(sessionId) && responseReceived.getRequestId().toString().equals(NETWORK_INSPECTION.get(sessionId)[2])) {
+					org.openqa.selenium.devtools.v124.network.model.Response response = responseReceived.getResponse();
 					System.out.println("Matched inspection request [" + method + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
-					List<HeaderEntry> headers = requestPaused.getResponseHeaders().get();
+					Headers headers = response.getHeaders();
 					String mimeType = null;
 					Map<String, Object> headerMap = new HashMap<>();
-					for(HeaderEntry he: headers) {
-						if(he.getName().equalsIgnoreCase("content-type")) {
-							mimeType = he.getValue();
+					for(Map.Entry<String, Object> he: headers.entrySet()) {
+						if(he.getKey().equalsIgnoreCase("content-type")) {
+							mimeType = he.getValue().toString();
 							if(mimeType.indexOf(";")!=-1) {
 								mimeType = mimeType.substring(0, mimeType.indexOf(";"));
 							}
 						}
-						headerMap.put(he.getName(), he.getValue());
+						headerMap.put(he.getKey(), he.getValue().toString());
 					}
-					org.openqa.selenium.devtools.v125.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
-					String body = firsb.getBody();
-					if(firsb.getBase64Encoded()) {
-						try {
-							body = new String(org.apache.commons.codec.binary.Base64.decodeBase64(body), "UTF-8");
-						} catch (UnsupportedEncodingException e) {
-						}
-					}
-					NETWORK_INSPECTION.get(sessionId)[2] = requestPaused.getRequestId().toString();
-					NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {requestPaused.getResponseStatusCode().get(), headerMap, mimeType, body};
+					GetResponseBodyResponse grsp = devTools.send(Network.getResponseBody(responseReceived.getRequestId()));
+					NETWORK_INSPECTION.get(sessionId)[3] = new Object[] {response.getStatus(), headerMap, mimeType, grsp.getBody()};
 				}
-				devTools.send(Fetch.continueResponse(requestPaused.getRequestId(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty()));
 			});
+			devTools.send(Network.enable(Optional.empty(), Optional.empty(), Optional.empty()));*/
+
+			//devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
+			System.out.println("Starting network inspection on CDP session " + devTools.getCdpSession().toString());
 		}
 	}
 	
@@ -3910,9 +4035,6 @@ public abstract class SeleniumTest {
 			if(driver instanceof HasDevTools) {
 				DevTools devTools = ((HasDevTools)driver).getDevTools();
 				System.out.println("Closing network inspection on CDP session " + devTools.getCdpSession().toString());
-				devTools.send(Fetch.disable());
-				devTools.clearListeners();
-				devTools.disconnectSession();
 			}
 			
 			NETWORK_INSPECTION.remove(sessionId);

@@ -273,7 +273,6 @@ public class AcceptanceTestContext {
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			// TODO: handle exception
 		}
 		getWorkflowContextHandler().init();
 	}

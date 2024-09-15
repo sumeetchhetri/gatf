@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.openqa.selenium.logging.LogEntry;
 
-@SuppressWarnings("serial")
 public class SerializableLogEntries implements Iterable<SerializableLogEntry>, Serializable {
 	private final List<SerializableLogEntry> entries;
 	public SerializableLogEntries(List<LogEntry> entries) {

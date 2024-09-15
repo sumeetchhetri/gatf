@@ -19,7 +19,7 @@ import com.gatf.selenium.SeleniumDriverConfig;
 import com.gatf.selenium.SeleniumTest;
 import com.gatf.selenium.SeleniumTestSession;
 
-/*GATF_ST_CLASS_START_*/ @SuppressWarnings("serial")
+/*GATF_ST_CLASS_START_*/ 
 public class Validator extends SeleniumTest
 implements Serializable {
 	public static void main(String[] args) throws Exception {
