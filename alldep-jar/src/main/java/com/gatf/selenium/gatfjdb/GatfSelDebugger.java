@@ -308,11 +308,9 @@ public class GatfSelDebugger {
         dbgIns.selToJavaLineMap = selToJavaLineMap;
         dbgIns.allcmds = out;
         
-        SeleniumTest.IS_GATF.set(true);
     	dbgIns.connectAndLaunchVM(args);
         dbgIns.enableClassPrepareRequest();
         dbgIns.running = 1;
-        SeleniumTest.IS_GATF.set(false);
         
         for(String file : selToJavaLineMap.keySet()) {
         	dbgIns.stateMap.put(file, new DebugState());

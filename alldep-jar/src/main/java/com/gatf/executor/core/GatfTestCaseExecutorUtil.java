@@ -1752,7 +1752,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception {
-        context = new AcceptanceTestContext(configuration, fcl.apply(null));
+        if(context!=null) {
+            context.projectClassLoader = fcl.apply(null);
+        } else {
+            context = new AcceptanceTestContext(configuration, fcl.apply(null));
+        }
         try {
             context.validateAndInit(flag);
             if (flag) {

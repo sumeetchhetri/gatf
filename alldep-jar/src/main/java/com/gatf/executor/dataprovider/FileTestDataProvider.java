@@ -154,9 +154,9 @@ public class FileTestDataProvider implements TestDataProvider {
 	private void handleCsvFamilyFile(File provFile, String[] args, String fileType, List<String> variableNamesArr,  List<Map<String, String>> result) {
 		List<String[]> list = new ArrayList<String[]>();
 		try {
-			boolean header = true;
+			boolean header = false;
 			if(args.length>2 && args[2].trim().toLowerCase().matches("header=(true|false|yes|no|on|off|1|0)")) {
-				header = args[2].trim().toLowerCase().matches("header=(false|no|off|0)");
+				header = args[2].trim().toLowerCase().matches("header=(true|yes|on|1)");
 			}
 			if(fileType.equalsIgnoreCase("csv")) {
 				char splitStr = ',';
@@ -181,11 +181,15 @@ public class FileTestDataProvider implements TestDataProvider {
 							"variable Names provided at position " + counter++);
 				}
 				Map<String, String> row = new HashMap<String, String>();
+				String drt = "";
 				for (int i = 0; i < variableNamesArr.size(); i++) {
 					if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 					row.put(variableNamesArr.get(i), parts[i]);
+					drt += parts[i];
 				}
-				result.add(row);
+				if(!drt.trim().isBlank()) {
+					result.add(row);
+				}
 			}
 		} catch(AssertionError e) {
 			throw e;
@@ -263,11 +267,15 @@ public class FileTestDataProvider implements TestDataProvider {
 				
 				for (int j = 0; j < nodeLength; j++) {
 					Map<String, String> row = new HashMap<String, String>();
+					String drt = "";
 					for (int i = 0; i < variableNamesArr.size(); i++) {
 						if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 						row.put(variableNamesArr.get(i), nodes.get(i).item(j).getNodeValue());
+						drt += nodes.get(i).item(j).getNodeValue();
 					}
-					result.add(row);
+					if(!drt.trim().isBlank()) {
+						result.add(row);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -296,11 +304,15 @@ public class FileTestDataProvider implements TestDataProvider {
 				
 				for (int j = 0; j < nodeLength; j++) {
 					Map<String, String> row = new HashMap<String, String>();
+					String drt = "";
 					for (int i = 0; i < variableNamesArr.size(); i++) {
 						if(variableNamesArr.get(i).equals("") || variableNamesArr.get(i).equals("_")) continue;
 						row.put(variableNamesArr.get(i), varValues.get(i).get(j));
+						drt += varValues.get(i).get(j);
 					}
-					result.add(row);
+					if(!drt.trim().isBlank()) {
+						result.add(row);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -331,12 +343,16 @@ public class FileTestDataProvider implements TestDataProvider {
 				while (rows.hasNext()) {
 					Row hssfRow = rows.next();
 					String[] parts = new String[hssfRow.getLastCellNum()];
+					String drt = "";
 					for(int cn=0; cn<hssfRow.getLastCellNum(); cn++) {
 						Cell hssfCell = hssfRow.getCell(cn, MissingCellPolicy.CREATE_NULL_AS_BLANK);
 						DataFormatter fmt = new DataFormatter();
 						parts[cn] = fmt.formatCellValue(hssfCell);
+						drt += parts[cn].toString();
 					}
-					list.add(parts);
+					if(!drt.trim().isBlank()) {
+						list.add(parts);
+					}
 				}
 			}
 		} catch (Exception e) {

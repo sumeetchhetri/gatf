@@ -1453,6 +1453,22 @@ public class Command {
         }
     }
 
+    public static Command findCommandByLineNum(Command parent, String testFile, int lineNum) {
+        if(parent.fileLineDetails!=null && ((File)parent.fileLineDetails[2]).getAbsolutePath().equals(testFile) && parent.fileLineDetails[1].equals(lineNum)) return parent;
+        for (Command c : parent.children) {
+            if(((File)c.fileLineDetails[2]).getAbsolutePath().equals(testFile) && c.fileLineDetails[1].equals(lineNum)) {
+                return c;
+            }
+            if(c.children!=null) {
+                Command ct = findCommandByLineNum(c, testFile, lineNum);
+                if(ct!=null) {
+                    return ct;
+                }
+            }
+        }
+        return null;
+    }
+
     static void mergeIfElses(Command cmd) {
         if(cmd==null || cmd.children==null || cmd.children.isEmpty())return;
         IfCommand ifc = null;
@@ -1674,9 +1690,8 @@ public class Command {
     String selcode(String varnm) {
         return "";
     }
-    
-    String javacode() {
-        StringBuilder b = new StringBuilder();
+
+    void commonImports(StringBuilder b) {
         b.append("package com.gatf.selenium;\n");
         for (Command c : children) {
             if(c instanceof RequireCommand) {
@@ -1726,6 +1741,11 @@ public class Command {
         b.append("import org.openqa.selenium.Keys;\n");
         b.append("import ru.yandex.qatools.ashot.AShot;\n");
         b.append("import ru.yandex.qatools.ashot.shooting.ShootingStrategies;\n\n@SuppressWarnings({\"unused\", \"unchecked\", \"serial\"})\n");
+    }
+    
+    String javacode() {
+        StringBuilder b = new StringBuilder();
+        commonImports(b);
         b.append("/*GATF_ST_CLASS_START_*/public class "+className+" extends SeleniumTest implements Serializable {\n");
         b.append("public "+className+"(AcceptanceTestContext ___cxt___, int index) {\n/*GATF_ST_CLASS_INIT_*/super(\""+esc(name)+"\", ___cxt___, index);\n}\n");
         b.append("public void close() {\n/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();\n}\n");
@@ -2721,7 +2741,7 @@ public class Command {
             b.append(genDebugInfo(this));
             subt.calls += 1;
             String name_ = subt.name + " (" + subt.calls + ")" + (args.trim().isEmpty()?"":(" (" + args.trim() + ")"));
-            b.append("___ce___ = " + subt.fName+"(\""+esc(name_)+"\", ___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            b.append("___ce___ = ___invoke_sub_test_dyn___(getClass(), \"" + subt.fName+"\", \""+esc(name_)+"\", ___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
             for (String pn : params.keySet()) {
 				b.append("___del_var__(\""+pn+"\");\n");
 			}
@@ -3723,7 +3743,7 @@ public class Command {
     }*/
 
     public static class FindCommandImpl extends Command {
-        FindCommand cond;
+        protected FindCommand cond;
         FindCommandImpl(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
         }
@@ -6170,8 +6190,70 @@ public class Command {
             }
             String b = "___ce___ = handleWaitFuncWL(___cw___, "+sc+", "+wel+", "+counter+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
-                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.timeoutSleepGranularity+", "+isVisible+", "+state.getLayers()+");\n";
+                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.timeoutSleepGranularity+", "+isVisible+", \""+esc(fileLineDetails[2].toString())+"\", "+fileLineDetails[1]+" ,"+state.getLayers()+");\n";
             return b;
+        }
+
+        
+        protected List<Object> paramsAfterPause(List<Command> children, boolean noexcep, int counter, boolean isVisible) {
+            List<Object> params = new ArrayList<>();
+            List<String> values = new ArrayList<>();
+            String value = (operval!=null?operval:null), action = null, tvalue = null, ssubselector = subselector, soper = oper, sclassifier = classifier;
+            if(children!=null && children.size()>0) {
+                Command c = children.get(0);
+                if(c instanceof ValueCommand) {
+                   value =((ValueCommand)c).value;
+                } else if(c instanceof ValueListCommand) {
+                	for (Command vc : c.children) {
+						if(vc instanceof ValueCommand) {
+							ValueCommand v = (ValueCommand)vc;
+                            values.add(v.value);
+						}
+					}
+                } else if(c instanceof ClickCommand || c instanceof HoverCommand || c instanceof HoverAndClickCommand
+                        || c instanceof ClearCommand || c instanceof SubmitCommand || c instanceof TypeCommand
+                        || c instanceof SelectCommand || c instanceof DoubleClickCommand || c instanceof UploadCommand) {
+                    if(FindCommandImpl.class.isAssignableFrom(c.getClass()) && ((FindCommandImpl)c).cond==null) {
+                        action = c.getClass().getSimpleName().toLowerCase().replace("command", "");
+                        if(c instanceof TypeCommand) {
+                        	TypeCommand typ = (TypeCommand)c;
+                            action = typ.type + typ.qualifier;
+                            if(typ.type.equalsIgnoreCase("type") || typ.type.equalsIgnoreCase("sendkeys")) {
+                            	tvalue = typ.value;
+                            } else if(typ.type.equalsIgnoreCase("chord")) {
+                            	tvalue = Keys.chord(typ.value);
+                            } else {
+                            	tvalue = typ.v1 + " ";
+                            	if(typ.v2!=null) tvalue += typ.v2 + " ";
+                            	if(typ.v3!=null) tvalue += typ.v3 + " ";
+                            }
+                        } else if(c instanceof UploadCommand) {
+                            tvalue = ((UploadCommand)c).value;
+                        } else if(c instanceof SelectCommand) {
+                        	SelectCommand scc = (SelectCommand)c;
+                        	ssubselector = scc.by;
+                        	value = scc.value;
+                        } else if(c instanceof ClickCommand) {
+                        	ClickCommand typ = (ClickCommand)c;
+                            if(StringUtils.isNotBlank(typ.name)) {
+                            	action = "click"+typ.name;
+                            }
+                        }
+                    }
+                } else if(c instanceof RobotCommand) {
+                	//return c.javacode();
+                }
+            }
+            String[] classfs = new String[] {"", ""};
+            if(sclassifier!=null) {
+                classfs = new String[] {sclassifier, classifier1};
+            }
+            String logbc = by + (classifier!=null?("@'" + classifier + "'"):"");
+            String excmsg = noexcep?null:"Element not found by selector " + logbc + " at line number "+fileLineDetails[1]+" ";
+            params.add(relative);params.add(classfs);params.add(new String[]{by, by1});
+            params.add(ssubselector);params.add(byselsame);params.add(value);params.add(values);params.add(action);
+            params.add(soper);params.add(tvalue);params.add(excmsg);
+            return params;
         }
         /*String javacodeonly(List<Command> children, long waitTime) {
             javacodeonlyint(children);
@@ -9142,7 +9224,7 @@ public class Command {
 
     	validateSel(new String[] {"-validate-sel", "data/test.sel",
         		"/path/to/project/gatf-config.xml",
-        		"/path/to/project/", "true"}, null, false);
+                "/path/to/project/", "true"}, null, false);
     	/*validateSel(new String[] {"-validate-sel", "data/ui-auto.sel",
         		"/path/to/project/gatf-config.xml",
         		"/path/to/project/", "true"}, null, false);

@@ -169,7 +169,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     private MailSimulatorConfig mailSimulator;
     
     private HttpServerSimulatorConfig htttpServerSimulator;
-	
+
+	private boolean autoPauseOnElNotFound = false;
+
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -728,6 +730,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setHtttpServerSimulator(HttpServerSimulatorConfig htttpServerSimulator) {
 		this.htttpServerSimulator = htttpServerSimulator;
+	}
+	
+	public boolean isAutoPauseOnElNotFound() {
+		return autoPauseOnElNotFound;
+	}
+
+	public void setAutoPauseOnElNotFound(boolean autoPauseOnElNotFound) {
+		this.autoPauseOnElNotFound = autoPauseOnElNotFound;
 	}
 
 	public void validate()

@@ -85,7 +85,7 @@ public class SeleniumCodeGeneratorAndUtil {
         if(StringUtils.isNotBlank(config.getGatfJarPath())) {
         	gatfJarPath = config.getGatfJarPath().trim();
         }
-		
+		//System.out.println(new Formatter().formatSource(sourceCode));
 		if(isLog) {
 			try {
 				//System.out.println(sourceCode);

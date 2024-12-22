@@ -77,8 +77,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 					if(!new File(dirPath).exists()) {
 						new File(dirPath).mkdir();
 					}
-	    			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator
-	    					+ testcaseFileName;
+	    			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
     			} else {
     				filePath = basepath + File.separator + testcaseFileName;
     			}
@@ -123,10 +122,13 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && isNotSel)) {
     		try {
+				FileUtils.moveFile(new File(filePath), new File(filePath + ".bk"));
+				
     		    if(isNotXml) {
     		        FileOutputStream fos = new FileOutputStream(filePath);
     		        IOUtils.copy(request.getInputStream(), fos);
     		        fos.close();
+
     		        if(!isNotSel) {
 	    		    	try {
 	        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();

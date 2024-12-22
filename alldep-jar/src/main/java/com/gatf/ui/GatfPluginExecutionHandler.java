@@ -83,6 +83,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 			gatfConfig = getGatfPluginConfig(pluginType, mojo);
 			if(request.getMethod().equals(Method.GET) ) {
 				if(isStarted.get()) {
+					out.put("is_paused", mojo.getContext().isPauseElSearch(false));
 					if(pluginType.startsWith("executor-")) {
 						byte[] status = RuntimeReportUtil.getEntry();
 						if(status==null) {
@@ -248,6 +249,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
         			response.setStatus(HttpStatus.OK_200);
 				} else if(isStarted.get()) {
 					out.put("error", "Execution already in progress..");
+					out.put("is_paused", mojo.getContext().isPauseElSearch(false));
 					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
 				} else {
 					out.put("error", "Unknown Error...");

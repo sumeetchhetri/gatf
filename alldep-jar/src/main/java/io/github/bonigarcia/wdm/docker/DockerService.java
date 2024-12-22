@@ -57,6 +57,7 @@ import com.github.dockerjava.api.model.Capability;
 import com.github.dockerjava.api.model.ExposedPort;
 import com.github.dockerjava.api.model.Frame;
 import com.github.dockerjava.api.model.HostConfig;
+import com.github.dockerjava.api.model.Image;
 import com.github.dockerjava.api.model.Mount;
 import com.github.dockerjava.api.model.PortBinding;
 import com.github.dockerjava.api.model.Ports;
@@ -337,8 +338,21 @@ public class DockerService {
 
     public void pullImageIfNecessary(String cacheKey, String imageId,
             String imageVersion) throws DockerException {
-        if (!config.getDockerAvoidPulling()
-                && !resolutionCache.checkKeyInResolutionCache(cacheKey)) {
+        List<Image> images = dockerClient.listImagesCmd().exec();
+        boolean imageExists = images.stream().anyMatch(
+            image -> {
+                if (image.getRepoTags() != null) {
+                    for (String tagEntry : image.getRepoTags()) {
+                        if (tagEntry.equals(imageId)) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }
+        );
+        if (!imageExists || (!config.getDockerAvoidPulling()
+                && !resolutionCache.checkKeyInResolutionCache(cacheKey))) {
             try {
                 log.info(
                         "Pulling Docker image {} (this might take some time, but only the first time)",

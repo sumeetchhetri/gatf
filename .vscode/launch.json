@@ -14,7 +14,8 @@
 			"mainClass": "com.gatf.generator.core.GatfTestGeneratorUtil",
 			"args": "-configtool 9080 0.0.0.0 alldep-jar/sample",
 			"vmArgs" : "-Djdk.attach.allowAttachSelf=true", //it accepts a string or an array of strings,
-			"projectName": "gatf-alldep-jar"
+			"projectName": "gatf-alldep-jar",
+			"classPaths": []
 		},
 		{
 			"type": "java",
@@ -24,7 +25,8 @@
 			"name": "Command",
 			"request": "launch",
 			"mainClass": "com.gatf.selenium.Command",
-			"vmArgs" : "" //it accepts a string or an array of strings
+			"vmArgs" : "", //it accepts a string or an array of strings
+			"projectName": "gatf-alldep-jar"
 		},
 		{
 			"type": "java",
@@ -41,7 +43,7 @@
 			"name": "ConfigTool Debug (Remote)",
 			"projectName": "gatf-alldep-jar",
 			"request": "attach",
-			"hostName": "10.10.4.208",
+			"hostName": "10.10.4.71",
 			"port": 8000
 		}
 	]

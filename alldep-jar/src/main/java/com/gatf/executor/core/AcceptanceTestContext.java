@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 import javax.ws.rs.core.HttpHeaders;
 import javax.xml.namespace.QName;
@@ -37,6 +39,7 @@ import javax.xml.parsers.DocumentBuilderFactory;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.validator.routines.UrlValidator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -126,7 +129,7 @@ public class AcceptanceTestContext {
 	
 	private GatfExecutorConfig gatfExecutorConfig;
 	
-	private ClassLoader projectClassLoader;
+	protected ClassLoader projectClassLoader;
 	
 	private Map<String, Method> prePostTestCaseExecHooks = new HashMap<String, Method>();
 
@@ -143,6 +146,34 @@ public class AcceptanceTestContext {
 		void start(Object[] args);
 		void stop();
 		boolean isEventReceived(Object[] args);
+	}
+
+	protected AtomicBoolean pauseElSearchFlag = new AtomicBoolean(false);
+	protected AtomicReference<ImmutablePair<String, Integer>> pausedLineNo = new AtomicReference<>();
+
+	public void pauseElSearch() {
+		pauseElSearchFlag.set(true);
+	}
+
+	public void unPauseElSearch() {
+		pauseElSearchFlag.set(false);
+	}
+
+	public boolean isPauseElSearch(boolean isLocal) {
+		if(isLocal) return pauseElSearchFlag.get();
+		return pauseElSearchFlag.get() || getPausedLineNo()!=-1;
+	}
+
+	public void setPausedLineNo(String testFile, int lineNo) {
+		pausedLineNo.set(new ImmutablePair<String, Integer>(testFile, lineNo));
+	}
+
+	public int getPausedLineNo() {
+		return pausedLineNo.get()==null?-1:pausedLineNo.get().getRight();
+	}
+
+	public String getPausedFile() {
+		return pausedLineNo.get()==null?null:pausedLineNo.get().getLeft();
 	}
 	
 	protected static final Map<String, SimulatorInt> simulators = new ConcurrentHashMap<>();

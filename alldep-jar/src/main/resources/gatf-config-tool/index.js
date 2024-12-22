@@ -1033,6 +1033,17 @@ function executionHandler(method, shwPp, pluginType) {
             if (shwPp) alert(data.error);
             if (data.error == 'Execution already in progress..' || data.error == "Execution completed, check Reports Section") {
 				if (data.error && data.error[2] && data.error[2].indexOf(".sel")!=-1) {
+                    if(data['is_paused']===true) {
+                        $.titleAlert("Alert - Test is in Paused state!!");
+                    }
+                    if(data['line']>-1) {
+                        $.titleAlert.stop();
+                        isAlertTitle = false;
+                    }
+                    if(!data['running']) {
+                        $.titleAlert.stop();
+                        isAlertTitle = false;
+                    }
 					if(data.others && data.others.length>0) {
 						errdFilesReport[data.error[2]] = new Set();
 						errdFilesReport[data.error[2]].push([data.error[1], data.error[3]]);
@@ -1625,8 +1636,8 @@ function testcasesHandler(method, index) {
 
 function testcasefileView() {
     for (var i = 0; i < alltestcasefiles.length; i++) {
-        if (currtestcasefile == alltestcasefiles[i]) {
-            $('#tcfile_' + i).trigger("click");
+        if (currtestcasefile == alltestcasefiles[i][0]) {
+            $('#tcfile_' + (i+1)).trigger("click");
         }
     }
 }
@@ -1945,8 +1956,8 @@ function loadTestCaseFileEditor() {
 			"Cmd-Space": "autocomplete", 
 			"Ctrl-B": function(cm) {cm.foldCode(cm.getCursor());},
 			"Cmd-B": function(cm) {cm.foldCode(cm.getCursor());},
-			"Ctrl-S": function(cm){execTc('post', onsucctcnmupdt, null);},
-			"Cmd-S": function(cm){execTc('post', onsucctcnmupdt, null);},
+			"Ctrl-S": function(cm){execTc('post', onsucctcnmupdt, onsavetestfile);},
+			"Cmd-S": function(cm){execTc('post', onsucctcnmupdt, onsavetestfile);},
 			"Ctrl-R": function(cm){
 				execTc('post', function() {
 					onsucctcnmupdt();
@@ -2260,7 +2271,7 @@ function startInitConfigTool(func) {
                             }
                             return false;
                         });
-                        console.log('---'+fid + ' button event ' + $('#' + fid).length+ ' ' + $('#' + fid).find('button').length);
+                        //console.log('---'+fid + ' button event ' + $('#' + fid).length+ ' ' + $('#' + fid).find('button').length);
 						$('#' + fid).find('button').off('click.b').on('click.b', function() {
 							var escapedfolder = $(this).parent().attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
 							execFiles = new Array();
@@ -2445,9 +2456,9 @@ function startInitConfigTool(func) {
 											$('#lftpanel>.panel>.panel-heading').width($('#lftpanel').width()-32);
 											currtestcasefile = $(this).attr('title');
 											$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
-											$('#lftpanel').animate({ scrollTop: $('.asideLink[tcfname="'+currtestcasefile+'"]')[0].offsetTop-100 }, 1000);
-											$('.asideLink[tcfname="'+currtestcasefile+'"]').css('background-color', '#ddd');
-											$('.asideLink[tcfname="'+currtestcasefile+'"]').css('color', currColor=='#000000'?'white':'black');
+											$('#lftpanel').animate({ scrollTop: $('.asideLink[tcfname="'+winesc(currtestcasefile)+'"]')[0].offsetTop-100 }, 1000);
+											$('.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').css('background-color', '#ddd');
+											$('.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').css('color', currColor=='#000000'?'white':'black');
                                     		if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
 		                                	const fedidi = sha256(currtestcasefile);
 		                                	$("#editorTabs").find('li').removeClass('active');
@@ -2710,12 +2721,98 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
     }
 }
 
+var pauseIntv, isAlertTitle = false;
 //var fromErroredFile;
 function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	//fromErroredFile = undefined;
+    isAlertTitle = false;
     var isserverlogfile = isServerLogsApi ? "&isServerLogsApi=true" : "";
     isserverlogfile += isExternalLogsApi ? "&isExternalLogsApi=true" : "";
-    ajaxCall(true, "PUT", "/reports?action=playTest&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
+    const fl_ = function() {
+        pauseIntv = setInterval(function() {
+            ajaxCall(false, "PUT", "/reports?action=pausedLineNo", "", "", {}, function(tcf) {
+                if(tcf['is_paused']===true && !isAlertTitle) {
+                    $.titleAlert("Alert - Test is in Paused state!!");
+                    isAlertTitle = true;
+                }
+                if(tcf['is_paused']===true && tcf['line']>-1) {//true pause
+                    if($('#pause_playing_test').attr('state')!=="unpause") {
+                        $('#pause_playing_test').attr('state', 'unpause');
+                        $('#pause_playing_test').html('Continue Test');
+                    }
+                    if(tcf['file']===currtestcasefile) {
+                        ceeditor.addLineClass(tcf['line']-1, "wrap", "currentHighlight");
+                        ceeditor.scrollIntoView({line: tcf['line']-1, char:0}, 200);
+                    } else {
+                        currtestcasefile = tcf['file'];
+                        $('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
+                        setTimeout(function() {
+                            fl_();
+                            ceeditor.addLineClass(tcf['line']-1, "wrap", "currentHighlight");
+                            ceeditor.scrollIntoView({line: tcf['line']-1, char:0}, 200);
+                        }, 500);
+                    }
+                } else if(tcf['is_paused']===true && tcf['line']==-1) {//pause triggered
+                    $('#pause_playing_test').attr('state', 'trgpause');
+                    $('#pause_playing_test').html('Triggering Pause');
+                } else if(tcf['is_paused']===false && tcf['line']>-1) {//unpause triggered
+                    $('#pause_playing_test').attr('state', 'trgunpause');
+                    $('#pause_playing_test').html('Triggering Unpause');
+                } else if(tcf['running']) {//testcase running & true unpasue
+                    $('#pause_playing_test').attr('state', 'pause');
+                    $('#pause_playing_test').html('Pause Test');
+                    $.titleAlert.stop();
+                    isAlertTitle = false;
+                    //$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
+                    //$.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button></p><p id="psups_st"></p>'});
+                } else {//not running
+                    $.titleAlert.stop();
+                    clearInterval(pauseIntv);
+                    isAlertTitle = false;
+                    $('.currentHighlight').removeClass('currentHighlight')
+                }
+                /*
+                if(tcf['is_paused']===true && !isAlertTitle) {
+                    $.titleAlert("Alert - Test is in Paused state!!");
+                    isAlertTitle = true;
+                }
+                if(tcf['is_paused']===true) {
+                    $('#pause_playing_test').attr('state', 'unpause');
+                    $('#pause_playing_test').html('Continue Test');
+                    if(tcf['line']>-1) {
+                        ceeditor.addLineClass(tcf['line'], "wrap", "currentHighlight");
+                        ceeditor.scrollIntoView({line: tcf['line']-1, char:0}, 200);
+                        $.titleAlert.stop();
+                        clearInterval(pauseIntv);
+                        isAlertTitle = false;
+                    }
+                } else if(tcf['running']) {
+                    $('#pause_playing_test').attr('state', 'pause');
+                    $('#pause_playing_test').html('Pause Test');
+                    $('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
+                    setTimeout(fl_, 1000);
+                }
+                if(!tcf['running']) {
+                    $.titleAlert.stop();
+                    clearInterval(pauseIntv);
+                    isAlertTitle = false;
+                }*/
+            }, function(err) {});
+        }, 1000);
+        $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button></p><p id="psups_st"></p>'});
+        $('#pause_playing_test').off('click').on('click', function() {
+            setTimeout(function() {
+                let st = $('#pause_playing_test').attr('state');
+                if(/^(pause|unpause)$/.test(st)) {
+                    ajaxCall(false, "PUT", "/reports?action="+ (st=='pause'?'pauseElSearch':'unPauseElSearch'), "", "", {}, function(tcf) {
+                    }, function(err){
+                        $('#psups_st').html('Failed to Pause/Unpause the test');
+                    });
+                }
+            }, 100);
+        });
+    };
+    ajaxCall(fl_, "PUT", "/reports?action=playTest&testcaseFileName=" + encodeURIComponent(tcf) + "&testCaseName=" + encodeURIComponent(tc) + isserverlogfile, "", "", {}, function(tcf) {
         return function(data) {
             if (tcf.toLowerCase().endsWith(".sel")) {
 				errdFilesReport = {};
@@ -2833,6 +2930,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		prevline = openInDebugMode["p"]*1 - 1;
 		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+        ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 		$.unblockUI(undefined, $('.CodeMirror'));
 		openInDebugMode = undefined;
 	}
@@ -2889,6 +2987,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 		        		prevline = data["p"]*1 - 1;
 		        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 		        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                        ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 		        	}
 	        	}
 	        };
@@ -2925,6 +3024,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        		prevline = data["p"]*1 - 1;
 			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                            ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 			        	}
 		        	}
 		        };
@@ -2945,6 +3045,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        		prevline = data["p"]*1 - 1;
 			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                            ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 			        	}
 		        	}
 		        };
@@ -2965,6 +3066,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        		prevline = data["p"]*1 - 1;
 			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                            ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 			        	}
 		        	}
 		        };
@@ -2985,6 +3087,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        		prevline = data["p"]*1 - 1;
 			        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 			        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                            ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 			        	}
 		        	}
 		        };
@@ -3017,6 +3120,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        		$('#debug-controls').data("dal", data["l"]);
 	        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
 	        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
+                    ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 	        		chkIntv = setInterval(function() {
 	        			if(!$('#req-txtarea').data('tcf')) {
 	        				clearInterval(chkIntv);
@@ -3032,7 +3136,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					        		$('#debug-controls').addClass('hidden');
 					        		clearInterval(chkIntv);
 									chkIntv = undefined;
-									$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
+									$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
 					        		ceeditor = undefined;
 					        		openInDebugMode = undefined;
 					        	} else {
@@ -3041,7 +3145,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					        			$('#debug-controls').addClass('hidden');
 										clearInterval(chkIntv);
 										chkIntv = undefined;
-										$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
+										$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
 					        			ceeditor = undefined;
 					        			//document.removeEventListener('keypress',  cmkp);
 					        			openInDebugMode = undefined;
@@ -3052,7 +3156,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 						        		}
 						        		if(currtestcasefile!=data["t"]) {
 						        			currtestcasefile = data["t"];
-						        			$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
+						        			$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
 						        			openInDebugMode = data;
 						        		} else if(cstate && data["v"]===cstate) {
 							        		ceeditor.removeLineClass(prevline, 'background', 'CodeMirror-activeline-background');
@@ -3060,6 +3164,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 							        		prevline = data["n"]*1 - 1;
 							        		ceeditor.setGutterMarker(prevline, "breakpoints", makeDebugMarker());
 							        		ceeditor.addLineClass(prevline, 'background', 'CodeMirror-activeline-background');
+                                            ceeditor.scrollIntoView({line: prevline, char:0}, 200);
 						        			$.unblockUI(undefined, $('.CodeMirror'));
 						        			cstate = undefined;
 							        	}
@@ -3070,7 +3175,7 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 			        		$('#debug-controls').addClass('hidden');
 			        		clearInterval(chkIntv);
 							chkIntv = undefined;
-							$('a.asideLink[tcfname="'+currtestcasefile+'"]').trigger('click');
+							$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
 			        		ceeditor = undefined;
 			        		openInDebugMode = undefined;
 					    });
@@ -3079,6 +3184,10 @@ function debugTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 	        };
 	    }(tcf), null);
 	}
+}
+
+function winesc(text) {
+    return text.replace(/\\/g,'\\\\');
 }
 
 function getErroredSeleasyScripts() {
@@ -3264,6 +3373,10 @@ function configuration() {
             },
             "outFilesDir": {
                 "type": "string"
+            },
+            "autoPauseOnElNotFound": {
+                "type": "boolean",
+                "default": "true"
             },
             "mailSimulator": {
                 "label": {
@@ -3768,7 +3881,8 @@ function configuration() {
     ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema) {
         return function(data) {
             countMap = {};
-            isSeleniumExecutor = data.isSeleniumExecutor
+            isSeleniumExecutor = data.isSeleniumExecutor;
+            isSelAutoPauseOnElNotFound = data.autoPauseOnElNotFound;
             //testCaseDir = !data.testCaseDir?'':data.testCaseDir;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
             updateTextForGeneratedForm();
@@ -3786,13 +3900,14 @@ function onUpdConfigFail(data) {
 }
 function onUpdConfig(data) {
 	isSeleniumExecutor = data.responseJSON.isSeleniumExecutor;
+    isSelAutoPauseOnElNotFound = data.responseJSON.autoPauseOnElNotFound;
 	startInitConfigTool();
 	showSuccessAlert("Configuration saved Successfully...");
 	//window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
 	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
 
-var isSeleniumExecutor = false;
+var isSeleniumExecutor = false, isSelAutoPauseOnElNotFound = false;
 
 function handleAuth(token) {
     if (debugEnabled) alert("Providing authentication access to Test Links....");
@@ -4000,7 +4115,11 @@ function ajaxCall(blockUi, meth, url, contType, content, vheaders, sfunc, efunc)
 	if(blockUi) blkcount++;
 	//console.log(blkcount);
     if (blockUi) {
-	    if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
+        if(typeof blockUi === 'function') {
+            blockUi();
+        } else {
+            if($('.blockUI').length==0) $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>'});
+        }
 	}
     $.ajax({
         headers: vheaders,
@@ -4194,3 +4313,111 @@ function handleCommandCodeMirror() {
         console.log(cmd);
     }
 }
+
+;(function($){	
+	$.titleAlert = function(text, settings) {
+		// check if it currently flashing something, if so reset it
+		if ($.titleAlert._running)
+			$.titleAlert.stop();
+		
+		// override default settings with specified settings
+		$.titleAlert._settings = settings = $.extend( {}, $.titleAlert.defaults, settings);
+		
+		// if it's required that the window doesn't have focus, and it has, just return
+		if (settings.requireBlur && $.titleAlert.hasFocus)
+			return;
+		
+		// originalTitleInterval defaults to interval if not set
+		settings.originalTitleInterval = settings.originalTitleInterval || settings.interval;
+		
+		$.titleAlert._running = true;
+		$.titleAlert._initialText = document.title;
+		document.title = text;
+        $("#favicon").attr("href","images/alert.webp");
+		var showingAlertTitle = true;
+		var switchTitle = function() {
+			// WTF! Sometimes Internet Explorer 6 calls the interval function an extra time!
+			if (!$.titleAlert._running)
+				return;
+			
+		    showingAlertTitle = !showingAlertTitle;
+		    document.title = (showingAlertTitle ? text : $.titleAlert._initialText);
+		    $.titleAlert._intervalToken = setTimeout(switchTitle, (showingAlertTitle ? settings.interval : settings.originalTitleInterval));
+		}
+		$.titleAlert._intervalToken = setTimeout(switchTitle, settings.interval);
+		
+		if (settings.stopOnMouseMove) {
+			$(document).mousemove(function(event) {
+				$(this).unbind(event);
+				$.titleAlert.stop();
+			});
+		}
+		
+		// check if a duration is specified
+		if (settings.duration > 0) {
+			$.titleAlert._timeoutToken = setTimeout(function() {
+				$.titleAlert.stop();
+			}, settings.duration);
+		}
+	};
+	
+	// default settings
+	$.titleAlert.defaults = {
+		interval: 500,
+		originalTitleInterval: null,
+		duration:0,
+		stopOnFocus: true,
+		requireBlur: false,
+		stopOnMouseMove: false
+	};
+	
+	// stop current title flash
+	$.titleAlert.stop = function() {
+		if (!$.titleAlert._running)
+			return;
+		
+		clearTimeout($.titleAlert._intervalToken);
+		clearTimeout($.titleAlert._timeoutToken);
+		document.title = $.titleAlert._initialText;
+		
+		$.titleAlert._timeoutToken = null;
+		$.titleAlert._intervalToken = null;
+		$.titleAlert._initialText = null;
+		$.titleAlert._running = false;
+		$.titleAlert._settings = null;
+	}
+	
+	$.titleAlert.hasFocus = true;
+	$.titleAlert._running = false;
+	$.titleAlert._intervalToken = null;
+	$.titleAlert._timeoutToken = null;
+	$.titleAlert._initialText = null;
+	$.titleAlert._settings = null;
+	
+	
+	$.titleAlert._focus = function () {
+		$.titleAlert.hasFocus = true;
+		
+		if ($.titleAlert._running && $.titleAlert._settings.stopOnFocus) {
+			var initialText = $.titleAlert._initialText;
+			$.titleAlert.stop();
+			
+			// ugly hack because of a bug in Chrome which causes a change of document.title immediately after tab switch
+			// to have no effect on the browser title
+			setTimeout(function() {
+				if ($.titleAlert._running)
+					return;
+				document.title = ".";
+				document.title = initialText;
+                $("#favicon").attr("href","images/automation.png");
+			}, 1000);
+		}
+	};
+	$.titleAlert._blur = function () {
+		$.titleAlert.hasFocus = false;
+	};
+	
+	// bind focus and blur event handlers
+	$(window).bind("focus", $.titleAlert._focus);
+	$(window).bind("blur", $.titleAlert._blur);
+})(jQuery);

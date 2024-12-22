@@ -105,7 +105,43 @@ public class GatfReportsHandler extends HttpHandler {
 			    int selDbgline = -1;
 			    boolean selDbgBrkRemove = false, setBreakpoint = false;
 			    TestCaseReport tcReport = null;
-			    if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
+			    if(action.equals("pauseElSearch") || action.equals("unPauseElSearch"))
+			    {
+                    String status = "{\"status\": false, \"running\": "+(context!=null)+"}";
+                    if(context!=null) {
+                        if(action.equals("pauseElSearch")) context.pauseElSearch();
+                        else context.unPauseElSearch();
+                        Map<String, Object> out = new HashMap<>();
+                        out.put("file", context.getPausedFile());
+                        out.put("line", context.getPausedLineNo());
+                        out.put("is_paused", context.isPauseElSearch(false));
+                        out.put("running", context!=null);
+                        status = WorkflowContextHandler.OM.writeValueAsString(out);
+                    }
+			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			        response.setContentLength(status.getBytes("UTF-8").length);
+			        response.getWriter().write(status);
+			        response.setStatus(HttpStatus.OK_200);
+			        return;
+			    }
+                else if(action.equals("pausedLineNo"))
+			    {
+                    String status = "{\"line\": -1, \"running\": "+(context!=null)+"}";
+                    if(context!=null) {
+                        Map<String, Object> out = new HashMap<>();
+                        out.put("file", context.getPausedFile());
+                        out.put("line", context.getPausedLineNo());
+                        out.put("is_paused", context.isPauseElSearch(false));
+                        out.put("running", context!=null);
+                        status = WorkflowContextHandler.OM.writeValueAsString(out);
+                    }
+			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			        response.setContentLength(status.getBytes("UTF-8").length);
+			        response.getWriter().write(status);
+			        response.setStatus(HttpStatus.OK_200);
+			        return;
+			    }
+                else if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
 			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
 			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
@@ -156,7 +192,10 @@ public class GatfReportsHandler extends HttpHandler {
     		GatfConfigToolUtil.handleError(e, response, null);
 		} finally {
 		    if(lock.isLocked()) {
-		        lock.unlock();
+                try {
+                    lock.unlock();
+                } catch (Exception e) {
+                }
 		    }
 		}
     }
@@ -671,7 +710,13 @@ public class GatfReportsHandler extends HttpHandler {
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	}
                     } else {
-                    	executorMojo.doSeleniumTest(gatfConfig, null);
+                        context = new AcceptanceTestContext(gatfConfig, null);
+                        executorMojo.setContext(context);
+                        try {
+                    	    executorMojo.doSeleniumTest(gatfConfig, null);
+                        } finally {
+                            context = null;
+                        }
                     	String cont = "Please check Reports section for the selenium test results";
 	                    out.put("msg", cont);
 	                    ReportHandler.updatePaths("sel", out);
@@ -788,6 +833,7 @@ public class GatfReportsHandler extends HttpHandler {
                     }
                     
                     testCaseExecutorUtil.shutdown();
+                    context = null;
                 }
                 
                 lock.unlock();

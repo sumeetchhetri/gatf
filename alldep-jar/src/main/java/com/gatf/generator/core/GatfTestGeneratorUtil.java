@@ -1145,6 +1145,9 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 
     public static void main(String[] args) throws Exception
     {
+		// Install ByteBuddy agent programmatically
+        //ByteBuddyAgent.install();
+
     	System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
     	boolean showHelp = false;
     	if(args.length>=1) {
