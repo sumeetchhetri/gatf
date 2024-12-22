@@ -325,7 +325,7 @@ It uses a highly performant asynchronous http client library - async-http-client
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -executor /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.3.jar -executor /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -335,7 +335,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -selenium /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.3.jar -selenium /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -345,7 +345,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For validating test script for RPA (selenium), use the following command,
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.3.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -355,7 +355,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For running gatf in distributed mode as a listener, use the following command,
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -listener
+java -jar gatf-alldep-3.0.3.jar -listener
 ```
 
 ```sh
@@ -1347,7 +1347,7 @@ Gatf also provides with a User Interface for managing and executing test cases o
 <br>
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -configtool 9080 0.0.0.0 .
+java -jar gatf-alldep-3.0.3.jar -configtool 9080 0.0.0.0 .
 ```
 
 ```sh
@@ -1546,7 +1546,7 @@ jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader
 <br>
 
 ```sh
-java -jar gatf-alldep-3.0.2.jar -generator /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-3.0.3.jar -generator /workdir/path/to/gatf/config.xml
 ```
 
 ```sh

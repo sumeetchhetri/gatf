@@ -23,8 +23,8 @@ RUN npm install -g autocannon
 # Google Chrome
 #============================================
 # can specify versions by CHROME_VERSION;
-#  e.g. google-chrome-stable=53.0.2785.101-1
-#       google-chrome-beta=53.0.2785.92-1
+#  e.g. google-chrome-stable=53.0.3785.101-1
+#       google-chrome-beta=53.0.3785.92-1
 #       google-chrome-unstable=54.0.2840.14-1
 #       latest (equivalent to google-chrome-stable)
 #       google-chrome-beta  (pull latest beta)

@@ -2118,9 +2118,14 @@ function editorEvents() {
 					if(currtestcasefile == out[0]) {
 						ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
 						ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
-					}
-					currtestcasefile = out[0];
-					$('a[tcfname="'+(out[0])+'"]').trigger('click');
+					} else {
+                        currtestcasefile = out[0];
+                        $('a[tcfname="'+(out[0])+'"]').trigger('click');
+                        setTimeout(500, function() {
+                            ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
+						    ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
+                        });
+                    }
         		}, null);
 				//lookup from backend and populate target file
 			});
@@ -2152,6 +2157,22 @@ function onsavetestfile(data) {
 		return;
 	} else if(currtestcasefile!=data.error[2]) {
 		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+        setTimeout(500, function() {
+            function makeMarker(errt) {
+                var marker = document.createElement("div");
+                marker.style.color = "red";
+                marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+                $(marker).attr('title', errt);
+                return marker;
+            }
+            ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker(data.error[3]));
+            if(data["others"] && data["others"].length>0) {
+                for(const oter of data.others) {
+                    ceeditor.setGutterMarker(oter[1]-1, "breakpoints", makeMarker(oter[3]));
+                }
+            }
+            showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+        });
 	} else {
 		function makeMarker(errt) {
 			var marker = document.createElement("div");
@@ -2851,8 +2872,24 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 				if(!data["error"]) {
 					showErrorAlert(data);
 					return;
-				} else if(tcf!=data.error[2]) {
+				} else if(currtestcasefile!=data.error[2]) {
             		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+                    setTimeout(500, function() {
+                        function makeMarker(errt) {
+                            var marker = document.createElement("div");
+                            marker.style.color = "red";
+                            marker.innerHTML = "<span class='error_mark_icon'>❌<span><b class='error_mark'></b>";
+                            $(marker).attr('title', errt);
+                            return marker;
+                        }
+                        ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker(data.error[3]));
+                        if(data["others"] && data["others"].length>0) {
+                            for(const oter of data.others) {
+                                ceeditor.setGutterMarker(oter[1]-1, "breakpoints", makeMarker(oter[3]));
+                            }
+                        }
+                        showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+                    })
             	} else {
 					function makeMarker(errt) {
 						var marker = document.createElement("div");
