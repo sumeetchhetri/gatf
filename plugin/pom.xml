@@ -4,7 +4,7 @@
 	<parent>
         <groupId>com.github.sumeetchhetri.gatf</groupId>
         <artifactId>gatf-parent</artifactId>
-        <version>3.0.1</version> 
+        <version>3.0.2</version> 
     </parent>
     
 	<artifactId>gatf-plugin</artifactId>
@@ -43,7 +43,7 @@
 		<dependency>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-alldep-jar</artifactId>
-			<version>3.0.1</version>
+			<version>3.0.2</version>
 		</dependency>
 	</dependencies>
 	
