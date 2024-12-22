@@ -98,17 +98,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v128.dom.DOM;
-import org.openqa.selenium.devtools.v128.dom.model.Node;
-import org.openqa.selenium.devtools.v128.dom.model.NodeId;
-import org.openqa.selenium.devtools.v128.fetch.Fetch;
-import org.openqa.selenium.devtools.v128.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v128.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v128.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v128.log.Log;
-import org.openqa.selenium.devtools.v128.network.Network;
-import org.openqa.selenium.devtools.v128.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v128.target.Target;
+import org.openqa.selenium.devtools.v129.dom.DOM;
+import org.openqa.selenium.devtools.v129.dom.model.Node;
+import org.openqa.selenium.devtools.v129.dom.model.NodeId;
+import org.openqa.selenium.devtools.v129.fetch.Fetch;
+import org.openqa.selenium.devtools.v129.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v129.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v129.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v129.log.Log;
+import org.openqa.selenium.devtools.v129.network.Network;
+import org.openqa.selenium.devtools.v129.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v129.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -2184,7 +2184,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)pdr).getDevTools();
 			// Set up PDF print options
             // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v128.page.Page.printToPDF(
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v129.page.Page.printToPDF(
                 Optional.of(false),     // landscape
                 Optional.of(true),      // displayHeaderFooter
                 Optional.of(true),      // printBackground
@@ -3879,7 +3879,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v128.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v129.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -3941,7 +3941,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v128.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.v129.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {
