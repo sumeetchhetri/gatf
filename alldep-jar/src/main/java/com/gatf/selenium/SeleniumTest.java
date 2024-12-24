@@ -1590,12 +1590,12 @@ public abstract class SeleniumTest {
 
 	protected static void sendKeys(String type, String qualifier, WebDriver wd, WebElement le, String tvalue, AcceptanceTestContext ___cxt___, String name) {
 		if(type.equalsIgnoreCase("randomize")) {
-			if ((le.getTagName().toLowerCase().matches("input") /*&& le.get(0).getAttribute("type").toLowerCase().matches("text|url|email|hidden")*/)
+			if ((le.getTagName().toLowerCase().matches("input") /*&& le.get(0).getDomProperty("type").toLowerCase().matches("text|url|email|hidden")*/)
 					|| (le.getTagName().toLowerCase().matches("textarea"))) {
 				String randomVal = randomize(tvalue);
 				le.sendKeys(randomVal);
 				jsEvent(wd, le, qualifier);
-			} /*else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getAttribute("type").toLowerCase().matches("number")) {
+			} /*else if (le.get(0).getTagName().toLowerCase().matches("input") && le.get(0).getDomProperty("type").toLowerCase().matches("number")) {
 				long min = 0;
 				long max = 99999;
 				if(StringUtils.isNotBlank(v1)) {
@@ -1614,9 +1614,9 @@ public abstract class SeleniumTest {
 				le.get(0).sendKeys(num+"");
 			}*/ else if (le.getTagName().toLowerCase().matches("select")) {
 				randomizeSelect(le);
-			} else if (le.getTagName().toLowerCase().matches("input") && le.getAttribute("type").toLowerCase().matches("checkbox")) {
+			} else if (le.getTagName().toLowerCase().matches("input") && le.getDomProperty("type").toLowerCase().matches("checkbox")) {
 				le.click();
-			} else if (le.getTagName().toLowerCase().matches("input") && le.getAttribute("type").toLowerCase().matches("radio")) {
+			} else if (le.getTagName().toLowerCase().matches("input") && le.getDomProperty("type").toLowerCase().matches("radio")) {
 				le.click();
 			}
 		} else {
@@ -1859,11 +1859,11 @@ public abstract class SeleniumTest {
 				List<Integer> li = new ArrayList<Integer>();
 				for (WebElement o : s.getOptions())
 				{
-					li.add(Integer.parseInt(o.getAttribute("index")));
+					li.add(Integer.parseInt(o.getDomProperty("index")));
 				}
 				for (WebElement o : s.getAllSelectedOptions())
 				{
-					li.remove(Integer.parseInt(o.getAttribute("index")));
+					li.remove(Integer.parseInt(o.getDomProperty("index")));
 				}
 				if(s.isMultiple()) {
 					s.deselectAll();
@@ -1874,7 +1874,7 @@ public abstract class SeleniumTest {
 						s.selectByIndex(li.get(ri));
 					}
 				} else {
-					int i = Integer.parseInt(s.getFirstSelectedOption().getAttribute("index"));
+					int i = Integer.parseInt(s.getFirstSelectedOption().getDomProperty("index"));
 					s.deselectByIndex(i);
 					if(li.size()==0) {
 						s.selectByIndex(0);
@@ -3055,7 +3055,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getAttribute(atname);
+								rhs = we.getDomProperty(atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3197,7 +3197,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getAttribute(atname);
+								rhs = we.getDomProperty(atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3408,7 +3408,7 @@ public abstract class SeleniumTest {
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 								atname = atname.substring(1, atname.length()-1);
 							}
-							t[i] = we.getAttribute(atname);
+							t[i] = we.getDomProperty(atname);
 						} else if(ssl.get(i).toLowerCase().startsWith("cssvalue@")) {
 							String atname = ssl.get(i).substring(9);
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3621,7 +3621,7 @@ public abstract class SeleniumTest {
 
 	protected void saveImageToFile(WebDriver webDriver, WebElement element, String filepath) throws IOException {
 		if(element!=null && element.getTagName().equalsIgnoreCase("img")) {
-			BufferedImage originalImage = ImageIO.read(new URL(element.getAttribute("src")));
+			BufferedImage originalImage = ImageIO.read(new URL(element.getDomProperty("src")));
 			ImageIO.write(originalImage, "png", new FileOutputStream(filepath));
 		}
 	}
@@ -3642,7 +3642,7 @@ public abstract class SeleniumTest {
 				byte[] imagedata = DatatypeConverter.parseBase64Binary(str.substring(str.indexOf(",") + 1));
 				bufferedImage = ImageIO.read(new ByteArrayInputStream(imagedata));
 			} else {
-				bufferedImage = ImageIO.read(new URL(element.getAttribute("src")));
+				bufferedImage = ImageIO.read(new URL(element.getDomProperty("src")));
 			}
 			
 			if(StringUtils.isNotBlank(filepath)) {
@@ -3696,7 +3696,7 @@ public abstract class SeleniumTest {
 			byte[] imagedata = DatatypeConverter.parseBase64Binary(str.substring(str.indexOf(",") + 1));
 			bufferedImage = ImageIO.read(new ByteArrayInputStream(imagedata));
 			/*} else {
-				bufferedImage = ImageIO.read(new URL(element.getAttribute("src")));
+				bufferedImage = ImageIO.read(new URL(element.getDomProperty("src")));
 			}*/
 			
 			if(StringUtils.isNotBlank(filepath)) {

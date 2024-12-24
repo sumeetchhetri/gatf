@@ -122,7 +122,10 @@ public class GatfTestCaseHandler extends HttpHandler {
 			}
 		} else if(request.getMethod().equals(Method.POST) || (isUpdate && isNotSel)) {
     		try {
-				FileUtils.moveFile(new File(filePath), new File(filePath + ".bk"));
+				if(new File(filePath + ".bk").exists()) {
+					new File(filePath + ".bk").delete();
+				}
+				FileUtils.copyFile(new File(filePath), new File(filePath + ".bk"));
 				
     		    if(isNotXml) {
     		        FileOutputStream fos = new FileOutputStream(filePath);

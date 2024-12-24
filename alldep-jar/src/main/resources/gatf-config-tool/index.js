@@ -2124,7 +2124,7 @@ function editorEvents() {
                         setTimeout(500, function() {
                             ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
 						    ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
-                        });
+                        }, 500);
                     }
         		}, null);
 				//lookup from backend and populate target file
@@ -2156,8 +2156,9 @@ function onsavetestfile(data) {
 		showErrorAlert(data);
 		return;
 	} else if(currtestcasefile!=data.error[2]) {
+        currtestcasefile = data.error[2];
 		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
-        setTimeout(500, function() {
+        setTimeout(function() {
             function makeMarker(errt) {
                 var marker = document.createElement("div");
                 marker.style.color = "red";
@@ -2172,7 +2173,7 @@ function onsavetestfile(data) {
                 }
             }
             showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
-        });
+        }, 500);
 	} else {
 		function makeMarker(errt) {
 			var marker = document.createElement("div");
@@ -2181,7 +2182,6 @@ function onsavetestfile(data) {
 			$(marker).attr('title', errt);
 			return marker;
 		}
-		currtestcasefile = data.error[2];
 		$('#93be7b20299b11e281c10800200c9a66_URL').val("testcases?testcaseFileName=" + currtestcasefile + "&configType=");
 		ceeditor.setGutterMarker(data["error"][1]-1, "breakpoints", makeMarker(data.error[3]));
 		if(data["others"] && data["others"].length>0) {
@@ -2874,7 +2874,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					return;
 				} else if(currtestcasefile!=data.error[2]) {
             		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
-                    setTimeout(500, function() {
+                    setTimeout(function() {
                         function makeMarker(errt) {
                             var marker = document.createElement("div");
                             marker.style.color = "red";
@@ -2889,7 +2889,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
                             }
                         }
                         showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
-                    })
+                    }, 500);
             	} else {
 					function makeMarker(errt) {
 						var marker = document.createElement("div");
