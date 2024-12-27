@@ -1448,7 +1448,11 @@ public class Command {
                     }
                 }
 			} catch (GatfSelCodeParseError e) {
-				allSynErrs.add(e);
+                if(e.multiple.size()>0) {
+                    allSynErrs.addAll(e.multiple);
+                } else {
+				    allSynErrs.add(e);
+                }
 			}
         }
     }
@@ -1534,16 +1538,16 @@ public class Command {
         	throwParseErrorS(lio.get(0), new RuntimeException("Blocks not balanced..."));
         } else if(allSynErrs.size()>0) {
         	//allSynErrs.get(0).getCause().printStackTrace();
-        	GatfSelCodeParseError err = new GatfSelCodeParseError(allSynErrs);
-        	err.multiple = allSynErrs;
-        	throw err;
+        	throw new GatfSelCodeParseError(allSynErrs);
         }
 
-        Collections.sort(tcmd.children, new Comparator<Command>() {
-            public int compare(Command o1, Command o2) {
-                return Integer.valueOf(o1.weight()).compareTo(o2.weight());
-            }
-        });
+        if(allSynErrs.size()>0) {
+            Collections.sort(tcmd.children, new Comparator<Command>() {
+                public int compare(Command o1, Command o2) {
+                    return Integer.valueOf(o1.weight()).compareTo(o2.weight());
+                }
+            });
+        }
 
         return tcmd;
     }

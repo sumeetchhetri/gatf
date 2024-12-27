@@ -1143,14 +1143,14 @@ public abstract class SeleniumTest {
 								e2.getCause().printStackTrace();
 							}
 						} else {*/
-							e.getCause().printStackTrace();
+							//e.getCause().printStackTrace();
 						//}
 					}
 				}
 				sess.___dqs___.set(indx, true);
 				if(d instanceof HasDevTools) {
-					DevTools devTools = ((HasDevTools)d).getDevTools();
-					devTools.disconnectSession();
+					//DevTools devTools = ((HasDevTools)d).getDevTools();
+					//devTools.disconnectSession();
 				}
 			}
 		}
