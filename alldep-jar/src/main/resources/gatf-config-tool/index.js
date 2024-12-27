@@ -753,7 +753,7 @@ function onSuccessLogin(token) {
 			}
 			$('a.asideLink[id]').addClass('hidden');
 			$('a.asideLink[folder]').attr('status', 'hide');
-			$('a.asideLink[folder="'+$(this).val()+'"]').trigger('click');
+			$('a.asideLink[folder="'+winesc($(this).val())+'"]').trigger('click');
 			var escapedfolder = $(this).val().replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
 			$('.'+escapedfolder+'_claz').removeClass('hidden');
 			$('#lftpanel').animate({ scrollTop: $('a.asideLink[folder="'+$(this).val()+'"]')[0].offsetTop-100 }, 1000);
@@ -1056,7 +1056,7 @@ function executionHandler(method, shwPp, pluginType) {
 						$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
 						$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 					} else {
-						$('[tcfname="'+data.error[2]+'"]').trigger('click');
+						$('[tcfname="'+winesc(data.error[2])+'"]').trigger('click');
 						setTimeout(function() {
 							function makeMarker() {
 								var marker = document.createElement("div");
@@ -1194,7 +1194,7 @@ function executionHandler(method, shwPp, pluginType) {
 					$('[click-event="getErroredSeleasyScripts()"]').eq(0).trigger('click');
 					$.unblockUI({message:'<h4>Please Wait</h4>'}, $('#lftpanel'));
 				} else {
-					$('[tcfname="'+data.error[2]+'"]').trigger('click');
+					$('[tcfname="'+winesc(data.error[2])+'"]').trigger('click');
 					setTimeout(function() {
 						function makeMarker() {
 							var marker = document.createElement("div");
@@ -2023,7 +2023,7 @@ function loadTestCaseFileEditor() {
 			ceeditor.setGutterMarker(oter[0]-1, "breakpoints", makeMarker(oter[1]));
 		}
 		//$('.error_mark_icon').attr('title', fromErroredFile.error[3]);
-		showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
+		//showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
 		//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 		//fromErroredFile = undefined;
 	}
@@ -2057,7 +2057,7 @@ function editorEvents() {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
-						$('a[tcfname="'+(out[0])+'"]').trigger('click');
+						$('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
             		}
         		}, null);
 			});
@@ -2068,7 +2068,7 @@ function editorEvents() {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
-						$('a[tcfname="'+(out[0])+'"]').trigger('click');
+						$('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
             		}
         		}, null);
 			});
@@ -2079,7 +2079,7 @@ function editorEvents() {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
-						$('a[tcfname="'+(out[0])+'"]').trigger('click');
+						$('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
             		}
         		}, null);
 			});
@@ -2090,7 +2090,7 @@ function editorEvents() {
             		console.log(out);
             		if(out[0]) {
             			currtestcasefile = out[0];
-						$('a[tcfname="'+(out[0])+'"]').trigger('click');
+						$('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
             		}
         		}, null);
 			});
@@ -2120,7 +2120,7 @@ function editorEvents() {
 						ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
 					} else {
                         currtestcasefile = out[0];
-                        $('a[tcfname="'+(out[0])+'"]').trigger('click');
+                        $('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
                         setTimeout(500, function() {
                             ceeditor.addLineClass(celinedetails, "wrap", "currentHighlight");
 						    ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
@@ -2142,7 +2142,7 @@ function editorEvents() {
 						ceeditor.scrollIntoView({line:celinedetails-1, char:0}, 200);
 					}
 					currtestcasefile = out[0];
-					$('a[tcfname="'+(out[0])+'"]').trigger('click');
+					$('a[tcfname="'+winesc(out[0])+'"]').trigger('click');
         		}, null);
 				//lookup from backend and populate target file
 			});
@@ -2157,7 +2157,7 @@ function onsavetestfile(data) {
 		return;
 	} else if(currtestcasefile!=data.error[2]) {
         currtestcasefile = data.error[2];
-		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+		$('a[tcfname="'+winesc(data.error[2])+'"]').trigger('click');
         setTimeout(function() {
             function makeMarker(errt) {
                 var marker = document.createElement("div");
@@ -2276,7 +2276,7 @@ function startInitConfigTool(func) {
                         $('#' + fid).attr('folder', folder);
                         
                         $('#' + fid).off('click.me').on('click.me', function() {
-							$('.top_sel_but').hide();
+							if($('.CodeMirror').length==0) $('.top_sel_but').hide();
                             var escapedfolder = $(this).attr('folder').replace(/\\/g, '').replace(/\//g, '').replace(/-/g, '').replace(/\./g, '').replace(/\s+/g, '_').replace(/&/g, '_');
                             if ($(this).attr('status') == "show") {
                                 $('.' + escapedfolder + '_claz').addClass('hidden');
@@ -2873,7 +2873,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 					showErrorAlert(data);
 					return;
 				} else if(currtestcasefile!=data.error[2]) {
-            		$('a[tcfname="'+data.error[2]+'"]').trigger('click');
+            		$('a[tcfname="'+winesc(data.error[2])+'"]').trigger('click');
                     setTimeout(function() {
                         function makeMarker(errt) {
                             var marker = document.createElement("div");
@@ -3253,7 +3253,7 @@ function getErroredSeleasyScripts() {
             ]
         });
         $('.errdss').on('click', function() {
-			$('[tcfname="'+($(this).siblings().eq(0).text())+'"]').trigger('click');
+			$('[tcfname="'+winesc($(this).siblings().eq(0).text())+'"]').trigger('click');
 			if($('.blockUI').length==0) $.blockUI({ message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3>' });
 			setTimeout(function(ele) {
 				return function() {

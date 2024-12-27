@@ -467,31 +467,39 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 				if(errs.getAll().get(i) instanceof GatfSelCodeParseError && ((GatfSelCodeParseError)errs.getAll().get(i)).getAllErrors().size()>0) {
 					for(GatfSelCodeParseError ge : ((GatfSelCodeParseError)errs.getAll().get(i)).getAllErrors()) {
 						String key = "";
-						for (Object o : ge.getDetails()) {
-							key += o!=null?o.toString():"";
-						}
-						if(!uniq.contains(key)) {
-							alldets.add(ge.getDetails());
-							uniq.add(key);
+						if(ge.getDetails()!=null) {
+							for (Object o : ge.getDetails()) {
+								key += o!=null?o.toString():"";
+							}
+							if(!uniq.contains(key)) {
+								alldets.add(ge.getDetails());
+								uniq.add(key);
+							}
 						}
 					}
 				} else {
 					String key = "";
-					for (Object o : errs.getAll().get(i).getDetails()) {
-						key += o!=null?o.toString():"";
-					}
-					if(!uniq.contains(key)) {
-						alldets.add(errs.getAll().get(i).getDetails());
-						uniq.add(key);
+					if(errs.getAll().get(i).getDetails()!=null) {
+						for (Object o : errs.getAll().get(i).getDetails()) {
+							key += o!=null?o.toString():"";
+						}
+						if(!uniq.contains(key)) {
+							alldets.add(errs.getAll().get(i).getDetails());
+							uniq.add(key);
+						}
 					}
 				}
 			}
 			Map<String, Object> h = new HashMap<>();
-			h.put("error", alldets.get(0));
 			List<Object[]> others = new ArrayList<>();
-			for (int i=1;i<alldets.size();i++) {
-				others.add(alldets.get(i));
+
+			if(alldets.size()>0) {
+			h.put("error", alldets.get(0));
+				for (int i=1;i<alldets.size();i++) {
+					others.add(alldets.get(i));
+				}
 			}
+			
 			h.put("others", others);
 			ReportHandler.updatePaths("sel", h);
 			configJson = WorkflowContextHandler.OM.writeValueAsString(h);
