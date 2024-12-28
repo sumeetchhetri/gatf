@@ -872,9 +872,7 @@ function executeHtml(pluginType) {
             execFiles = new Array();
         }
         calledbytestfpage = false;
-        //if(!isSeleniumExecutor) {
         htmm += '<br/><br/><p>Overall Statistics</p><table id="lol_tbl"><tr><th>Tot Runs</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Execution Time</th><th>Total Time</th></tr><tr><td id="lol_tr"></td><td id="lol_tt"></td><td id="lol_ft"></td><td id="lol_st"></td><td id="lol_eti"></td><td id="lol_tti"></td></tr></table><br><table id="lol_hdr"><thead><tr><th>Max</th><th>Min</th><th>Std Dev</th><th>Mean</th><th>50%</th><th>75%</th></tr></thead><tbody id="hdr1"></tbody><thead><tr><th>90%</th><th>97.5%</th><th>99%</th><th>99.9%</th><th>99.99%</th><th>99.999%</th></tr></thead><tbody id="hdr2"></tbody></table><!--div class="hidden"><br/>Subtest Statistics<br/><table class="table table-striped table-bordered table-hover" id="lol_sts" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th style="color:black">Run No.&nbsp;&nbsp;</th><th style="color:black">Tot Tests</th><th style="color:black">Success Tests</th><th style="color:black">Fail. Tests</th></tr></thead><tbody></tbody></table></div--><br/><p>Run-Wise Statistics</p></table><table class="table table-striped table-bordered table-hover" id="lol_tblcu" width="100%" style="width:100%;table-layout:fixed;word-wrap:break-word;color:black"><thead><tr><th>Run No.&nbsp;&nbsp;</th><th>Tot Tests</th><th>Failed Tests</th><th>Skip. Tests</th><th>Time</th></tr></thead><tbody></tbody></table>';
-        //}
         $('#ExampleBeanServiceImpl_form').html(htmm);
         if (pluginType=='executor-sel') {
             $('#lol_sts').parent().removeClass('hidden');
@@ -2200,8 +2198,6 @@ var filesGrps = [], filesGrpsTop = [];
 function startInitConfigTool_(func) {
 	ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(func) {
 		return function(data) {
-	        isSeleniumExecutor = data.isSeleniumExecutor
-	        //testCaseDir = !data.testCaseDir?'':data.testCaseDir;
 	        startInitConfigToolPost(func);
 	    };
     }(func), null);
@@ -2608,19 +2604,6 @@ function startInitConfigTool(func) {
 			$('#tcdirs').html(htms_);
 			if(filesGrpsTop.length>0) $('#tcdirs').removeClass('hidden');
             
-            /*let result = [];
-			let level = {result};
-			Object.keys(filesGrps).forEach(path => {
-			  path.split(/\/|\\/).reduce((r, name, i, a) => {
-			    if(!r[name]) {
-			      r[name] = {result: []};
-			      r.result.push({name, children: r[name].result})
-			    }
-			    return r[name];
-			  }, level)
-			});
-			console.log(result);*/
-			
 			$('.asideLink[folder*="/"]').each(function() {
 				$(this).find('u').html("↓ " + $(this).find('u').html());
 				$(this).addClass('hidden');
@@ -2743,9 +2726,7 @@ function addTestCase(isNew, data, configType, tcfname, isServerLogsApi, isExtern
 }
 
 var pauseIntv, isAlertTitle = false;
-//var fromErroredFile;
 function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
-	//fromErroredFile = undefined;
     isAlertTitle = false;
     var isserverlogfile = isServerLogsApi ? "&isServerLogsApi=true" : "";
     isserverlogfile += isExternalLogsApi ? "&isExternalLogsApi=true" : "";
@@ -2775,52 +2756,24 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
                     }
                 } else if(tcf['is_paused']===true && tcf['line']==-1) {//pause triggered
                     $('#pause_playing_test').attr('state', 'trgpause');
-                    $('#pause_playing_test').html('Triggering Pause');
+                    $('#pause_playing_test').html('Triggered Pause');
                 } else if(tcf['is_paused']===false && tcf['line']>-1) {//unpause triggered
                     $('#pause_playing_test').attr('state', 'trgunpause');
-                    $('#pause_playing_test').html('Triggering Unpause');
+                    $('#pause_playing_test').html('Triggered Unpause');
                 } else if(tcf['running']) {//testcase running & true unpasue
                     $('#pause_playing_test').attr('state', 'pause');
                     $('#pause_playing_test').html('Pause Test');
                     $.titleAlert.stop();
                     isAlertTitle = false;
-                    //$('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
-                    //$.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button></p><p id="psups_st"></p>'});
                 } else {//not running
                     $.titleAlert.stop();
                     clearInterval(pauseIntv);
                     isAlertTitle = false;
                     $('.currentHighlight').removeClass('currentHighlight')
                 }
-                /*
-                if(tcf['is_paused']===true && !isAlertTitle) {
-                    $.titleAlert("Alert - Test is in Paused state!!");
-                    isAlertTitle = true;
-                }
-                if(tcf['is_paused']===true) {
-                    $('#pause_playing_test').attr('state', 'unpause');
-                    $('#pause_playing_test').html('Continue Test');
-                    if(tcf['line']>-1) {
-                        ceeditor.addLineClass(tcf['line'], "wrap", "currentHighlight");
-                        ceeditor.scrollIntoView({line: tcf['line']-1, char:0}, 200);
-                        $.titleAlert.stop();
-                        clearInterval(pauseIntv);
-                        isAlertTitle = false;
-                    }
-                } else if(tcf['running']) {
-                    $('#pause_playing_test').attr('state', 'pause');
-                    $('#pause_playing_test').html('Pause Test');
-                    $('a.asideLink[tcfname="'+winesc(currtestcasefile)+'"]').trigger('click');
-                    setTimeout(fl_, 1000);
-                }
-                if(!tcf['running']) {
-                    $.titleAlert.stop();
-                    clearInterval(pauseIntv);
-                    isAlertTitle = false;
-                }*/
             }, function(err) {});
         }, 1000);
-        $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button></p><p id="psups_st"></p>'});
+        $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button><button state="restart" id="subtest_control">Restart Subtest</button></p><p id="psups_st"></p>'});
         $('#pause_playing_test').off('click').on('click', function() {
             setTimeout(function() {
                 let st = $('#pause_playing_test').attr('state');
@@ -2828,6 +2781,17 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
                     ajaxCall(false, "PUT", "/reports?action="+ (st=='pause'?'pauseElSearch':'unPauseElSearch'), "", "", {}, function(tcf) {
                     }, function(err){
                         $('#psups_st').html('Failed to Pause/Unpause the test');
+                    });
+                }
+            }, 100);
+        });
+        $('#subtest_control').off('click').on('click', function() {
+            setTimeout(function() {
+                let st = $('#subtest_control').attr('state');
+                if(st=="restart") {
+                    ajaxCall(false, "PUT", "/reports?action=restartSubtest", "", "", {}, function(tcf) {
+                    }, function(err){
+                        $('#psups_st').html('Failed to restart the subtest');
                     });
                 }
             }, 100);
@@ -2853,7 +2817,6 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
             	$('#api_execution_reponse').hide();
             	showSuccessAlert("Script Execution Successfull...");
             }
-            //$("html, body").animate({ scrollTop: $(document).height() }, 1000);
         };
     }(tcf), function(tcf){
 		return function(data) {
@@ -2906,10 +2869,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
 							ceeditor.setGutterMarker(oter[1]-1, "breakpoints", makeMarker(oter[3]));
 						}
 					}
-					
-					//$('.error_mark_icon').attr('title', data.error[3]);
 					showErrorAlert("Error executing seleasy script...Please resolve the errors and try again..");
-					//window.scrollTo({top: $('.error_mark').offset().top-120, behavior: 'smooth'});
 				}
 				let path = Object.values(data.paths[0])[0][0].left;
 				$.get('/reports/'+path+'/selenium-index.html', function() {
@@ -3412,6 +3372,10 @@ function configuration() {
                 "type": "string"
             },
             "autoPauseOnElNotFound": {
+                "type": "boolean",
+                "default": "true"
+            },
+            "waitOnWarnException": {
                 "type": "boolean",
                 "default": "true"
             },
@@ -3918,9 +3882,6 @@ function configuration() {
     ajaxCall(true, "GET", "configure?configType=executor", "", "", {}, function(configschema) {
         return function(data) {
             countMap = {};
-            isSeleniumExecutor = data.isSeleniumExecutor;
-            isSelAutoPauseOnElNotFound = data.autoPauseOnElNotFound;
-            //testCaseDir = !data.testCaseDir?'':data.testCaseDir;
             $('#ExampleBeanServiceImpl_form').html(generateFromValue(configschema, '', true, '', '', data, false, true, true, ''));
             updateTextForGeneratedForm();
 			$('#rgtpanel>.panel>.panel-heading').width($('#rgtpanel').width()-32);
@@ -3936,15 +3897,11 @@ function onUpdConfigFail(data) {
 	configuration();
 }
 function onUpdConfig(data) {
-	isSeleniumExecutor = data.responseJSON.isSeleniumExecutor;
-    isSelAutoPauseOnElNotFound = data.responseJSON.autoPauseOnElNotFound;
 	startInitConfigTool();
 	showSuccessAlert("Configuration saved Successfully...");
 	//window.scrollTo({top: $('#buttons_cont').offset().top-120, behavior: 'smooth'});
 	//$("html, body").animate({ scrollTop: $(document).height() }, 1000);
 }
-
-var isSeleniumExecutor = false, isSelAutoPauseOnElNotFound = false;
 
 function handleAuth(token) {
     if (debugEnabled) alert("Providing authentication access to Test Links....");

@@ -1,0 +1,52 @@
+FROM selenoid/vnc:chrome_128.0
+
+# Install dependencies for Chrome
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    ca-certificates \
+    libx11-6 \
+    libx264-155 \
+    libfontconfig \
+    libxi6 \
+    libgconf-2-4 \
+    libnss3 \
+    libasound2 \
+    libappindicator3-1 \
+    libindicator3-7 \
+    xdg-utils
+
+# Set desired Chrome version (e.g., version 129)
+ENV CHROME_VERSION=129
+
+# Download and install the specified version of Chrome
+RUN wget https://dl.google.com/linux/direct/google-chrome-stable_${CHROME_VERSION}.0-1_amd64.deb && \
+    dpkg -i google-chrome-stable_${CHROME_VERSION}.0-1_amd64.deb && \
+    apt-get -f install -y
+RUN LATEST_DRIVER_VERSION=$(curl -sSL "https://chromedriver.storage.googleapis.com/LATEST_RELEASE_${CHROME_VERSION}") && \
+    wget https://chromedriver.storage.googleapis.com/${LATEST_DRIVER_VERSION}/chromedriver_linux64.zip && \
+    unzip chromedriver_linux64.zip -d /usr/bin && \
+    chmod +x /usr/bin/chromedriver && \
+    rm chromedriver_linux64.zip
+
+ENV NODE_MAJOR 20
+
+USER root
+RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt-get update -y && apt-get install nodejs -y
+
+RUN rm -rf /var/lib/apt/lists/* google-chrome-stable_${CHROME_VERSION}.0-1_amd64.deb
+
+RUN mkdir /seltest
+COPY dyn-proxy.js /seltest
+COPY entrypoint_so.sh /
+RUN chmod +x entrypoint_so.sh /seltest/dyn-proxy.js
+RUN chmod -R 777 /seltest 
+
+USER selenium
+
+EXPOSE 4444 8001
+ENTRYPOINT ["/entrypoint_so.sh"]

@@ -1,6 +1,23 @@
-CHROME_VERSION=128.0
-FF_VERSION=125.0
-OPERA_VERSION=109.0
+CHROME_VERSION=131.0
+FF_VERSION=133.0
+OPERA_VERSION=115.0
+
+# Build images executable first
+#  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
+#  git clone https://github.com/aerokube/images && cd images
+#  go install github.com/markbates/pkger/cmd/pkger@latest
+#  go generate github.com/aerokube/images
+#  go build
+#  chmod +x images
+
+#  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
+#  MAJOR=131 && VERSION=${MAJOR}.0.6778.204 && wget https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/google-chrome-stable_${VERSION}-1_amd64.deb && ./images chrome -b ./google-chrome-stable_${VERSION}-1_amd64.deb -t selenoid/chrome:${MAJOR}.0
+
+#  https://ftp.mozilla.org/pub/firefox/releases/
+#  MAJOR=133 && VERSION=${MAJOR}.0.3 && wget https://ftp.mozilla.org/pub/firefox/releases/${VERSION}/linux-x86_64/en-US/firefox-${VERSION}.deb && mv firefox-${VERSION}.deb firefox_${VERSION}_amd64.deb && ./images firefox -b ./firefox-${VERSION}.deb -t selenoid/firefox:${MAJOR}.0
+
+#  https://get.opera.com/pub/opera/desktop/
+#  MAJOR=115 && VERSION=${MAJOR}.0.5322.119 && wget https://get.opera.com/pub/opera/desktop/${VERSION}/linux/opera-stable_${VERSION}_amd64.deb && ./images opera -b ./opera-stable_${VERSION}_amd64.deb -t selenoid/opera:${MAJOR}.0
 
 set -x
 rm -rf temp

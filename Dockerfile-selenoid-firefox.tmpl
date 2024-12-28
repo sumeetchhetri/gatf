@@ -1,0 +1,55 @@
+FROM selenoid/vnc:firefox_125.0
+
+FROM selenoid/vnc:latest
+
+# Install dependencies for Firefox
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    ca-certificates \
+    libx11-6 \
+    libx264-155 \
+    libfontconfig \
+    libxi6 \
+    libgconf-2-4 \
+    libnss3 \
+    libasound2 \
+    libappindicator3-1 \
+    libindicator3-7 \
+    xdg-utils
+
+# Set desired Firefox version (e.g., version 118)
+ENV FIREFOX_VERSION=118
+
+# Download and install the specified version of Firefox
+RUN wget https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.bz2 && \
+    tar -xjf firefox-${FIREFOX_VERSION}.tar.bz2 -C /opt && \
+    ln -s /opt/firefox/firefox /usr/bin/firefox
+RUN GECKODRIVER_VERSION=$(curl -sSL "https://github.com/mozilla/geckodriver/releases/latest" | grep -oP 'geckodriver-v[\d\.]+-linux64.tar.gz' | head -n 1) && \
+    wget https://github.com/mozilla/geckodriver/releases/download/${GECKODRIVER_VERSION}/geckodriver-${GECKODRIVER_VERSION}.tar.gz && \
+    tar -xvzf geckodriver-${GECKODRIVER_VERSION}.tar.gz && \
+    mv geckodriver /usr/bin/ && \
+    chmod +x /usr/bin/geckodriver && \
+    rm geckodriver-${GECKODRIVER_VERSION}.tar.gz
+
+ENV NODE_MAJOR 20
+
+USER root
+RUN apt-get update -y && apt-get install -y ca-certificates curl gnupg && mkdir -p /etc/apt/keyrings
+RUN curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt-get update -y && apt-get install nodejs -y
+
+RUN rm -rf /var/lib/apt/lists/* firefox-${FIREFOX_VERSION}.tar.bz2
+
+RUN mkdir /seltest
+COPY dyn-proxy.js /seltest
+COPY entrypoint_so.sh /
+RUN chmod +x entrypoint_so.sh /seltest/dyn-proxy.js
+RUN chmod -R 777 /seltest 
+
+USER selenium
+
+EXPOSE 4444 8001
+ENTRYPOINT ["/entrypoint_so.sh"]

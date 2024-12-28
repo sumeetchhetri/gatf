@@ -149,7 +149,20 @@ public class AcceptanceTestContext {
 	}
 
 	protected AtomicBoolean pauseElSearchFlag = new AtomicBoolean(false);
+	protected AtomicBoolean restartSubtestFlag = new AtomicBoolean(false);
 	protected AtomicReference<ImmutablePair<String, Integer>> pausedLineNo = new AtomicReference<>();
+
+	public void restartSubtest() {
+		restartSubtestFlag.set(true);
+	}
+
+	public void unRestartSubtest() {
+		restartSubtestFlag.set(false);
+	}
+
+	public boolean isRestartSubtest() {
+		return restartSubtestFlag.get();
+	}
 
 	public void pauseElSearch() {
 		pauseElSearchFlag.set(true);
@@ -160,8 +173,7 @@ public class AcceptanceTestContext {
 	}
 
 	public boolean isPauseElSearch(boolean isLocal) {
-		if(isLocal) return pauseElSearchFlag.get();
-		return pauseElSearchFlag.get() || getPausedLineNo()!=-1;
+		return pauseElSearchFlag.get();
 	}
 
 	public void setPausedLineNo(String testFile, int lineNo) {

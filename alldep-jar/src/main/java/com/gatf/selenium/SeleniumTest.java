@@ -1195,6 +1195,9 @@ public abstract class SeleniumTest {
 				return (List<WebElement>) method.invoke(tst_, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
 			} catch (InvocationTargetException e) {
 				throw e.getCause();
+			} catch (RestartsubtestException e) {
+				___cxt___.unRestartSubtest();
+				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
 			}
 		} else {
 			method.setAccessible(true);
@@ -1202,6 +1205,9 @@ public abstract class SeleniumTest {
 				return (List<WebElement>) method.invoke(this, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
 			} catch (InvocationTargetException e) {
 				throw e.getCause();
+			} catch (RestartsubtestException e) {
+				___cxt___.unRestartSubtest();
+				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
 			}
 		}
 	}
@@ -1317,6 +1323,17 @@ public abstract class SeleniumTest {
 				if(isPending) System.out.println(cause.getMessage());
 			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException || cause instanceof SubTestException) {
 				this.isContinue = cause instanceof WarnSubTestException;
+				if(this.isContinue) {
+					if(test.___cxt___.getGatfExecutorConfig().isWaitOnWarnException())
+					{
+						try {
+							Thread.sleep(60000);
+						} catch(Exception e){}
+						if(test.___cxt___.isRestartSubtest()) {
+							throw new RestartsubtestException();
+						}
+					}
+				}
 				this.stName = test.get__subtestname__();
 				List<LogEntry> entries = new ArrayList<LogEntry>();
 				entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
@@ -2814,12 +2831,14 @@ public abstract class SeleniumTest {
 		while(true) {
 			boolean wasPaused = false;
 			while(___cxt___.isPauseElSearch(true)) {
-				String relName = testFile.replace(state.basePath, "");
-			    if(relName.startsWith(File.separator)) {
-			    	relName = relName.substring(1);
-	        	}
-				___cxt___.setPausedLineNo(relName, lineNo);
-				wasPaused = true;
+				if(!wasPaused) {
+					String relName = testFile.replace(state.basePath, "");
+					if(relName.startsWith(File.separator)) {
+						relName = relName.substring(1);
+					}
+					___cxt___.setPausedLineNo(relName, lineNo);
+					wasPaused = true;
+				}
 				try {
 					Thread.sleep(1000);
 					System.out.println("Script is currently in paused state......");
@@ -2876,13 +2895,12 @@ public abstract class SeleniumTest {
 							} catch (Exception e) {
 								e.printStackTrace();
 							}
-							___cxt___.setPausedLineNo(null, -1);
 						}
 					}
 				} catch (Exception e) {
 					e.printStackTrace();
-					___cxt___.setPausedLineNo(null, -1);
 				}
+				___cxt___.setPausedLineNo(null, -1);
 			}
 			List<WebElement> el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
 			if(!isVisible) {
@@ -3757,6 +3775,8 @@ public abstract class SeleniumTest {
         }
     }
 	
+	public static class RestartsubtestException extends RuntimeException {
+	}
 	public static class GatfRunTimeErrors extends RuntimeException {
 		private List<? extends GatfRunTimeError> errors;
 		public GatfRunTimeErrors(List<? extends GatfRunTimeError> errors) {

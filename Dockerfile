@@ -47,6 +47,6 @@ RUN git clone https://github.com/sumeetchhetri/gatf
 #COPY sample /tmp/gatf/sample
 #COPY pom.xml /tmp/gatf/
 #COPY plugins.txt /tmp/gatf/
-RUN cd gatf && git checkout tags/3.0.3 -b v3.0.3 && mvn --quiet install
+RUN cd gatf && git checkout tags/3.0.4 -b v3.0.4 && mvn --quiet install
 
-RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-3.0.3.jar /gatf-alldep.jar
+RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-3.0.4.jar /gatf-alldep.jar

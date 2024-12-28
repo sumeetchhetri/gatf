@@ -124,6 +124,22 @@ public class GatfReportsHandler extends HttpHandler {
 			        response.setStatus(HttpStatus.OK_200);
 			        return;
 			    }
+                else if(action.equals("restartSubtest"))
+			    {
+                    String status = "{\"status\": false}";
+                    if(context!=null) {
+                        if(action.equals("restartSubtest")) context.restartSubtest();
+                        //else context.unRestartSubtest();
+                        Map<String, Object> out = new HashMap<>();
+                        out.put("status", true);
+                        status = WorkflowContextHandler.OM.writeValueAsString(out);
+                    }
+			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+			        response.setContentLength(status.getBytes("UTF-8").length);
+			        response.getWriter().write(status);
+			        response.setStatus(HttpStatus.OK_200);
+			        return;
+			    }
                 else if(action.equals("pausedLineNo"))
 			    {
                     String status = "{\"line\": -1, \"running\": "+(context!=null)+"}";
