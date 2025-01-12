@@ -98,17 +98,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v129.dom.DOM;
-import org.openqa.selenium.devtools.v129.dom.model.Node;
-import org.openqa.selenium.devtools.v129.dom.model.NodeId;
-import org.openqa.selenium.devtools.v129.fetch.Fetch;
-import org.openqa.selenium.devtools.v129.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v129.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v129.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v129.log.Log;
-import org.openqa.selenium.devtools.v129.network.Network;
-import org.openqa.selenium.devtools.v129.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v129.target.Target;
+import org.openqa.selenium.devtools.v131.dom.DOM;
+import org.openqa.selenium.devtools.v131.dom.model.Node;
+import org.openqa.selenium.devtools.v131.dom.model.NodeId;
+import org.openqa.selenium.devtools.v131.fetch.Fetch;
+import org.openqa.selenium.devtools.v131.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v131.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v131.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v131.log.Log;
+import org.openqa.selenium.devtools.v131.network.Network;
+import org.openqa.selenium.devtools.v131.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v131.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -344,17 +344,17 @@ public abstract class SeleniumTest {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			switch(browserName) {
 				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v124.dom.DOM;
+				//above - import org.openqa.selenium.devtools.v131.dom.DOM;
 				case "chrome": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_128.0");
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_131.0");
 					break;
 				}
 				case "firefox": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:firefox_125.0");
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:firefox_133.0");
 					break;
 				}
 				case "opera": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:opera_109.0");
+					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:opera_115.0");
 					break;
 				}
 			}
@@ -1194,20 +1194,27 @@ public abstract class SeleniumTest {
 			try {
 				return (List<WebElement>) method.invoke(tst_, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
 			} catch (InvocationTargetException e) {
-				throw e.getCause();
-			} catch (RestartsubtestException e) {
-				___cxt___.unRestartSubtest();
-				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
+				if(e.getCause() instanceof RestartsubtestException) {
+					___cxt___.unRestartSubtest();
+					return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
+				} else {
+					throw e.getCause();
+				}
 			}
 		} else {
 			method.setAccessible(true);
 			try {
 				return (List<WebElement>) method.invoke(this, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
-			} catch (InvocationTargetException e) {
-				throw e.getCause();
 			} catch (RestartsubtestException e) {
 				___cxt___.unRestartSubtest();
 				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
+			} catch (InvocationTargetException e) {e.printStackTrace();
+				if(e.getCause() instanceof RestartsubtestException) {
+					___cxt___.unRestartSubtest();
+					return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
+				} else {
+					throw e.getCause();
+				}
 			}
 		}
 	}
@@ -1324,13 +1331,17 @@ public abstract class SeleniumTest {
 			} else if(cause instanceof FailSubTestException || cause instanceof WarnSubTestException || cause instanceof SubTestException) {
 				this.isContinue = cause instanceof WarnSubTestException;
 				if(this.isContinue) {
-					if(test.___cxt___.getGatfExecutorConfig().isWaitOnWarnException())
+					if(test.___cxt___.getGatfExecutorConfig().getWaitOnWarnException()>0)
 					{
-						try {
-							Thread.sleep(60000);
-						} catch(Exception e){}
-						if(test.___cxt___.isRestartSubtest()) {
-							throw new RestartsubtestException();
+						long cnt = test.___cxt___.getGatfExecutorConfig().getWaitOnWarnException();
+						while(cnt>0) {
+							try {
+								Thread.sleep(1000);
+								cnt -= 1000;
+							} catch(Exception e){}
+							if(test.___cxt___.isRestartSubtest()) {
+								throw new RestartsubtestException();
+							}
 						}
 					}
 				}
@@ -2201,7 +2212,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)pdr).getDevTools();
 			// Set up PDF print options
             // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v129.page.Page.printToPDF(
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v131.page.Page.printToPDF(
                 Optional.of(false),     // landscape
                 Optional.of(true),      // displayHeaderFooter
                 Optional.of(true),      // printBackground
@@ -3073,7 +3084,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getDomProperty(atname);
+								rhs = we.getDomAttribute(atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3215,7 +3226,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getDomProperty(atname);
+								rhs = we.getDomAttribute(atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3426,7 +3437,7 @@ public abstract class SeleniumTest {
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 								atname = atname.substring(1, atname.length()-1);
 							}
-							t[i] = we.getDomProperty(atname);
+							t[i] = we.getDomAttribute(atname);
 						} else if(ssl.get(i).toLowerCase().startsWith("cssvalue@")) {
 							String atname = ssl.get(i).substring(9);
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3899,7 +3910,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v129.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v131.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -3961,7 +3972,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v129.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.v131.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {

@@ -172,7 +172,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	private boolean autoPauseOnElNotFound = false;
 
-	private boolean waitOnWarnException = false;
+	private long waitOnWarnException = 0;
 
 	public String getBaseUrl() {
 		return baseUrl;
@@ -742,11 +742,11 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		this.autoPauseOnElNotFound = autoPauseOnElNotFound;
 	}
 
-	public boolean isWaitOnWarnException() {
+	public long getWaitOnWarnException() {
 		return waitOnWarnException;
 	}
 
-	public void setWaitOnWarnException(boolean waitOnWarnException) {
+	public void setWaitOnWarnException(long waitOnWarnException) {
 		this.waitOnWarnException = waitOnWarnException;
 	}
 

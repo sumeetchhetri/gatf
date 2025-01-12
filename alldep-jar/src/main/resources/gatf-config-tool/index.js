@@ -3376,8 +3376,8 @@ function configuration() {
                 "default": "true"
             },
             "waitOnWarnException": {
-                "type": "boolean",
-                "default": "true"
+                "type": "number",
+                "default": "0"
             },
             "mailSimulator": {
                 "label": {

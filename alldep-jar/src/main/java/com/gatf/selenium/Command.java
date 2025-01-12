@@ -5607,7 +5607,7 @@ public class Command {
             return "warn \"" + value + "\"";
         }
         String javacode() {
-            return "throw new WarnSubTestException(\""+esc(value)+"\");";
+            return "if(true)\n{\nthrow new WarnSubTestException(\""+esc(value)+"\");\n}";
         }
         WarnCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);

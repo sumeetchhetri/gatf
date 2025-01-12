@@ -1533,7 +1533,7 @@ public class ReportHandler {
 			} else {
 				table.addCell(status+"");
 			}
-			table.addCell(result);
+			table.addCell(result==null?"":result);
 			csvdoc.writeNext(new String[] {sno+"", node, runNo+"", sess, stname!=null?stname:"", stTime, status+"", result});
 		}
 		
