@@ -259,6 +259,7 @@ public class DockerService {
             hostConfigBuilder.withExtraHosts(dockerContainer.getExtraHosts());
 
             containerId = containerConfigBuilder
+                    //.withPlatform("linux/amd64")
                     .withHostConfig(hostConfigBuilder).exec().getId();
 
             dockerClient.startContainerCmd(containerId).exec();

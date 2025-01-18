@@ -150,10 +150,21 @@ public class AcceptanceTestContext {
 
 	protected AtomicBoolean pauseElSearchFlag = new AtomicBoolean(false);
 	protected AtomicBoolean restartSubtestFlag = new AtomicBoolean(false);
+	protected AtomicBoolean stopExec = new AtomicBoolean(false);
 	protected AtomicReference<ImmutablePair<String, Integer>> pausedLineNo = new AtomicReference<>();
 
 	public void restartSubtest() {
 		restartSubtestFlag.set(true);
+	}
+
+	public void stopExec() {
+		stopExec.set(true);
+	}
+
+	public boolean isStopExecSet() {
+		boolean fl = stopExec.get();
+		stopExec.set(false);
+		return fl;
 	}
 
 	public void unRestartSubtest() {

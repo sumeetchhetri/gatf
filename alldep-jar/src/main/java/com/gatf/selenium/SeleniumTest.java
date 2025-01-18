@@ -1335,6 +1335,9 @@ public abstract class SeleniumTest {
 					{
 						long cnt = test.___cxt___.getGatfExecutorConfig().getWaitOnWarnException();
 						while(cnt>0) {
+							if(test.___cxt___.isStopExecSet()) {
+								throw new RuntimeException("Stopped Execution");
+							}
 							try {
 								Thread.sleep(1000);
 								cnt -= 1000;
@@ -2842,6 +2845,9 @@ public abstract class SeleniumTest {
 		while(true) {
 			boolean wasPaused = false;
 			while(___cxt___.isPauseElSearch(true)) {
+				if(___cxt___.isStopExecSet()) {
+					throw new RuntimeException("Stopped Execution");
+				}
 				if(!wasPaused) {
 					String relName = testFile.replace(state.basePath, "");
 					if(relName.startsWith(File.separator)) {
@@ -2858,11 +2864,11 @@ public abstract class SeleniumTest {
 			}
 			if(wasPaused) {
 				try {
-					BasicFileAttributes attr = Files.readAttributes(Paths.get(state.name), BasicFileAttributes.class);
+					BasicFileAttributes attr = Files.readAttributes(Paths.get(testFile), BasicFileAttributes.class);
 					if(attr.lastModifiedTime().compareTo(state.lastModifFileTime)>0) {
 						state.lastModifFileTime = attr.lastModifiedTime();
 						List<String> commands = new ArrayList<String>();
-						Command cmd = Command.read(___cxt___.getResourceFile(state.name), commands, ___cxt___);
+						Command cmd = Command.read(___cxt___.getResourceFile(testFile), commands, ___cxt___);
 						Command c = Command.findCommandByLineNum(cmd, testFile, lineNo);
 						if(c!=null) {
 							FindCommandImpl fc = (FindCommandImpl)c;
@@ -2930,6 +2936,9 @@ public abstract class SeleniumTest {
 					break;
 				}
 			}
+			if(___cxt___.isStopExecSet()) {
+				throw new RuntimeException("Stopped Execution");
+			}
 		}
 		if(!noExcep) throw new RuntimeException(exmsg);
 		return null;
@@ -2940,6 +2949,9 @@ public abstract class SeleniumTest {
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String ... layers) {
 		int counter = 0;
 		while(true) {
+			if(___cxt___.isStopExecSet()) {
+				throw new RuntimeException("Stopped Execution");
+			}
 			List<String[]> el = (List<String[]>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
 			if(!isVisible) {
 				if (el != null) return el;
@@ -2953,6 +2965,20 @@ public abstract class SeleniumTest {
 		}
 		if(!noExcep) throw new RuntimeException(exmsg);
 		return null;
+	}
+
+	public static String getAttributeValue(WebDriver driver, WebElement el, String atName) {
+		String value = null;
+		if(el!=null) {
+			value = el.getDomAttribute(atName);
+			if(StringUtils.isBlank(value)) {
+				value = el.getDomProperty(atName);
+			}
+			if(StringUtils.isBlank(value) && driver instanceof JavascriptExecutor) {
+				value = (String)((JavascriptExecutor)driver).executeScript("return arguments[0].getAttribute(arguments[1]);", el, atName);
+			}
+		}
+		return value;
 	}
 
 	@SuppressWarnings("unchecked")
@@ -3084,7 +3110,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getDomAttribute(atname);
+								rhs = getAttributeValue(driver, we, atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3226,7 +3252,7 @@ public abstract class SeleniumTest {
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 									atname = atname.substring(1, atname.length()-1);
 								}
-								rhs = we.getDomAttribute(atname);
+								rhs = getAttributeValue(driver, we, atname);
 							} else if(subselector.toLowerCase().startsWith("cssvalue@")) {
 								String atname = subselector.substring(9);
 								if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3331,6 +3357,9 @@ public abstract class SeleniumTest {
 					if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
+							if(___cxt___.isStopExecSet()) {
+								throw new RuntimeException("Stopped Execution");
+							}
 							try {
 								Thread.sleep(state.timeoutSleepGranularity);
 								System.out.println("WDE-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
@@ -3377,6 +3406,9 @@ public abstract class SeleniumTest {
 					if(timeoutRemaining>0 && (isInvClk || isNotSel || isNotInt || isNotVis)) {
 						Exception lastException = null;
 						while(timeoutRemaining>0) {
+							if(___cxt___.isStopExecSet()) {
+								throw new RuntimeException("Stopped Execution");
+							}
 							try {
 								Thread.sleep(state.timeoutSleepGranularity);
 								System.out.println("E-Retrying operation.....Timeout remaining = " + (timeoutRemaining-1) + " secs");
@@ -3437,7 +3469,7 @@ public abstract class SeleniumTest {
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
 								atname = atname.substring(1, atname.length()-1);
 							}
-							t[i] = we.getDomAttribute(atname);
+							t[i] = getAttributeValue(driver, we, atname);
 						} else if(ssl.get(i).toLowerCase().startsWith("cssvalue@")) {
 							String atname = ssl.get(i).substring(9);
 							if(atname.charAt(0)=='"' || atname.charAt(0)=='\'') {
@@ -3469,8 +3501,17 @@ public abstract class SeleniumTest {
 
 	protected void sleep(long wait) {
 		try {
-			Thread.sleep(wait);
-		} catch (Exception ___e___15) {
+			while(wait>0) {
+				Thread.sleep(Math.min(wait, 1000));
+				wait -= 1000;
+				if(___cxt___.isStopExecSet()) {
+					throw new RuntimeException("Stopped Execution");
+				}
+				if(wait<1000 && wait>0) {
+					Thread.sleep(wait);
+				}
+			}
+		} catch (InterruptedException ___e___15) {
 		}
 	}
 
@@ -4112,6 +4153,9 @@ public abstract class SeleniumTest {
 		if(/*BROWSER_FEATURES.containsKey(sessionId+".NETWORK_RES") && */state.NETWORK_INSPECTION.containsKey(sessionId)) {
 			int counter = 0;
 			while(state.NETWORK_INSPECTION.get(sessionId)[3]==null && counter++<60) {
+				if(___cxt___.isStopExecSet()) {
+					throw new RuntimeException("Stopped Execution");
+				}
 				System.out.println("Waiting for network API response for ["+state.NETWORK_INSPECTION.get(sessionId)[0].toString() 
 						+  "->" + state.NETWORK_INSPECTION.get(sessionId)[1].toString() + "]... attempt " + counter);
 				try {
@@ -4202,6 +4246,9 @@ public abstract class SeleniumTest {
 	protected boolean handleAlertConfirm(WebDriver d, boolean isAlert, boolean confirmIsOk, String value) {
 		int counter = 1;
 		while(counter++<11) {
+			if(___cxt___.isStopExecSet()) {
+				throw new RuntimeException("Stopped Execution");
+			}
 			try {
 				Alert alert = d.switchTo().alert();
 				if(isAlert) {

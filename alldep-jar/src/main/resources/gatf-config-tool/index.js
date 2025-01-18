@@ -2773,7 +2773,7 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
                 }
             }, function(err) {});
         }, 1000);
-        $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button><button state="restart" id="subtest_control">Restart Subtest</button></p><p id="psups_st"></p>'});
+        $.blockUI({message: '<h3><img src="resources/busy.gif" /> Just a moment...</h3><p><button state="pause" id="pause_playing_test">Pause Test</button><button state="restart" id="subtest_control">Restart Subtest</button><button state="stop" id="stopexec_control">Stop Execution</button></p><p id="psups_st"></p>'});
         $('#pause_playing_test').off('click').on('click', function() {
             setTimeout(function() {
                 let st = $('#pause_playing_test').attr('state');
@@ -2794,6 +2794,14 @@ function playTest(tcf, tc, isServerLogsApi, isExternalLogsApi) {
                         $('#psups_st').html('Failed to restart the subtest');
                     });
                 }
+            }, 100);
+        });
+        $('#stopexec_control').off('click').on('click', function() {
+            setTimeout(function() {
+                ajaxCall(false, "PUT", "/reports?action=stop", "", "", {}, function(tcf) {
+                }, function(err){
+                    $('#psups_st').html('Failed to stop the execution');
+                });
             }, 100);
         });
     };
