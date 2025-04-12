@@ -179,6 +179,23 @@ window.GatfUtil = new function() {
 		xhr.onerror = function(){ callback(xhr.status) };
 		xhr.open('GET', uri);
 		xhr.send();
+	},
+
+	this.getElementAttrValue = function(element, attrName) {
+		if (typeof element === 'string') {
+			element = document.querySelector(element);
+		}
+		if (!element) {
+			console.error("Element not found");
+			return null;
+		}
+		if ((element.tagName === 'INPUT' || element.tagName === 'TEXTAREA') && attrName === 'value') {
+			if (window.jQuery) {
+				return jQuery(element).val();
+			}
+			return element.value;
+		}
+		return element.getAttribute(attrName);
 	}
 
 	return this;

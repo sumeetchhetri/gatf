@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>com.github.sumeetchhetri.gatf</groupId>
 		<artifactId>gatf-parent</artifactId>
-		<version>3.0.4</version>
+		<version>3.0.5</version>
 	</parent>
 	
 	<artifactId>gatf-alldep-jar</artifactId>

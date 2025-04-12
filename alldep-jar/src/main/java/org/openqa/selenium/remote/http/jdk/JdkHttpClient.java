@@ -37,6 +37,7 @@ import java.nio.ByteBuffer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -514,7 +515,7 @@ public class JdkHttpClient implements HttpClient {
     if (this.client == null) {
       return;
     }
-    this.client = null;
+
     for (WebSocket websocket : websockets) {
       try {
         websocket.close();
@@ -522,7 +523,20 @@ public class JdkHttpClient implements HttpClient {
         LOG.log(Level.WARNING, "failed to close the websocket: " + websocket, e);
       }
     }
-    executorService.shutdownNow();
+
+    if (this.client instanceof AutoCloseable) {
+      AutoCloseable closeable = (AutoCloseable) this.client;
+      executorService.submit(
+          () -> {
+            try {
+              closeable.close();
+            } catch (Exception e) {
+              LOG.log(Level.WARNING, "failed to close the http client: " + closeable, e);
+            }
+          });
+    }
+    this.client = null;
+    executorService.shutdown();
   }
 
   @AutoService(HttpClient.Factory.class)
@@ -548,7 +562,7 @@ public class JdkHttpClient implements HttpClient {
       if (proxy == null) {
         return List.of();
       }
-      if (uri.getScheme().toLowerCase().startsWith("http")) {
+      if (uri.getScheme().toLowerCase(Locale.ENGLISH).startsWith("http")) {
         return List.of(proxy);
       }
       return List.of();

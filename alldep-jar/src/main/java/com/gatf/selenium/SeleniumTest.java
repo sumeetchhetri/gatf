@@ -98,17 +98,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v131.dom.DOM;
-import org.openqa.selenium.devtools.v131.dom.model.Node;
-import org.openqa.selenium.devtools.v131.dom.model.NodeId;
-import org.openqa.selenium.devtools.v131.fetch.Fetch;
-import org.openqa.selenium.devtools.v131.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v131.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v131.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v131.log.Log;
-import org.openqa.selenium.devtools.v131.network.Network;
-import org.openqa.selenium.devtools.v131.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v131.target.Target;
+import org.openqa.selenium.devtools.v133.dom.DOM;
+import org.openqa.selenium.devtools.v133.dom.model.Node;
+import org.openqa.selenium.devtools.v133.dom.model.NodeId;
+import org.openqa.selenium.devtools.v133.fetch.Fetch;
+import org.openqa.selenium.devtools.v133.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v133.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v133.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v133.log.Log;
+import org.openqa.selenium.devtools.v133.network.Network;
+import org.openqa.selenium.devtools.v133.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v133.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -344,7 +344,7 @@ public abstract class SeleniumTest {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			switch(browserName) {
 				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v131.dom.DOM;
+				//above - import org.openqa.selenium.devtools.v133.dom.DOM;
 				case "chrome": {
 					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_131.0");
 					break;
@@ -2215,7 +2215,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)pdr).getDevTools();
 			// Set up PDF print options
             // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v131.page.Page.printToPDF(
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v133.page.Page.printToPDF(
                 Optional.of(false),     // landscape
                 Optional.of(true),      // displayHeaderFooter
                 Optional.of(true),      // printBackground
@@ -2970,12 +2970,13 @@ public abstract class SeleniumTest {
 	public static String getAttributeValue(WebDriver driver, WebElement el, String atName) {
 		String value = null;
 		if(el!=null) {
-			value = el.getDomAttribute(atName);
-			if(StringUtils.isBlank(value)) {
-				value = el.getDomProperty(atName);
-			}
-			if(StringUtils.isBlank(value) && driver instanceof JavascriptExecutor) {
-				value = (String)((JavascriptExecutor)driver).executeScript("return arguments[0].getAttribute(arguments[1]);", el, atName);
+			if(driver instanceof JavascriptExecutor) {
+				value = (String)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.getElementAttrValue(arguments[0], arguments[1])", el, atName);
+			} else {
+				value = el.getDomAttribute(atName);
+				if(StringUtils.isBlank(value)) {
+					value = el.getDomProperty(atName);
+				}
 			}
 		}
 		return value;
@@ -3951,7 +3952,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v131.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v133.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -4013,7 +4014,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v131.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.v133.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {

@@ -407,12 +407,12 @@ public class RemoteWebDriver
       // indefinitely. To prevent that from happening, we close the current
       // connection. The next CDP command _should_ make us reconnect
 
-      /*try {
+      try {
         ((HasDevTools) this).maybeGetDevTools().ifPresent(DevTools::disconnectSession);
       } catch (ConnectionFailedException unableToEstablishWebsocketConnection) {
         LOG.log(
             SEVERE, "Failed to disconnect DevTools session", unableToEstablishWebsocketConnection);
-      }*/
+      }
     }
 
     Response response = execute(DriverCommand.CLOSE);
@@ -651,9 +651,9 @@ public class RemoteWebDriver
   }
 
   /**
-   * Retrieves the downloadable files as a map of file names and their corresponding URLs.
+   * Retrieves the names of the downloadable files.
    *
-   * @return A map containing file names as keys and URLs as values.
+   * @return A list containing the names of the downloadable files.
    * @throws WebDriverException if capability to enable downloads is not set
    */
   @Override
@@ -1247,7 +1247,7 @@ public class RemoteWebDriver
           Stream.concat(
                   credential.toMap().entrySet().stream(),
                   Stream.of(Map.entry("authenticatorId", id)))
-              .collect(Collectors.toUnmodifiableMap((e) -> e.getKey(), (e) -> e.getValue())));
+              .collect(Collectors.toUnmodifiableMap(Map.Entry::getKey, Map.Entry::getValue)));
     }
 
     @Override
