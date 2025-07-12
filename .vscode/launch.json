@@ -7,7 +7,8 @@
 		{
 			"type": "java",
 			"env": {
-				"java.jdt.ls.java.home": "/Users/sumeetc/.sdkman/candidates/java/11.0.14-tem"
+				"java.jdt.ls.java.home": "/Users/sumeetc/.sdkman/candidates/java/11.0.14-tem",
+				"DOCKER_DEFAULT_PLATFORM": "linux/amd64"
 			},
 			"name": "ConfigTool",
 			"request": "launch",
@@ -15,7 +16,7 @@
 			"args": "-configtool 9080 0.0.0.0 alldep-jar/sample",
 			"vmArgs" : "-Djdk.attach.allowAttachSelf=true", //it accepts a string or an array of strings,
 			"projectName": "gatf-alldep-jar",
-			"classPaths": []
+			"classPaths": [],
 		},
 		{
 			"type": "java",

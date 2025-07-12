@@ -3387,6 +3387,10 @@ function configuration() {
                 "type": "number",
                 "default": "0"
             },
+            "waitOnFailException": {
+                "type": "number",
+                "default": "0"
+            },
             "mailSimulator": {
                 "label": {
                     "type": "section",

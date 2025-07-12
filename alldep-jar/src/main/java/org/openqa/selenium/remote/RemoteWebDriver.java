@@ -37,7 +37,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -407,12 +406,12 @@ public class RemoteWebDriver
       // indefinitely. To prevent that from happening, we close the current
       // connection. The next CDP command _should_ make us reconnect
 
-      try {
+      /*try {
         ((HasDevTools) this).maybeGetDevTools().ifPresent(DevTools::disconnectSession);
       } catch (ConnectionFailedException unableToEstablishWebsocketConnection) {
         LOG.log(
             SEVERE, "Failed to disconnect DevTools session", unableToEstablishWebsocketConnection);
-      }
+      }*/
     }
 
     Response response = execute(DriverCommand.CLOSE);
@@ -650,6 +649,11 @@ public class RemoteWebDriver
         Map.of("authenticatorId", authenticator.getId()));
   }
 
+  @Override
+  public boolean isDownloadsEnabled() {
+    return HasDownloads.isDownloadsEnabled(capabilities);
+  }
+
   /**
    * Retrieves the names of the downloadable files.
    *
@@ -869,6 +873,9 @@ public class RemoteWebDriver
 
     @Override
     public void deleteCookieNamed(String name) {
+      if (name == null || name.isBlank()) {
+        throw new IllegalArgumentException("Cookie name cannot be empty");
+      }
       execute(DriverCommand.DELETE_COOKIE(name));
     }
 
@@ -927,6 +934,9 @@ public class RemoteWebDriver
 
     @Override
     public Cookie getCookieNamed(String name) {
+      if (name == null || name.isBlank()) {
+        throw new IllegalArgumentException("Cookie name cannot be empty");
+      }
       Set<Cookie> allCookies = getCookies();
       for (Cookie cookie : allCookies) {
         if (cookie.getName().equals(name)) {
@@ -949,12 +959,6 @@ public class RemoteWebDriver
 
     protected class RemoteTimeouts implements Timeouts {
 
-      @Deprecated
-      @Override
-      public Timeouts implicitlyWait(long time, TimeUnit unit) {
-        return implicitlyWait(Duration.ofMillis(unit.toMillis(time)));
-      }
-
       @Override
       public Timeouts implicitlyWait(Duration duration) {
         execute(DriverCommand.SET_IMPLICIT_WAIT_TIMEOUT(duration));
@@ -969,18 +973,6 @@ public class RemoteWebDriver
         return Duration.ofMillis(timeout);
       }
 
-      @Deprecated
-      @Override
-      public Timeouts setScriptTimeout(long time, TimeUnit unit) {
-        return setScriptTimeout(Duration.ofMillis(unit.toMillis(time)));
-      }
-
-      @Deprecated
-      @Override
-      public Timeouts setScriptTimeout(Duration duration) {
-        return scriptTimeout(duration);
-      }
-
       @Override
       public Timeouts scriptTimeout(Duration duration) {
         execute(DriverCommand.SET_SCRIPT_TIMEOUT(duration));
@@ -993,12 +985,6 @@ public class RemoteWebDriver
         Map<String, Object> rawSize = (Map<String, Object>) response.getValue();
         long timeout = ((Number) rawSize.get("script")).longValue();
         return Duration.ofMillis(timeout);
-      }
-
-      @Deprecated
-      @Override
-      public Timeouts pageLoadTimeout(long time, TimeUnit unit) {
-        return pageLoadTimeout(Duration.ofMillis(unit.toMillis(time)));
       }
 
       @Override

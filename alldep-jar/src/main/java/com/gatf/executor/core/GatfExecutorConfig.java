@@ -174,6 +174,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	private long waitOnWarnException = 0;
 
+	private long waitOnFailException = 0;
+
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -748,6 +750,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setWaitOnWarnException(long waitOnWarnException) {
 		this.waitOnWarnException = waitOnWarnException;
+	}
+
+	public long getWaitOnFailException() {
+		return waitOnFailException;
+	}
+
+	public void setWaitOnFailException(long waitOnFailException) {
+		this.waitOnFailException = waitOnFailException;
 	}
 
 	public void validate()

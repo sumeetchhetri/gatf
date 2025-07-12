@@ -5607,14 +5607,14 @@ public class Command {
             return "warn \"" + value + "\"";
         }
         String javacode() {
-            return "if(true)\n{\nthrow new WarnSubTestException(\""+esc(value)+"\");\n}";
+            return "pushResult(new SeleniumTestResult(get___d___(), this, new WarnSubTestException(\""+esc(value)+"\"), getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\", ___lp___, null));\n";
+            //return "if(true)\n{\nthrow new WarnSubTestException(\""+esc(value)+"\");\n}";
         }
         WarnCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
-            if(cmd.equals("")) {
-            	value = "Test/Subtest Failed";
-            } else {
-	            value = unSantizedUnQuoted(cmd, state);
+	        value = unSantizedUnQuoted(cmd, state);
+            if(StringUtils.isBlank(value)) {
+                throwParseError(cmdDetails, new RuntimeException("Warn needs a mandatory message"));
             }
         }
         public static String[] toSampleSelCmd() {
@@ -5633,7 +5633,8 @@ public class Command {
             return "pass \"" + value + "\"";
         }
         String javacode() {
-            return "if(true)\n{\nthrow new PassSubTestException(\""+esc(value)+"\");\n}";
+            return "pushResult(new SeleniumTestResult(get___d___(), this, new PassSubTestException(\""+esc(value)+"\"), getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\", ___lp___, null));\n";
+            //return "if(true)\n{\nthrow new PassSubTestException(\""+esc(value)+"\");\n}";
         }
         PassCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);

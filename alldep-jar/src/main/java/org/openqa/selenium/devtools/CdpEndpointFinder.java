@@ -114,10 +114,12 @@ public class CdpEndpointFinder {
     }
 
     try {
-    	if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {	
-        	String raws = raw.toString().substring(0, raw.toString().indexOf(":")+1) + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();	
-            raw = raws;	
-          }
+      if (com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && raw.toString().startsWith("localhost:")
+         && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle() != null) {
+         String raws = raw.toString().substring(0, raw.toString().indexOf(":") + 1)
+            + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();
+         raw = raws;
+      }
       URI uri = new URI(String.format("http://%s", raw));
       LOG.fine("URI found: " + uri);
       return Optional.of(uri);

@@ -1,6 +1,6 @@
-CHROME_VERSION=132.0
-FF_VERSION=133.0
-OPERA_VERSION=115.0
+CHROME_VERSION=136.0
+FF_VERSION=140.0
+OPERA_VERSION=120.0
 
 # Build images executable first
 #  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
@@ -11,13 +11,13 @@ OPERA_VERSION=115.0
 #  chmod +x images
 
 #  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
-#  MAJOR=131 && VERSION=${MAJOR}.0.6778.204 && wget https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/google-chrome-stable_${VERSION}-1_amd64.deb && ./images chrome -b ./google-chrome-stable_${VERSION}-1_amd64.deb -t sumeetchhetri/chrome:${MAJOR}.0
+#  MAJOR=136 && VERSION=${MAJOR}.0.7103.113 && wget https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/google-chrome-stable_${VERSION}-1_amd64.deb && ./images chrome -b ./google-chrome-stable_${VERSION}-1_amd64.deb -t sumeetchhetri/chrome:${MAJOR}.0
 
 #  https://ftp.mozilla.org/pub/firefox/releases/
-#  MAJOR=133 && VERSION=${MAJOR}.0.3 && wget https://ftp.mozilla.org/pub/firefox/releases/${VERSION}/linux-x86_64/en-US/firefox-${VERSION}.deb && mv firefox-${VERSION}.deb firefox_${VERSION}_amd64.deb && ./images firefox -b ./firefox_${VERSION}_amd64.deb -t sumeetchhetri/firefox:${MAJOR}.0
+#  MAJOR=140 && VERSION=${MAJOR}.0.4 && wget https://ftp.mozilla.org/pub/firefox/releases/${VERSION}/linux-x86_64/en-US/firefox-${VERSION}.deb && mv firefox-${VERSION}.deb firefox_${VERSION}_amd64.deb && ./images firefox -b ./firefox_${VERSION}_amd64.deb -t sumeetchhetri/firefox:${MAJOR}.0
 
 #  https://get.opera.com/pub/opera/desktop/
-#  MAJOR=115 && VERSION=${MAJOR}.0.5322.119 && wget https://get.opera.com/pub/opera/desktop/${VERSION}/linux/opera-stable_${VERSION}_amd64.deb && ./images opera -b ./opera-stable_${VERSION}_amd64.deb -t sumeetchhetri/opera:${MAJOR}.0
+#  MAJOR=120 && VERSION=${MAJOR}.0.5543.61 && wget https://get.opera.com/pub/opera/desktop/${VERSION}/linux/opera-stable_${VERSION}_amd64.deb && ./images opera -b ./opera-stable_${VERSION}_amd64.deb -t sumeetchhetri/opera:${MAJOR}.0
 
 set -x
 rm -rf temp

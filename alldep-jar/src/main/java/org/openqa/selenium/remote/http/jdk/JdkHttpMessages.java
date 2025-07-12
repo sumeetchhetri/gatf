@@ -108,7 +108,7 @@ class JdkHttpMessages {
     builder.timeout(config.readTimeout());
 
     if(com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getLeft() && rawUrl.toString().startsWith("http://localhost:") && com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle()!=null) {		
-    	builder.version(java.net.http.HttpClient.Version.HTTP_1_1);		
+      builder.version(java.net.http.HttpClient.Version.HTTP_1_1);		
     }
     return builder.build();
   }
