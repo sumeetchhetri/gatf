@@ -98,17 +98,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v136.dom.DOM;
-import org.openqa.selenium.devtools.v136.dom.model.Node;
-import org.openqa.selenium.devtools.v136.dom.model.NodeId;
-import org.openqa.selenium.devtools.v136.fetch.Fetch;
-import org.openqa.selenium.devtools.v136.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v136.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v136.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v136.log.Log;
-import org.openqa.selenium.devtools.v136.network.Network;
-import org.openqa.selenium.devtools.v136.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v136.target.Target;
+import org.openqa.selenium.devtools.v141.dom.DOM;
+import org.openqa.selenium.devtools.v141.dom.model.Node;
+import org.openqa.selenium.devtools.v141.dom.model.NodeId;
+import org.openqa.selenium.devtools.v141.fetch.Fetch;
+import org.openqa.selenium.devtools.v141.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v141.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v141.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v141.log.Log;
+import org.openqa.selenium.devtools.v141.network.Network;
+import org.openqa.selenium.devtools.v141.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v141.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -344,7 +344,7 @@ public abstract class SeleniumTest {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			switch(browserName) {
 				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v136.dom.DOM;
+				//above - import org.openqa.selenium.devtools.v141.dom.DOM;
 				case "chrome": {
 					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_136.0");
 					break;
@@ -2235,7 +2235,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)pdr).getDevTools();
 			// Set up PDF print options
             // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v136.page.Page.printToPDF(
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v141.page.Page.printToPDF(
                 Optional.of(false),     // landscape
                 Optional.of(true),      // displayHeaderFooter
                 Optional.of(true),      // printBackground
@@ -3972,7 +3972,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v136.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v141.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -4034,7 +4034,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v136.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.v141.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {
