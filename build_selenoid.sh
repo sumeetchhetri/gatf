@@ -1,6 +1,6 @@
-CHROME_VERSION=136.0
-FF_VERSION=140.0
-OPERA_VERSION=120.0
+CHROME_VERSION=142.0
+FF_VERSION=146.0
+OPERA_VERSION=125.0
 
 # Build images executable first
 #  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
@@ -10,7 +10,10 @@ OPERA_VERSION=120.0
 #  go build
 #  chmod +x images
 
+#  for chrome find closest chrome driver version and rename the deb file and then try the ./images
+#  https://googlechromelabs.github.io/chrome-for-testing/known-good-versions.json
 #  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/
+#  Download the deb file with the latest desired MAJOR version
 #  MAJOR=136 && VERSION=${MAJOR}.0.7103.113 && wget https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/google-chrome-stable_${VERSION}-1_amd64.deb && ./images chrome -b ./google-chrome-stable_${VERSION}-1_amd64.deb -t sumeetchhetri/chrome:${MAJOR}.0
 
 #  https://ftp.mozilla.org/pub/firefox/releases/

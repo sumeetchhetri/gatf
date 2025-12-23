@@ -514,7 +514,7 @@ public abstract class SeleniumTest {
 			result.executionTime = System.nanoTime() - getSession().__subtestexecutiontime__;
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
 		}
-		if(result!=null && !result.isStatus() && !result.isContinue) {
+		if(result!=null && ((!result.isStatus() && !result.isContinue) || result.cause instanceof WarnSubTestException)) {
 			FailureException fe = new FailureException(result.getCause());
 			if(state.cfileName!=null) {
 				String relName = state.cfileName.replace(state.basePath, "");
@@ -530,7 +530,9 @@ public abstract class SeleniumTest {
 			} else {
 				fe.details = new Object[] {"", 0, "", result.getCause().getMessage()};
 			}
-			throw fe;
+			if(!result.isContinue) {
+				throw fe;
+			}
 		}
 	}
 
@@ -1323,7 +1325,7 @@ public abstract class SeleniumTest {
 				}
 			}
 			if(cause instanceof PassSubTestException || cause instanceof WarnSubTestException) {
-				this.status = true;
+				this.status = cause instanceof PassSubTestException;
 				this.isContinue = true;
 
 				if(cause instanceof WarnSubTestException && test.___cxt___.getGatfExecutorConfig().getWaitOnWarnException()>0)

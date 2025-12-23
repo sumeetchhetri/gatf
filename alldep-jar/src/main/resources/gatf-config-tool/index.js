@@ -721,7 +721,7 @@ function onSuccessLogin(token) {
 			$('#testcasefile-holder').find('.asideLink').css('background-color', currColor);
 		});
 
-		$(document).off('click').on('click', function(e) {console.log(e.target.tagName + " " + $(e.target).attr('click-event'));
+		$(document).off('click').on('click', function(e) {
 		    if(e.target && (e.target.tagName=='A' || e.target.tagName=='BUTTON' || e.target.tagName=='SPAN') && $(e.target).attr('click-event')) {
 		        var evt = $(e.target).attr('click-event');
 				execFunction(evt, $(e.target));
