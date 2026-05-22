@@ -4,14 +4,12 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 WORKDIR /tmp
 
-RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates curl openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools build-essential maven && rm -rf /var/lib/apt/lists/*
+ENV NODE_MAJOR=20
 
-ARG NODE_VERSION=16.13.1
-ARG NODE_PACKAGE=node-v$NODE_VERSION-linux-x64
-ARG NODE_HOME=/opt/$NODE_PACKAGE
-ENV NODE_PATH $NODE_HOME/lib/node_modules
-ENV PATH $NODE_HOME/bin:$PATH
-RUN curl -L https://nodejs.org/dist/v$NODE_VERSION/$NODE_PACKAGE.tar.gz | tar -xzC /opt/
+RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates ca-certificates curl gnupg openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools build-essential software-properties-common xvfb fluxbox wmctrl && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+RUN apt update -yqq && apt install -yqq nodejs
 RUN npm install -g autocannon
 
 RUN git clone https://github.com/wg/wrk.git wrk
