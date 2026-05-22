@@ -98,17 +98,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v141.dom.DOM;
-import org.openqa.selenium.devtools.v141.dom.model.Node;
-import org.openqa.selenium.devtools.v141.dom.model.NodeId;
-import org.openqa.selenium.devtools.v141.fetch.Fetch;
-import org.openqa.selenium.devtools.v141.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v141.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v141.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v141.log.Log;
-import org.openqa.selenium.devtools.v141.network.Network;
-import org.openqa.selenium.devtools.v141.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v141.target.Target;
+import org.openqa.selenium.devtools.v146.dom.DOM;
+import org.openqa.selenium.devtools.v146.dom.model.Node;
+import org.openqa.selenium.devtools.v146.dom.model.NodeId;
+import org.openqa.selenium.devtools.v146.fetch.Fetch;
+import org.openqa.selenium.devtools.v146.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.v146.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.v146.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.v146.log.Log;
+import org.openqa.selenium.devtools.v146.network.Network;
+import org.openqa.selenium.devtools.v146.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.v146.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -182,11 +182,11 @@ public abstract class SeleniumTest {
 	}};
 	protected final static HashSet<String> LOG_TYPES_SET = new HashSet<String>() {{
 		add(LogType.BROWSER);
-		add(LogType.CLIENT);
+		//add(LogType.CLIENT);
 		add(LogType.DRIVER);
 		add(LogType.PERFORMANCE);
-		add(LogType.PROFILER);
-		add(LogType.SERVER);
+		//add(LogType.PROFILER);
+		//add(LogType.SERVER);
 	}};
 
 	private static final String TOP_LEVEL_PROV_NAME = UUID.randomUUID().toString();
@@ -344,7 +344,7 @@ public abstract class SeleniumTest {
 			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
 			switch(browserName) {
 				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v141.dom.DOM;
+				//above - import org.openqa.selenium.devtools.v146.dom.DOM;
 				case "chrome": {
 					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_136.0");
 					break;
@@ -1501,7 +1501,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomNumeric(Integer.valueOf(prt)) + sep;
+					finalNum += RandomStringUtils.insecure().nextNumeric(Integer.valueOf(prt)) + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1515,7 +1515,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)) + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphabetic(Integer.valueOf(prt)) + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1529,7 +1529,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)).toUpperCase() + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphabetic(Integer.valueOf(prt)).toUpperCase() + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1543,7 +1543,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphabetic(Integer.valueOf(prt)).toLowerCase() + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphabetic(Integer.valueOf(prt)).toLowerCase() + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1557,7 +1557,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)) + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphanumeric(Integer.valueOf(prt)) + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1571,7 +1571,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)).toUpperCase() + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphanumeric(Integer.valueOf(prt)).toUpperCase() + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1585,7 +1585,7 @@ public abstract class SeleniumTest {
 			String finalNum = "";
 			for (String prt : prts) {
 				try {
-					finalNum += RandomStringUtils.randomAlphanumeric(Integer.valueOf(prt)).toLowerCase() + sep;
+					finalNum += RandomStringUtils.insecure().nextAlphanumeric(Integer.valueOf(prt)).toLowerCase() + sep;
 				} catch (Exception e) {
 				}
 			}
@@ -1614,19 +1614,19 @@ public abstract class SeleniumTest {
 		List<String> vals = new ArrayList<>();
 		for(int i=0;i<totalcount;i++) {
 			if(StringUtils.isBlank(v1) || v1.toLowerCase().equals("alpha")) {
-				vals.add(RandomStringUtils.randomAlphabetic(count));
+				vals.add(RandomStringUtils.insecure().nextAlphabetic(count));
 			} else if(v1.toLowerCase().equals("alphanumeric")) {
-				vals.add(RandomStringUtils.randomAlphanumeric(count));
+				vals.add(RandomStringUtils.insecure().nextAlphanumeric(count));
 			} else if(v1.toLowerCase().equals("alphanumericuc")) {
-				vals.add(RandomStringUtils.randomAlphanumeric(count).toUpperCase());
+				vals.add(RandomStringUtils.insecure().nextAlphanumeric(count).toUpperCase());
 			} else if(v1.toLowerCase().equals("alphanumericlc")) {
-				vals.add(RandomStringUtils.randomAlphanumeric(count).toLowerCase());
+				vals.add(RandomStringUtils.insecure().nextAlphanumeric(count).toLowerCase());
 			} else if(v1.toLowerCase().equals("alphauc")) {
-				vals.add(RandomStringUtils.randomAlphabetic(count).toUpperCase());
+				vals.add(RandomStringUtils.insecure().nextAlphabetic(count).toUpperCase());
 			} else if(v1.toLowerCase().equals("alphalc")) {
-				vals.add(RandomStringUtils.randomAlphabetic(count).toLowerCase());
+				vals.add(RandomStringUtils.insecure().nextAlphabetic(count).toLowerCase());
 			} else if(v1.toLowerCase().equals("numeric")) {
-				String fv = RandomStringUtils.randomNumeric(count);
+				String fv = RandomStringUtils.insecure().nextNumeric(count);
 				long v = Long.parseLong(fv);
 				if(v==0) {
 					fv = "1";
@@ -2235,7 +2235,7 @@ public abstract class SeleniumTest {
 			DevTools devTools = ((HasDevTools)pdr).getDevTools();
 			// Set up PDF print options
             // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v141.page.Page.printToPDF(
+            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v146.page.Page.printToPDF(
                 Optional.of(false),     // landscape
                 Optional.of(true),      // displayHeaderFooter
                 Optional.of(true),      // printBackground
@@ -3972,7 +3972,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v141.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.v146.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -4034,7 +4034,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v141.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.v146.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {

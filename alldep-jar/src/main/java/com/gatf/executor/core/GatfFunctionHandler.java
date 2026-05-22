@@ -139,18 +139,18 @@ public class GatfFunctionHandler {
 			match.matches();
 			if(match.groupCount()==1) {
 				int maxCount = Integer.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				return RandomStringUtils.randomAlphabetic(maxCount);
+				return RandomStringUtils.insecure().nextAlphabetic(maxCount);
 			} else {
-				return RandomStringUtils.randomAlphabetic(10);
+				return RandomStringUtils.insecure().nextAlphabetic(10);
 			}
 		} else if(function.matches(ALPHANUM_REGEX)) {
 			Matcher match = alphanumericPattern.matcher(function);
 			match.matches();
 			if(match.groupCount()==1) {
 				int maxCount = Integer.valueOf(match.group(1).substring(1, match.group(1).length()-1));
-				return RandomStringUtils.randomAlphanumeric(maxCount);
+				return RandomStringUtils.insecure().nextAlphanumeric(maxCount);
 			} else {
-				return RandomStringUtils.randomAlphanumeric(10);
+				return RandomStringUtils.insecure().nextAlphanumeric(10);
 			}
 		} else if(function.matches(NUMBER_PLUS_REGEX)) {
 			Matcher match = pnumberPattern.matcher(function);

@@ -31,6 +31,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.jspecify.annotations.Nullable;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.remote.Command;
 import org.openqa.selenium.remote.CommandInfo;
@@ -119,8 +120,9 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
     }
 
     org.apache.commons.lang3.tuple.ImmutableTriple<Boolean, String, String[]> IN_DOCKER = com.gatf.selenium.SeleniumTest.IN_DOCKER.get();
+    
     if (DriverCommand.QUIT.equals(command.getName())) {
-      CompletableFuture<Response> commandComplete =
+      CompletableFuture<@Nullable Response> commandComplete =
           CompletableFuture.supplyAsync(
               () -> {
                 try {
@@ -145,7 +147,7 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
               },
               executorService);
 
-      CompletableFuture<Response> processFinished =
+      CompletableFuture<@Nullable Response> processFinished =
           CompletableFuture.supplyAsync(
               () -> {
                 try {

@@ -977,7 +977,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
     			 Random rand = new Random(12345678L);
     			 return rand.nextFloat();
     		 } else if(claz.equals(String.class)) {
-    			 return RandomStringUtils.randomAlphabetic(10);
+    			 return RandomStringUtils.insecure().nextAlphabetic(10);
     		 } else if(claz.equals(Long.class) || claz.equals(long.class) || claz.equals(Number.class)) {
     			 Random rand = new Random();
     			 return Long.valueOf(rand.nextInt(123));

@@ -304,7 +304,7 @@ public class SeleniumCodeGeneratorAndUtil {
 				m.find();
 				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
-					lp.enable(LogType.CLIENT, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
+					//lp.enable(LogType.CLIENT, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*driver\\(([a-zA-Z]+)\\).*")) {
@@ -328,7 +328,7 @@ public class SeleniumCodeGeneratorAndUtil {
 				m.find();
 				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
-					lp.enable(LogType.PROFILER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
+					//lp.enable(LogType.PROFILER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 			if(slp.matches(".*server\\(([a-zA-Z]+)\\).*")) {
@@ -336,7 +336,7 @@ public class SeleniumCodeGeneratorAndUtil {
 				m.find();
 				if(SeleniumTest.LOG_LEVEL_BY_NAME_MAP.containsKey(m.group(1)) && m.group(1).equalsIgnoreCase("on")
                         && SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1))!=null) {
-					lp.enable(LogType.SERVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
+					//lp.enable(LogType.SERVER, SeleniumTest.LOG_LEVEL_BY_NAME_MAP.get(m.group(1)));
 				}
 			}
 		}
