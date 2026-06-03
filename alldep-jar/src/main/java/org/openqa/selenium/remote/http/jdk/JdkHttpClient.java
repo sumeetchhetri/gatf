@@ -161,7 +161,11 @@ public class JdkHttpClient implements HttpClient {
     try {
       uri = getWebSocketUri(request);
     } catch (URISyntaxException e) {
-      throw new ConnectionFailedException("JdkWebSocket initial request execution error", e);
+      String message =
+          String.format(
+              "JdkWebSocket initial request execution error (uri: %s)",
+              maskUrlCredentials(messages.getRawUri(request)));
+      throw new ConnectionFailedException(message, e);
     }
 
     java.net.http.WebSocket.Builder builder = client.newWebSocketBuilder();
@@ -251,13 +255,20 @@ public class JdkHttpClient implements HttpClient {
     } catch (ExecutionException e) {
       Throwable cause = e.getCause();
       throw new ConnectionFailedException(
-          "JdkWebSocket initial request execution error", (cause != null) ? cause : e);
+          String.format(
+              "JdkWebSocket initial request execution error (uri: %s)", maskUrlCredentials(uri)),
+          (cause != null) ? cause : e);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
-      throw new ConnectionFailedException("JdkWebSocket initial request interrupted", e);
+      throw new ConnectionFailedException(
+          String.format(
+              "JdkWebSocket initial request interrupted (uri: %s)", maskUrlCredentials(uri)),
+          e);
     } catch (java.util.concurrent.TimeoutException e) {
       webSocketCompletableFuture.cancel(true);
-      throw new ConnectionFailedException("JdkWebSocket initial request timeout", e);
+      throw new ConnectionFailedException(
+          String.format("JdkWebSocket initial request timeout (uri: %s)", maskUrlCredentials(uri)),
+          e);
     }
 
     WebSocket websocket =
@@ -379,9 +390,7 @@ public class JdkHttpClient implements HttpClient {
   public CompletableFuture<HttpResponse> executeAsync(HttpRequest request) {
     // the facade for this http request
     CompletableFuture<HttpResponse> cf = new CompletableFuture<>();
-
     var state = com.gatf.selenium.SeleniumTest.IN_DOCKER.get();
-
     // the actual http request
     Future<?> future =
         executorService.submit(
@@ -523,7 +532,7 @@ public class JdkHttpClient implements HttpClient {
     return String.format("%s %s", method, uri);
   }
 
-  static String maskUrlCredentials(String uri) {
+  public static String maskUrlCredentials(String uri) {
     try {
       return maskUrlCredentials(new URI(uri));
     } catch (URISyntaxException invalidUri) {
@@ -531,7 +540,7 @@ public class JdkHttpClient implements HttpClient {
     }
   }
 
-  private static String maskUrlCredentials(URI u) {
+  public static String maskUrlCredentials(URI u) {
     if (u.getUserInfo() == null) {
       return u.toString();
     }

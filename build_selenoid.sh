@@ -1,6 +1,6 @@
-CHROME_VERSION=148.0
-FF_VERSION=151.0
-OPERA_VERSION=131.0
+CHROME_VERSION=153.0
+FF_VERSION=155.0
+OPERA_VERSION=135.0
 
 # Build images executable first
 #  https://mirror.cs.uchicago.edu/google-chrome/pool/main/g/google-chrome-stable/

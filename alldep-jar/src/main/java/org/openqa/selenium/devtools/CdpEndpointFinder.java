@@ -128,6 +128,7 @@ public class CdpEndpointFinder {
             + com.gatf.selenium.SeleniumTest.IN_DOCKER.get().getMiddle();
          raw = raws;
       }
+
       URI uri = new URI(String.format("http://%s", raw));
       LOG.fine("URI found: " + uri);
       return Optional.of(uri);
