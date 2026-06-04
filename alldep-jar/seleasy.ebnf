@@ -1,80 +1,144 @@
-//https://tomassetti.me/ebnf/
+(*
+ * seleasy.ebnf -- reference grammar for the seleasy UI-test DSL.
+ *
+ * seleasy is line-oriented and is NOT parsed by a generated parser. Statements
+ * are recognised by the prefix/keyword dispatch in
+ *     com.gatf.selenium.Command.parse(..)   and   Command.handleActions(..)
+ * This grammar is a faithful, human-readable description of that dispatch. The
+ * authoritative, machine-generated list of every statement keyword (with its
+ * match kind and backing Command class) is docs/seleasy/commands.json, produced
+ * by tools/gen-commands/gen_commands.py. Keep the two in sync.
+ *
+ * Notation: '..' = terminal;  A? = optional;  A* = zero-or-more;  A | B = choice;
+ * (* .. *) = comment. NL = end of line. Each statement occupies its own line.
+ * A block's braces '{' and '}' each sit alone on their own line.
+ *)
 
-program
-   : statement+
-   ;
+program      = { line } ;
+line         = ( statement | block_open | '{' | '}' | value_list
+               | code_block | comment ) , NL ;
 
-statement
-   : 'open' browser
-   | 'close'
-   | 'sleep' integer
-   | 'exec' code
-   | 'if' paren_expr statement
-   | 'if' paren_expr statement 'else' statement
-   | 'while' paren_expr statement
-   | 'do' statement 'while' paren_expr ';'
-   | '{' statement* '}'
-   | expr ';'
-   | ';'
-   ;
+(* ---- comments -------------------------------------------------------- *)
+comment      = '//' , text
+             | '/*' , { any } , '*/' ;          (* may span multiple lines *)
 
-browser
-	: 'chrome'
-	| 'firefox'
-	| 'edge'
-	| 'safari'
-	;
+(* ---- conditional-skip prefix ---------------------------------------- *)
+(* '^<dynprop> <stmt>' keeps <stmt> only when dynprop <dynprop> is enabled *)
+statement    = [ '^' , ident , ' ' ] , simple_statement ;
 
-paren_expr
-   : '(' expr ')'
-   ;
+(* ---- block-opening statements (each followed by a { .. } block) ------ *)
+block_open   = if_stmt | else_stmt | loop_stmt | provider_stmt
+             | subtest_stmt | scope_stmt | var_stmt | plugin_stmt ;
 
-expr
-   : test
-   | id '=' expr
-   ;
+if_stmt      = ( '?' | '?!' | 'if ' | 'ifnot ' ) , condition ;
+else_stmt    = ( ':?' | ':?!' | 'else if ' | 'else ifnot ' ) , condition
+             | ':' | 'else' ;
+scope_stmt   = ( 'frame ' | 'tab ' | 'window ' ) , arg ;   (* inline stmt allowed *)
+subtest_stmt = ( 'subtest ' | 'func ' ) , string ;
+loop_stmt    = ( '#' , ' ' | '##' , ' ' | 'loop over ' ) , condition ;  (* scoped loop *)
+var_stmt     = ( 'var ' | 'jsvar ' ) , arg ;               (* inline stmt allowed *)
+plugin_stmt  = ident , arg ;                               (* api/json/xml/curl.. *)
+provider_stmt =
+      ( '#sql ' | '#mongo ' | '#file ' | '#provider ' | '#p '
+      | '#provider-sf ' | '#p-sf ' | '#counter ' | '#c '
+      | '#optional ' | '#o ' | '#transient-provider ' | '#tp ' ) , arg ;
 
-test
-   : sum
-   | sum '<' sum
-   ;
+(* ---- navigation / browser lifecycle --------------------------------- *)
+simple_statement =
+      'open ' , browser
+    | 'goto ' , url
+    | 'maximize' | 'back' | 'forward' | 'refresh' | 'waitready'
+    | 'close' , [ ' ' , arg ]                    (* e.g. 'close others'     *)
+    | 'sleep ' , integer
+    | 'timeout ' , arg
+    | 'mode ' , arg | 'setting ' , arg | 'layer ' , arg
+    | wait_stmt
+    | interaction_stmt
+    | mobile_stmt
+    | io_stmt
+    | code_ctrl_stmt
+    | flow_stmt
+    | '@call ' , call_expr
+    | @call_nlp ;                                (* bare NLP subtest invoke *)
 
-sum
-   : term
-   | sum '+' term
-   | sum '-' term
-   ;
+(* ---- waits ----------------------------------------------------------- *)
+wait_stmt    = ( '??+' | '??-' | '??' ) , [ integer ] , ' ' , locator
+             | 'wait till visible ' , locator
+             | 'wait for ' , locator ;
 
-term
-   : id
-   | integer
-   | paren_expr
-   ;
+(* ---- element interactions (operate on a locator) -------------------- *)
+interaction_stmt =
+      type_verb , [ qualifier ] , ' ' , value , [ ' ' , locator ]
+    | 'click' , [ click_qual ] , [ ' ' , locator ]
+    | ( 'doubleclick' | 'dblclick' | 'hover' | 'clear' | 'submit' ) , [ ' ' , locator ]
+    | 'hoverclick ' , locator
+    | 'select ' , locator
+    | 'upload ' , locator , ' ' , path
+    | 'actions ' , arg
+    | 'canvas ' , arg
+    | ( 'robot ' , arg | 'scrollup' | 'scrolldown' | 'scrollpageup' | 'scrolldown' )
+    | 'scroll ' , arg ;
+type_verb    = 'type' | 'sendkeys' | 'chord' | 'randomize' ;
+qualifier    = 'bl' | 'ch' | 'bk' | 'cl' | 'fo' ;          (* type-family suffix *)
+click_qual   = 'fo' | 'nf' ;
 
-id
-   : STRING
-   ;
+(* ---- locators / conditions ------------------------------------------ *)
+(* '<strategy>@<value>' with optional assertion / value tail             *)
+locator      = strategy , '@' , value , { ' ' , loc_tail } ;
+strategy     = 'id' | 'css' | 'xpath' | 'name' | 'class' | 'text' | 'tagname'
+             | 'active' | 'partiallinktext' | 'linktext' | ident ;
+loc_tail     = 'text' | 'tagname' | 'selected' | 'enabled' | 'visible'
+             | ( 'attr' | 'cssvalue' ) , '@' , ident
+             | '=' , value ;
+condition    = locator ;
 
-integer
-   : INT
-   ;
+(* ---- code, exec, control upcalls ----------------------------------- *)
+code_ctrl_stmt =
+      ( 'exec ' | 'execjs ' | 'execjsfile ' ) , arg
+    | '#j ' , java_control ;                     (* if|for|while|try|catch|.. *)
+java_control = ( 'if' | 'for' | 'while' | 'try' | 'catch' | 'finally'
+               | 'else' | 'else if' | 'continue' | 'break'
+               | '{' | '}' | 'synchronized' ) , { any } ;
+code_block   = ( '<<<' , [ '(' , lang , [ ' ' , arg ] , ')' ]
+               | 'begin code in ' , lang , [ ' ' , arg ] ) , NL ,
+               { any , NL } ,
+               ( '>>>' | 'end code' ) ;
 
+(* ---- value lists ----------------------------------------------------- *)
+value_list   = '[' , NL , { value , NL } , ']' ;
 
-code
-   : .+
-   ;
+(* ---- io / media / assertions ---------------------------------------- *)
+io_stmt      =
+      'screenshot' , [ arg ] | 'ele-screenshot ' , arg | 'imgsave ' , arg
+    | ( 'ocr ' | 'readimgtext ' ) , arg
+    | ( 'readqrbar ' | 'qrcode ' | 'barcode ' ) , arg
+    | 'readfile ' , arg | 'filevar ' , arg
+    | ( 'dsq ' | 'ds query ' ) , arg
+    | ( 'alert' | 'confirm' ) , [ ' ' , arg ]
+    | 'mail ' , arg | 'http' , arg | 'netapix ' , arg | 'wopensave ' , arg
+    | ( 'require ' | 'import ' | 'include ' ) , arg
+    | ( 'config ' | 'dynprops ' ) , arg ;
 
-STRING
-   : [a-z]+
-   ;
+(* ---- pass / fail / warn --------------------------------------------- *)
+flow_stmt    = ( 'pass' | 'fail' | 'warn' | 'break' | 'continue' ) , [ ' ' , arg ] ;
 
+(* ---- mobile ---------------------------------------------------------- *)
+mobile_stmt  = ( 'zoom ' | 'pinch ' | 'tap ' | 'touch ' | 'swipe ' ) , arg
+             | ( 'rotate' | 'hidekeypad' | 'shake' ) ;
 
-INT
-   : [0-9]+
-   ;
-
-white space = ? white space characters ? ;
-
-WS
-   : [ rnt] -> skip
-   ;
+(* ---- primitives ------------------------------------------------------ *)
+browser      = 'chrome' | 'firefox' | 'edge' | 'safari' | 'ie' | ident ;
+value        = string | ident | number ;
+string       = '"' , { any } , '"' | "'" , { any } , "'" ;
+arg          = { any } ;
+url          = { any } ;
+path         = string ;
+call_expr    = ident , '(' , { any } , ')' ;
+lang         = 'java' | 'js' | 'groovy' | ident ;
+integer      = number ;
+number       = digit , { digit } ;
+ident        = letter , { letter | digit | '_' | '-' } ;
+letter       = 'a'..'z' | 'A'..'Z' ;
+digit        = '0'..'9' ;
+any          = ? any character except NL ? ;
+text         = { any } ;

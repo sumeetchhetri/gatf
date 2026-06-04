@@ -18,3 +18,4 @@ alldep-jar/src/main/resources/gatf-config-tool/codemirror/src
 gatf-config-tool
 temp/
 *.log
+deltas/

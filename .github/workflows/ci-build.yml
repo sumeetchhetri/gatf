@@ -12,6 +12,9 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Seleasy smoke (offline lint + command catalog)
+      run: python3 tools/smoke/sel-lint.py --regen sample/*.sel
+
     - name: Build gatf jar
       run: |
         mvn --quiet install

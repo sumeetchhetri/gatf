@@ -1,6 +1,8 @@
 #!/bin/bash
 
-set -e
+set -o pipefail
+export DOCKER_DEFAULT_PLATFORM=linux/amd64
+export BUILDX_NO_DEFAULT_ATTESTATIONS=1
 
 # Configuration
 DOCKER_USERNAME="sumeetchhetri"
