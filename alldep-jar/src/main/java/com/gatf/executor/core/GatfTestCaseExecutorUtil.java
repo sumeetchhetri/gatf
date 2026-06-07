@@ -1190,7 +1190,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", fileName + ".html", res.getResult().isStatus() ? "SUCCESS" : "FAILED",
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
                             if (dorep) {
-                                ReportHandler.doSeleniumTestReport(path, fileName, retvals, res.getResult(), context);
+                                String __traceRel = null;
+                                if(sess.__trace__!=null) {
+                                    java.nio.file.Path __tzp = sess.__trace__.writeZip(new File(context.getOutDir().getAbsolutePath() + File.separator + path, fileName + "-trace.zip").toPath());
+                                    if(__tzp!=null) __traceRel = fileName + "-trace.zip";
+                                    sess.__trace__ = null; // one trace bundle per session
+                                }
+                                ReportHandler.doSeleniumTestReport(path, fileName, retvals, res.getResult(), context, __traceRel);
                                 if(!isLoadTestingEnabled) {
 	                                String prefix = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + counter;
 	                                reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, "-", tim, res.getResult().isStatus(), msg, fileName + ".html", prefix, null, null, null));
@@ -1242,7 +1248,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), fileName + ".html", e1.getValue().isStatus() ? "SUCCESS" : "FAILED",
                                         !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
                                 if (dorep) {
-                                    ReportHandler.doSeleniumTestReport(path, fileName, retvals, e1.getValue(), context);
+                                    ReportHandler.doSeleniumTestReport(path, fileName, retvals, e1.getValue(), context, null);
                                     if(!isLoadTestingEnabled) {
 	                                    String prefix = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + counter;
 	                                    reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", prefix, null, null, null));

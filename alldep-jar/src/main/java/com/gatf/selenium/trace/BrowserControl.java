@@ -1,0 +1,40 @@
+package com.gatf.selenium.trace;
+
+/**
+ * Protocol-neutral browser control surface (decision D-2). Recorders depend ONLY on this
+ * interface — never on CDP or BiDi types directly — which is what lets the active transport
+ * be switched by config ({@code protocol=cdp|bidi}) instead of a rewrite. Two implementations
+ * exist: {@code CdpTransport} (Selenium devtools.vNNN bindings, active today) and
+ * {@code BiDiTransport} (skeleton until parity).
+ *
+ * Implementations are constructed from a WebDriver by {@code Transports.create(..)} in the
+ * selenium package glue; this interface stays free of Selenium types so the recorder core
+ * compiles and unit-tests with a plain javac and no classpath.
+ *
+ * @author Sumeet Chhetri
+ */
+public interface BrowserControl extends AutoCloseable {
+
+    /** Whether this transport can serve the given capability right now. */
+    boolean supports(Capability c);
+
+    /** Begin delivering network events to the listener. No-op if NETWORK unsupported. */
+    void enableNetwork(NetworkListener listener);
+    void disableNetwork();
+
+    /** Begin delivering console/log entries to the listener. No-op if CONSOLE unsupported. */
+    void enableConsole(ConsoleListener listener);
+    void disableConsole();
+
+    /** Current document outer HTML, or null if unavailable. */
+    String captureDomSnapshot();
+
+    /** PNG screenshot bytes, or null if unavailable. */
+    byte[] captureScreenshot();
+
+    /** Decoded response body bytes for a request id, or null if not retrievable/too late. */
+    byte[] fetchBody(String requestId);
+
+    @Override
+    void close();
+}

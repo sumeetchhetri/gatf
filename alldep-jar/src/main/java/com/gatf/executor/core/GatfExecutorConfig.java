@@ -88,6 +88,15 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	private boolean compareEnabled;
 	
+	// --- Trace recorder (streaming trace for functional UI runs; Phase 1) ---
+	private boolean enableTrace = false;
+	private String traceProtocol = "cdp";
+	private boolean traceNetwork = true;
+	private boolean traceConsole = true;
+	private boolean traceSnapshots = true;
+	private int traceMaxBodyKb = 512;
+	private int traceMaxTotalMb = 64;
+	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
 	private Boolean enabled;
@@ -441,6 +450,21 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setLoadTestingEnabled(boolean loadTestingEnabled) {
 		this.loadTestingEnabled = loadTestingEnabled;
 	}
+
+	public boolean isEnableTrace() { return enableTrace; }
+	public void setEnableTrace(boolean enableTrace) { this.enableTrace = enableTrace; }
+	public String getTraceProtocol() { return traceProtocol; }
+	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
+	public boolean isTraceNetwork() { return traceNetwork; }
+	public void setTraceNetwork(boolean traceNetwork) { this.traceNetwork = traceNetwork; }
+	public boolean isTraceConsole() { return traceConsole; }
+	public void setTraceConsole(boolean traceConsole) { this.traceConsole = traceConsole; }
+	public boolean isTraceSnapshots() { return traceSnapshots; }
+	public void setTraceSnapshots(boolean traceSnapshots) { this.traceSnapshots = traceSnapshots; }
+	public int getTraceMaxBodyKb() { return traceMaxBodyKb; }
+	public void setTraceMaxBodyKb(int traceMaxBodyKb) { this.traceMaxBodyKb = traceMaxBodyKb; }
+	public int getTraceMaxTotalMb() { return traceMaxTotalMb; }
+	public void setTraceMaxTotalMb(int traceMaxTotalMb) { this.traceMaxTotalMb = traceMaxTotalMb; }
 
 	public boolean isFetchFailureLogs() {
 		return isFetchFailureLogs;

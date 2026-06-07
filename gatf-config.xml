@@ -1,0 +1,48 @@
+<gatf-execute-config>
+  <testCasesBasePath>.</testCasesBasePath>
+  <testCaseDir>data</testCaseDir>
+  <outFilesBasePath>.</outFilesBasePath>
+  <outFilesDir>out</outFilesDir>
+  <authEnabled>false</authEnabled>
+  <soapAuthEnabled>false</soapAuthEnabled>
+  <numConcurrentExecutions>1</numConcurrentExecutions>
+  <httpCompressionEnabled>false</httpCompressionEnabled>
+  <httpConnectionTimeout>10000</httpConnectionTimeout>
+  <httpRequestTimeout>10000</httpRequestTimeout>
+  <concurrentUserSimulationNum>0</concurrentUserSimulationNum>
+  <compareEnabled>false</compareEnabled>
+  <enabled>true</enabled>
+  <loadTestingEnabled>false</loadTestingEnabled>
+  <loadTestingTime>0</loadTestingTime>
+  <distributedLoadTests>false</distributedLoadTests>
+  <concurrentUserRampUpTime>0</concurrentUserRampUpTime>
+  <loadTestingReportSamples>3</loadTestingReportSamples>
+  <debugEnabled>false</debugEnabled>
+  <isOrderByFileName>false</isOrderByFileName>
+  <isServerLogsApiAuthEnabled>false</isServerLogsApiAuthEnabled>
+  <isFetchFailureLogs>false</isFetchFailureLogs>
+  <repeatSuiteExecutionNum>0</repeatSuiteExecutionNum>
+  <isGenerateExecutionLogs>false</isGenerateExecutionLogs>
+  <isSeleniumExecutor>true</isSeleniumExecutor>
+  <selConcWebdriver>false</selConcWebdriver>
+  <seleniumDriverConfigs>
+    <seleniumDriverConfig>
+      <name>chrome</name>
+      <driverName>webdriver.chrome.driver</driverName>
+      <path>/Users/sumeetc/Projects/home/selenium/chromedriver</path>
+      <capabilities class="linked-hash-map">
+        <property key="deviceName">test</property>
+      </capabilities>
+      <properties class="linked-hash-map">
+        <property key="download.default_directory">/tmp/</property>
+      </properties>
+    </seleniumDriverConfig>
+  </seleniumDriverConfigs>
+  <enableTrace>true</enableTrace>
+  <traceProtocol>cdp</traceProtocol>       <!-- cdp | bidi -->
+  <traceNetwork>true</traceNetwork>
+  <traceConsole>true</traceConsole>
+  <traceSnapshots>true</traceSnapshots>
+  <traceMaxBodyKb>512</traceMaxBodyKb>     <!-- per-response body cap -->
+  <traceMaxTotalMb>64</traceMaxTotalMb>    <!-- total captured-body budget per trace -->
+</gatf-execute-config>

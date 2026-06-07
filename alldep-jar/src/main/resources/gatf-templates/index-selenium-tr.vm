@@ -99,6 +99,9 @@
 			<div id="page-wrapper">
 				<div class="row">
 					<h2>$succFail</h2>
+#if($tracePath)
+					<p style="margin:6px 0;"><a href="$tracePath" download="$tracePath">Download trace bundle (network HAR · console · snapshots)</a></p>
+#end
 					<div class="col-lg-12">
 						<div class="col-lg-6">
 							<h3>$selFileName</h3>

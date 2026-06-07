@@ -44,6 +44,9 @@ public class SeleniumTestSession implements Serializable {
     
     protected String sessionName;
     
+    /** Streaming trace recorder for this session (functional UI runs only); zipped + linked in the report. */
+    public transient com.gatf.selenium.trace.TraceRecorder __trace__;
+    
     public String getSessionName() {
         return sessionName;
     }

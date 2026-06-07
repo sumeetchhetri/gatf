@@ -1308,7 +1308,7 @@ public class ReportHandler {
     	unzipZipFile(gctzip, path);
 	}*/
     
-    public static void doSeleniumTestReport(String path, String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext)
+    public static void doSeleniumTestReport(String path, String prefix, Object[] retvals, SeleniumTestResult result, AcceptanceTestContext acontext, String tracePath)
     {
         VelocityContext context = new VelocityContext();
         File resource = acontext.getOutDir();
@@ -1328,6 +1328,7 @@ public class ReportHandler {
             context.put("javaCode", StringEscapeUtils.escapeHtml4((String)retvals[3]));
             context.put("selLogs", result.getLogs());
             context.put("succFail", result.isStatus()?"SUCCESS":"FAILED");
+            context.put("tracePath", tracePath);
             context.put("StringEscapeUtils", StringEscapeUtils.class);
             
             VelocityEngine engine = new VelocityEngine();

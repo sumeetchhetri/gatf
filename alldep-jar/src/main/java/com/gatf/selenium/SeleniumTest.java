@@ -1123,6 +1123,7 @@ public abstract class SeleniumTest {
 	}
 	
 	public void quit(SeleniumTestSession sess) {
+		if(sess.__trace__!=null) { try { sess.__trace__.stop(); } catch (Exception e) {} }
 		if(sess.___d___.size()>0) {
 			int indx = 0;
 			for (WebDriver d : sess.___d___)
@@ -4055,6 +4056,30 @@ public abstract class SeleniumTest {
 			}
 		}
 		
+		if(driver instanceof HasDevTools) {
+			try {
+				// Streaming trace: functional UI runs only (not load, not multi-user). Read straight from
+				// config so no Command.java codegen change is needed. Never breaks browser init.
+				GatfExecutorConfig __cfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
+				if(__cfg!=null && __cfg.isEnableTrace() && !__cfg.isLoadTestingEnabled()
+						&& (__cfg.getConcurrentUserSimulationNum()==null || __cfg.getConcurrentUserSimulationNum()<=1)
+						&& getSession()!=null && getSession().__trace__==null) {
+					String __sid = ((RemoteWebDriver)driver).getSessionId().toString();
+					com.gatf.selenium.trace.TraceConfig __tc = new com.gatf.selenium.trace.TraceConfig()
+							.setEnableTrace(true)
+							.setProtocol(__cfg.getTraceProtocol())
+							.setNetwork(__cfg.isTraceNetwork())
+							.setConsole(__cfg.isTraceConsole())
+							.setSnapshots(__cfg.isTraceSnapshots())
+							.setMaxBodyBytes((long)__cfg.getTraceMaxBodyKb()*1024L)
+							.setMaxTotalBytes((long)__cfg.getTraceMaxTotalMb()*1024L*1024L);
+					java.nio.file.Path __wd = new java.io.File(new java.io.File(getOutDir(), ".trace"), "trace-"+__sid).toPath();
+					com.gatf.selenium.trace.BrowserControl __bc = com.gatf.selenium.trace.Transports.create(driver, __tc);
+					getSession().__trace__ = com.gatf.selenium.trace.TraceRecorder.attach(__bc, __tc, __wd, getName(), getSession().browserName);
+				}
+			} catch (Exception __te) { /* tracing must never break browser init */ }
+		}
+
 		if(logdebug) {
 			Configurator.setRootLevel(org.apache.logging.log4j.Level.ALL);
 		}
