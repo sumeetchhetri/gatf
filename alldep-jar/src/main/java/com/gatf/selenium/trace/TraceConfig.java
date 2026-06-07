@@ -16,6 +16,9 @@ public final class TraceConfig {
     private boolean captureBodies = true;
     private long maxBodyBytes = 512 * 1024;      // per-response body cap
     private long maxTotalBytes = 64L * 1024 * 1024; // total captured-body budget per trace
+    private boolean metrics = true;                 // Performance.getMetrics sampling (perf + memory)
+    private long metricsIntervalMs = 1000;
+    private boolean webVitals = true;               // FCP/LCP/TTFB/DCL/Load from the Performance Timeline
 
     public boolean isEnableTrace() { return enableTrace; }
     public TraceConfig setEnableTrace(boolean v) { this.enableTrace = v; return this; }
@@ -33,4 +36,10 @@ public final class TraceConfig {
     public TraceConfig setMaxBodyBytes(long v) { if (v > 0) this.maxBodyBytes = v; return this; }
     public long getMaxTotalBytes() { return maxTotalBytes; }
     public TraceConfig setMaxTotalBytes(long v) { if (v > 0) this.maxTotalBytes = v; return this; }
+    public boolean isMetrics() { return metrics; }
+    public TraceConfig setMetrics(boolean v) { this.metrics = v; return this; }
+    public long getMetricsIntervalMs() { return metricsIntervalMs; }
+    public TraceConfig setMetricsIntervalMs(long v) { if (v > 0) this.metricsIntervalMs = v; return this; }
+    public boolean isWebVitals() { return webVitals; }
+    public TraceConfig setWebVitals(boolean v) { this.webVitals = v; return this; }
 }

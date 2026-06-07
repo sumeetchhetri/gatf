@@ -96,6 +96,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private boolean traceSnapshots = true;
 	private int traceMaxBodyKb = 512;
 	private int traceMaxTotalMb = 64;
+	private boolean traceMetrics = true;
+	private int traceMetricsIntervalMs = 1000;
+	private boolean traceWebVitals = true;
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
@@ -465,6 +468,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setTraceMaxBodyKb(int traceMaxBodyKb) { this.traceMaxBodyKb = traceMaxBodyKb; }
 	public int getTraceMaxTotalMb() { return traceMaxTotalMb; }
 	public void setTraceMaxTotalMb(int traceMaxTotalMb) { this.traceMaxTotalMb = traceMaxTotalMb; }
+	public boolean isTraceMetrics() { return traceMetrics; }
+	public void setTraceMetrics(boolean traceMetrics) { this.traceMetrics = traceMetrics; }
+	public int getTraceMetricsIntervalMs() { return traceMetricsIntervalMs; }
+	public void setTraceMetricsIntervalMs(int traceMetricsIntervalMs) { this.traceMetricsIntervalMs = traceMetricsIntervalMs; }
+	public boolean isTraceWebVitals() { return traceWebVitals; }
+	public void setTraceWebVitals(boolean traceWebVitals) { this.traceWebVitals = traceWebVitals; }
 
 	public boolean isFetchFailureLogs() {
 		return isFetchFailureLogs;

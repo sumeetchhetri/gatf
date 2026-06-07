@@ -17,6 +17,8 @@ import org.openqa.selenium.devtools.v150.log.Log;
 import org.openqa.selenium.devtools.v150.network.Network;
 import org.openqa.selenium.devtools.v150.network.model.Headers;
 import org.openqa.selenium.devtools.v150.network.model.RequestId;
+import org.openqa.selenium.devtools.v150.performance.Performance;
+import org.openqa.selenium.devtools.v150.performance.model.Metric;
 import org.openqa.selenium.devtools.v150.runtime.Runtime;
 import org.openqa.selenium.devtools.v150.runtime.model.RemoteObject;
 
@@ -47,6 +49,16 @@ public final class CdpTransport implements BrowserControl {
     private volatile NetworkListener netListener;
     private volatile ConsoleListener conListener;
 
+    private static final String VITALS_JS =
+        "return JSON.stringify((function(){var o={};try{" +
+        "var n=performance.getEntriesByType('navigation')[0];" +
+        "if(n){o.ttfb=n.responseStart;o.domContentLoaded=n.domContentLoadedEventEnd;o.load=n.loadEventEnd;o.domInteractive=n.domInteractive;}" +
+        "var p=performance.getEntriesByType('paint');" +
+        "for(var i=0;i<p.length;i++){if(p[i].name==='first-contentful-paint')o.fcp=p[i].startTime;if(p[i].name==='first-paint')o.fp=p[i].startTime;}" +
+        "var l=performance.getEntriesByType('largest-contentful-paint');" +
+        "if(l&&l.length){o.lcp=l[l.length-1].startTime;}" +
+        "}catch(e){o.error=String(e);}return o;})());";
+
     CdpTransport(WebDriver driver, DevTools devTools) {
         this.driver = driver;
         this.devTools = devTools;
@@ -57,6 +69,7 @@ public final class CdpTransport implements BrowserControl {
         switch (c) {
             case NETWORK:
             case CONSOLE:
+            case METRICS:
             case RESPONSE_BODY: return devTools != null;
             case DOM_SNAPSHOT:  return driver instanceof JavascriptExecutor;
             case SCREENSHOT:    return driver instanceof TakesScreenshot;
@@ -182,6 +195,43 @@ public final class CdpTransport implements BrowserControl {
         this.netListener = null;
         this.conListener = null;
         this.reqIds.clear();
+    }
+
+    @Override
+    public void enableMetrics() {
+        if (devTools == null) return;
+        try {
+            java.util.Optional<Performance.EnableTimeDomain> td = java.util.Optional.empty();
+            devTools.send(Performance.enable(td));
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public void disableMetrics() {
+        if (devTools == null) return;
+        try { devTools.send(Performance.disable()); } catch (Exception ignored) {}
+    }
+
+    @Override
+    public Map<String, Number> sampleMetrics() {
+        Map<String, Number> out = new LinkedHashMap<>();
+        if (devTools == null) return out;
+        try {
+            List<Metric> ms = devTools.send(Performance.getMetrics());
+            if (ms != null) for (Metric m : ms) out.put(m.getName(), m.getValue());
+        } catch (Exception ignored) {}
+        return out;
+    }
+
+    @Override
+    public String readWebVitals() {
+        try {
+            if (driver instanceof JavascriptExecutor) {
+                Object r = ((JavascriptExecutor) driver).executeScript(VITALS_JS);
+                return r == null ? null : String.valueOf(r);
+            }
+        } catch (Exception ignored) {}
+        return null;
     }
 
     private static Map<String, String> toMap(Headers headers) {

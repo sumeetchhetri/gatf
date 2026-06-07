@@ -36,6 +36,7 @@ public final class TraceRecorder implements AutoCloseable {
     private NetworkRecorder net;
     private ConsoleRecorder console;
     private SnapshotRecorder snap;
+    private MetricsRecorder metrics;
 
     private TraceRecorder(BrowserControl browser, TraceConfig cfg, Path workDir, String selFile, String browserName) {
         this.browser = browser;
@@ -64,6 +65,10 @@ public final class TraceRecorder implements AutoCloseable {
             if (cfg.isSnapshots() && (browser.supports(Capability.DOM_SNAPSHOT) || browser.supports(Capability.SCREENSHOT))) {
                 r.snap = new SnapshotRecorder(browser, workDir);
             }
+            if (cfg.isMetrics() && browser.supports(Capability.METRICS)) {
+                r.metrics = new MetricsRecorder(browser, workDir, cfg);
+                r.metrics.start();
+            }
             r.timeline.event("lifecycle", "trace-start", selFile);
         } catch (Exception e) {
             // leave partially-initialised recorders; stop()/writeZip() remain safe
@@ -85,6 +90,7 @@ public final class TraceRecorder implements AutoCloseable {
         try { if (timeline != null) timeline.event("lifecycle", "trace-stop", null); } catch (Exception ignored) {}
         try { browser.disableNetwork(); } catch (Exception ignored) {}
         try { browser.disableConsole(); } catch (Exception ignored) {}
+        if (metrics != null) metrics.stop();   // stops sampler, reads vitals, writes performance/memory json (driver still alive)
         if (net != null) net.flush();
         if (console != null) console.flush();
         if (snap != null) snap.flush();
@@ -138,6 +144,7 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("recNetwork", net != null)
                 .put("recConsole", console != null)
                 .put("recSnapshots", snap != null)
+                .put("recMetrics", metrics != null)
                 .put("truncatedBodies", net != null ? net.truncatedBodies() : 0)
                 .put("bytesCaptured", net != null ? net.bytesCaptured() : 0)
                 .end();

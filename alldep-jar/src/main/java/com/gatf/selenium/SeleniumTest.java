@@ -4072,7 +4072,10 @@ public abstract class SeleniumTest {
 							.setConsole(__cfg.isTraceConsole())
 							.setSnapshots(__cfg.isTraceSnapshots())
 							.setMaxBodyBytes((long)__cfg.getTraceMaxBodyKb()*1024L)
-							.setMaxTotalBytes((long)__cfg.getTraceMaxTotalMb()*1024L*1024L);
+							.setMaxTotalBytes((long)__cfg.getTraceMaxTotalMb()*1024L*1024L)
+							.setMetrics(__cfg.isTraceMetrics())
+							.setMetricsIntervalMs(__cfg.getTraceMetricsIntervalMs())
+							.setWebVitals(__cfg.isTraceWebVitals());
 					java.nio.file.Path __wd = new java.io.File(new java.io.File(getOutDir(), ".trace"), "trace-"+__sid).toPath();
 					com.gatf.selenium.trace.BrowserControl __bc = com.gatf.selenium.trace.Transports.create(driver, __tc);
 					getSession().__trace__ = com.gatf.selenium.trace.TraceRecorder.attach(__bc, __tc, __wd, getName(), getSession().browserName);

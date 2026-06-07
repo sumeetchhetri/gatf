@@ -35,6 +35,20 @@ public interface BrowserControl extends AutoCloseable {
     /** Decoded response body bytes for a request id, or null if not retrievable/too late. */
     byte[] fetchBody(String requestId);
 
+    // --- Phase 2 metrics (default no-ops so only transports that support them override) ---
+
+    /** Begin the metrics domain (CDP Performance.enable). Default no-op. */
+    default void enableMetrics() { }
+
+    /** Stop the metrics domain (CDP Performance.disable). Default no-op. */
+    default void disableMetrics() { }
+
+    /** Current runtime metrics as name → value (CDP Performance.getMetrics), or empty. */
+    default java.util.Map<String, Number> sampleMetrics() { return java.util.Collections.emptyMap(); }
+
+    /** Web-vitals read from the page's Performance Timeline as a JSON object string, or null. */
+    default String readWebVitals() { return null; }
+
     @Override
     void close();
 }
