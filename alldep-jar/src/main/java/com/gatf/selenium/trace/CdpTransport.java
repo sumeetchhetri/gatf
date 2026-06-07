@@ -1,6 +1,7 @@
 package com.gatf.selenium.trace;
 
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,6 +13,7 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.chromium.HasCdp;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.v150.log.Log;
 import org.openqa.selenium.devtools.v150.network.Network;
@@ -73,6 +75,8 @@ public final class CdpTransport implements BrowserControl {
             case RESPONSE_BODY: return devTools != null;
             case DOM_SNAPSHOT:  return driver instanceof JavascriptExecutor;
             case SCREENSHOT:    return driver instanceof TakesScreenshot;
+            case CPU_PROFILE:
+            case COVERAGE:      return driver instanceof HasCdp;
             default:            return false;
         }
     }
@@ -232,6 +236,57 @@ public final class CdpTransport implements BrowserControl {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    // --- CPU profile + coverage via raw CDP (HasCdp.executeCdpCommand -> Map), serialized generically ---
+
+    @Override
+    public void startCpu() {
+        if (!(driver instanceof HasCdp)) return;
+        try {
+            HasCdp c = (HasCdp) driver;
+            c.executeCdpCommand("Profiler.enable", new HashMap<>());
+            c.executeCdpCommand("Profiler.start", new HashMap<>());
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public String stopCpu() {
+        if (!(driver instanceof HasCdp)) return null;
+        try {
+            Map<String, Object> r = ((HasCdp) driver).executeCdpCommand("Profiler.stop", new HashMap<>());
+            Object profile = r == null ? null : r.get("profile");
+            return profile == null ? null : Json.write(profile);
+        } catch (Exception ignored) { return null; }
+    }
+
+    @Override
+    public void startCoverage() {
+        if (!(driver instanceof HasCdp)) return;
+        try {
+            HasCdp c = (HasCdp) driver;
+            c.executeCdpCommand("Profiler.enable", new HashMap<>());
+            Map<String, Object> pc = new HashMap<>();
+            pc.put("callCount", true);
+            pc.put("detailed", true);
+            c.executeCdpCommand("Profiler.startPreciseCoverage", pc);
+            c.executeCdpCommand("CSS.enable", new HashMap<>());
+            c.executeCdpCommand("CSS.startRuleUsageTracking", new HashMap<>());
+        } catch (Exception ignored) {}
+    }
+
+    @Override
+    public String stopCoverage() {
+        if (!(driver instanceof HasCdp)) return null;
+        try {
+            HasCdp c = (HasCdp) driver;
+            Map<String, Object> js = c.executeCdpCommand("Profiler.takePreciseCoverage", new HashMap<>());
+            Map<String, Object> css = c.executeCdpCommand("CSS.stopRuleUsageTracking", new HashMap<>());
+            Map<String, Object> out = new LinkedHashMap<>();
+            out.put("js", js == null ? null : js.get("result"));
+            out.put("css", css == null ? null : css.get("ruleUsage"));
+            return Json.write(out);
+        } catch (Exception ignored) { return null; }
     }
 
     private static Map<String, String> toMap(Headers headers) {

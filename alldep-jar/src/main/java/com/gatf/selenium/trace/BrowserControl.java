@@ -49,6 +49,20 @@ public interface BrowserControl extends AutoCloseable {
     /** Web-vitals read from the page's Performance Timeline as a JSON object string, or null. */
     default String readWebVitals() { return null; }
 
+    // --- Phase 2 CPU profile + coverage (retrieved at stop; default no-ops) ---
+
+    /** Begin CPU sampling profile (CDP Profiler.start). Default no-op. */
+    default void startCpu() { }
+
+    /** Stop and return the CPU profile as a .cpuprofile JSON string, or null. */
+    default String stopCpu() { return null; }
+
+    /** Begin JS + CSS coverage tracking. Default no-op. */
+    default void startCoverage() { }
+
+    /** Stop and return coverage as a JSON string ({js,css}), or null. */
+    default String stopCoverage() { return null; }
+
     @Override
     void close();
 }

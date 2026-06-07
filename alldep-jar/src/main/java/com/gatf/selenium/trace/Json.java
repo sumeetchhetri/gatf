@@ -1,5 +1,7 @@
 package com.gatf.selenium.trace;
 
+import java.util.Map;
+
 /**
  * Minimal, dependency-free JSON writing helpers. Deliberately tiny: the trace recorders
  * emit a fixed, well-known shape (NDJSON lines and a couple of small documents), so a full
@@ -35,6 +37,56 @@ public final class Json {
 
     /** A quoted+escaped JSON string, or the literal null. */
     public static String str(String s) { return s == null ? "null" : "\"" + esc(s) + "\""; }
+
+    /**
+     * Serialize a plain object graph (Map / Iterable / arrays / String / Number / Boolean / null)
+     * to JSON. Used to write raw CDP command responses (nested Maps and Lists) straight to disk
+     * without walking any typed model — keeps the risky, unverifiable model-shape code out of the
+     * transports. Anything else is emitted as its toString() in quotes.
+     */
+    public static String write(Object o) {
+        StringBuilder b = new StringBuilder();
+        writeTo(b, o);
+        return b.toString();
+    }
+
+    private static void writeTo(StringBuilder b, Object o) {
+        if (o == null) { b.append("null"); return; }
+        if (o instanceof String) { b.append('"').append(esc((String) o)).append('"'); return; }
+        if (o instanceof Boolean) { b.append(o.toString()); return; }
+        if (o instanceof Number) {
+            double d = ((Number) o).doubleValue();
+            if (Double.isNaN(d) || Double.isInfinite(d)) b.append("null"); else b.append(o.toString());
+            return;
+        }
+        if (o instanceof Map) {
+            b.append('{');
+            boolean first = true;
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) o).entrySet()) {
+                if (!first) b.append(',');
+                first = false;
+                b.append('"').append(esc(String.valueOf(e.getKey()))).append("\":");
+                writeTo(b, e.getValue());
+            }
+            b.append('}');
+            return;
+        }
+        if (o instanceof Iterable) {
+            b.append('[');
+            boolean first = true;
+            for (Object e : (Iterable<?>) o) { if (!first) b.append(','); first = false; writeTo(b, e); }
+            b.append(']');
+            return;
+        }
+        if (o instanceof Object[]) {
+            b.append('[');
+            Object[] a = (Object[]) o;
+            for (int i = 0; i < a.length; i++) { if (i > 0) b.append(','); writeTo(b, a[i]); }
+            b.append(']');
+            return;
+        }
+        b.append('"').append(esc(String.valueOf(o))).append('"');
+    }
 
     /** Fluent object builder producing a compact single-line JSON object (for NDJSON). */
     public static final class Obj {

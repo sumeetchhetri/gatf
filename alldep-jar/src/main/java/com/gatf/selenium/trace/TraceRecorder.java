@@ -37,6 +37,8 @@ public final class TraceRecorder implements AutoCloseable {
     private ConsoleRecorder console;
     private SnapshotRecorder snap;
     private MetricsRecorder metrics;
+    private CpuRecorder cpu;
+    private CoverageRecorder coverage;
 
     private TraceRecorder(BrowserControl browser, TraceConfig cfg, Path workDir, String selFile, String browserName) {
         this.browser = browser;
@@ -69,6 +71,14 @@ public final class TraceRecorder implements AutoCloseable {
                 r.metrics = new MetricsRecorder(browser, workDir, cfg);
                 r.metrics.start();
             }
+            if (cfg.isCpu() && browser.supports(Capability.CPU_PROFILE)) {
+                r.cpu = new CpuRecorder(browser, workDir);
+                r.cpu.start();
+            }
+            if (cfg.isCoverage() && browser.supports(Capability.COVERAGE)) {
+                r.coverage = new CoverageRecorder(browser, workDir);
+                r.coverage.start();
+            }
             r.timeline.event("lifecycle", "trace-start", selFile);
         } catch (Exception e) {
             // leave partially-initialised recorders; stop()/writeZip() remain safe
@@ -91,6 +101,8 @@ public final class TraceRecorder implements AutoCloseable {
         try { browser.disableNetwork(); } catch (Exception ignored) {}
         try { browser.disableConsole(); } catch (Exception ignored) {}
         if (metrics != null) metrics.stop();   // stops sampler, reads vitals, writes performance/memory json (driver still alive)
+        if (cpu != null) cpu.stop();            // retrieves + writes cpu.cpuprofile
+        if (coverage != null) coverage.stop();  // retrieves + writes coverage.json
         if (net != null) net.flush();
         if (console != null) console.flush();
         if (snap != null) snap.flush();
@@ -145,6 +157,8 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("recConsole", console != null)
                 .put("recSnapshots", snap != null)
                 .put("recMetrics", metrics != null)
+                .put("recCpu", cpu != null)
+                .put("recCoverage", coverage != null)
                 .put("truncatedBodies", net != null ? net.truncatedBodies() : 0)
                 .put("bytesCaptured", net != null ? net.bytesCaptured() : 0)
                 .end();

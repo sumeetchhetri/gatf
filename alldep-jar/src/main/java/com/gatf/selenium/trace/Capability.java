@@ -15,6 +15,7 @@ public enum Capability {
     RESPONSE_BODY,  // fetch a response body by request id
     SCREENCAST,     // Phase 2 (video)
     METRICS,        // Phase 2 (performance/memory)
+    CPU_PROFILE,    // Profiler.start/stop -> .cpuprofile
     COVERAGE,       // Phase 2
     PRINT_PDF
 }

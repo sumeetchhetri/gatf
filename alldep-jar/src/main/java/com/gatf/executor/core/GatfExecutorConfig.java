@@ -99,6 +99,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private boolean traceMetrics = true;
 	private int traceMetricsIntervalMs = 1000;
 	private boolean traceWebVitals = true;
+	private boolean traceCpu = false;
+	private boolean traceCoverage = false;
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
@@ -474,6 +476,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setTraceMetricsIntervalMs(int traceMetricsIntervalMs) { this.traceMetricsIntervalMs = traceMetricsIntervalMs; }
 	public boolean isTraceWebVitals() { return traceWebVitals; }
 	public void setTraceWebVitals(boolean traceWebVitals) { this.traceWebVitals = traceWebVitals; }
+	public boolean isTraceCpu() { return traceCpu; }
+	public void setTraceCpu(boolean traceCpu) { this.traceCpu = traceCpu; }
+	public boolean isTraceCoverage() { return traceCoverage; }
+	public void setTraceCoverage(boolean traceCoverage) { this.traceCoverage = traceCoverage; }
 
 	public boolean isFetchFailureLogs() {
 		return isFetchFailureLogs;

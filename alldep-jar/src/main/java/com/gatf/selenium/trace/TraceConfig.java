@@ -19,6 +19,8 @@ public final class TraceConfig {
     private boolean metrics = true;                 // Performance.getMetrics sampling (perf + memory)
     private long metricsIntervalMs = 1000;
     private boolean webVitals = true;               // FCP/LCP/TTFB/DCL/Load from the Performance Timeline
+    private boolean cpu = false;                     // Profiler CPU sampling profile (opt-in; has overhead)
+    private boolean coverage = false;                // JS + CSS coverage (opt-in; has overhead)
 
     public boolean isEnableTrace() { return enableTrace; }
     public TraceConfig setEnableTrace(boolean v) { this.enableTrace = v; return this; }
@@ -42,4 +44,8 @@ public final class TraceConfig {
     public TraceConfig setMetricsIntervalMs(long v) { if (v > 0) this.metricsIntervalMs = v; return this; }
     public boolean isWebVitals() { return webVitals; }
     public TraceConfig setWebVitals(boolean v) { this.webVitals = v; return this; }
+    public boolean isCpu() { return cpu; }
+    public TraceConfig setCpu(boolean v) { this.cpu = v; return this; }
+    public boolean isCoverage() { return coverage; }
+    public TraceConfig setCoverage(boolean v) { this.coverage = v; return this; }
 }

@@ -45,4 +45,9 @@
   <traceSnapshots>true</traceSnapshots>
   <traceMaxBodyKb>512</traceMaxBodyKb>     <!-- per-response body cap -->
   <traceMaxTotalMb>64</traceMaxTotalMb>    <!-- total captured-body budget per trace -->
+  <traceMetrics>true</traceMetrics>              <!-- Performance.getMetrics: perf + memory -->
+  <traceMetricsIntervalMs>1000</traceMetricsIntervalMs>
+  <traceWebVitals>true</traceWebVitals>          <!-- FCP/LCP/TTFB/DCL/Load -->
+  <traceCpu>true</traceCpu>            <!-- Profiler.start/stop -> cpu.cpuprofile -->
+  <traceCoverage>true</traceCoverage>  <!-- JS + CSS coverage -> coverage.json -->
 </gatf-execute-config>
