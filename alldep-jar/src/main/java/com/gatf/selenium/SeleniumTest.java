@@ -4077,7 +4077,10 @@ public abstract class SeleniumTest {
 							.setMetricsIntervalMs(__cfg.getTraceMetricsIntervalMs())
 							.setWebVitals(__cfg.isTraceWebVitals())
 							.setCpu(__cfg.isTraceCpu())
-							.setCoverage(__cfg.isTraceCoverage());
+							.setCoverage(__cfg.isTraceCoverage())
+							.setVideo(__cfg.isTraceVideo())
+							.setVideoQuality(__cfg.getTraceVideoQuality())
+							.setVideoEveryNthFrame(__cfg.getTraceVideoEveryNthFrame());
 					java.nio.file.Path __wd = new java.io.File(new java.io.File(getOutDir(), ".trace"), "trace-"+__sid).toPath();
 					com.gatf.selenium.trace.BrowserControl __bc = com.gatf.selenium.trace.Transports.create(driver, __tc);
 					getSession().__trace__ = com.gatf.selenium.trace.TraceRecorder.attach(__bc, __tc, __wd, getName(), getSession().browserName);

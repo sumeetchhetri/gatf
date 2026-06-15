@@ -50,4 +50,7 @@
   <traceWebVitals>true</traceWebVitals>          <!-- FCP/LCP/TTFB/DCL/Load -->
   <traceCpu>true</traceCpu>            <!-- Profiler.start/stop -> cpu.cpuprofile -->
   <traceCoverage>true</traceCoverage>  <!-- JS + CSS coverage -> coverage.json -->
+  <traceVideo>true</traceVideo>
+  <traceVideoQuality>60</traceVideoQuality>          <!-- jpeg quality 0-100 -->
+  <traceVideoEveryNthFrame>2</traceVideoEveryNthFrame>
 </gatf-execute-config>

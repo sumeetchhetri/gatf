@@ -21,6 +21,9 @@ public final class TraceConfig {
     private boolean webVitals = true;               // FCP/LCP/TTFB/DCL/Load from the Performance Timeline
     private boolean cpu = false;                     // Profiler CPU sampling profile (opt-in; has overhead)
     private boolean coverage = false;                // JS + CSS coverage (opt-in; has overhead)
+    private boolean video = false;                   // screencast -> mp4 (opt-in; heaviest)
+    private int videoQuality = 60;                   // jpeg quality 0-100
+    private int videoEveryNthFrame = 2;              // screencast frame decimation
 
     public boolean isEnableTrace() { return enableTrace; }
     public TraceConfig setEnableTrace(boolean v) { this.enableTrace = v; return this; }
@@ -48,4 +51,10 @@ public final class TraceConfig {
     public TraceConfig setCpu(boolean v) { this.cpu = v; return this; }
     public boolean isCoverage() { return coverage; }
     public TraceConfig setCoverage(boolean v) { this.coverage = v; return this; }
+    public boolean isVideo() { return video; }
+    public TraceConfig setVideo(boolean v) { this.video = v; return this; }
+    public int getVideoQuality() { return videoQuality; }
+    public TraceConfig setVideoQuality(int v) { if (v > 0 && v <= 100) this.videoQuality = v; return this; }
+    public int getVideoEveryNthFrame() { return videoEveryNthFrame; }
+    public TraceConfig setVideoEveryNthFrame(int v) { if (v > 0) this.videoEveryNthFrame = v; return this; }
 }

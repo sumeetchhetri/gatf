@@ -21,7 +21,7 @@ public final class Transports {
         if ("bidi".equals(cfg.getProtocol())) return new BiDiTransport(driver);
         if (driver instanceof HasDevTools) {
             DevTools dt = ((HasDevTools) driver).getDevTools();
-            return new CdpTransport(driver, dt);
+            return new CdpTransport(driver, dt, cfg);
         }
         return new BiDiTransport(driver);
     }

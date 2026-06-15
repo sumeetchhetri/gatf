@@ -101,6 +101,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private boolean traceWebVitals = true;
 	private boolean traceCpu = false;
 	private boolean traceCoverage = false;
+	private boolean traceVideo = false;
+	private int traceVideoQuality = 60;
+	private int traceVideoEveryNthFrame = 2;
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
@@ -480,6 +483,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setTraceCpu(boolean traceCpu) { this.traceCpu = traceCpu; }
 	public boolean isTraceCoverage() { return traceCoverage; }
 	public void setTraceCoverage(boolean traceCoverage) { this.traceCoverage = traceCoverage; }
+	public boolean isTraceVideo() { return traceVideo; }
+	public void setTraceVideo(boolean traceVideo) { this.traceVideo = traceVideo; }
+	public int getTraceVideoQuality() { return traceVideoQuality; }
+	public void setTraceVideoQuality(int traceVideoQuality) { this.traceVideoQuality = traceVideoQuality; }
+	public int getTraceVideoEveryNthFrame() { return traceVideoEveryNthFrame; }
+	public void setTraceVideoEveryNthFrame(int traceVideoEveryNthFrame) { this.traceVideoEveryNthFrame = traceVideoEveryNthFrame; }
 
 	public boolean isFetchFailureLogs() {
 		return isFetchFailureLogs;

@@ -39,6 +39,7 @@ public final class TraceRecorder implements AutoCloseable {
     private MetricsRecorder metrics;
     private CpuRecorder cpu;
     private CoverageRecorder coverage;
+    private VideoRecorder video;
 
     private TraceRecorder(BrowserControl browser, TraceConfig cfg, Path workDir, String selFile, String browserName) {
         this.browser = browser;
@@ -79,6 +80,10 @@ public final class TraceRecorder implements AutoCloseable {
                 r.coverage = new CoverageRecorder(browser, workDir);
                 r.coverage.start();
             }
+            if (cfg.isVideo() && browser.supports(Capability.SCREENCAST)) {
+                r.video = new VideoRecorder(workDir);
+                browser.enableVideo(r.video);
+            }
             r.timeline.event("lifecycle", "trace-start", selFile);
         } catch (Exception e) {
             // leave partially-initialised recorders; stop()/writeZip() remain safe
@@ -100,9 +105,11 @@ public final class TraceRecorder implements AutoCloseable {
         try { if (timeline != null) timeline.event("lifecycle", "trace-stop", null); } catch (Exception ignored) {}
         try { browser.disableNetwork(); } catch (Exception ignored) {}
         try { browser.disableConsole(); } catch (Exception ignored) {}
+        try { browser.disableVideo(); } catch (Exception ignored) {}
         if (metrics != null) metrics.stop();   // stops sampler, reads vitals, writes performance/memory json (driver still alive)
         if (cpu != null) cpu.stop();            // retrieves + writes cpu.cpuprofile
         if (coverage != null) coverage.stop();  // retrieves + writes coverage.json
+        if (video != null) video.stop();        // finalizes frames + muxes video.mp4 (best-effort)
         if (net != null) net.flush();
         if (console != null) console.flush();
         if (snap != null) snap.flush();
@@ -159,6 +166,7 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("recMetrics", metrics != null)
                 .put("recCpu", cpu != null)
                 .put("recCoverage", coverage != null)
+                .put("recVideo", video != null)
                 .put("truncatedBodies", net != null ? net.truncatedBodies() : 0)
                 .put("bytesCaptured", net != null ? net.bytesCaptured() : 0)
                 .end();

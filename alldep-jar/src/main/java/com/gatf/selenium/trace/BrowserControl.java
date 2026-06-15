@@ -63,6 +63,14 @@ public interface BrowserControl extends AutoCloseable {
     /** Stop and return coverage as a JSON string ({js,css}), or null. */
     default String stopCoverage() { return null; }
 
+    // --- Phase 2 screencast/video (default no-ops) ---
+
+    /** Begin the screencast, delivering decoded JPEG frames to the listener. Default no-op. */
+    default void enableVideo(VideoListener listener) { }
+
+    /** Stop the screencast. Default no-op. */
+    default void disableVideo() { }
+
     @Override
     void close();
 }

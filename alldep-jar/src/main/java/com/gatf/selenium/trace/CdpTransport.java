@@ -19,6 +19,8 @@ import org.openqa.selenium.devtools.v150.log.Log;
 import org.openqa.selenium.devtools.v150.network.Network;
 import org.openqa.selenium.devtools.v150.network.model.Headers;
 import org.openqa.selenium.devtools.v150.network.model.RequestId;
+import org.openqa.selenium.devtools.v150.page.Page;
+import org.openqa.selenium.devtools.v150.page.model.ScreencastFrame;
 import org.openqa.selenium.devtools.v150.performance.Performance;
 import org.openqa.selenium.devtools.v150.performance.model.Metric;
 import org.openqa.selenium.devtools.v150.runtime.Runtime;
@@ -44,12 +46,15 @@ public final class CdpTransport implements BrowserControl {
 
     private final WebDriver driver;
     private final DevTools devTools;
+    private final TraceConfig cfg;
     private final ConcurrentHashMap<String, RequestId> reqIds = new ConcurrentHashMap<>();
 
     private volatile boolean networkOn = false;
     private volatile boolean consoleOn = false;
+    private volatile boolean videoOn = false;
     private volatile NetworkListener netListener;
     private volatile ConsoleListener conListener;
+    private volatile VideoListener videoListener;
 
     private static final String VITALS_JS =
         "return JSON.stringify((function(){var o={};try{" +
@@ -61,9 +66,10 @@ public final class CdpTransport implements BrowserControl {
         "if(l&&l.length){o.lcp=l[l.length-1].startTime;}" +
         "}catch(e){o.error=String(e);}return o;})());";
 
-    CdpTransport(WebDriver driver, DevTools devTools) {
+    CdpTransport(WebDriver driver, DevTools devTools, TraceConfig cfg) {
         this.driver = driver;
         this.devTools = devTools;
+        this.cfg = cfg;
     }
 
     @Override
@@ -77,6 +83,7 @@ public final class CdpTransport implements BrowserControl {
             case SCREENSHOT:    return driver instanceof TakesScreenshot;
             case CPU_PROFILE:
             case COVERAGE:      return driver instanceof HasCdp;
+            case SCREENCAST:    return devTools != null && driver instanceof HasCdp;
             default:            return false;
         }
     }
@@ -287,6 +294,45 @@ public final class CdpTransport implements BrowserControl {
             out.put("css", css == null ? null : css.get("ruleUsage"));
             return Json.write(out);
         } catch (Exception ignored) { return null; }
+    }
+
+    @Override
+    public void enableVideo(VideoListener l) {
+        if (devTools == null || !(driver instanceof HasCdp)) return;
+        this.videoListener = l;
+        this.videoOn = true;
+        int quality = cfg != null ? cfg.getVideoQuality() : 60;
+        int everyNth = cfg != null ? cfg.getVideoEveryNthFrame() : 2;
+        try {
+            HasCdp c = (HasCdp) driver;
+            c.executeCdpCommand("Page.enable", new HashMap<>());
+            Map<String, Object> args = new HashMap<>();
+            args.put("format", "jpeg");
+            args.put("quality", quality);
+            args.put("everyNthFrame", everyNth);
+            c.executeCdpCommand("Page.startScreencast", args);
+        } catch (Exception ignored) {}
+        devTools.addListener(Page.screencastFrame(), ev -> {
+            if (!videoOn || videoListener == null) return;
+            try {
+                byte[] jpg = Base64.decodeBase64(ev.getData());
+                videoListener.onFrame(jpg, System.currentTimeMillis());
+                Integer sid = ev.getSessionId();
+                if (sid != null && driver instanceof HasCdp) {
+                    Map<String, Object> ack = new HashMap<>();
+                    ack.put("sessionId", sid);
+                    ((HasCdp) driver).executeCdpCommand("Page.screencastFrameAck", ack);
+                }
+            } catch (Exception ignored) {}
+        });
+    }
+
+    @Override
+    public void disableVideo() {
+        this.videoOn = false;
+        try {
+            if (driver instanceof HasCdp) ((HasCdp) driver).executeCdpCommand("Page.stopScreencast", new HashMap<>());
+        } catch (Exception ignored) {}
     }
 
     private static Map<String, String> toMap(Headers headers) {
