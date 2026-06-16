@@ -100,7 +100,8 @@
 				<div class="row">
 					<h2>$succFail</h2>
 #if($tracePath)
-					<p style="margin:6px 0;"><a href="$tracePath" download="$tracePath">Download trace bundle (network HAR · console · snapshots)</a></p>
+					<p style="margin:6px 0;"><a href="$tracePath" download="$tracePath">Download trace bundle (network HAR · console · snapshots)</a>
+					&nbsp;·&nbsp;<a href="/app/" target="_blank" rel="noopener">Open in Trace Viewer &#8599;</a> <span style="color:#888;font-size:11px;">(drop the downloaded .zip)</span></p>
 #end
 					<div class="col-lg-12">
 						<div class="col-lg-6">

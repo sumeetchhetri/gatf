@@ -164,6 +164,18 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         ReportHandler.MY_URL = "http://localhost:" + port;
         
         handleRootContext(server, mainDir, mojo);
+
+        // Phase 3: embedded React shell + Trace Viewer, served at /app (the legacy config-tool at
+        // "/" is untouched). The Vite build is packaged on the classpath under gatf-viewer/ and
+        // extracted here just like the config-tool; a plain static handler serves it.
+        final String viewerDir = rootDir + File.separator + "app";
+        try {
+            WorkflowContextHandler.copyResourcesToDirectory("gatf-viewer", viewerDir);
+        } catch (Exception e) {
+        }
+        if(new File(viewerDir, "index.html").exists()) {
+            server.getServerConfiguration().addHttpHandler(new CacheLessStaticHttpHandler(false, viewerDir), "/app");
+        }
         
         Function<String, GatfPlugin> f = new Function<String, GatfPlugin>() {
 			@Override

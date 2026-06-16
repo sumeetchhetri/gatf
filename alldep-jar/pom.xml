@@ -11,6 +11,12 @@
 	<packaging>jar</packaging>
 	<name>gatf-alldep-jar</name>
 
+	<properties>
+		<!-- Phase 3: set -DskipFrontend=true to build the JAR without (re)building the React shell. -->
+		<skipFrontend>false</skipFrontend>
+		<frontend.node.version>v22.11.0</frontend.node.version>
+	</properties>
+
 	<build>
 		<resources>
 			<resource>
@@ -96,6 +102,51 @@
 								<!-- https://github.com/SeleniumHQ/selenium/issues/10132 -->
 								<transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
 							</transformers>
+						</configuration>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- Phase 3: build the embedded React shell + Trace Viewer (frontend/) into
+			     target/classes/gatf-viewer so the shade plugin packages it into the single JAR.
+			     Served at /app by GatfConfigToolUtil. Skip with -DskipFrontend=true. -->
+			<plugin>
+				<groupId>com.github.eirslett</groupId>
+				<artifactId>frontend-maven-plugin</artifactId>
+				<version>1.15.1</version>
+				<configuration>
+					<workingDirectory>${project.parent.basedir}/frontend</workingDirectory>
+					<installDirectory>${project.parent.basedir}/frontend/.mvn-node</installDirectory>
+					<skip>${skipFrontend}</skip>
+				</configuration>
+				<executions>
+					<execution>
+						<id>frontend-install-node-npm</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>install-node-and-npm</goal>
+						</goals>
+						<configuration>
+							<nodeVersion>${frontend.node.version}</nodeVersion>
+						</configuration>
+					</execution>
+					<execution>
+						<id>frontend-npm-ci</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<configuration>
+							<arguments>ci</arguments>
+						</configuration>
+					</execution>
+					<execution>
+						<id>frontend-npm-build</id>
+						<phase>prepare-package</phase>
+						<goals>
+							<goal>npm</goal>
+						</goals>
+						<configuration>
+							<arguments>run build -- --outDir "${project.build.outputDirectory}/gatf-viewer" --emptyOutDir</arguments>
 						</configuration>
 					</execution>
 				</executions>

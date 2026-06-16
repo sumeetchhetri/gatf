@@ -1,0 +1,4 @@
+node_modules/
+dist/
+.mvn-node/
+*.tsbuildinfo
