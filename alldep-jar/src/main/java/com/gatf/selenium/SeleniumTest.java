@@ -37,7 +37,6 @@ import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
 import java.security.Security;
 import java.time.Duration;
-import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
@@ -74,7 +73,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.time.DateUtils;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
 import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -137,7 +135,6 @@ import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.selenium.Command.FindCommandImpl;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
 import com.gatf.selenium.SeleniumTestSession.SeleniumResult;
-import com.github.dockerjava.api.DockerClient;
 import com.google.common.io.Resources;
 import com.google.zxing.BinaryBitmap;
 import com.google.zxing.LuminanceSource;
@@ -195,7 +192,6 @@ public abstract class SeleniumTest {
 	private static ITesseract instance = null;
 	private static final Pattern p = Pattern.compile("\\$(p|P)\\{([\"'a-zA-Z0-9_\\.]+)\\.([0-9]+)\\.([a-zA-Z0-9_\\.]+)\\}");
 	public static boolean CONC_WD = false;
-	public static final ThreadLocal<ImmutableTriple<Boolean, String, String[]>> IN_DOCKER = new ThreadLocal<>();
 	
 	private TestState state = new TestState();
 	private transient AcceptanceTestContext ___cxt___ = null;
@@ -277,36 +273,12 @@ public abstract class SeleniumTest {
 	}*/
 	
 	protected String addWdm(String browserName, Capabilities capabilities) {
-		boolean isDocker = false;
-		boolean isHeadless = false;
-		boolean isRecording = false;
 		if(browserName.endsWith("-rec")) {
-			isDocker = true;
-			isRecording = true;
 			browserName= browserName.replaceFirst("-rec", "");
 		} else if(browserName.endsWith("-dkr")) {
-			isDocker = true;
 			browserName= browserName.replaceFirst("-dkr", "");
 		} else if(browserName.endsWith("-hdl")) {
-			isDocker = true;
-			isHeadless = true;
 			browserName= browserName.replaceFirst("-hdl", "");
-		}
-		
-		if(isDocker) {
-			if(!WebDriverManager.isDockerAvailable()) {
-				if(isRecording) {
-					throw new RuntimeException("Docker not available, recording cannot proceed, will not execute test");
-				} else {
-					System.out.println("Docker not available, will proceed with local browser/driver...");
-					IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
-					isDocker = false;
-				}
-			} else {
-				IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, null));
-			}
-		} else {
-			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
 		}
 		
 		WebDriverManager wdm = null;
@@ -340,102 +312,18 @@ public abstract class SeleniumTest {
 			}
 		}
 		
-		if(isDocker) {
-			wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:%s_%s");
-			switch(browserName) {
-				//Should be same as the max devtools version that we support
-				//above - import org.openqa.selenium.devtools.v150.dom.DOM;
-				case "chrome": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:chrome_136.0");
-					break;
-				}
-				case "firefox": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:firefox_140.0");
-					break;
-				}
-				case "opera": {
-					wdm.config().setDockerBrowserSelenoidImageFormat("sumeetchhetri/vnc:opera_120.0");
-					break;
-				}
-			}
-			wdm.config().setDockerTimezone(ZoneId.systemDefault().toString());
-			//wdm.config().setDockerShmSize("2g");
-			wdm.capabilities(capabilities).browserInDocker();
-			if(isRecording) {
-				wdm.enableRecording().enableVnc();
-			} else if(!isHeadless) {
-				wdm.enableVnc();
-			}
-			browserName = UUID.randomUUID().toString()+"-"+(isRecording?"rec":(isHeadless?"hdl":"dkr"));
-			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(true, null, new String[] {browserName, null}));
-			state.wdmMgs.put(browserName, wdm);
-		} else {
-			//wdm.setup();
-			state.wdmMgs.put(browserName, wdm);
-			IN_DOCKER.set(new ImmutableTriple<Boolean, String, String[]>(false, null, null));
+		// External (official Selenium) Grid via SELENIUM_REMOTE_URL -> RemoteWebDriver; CDP resolves
+		// natively through the se:cdp capability. Otherwise a local driver. GATF manages no containers.
+		String __gridUrl = System.getenv("SELENIUM_REMOTE_URL");
+		if(__gridUrl != null && !__gridUrl.trim().isEmpty()) {
+			wdm.remoteAddress(__gridUrl.trim()).capabilities(capabilities);
 		}
+		state.wdmMgs.put(browserName, wdm);
 		return browserName;
 	}
 	
 	protected WebDriver getDockerDriver(String browserName) {
-		boolean isDocker = false;
-		boolean isHeadless = false;
-		boolean isRecording = false;
-		if(browserName.endsWith("-rec")) {
-			isDocker = true;
-			isRecording = true;
-		} else if(browserName.endsWith("-dkr")) {
-			isDocker = true;
-		} else if(browserName.endsWith("-hdl")) {
-			isDocker = true;
-			isHeadless = true;
-		}
-		
-		if(isDocker && !WebDriverManager.isDockerAvailable()) {
-			if(isRecording) {
-				throw new RuntimeException("Docker not available, recording cannot proceed, will not execute test");
-			} else {
-				System.out.println("Docker not available, will proceed with local browser/driver...");
-				isDocker = false;
-				return state.wdmMgs.get(browserName).create();
-			}
-		} else if(!isDocker) {
-			return state.wdmMgs.get(browserName).create();
-		}
-		
-		if(state.wdmMgs.containsKey(browserName) && isDocker) {
-			WebDriver wd = state.wdmMgs.get(browserName).create();
-			state.wdmSessions.put(getSessionId(wd), true);
-			if(isRecording) {
-				System.out.println(String.format("VNC URL for Docker Browser Session is [%s], Recording Path is [%s]", state.wdmMgs.get(browserName).getDockerNoVncUrl(), state.wdmMgs.get(browserName).getDockerRecordingPath()));
-			} else if(!isHeadless) {
-				System.out.println(String.format("VNC URL for Docker Browser Session is [%s]", state.wdmMgs.get(browserName).getDockerNoVncUrl()));
-			}
-			WebDriver augmented = null;
-			try {
-				Thread.sleep(2000);//Sleep for some time for cdp proxy to be up and running
-			} catch (Exception e) {
-			}
-			int counter = 10;
-			while(counter-->0) {
-				try {
-					Thread.sleep(1000);//Sleep for some time for cdp proxy to be up and running
-				} catch (Exception e) {
-				}
-				try {
-					augmented = new Augmenter().augment(wd);
-					if(augmented instanceof HasDevTools) {
-						System.out.println("Got augmented docker driver....");
-						break;
-					}
-				} catch (Exception e) {
-					System.out.println(Arrays.asList(SeleniumTest.IN_DOCKER.get()));
-					System.out.println("Getting augmented docker driver.... Attempt " + (10-counter));
-				}
-			}
-			return augmented;
-		}
-		throw new RuntimeException("No driver found for remote docker");
+		return state.wdmMgs.get(browserName).create();
 	}
 	
 	protected void __set__cln__(String line_) {
@@ -1172,7 +1060,6 @@ public abstract class SeleniumTest {
 		for(WebDriverManager wdm: state.wdmMgs.values()) {
 			wdm.quit();
 		}
-		IN_DOCKER.remove();
 	}
 
 	public abstract void close();
@@ -2593,18 +2480,6 @@ public abstract class SeleniumTest {
 			}
 		}*/
 		
-		if(SeleniumTest.IN_DOCKER.get().getLeft() && state.wdmMgs.containsKey(SeleniumTest.IN_DOCKER.get().getRight()[0])) {
-			try {
-				DockerClient dc = state.wdmMgs.get(SeleniumTest.IN_DOCKER.get().getRight()[0]).getDockerService().getDockerClient();
-				String containerId = SeleniumTest.IN_DOCKER.get().getRight()[1];
-				File to = new File("/home/selenium");
-				dc.copyArchiveToContainerCmd(containerId).withHostResource(filePath).withRemotePath(to.getAbsolutePath()).exec();
-				filePath = new File("/home/selenium", new File(filePath).getName()).getAbsolutePath();
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-		
 		if(wd instanceof HasDevTools && wd instanceof JavascriptExecutor) {
 			DevTools devTools = ((HasDevTools)wd).getDevTools();
 			try {
@@ -2687,7 +2562,16 @@ public abstract class SeleniumTest {
 		return sessionId;
 	}
 	
+	/** Emit a per-action timeline event into the active trace (no-op when tracing is off). */
+	protected void __traceAction__(String type, String detail) {
+		try {
+			SeleniumTestSession s = getSession();
+			if (s != null && s.__trace__ != null) s.__trace__.event("action", type, detail);
+		} catch (Exception e) {}
+	}
+
 	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier) {
+		__traceAction__("click", qualifier);
 		for(final WebElement we: ret) {
 			String sessionId = getSessionId(wd);
 			if(isSettingEnabled(sessionId, "clk_focus") || "fo".equalsIgnoreCase(qualifier)) {
@@ -2699,6 +2583,7 @@ public abstract class SeleniumTest {
 	}
 
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
+		if(!action.toLowerCase().matches(Command.clickExStr)) __traceAction__(action, selValue);
 		if(action.toLowerCase().matches(Command.clickExStr)) {
 			Matcher m = Command.clickEx.matcher(action.toLowerCase());
         	m.matches();
@@ -4176,7 +4061,7 @@ public abstract class SeleniumTest {
 			});
 			devTools.addListener(Network.responseReceived(), responseReceived -> {
 				if(NETWORK_INSPECTION.containsKey(sessionId) && responseReceived.getRequestId().toString().equals(NETWORK_INSPECTION.get(sessionId)[2])) {
-					org.openqa.selenium.devtools.v124.network.model.Response response = responseReceived.getResponse();
+					org.openqa.selenium.devtools.v150.network.model.Response response = responseReceived.getResponse();
 					System.out.println("Matched inspection request [" + method + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
 					Headers headers = response.getHeaders();
 					String mimeType = null;

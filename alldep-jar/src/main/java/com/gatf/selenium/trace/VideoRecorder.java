@@ -44,7 +44,7 @@ public final class VideoRecorder implements VideoListener {
             Files.write(framesDir.resolve("frame-" + n + ".jpg"), jpeg);
             lastTs = tsMillis;
             index.writeLine(new Json.Obj().put("n", n).put("ts", tsMillis).end());
-        } catch (Exception ignored) {}
+        } catch (Exception e) { if (n == 1) System.err.println("[gatf-trace] video frame write failed: " + e); }
     }
 
     /** Finalize the frame index and mux to mp4 (best-effort). */
@@ -52,6 +52,7 @@ public final class VideoRecorder implements VideoListener {
         index.flush();
         index.close();
         int frames = seq.get();
+        System.err.println("[gatf-trace] video: " + frames + " screencast frame(s) captured");
         if (frames < 2) return;                        // not enough for a video
         double durSec = (lastTs - startTs) / 1000.0;
         int fps = durSec > 0 ? (int) Math.round(frames / durSec) : 10;

@@ -15,6 +15,7 @@ import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chromium.HasCdp;
 import org.openqa.selenium.devtools.DevTools;
+import org.openqa.selenium.devtools.Command;
 import org.openqa.selenium.devtools.v150.log.Log;
 import org.openqa.selenium.devtools.v150.network.Network;
 import org.openqa.selenium.devtools.v150.network.model.Headers;
@@ -270,58 +271,69 @@ public final class CdpTransport implements BrowserControl {
     @Override
     public void startCoverage() {
         if (!(driver instanceof HasCdp)) return;
+        HasCdp c = (HasCdp) driver;
         try {
-            HasCdp c = (HasCdp) driver;
             c.executeCdpCommand("Profiler.enable", new HashMap<>());
             Map<String, Object> pc = new HashMap<>();
             pc.put("callCount", true);
             pc.put("detailed", true);
             c.executeCdpCommand("Profiler.startPreciseCoverage", pc);
+        } catch (Exception e) { System.err.println("[gatf-trace] JS coverage start failed: " + e); }
+        try {
+            c.executeCdpCommand("DOM.enable", new HashMap<>());
             c.executeCdpCommand("CSS.enable", new HashMap<>());
             c.executeCdpCommand("CSS.startRuleUsageTracking", new HashMap<>());
-        } catch (Exception ignored) {}
+        } catch (Exception e) { System.err.println("[gatf-trace] CSS coverage start failed: " + e); }
     }
 
     @Override
     public String stopCoverage() {
         if (!(driver instanceof HasCdp)) return null;
+        HasCdp c = (HasCdp) driver;
+        Map<String, Object> out = new LinkedHashMap<>();
+        boolean any = false;
         try {
-            HasCdp c = (HasCdp) driver;
             Map<String, Object> js = c.executeCdpCommand("Profiler.takePreciseCoverage", new HashMap<>());
-            Map<String, Object> css = c.executeCdpCommand("CSS.stopRuleUsageTracking", new HashMap<>());
-            Map<String, Object> out = new LinkedHashMap<>();
             out.put("js", js == null ? null : js.get("result"));
+            any = true;
+        } catch (Exception e) { System.err.println("[gatf-trace] JS coverage take failed: " + e); }
+        try {
+            Map<String, Object> css = c.executeCdpCommand("CSS.stopRuleUsageTracking", new HashMap<>());
             out.put("css", css == null ? null : css.get("ruleUsage"));
-            return Json.write(out);
-        } catch (Exception ignored) { return null; }
+            any = true;
+        } catch (Exception e) { System.err.println("[gatf-trace] CSS coverage stop failed: " + e); }
+        return any ? Json.write(out) : null;
     }
 
     @Override
     public void enableVideo(VideoListener l) {
-        if (devTools == null || !(driver instanceof HasCdp)) return;
+        if (devTools == null) return;
         this.videoListener = l;
         this.videoOn = true;
         int quality = cfg != null ? cfg.getVideoQuality() : 60;
         int everyNth = cfg != null ? cfg.getVideoEveryNthFrame() : 2;
+        // Start the screencast on the SAME DevTools (WebSocket) session the frame listener is on.
+        // HasCdp.executeCdpCommand goes through the Grid's HTTP /goog/cdp/execute channel, a
+        // different CDP session -- frames started there never reach this WebSocket listener.
+        // Raw Command keeps this version-agnostic (no typed vNNN Page.startScreencast needed).
         try {
-            HasCdp c = (HasCdp) driver;
-            c.executeCdpCommand("Page.enable", new HashMap<>());
+            devTools.send(new Command<Void>("Page.enable", new HashMap<>()));
             Map<String, Object> args = new HashMap<>();
             args.put("format", "jpeg");
             args.put("quality", quality);
             args.put("everyNthFrame", everyNth);
-            c.executeCdpCommand("Page.startScreencast", args);
-        } catch (Exception ignored) {}
+            devTools.send(new Command<Void>("Page.startScreencast", args));
+        } catch (Exception e) { System.err.println("[gatf-trace] startScreencast failed: " + e); }
         devTools.addListener(Page.screencastFrame(), ev -> {
             if (!videoOn || videoListener == null) return;
             try {
                 byte[] jpg = Base64.decodeBase64(ev.getData());
                 videoListener.onFrame(jpg, System.currentTimeMillis());
                 Integer sid = ev.getSessionId();
-                if (sid != null && driver instanceof HasCdp) {
+                if (sid != null) {
                     Map<String, Object> ack = new HashMap<>();
                     ack.put("sessionId", sid);
-                    ((HasCdp) driver).executeCdpCommand("Page.screencastFrameAck", ack);
+                    devTools.send(new Command<Void>("Page.screencastFrameAck", ack));
                 }
             } catch (Exception ignored) {}
         });
@@ -331,7 +343,7 @@ public final class CdpTransport implements BrowserControl {
     public void disableVideo() {
         this.videoOn = false;
         try {
-            if (driver instanceof HasCdp) ((HasCdp) driver).executeCdpCommand("Page.stopScreencast", new HashMap<>());
+            if (devTools != null) devTools.send(new Command<Void>("Page.stopScreencast", new HashMap<>()));
         } catch (Exception ignored) {}
     }
 

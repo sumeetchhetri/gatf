@@ -62,7 +62,7 @@ resolve_jar() {
   if [ -n "${GATF_JAR:-}" ] && [ -f "${GATF_JAR}" ]; then echo "${GATF_JAR}"; return; fi
   # newest shaded jar under the module target dir
   local cand
-  cand="$(ls -t alldep-jar/target/*-shaded.jar alldep-jar/target/*alldep*.jar 2>/dev/null | head -1 || true)"
+  cand="$(ls -t alldep-jar/target/gatf-alldep-jar-*.jar 2>/dev/null | grep -Ev '\-(sources|javadoc)\.jar$' | head -1 || true)"
   [ -n "${cand}" ] && echo "${cand}"
 }
 
@@ -79,6 +79,7 @@ if [ -z "${GATF_JAR:-}" ] || [ "${BUILD}" = "1" ]; then
   fi
 fi
 [ -n "${GATF_JAR:-}" ] || { echo "no shaded jar produced" >&2; exit 1; }
+GATF_JAR="$(cd "$(dirname "${GATF_JAR}")" && pwd)/$(basename "${GATF_JAR}")"   # absolute: we cd into WORK to run
 note "using jar: ${GATF_JAR}"
 
 # ---------------------------------------------------------------------------
@@ -124,7 +125,6 @@ ${SCRIPTS_XML}  </seleniumScripts>
   <seleniumDriverConfigs>
     <seleniumDriverConfig>
       <name>chrome</name>
-      <gridUrl>${SELENIUM_REMOTE_URL}</gridUrl>
       <arguments>--headless=new --no-sandbox --disable-dev-shm-usage</arguments>
     </seleniumDriverConfig>
   </seleniumDriverConfigs>
@@ -136,6 +136,6 @@ EOF
 
 note "endpoint: ${SELENIUM_REMOTE_URL}"
 note "workdir:  ${WORK}"
-"${JAVA_HOME}/bin/java" -jar "${GATF_JAR}" "${CONFIG}"
+( cd "${WORK}" && "${JAVA_HOME}/bin/java" -jar "${GATF_JAR}" -selenium "$(basename "${CONFIG}")" )
 note "run complete -- reports under ${WORK}/out"
 log "done (lint + build + run)"
