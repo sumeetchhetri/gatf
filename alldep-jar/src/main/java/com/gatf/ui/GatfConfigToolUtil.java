@@ -207,6 +207,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         server.getServerConfiguration().addHttpHandler(new GatfPluginExecutionHandler(mojo, f), "/execute");
         
         server.getServerConfiguration().addHttpHandler(new GatfProfileHandler(mojo, f), "/profile");
+
+        // Phase 3.x: read-only JSON API backing the React shell at /app (reports/config/test-files).
+        // Additive — no existing handler is touched, and it performs no writes.
+        server.getServerConfiguration().addHttpHandler(new GatfApiHandler(mojo), "/api");
 		
 		try {
 		    server.start();

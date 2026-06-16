@@ -225,3 +225,48 @@ button { font-family: inherit; cursor: pointer; }
 /* ---------- CPU ---------- */
 .cpu { padding: 12px; overflow: auto; }
 .cpu-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+
+/* ============================================================
+   Phase 3.x — SPA shell (nav + Reports / Config / Test-files)
+   ============================================================ */
+.shell { height: 100%; display: flex; flex-direction: column; }
+.shell-body { flex: 1; min-height: 0; display: flex; }
+.view-viewer { flex: 1; min-width: 0; min-height: 0; }
+.view-viewer > .app { flex: 1; }
+
+/* nav */
+.nav { display: flex; align-items: center; gap: 16px; padding: 0 14px; height: 44px; background: var(--panel); border-bottom: 1px solid var(--border); flex: 0 0 auto; }
+.nav-brand { font-weight: 700; letter-spacing: .06em; color: var(--accent); font-size: 13px; }
+.nav-tabs { display: flex; gap: 2px; height: 100%; }
+.nav-tab { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); padding: 0 14px; font-size: 13px; height: 100%; }
+.nav-tab:hover { color: var(--text); }
+.nav-tab.on { color: #fff; border-bottom-color: var(--accent); }
+.nav-legacy { margin-left: auto; }
+
+/* generic view chrome */
+.view { flex: 1; min-width: 0; min-height: 0; overflow: auto; padding: 16px 20px; }
+.view-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
+.view-head h2 { margin: 0; font-size: 16px; }
+.view-head-right { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.view-head-right .ellipsis { max-width: 340px; }
+.view-section { margin: 18px 0; }
+.view-section h3 { font-size: 13px; margin: 0 0 8px; color: var(--text); }
+.view-note { color: var(--muted); padding: 10px 0; }
+.view-error { color: var(--red); background: rgba(248,113,113,.09); border: 1px solid rgba(248,113,113,.3); border-radius: 8px; padding: 10px 12px; margin: 10px 0; line-height: 1.5; }
+.row-actions { display: flex; gap: 6px; }
+
+/* config kv grid */
+.kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.kv-row { display: contents; }
+.kv-k { background: var(--panel); padding: 7px 12px; color: var(--muted); }
+.kv-v { background: var(--panel2); padding: 7px 12px; word-break: break-all; }
+
+/* test-files split */
+.tf-split { display: flex; gap: 14px; min-height: 0; }
+.tf-list { flex: 0 0 42%; max-width: 480px; overflow: auto; }
+.tf-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tf-content-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.tf-pre { flex: 1; max-height: none; }
+.kind { font-size: 10px; text-transform: uppercase; letter-spacing: .03em; padding: 1px 6px; border-radius: 4px; background: var(--panel2); border: 1px solid var(--border); }
+.kind-sel { color: var(--green); border-color: rgba(74,222,128,.3); }
+.kind-xml { color: var(--accent); border-color: rgba(78,161,255,.3); }

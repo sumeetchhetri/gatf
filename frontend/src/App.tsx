@@ -24,7 +24,7 @@ function activeSnapshot(snaps: SnapshotRef[], t: number): SnapshotRef | null {
   return found ?? (snaps.length ? snaps[0] : null);
 }
 
-export default function App() {
+export default function App({ traceUrl }: { traceUrl?: string }) {
   const [trace, setTrace] = useState<Trace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState<string | null>(null);
@@ -70,9 +70,9 @@ export default function App() {
     }
   }, []);
 
-  // optional auto-load via ?trace=<url> (same-origin bundle served by the report)
+  // auto-load a bundle: an explicit traceUrl prop (from the Reports view) wins, else ?trace=<url>
   useEffect(() => {
-    const url = new URLSearchParams(window.location.search).get('trace');
+    const url = traceUrl || new URLSearchParams(window.location.search).get('trace');
     if (!url) return;
     setLoadingUrl(url);
     fetch(url)
@@ -83,7 +83,7 @@ export default function App() {
       .then((buf) => ingest(new Uint8Array(buf)))
       .catch((e) => setError(`Could not fetch trace at ${url} — drag the file in instead. (${e.message})`))
       .finally(() => setLoadingUrl(null));
-  }, [ingest]);
+  }, [ingest, traceUrl]);
 
   // playback loop
   useEffect(() => {
