@@ -111,7 +111,10 @@ public class GatfApiHandler extends HttpHandler {
                 if (!f.isFile()) continue;
                 String ln = f.getName().toLowerCase();
                 if (ln.endsWith(".html")) {
-                    reports.add(artifact(f));
+                    Map<String, Object> a = artifact(f);
+                    File sc = new File(f.getParentFile(), f.getName().substring(0, f.getName().length() - 5) + ".data.json");
+                    if (sc.isFile()) a.put("dataUrl", "/reports/" + sc.getName());
+                    reports.add(a);
                 } else if (ln.endsWith("-trace.zip") || ln.endsWith(".zip")) {
                     traces.add(artifact(f));
                 }

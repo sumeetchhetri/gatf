@@ -1,0 +1,259 @@
+import { useEffect, useState } from 'react';
+import { api } from '../api';
+import type {
+  ReportData,
+  SeleniumSummaryData,
+  SeleniumTestData,
+  SeleniumFinalData,
+  SeleniumSubtest,
+} from '../api';
+
+function statusClass(s: string): string {
+  const u = (s || '').toUpperCase();
+  if (u === 'SUCCESS' || u === 'PASS' || u === 'PASSED') return 'st-pass';
+  if (u === 'FAILED' || u === 'FAIL' || u === 'ERROR') return 'st-fail';
+  return 'st-warn';
+}
+
+// derive a per-test report's sidecar URL from its href (e.g. "foo.html" -> "/reports/foo.data.json")
+function dataUrlFromHref(href: string): string {
+  const base = href.startsWith('/') ? href : '/reports/' + href;
+  return base.replace(/\.html$/, '.data.json');
+}
+
+function SummaryView({
+  data,
+  onOpenReport,
+}: {
+  data: SeleniumSummaryData;
+  onOpenReport: (dataUrl: string) => void;
+}) {
+  const nodes = Object.entries(data.testsMap || {});
+  return (
+    <div className="rv-summary">
+      {nodes.map(([node, runs]) => (
+        <div className="rv-node" key={node}>
+          <div className="rv-node-head">Node: {node}</div>
+          {runs.map((run, ri) => {
+            const tests = Object.entries(run || {});
+            return (
+              <div className="rv-run" key={ri}>
+                <div className="rv-run-head">Run {ri + 1}</div>
+                {tests.map(([test, browsers]) => (
+                  <div className="rv-test" key={test}>
+                    <div className="rv-test-head">{test}</div>
+                    {Object.entries(browsers || {}).map(([browser, subtests]) => (
+                      <div className="rv-browser" key={browser}>
+                        <div className="rv-browser-head">{browser}</div>
+                        <table className="grid-table">
+                          <thead>
+                            <tr>
+                              <th>Subtest</th>
+                              <th>Status</th>
+                              <th className="num">Time</th>
+                              <th>Error</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(subtests as SeleniumSubtest[]).map((tc, i) => {
+                              const name = String(tc[0] ?? '');
+                              const href = String(tc[1] ?? '');
+                              const status = String(tc[2] ?? '');
+                              const error = tc[3] == null ? '' : String(tc[3]);
+                              const time = tc[4] == null ? '' : String(tc[4]);
+                              return (
+                                <tr key={i} className={statusClass(status)}>
+                                  <td>
+                                    {href ? (
+                                      <button
+                                        className="linkish mono"
+                                        onClick={() => onOpenReport(dataUrlFromHref(href))}
+                                      >
+                                        {name}
+                                      </button>
+                                    ) : (
+                                      <span className="mono">{name}</span>
+                                    )}
+                                  </td>
+                                  <td>
+                                    <span className={'st-badge ' + statusClass(status)}>{status}</span>
+                                  </td>
+                                  <td className="num mono">{time}</td>
+                                  <td className="small muted" style={{ whiteSpace: 'pre-wrap' }}>
+                                    {error}
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      ))}
+      {nodes.length === 0 && <div className="view-note">This run produced no selenium results.</div>}
+    </div>
+  );
+}
+
+function TestView({
+  data,
+  onOpenTrace,
+}: {
+  data: SeleniumTestData;
+  onOpenTrace: (url: string) => void;
+}) {
+  const logs =
+    typeof data.logs === 'string' ? data.logs : data.logs == null ? '' : JSON.stringify(data.logs, null, 2);
+  const traceUrl = data.tracePath
+    ? data.tracePath.startsWith('/')
+      ? data.tracePath
+      : '/reports/' + data.tracePath
+    : null;
+  return (
+    <div className="rv-test-detail">
+      <div className="rv-test-status">
+        <span className={'st-badge ' + (data.status ? 'st-pass' : 'st-fail')}>
+          {data.status ? 'SUCCESS' : 'FAILED'}
+        </span>
+        {traceUrl && (
+          <button className="btn small" onClick={() => onOpenTrace(traceUrl)}>
+            Open in Trace Viewer
+          </button>
+        )}
+      </div>
+
+      <h3 className="rv-code-title mono">{data.selFileName}</h3>
+      <pre className="body-pre">{data.selCode}</pre>
+
+      {data.javaCode && (
+        <details className="rv-details">
+          <summary className="mono">{data.javaFileName || 'Generated Java'}</summary>
+          <pre className="body-pre">{data.javaCode}</pre>
+        </details>
+      )}
+
+      {logs && (
+        <>
+          <h3 className="rv-code-title">Logs</h3>
+          <pre className="body-pre">{logs}</pre>
+        </>
+      )}
+    </div>
+  );
+}
+
+function FinalView({
+  data,
+  onOpenReport,
+}: {
+  data: SeleniumFinalData;
+  onOpenReport: (dataUrl: string) => void;
+}) {
+  const nodes = Object.entries(data.indexes || {});
+  return (
+    <div className="rv-final">
+      <div className="muted small">{data.dt}</div>
+      {nodes.map(([node, runs]) => (
+        <div className="rv-node" key={node}>
+          <div className="rv-node-head">Node: {node}</div>
+          <ul className="rv-final-list">
+            {Object.entries(runs || {}).map(([run, htmlName]) => (
+              <li key={run}>
+                <button className="linkish mono" onClick={() => onOpenReport(dataUrlFromHref(String(htmlName)))}>
+                  Run {run} — {String(htmlName)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+      {nodes.length === 0 && <div className="view-note">No runs recorded.</div>}
+    </div>
+  );
+}
+
+export default function ReportViewer({
+  dataUrl,
+  onBack,
+  onOpenTrace,
+  onOpenReport,
+}: {
+  dataUrl: string;
+  onBack: () => void;
+  onOpenTrace: (url: string) => void;
+  onOpenReport: (dataUrl: string) => void;
+}) {
+  const [data, setData] = useState<ReportData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    setData(null);
+    api
+      .reportData(dataUrl)
+      .then(setData)
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  }, [dataUrl]);
+
+  const title =
+    data?.type === 'selenium-summary'
+      ? 'Selenium run summary'
+      : data?.type === 'selenium-test'
+        ? 'Selenium test'
+        : data?.type === 'selenium-final'
+          ? 'Selenium index'
+          : 'Report';
+
+  return (
+    <div className="view">
+      <div className="view-head">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button className="btn ghost small" onClick={onBack}>
+            &#8592; Reports
+          </button>
+          <h2>{title}</h2>
+        </div>
+        <a className="btn ghost small" href={dataUrl.replace(/\.data\.json$/, '.html')} target="_blank" rel="noopener">
+          Legacy HTML &#8599;
+        </a>
+      </div>
+
+      {loading && <div className="view-note">Loading…</div>}
+      {error && (
+        <div className="view-error">
+          Could not load report data ({error}). Reports generated before this build have no{' '}
+          <code>.data.json</code> sidecar — open the legacy HTML instead.
+        </div>
+      )}
+
+      {data && !loading && (
+        <>
+          {data.type === 'selenium-summary' && (
+            <SummaryView data={data as SeleniumSummaryData} onOpenReport={onOpenReport} />
+          )}
+          {data.type === 'selenium-test' && <TestView data={data as SeleniumTestData} onOpenTrace={onOpenTrace} />}
+          {data.type === 'selenium-final' && (
+            <FinalView data={data as SeleniumFinalData} onOpenReport={onOpenReport} />
+          )}
+          {!['selenium-summary', 'selenium-test', 'selenium-final'].includes(data.type) && (
+            <>
+              <div className="view-note muted small">
+                No React viewer for “{data.type}” reports yet — raw data below.
+              </div>
+              <pre className="body-pre">{JSON.stringify(data, null, 2)}</pre>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

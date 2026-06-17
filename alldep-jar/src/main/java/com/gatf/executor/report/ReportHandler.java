@@ -1236,6 +1236,14 @@ public class ReportHandler {
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
+
+            java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+            sdata.put("type", "selenium-summary");
+            sdata.put("sessionId", sessionId);
+            sdata.put("attempt", attempt);
+            sdata.put("testsMap", summLstMap);
+            sdata.put("sinfoMap", sinfoMap);
+            writeReportDataSidecar(filenm, sdata);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1284,6 +1292,14 @@ public class ReportHandler {
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
+
+            java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+            sdata.put("type", "selenium-final");
+            sdata.put("sessionId", sessionId);
+            sdata.put("attempt", attempt);
+            sdata.put("indexes", indexes);
+            sdata.put("dt", new DateTime().toString("dd/MM/yyyy hh:mm:ss"));
+            writeReportDataSidecar(filenm, sdata);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1345,11 +1361,36 @@ public class ReportHandler {
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
+
+            java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+            sdata.put("type", "selenium-test");
+            sdata.put("selFileName", retvals[0]);
+            sdata.put("selCode", retvals[1]);
+            sdata.put("javaFileName", retvals[2]);
+            sdata.put("javaCode", retvals[3]);
+            sdata.put("logs", result.getLogs());
+            sdata.put("status", result.isStatus());
+            sdata.put("tracePath", tracePath);
+            writeReportDataSidecar(filenm, sdata);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
-	
+
+	// Phase 3.x strangler: persist a report's data as a <basename>.data.json sidecar next to the
+	// generated HTML, so the React report viewer (/app) can render it without scraping the HTML.
+	private static void writeReportDataSidecar(String htmlFilePath, Map<String, Object> data) {
+		try {
+			String datanm = htmlFilePath.endsWith(".html")
+					? htmlFilePath.substring(0, htmlFilePath.length() - 5) + ".data.json"
+					: htmlFilePath + ".data.json";
+			BufferedWriter dwriter = new BufferedWriter(new FileWriter(new File(datanm)));
+			dwriter.write(WorkflowContextHandler.OM.writeValueAsString(data));
+			dwriter.close();
+		} catch (Exception e) {
+		}
+	}
+
 	public static void populateRequestResponseHeaders(TestCaseReport testCaseReport)
 	{
 		StringBuilder build = new StringBuilder();

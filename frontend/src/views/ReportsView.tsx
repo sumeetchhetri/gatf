@@ -9,7 +9,13 @@ function fmtDate(ms: number): string {
   return d.toLocaleString();
 }
 
-export default function ReportsView({ onOpenTrace }: { onOpenTrace: (url: string) => void }) {
+export default function ReportsView({
+  onOpenTrace,
+  onOpenReport,
+}: {
+  onOpenTrace: (url: string) => void;
+  onOpenReport: (dataUrl: string) => void;
+}) {
   const [data, setData] = useState<ReportsIndex | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -75,9 +81,14 @@ export default function ReportsView({ onOpenTrace }: { onOpenTrace: (url: string
                       </td>
                       <td className="num mono">{fmtBytes(r.size)}</td>
                       <td className="muted small">{fmtDate(r.modified)}</td>
-                      <td>
-                        <a className="btn small" href={r.url} target="_blank" rel="noopener">
-                          Open &#8599;
+                      <td className="row-actions">
+                        {r.dataUrl && (
+                          <button className="btn small" onClick={() => onOpenReport(r.dataUrl!)}>
+                            Open in viewer
+                          </button>
+                        )}
+                        <a className={'btn small' + (r.dataUrl ? ' ghost' : '')} href={r.url} target="_blank" rel="noopener">
+                          {r.dataUrl ? 'HTML \u2197' : 'Open \u2197'}
                         </a>
                       </td>
                     </tr>

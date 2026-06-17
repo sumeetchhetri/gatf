@@ -2,10 +2,11 @@ import { useEffect, useState } from 'react';
 import App from './App';
 import Nav from './components/Nav';
 import ReportsView from './views/ReportsView';
+import ReportViewer from './views/ReportViewer';
 import ConfigView from './views/ConfigView';
 import TestFilesView from './views/TestFilesView';
 
-export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles';
+export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'report';
 
 const HASH: Record<string, ViewKey> = {
   '': 'viewer',
@@ -20,6 +21,7 @@ const TO_HASH: Record<ViewKey, string> = {
   reports: '#/reports',
   config: '#/config',
   testfiles: '#/testfiles',
+  report: '#/reports',
 };
 
 function currentView(): ViewKey {
@@ -29,6 +31,7 @@ function currentView(): ViewKey {
 export default function Shell() {
   const [view, setView] = useState<ViewKey>(currentView());
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
+  const [pendingReport, setPendingReport] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const onHash = () => setView(currentView());
@@ -46,15 +49,28 @@ export default function Shell() {
     navigate('viewer');
   };
 
+  const openReport = (dataUrl: string) => {
+    setPendingReport(dataUrl);
+    setView('report'); // reached from Reports; not a top-level hash route
+  };
+
   return (
     <div className="shell">
-      <Nav active={view} onNavigate={navigate} />
+      <Nav active={view === 'report' ? 'reports' : view} onNavigate={navigate} />
       <div className="shell-body">
         {/* Viewer stays mounted so a loaded trace survives tab switches. */}
         <div className="view-viewer" style={{ display: view === 'viewer' ? 'flex' : 'none' }}>
           <App traceUrl={pendingTrace} />
         </div>
-        {view === 'reports' && <ReportsView onOpenTrace={openTrace} />}
+        {view === 'reports' && <ReportsView onOpenTrace={openTrace} onOpenReport={openReport} />}
+        {view === 'report' && pendingReport && (
+          <ReportViewer
+            dataUrl={pendingReport}
+            onBack={() => navigate('reports')}
+            onOpenTrace={openTrace}
+            onOpenReport={openReport}
+          />
+        )}
         {view === 'config' && <ConfigView />}
         {view === 'testfiles' && <TestFilesView />}
       </div>
