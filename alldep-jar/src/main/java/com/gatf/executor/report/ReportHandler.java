@@ -1111,6 +1111,14 @@ public class ReportHandler {
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
+
+                java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+                sdata.put("type", "api-report");
+                sdata.put("suiteStats", testSuiteStats);
+                sdata.put("testcaseStats", testCaseStats);
+                sdata.put("testcaseReports", allTestCases);
+                sdata.put("compareStats", compareStatuses);
+                writeReportDataSidecar(filenm, sdata);
                 
                 /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {

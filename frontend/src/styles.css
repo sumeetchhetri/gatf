@@ -297,3 +297,11 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .rv-code-title { font-size: 13px; margin: 14px 0 6px; }
 .rv-details summary { cursor: pointer; color: var(--muted); margin: 10px 0 6px; }
 .rv-final-list { margin: 6px 0 0; padding-left: 18px; line-height: 1.8; }
+
+/* ---------- API report viewer (Slice A cont.) ---------- */
+.ar-detail-row > td { background: #141417; padding: 12px; }
+.ar-detail .hdr-title { margin-top: 12px; }
+.ar-detail .hdr-title:first-child { margin-top: 0; }
+.ar .vital-val.st-pass { color: var(--green); }
+.ar .vital-val.st-fail { color: var(--red); }
+.ar .vital-val.st-warn { color: var(--warn); }

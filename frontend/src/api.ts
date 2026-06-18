@@ -44,10 +44,75 @@ export interface SeleniumFinalData {
   indexes: Record<string, Record<string, string>>;
   dt: string;
 }
+
+// ---- API-test report ----
+export interface TestGroupStats {
+  sourceFile: string;
+  baseUrl?: string;
+  executionTime: number;
+  totalTestCount: number;
+  failedTestCount: number;
+  skippedTestCount: number;
+  totalRuns: number;
+  failedRuns: number;
+}
+export interface TestSuiteStats {
+  totalTestCount: number;
+  failedTestCount: number;
+  skippedTestCount: number;
+  totalRuns: number;
+  failedRuns: number;
+  totalSuiteRuns: number;
+  totalUserSuiteRuns: number;
+  executionTime: number;
+  actualExecutionTime: number;
+  groupStats: TestGroupStats[];
+}
+export interface TestCaseStat {
+  identifier: string;
+  sourceFileName: string;
+  workflowName: string;
+  testCaseName: string;
+  executionTime: number;
+  status: string;
+}
+export interface TestCaseReport {
+  workflowName?: string;
+  testIdentifier?: string;
+  url?: string;
+  actualUrl?: string;
+  method?: string;
+  status: string;
+  responseStatusCode?: string | number;
+  executionTime?: number;
+  averageExecutionTime?: number;
+  numberOfRuns?: number;
+  error?: string;
+  errorText?: string;
+  failureReason?: string;
+  requestContent?: string;
+  requestContentType?: string;
+  requestHeaders?: string;
+  responseContent?: string;
+  responseContentType?: string;
+  responseHeaders?: string;
+  resHeaders?: string;
+  curlCmd?: string;
+  serverLogs?: string;
+  [k: string]: unknown;
+}
+export interface ApiReportData {
+  type: 'api-report';
+  suiteStats: TestSuiteStats;
+  testcaseStats: TestCaseStat[];
+  testcaseReports: Record<string, TestCaseReport[]>;
+  compareStats?: Record<string, unknown>;
+}
 export type ReportData =
   | SeleniumSummaryData
   | SeleniumTestData
   | SeleniumFinalData
+  | ApiReportData
   | ({ type: string } & Record<string, unknown>);
 
 export interface TestFile {
