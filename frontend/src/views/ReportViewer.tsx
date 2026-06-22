@@ -7,8 +7,10 @@ import type {
   SeleniumFinalData,
   SeleniumSubtest,
   ApiReportData,
+  LoadReportData,
 } from '../api';
 import ApiReportView from './ApiReportView';
+import LoadReportView from './LoadReportView';
 
 function statusClass(s: string): string {
   const u = (s || '').toUpperCase();
@@ -215,7 +217,9 @@ export default function ReportViewer({
           ? 'Selenium index'
           : data?.type === 'api-report'
             ? 'API test report'
-            : 'Report';
+            : data?.type === 'load-report'
+              ? 'Load test report'
+              : 'Report';
 
   return (
     <div className="view">
@@ -249,7 +253,12 @@ export default function ReportViewer({
             <FinalView data={data as SeleniumFinalData} onOpenReport={onOpenReport} />
           )}
           {data.type === 'api-report' && <ApiReportView data={data as ApiReportData} />}
-          {!['selenium-summary', 'selenium-test', 'selenium-final', 'api-report'].includes(data.type) && (
+          {data.type === 'load-report' && (
+            <LoadReportView data={data as LoadReportData} onOpenReport={onOpenReport} />
+          )}
+          {!['selenium-summary', 'selenium-test', 'selenium-final', 'api-report', 'load-report'].includes(
+            data.type,
+          ) && (
             <>
               <div className="view-note muted small">
                 No React viewer for “{data.type}” reports yet — raw data below.

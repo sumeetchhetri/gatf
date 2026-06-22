@@ -108,11 +108,25 @@ export interface ApiReportData {
   testcaseReports: Record<string, TestCaseReport[]>;
   compareStats?: Record<string, unknown>;
 }
+
+// ---- load-test report ----
+export interface LoadTestResource {
+  title: string;
+  url: string;
+}
+export interface LoadReportData {
+  type: 'load-report';
+  suiteStats: TestSuiteStats;
+  loadTestResources?: LoadTestResource[];
+  nodes?: string[];
+  nodeurls?: string[];
+}
 export type ReportData =
   | SeleniumSummaryData
   | SeleniumTestData
   | SeleniumFinalData
   | ApiReportData
+  | LoadReportData
   | ({ type: string } & Record<string, unknown>);
 
 export interface TestFile {

@@ -275,6 +275,16 @@ public class ReportHandler {
             BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
             fwriter.write(writer.toString());
             fwriter.close();
+
+            java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+            sdata.put("type", "load-report");
+            sdata.put("suiteStats", testSuiteStats);
+            sdata.put("loadTestResources", loadTestResources);
+            if (nodes != null) {
+                sdata.put("nodes", nodes);
+                sdata.put("nodeurls", nodeurls);
+            }
+            writeReportDataSidecar(filenm, sdata);
             
             //if(distributedTestStatus!=null)
             {
