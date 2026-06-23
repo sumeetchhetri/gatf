@@ -121,12 +121,21 @@ export interface LoadReportData {
   nodes?: string[];
   nodeurls?: string[];
 }
+
+// ---- test-analysis (percentile) report ----
+// each entry is [90th, 50th] ms
+export interface TAReportData {
+  type: 'ta-report';
+  testcaseTAReports: Record<string, number[]>;
+  runTAReports: Record<string, number[]>;
+}
 export type ReportData =
   | SeleniumSummaryData
   | SeleniumTestData
   | SeleniumFinalData
   | ApiReportData
   | LoadReportData
+  | TAReportData
   | ({ type: string } & Record<string, unknown>);
 
 export interface TestFile {

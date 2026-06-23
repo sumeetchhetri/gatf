@@ -8,9 +8,11 @@ import type {
   SeleniumSubtest,
   ApiReportData,
   LoadReportData,
+  TAReportData,
 } from '../api';
 import ApiReportView from './ApiReportView';
 import LoadReportView from './LoadReportView';
+import TAReportView from './TAReportView';
 
 function statusClass(s: string): string {
   const u = (s || '').toUpperCase();
@@ -219,7 +221,9 @@ export default function ReportViewer({
             ? 'API test report'
             : data?.type === 'load-report'
               ? 'Load test report'
-              : 'Report';
+              : data?.type === 'ta-report'
+                ? 'Test analysis'
+                : 'Report';
 
   return (
     <div className="view">
@@ -256,7 +260,8 @@ export default function ReportViewer({
           {data.type === 'load-report' && (
             <LoadReportView data={data as LoadReportData} onOpenReport={onOpenReport} />
           )}
-          {!['selenium-summary', 'selenium-test', 'selenium-final', 'api-report', 'load-report'].includes(
+          {data.type === 'ta-report' && <TAReportView data={data as TAReportData} />}
+          {!['selenium-summary', 'selenium-test', 'selenium-final', 'api-report', 'load-report', 'ta-report'].includes(
             data.type,
           ) && (
             <>

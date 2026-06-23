@@ -305,3 +305,6 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .ar .vital-val.st-pass { color: var(--green); }
 .ar .vital-val.st-fail { color: var(--red); }
 .ar .vital-val.st-warn { color: var(--warn); }
+
+/* TA report */
+.ta-all td { font-weight: 600; background: var(--panel2); }

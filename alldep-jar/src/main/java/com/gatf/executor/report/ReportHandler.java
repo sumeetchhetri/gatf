@@ -1210,6 +1210,12 @@ public class ReportHandler {
                 BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
                 fwriter.write(writer.toString());
                 fwriter.close();
+
+                java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+                sdata.put("type", "ta-report");
+                sdata.put("testcaseTAReports", testPercentileValues);
+                sdata.put("runTAReports", runPercentileValues);
+                writeReportDataSidecar(filenm, sdata);
                 
                 /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
