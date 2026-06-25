@@ -1,5 +1,5 @@
 import { Fragment, useState } from 'react';
-import type { ApiReportData, TestCaseReport, TestSuiteStats } from '../api';
+import type { ApiReportData, ApiIndexData, TestCaseReport, TestCaseStat, TestSuiteStats } from '../api';
 import { fmtMs } from '../util';
 
 function stClass(s: string): string {
@@ -130,9 +130,40 @@ function ResultsTable({ rows }: { rows: TestCaseReport[] }) {
   );
 }
 
-export default function ApiReportView({ data }: { data: ApiReportData }) {
+function StatsTable({ rows }: { rows: TestCaseStat[] }) {
+  return (
+    <table className="grid-table">
+      <thead>
+        <tr>
+          <th>Run</th>
+          <th>Source</th>
+          <th>Workflow</th>
+          <th>Test case</th>
+          <th>Status</th>
+          <th className="num">Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((s, i) => (
+          <tr key={i} className={stClass(s.status)}>
+            <td className="mono">{s.identifier}</td>
+            <td className="mono">{s.sourceFileName}</td>
+            <td className="mono">{s.workflowName}</td>
+            <td className="mono">{s.testCaseName}</td>
+            <td><span className={'st-badge ' + stClass(s.status)}>{s.status}</span></td>
+            <td className="num mono">{s.executionTime != null ? fmtMs(s.executionTime) : ''}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  );
+}
+
+export default function ApiReportView({ data }: { data: ApiReportData | ApiIndexData }) {
   const groups = data.suiteStats?.groupStats ?? [];
-  const runs = Object.entries(data.testcaseReports || {});
+  const isFull = data.type === 'api-report';
+  const runs = isFull ? Object.entries((data as ApiReportData).testcaseReports || {}) : [];
+  const stats = data.testcaseStats ?? [];
   return (
     <div className="ar">
       <section className="view-section">
@@ -169,15 +200,22 @@ export default function ApiReportView({ data }: { data: ApiReportData }) {
         </section>
       )}
 
-      {runs.map(([identifier, rows]) => (
-        <section className="view-section" key={identifier}>
-          <h3>
-            {identifier} <span className="muted small">({rows.length} tests)</span>
-          </h3>
-          <ResultsTable rows={rows} />
+      {isFull ? (
+        runs.map(([identifier, rows]) => (
+          <section className="view-section" key={identifier}>
+            <h3>
+              {identifier} <span className="muted small">({rows.length} tests)</span>
+            </h3>
+            <ResultsTable rows={rows} />
+          </section>
+        ))
+      ) : (
+        <section className="view-section">
+          <h3>Test cases</h3>
+          {stats.length === 0 ? <div className="view-note">No per-test stats.</div> : <StatsTable rows={stats} />}
         </section>
-      ))}
-      {runs.length === 0 && <div className="view-note">No test results in this report.</div>}
+      )}
+      {isFull && runs.length === 0 && <div className="view-note">No test results in this report.</div>}
     </div>
   );
 }

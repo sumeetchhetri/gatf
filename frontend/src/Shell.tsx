@@ -28,10 +28,14 @@ function currentView(): ViewKey {
   return HASH[window.location.hash] ?? 'viewer';
 }
 
+function initialReport(): string | undefined {
+  return new URLSearchParams(window.location.search).get('report') || undefined;
+}
+
 export default function Shell() {
-  const [view, setView] = useState<ViewKey>(currentView());
+  const [view, setView] = useState<ViewKey>(initialReport() ? 'report' : currentView());
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
-  const [pendingReport, setPendingReport] = useState<string | undefined>(undefined);
+  const [pendingReport, setPendingReport] = useState<string | undefined>(initialReport());
 
   useEffect(() => {
     const onHash = () => setView(currentView());

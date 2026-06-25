@@ -7,11 +7,14 @@ import type {
   SeleniumFinalData,
   SeleniumSubtest,
   ApiReportData,
+  ApiIndexData,
   LoadReportData,
+  DistributedLoadData,
   TAReportData,
 } from '../api';
 import ApiReportView from './ApiReportView';
 import LoadReportView from './LoadReportView';
+import DistributedLoadView from './DistributedLoadView';
 import TAReportView from './TAReportView';
 
 function statusClass(s: string): string {
@@ -219,11 +222,15 @@ export default function ReportViewer({
           ? 'Selenium index'
           : data?.type === 'api-report'
             ? 'API test report'
-            : data?.type === 'load-report'
-              ? 'Load test report'
-              : data?.type === 'ta-report'
-                ? 'Test analysis'
-                : 'Report';
+            : data?.type === 'api-index'
+              ? 'API test index'
+              : data?.type === 'load-report'
+                ? 'Load test report'
+                : data?.type === 'load-distributed'
+                  ? 'Distributed load report'
+                  : data?.type === 'ta-report'
+                    ? 'Test analysis'
+                    : 'Report';
 
   return (
     <div className="view">
@@ -257,13 +264,24 @@ export default function ReportViewer({
             <FinalView data={data as SeleniumFinalData} onOpenReport={onOpenReport} />
           )}
           {data.type === 'api-report' && <ApiReportView data={data as ApiReportData} />}
+          {data.type === 'api-index' && <ApiReportView data={data as ApiIndexData} />}
           {data.type === 'load-report' && (
             <LoadReportView data={data as LoadReportData} onOpenReport={onOpenReport} />
           )}
+          {data.type === 'load-distributed' && (
+            <DistributedLoadView data={data as DistributedLoadData} onOpenReport={onOpenReport} />
+          )}
           {data.type === 'ta-report' && <TAReportView data={data as TAReportData} />}
-          {!['selenium-summary', 'selenium-test', 'selenium-final', 'api-report', 'load-report', 'ta-report'].includes(
-            data.type,
-          ) && (
+          {![
+            'selenium-summary',
+            'selenium-test',
+            'selenium-final',
+            'api-report',
+            'api-index',
+            'load-report',
+            'load-distributed',
+            'ta-report',
+          ].includes(data.type) && (
             <>
               <div className="view-note muted small">
                 No React viewer for “{data.type}” reports yet — raw data below.

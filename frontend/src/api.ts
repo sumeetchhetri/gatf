@@ -108,6 +108,11 @@ export interface ApiReportData {
   testcaseReports: Record<string, TestCaseReport[]>;
   compareStats?: Record<string, unknown>;
 }
+export interface ApiIndexData {
+  type: 'api-index';
+  suiteStats: TestSuiteStats;
+  testcaseStats: TestCaseStat[];
+}
 
 // ---- load-test report ----
 export interface LoadTestResource {
@@ -120,6 +125,12 @@ export interface LoadReportData {
   loadTestResources?: LoadTestResource[];
   nodes?: string[];
   nodeurls?: string[];
+}
+export interface DistributedLoadData {
+  type: 'load-distributed';
+  suiteStats: TestSuiteStats[];
+  nodes: string[];
+  loadTestResources?: LoadTestResource[][];
 }
 
 // ---- test-analysis (percentile) report ----
@@ -134,7 +145,9 @@ export type ReportData =
   | SeleniumTestData
   | SeleniumFinalData
   | ApiReportData
+  | ApiIndexData
   | LoadReportData
+  | DistributedLoadData
   | TAReportData
   | ({ type: string } & Record<string, unknown>);
 
