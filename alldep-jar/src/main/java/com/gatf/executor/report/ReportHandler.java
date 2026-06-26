@@ -285,6 +285,7 @@ public class ReportHandler {
                 sdata.put("nodeurls", nodeurls);
             }
             writeReportDataSidecar(filenm, sdata);
+            writeReportHtmlRedirect(filenm);
             
             //if(distributedTestStatus!=null)
             {
@@ -325,6 +326,7 @@ public class ReportHandler {
             sdata.put("nodes", nodes);
             sdata.put("loadTestResources", loadTestResources);
             writeReportDataSidecar(filenm, sdata);
+            writeReportHtmlRedirect(filenm);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -893,6 +895,7 @@ public class ReportHandler {
                 sdata.put("suiteStats", testSuiteStats);
                 sdata.put("testcaseStats", testCaseStats);
                 writeReportDataSidecar(filenm, sdata);
+                writeReportHtmlRedirect(filenm);
                 
                 /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
@@ -1142,6 +1145,7 @@ public class ReportHandler {
                 sdata.put("testcaseReports", allTestCases);
                 sdata.put("compareStats", compareStatuses);
                 writeReportDataSidecar(filenm, sdata);
+                writeReportHtmlRedirect(filenm);
                 
                 /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
@@ -1229,6 +1233,7 @@ public class ReportHandler {
                 sdata.put("testcaseTAReports", testPercentileValues);
                 sdata.put("runTAReports", runPercentileValues);
                 writeReportDataSidecar(filenm, sdata);
+                writeReportHtmlRedirect(filenm);
                 
                 /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
                 {
@@ -1281,6 +1286,7 @@ public class ReportHandler {
             sdata.put("testsMap", summLstMap);
             sdata.put("sinfoMap", sinfoMap);
             writeReportDataSidecar(filenm, sdata);
+            writeReportHtmlRedirect(filenm);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1337,6 +1343,7 @@ public class ReportHandler {
             sdata.put("indexes", indexes);
             sdata.put("dt", new DateTime().toString("dd/MM/yyyy hh:mm:ss"));
             writeReportDataSidecar(filenm, sdata);
+            writeReportHtmlRedirect(filenm);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1409,6 +1416,7 @@ public class ReportHandler {
             sdata.put("status", result.isStatus());
             sdata.put("tracePath", tracePath);
             writeReportDataSidecar(filenm, sdata);
+            writeReportHtmlRedirect(filenm);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -1424,6 +1432,29 @@ public class ReportHandler {
 			BufferedWriter dwriter = new BufferedWriter(new FileWriter(new File(datanm)));
 			dwriter.write(WorkflowContextHandler.OM.writeValueAsString(data));
 			dwriter.close();
+		} catch (Exception e) {
+		}
+	}
+
+	// Phase 3.x Slice E: overwrite a generated report's HTML with a tiny, self-contained redirect that
+	// sends the browser to the React viewer for that report's .data.json sidecar. The redirect is
+	// computed client-side from the current path, so it works for reports in any sub-directory and needs
+	// no gatf-resources assets. The sidecar remains the portable data artifact.
+	private static void writeReportHtmlRedirect(String htmlFilePath) {
+		try {
+			String stub = "<!doctype html><html><head><meta charset=\"utf-8\">"
+					+ "<meta name=\"robots\" content=\"noindex\"><title>GATF report</title>"
+					+ "<script>(function(){var d=location.pathname.replace(/\\.html$/,'.data.json');"
+					+ "location.replace('/app/?report='+encodeURIComponent(d));})();</script></head>"
+					+ "<body style=\"font-family:system-ui;background:#1b1b1f;color:#d7d7db;padding:24px\">"
+					+ "Opening this report in the GATF viewer\u2026 "
+					+ "<a id=\"gv\" href=\"/app/\" style=\"color:#4ea1ff\">open it here</a> if you are not redirected."
+					+ "<script>document.getElementById('gv').href='/app/?report='"
+					+ "+encodeURIComponent(location.pathname.replace(/\\.html$/,'.data.json'));</script>"
+					+ "</body></html>";
+			BufferedWriter w = new BufferedWriter(new FileWriter(new File(htmlFilePath)));
+			w.write(stub);
+			w.close();
 		} catch (Exception e) {
 		}
 	}
