@@ -741,7 +741,7 @@ public class ReportHandler {
 						allTestCases.clear();
 						context.put("compareStats", "{}");
 						
-						InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+						InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
 			            if (resourcesIS != null)
 			            {
 			            	
@@ -777,6 +777,16 @@ public class ReportHandler {
 			                BufferedWriter fwriter = new BufferedWriter(new FileWriter(new File(filenm)));
 			                fwriter.write(writer.toString());
 			                fwriter.close();
+			                // Phase 3.x Slice E: sidecar + React redirect for the multi-run per-run report (index-run.vm).
+			                java.util.Map<String, Object> sdata = new java.util.LinkedHashMap<>();
+			                sdata.put("type", "api-report");
+			                sdata.put("suiteStats", testSuiteStats);
+			                sdata.put("testcaseStats", testCaseStats);
+			                java.util.Map<String, Object> tcr = new java.util.LinkedHashMap<>();
+			                tcr.put(entry.getKey(), reports);
+			                sdata.put("testcaseReports", tcr);
+			                writeReportDataSidecar(filenm, sdata);
+			                writeReportHtmlRedirect(filenm);
 			                
 			                /*if(distributedTestStatus!=null && distributedTestStatus.getReportFileContent().size()<5)
 			                {
@@ -865,7 +875,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
@@ -1108,7 +1118,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
@@ -1207,7 +1217,7 @@ public class ReportHandler {
 		
 		try
 		{
-			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+			InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
             if (resourcesIS != null)
             {
             	File resource = acontext.getOutDir();
@@ -1257,7 +1267,7 @@ public class ReportHandler {
             context.put("sinfoMap", sinfoMap);
             
             File resource = acontext.getOutDir();
-            //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+            //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
             /*if (resourcesIS != null)
             {
             	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
@@ -1373,7 +1383,7 @@ public class ReportHandler {
         VelocityContext context = new VelocityContext();
         File resource = acontext.getOutDir();
         
-        //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
+        //InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-templates/index.vm");
         /*if (resourcesIS != null)
         {
         	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());

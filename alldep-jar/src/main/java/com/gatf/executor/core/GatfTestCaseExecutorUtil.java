@@ -2830,11 +2830,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     private String initOutFolderAndGetPath(AcceptanceTestContext context, Long sessionId, int retryCnter, String type) {
     	String path = sessionId + (retryCnter==0?"":("-"+retryCnter));
         File resource = context.getOutDir();
-        InputStream resourcesIS = GatfTestCaseExecutorUtil.class.getResourceAsStream("/gatf-resources");
-        if (resourcesIS != null && ReportHandler.getRDirs(type).size()==0)
-        {
-        	WorkflowContextHandler.copyResourcesToDirectory("gatf-resources", resource.getAbsolutePath());
-        }
+        // Phase 3.x Slice E: gatf-resources retired. Reports now render in the React viewer (/app) via
+        // .data.json sidecars + client-side redirect stubs, so the legacy asset bundle is no longer
+        // copied into each report's output directory.
         new File(resource.getAbsolutePath() + File.separator + path).mkdir();
         ReportHandler.pushPath(sessionId, retryCnter, path, type);
         return path;

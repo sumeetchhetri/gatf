@@ -146,7 +146,7 @@
 							<goal>npm</goal>
 						</goals>
 						<configuration>
-							<arguments>run build -- --outDir "${project.build.outputDirectory}/gatf-viewer" --emptyOutDir</arguments>
+							<arguments>run build -- --outDir ${project.build.outputDirectory}/gatf-viewer --emptyOutDir</arguments>
 						</configuration>
 					</execution>
 				</executions>
