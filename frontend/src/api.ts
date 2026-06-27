@@ -177,10 +177,50 @@ export interface ConfigResponse {
   config: Record<string, unknown>;
 }
 
+function authToken(): string {
+  try {
+    return sessionStorage.getItem('token') || '';
+  } catch {
+    return '';
+  }
+}
+// Append ?token= like the classic config-tool's $.ajaxPrefilter, so the shell works when auth is on.
+function withTok(url: string): string {
+  const t = authToken();
+  if (!t) return url;
+  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(t);
+}
+
 async function getJson<T>(url: string): Promise<T> {
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  const r = await fetch(withTok(url), { headers: { Accept: 'application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
   return (await r.json()) as T;
+}
+
+// POST JSON to a legacy handler (e.g. /configure). On failure, surface the server's error text
+// (the config-tool returns a plain-text/JSON error body with a 400).
+async function postJson<T>(url: string, body: unknown): Promise<T> {
+  const r = await fetch(withTok(url), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const text = await r.text();
+  if (!r.ok) {
+    let msg = text;
+    try {
+      const j = JSON.parse(text);
+      msg = (j && (j.message || j.error)) || text;
+    } catch {
+      /* plain text */
+    }
+    throw new Error(msg || `HTTP ${r.status}`);
+  }
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    return text as unknown as T;
+  }
 }
 
 export const api = {
@@ -189,4 +229,9 @@ export const api = {
   testfiles: () => getJson<TestFilesIndex>('/api/testfiles'),
   testfile: (path: string) => getJson<TestFileContent>('/api/testfile?path=' + encodeURIComponent(path)),
   reportData: (url: string) => getJson<ReportData>(url),
+  // ---- config editor (Slice B) — authoritative round-trip via the legacy /configure handler ----
+  misc: () => getJson<Record<string, unknown>>('/misc'),
+  configExecutor: () => getJson<Record<string, unknown>>('/configure?configType=executor'),
+  saveConfigExecutor: (cfg: Record<string, unknown>) =>
+    postJson<Record<string, unknown>>('/configure?configType=executor', cfg),
 };

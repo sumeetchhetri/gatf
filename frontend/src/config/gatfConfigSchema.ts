@@ -1,0 +1,598 @@
+// Config schemas transcribed verbatim from the legacy config-tool configuration()/generatorConfig()
+// (alldep-jar/src/main/resources/gatf-config-tool/index.js). Drives the schema-driven ConfigView.
+
+export interface CfgSchema {
+  type: 'object' | 'array' | 'map' | 'string' | 'integer' | 'number' | 'boolean';
+  properties?: Record<string, CfgSchema>;
+  items?: CfgSchema;
+  types?: { key: CfgSchema; value: CfgSchema };
+  label?: { type: string; value: string; border?: boolean };
+  enumVar?: string;
+  default?: string;
+  defaultIndex?: number;
+  required?: boolean;
+  nolabel?: boolean;
+  // legacy schema carries occasional annotations (e.g. a Java class "name"); tolerate them
+  [k: string]: unknown;
+}
+
+export const executorSchema: CfgSchema = {
+  "type": "object",
+  "properties": {
+    "baseUrl": {
+      "type": "string"
+    },
+    "testCasesBasePath": {
+      "type": "string"
+    },
+    "outFilesBasePath": {
+      "type": "string"
+    },
+    "outFilesDir": {
+      "type": "string"
+    },
+    "autoPauseOnElNotFound": {
+      "type": "boolean",
+      "default": "true"
+    },
+    "waitOnWarnException": {
+      "type": "number",
+      "default": "0"
+    },
+    "waitOnFailException": {
+      "type": "number",
+      "default": "0"
+    },
+    "mailSimulator": {
+      "label": {
+        "type": "section",
+        "value": "Mail Simulator",
+        "border": true
+      },
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "login": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "isSecure": {
+          "type": "boolean"
+        },
+        "smtpPort": {
+          "type": "integer"
+        },
+        "imapPort": {
+          "type": "integer"
+        }
+      }
+    },
+    "htttpServerSimulator": {
+      "label": {
+        "type": "section",
+        "value": "HTTP Simulator",
+        "border": true
+      },
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "port": {
+          "type": "integer"
+        },
+        "headers": {
+          "type": "map",
+          "types": {
+            "key": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "body": {
+          "type": "string"
+        }
+      }
+    },
+    "authEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "authUrl": {
+      "type": "string"
+    },
+    "authExtractAuth": {
+      "type": "string"
+    },
+    "authParamsDetails": {
+      "type": "string"
+    },
+    "wsdlLocFile": {
+      "type": "string"
+    },
+    "soapAuthEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "soapAuthWsdlKey": {
+      "type": "string"
+    },
+    "soapAuthOperation": {
+      "type": "string"
+    },
+    "soapAuthExtractAuth": {
+      "type": "string"
+    },
+    "numConcurrentExecutions": {
+      "type": "integer"
+    },
+    "httpCompressionEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "httpConnectionTimeout": {
+      "type": "integer"
+    },
+    "httpRequestTimeout": {
+      "type": "integer"
+    },
+    "concurrentUserSimulationNum": {
+      "type": "integer"
+    },
+    "testDataConfigFile": {
+      "type": "string"
+    },
+    "authDataProvider": {
+      "type": "string",
+      "defaultIndex": 1,
+      "enumVar": "miscMap.providers"
+    },
+    "compareEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "enabled": {
+      "type": "boolean"
+    },
+    "loadTestingEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "loadTestingTime": {
+      "type": "number"
+    },
+    "distributedLoadTests": {
+      "type": "boolean",
+      "required": true
+    },
+    "compareBaseUrlsNum": {
+      "type": "integer"
+    },
+    "concurrentUserRampUpTime": {
+      "type": "number"
+    },
+    "loadTestingReportSamples": {
+      "type": "integer"
+    },
+    "repeatSuiteExecutionNum": {
+      "type": "integer"
+    },
+    "isGenerateExecutionLogs": {
+      "type": "boolean",
+      "required": false
+    },
+    "isSeleniumExecutor": {
+      "type": "boolean",
+      "required": false
+    },
+    "selConcWebdriver": {
+      "type": "boolean",
+      "required": false
+    },
+    "isSeleniumModuleTests": {
+      "type": "boolean",
+      "required": false
+    },
+    "seleniumScript": {
+      "type": "string",
+      "required": false
+    },
+    "seleniumScriptRetryCount": {
+      "type": "integer",
+      "required": false
+    },
+    "seleniumScripts": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "seleniumLoggerPreferences": {
+      "type": "string"
+    },
+    "javaHome": {
+      "type": "string"
+    },
+    "gatfJarPath": {
+      "type": "string"
+    },
+    "seleniumDriverConfigs": {
+      "label": {
+        "type": "section",
+        "value": "Selenium Driver Configurations"
+      },
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "platform": {
+            "type": "string"
+          },
+          "driverName": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "arguments": {
+            "type": "string"
+          },
+          "capabilities": {
+            "label": {
+              "type": "section",
+              "value": "Capabilities"
+            },
+            "type": "map",
+            "types": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "properties": {
+            "label": {
+              "type": "section",
+              "value": "Properties"
+            },
+            "type": "map",
+            "types": {
+              "key": {
+                "type": "string"
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "debugEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "isOrderByFileName": {
+      "type": "boolean",
+      "required": true
+    },
+    "isServerLogsApiAuthEnabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "serverLogsApiAuthExtractAuth": {
+      "type": "string"
+    },
+    "isFetchFailureLogs": {
+      "type": "boolean",
+      "required": true
+    },
+    "testCaseHooksPaths": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "distributedNodes": {
+      "label": {
+        "type": "section",
+        "value": "Distributed Load Test Nodes"
+      },
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "ignoreFiles": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "orderedFiles": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string",
+        "enumVar": "alltestcasefiles"
+      }
+    },
+    "gatfTestDataConfig": {
+      "type": "object",
+      "properties": {
+        "globalVariables": {
+          "label": {
+            "type": "section",
+            "value": "Global Test Variables"
+          },
+          "type": "map",
+          "types": {
+            "key": {
+              "type": "string"
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "compareEnvBaseUrls": {
+          "label": {
+            "type": "section",
+            "value": "Comparison Environments"
+          },
+          "type": "array",
+          "items": {
+            "nolabel": true,
+            "type": "string"
+          }
+        },
+        "dataSourceList": {
+          "label": {
+            "type": "section",
+            "value": "Data Sources"
+          },
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dataSourceName": {
+                "type": "string"
+              },
+              "dataSourceClass": {
+                "type": "string",
+                "enumVar": "miscMap.datasourcecls"
+              },
+              "poolSize": {
+                "type": "integer"
+              },
+              "newResourceCheckoutTimeMs": {
+                "type": "number"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "nolabel": true,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "dataSourceListForProfiling": {
+          "label": {
+            "type": "section",
+            "value": "Data Sources For Profiling"
+          },
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dataSourceName": {
+                "type": "string"
+              },
+              "dataSourceClass": {
+                "type": "string",
+                "enumVar": "miscMap.datasourcecls"
+              },
+              "poolSize": {
+                "type": "integer"
+              },
+              "newResourceCheckoutTimeMs": {
+                "type": "number"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "nolabel": true,
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "providerTestDataList": {
+          "label": {
+            "type": "section",
+            "value": "Test Data Providers"
+          },
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "dataSourceName": {
+                "type": "string",
+                "enumVar": "miscMap.datasources"
+              },
+              "providerName": {
+                "type": "string"
+              },
+              "providerClass": {
+                "type": "string",
+                "enumVar": "miscMap.providercls"
+              },
+              "sourceProperties": {
+                "type": "string"
+              },
+              "providerProperties": {
+                "type": "string"
+              },
+              "queryStr": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "nolabel": true,
+                  "type": "string"
+                }
+              },
+              "live": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "dataSourceHooks": {
+          "label": {
+            "type": "section",
+            "value": "Data Source Hooks"
+          },
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "hookName": {
+                "type": "string"
+              },
+              "hookClass": {
+                "type": "string"
+              },
+              "dataSourceName": {
+                "type": "string",
+                "enumVar": "miscMap.datasources"
+              },
+              "queryStrs": {
+                "type": "array",
+                "items": {
+                  "nolabel": true,
+                  "type": "string"
+                }
+              },
+              "executeOnStart": {
+                "type": "boolean",
+                "required": true
+              },
+              "executeOnShutdown": {
+                "type": "boolean",
+                "required": true
+              }
+            }
+          }
+        }
+      },
+      "name": "GatfTestDataConfig"
+    },
+    "wrkPath": {
+      "type": "string"
+    },
+    "wrk2Path": {
+      "type": "string"
+    },
+    "vegetaPath": {
+      "type": "string"
+    },
+    "autocannonPath": {
+      "type": "string"
+    },
+    "extraProperties": {
+      "label": {
+        "type": "section",
+        "value": "Additional Properties"
+      },
+      "type": "map",
+      "types": {
+        "key": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+};
+
+export const generatorSchema: CfgSchema = {
+  "type": "object",
+  "properties": {
+    "testPaths": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "soapWsdlKeyPairs": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    "urlPrefix": {
+      "type": "string"
+    },
+    "requestDataType": {
+      "type": "string"
+    },
+    "responseDataType": {
+      "type": "string"
+    },
+    "resourcepath": {
+      "type": "string"
+    },
+    "enabled": {
+      "type": "boolean",
+      "required": true
+    },
+    "overrideSecure": {
+      "type": "boolean",
+      "required": true
+    },
+    "useSoapClient": {
+      "type": "boolean",
+      "required": true
+    },
+    "urlSuffix": {
+      "type": "string"
+    },
+    "postmanCollectionVersion": {
+      "type": "integer"
+    },
+    "testCaseFormat": {
+      "type": "string"
+    }
+  }
+};
