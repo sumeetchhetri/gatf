@@ -177,6 +177,22 @@ export interface ConfigResponse {
   config: Record<string, unknown>;
 }
 
+// ---- test files (Slice C) ----
+// GET /testcasefiles → [[relativePath, attrBase64], ...]. relativePath IS the testcaseFileName the
+// /testcases + /testcasefiles CRUD endpoints expect (relative to the configured test-case dir).
+export type TestcaseFileEntry = { path: string; attr: string };
+// A .sel parse error detail from a failed save: [_, lineNo, lineText, message].
+export type SelParseError = (string | number | null)[];
+export type SaveSelResult = { ok: true } | { ok: false; errors: SelParseError[]; message?: string };
+// Structured API test case (subset we render; the full TestCase has many more fields).
+export interface ApiTestCase {
+  name?: string;
+  url?: string;
+  method?: string;
+  secure?: boolean;
+  [k: string]: unknown;
+}
+
 function authToken(): string {
   try {
     return sessionStorage.getItem('token') || '';
@@ -195,6 +211,12 @@ async function getJson<T>(url: string): Promise<T> {
   const r = await fetch(withTok(url), { headers: { Accept: 'application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
   return (await r.json()) as T;
+}
+
+async function getText(url: string): Promise<string> {
+  const r = await fetch(withTok(url), { headers: { Accept: 'text/plain, application/json' } });
+  if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
+  return r.text();
 }
 
 // POST JSON to a legacy handler (e.g. /configure). On failure, surface the server's error text
@@ -223,6 +245,27 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
   }
 }
 
+// Generic write to a legacy handler (create/rename/delete). Surfaces the server error text.
+async function sendReq(method: string, url: string, body?: string, contentType?: string): Promise<string> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  if (contentType) headers['Content-Type'] = contentType;
+  const r = await fetch(withTok(url), { method, headers, body });
+  const text = await r.text();
+  if (!r.ok) {
+    let msg = text;
+    try {
+      const j = JSON.parse(text);
+      msg = (j && (j.message || j.error)) || text;
+    } catch {
+      /* plain text */
+    }
+    throw new Error(msg || `HTTP ${r.status}`);
+  }
+  return text;
+}
+
+const tcf = (p: string) => 'testcaseFileName=' + encodeURIComponent(p);
+
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
   config: () => getJson<ConfigResponse>('/api/config'),
@@ -234,4 +277,34 @@ export const api = {
   configExecutor: () => getJson<Record<string, unknown>>('/configure?configType=executor'),
   saveConfigExecutor: (cfg: Record<string, unknown>) =>
     postJson<Record<string, unknown>>('/configure?configType=executor', cfg),
+  // ---- test files (Slice C) ----
+  testcaseFiles: async (): Promise<TestcaseFileEntry[]> => {
+    const raw = await getJson<[string, string | null][]>('/testcasefiles');
+    return (raw || []).map(([path, attr]) => ({ path, attr: attr || '' }));
+  },
+  readSel: (path: string) => getText('/testcases?' + tcf(path)),
+  readXmlCases: (path: string) => getJson<ApiTestCase[]>('/testcases?' + tcf(path)),
+  // Save raw .sel content; the server writes it and parse-validates — returns parse errors on failure.
+  saveSel: async (path: string, text: string): Promise<SaveSelResult> => {
+    const r = await fetch(withTok('/testcases?' + tcf(path)), {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      body: text,
+    });
+    if (r.ok) return { ok: true };
+    const body = await r.text();
+    try {
+      const j = JSON.parse(body) as { error?: SelParseError; others?: SelParseError[] };
+      const errors: SelParseError[] = [];
+      if (j.error) errors.push(j.error);
+      if (Array.isArray(j.others)) errors.push(...j.others);
+      return errors.length ? { ok: false, errors } : { ok: false, errors: [], message: body };
+    } catch {
+      return { ok: false, errors: [], message: body || `HTTP ${r.status}` };
+    }
+  },
+  createTestcaseFile: (path: string) => sendReq('POST', '/testcasefiles?' + tcf(path)),
+  renameTestcaseFile: (from: string, to: string) =>
+    sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encodeURIComponent(to)),
+  deleteTestcaseFile: (path: string) => sendReq('DELETE', '/testcasefiles?' + tcf(path)),
 };

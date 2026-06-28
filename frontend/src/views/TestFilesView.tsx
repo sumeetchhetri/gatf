@@ -1,116 +1,391 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import type { TestFilesIndex, TestFile, TestFileContent } from '../api';
-import { fmtBytes } from '../util';
+import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
+import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
+
+type Kind = 'sel' | 'xml' | 'other';
+const kindOf = (p: string): Kind =>
+  p.toLowerCase().endsWith('.sel') ? 'sel' : p.toLowerCase().endsWith('.xml') ? 'xml' : 'other';
+const baseName = (p: string) => {
+  const i = p.lastIndexOf('/');
+  return i === -1 ? p : p.slice(i + 1);
+};
+
+interface OpenFile {
+  path: string;
+  kind: Kind;
+  loading: boolean;
+  err: string | null;
+  text: string; // original loaded text (.sel/other)
+  cases: ApiTestCase[] | null; // .xml structured
+}
 
 export default function TestFilesView() {
-  const [data, setData] = useState<TestFilesIndex | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sel, setSel] = useState<string | null>(null);
-  const [content, setContent] = useState<TestFileContent | null>(null);
-  const [cErr, setCErr] = useState<string | null>(null);
-  const [cLoading, setCLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null); // CRUD in flight (message)
 
-  useEffect(() => {
+  const [open, setOpen] = useState<OpenFile | null>(null);
+  const [text, setText] = useState(''); // editor working copy
+  const [saving, setSaving] = useState(false);
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [parseErrors, setParseErrors] = useState<SelParseError[]>([]);
+  const [gotoLine, setGotoLine] = useState<number | null>(null);
+
+  // dialogs
+  const [newOpen, setNewOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<'sel' | 'xml'>('sel');
+  const [renaming, setRenaming] = useState(false);
+  const [renameTo, setRenameTo] = useState('');
+  const [confirmDel, setConfirmDel] = useState<string | null>(null);
+
+  const loadFiles = () => {
     setLoading(true);
+    setError(null);
     api
-      .testfiles()
-      .then(setData)
+      .testcaseFiles()
+      .then(setFiles)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, []);
-
-  const openFile = (f: TestFile) => {
-    setSel(f.path);
-    setContent(null);
-    setCErr(null);
-    setCLoading(true);
-    api
-      .testfile(f.path)
-      .then(setContent)
-      .catch((e) => setCErr(e.message))
-      .finally(() => setCLoading(false));
   };
+  useEffect(loadFiles, []);
+
+  const groups = useMemo(() => {
+    const m = new Map<string, TestcaseFileEntry[]>();
+    for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+      const i = f.path.lastIndexOf('/');
+      const dir = i === -1 ? '' : f.path.slice(0, i);
+      if (!m.has(dir)) m.set(dir, []);
+      m.get(dir)!.push(f);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [files]);
+
+  const dirty = open != null && open.kind !== 'xml' && text !== open.text;
+
+  const openFile = (path: string) => {
+    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    const kind = kindOf(path);
+    setOpen({ path, kind, loading: true, err: null, text: '', cases: null });
+    setText('');
+    setParseErrors([]);
+    setSaveMsg(null);
+    setSaved(false);
+    setRenaming(false);
+    setConfirmDel(null);
+    if (kind === 'xml') {
+      api
+        .readXmlCases(path)
+        .then((cases) => setOpen({ path, kind, loading: false, err: null, text: '', cases }))
+        .catch((e) => setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }));
+    } else {
+      api
+        .readSel(path)
+        .then((t) => {
+          setOpen({ path, kind, loading: false, err: null, text: t, cases: null });
+          setText(t);
+        })
+        .catch((e) => setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }));
+    }
+  };
+
+  const save = () => {
+    if (!open || open.kind === 'xml') return;
+    setSaving(true);
+    setSaveMsg(null);
+    setSaved(false);
+    setParseErrors([]);
+    api
+      .saveSel(open.path, text)
+      .then((r) => {
+        if (r.ok) {
+          setOpen({ ...open, text });
+          setSaved(true);
+          setTimeout(() => setSaved(false), 4000);
+        } else {
+          setParseErrors(r.errors);
+          if (r.message) setSaveMsg(r.message);
+          else if (r.errors.length === 0) setSaveMsg('Save failed.');
+        }
+      })
+      .catch((e) => setSaveMsg(e.message))
+      .finally(() => setSaving(false));
+  };
+
+  const doCreate = () => {
+    let name = newName.trim();
+    if (!name) return;
+    if (!/\.(sel|xml)$/i.test(name)) name += '.' + newType;
+    setBusy('Creating…');
+    api
+      .createTestcaseFile(name)
+      .then(() => {
+        setNewOpen(false);
+        setNewName('');
+        loadFiles();
+        openFile(name);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setBusy(null));
+  };
+
+  const doRename = () => {
+    if (!open) return;
+    const to = renameTo.trim();
+    if (!to || to === open.path) {
+      setRenaming(false);
+      return;
+    }
+    setBusy('Renaming…');
+    api
+      .renameTestcaseFile(open.path, to)
+      .then(() => {
+        setRenaming(false);
+        loadFiles();
+        openFile(to);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setBusy(null));
+  };
+
+  const doDelete = (path: string) => {
+    setBusy('Deleting…');
+    api
+      .deleteTestcaseFile(path)
+      .then(() => {
+        setConfirmDel(null);
+        if (open?.path === path) setOpen(null);
+        loadFiles();
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setBusy(null));
+  };
+
+  const markers: EditorMarker[] = parseErrors
+    .map((e) => ({ line: Number(e[1]), message: String(e[3] ?? e[2] ?? 'Parse error') }))
+    .filter((m) => Number.isFinite(m.line) && m.line > 0);
 
   return (
     <div className="view">
       <div className="view-head">
         <h2>Test files</h2>
         <div className="view-head-right">
-          {data && (
-            <span className="muted small mono ellipsis" title={data.dir}>
-              {data.dir}
-            </span>
-          )}
-          <span className="muted small">read-only</span>
+          <button className="btn ghost small" onClick={() => setNewOpen((o) => !o)}>
+            + New file
+          </button>
+          <button className="btn ghost small" onClick={loadFiles}>
+            Refresh
+          </button>
         </div>
       </div>
 
+      {busy && <div className="view-note">{busy}</div>}
       {loading && <div className="view-note">Loading…</div>}
-      {error && (
-        <div className="view-error">
-          Could not reach the test-files API ({error}). Rebuild the JAR from this delta so the{' '}
-          <code>/api</code> handler is present.
+      {error && <div className="view-error">{error}</div>}
+
+      {newOpen && (
+        <div className="tf-new">
+          <input
+            className="sf-input"
+            placeholder="path/name (e.g. login.sel or api/users.xml)"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && doCreate()}
+            autoFocus
+          />
+          <select className="sf-input" value={newType} onChange={(e) => setNewType(e.target.value as 'sel' | 'xml')}>
+            <option value="sel">.sel (selenium)</option>
+            <option value="xml">.xml (API)</option>
+          </select>
+          <button className="btn primary small" onClick={doCreate}>
+            Create
+          </button>
+          <button className="btn ghost small" onClick={() => setNewOpen(false)}>
+            Cancel
+          </button>
         </div>
       )}
 
-      {data && !loading && (
+      {!loading && !error && (
         <div className="tf-split">
           <div className="tf-list">
-            {data.files.length === 0 ? (
-              <div className="view-note">No .sel or .xml test files in this directory.</div>
+            {files.length === 0 ? (
+              <div className="view-note">No test files. Create one with “+ New file”.</div>
             ) : (
-              <table className="grid-table">
-                <thead>
-                  <tr>
-                    <th>File</th>
-                    <th>Type</th>
-                    <th className="num">Size</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.files.map((f) => (
-                    <tr
+              groups.map(([dir, entries]) => (
+                <div className="tf-group" key={dir || '(root)'}>
+                  <div className="tf-group-h mono small">{dir || '(root)'}</div>
+                  {entries.map((f) => (
+                    <div
                       key={f.path}
-                      className={sel === f.path ? 'sel' : ''}
-                      onClick={() => openFile(f)}
-                      style={{ cursor: 'pointer' }}
+                      className={'tf-item' + (open?.path === f.path ? ' sel' : '')}
+                      onClick={() => openFile(f.path)}
                     >
-                      <td className="mono ellipsis" style={{ maxWidth: 260 }}>
-                        {f.name}
-                      </td>
-                      <td>
-                        <span className={'kind kind-' + f.kind}>{f.kind}</span>
-                      </td>
-                      <td className="num mono">{fmtBytes(f.size)}</td>
-                    </tr>
+                      <span className={'kind kind-' + kindOf(f.path)}>{kindOf(f.path)}</span>
+                      <span className="tf-item-name mono ellipsis" title={f.path}>
+                        {baseName(f.path)}
+                      </span>
+                      <button
+                        className="tf-del"
+                        title="Delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setConfirmDel(f.path);
+                        }}
+                      >
+                        ✕
+                      </button>
+                    </div>
                   ))}
-                </tbody>
-              </table>
+                </div>
+              ))
             )}
           </div>
 
           <div className="tf-content">
-            {!sel && <div className="view-note muted">Select a file to view its contents.</div>}
-            {cLoading && <div className="view-note">Loading…</div>}
-            {cErr && <div className="view-error">Could not read file ({cErr}).</div>}
-            {content && (
+            {!open && <div className="view-note muted">Select a file to edit, or create a new one.</div>}
+
+            {open && (
               <>
                 <div className="tf-content-head">
-                  <span className="mono small ellipsis" title={content.path}>
-                    {content.path}
-                  </span>
-                  {content.truncated && <span className="warn-badge small">truncated</span>}
+                  {renaming ? (
+                    <div className="tf-rename">
+                      <input
+                        className="sf-input"
+                        value={renameTo}
+                        onChange={(e) => setRenameTo(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && doRename()}
+                        autoFocus
+                      />
+                      <button className="btn primary small" onClick={doRename}>
+                        Rename
+                      </button>
+                      <button className="btn ghost small" onClick={() => setRenaming(false)}>
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="mono small ellipsis" title={open.path}>
+                        {open.path}
+                      </span>
+                      <span className={'kind kind-' + open.kind}>{open.kind}</span>
+                      <div className="tf-head-actions">
+                        {open.kind !== 'xml' && (
+                          <>
+                            <button className="btn primary small" disabled={!dirty || saving} onClick={save}>
+                              {saving ? 'Saving…' : 'Save'}
+                            </button>
+                            <button
+                              className="btn ghost small"
+                              disabled={!dirty || saving}
+                              onClick={() => setText(open.text)}
+                            >
+                              Reset
+                            </button>
+                          </>
+                        )}
+                        <button
+                          className="btn ghost small"
+                          onClick={() => {
+                            setRenameTo(open.path);
+                            setRenaming(true);
+                          }}
+                        >
+                          Rename
+                        </button>
+                        {dirty && <span className="muted small">unsaved</span>}
+                        {saved && <span className="cfg-ok small">saved ✓</span>}
+                      </div>
+                    </>
+                  )}
                 </div>
-                <pre className="body-pre tf-pre">{content.content}</pre>
-                <div className="view-note muted small">
-                  Editing arrives with the Monaco seleasy editor in Phase 4; save is still via the{' '}
-                  <a href="/">classic UI</a>.
-                </div>
+
+                {open.loading && <div className="view-note">Loading…</div>}
+                {open.err && <div className="view-error">Could not read file ({open.err}).</div>}
+
+                {!open.loading && !open.err && open.kind === 'xml' && (
+                  <div className="tf-xml">
+                    <div className="view-note muted small">
+                      {(open.cases?.length ?? 0)} API test case(s). Structured add/edit lands in Slice C3 — edit in
+                      the <a href="/">classic UI</a> for now.
+                    </div>
+                    <table className="grid-table">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Method</th>
+                          <th>URL</th>
+                          <th>Secure</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(open.cases ?? []).map((c, i) => (
+                          <tr key={i}>
+                            <td className="mono">{c.name ?? '—'}</td>
+                            <td>{c.method ?? '—'}</td>
+                            <td className="mono ellipsis" style={{ maxWidth: 320 }} title={c.url}>
+                              {c.url ?? '—'}
+                            </td>
+                            <td>{c.secure ? 'yes' : 'no'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {!open.loading && !open.err && open.kind !== 'xml' && (
+                  <>
+                    <CodeEditor value={text} onChange={setText} markers={markers} gotoLine={gotoLine} />
+                    {saveMsg && <div className="view-error">{saveMsg}</div>}
+                    {parseErrors.length > 0 && (
+                      <div className="tf-problems">
+                        <div className="tf-problems-h small">
+                          {parseErrors.length} parse error(s) — file not saved
+                        </div>
+                        {parseErrors.map((e, i) => {
+                          const ln = Number(e[1]);
+                          const msg = String(e[3] ?? e[2] ?? 'Parse error');
+                          return (
+                            <div
+                              key={i}
+                              className="tf-problem"
+                              onClick={() => Number.isFinite(ln) && ln > 0 && setGotoLine(ln)}
+                            >
+                              <span className="tf-problem-ln">{Number.isFinite(ln) && ln > 0 ? `L${ln}` : '—'}</span>
+                              <span className="tf-problem-msg">{msg}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="view-note muted small">
+                      Saving parse-validates the script server-side; a backup <code>.bk</code> is kept. Syntax
+                      highlighting + autocomplete arrive in Slice C2.
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>
+        </div>
+      )}
+
+      {confirmDel && (
+        <div className="tf-confirm">
+          <span className="small">
+            Delete <span className="mono">{confirmDel}</span>?
+          </span>
+          <button className="btn small" style={{ color: '#e2557b' }} onClick={() => doDelete(confirmDel)}>
+            Delete
+          </button>
+          <button className="btn ghost small" onClick={() => setConfirmDel(null)}>
+            Cancel
+          </button>
         </div>
       )}
     </div>
