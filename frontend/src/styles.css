@@ -11,6 +11,16 @@
   --red: #f87171;
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --sans: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  --fg: #d7d7db;
+  /* seleasy editor syntax colors */
+  --cm-keyword: #c792ea;
+  --cm-atom: #f78c6c;
+  --cm-operator: #89ddff;
+  --cm-number: #fca369;
+  --cm-string: #c3e88d;
+  --cm-comment: #676e95;
+  --cm-meta: #82aaff;
+  --cm-var: #ffcb6b;
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; margin: 0; }
@@ -389,3 +399,7 @@ select.sf-input { max-width: 520px; }
 .tf-problem:hover { background: var(--panel2, rgba(127,127,127,.08)); }
 .tf-problem-ln { flex: 0 0 auto; color: var(--muted); font-family: var(--mono, monospace); font-size: 12px; }
 .tf-problem-msg { min-width: 0; overflow-wrap: anywhere; }
+
+/* seleasy CodeMirror host */
+.scm { margin-top: 2px; }
+.scm .cm-editor { border-radius: 6px; }

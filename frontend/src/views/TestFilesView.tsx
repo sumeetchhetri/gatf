@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
+// CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
+const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
 type Kind = 'sel' | 'xml' | 'other';
 const kindOf = (p: string): Kind =>
@@ -340,7 +342,20 @@ export default function TestFilesView() {
 
                 {!open.loading && !open.err && open.kind !== 'xml' && (
                   <>
-                    <CodeEditor value={text} onChange={setText} markers={markers} gotoLine={gotoLine} />
+                    {open.kind === 'sel' ? (
+                      <Suspense fallback={<div className="view-note">Loading editor…</div>}>
+                        <SelCodeMirror
+                          value={text}
+                          onChange={setText}
+                          filePath={open.path}
+                          diagnostics={markers}
+                          onSave={save}
+                          gotoLine={gotoLine}
+                        />
+                      </Suspense>
+                    ) : (
+                      <CodeEditor value={text} onChange={setText} markers={markers} gotoLine={gotoLine} />
+                    )}
                     {saveMsg && <div className="view-error">{saveMsg}</div>}
                     {parseErrors.length > 0 && (
                       <div className="tf-problems">
@@ -364,8 +379,9 @@ export default function TestFilesView() {
                       </div>
                     )}
                     <div className="view-note muted small">
-                      Saving parse-validates the script server-side; a backup <code>.bk</code> is kept. Syntax
-                      highlighting + autocomplete arrive in Slice C2.
+                      {open.kind === 'sel'
+                        ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
+                        : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
                     </div>
                   </>
                 )}

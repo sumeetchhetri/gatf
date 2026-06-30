@@ -283,6 +283,8 @@ export const api = {
     return (raw || []).map(([path, attr]) => ({ path, attr: attr || '' }));
   },
   readSel: (path: string) => getText('/testcases?' + tcf(path)),
+  // declared subtests in a .sel file (for @call autocomplete)
+  subtests: (path: string) => getJson<string[]>('/testcasefiles?' + tcf(path) + '&allsubtests=true'),
   readXmlCases: (path: string) => getJson<ApiTestCase[]>('/testcases?' + tcf(path)),
   // Save raw .sel content; the server writes it and parse-validates — returns parse errors on failure.
   saveSel: async (path: string, text: string): Promise<SaveSelResult> => {

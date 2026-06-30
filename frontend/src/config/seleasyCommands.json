@@ -1,0 +1,915 @@
+{
+  "_generator": "tools/gen-commands/gen_commands.py",
+  "_source": "alldep-jar/src/main/java/com/gatf/selenium/Command.java",
+  "_note": "seleasy statement keywords extracted from the parse() and handleActions() dispatch. match: 'prefix' = keyword begins the line (startsWith); 'exact' = whole-line keyword only; 'regex' = matched via a compiled Pattern (see qualifiers). requiresArg=true means the keyword must be followed by a space+argument and cannot stand alone (e.g. `open `). canBeBare=true means the keyword may appear as a whole line (e.g. `clear`, `submit`). Regenerate with the generator above; do not hand-edit.",
+  "count": 125,
+  "commands": [
+    {
+      "keyword": "chord",
+      "match": "regex",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "TypeCommand",
+      "qualifiers": [
+        "bl",
+        "ch",
+        "bk",
+        "cl",
+        "fo"
+      ]
+    },
+    {
+      "keyword": "click",
+      "match": "regex",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ClickCommand",
+      "qualifiers": [
+        "fo",
+        "nf"
+      ]
+    },
+    {
+      "keyword": "randomize",
+      "match": "regex",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "TypeCommand",
+      "qualifiers": [
+        "bl",
+        "ch",
+        "bk",
+        "cl",
+        "fo"
+      ]
+    },
+    {
+      "keyword": "sendkeys",
+      "match": "regex",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "TypeCommand",
+      "qualifiers": [
+        "bl",
+        "ch",
+        "bk",
+        "cl",
+        "fo"
+      ]
+    },
+    {
+      "keyword": "type",
+      "match": "regex",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "TypeCommand",
+      "qualifiers": [
+        "bl",
+        "ch",
+        "bk",
+        "cl",
+        "fo"
+      ]
+    },
+    {
+      "keyword": "#",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ScopedLoopCommand"
+    },
+    {
+      "keyword": "##",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ScopedLoopCommand"
+    },
+    {
+      "keyword": "#c",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#counter",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#file",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#j",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "JavaControlCommand"
+    },
+    {
+      "keyword": "#mongo",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#o",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#optional",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#p",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#p-sf",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#provider",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#provider-sf",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#sql",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ProviderLoopCommand"
+    },
+    {
+      "keyword": "#tp",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "TransientProviderCommand"
+    },
+    {
+      "keyword": "#transient-provider",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "TransientProviderCommand"
+    },
+    {
+      "keyword": "/*",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MultiCommentCommand"
+    },
+    {
+      "keyword": "//",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "CommentCommand"
+    },
+    {
+      "keyword": ":",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ElseCommand"
+    },
+    {
+      "keyword": ":?",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ElseIfCommand"
+    },
+    {
+      "keyword": ":?!",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ElseIfCommand"
+    },
+    {
+      "keyword": "<<<",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "CodeCommand"
+    },
+    {
+      "keyword": "<<<(",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "CodeCommand"
+    },
+    {
+      "keyword": ">>>",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ValueCommand"
+    },
+    {
+      "keyword": "?",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "IfCommand"
+    },
+    {
+      "keyword": "?!",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "IfCommand"
+    },
+    {
+      "keyword": "??",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "WaitTillElementVisibleOrInvisibleCommand"
+    },
+    {
+      "keyword": "??+",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "WaitTillElementVisibleOrInvisibleCommand"
+    },
+    {
+      "keyword": "??-",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "WaitTillElementVisibleOrInvisibleCommand"
+    },
+    {
+      "keyword": "@call",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ExecSubTestCommand"
+    },
+    {
+      "keyword": "[",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ValueListCommand"
+    },
+    {
+      "keyword": "]",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ValueCommand"
+    },
+    {
+      "keyword": "^",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ValueCommand"
+    },
+    {
+      "keyword": "actions",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ActionsCommand"
+    },
+    {
+      "keyword": "alert",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "AlertCommand"
+    },
+    {
+      "keyword": "back",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "BackCommand"
+    },
+    {
+      "keyword": "barcode",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadQRCodeBarCodeCommand"
+    },
+    {
+      "keyword": "begin code in",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "CodeCommand"
+    },
+    {
+      "keyword": "break",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "BreakCommand"
+    },
+    {
+      "keyword": "canvas",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "CanvasCommand"
+    },
+    {
+      "keyword": "clear",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ClearCommand"
+    },
+    {
+      "keyword": "close",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "CloseCommand"
+    },
+    {
+      "keyword": "config",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ConfigPropsCommand"
+    },
+    {
+      "keyword": "confirm",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ConfirmCommand"
+    },
+    {
+      "keyword": "continue",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ContinueCommand"
+    },
+    {
+      "keyword": "dblclick",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "DoubleClickCommand"
+    },
+    {
+      "keyword": "doubleclick",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "DoubleClickCommand"
+    },
+    {
+      "keyword": "ds query",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "DSQueryCommand"
+    },
+    {
+      "keyword": "dsq",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "DSQueryCommand"
+    },
+    {
+      "keyword": "dynprops",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "DynPropsCommand"
+    },
+    {
+      "keyword": "ele-screenshot",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "EleScreenshotCommand"
+    },
+    {
+      "keyword": "else",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ElseCommand"
+    },
+    {
+      "keyword": "else if",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ElseIfCommand"
+    },
+    {
+      "keyword": "else ifnot",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ElseIfCommand"
+    },
+    {
+      "keyword": "end code",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ValueCommand"
+    },
+    {
+      "keyword": "exec",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ExecCommand"
+    },
+    {
+      "keyword": "execjs",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ExecJsCommand"
+    },
+    {
+      "keyword": "execjsfile",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ExecJsFileCommand"
+    },
+    {
+      "keyword": "fail",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "FailCommand"
+    },
+    {
+      "keyword": "filevar",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "FileVarCommand"
+    },
+    {
+      "keyword": "forward",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ForwardCommand"
+    },
+    {
+      "keyword": "frame",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "FrameCommand"
+    },
+    {
+      "keyword": "func",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SubTestCommand"
+    },
+    {
+      "keyword": "goto",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "GotoCommand"
+    },
+    {
+      "keyword": "hidekeypad",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MHideKeyPadCommand"
+    },
+    {
+      "keyword": "hover",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "HoverCommand"
+    },
+    {
+      "keyword": "hoverclick",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "HoverAndClickCommand"
+    },
+    {
+      "keyword": "http",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "HttpCommand"
+    },
+    {
+      "keyword": "if",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "IfCommand"
+    },
+    {
+      "keyword": "ifnot",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "IfCommand"
+    },
+    {
+      "keyword": "imgsave",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SaveImageCommand"
+    },
+    {
+      "keyword": "import",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ImportCommand"
+    },
+    {
+      "keyword": "include",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "IncludeCommand"
+    },
+    {
+      "keyword": "jsvar",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "JsVarCommand"
+    },
+    {
+      "keyword": "layer",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "LayerCommand"
+    },
+    {
+      "keyword": "loop over",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ScopedLoopCommand"
+    },
+    {
+      "keyword": "mail",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MailCommand"
+    },
+    {
+      "keyword": "maximize",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MaximizeCommand"
+    },
+    {
+      "keyword": "mode",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ModeCommand"
+    },
+    {
+      "keyword": "netapix",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "NetworkAPIInterceptCommand"
+    },
+    {
+      "keyword": "ocr",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadImageTextCommand"
+    },
+    {
+      "keyword": "open",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "BrowserCommand"
+    },
+    {
+      "keyword": "pass",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "PassCommand"
+    },
+    {
+      "keyword": "pinch",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MPinchCommand"
+    },
+    {
+      "keyword": "qrcode",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadQRCodeBarCodeCommand"
+    },
+    {
+      "keyword": "readfile",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadFileCommand"
+    },
+    {
+      "keyword": "readimgtext",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadImageTextCommand"
+    },
+    {
+      "keyword": "readqrbar",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ReadQRCodeBarCodeCommand"
+    },
+    {
+      "keyword": "refresh",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "RefreshCommand"
+    },
+    {
+      "keyword": "require",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "RequireCommand"
+    },
+    {
+      "keyword": "robot",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "RobotCommand"
+    },
+    {
+      "keyword": "rotate",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MRotateCommand"
+    },
+    {
+      "keyword": "screenshot",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "ScreenshotCommand"
+    },
+    {
+      "keyword": "scroll",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "ScrollCommand"
+    },
+    {
+      "keyword": "scrolldown",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "RobotCommand"
+    },
+    {
+      "keyword": "scrollpagedown",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "RobotCommand"
+    },
+    {
+      "keyword": "scrollpageup",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "RobotCommand"
+    },
+    {
+      "keyword": "scrollup",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "RobotCommand"
+    },
+    {
+      "keyword": "select",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SelectCommand"
+    },
+    {
+      "keyword": "setting",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SettingCommand"
+    },
+    {
+      "keyword": "shake",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MShakeCommand"
+    },
+    {
+      "keyword": "sleep",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SleepCommand"
+    },
+    {
+      "keyword": "submit",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "SubmitCommand"
+    },
+    {
+      "keyword": "subtest",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "SubTestCommand"
+    },
+    {
+      "keyword": "swipe",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MSwipeCommand"
+    },
+    {
+      "keyword": "tab",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "TabCommand"
+    },
+    {
+      "keyword": "tap",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MTapCommand"
+    },
+    {
+      "keyword": "timeout",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "TimeoutCommand"
+    },
+    {
+      "keyword": "touch",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MTouchActionCommand"
+    },
+    {
+      "keyword": "upload",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "UploadCommand"
+    },
+    {
+      "keyword": "var",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "VarCommand"
+    },
+    {
+      "keyword": "wait for",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "WaitTillElementVisibleOrInvisibleCommand"
+    },
+    {
+      "keyword": "wait till visible",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "WaitTillElementVisibleOrInvisibleCommand"
+    },
+    {
+      "keyword": "waitready",
+      "match": "exact",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "MaximizeCommand"
+    },
+    {
+      "keyword": "warn",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "WarnCommand"
+    },
+    {
+      "keyword": "window",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "WindowCommand"
+    },
+    {
+      "keyword": "wopensave",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "WindowOpenSaveInterceptJsCommand"
+    },
+    {
+      "keyword": "zoom",
+      "match": "prefix",
+      "requiresArg": true,
+      "canBeBare": false,
+      "class": "MZoomCommand"
+    },
+    {
+      "keyword": "{",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "StartCommand"
+    },
+    {
+      "keyword": "}",
+      "match": "prefix",
+      "requiresArg": false,
+      "canBeBare": true,
+      "class": "EndCommand"
+    }
+  ]
+}
