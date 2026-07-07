@@ -403,3 +403,10 @@ select.sf-input { max-width: 520px; }
 /* seleasy CodeMirror host */
 .scm { margin-top: 2px; }
 .scm .cm-editor { border-radius: 6px; }
+
+/* ---- Slice C3: structured test-case editor ---- */
+.tce { min-width: 0; }
+.tce-bar { display: flex; align-items: center; gap: 10px; margin: 6px 0 10px; flex-wrap: wrap; }
+.tce-title { margin-right: auto; color: var(--fg); font-weight: 600; }
+.tce-actions { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
+.tce-actions-h { width: 1%; }

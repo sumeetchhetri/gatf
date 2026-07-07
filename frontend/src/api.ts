@@ -246,8 +246,14 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 }
 
 // Generic write to a legacy handler (create/rename/delete). Surfaces the server error text.
-async function sendReq(method: string, url: string, body?: string, contentType?: string): Promise<string> {
-  const headers: Record<string, string> = { Accept: 'application/json' };
+async function sendReq(
+  method: string,
+  url: string,
+  body?: string,
+  contentType?: string,
+  extraHeaders?: Record<string, string>,
+): Promise<string> {
+  const headers: Record<string, string> = { Accept: 'application/json', ...(extraHeaders || {}) };
   if (contentType) headers['Content-Type'] = contentType;
   const r = await fetch(withTok(url), { method, headers, body });
   const text = await r.text();
@@ -309,4 +315,11 @@ export const api = {
   renameTestcaseFile: (from: string, to: string) =>
     sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encodeURIComponent(to)),
   deleteTestcaseFile: (path: string) => sendReq('DELETE', '/testcasefiles?' + tcf(path)),
+  // structured .xml API test-case CRUD (TestCase JSON; server validates)
+  addCase: (path: string, tc: ApiTestCase) =>
+    sendReq('POST', '/testcases?' + tcf(path), JSON.stringify(tc), 'application/json'),
+  updateCase: (path: string, origName: string, tc: ApiTestCase) =>
+    sendReq('PUT', '/testcases?' + tcf(path) + '&tcName=' + encodeURIComponent(origName), JSON.stringify(tc), 'application/json'),
+  deleteCase: (path: string, name: string) =>
+    sendReq('DELETE', '/testcases?' + tcf(path), undefined, undefined, { testcasename: name }),
 };

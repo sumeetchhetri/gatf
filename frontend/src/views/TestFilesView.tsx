@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
+import TestCaseEditor from '../components/TestCaseEditor';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
@@ -82,7 +83,12 @@ export default function TestFilesView() {
       api
         .readXmlCases(path)
         .then((cases) => setOpen({ path, kind, loading: false, err: null, text: '', cases }))
-        .catch((e) => setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }));
+        .catch((e) =>
+          // an empty/new .xml (seeded <TestCases></TestCases>) has no cases yet — open the editor empty
+          /no testcases/i.test(e.message)
+            ? setOpen({ path, kind, loading: false, err: null, text: '', cases: [] })
+            : setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }),
+        );
     } else {
       api
         .readSel(path)
@@ -310,34 +316,7 @@ export default function TestFilesView() {
                 {open.err && <div className="view-error">Could not read file ({open.err}).</div>}
 
                 {!open.loading && !open.err && open.kind === 'xml' && (
-                  <div className="tf-xml">
-                    <div className="view-note muted small">
-                      {(open.cases?.length ?? 0)} API test case(s). Structured add/edit lands in Slice C3 — edit in
-                      the <a href="/">classic UI</a> for now.
-                    </div>
-                    <table className="grid-table">
-                      <thead>
-                        <tr>
-                          <th>Name</th>
-                          <th>Method</th>
-                          <th>URL</th>
-                          <th>Secure</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {(open.cases ?? []).map((c, i) => (
-                          <tr key={i}>
-                            <td className="mono">{c.name ?? '—'}</td>
-                            <td>{c.method ?? '—'}</td>
-                            <td className="mono ellipsis" style={{ maxWidth: 320 }} title={c.url}>
-                              {c.url ?? '—'}
-                            </td>
-                            <td>{c.secure ? 'yes' : 'no'}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  <TestCaseEditor filePath={open.path} cases={open.cases ?? []} onReload={() => openFile(open.path)} />
                 )}
 
                 {!open.loading && !open.err && open.kind !== 'xml' && (
