@@ -14,6 +14,7 @@ import { autocompletion, completionKeymap, closeBrackets, closeBracketsKeymap } 
 import { lintGutter, lintKeymap, setDiagnostics, type Diagnostic } from '@codemirror/lint';
 import { seleasyLanguage, seleasyHighlight } from '../editor/seleasyLang';
 import { mkSeleasyCompletion } from '../editor/seleasyComplete';
+import { seleasyNav } from '../editor/seleasyNav';
 
 export interface EditorDiag {
   line: number; // 1-based
@@ -52,6 +53,8 @@ export default function SelCodeMirror({
   diagnostics = [],
   onSave,
   gotoLine,
+  gotoSeq,
+  onNavigate,
 }: {
   value: string;
   onChange?: (v: string) => void;
@@ -59,15 +62,21 @@ export default function SelCodeMirror({
   diagnostics?: EditorDiag[];
   onSave?: () => void;
   gotoLine?: number | null;
+  gotoSeq?: number;
+  onNavigate?: (path: string, line?: number) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
   const pathRef = useRef(filePath);
+  const gotoLineRef = useRef(gotoLine);
+  const onNavigateRef = useRef(onNavigate);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
   pathRef.current = filePath;
+  gotoLineRef.current = gotoLine;
+  onNavigateRef.current = onNavigate;
 
   // build the editor once
   useEffect(() => {
@@ -85,6 +94,10 @@ export default function SelCodeMirror({
         seleasyLanguage,
         syntaxHighlighting(seleasyHighlight),
         autocompletion({ override: [mkSeleasyCompletion(() => pathRef.current)] }),
+        seleasyNav(
+          () => pathRef.current,
+          (p, l) => onNavigateRef.current?.(p, l),
+        ),
         lintGutter(),
         EditorView.lineWrapping,
         keymap.of([
@@ -134,15 +147,17 @@ export default function SelCodeMirror({
     view.dispatch(setDiagnostics(view.state, diags));
   }, [diagnostics]);
 
-  // jump to a line (from clicking a problem)
+  // jump to a line (from a problem click or a cross-file navigation) — gotoSeq re-triggers even for the same line
   useEffect(() => {
     const view = viewRef.current;
-    if (!view || gotoLine == null) return;
-    const ln = Math.max(1, Math.min(gotoLine, view.state.doc.lines));
+    const gl = gotoLineRef.current;
+    if (!view || gl == null) return;
+    const ln = Math.max(1, Math.min(gl, view.state.doc.lines));
     const line = view.state.doc.line(ln);
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
     view.focus();
-  }, [gotoLine]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gotoSeq]);
 
   return <div className="scm" ref={hostRef} />;
 }

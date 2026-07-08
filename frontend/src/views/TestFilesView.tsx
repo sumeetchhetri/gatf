@@ -36,6 +36,11 @@ export default function TestFilesView() {
   const [saved, setSaved] = useState(false);
   const [parseErrors, setParseErrors] = useState<SelParseError[]>([]);
   const [gotoLine, setGotoLine] = useState<number | null>(null);
+  const [gotoSeq, setGotoSeq] = useState(0);
+  const jumpTo = (n: number) => {
+    setGotoLine(n);
+    setGotoSeq((s) => s + 1);
+  };
 
   // dialogs
   const [newOpen, setNewOpen] = useState(false);
@@ -69,7 +74,7 @@ export default function TestFilesView() {
 
   const dirty = open != null && open.kind !== 'xml' && text !== open.text;
 
-  const openFile = (path: string) => {
+  const openFile = (path: string, jumpLine?: number) => {
     if (dirty && !window.confirm('Discard unsaved changes?')) return;
     const kind = kindOf(path);
     setOpen({ path, kind, loading: true, err: null, text: '', cases: null });
@@ -95,8 +100,18 @@ export default function TestFilesView() {
         .then((t) => {
           setOpen({ path, kind, loading: false, err: null, text: t, cases: null });
           setText(t);
+          if (jumpLine) jumpTo(jumpLine);
         })
         .catch((e) => setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }));
+    }
+  };
+
+  // ctrl/⌘-click or double-click on a reference line → jump within this file or open the target file
+  const onNavigate = (p: string, l?: number) => {
+    if (open && p === open.path) {
+      if (l) jumpTo(l);
+    } else {
+      openFile(p, l);
     }
   };
 
@@ -330,6 +345,8 @@ export default function TestFilesView() {
                           diagnostics={markers}
                           onSave={save}
                           gotoLine={gotoLine}
+                          gotoSeq={gotoSeq}
+                          onNavigate={onNavigate}
                         />
                       </Suspense>
                     ) : (
@@ -348,7 +365,7 @@ export default function TestFilesView() {
                             <div
                               key={i}
                               className="tf-problem"
-                              onClick={() => Number.isFinite(ln) && ln > 0 && setGotoLine(ln)}
+                              onClick={() => Number.isFinite(ln) && ln > 0 && jumpTo(ln)}
                             >
                               <span className="tf-problem-ln">{Number.isFinite(ln) && ln > 0 ? `L${ln}` : '—'}</span>
                               <span className="tf-problem-msg">{msg}</span>

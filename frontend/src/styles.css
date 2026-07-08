@@ -410,3 +410,7 @@ select.sf-input { max-width: 520px; }
 .tce-title { margin-right: auto; color: var(--fg); font-weight: 600; }
 .tce-actions { display: flex; gap: 6px; justify-content: flex-end; white-space: nowrap; }
 .tce-actions-h { width: 1%; }
+
+/* C2.1 cross-file navigation affordance */
+.cm-nav-line { cursor: pointer; }
+.cm-mod-held .cm-nav-line { text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--accent); }

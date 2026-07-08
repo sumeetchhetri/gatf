@@ -291,6 +291,12 @@ export const api = {
   readSel: (path: string) => getText('/testcases?' + tcf(path)),
   // declared subtests in a .sel file (for @call autocomplete)
   subtests: (path: string) => getJson<string[]>('/testcasefiles?' + tcf(path) + '&allsubtests=true'),
+  // cross-file navigation (C2.1): resolve an include/import/config/dynprops target → [targetFile]
+  resolveRef: (path: string, ref: string) =>
+    getJson<string[]>('/testcasefiles?' + tcf(path) + '&referencedFile=' + encodeURIComponent(ref)),
+  // resolve an @call subtest reference → [targetFile, lineNo]
+  resolveSubtest: (path: string, call: string) =>
+    getJson<[string, number]>('/testcasefiles?' + tcf(path) + '&possibleSubtestFuncCall=' + encodeURIComponent(call)),
   readXmlCases: (path: string) => getJson<ApiTestCase[]>('/testcases?' + tcf(path)),
   // Save raw .sel content; the server writes it and parse-validates — returns parse errors on failure.
   saveSel: async (path: string, text: string): Promise<SaveSelResult> => {
