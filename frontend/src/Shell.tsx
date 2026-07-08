@@ -5,8 +5,9 @@ import ReportsView from './views/ReportsView';
 import ReportViewer from './views/ReportViewer';
 import ConfigView from './views/ConfigView';
 import TestFilesView from './views/TestFilesView';
+import ExecuteView from './views/ExecuteView';
 
-export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'report';
+export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'execute' | 'report';
 
 const HASH: Record<string, ViewKey> = {
   '': 'viewer',
@@ -15,12 +16,14 @@ const HASH: Record<string, ViewKey> = {
   '#/reports': 'reports',
   '#/config': 'config',
   '#/testfiles': 'testfiles',
+  '#/execute': 'execute',
 };
 const TO_HASH: Record<ViewKey, string> = {
   viewer: '#/',
   reports: '#/reports',
   config: '#/config',
   testfiles: '#/testfiles',
+  execute: '#/execute',
   report: '#/reports',
 };
 
@@ -77,6 +80,7 @@ export default function Shell() {
         )}
         {view === 'config' && <ConfigView />}
         {view === 'testfiles' && <TestFilesView />}
+        {view === 'execute' && <ExecuteView onOpenReports={() => navigate('reports')} />}
       </div>
     </div>
   );

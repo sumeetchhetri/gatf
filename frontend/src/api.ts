@@ -272,6 +272,37 @@ async function sendReq(
 
 const tcf = (p: string) => 'testcaseFileName=' + encodeURIComponent(p);
 
+// ---- execution (Slice D1) ----
+// Both success (200) and the "in progress"/failure (400) responses carry a JSON body we need, so
+// execFetch never throws on status — it returns { ok, data }. `error` is a status string, or an
+// array [lineText, line, relFile, msg] (+ `others`) when the run failed with a parse/runtime error.
+export interface ExecStatus {
+  error: string | (string | number | null)[];
+  is_paused?: boolean;
+  others?: (string | number | null)[][];
+  loadTestingEnabled?: boolean;
+  [k: string]: unknown;
+}
+async function execFetch(
+  method: string,
+  pluginType: string,
+  files?: string[],
+): Promise<{ ok: boolean; data: ExecStatus }> {
+  const r = await fetch(withTok('/execute?pluginType=' + encodeURIComponent(pluginType)), {
+    method,
+    headers: files ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+    body: files ? JSON.stringify(files) : undefined,
+  });
+  const text = await r.text();
+  let data: ExecStatus;
+  try {
+    data = JSON.parse(text) as ExecStatus;
+  } catch {
+    data = { error: text || `HTTP ${r.status}` };
+  }
+  return { ok: r.ok, data };
+}
+
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
   config: () => getJson<ConfigResponse>('/api/config'),
@@ -328,4 +359,8 @@ export const api = {
     sendReq('PUT', '/testcases?' + tcf(path) + '&tcName=' + encodeURIComponent(origName), JSON.stringify(tc), 'application/json'),
   deleteCase: (path: string, name: string) =>
     sendReq('DELETE', '/testcases?' + tcf(path), undefined, undefined, { testcasename: name }),
+  // ---- execution (Slice D1) — async start-then-poll over /execute ----
+  execStart: (pluginType: string, files: string[]) => execFetch('PUT', pluginType, files),
+  execPoll: (pluginType: string) => execFetch('GET', pluginType),
+  execStop: (pluginType: string) => execFetch('DELETE', pluginType),
 };

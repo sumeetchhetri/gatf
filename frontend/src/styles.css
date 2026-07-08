@@ -414,3 +414,22 @@ select.sf-input { max-width: 520px; }
 /* C2.1 cross-file navigation affordance */
 .cm-nav-line { cursor: pointer; }
 .cm-mod-held .cm-nav-line { text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+
+/* ---- Slice D1: execute view ---- */
+.seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.seg-btn { background: transparent; color: var(--muted); border: none; padding: 4px 12px; font-size: 12px; }
+.seg-btn.on { background: var(--accent); color: #fff; }
+.seg-btn:disabled { opacity: .6; }
+.exec-cb { width: 1%; text-align: center; }
+.exec-st { width: 90px; }
+.exec-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.exec-status.exec-running, .exec-status.exec-starting, .exec-status.exec-paused { color: var(--warn); }
+.exec-status.exec-done { color: var(--green); }
+.exec-status.exec-failed { color: var(--red); }
+.spinner { width: 12px; height: 12px; border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; display: inline-block; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.rag { font-size: 11px; padding: 1px 8px; border-radius: 10px; font-weight: 600; }
+.rag-pass { background: rgba(74,222,128,.16); color: var(--green); }
+.rag-fail { background: rgba(248,113,113,.16); color: var(--red); }
+.rag-running { background: rgba(240,180,41,.16); color: var(--warn); }
