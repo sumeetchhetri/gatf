@@ -1,0 +1,216 @@
+import { useEffect, useRef, useState } from 'react';
+import { api } from '../api';
+import { debugLinesFor } from '../api';
+import DebugCodeView from './DebugCodeView';
+
+type Status = 'initializing' | 'paused' | 'running' | 'done' | 'terminated' | 'error';
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+
+export default function SelDebugger({ filePath, onExit }: { filePath: string; onExit: () => void }) {
+  const tc = ''; // whole-file .sel debug uses an empty test-case name
+  const sessionRef = useRef<string>(uid());
+  const [status, setStatus] = useState<Status>('initializing');
+  const [msg, setMsg] = useState<string>('Starting debugger…');
+  const [code, setCode] = useState('');
+  const [currentFile, setCurrentFile] = useState(filePath);
+  const [currentLine, setCurrentLine] = useState<number | null>(null);
+  const [breakpoints, setBreakpoints] = useState<Set<number>>(new Set());
+  const [debuggable, setDebuggable] = useState<Set<number> | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const lFullRef = useRef<unknown>(null);
+  const codeRef = useRef('');
+  const currentFileRef = useRef(filePath);
+  const currentLineRef = useRef<number | null>(null);
+  const pollRef = useRef<number | null>(null);
+  const doneRef = useRef(false);
+  codeRef.current = code;
+  currentFileRef.current = currentFile;
+  currentLineRef.current = currentLine;
+
+  const stopPolling = () => {
+    if (pollRef.current != null) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
+
+  // init on mount; terminate on unmount (only one server session per instance)
+  useEffect(() => {
+    const sid = sessionRef.current;
+    api
+      .dbg('0', filePath, tc, sid)
+      .then((d) => {
+        if (d.s) {
+          setCode(String(d.c ?? ''));
+          setCurrentFile(filePath);
+          setCurrentLine(typeof d.i === 'number' ? d.i : null);
+          lFullRef.current = d.l;
+          setDebuggable(debugLinesFor(d.l, filePath));
+          setStatus('paused');
+          setMsg('Paused.');
+          startPolling();
+        } else {
+          setStatus('error');
+          setMsg(d.m || 'Could not start the debugger.');
+        }
+      })
+      .catch((e) => {
+        setStatus('error');
+        setMsg(e.message);
+      });
+    return () => {
+      stopPolling();
+      if (!doneRef.current) api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const startPolling = () => {
+    stopPolling();
+    pollRef.current = window.setInterval(() => {
+      api
+        .dbg('-7', filePath, tc, sessionRef.current)
+        .then((d) => {
+          if (d.s === false) {
+            doneRef.current = true;
+            setStatus('terminated');
+            setMsg(d.m || 'Debug session ended.');
+            stopPolling();
+            return;
+          }
+          if (d.r === false) {
+            doneRef.current = true;
+            setStatus('done');
+            setMsg('Debug session completed — see the Reports tab.');
+            setCurrentLine(null);
+            stopPolling();
+            return;
+          }
+          const line = typeof d.p === 'number' ? d.p : currentLineRef.current;
+          // stepped into another file → load its source
+          if (d.t && d.t !== currentFileRef.current) {
+            const nf = d.t;
+            api
+              .readSel(nf)
+              .then((src) => {
+                setCode(src);
+                setCurrentFile(nf);
+                setDebuggable(debugLinesFor(lFullRef.current, nf));
+                setCurrentLine(typeof line === 'number' ? line : null);
+              })
+              .catch(() => setCurrentLine(typeof line === 'number' ? line : null));
+          } else {
+            setCurrentLine(typeof line === 'number' ? line : null);
+          }
+          setStatus(typeof line === 'number' && line > 0 ? 'paused' : 'running');
+        })
+        .catch(() => {
+          /* transient — keep polling */
+        });
+    }, 900);
+  };
+
+  const cmd = (lineCode: string, sline?: string) => {
+    setBusy(true);
+    api
+      .dbg(lineCode, filePath, tc, sessionRef.current, sline)
+      .then((d) => {
+        if (d.s === false) setMsg(d.m || 'Command rejected.');
+        // position updates arrive via the heartbeat
+      })
+      .catch((e) => setMsg(e.message))
+      .finally(() => setBusy(false));
+  };
+
+  const stepInto = () => {
+    const ln = currentLineRef.current;
+    const sline = ln ? (codeRef.current.split('\n')[ln - 1] ?? '') : '';
+    cmd('-1', sline);
+  };
+  const stepOut = () => cmd('-2');
+  const stepOver = () => cmd('-3');
+  const cont = () => cmd('-4');
+  const suspend = () => cmd('-5');
+  const terminate = () => {
+    doneRef.current = true;
+    stopPolling();
+    api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
+    setStatus('terminated');
+    setMsg('Stopped.');
+  };
+
+  const toggleBreakpoint = (ln: number) => {
+    const has = breakpoints.has(ln);
+    // gutter index is 0-based in the classic; server adds 1, so send (ln-1)
+    api
+      .dbg((has ? 'r' : 'b') + (ln - 1), filePath, tc, sessionRef.current)
+      .then((d) => {
+        if (d.s === false) {
+          setMsg(d.m || 'Breakpoint change rejected.');
+          return;
+        }
+        setBreakpoints((prev) => {
+          const next = new Set(prev);
+          if (has) next.delete(ln);
+          else next.add(ln);
+          return next;
+        });
+      })
+      .catch((e) => setMsg(e.message));
+  };
+
+  const active = status === 'paused' || status === 'running';
+  const canStep = status === 'paused' && !busy;
+
+  return (
+    <div className="dbg">
+      <div className="dbg-bar">
+        <button className="btn small" title="Continue (run to next breakpoint)" disabled={!canStep} onClick={cont}>
+          ▶ Continue
+        </button>
+        <button className="btn small" title="Step over" disabled={!canStep} onClick={stepOver}>
+          ⤼ Over
+        </button>
+        <button className="btn small" title="Step into" disabled={!canStep} onClick={stepInto}>
+          ↳ Into
+        </button>
+        <button className="btn small" title="Step out" disabled={!canStep} onClick={stepOut}>
+          ↰ Out
+        </button>
+        <button className="btn small" title="Suspend" disabled={!active || busy} onClick={suspend}>
+          ⏸ Suspend
+        </button>
+        <button className="btn small" title="Stop the debug session" onClick={terminate}>
+          ⏹ Stop
+        </button>
+        <button className="btn ghost small" onClick={onExit}>
+          Close
+        </button>
+        <span className={'exec-status exec-' + (status === 'done' ? 'done' : status === 'error' ? 'failed' : active ? 'running' : 'starting')}>
+          {status === 'initializing' && <span className="spinner" />}
+          {msg}
+        </span>
+      </div>
+      <div className="dbg-file mono small muted">
+        {currentFile}
+        {status === 'done' && (
+          <button className="btn ghost small" style={{ marginLeft: 10 }} onClick={onExit}>
+            Back to editor
+          </button>
+        )}
+      </div>
+      <DebugCodeView
+        code={code}
+        currentLine={currentLine}
+        breakpoints={breakpoints}
+        debuggableLines={debuggable}
+        onToggleBreakpoint={toggleBreakpoint}
+      />
+      <div className="view-note muted small">
+        Click a line's gutter to toggle a breakpoint. Stepping into an <code>@call</code>/include switches
+        to that file. The full run report is in the <b>Reports</b> tab.
+      </div>
+    </div>
+  );
+}

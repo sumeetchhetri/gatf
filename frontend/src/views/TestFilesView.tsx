@@ -3,6 +3,7 @@ import { api } from '../api';
 import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
 import TestCaseEditor from '../components/TestCaseEditor';
+import SelDebugger from '../components/SelDebugger';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
@@ -37,6 +38,7 @@ export default function TestFilesView() {
   const [parseErrors, setParseErrors] = useState<SelParseError[]>([]);
   const [gotoLine, setGotoLine] = useState<number | null>(null);
   const [gotoSeq, setGotoSeq] = useState(0);
+  const [debugging, setDebugging] = useState(false);
   const jumpTo = (n: number) => {
     setGotoLine(n);
     setGotoSeq((s) => s + 1);
@@ -84,6 +86,7 @@ export default function TestFilesView() {
     setSaved(false);
     setRenaming(false);
     setConfirmDel(null);
+    setDebugging(false);
     if (kind === 'xml') {
       api
         .readXmlCases(path)
@@ -296,33 +299,45 @@ export default function TestFilesView() {
                         {open.path}
                       </span>
                       <span className={'kind kind-' + open.kind}>{open.kind}</span>
-                      <div className="tf-head-actions">
-                        {open.kind !== 'xml' && (
-                          <>
-                            <button className="btn primary small" disabled={!dirty || saving} onClick={save}>
-                              {saving ? 'Saving…' : 'Save'}
-                            </button>
+                      {!debugging && (
+                        <div className="tf-head-actions">
+                          {open.kind !== 'xml' && (
+                            <>
+                              <button className="btn primary small" disabled={!dirty || saving} onClick={save}>
+                                {saving ? 'Saving…' : 'Save'}
+                              </button>
+                              <button
+                                className="btn ghost small"
+                                disabled={!dirty || saving}
+                                onClick={() => setText(open.text)}
+                              >
+                                Reset
+                              </button>
+                            </>
+                          )}
+                          {open.kind === 'sel' && (
                             <button
-                              className="btn ghost small"
-                              disabled={!dirty || saving}
-                              onClick={() => setText(open.text)}
+                              className="btn small"
+                              disabled={dirty}
+                              title={dirty ? 'Save before debugging' : 'Debug this script'}
+                              onClick={() => setDebugging(true)}
                             >
-                              Reset
+                              🐞 Debug
                             </button>
-                          </>
-                        )}
-                        <button
-                          className="btn ghost small"
-                          onClick={() => {
-                            setRenameTo(open.path);
-                            setRenaming(true);
-                          }}
-                        >
-                          Rename
-                        </button>
-                        {dirty && <span className="muted small">unsaved</span>}
-                        {saved && <span className="cfg-ok small">saved ✓</span>}
-                      </div>
+                          )}
+                          <button
+                            className="btn ghost small"
+                            onClick={() => {
+                              setRenameTo(open.path);
+                              setRenaming(true);
+                            }}
+                          >
+                            Rename
+                          </button>
+                          {dirty && <span className="muted small">unsaved</span>}
+                          {saved && <span className="cfg-ok small">saved ✓</span>}
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -334,9 +349,12 @@ export default function TestFilesView() {
                   <TestCaseEditor filePath={open.path} cases={open.cases ?? []} onReload={() => openFile(open.path)} />
                 )}
 
-                {!open.loading && !open.err && open.kind !== 'xml' && (
-                  <>
-                    {open.kind === 'sel' ? (
+                {!open.loading && !open.err && open.kind !== 'xml' &&
+                  (debugging && open.kind === 'sel' ? (
+                    <SelDebugger filePath={open.path} onExit={() => setDebugging(false)} />
+                  ) : (
+                    <>
+                      {open.kind === 'sel' ? (
                       <Suspense fallback={<div className="view-note">Loading editor…</div>}>
                         <SelCodeMirror
                           value={text}
@@ -379,8 +397,8 @@ export default function TestFilesView() {
                         ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
                         : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
                     </div>
-                  </>
-                )}
+                    </>
+                  ))}
               </>
             )}
           </div>

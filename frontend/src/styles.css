@@ -433,3 +433,23 @@ select.sf-input { max-width: 520px; }
 .rag-pass { background: rgba(74,222,128,.16); color: var(--green); }
 .rag-fail { background: rgba(248,113,113,.16); color: var(--red); }
 .rag-running { background: rgba(240,180,41,.16); color: var(--warn); }
+
+/* ---- Slice D2: online debugger ---- */
+.dbg { min-width: 0; }
+.dbg-bar { display: flex; align-items: center; gap: 6px; margin: 6px 0; flex-wrap: wrap; }
+.dbg-bar .exec-status { margin-left: auto; }
+.dbg-file { padding: 2px 0 6px; display: flex; align-items: center; }
+.dbg-code { border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+  height: 55vh; min-height: 320px; overflow: auto; padding: 4px 0; font-size: 12.5px; line-height: 1.5; }
+.dbg-line { display: flex; align-items: flex-start; white-space: pre; }
+.dbg-line:hover { background: rgba(127,127,127,.05); }
+.dbg-cur { background: rgba(240,180,41,.16); }
+.dbg-cur:hover { background: rgba(240,180,41,.20); }
+.dbg-bp { width: 18px; flex: 0 0 auto; text-align: center; color: var(--red); cursor: default;
+  user-select: none; font-size: 11px; }
+.dbg-bp-able { cursor: pointer; }
+.dbg-bp-able:hover::before { content: '●'; color: rgba(248,113,113,.35); }
+.dbg-bp-on:hover::before { content: none; }
+.dbg-ln { width: 42px; flex: 0 0 auto; text-align: right; padding-right: 12px; color: var(--muted);
+  user-select: none; }
+.dbg-txt { flex: 1; padding-right: 12px; overflow-wrap: normal; }

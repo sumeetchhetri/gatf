@@ -303,6 +303,65 @@ async function execFetch(
   return { ok: r.ok, data };
 }
 
+// ---- online debugger (Slice D2) ----
+// Every debug command is PUT /reports?action=debug&line=<code>&testcaseFileName&testCaseName&sessionId.
+// line codes: 0 init {s,c,l,i}; -1 step-into (needs &sline); -2 step-out; -3 step-over; -4 continue;
+// -5 suspend; -6 terminate; -7 heartbeat {s,r,p,n,v,t}; b<n>/r<n> add/remove breakpoint (server uses n+1).
+export interface DbgResponse {
+  s?: boolean; // command accepted / session ok
+  c?: string; // source code (init)
+  l?: unknown; // debuggable lines map (init)
+  i?: number; // initial current line (init, 1-based)
+  p?: number; // prevLine (current paused line)
+  n?: number; // nextLine
+  r?: boolean; // running (heartbeat)
+  v?: number; // debugger state (heartbeat = last action code)
+  t?: string; // current file (heartbeat)
+  m?: string; // error message
+  [k: string]: unknown;
+}
+async function dbgFetch(
+  lineCode: string,
+  tcf: string,
+  tc: string,
+  sessionId: string,
+  sline?: string,
+): Promise<DbgResponse> {
+  let url =
+    '/reports?action=debug&line=' +
+    encodeURIComponent(lineCode) +
+    '&testcaseFileName=' +
+    encodeURIComponent(tcf) +
+    '&testCaseName=' +
+    encodeURIComponent(tc) +
+    '&sessionId=' +
+    encodeURIComponent(sessionId);
+  if (sline != null) url += '&sline=' + encodeURIComponent(sline);
+  const r = await fetch(withTok(url), { method: 'PUT', headers: { Accept: 'application/json' } });
+  const text = await r.text();
+  // note: the handler also returns plain-text "Fail: …" for bad command/session
+  try {
+    const j = JSON.parse(text) as DbgResponse;
+    return typeof j === 'object' && j ? j : { s: false, m: String(text) };
+  } catch {
+    return { s: false, m: text || `HTTP ${r.status}` };
+  }
+}
+
+// Flatten the debuggableLines map (l) for a file into a set of 1-based line numbers.
+export function debugLinesFor(l: unknown, file: string): Set<number> {
+  const out = new Set<number>();
+  const root = l && typeof l === 'object' ? (l as Record<string, unknown>)[file] : undefined;
+  const walk = (x: unknown) => {
+    if (Array.isArray(x)) {
+      if (typeof x[0] === 'number') out.add(x[0]);
+      x.forEach(walk);
+    }
+  };
+  walk(root);
+  return out;
+}
+
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
   config: () => getJson<ConfigResponse>('/api/config'),
@@ -363,4 +422,7 @@ export const api = {
   execStart: (pluginType: string, files: string[]) => execFetch('PUT', pluginType, files),
   execPoll: (pluginType: string) => execFetch('GET', pluginType),
   execStop: (pluginType: string) => execFetch('DELETE', pluginType),
+  // ---- online debugger (Slice D2) — /reports?action=debug protocol ----
+  dbg: (lineCode: string, tcf: string, tc: string, sessionId: string, sline?: string) =>
+    dbgFetch(lineCode, tcf, tc, sessionId, sline),
 };
