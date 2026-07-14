@@ -303,9 +303,33 @@ async function execFetch(
   return { ok: r.ok, data };
 }
 
+// ---- single-test run + pause-on-element (Slice D2b) ----
+// PUT /reports?action=playTest&testcaseFileName&testCaseName runs one test; poll pausedLineNo for the
+// live line + pause state; pauseElSearch/unPauseElSearch toggle the pause, restartSubtest / stop control it.
+export interface RunPaused {
+  is_paused?: boolean;
+  line?: number; // 1-based; -1 when not at a line
+  file?: string;
+  running?: boolean;
+  error?: string | unknown[];
+  m?: string;
+  [k: string]: unknown;
+}
+async function runPut(action: string, extra = ''): Promise<RunPaused> {
+  const r = await fetch(withTok('/reports?action=' + action + extra), {
+    method: 'PUT',
+    headers: { Accept: 'application/json' },
+  });
+  const text = await r.text();
+  try {
+    const j = JSON.parse(text) as RunPaused;
+    return typeof j === 'object' && j ? j : { m: String(text) };
+  } catch {
+    return { m: text || `HTTP ${r.status}` };
+  }
+}
+
 // ---- online debugger (Slice D2) ----
-// Every debug command is PUT /reports?action=debug&line=<code>&testcaseFileName&testCaseName&sessionId.
-// line codes: 0 init {s,c,l,i}; -1 step-into (needs &sline); -2 step-out; -3 step-over; -4 continue;
 // -5 suspend; -6 terminate; -7 heartbeat {s,r,p,n,v,t}; b<n>/r<n> add/remove breakpoint (server uses n+1).
 export interface DbgResponse {
   s?: boolean; // command accepted / session ok
@@ -425,4 +449,14 @@ export const api = {
   // ---- online debugger (Slice D2) — /reports?action=debug protocol ----
   dbg: (lineCode: string, tcf: string, tc: string, sessionId: string, sline?: string) =>
     dbgFetch(lineCode, tcf, tc, sessionId, sline),
+  // ---- single-test run + pause-on-element (Slice D2b) ----
+  playTest: (tcf: string, tc: string) =>
+    runPut(
+      'playTest',
+      '&testcaseFileName=' + encodeURIComponent(tcf) + '&testCaseName=' + encodeURIComponent(tc),
+    ),
+  pausedLine: () => runPut('pausedLineNo'),
+  pauseEl: (pause: boolean) => runPut(pause ? 'pauseElSearch' : 'unPauseElSearch'),
+  restartSubtest: () => runPut('restartSubtest'),
+  stopRun: () => runPut('stop'),
 };

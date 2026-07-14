@@ -4,6 +4,7 @@ import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
 import TestCaseEditor from '../components/TestCaseEditor';
 import SelDebugger from '../components/SelDebugger';
+import SelRunner from '../components/SelRunner';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
@@ -39,6 +40,7 @@ export default function TestFilesView() {
   const [gotoLine, setGotoLine] = useState<number | null>(null);
   const [gotoSeq, setGotoSeq] = useState(0);
   const [debugging, setDebugging] = useState(false);
+  const [running, setRunning] = useState(false);
   const jumpTo = (n: number) => {
     setGotoLine(n);
     setGotoSeq((s) => s + 1);
@@ -87,6 +89,7 @@ export default function TestFilesView() {
     setRenaming(false);
     setConfirmDel(null);
     setDebugging(false);
+    setRunning(false);
     if (kind === 'xml') {
       api
         .readXmlCases(path)
@@ -299,7 +302,7 @@ export default function TestFilesView() {
                         {open.path}
                       </span>
                       <span className={'kind kind-' + open.kind}>{open.kind}</span>
-                      {!debugging && (
+                      {!debugging && !running && (
                         <div className="tf-head-actions">
                           {open.kind !== 'xml' && (
                             <>
@@ -316,14 +319,24 @@ export default function TestFilesView() {
                             </>
                           )}
                           {open.kind === 'sel' && (
-                            <button
-                              className="btn small"
-                              disabled={dirty}
-                              title={dirty ? 'Save before debugging' : 'Debug this script'}
-                              onClick={() => setDebugging(true)}
-                            >
-                              🐞 Debug
-                            </button>
+                            <>
+                              <button
+                                className="btn small"
+                                disabled={dirty}
+                                title={dirty ? 'Save before running' : 'Run this script'}
+                                onClick={() => setRunning(true)}
+                              >
+                                ▶ Run
+                              </button>
+                              <button
+                                className="btn small"
+                                disabled={dirty}
+                                title={dirty ? 'Save before debugging' : 'Debug this script'}
+                                onClick={() => setDebugging(true)}
+                              >
+                                🐞 Debug
+                              </button>
+                            </>
                           )}
                           <button
                             className="btn ghost small"
@@ -352,6 +365,8 @@ export default function TestFilesView() {
                 {!open.loading && !open.err && open.kind !== 'xml' &&
                   (debugging && open.kind === 'sel' ? (
                     <SelDebugger filePath={open.path} onExit={() => setDebugging(false)} />
+                  ) : running && open.kind === 'sel' ? (
+                    <SelRunner filePath={open.path} code={text} onExit={() => setRunning(false)} />
                   ) : (
                     <>
                       {open.kind === 'sel' ? (

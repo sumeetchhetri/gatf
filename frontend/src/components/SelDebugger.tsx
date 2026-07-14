@@ -163,19 +163,35 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   const active = status === 'paused' || status === 'running';
   const canStep = status === 'paused' && !busy;
 
+  // F5 step-into · F6 step-over · F7 step-out · F8 continue (matches the classic console)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!canStep) return;
+      const map: Record<string, () => void> = { F5: stepInto, F6: stepOver, F7: stepOut, F8: cont };
+      const fn = map[e.key];
+      if (fn) {
+        e.preventDefault();
+        fn();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canStep]);
+
   return (
     <div className="dbg">
       <div className="dbg-bar">
-        <button className="btn small" title="Continue (run to next breakpoint)" disabled={!canStep} onClick={cont}>
+        <button className="btn small" title="Continue — run to next breakpoint (F8)" disabled={!canStep} onClick={cont}>
           ▶ Continue
         </button>
-        <button className="btn small" title="Step over" disabled={!canStep} onClick={stepOver}>
+        <button className="btn small" title="Step over (F6)" disabled={!canStep} onClick={stepOver}>
           ⤼ Over
         </button>
-        <button className="btn small" title="Step into" disabled={!canStep} onClick={stepInto}>
+        <button className="btn small" title="Step into (F5)" disabled={!canStep} onClick={stepInto}>
           ↳ Into
         </button>
-        <button className="btn small" title="Step out" disabled={!canStep} onClick={stepOut}>
+        <button className="btn small" title="Step out (F7)" disabled={!canStep} onClick={stepOut}>
           ↰ Out
         </button>
         <button className="btn small" title="Suspend" disabled={!active || busy} onClick={suspend}>
