@@ -1,0 +1,55 @@
+import { useState } from 'react';
+import { api } from '../api';
+
+// Shown when GET /misc returns 401 (auth enabled, no valid token). Posts to /login and, on success,
+// stores the token and calls onLogin so the shell re-probes and renders the app.
+export default function Login({ onLogin }: { onLogin: () => void }) {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const submit = () => {
+    if (!username || busy) return;
+    setBusy(true);
+    setErr(null);
+    api
+      .login(username, password)
+      .then((r) => {
+        if (r.ok) onLogin();
+        else setErr(r.error || 'Login failed');
+      })
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <div className="login-wrap">
+      <div className="login-card">
+        <h2 className="login-title">GATF</h2>
+        <p className="muted small">Sign in to continue</p>
+        <label className="login-field">
+          <span className="small muted">Username</span>
+          <input
+            autoFocus
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+          />
+        </label>
+        <label className="login-field">
+          <span className="small muted">Password</span>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && submit()}
+          />
+        </label>
+        {err && <div className="view-error small">{err}</div>}
+        <button className="btn primary" disabled={busy || !username} onClick={submit}>
+          {busy ? 'Signing in…' : 'Sign in'}
+        </button>
+      </div>
+    </div>
+  );
+}

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import App from './App';
+import { api } from './api';
 import Nav from './components/Nav';
+import Login from './components/Login';
 import ReportsView from './views/ReportsView';
 import ReportViewer from './views/ReportViewer';
 import ConfigView from './views/ConfigView';
@@ -39,6 +41,13 @@ export default function Shell() {
   const [view, setView] = useState<ViewKey>(initialReport() ? 'report' : currentView());
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
   const [pendingReport, setPendingReport] = useState<string | undefined>(initialReport());
+  const [auth, setAuth] = useState<'checking' | 'ok' | 'required'>('checking');
+
+  const checkAuth = () =>
+    api.probeAuth().then((s) => setAuth(s === 'auth' ? 'required' : 'ok'));
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const onHash = () => setView(currentView());
@@ -60,6 +69,9 @@ export default function Shell() {
     setPendingReport(dataUrl);
     setView('report'); // reached from Reports; not a top-level hash route
   };
+
+  if (auth === 'checking') return <div className="view-note" style={{ padding: 24 }}>Loading…</div>;
+  if (auth === 'required') return <Login onLogin={checkAuth} />;
 
   return (
     <div className="shell">

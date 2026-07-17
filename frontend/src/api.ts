@@ -213,6 +213,37 @@ async function getJson<T>(url: string): Promise<T> {
   return (await r.json()) as T;
 }
 
+// ---- auth / login (Slice E) ----
+// The classic gates on GET /misc: a 401 there means auth is enabled and the token is missing/stale.
+// Login is POST /login (form-encoded) → {token}, stored in sessionStorage and appended as ?token= by withTok.
+async function probeAuth(): Promise<'ok' | 'auth' | 'error'> {
+  try {
+    const r = await fetch(withTok('/misc'), { headers: { Accept: 'application/json' } });
+    if (r.status === 401) return 'auth';
+    return r.ok ? 'ok' : 'error'; // other failures don't force a login wall
+  } catch {
+    return 'error';
+  }
+}
+async function loginReq(username: string, password: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const r = await fetch('/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },
+      body: 'username=' + encodeURIComponent(username) + '&password=' + encodeURIComponent(password),
+    });
+    if (!r.ok) return { ok: false, error: r.status === 401 ? 'Invalid username or password' : `HTTP ${r.status}` };
+    const d = (await r.json()) as { token?: string };
+    if (d && d.token) {
+      sessionStorage.setItem('token', String(d.token));
+      return { ok: true };
+    }
+    return { ok: false, error: 'No token returned' };
+  } catch (e) {
+    return { ok: false, error: (e as Error).message };
+  }
+}
+
 async function getText(url: string): Promise<string> {
   const r = await fetch(withTok(url), { headers: { Accept: 'text/plain, application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
@@ -394,6 +425,10 @@ export const api = {
   reportData: (url: string) => getJson<ReportData>(url),
   // ---- config editor (Slice B) — authoritative round-trip via the legacy /configure handler ----
   misc: () => getJson<Record<string, unknown>>('/misc'),
+  // ---- auth (Slice E) ----
+  probeAuth: () => probeAuth(),
+  login: (username: string, password: string) => loginReq(username, password),
+  logout: () => sessionStorage.removeItem('token'),
   configExecutor: () => getJson<Record<string, unknown>>('/configure?configType=executor'),
   saveConfigExecutor: (cfg: Record<string, unknown>) =>
     postJson<Record<string, unknown>>('/configure?configType=executor', cfg),
