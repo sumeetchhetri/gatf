@@ -429,9 +429,16 @@ export const api = {
   probeAuth: () => probeAuth(),
   login: (username: string, password: string) => loginReq(username, password),
   logout: () => sessionStorage.removeItem('token'),
+  // ---- data source statistics (Slice E) ----
+  dsStats: () => getJson<Record<string, string[][]>>('/profile?dsnames=all'),
   configExecutor: () => getJson<Record<string, unknown>>('/configure?configType=executor'),
   saveConfigExecutor: (cfg: Record<string, unknown>) =>
     postJson<Record<string, unknown>>('/configure?configType=executor', cfg),
+  // generic config by type (executor | generator | …)
+  configByType: (configType: string) =>
+    getJson<Record<string, unknown>>('/configure?configType=' + encodeURIComponent(configType)),
+  saveConfig: (configType: string, cfg: Record<string, unknown>) =>
+    postJson<Record<string, unknown>>('/configure?configType=' + encodeURIComponent(configType), cfg),
   // ---- test files (Slice C) ----
   testcaseFiles: async (): Promise<TestcaseFileEntry[]> => {
     const raw = await getJson<[string, string | null][]>('/testcasefiles');

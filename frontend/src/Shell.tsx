@@ -8,8 +8,10 @@ import ReportViewer from './views/ReportViewer';
 import ConfigView from './views/ConfigView';
 import TestFilesView from './views/TestFilesView';
 import ExecuteView from './views/ExecuteView';
+import DataSourceStats from './views/DataSourceStats';
+import CompareFiles from './views/CompareFiles';
 
-export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'execute' | 'report';
+export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'execute' | 'datasources' | 'compare' | 'report';
 
 const HASH: Record<string, ViewKey> = {
   '': 'viewer',
@@ -19,6 +21,8 @@ const HASH: Record<string, ViewKey> = {
   '#/config': 'config',
   '#/testfiles': 'testfiles',
   '#/execute': 'execute',
+  '#/datasources': 'datasources',
+  '#/compare': 'compare',
 };
 const TO_HASH: Record<ViewKey, string> = {
   viewer: '#/',
@@ -26,6 +30,8 @@ const TO_HASH: Record<ViewKey, string> = {
   config: '#/config',
   testfiles: '#/testfiles',
   execute: '#/execute',
+  datasources: '#/datasources',
+  compare: '#/compare',
   report: '#/reports',
 };
 
@@ -93,6 +99,8 @@ export default function Shell() {
         {view === 'config' && <ConfigView />}
         {view === 'testfiles' && <TestFilesView />}
         {view === 'execute' && <ExecuteView onOpenReports={() => navigate('reports')} />}
+        {view === 'datasources' && <DataSourceStats />}
+        {view === 'compare' && <CompareFiles />}
       </div>
     </div>
   );

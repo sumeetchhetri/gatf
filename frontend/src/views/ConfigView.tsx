@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { executorSchema } from '../config/gatfConfigSchema';
+import { executorSchema, generatorSchema } from '../config/gatfConfigSchema';
 import SchemaForm, { type EnumMap } from '../components/SchemaForm';
+
+type CfgKind = 'executor' | 'generator';
 
 function asStrArr(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
@@ -17,6 +19,7 @@ function asStrArr(v: unknown): string[] {
 }
 
 export default function ConfigView() {
+  const [kind, setKind] = useState<CfgKind>('executor');
   const [cfg, setCfg] = useState<Record<string, unknown> | null>(null);
   const [original, setOriginal] = useState<Record<string, unknown> | null>(null);
   const [enums, setEnums] = useState<EnumMap>({});
@@ -33,8 +36,23 @@ export default function ConfigView() {
   const load = () => {
     setLoading(true);
     setError(null);
+    setSaveErr(null);
+    setSaved(false);
+    if (kind === 'generator') {
+      api
+        .configByType('generator')
+        .then((config) => {
+          setEnums({});
+          setCfg(config);
+          setOriginal(config);
+          setVer((v) => v + 1);
+        })
+        .catch((e) => setError(e.message))
+        .finally(() => setLoading(false));
+      return;
+    }
     Promise.all([
-      api.configExecutor(),
+      api.configByType('executor'),
       api.misc().catch(() => ({}) as Record<string, unknown>),
       api.testfiles().catch(() => null),
     ])
@@ -54,7 +72,8 @@ export default function ConfigView() {
       .finally(() => setLoading(false));
   };
 
-  useEffect(load, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(load, [kind]);
 
   const dirty = useMemo(
     () => cfg != null && original != null && JSON.stringify(cfg) !== JSON.stringify(original),
@@ -67,7 +86,7 @@ export default function ConfigView() {
     setSaveErr(null);
     setSaved(false);
     api
-      .saveConfigExecutor(cfg)
+      .saveConfig(kind, cfg)
       .then((savedCfg) => {
         const next = savedCfg && typeof savedCfg === 'object' ? savedCfg : cfg;
         setOriginal(next);
@@ -109,7 +128,24 @@ export default function ConfigView() {
     <div className="view">
       <div className="view-head">
         <h2>Configuration</h2>
-        <span className="muted small">executor</span>
+        <div className="view-head-right">
+          <button
+            className={'btn small' + (kind === 'executor' ? ' primary' : ' ghost')}
+            disabled={dirty && kind !== 'executor'}
+            title={dirty && kind !== 'executor' ? 'Save or reset first' : ''}
+            onClick={() => setKind('executor')}
+          >
+            Executor
+          </button>
+          <button
+            className={'btn small' + (kind === 'generator' ? ' primary' : ' ghost')}
+            disabled={dirty && kind !== 'generator'}
+            title={dirty && kind !== 'generator' ? 'Save or reset first' : ''}
+            onClick={() => setKind('generator')}
+          >
+            Generator
+          </button>
+        </div>
       </div>
 
       {loading && <div className="view-note">Loading…</div>}
@@ -137,8 +173,9 @@ export default function ConfigView() {
           </div>
 
           <div className="view-note muted small">
-            Saving writes <code>gatf-config.json</code> and re-initialises the executor context — the same as the
-            classic UI's save.
+            {kind === 'executor'
+              ? 'Saving writes gatf-config.json and re-initialises the executor context — the same as the classic UI\u2019s save.'
+              : 'Saving writes the generator configuration (gatf-generator.json) — the same as the classic UI\u2019s Generator Configuration save.'}
           </div>
 
           {saveErr && <div className="view-error">Save failed: {saveErr}</div>}
@@ -161,7 +198,13 @@ export default function ConfigView() {
             </section>
           ) : (
             <section className="view-section">
-              <SchemaForm key={ver} schema={executorSchema} value={cfg} onChange={setCfg} enums={enums} />
+              <SchemaForm
+                key={ver}
+                schema={kind === 'executor' ? executorSchema : generatorSchema}
+                value={cfg}
+                onChange={setCfg}
+                enums={enums}
+              />
             </section>
           )}
         </>

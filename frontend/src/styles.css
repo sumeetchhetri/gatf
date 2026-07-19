@@ -464,3 +464,19 @@ select.sf-input { max-width: 520px; }
 .login-field input { padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
   background: var(--bg); color: var(--text); font-size: 14px; }
 .login-card .btn.primary { margin-top: 6px; padding: 9px; }
+
+/* ---- Slice E: data sources + compare ---- */
+.tbl-scroll { overflow-x: auto; }
+.cmp-bar { display: flex; align-items: center; gap: 8px; margin: 8px 0 12px; flex-wrap: wrap; }
+.cmp-bar select { padding: 6px 8px; border: 1px solid var(--border); border-radius: 6px;
+  background: var(--bg); color: var(--text); max-width: 40%; }
+.cmp-grid { border: 1px solid var(--border); border-radius: 6px; overflow: auto; background: var(--panel);
+  font-size: 12.5px; line-height: 1.5; }
+.cmp-row { display: grid; grid-template-columns: 44px 1fr 44px 1fr; white-space: pre; }
+.cmp-ln { text-align: right; padding-right: 8px; color: var(--muted); user-select: none;
+  border-right: 1px solid var(--border); }
+.cmp-side { padding: 0 8px; overflow: hidden; }
+.cmp-l { border-right: 1px solid var(--border); }
+.cmp-del .cmp-l { background: rgba(248,113,113,.16); }
+.cmp-add .cmp-r { background: rgba(74,222,128,.16); }
+.cmp-del .cmp-r, .cmp-add .cmp-l { background: rgba(127,127,127,.05); }
