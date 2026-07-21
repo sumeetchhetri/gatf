@@ -10,8 +10,18 @@ import TestFilesView from './views/TestFilesView';
 import ExecuteView from './views/ExecuteView';
 import DataSourceStats from './views/DataSourceStats';
 import CompareFiles from './views/CompareFiles';
+import ExtApiConfig from './views/ExtApiConfig';
 
-export type ViewKey = 'viewer' | 'reports' | 'config' | 'testfiles' | 'execute' | 'datasources' | 'compare' | 'report';
+export type ViewKey =
+  | 'viewer'
+  | 'reports'
+  | 'config'
+  | 'testfiles'
+  | 'execute'
+  | 'datasources'
+  | 'compare'
+  | 'integrations'
+  | 'report';
 
 const HASH: Record<string, ViewKey> = {
   '': 'viewer',
@@ -23,6 +33,7 @@ const HASH: Record<string, ViewKey> = {
   '#/execute': 'execute',
   '#/datasources': 'datasources',
   '#/compare': 'compare',
+  '#/integrations': 'integrations',
 };
 const TO_HASH: Record<ViewKey, string> = {
   viewer: '#/',
@@ -32,6 +43,7 @@ const TO_HASH: Record<ViewKey, string> = {
   execute: '#/execute',
   datasources: '#/datasources',
   compare: '#/compare',
+  integrations: '#/integrations',
   report: '#/reports',
 };
 
@@ -101,6 +113,7 @@ export default function Shell() {
         {view === 'execute' && <ExecuteView onOpenReports={() => navigate('reports')} />}
         {view === 'datasources' && <DataSourceStats />}
         {view === 'compare' && <CompareFiles />}
+        {view === 'integrations' && <ExtApiConfig />}
       </div>
     </div>
   );

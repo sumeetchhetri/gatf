@@ -13,10 +13,12 @@ export default function TestCaseEditor({
   filePath,
   cases,
   onReload,
+  configType,
 }: {
   filePath: string;
   cases: ApiTestCase[];
   onReload: () => void;
+  configType?: string;
 }) {
   const [misc, setMisc] = useState<Record<string, unknown>>({});
   const [view, setView] = useState<'list' | 'form'>('list');
@@ -67,8 +69,8 @@ export default function TestCaseEditor({
     setSaveErr(null);
     const op =
       mode === 'new'
-        ? api.addCase(filePath, tc as ApiTestCase)
-        : api.updateCase(filePath, editingName || '', tc as ApiTestCase);
+        ? api.addCase(filePath, tc as ApiTestCase, configType)
+        : api.updateCase(filePath, editingName || '', tc as ApiTestCase, configType);
     op.then(() => {
       setView('list');
       onReload();
@@ -80,7 +82,7 @@ export default function TestCaseEditor({
   const del = (name: string) => {
     setBusy(true);
     api
-      .deleteCase(filePath, name)
+      .deleteCase(filePath, name, configType)
       .then(() => {
         setDelName(null);
         onReload();

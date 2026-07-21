@@ -453,7 +453,8 @@ export const api = {
   // resolve an @call subtest reference → [targetFile, lineNo]
   resolveSubtest: (path: string, call: string) =>
     getJson<[string, number]>('/testcasefiles?' + tcf(path) + '&possibleSubtestFuncCall=' + encodeURIComponent(call)),
-  readXmlCases: (path: string) => getJson<ApiTestCase[]>('/testcases?' + tcf(path)),
+  readXmlCases: (path: string, configType?: string) =>
+    getJson<ApiTestCase[]>('/testcases?' + tcf(path) + (configType ? '&configType=' + encodeURIComponent(configType) : '')),
   // Save raw .sel content; the server writes it and parse-validates — returns parse errors on failure.
   saveSel: async (path: string, text: string): Promise<SaveSelResult> => {
     const r = await fetch(withTok('/testcases?' + tcf(path)), {
@@ -478,12 +479,32 @@ export const api = {
     sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encodeURIComponent(to)),
   deleteTestcaseFile: (path: string) => sendReq('DELETE', '/testcasefiles?' + tcf(path)),
   // structured .xml API test-case CRUD (TestCase JSON; server validates)
-  addCase: (path: string, tc: ApiTestCase) =>
-    sendReq('POST', '/testcases?' + tcf(path), JSON.stringify(tc), 'application/json'),
-  updateCase: (path: string, origName: string, tc: ApiTestCase) =>
-    sendReq('PUT', '/testcases?' + tcf(path) + '&tcName=' + encodeURIComponent(origName), JSON.stringify(tc), 'application/json'),
-  deleteCase: (path: string, name: string) =>
-    sendReq('DELETE', '/testcases?' + tcf(path), undefined, undefined, { testcasename: name }),
+  addCase: (path: string, tc: ApiTestCase, configType?: string) =>
+    sendReq(
+      'POST',
+      '/testcases?' + tcf(path) + (configType ? '&configType=' + encodeURIComponent(configType) : ''),
+      JSON.stringify(tc),
+      'application/json',
+    ),
+  updateCase: (path: string, origName: string, tc: ApiTestCase, configType?: string) =>
+    sendReq(
+      'PUT',
+      '/testcases?' +
+        tcf(path) +
+        '&tcName=' +
+        encodeURIComponent(origName) +
+        (configType ? '&configType=' + encodeURIComponent(configType) : ''),
+      JSON.stringify(tc),
+      'application/json',
+    ),
+  deleteCase: (path: string, name: string, configType?: string) =>
+    sendReq(
+      'DELETE',
+      '/testcases?' + tcf(path) + (configType ? '&configType=' + encodeURIComponent(configType) : ''),
+      undefined,
+      undefined,
+      { testcasename: name },
+    ),
   // ---- execution (Slice D1) — async start-then-poll over /execute ----
   execStart: (pluginType: string, files: string[]) => execFetch('PUT', pluginType, files),
   execPoll: (pluginType: string) => execFetch('GET', pluginType),

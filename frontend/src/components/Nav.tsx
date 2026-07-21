@@ -8,6 +8,7 @@ const TABS: { key: ViewKey; label: string }[] = [
   { key: 'execute', label: 'Execute' },
   { key: 'datasources', label: 'Data Sources' },
   { key: 'compare', label: 'Compare' },
+  { key: 'integrations', label: 'Integrations' },
 ];
 
 export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigate: (v: ViewKey) => void }) {
