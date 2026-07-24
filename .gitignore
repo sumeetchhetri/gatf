@@ -19,3 +19,5 @@ gatf-config-tool
 temp/
 *.log
 deltas/
+sample-project/app
+sample-project/out

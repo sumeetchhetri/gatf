@@ -1,0 +1,29 @@
+<TestCases>
+  <!--
+    Authenticate and capture the bearer token into the workflow variable ${authToken}.
+    Later test files (users.xml) reuse it. Ordering is by filename (isOrderByFileName=true),
+    so auth.xml runs before users.xml.
+  -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/auth/login</url>
+    <name>Login</name>
+    <method>POST</method>
+    <description>Authenticate and capture the bearer token</description>
+    <secure>false</secure>
+    <headers class="linked-hash-map">
+      <property key="Content-Type">application/json</property>
+    </headers>
+    <content>{"username":"${username}","password":"${password}"}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>token</string>
+    </expectedNodes>
+    <!-- capture the response node `token` into ${authToken} for the rest of the suite -->
+    <workflowContextParameterMap class="linked-hash-map">
+      <property key="authToken">token</property>
+    </workflowContextParameterMap>
+    <sequence>1</sequence>
+  </TestCase>
+</TestCases>

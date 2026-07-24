@@ -1,0 +1,32 @@
+<ArrayList>
+  <TestCase method="POST" expectedResCode="0" skipTest="false" detailedLog="false" secure="false" soapBase="false" sequence="0" numberOfExecutions="1" repeatScenariosConcurrentExecution="false" stopOnFirstFailureForPerfTest="false" reportResponseContent="true" abortOnInvalidStatusCode="false" abortOnInvalidContentType="false" disablePreHooks="false" disablePostHooks="false">
+    <url>auth</url>
+    <name>authapi</name>
+    <headers>
+      <Content-Type>text/plain</Content-Type>
+    </headers>
+    <expectedNodes/>
+    <soapParameterValues/>
+    <workflowContextParameterMap/>
+    <multipartContent/>
+    <repeatScenarios/>
+    <repeatScenarioProviderName></repeatScenarioProviderName>
+    <preExecutionDataSourceHookName></preExecutionDataSourceHookName>
+    <postExecutionDataSourceHookName></postExecutionDataSourceHookName>
+  </TestCase>
+  <TestCase method="POST" expectedResCode="0" skipTest="false" detailedLog="false" secure="false" soapBase="false" sequence="0" numberOfExecutions="1" repeatScenariosConcurrentExecution="false" stopOnFirstFailureForPerfTest="false" reportResponseContent="true" abortOnInvalidStatusCode="false" abortOnInvalidContentType="false" disablePreHooks="false" disablePostHooks="false">
+    <url>target</url>
+    <name>targetapi</name>
+    <headers>
+      <Content-Type>text/plain</Content-Type>
+    </headers>
+    <expectedNodes/>
+    <soapParameterValues/>
+    <workflowContextParameterMap/>
+    <multipartContent/>
+    <repeatScenarios/>
+    <repeatScenarioProviderName></repeatScenarioProviderName>
+    <preExecutionDataSourceHookName></preExecutionDataSourceHookName>
+    <postExecutionDataSourceHookName></postExecutionDataSourceHookName>
+  </TestCase>
+</ArrayList>

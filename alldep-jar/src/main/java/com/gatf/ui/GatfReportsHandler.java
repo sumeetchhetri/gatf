@@ -61,7 +61,9 @@ public class GatfReportsHandler extends HttpHandler {
 	
 	//Only one debug session per instance allowed for now, later we can support multiple as well
 	//but for now lets keep it simple
-	private Map<String, GatfSelDebugger> dbgSessions = new HashMap<String, GatfSelDebugger>();
+	// Shared (static) so the WebSocket push app (GatfDebugWebSocket) and this handler use the same
+	// sessions; ConcurrentHashMap since the WS pusher thread reads while HTTP threads mutate.
+	static final Map<String, GatfSelDebugger> dbgSessions = new java.util.concurrent.ConcurrentHashMap<String, GatfSelDebugger>();
 	
 	public GatfReportsHandler(GatfConfigToolMojoInt mojo, Function<String, GatfPlugin> f) {
 		super();
@@ -93,6 +95,38 @@ public class GatfReportsHandler extends HttpHandler {
 			        response.getWriter().write(text);
 			        response.setStatus(HttpStatus.OK_200);
 			        return;
+				}
+				else if(StringUtils.isNotBlank(action) && action.equals("debugStream")) {
+					// Server-push debug channel (delta-040): stream {s,r,p,n,v,t} over SSE, pushing on change.
+					// Replaces the client's ~900ms heartbeat poll. Commands still arrive on PUT ?action=debug.
+					String dsSessionId = request.getParameter("sessionId");
+					response.setContentType("text/event-stream; charset=utf-8");
+					response.setHeader("Cache-Control", "no-cache");
+					response.setStatus(HttpStatus.OK_200);
+					java.io.Writer dsW = response.getWriter();
+					GatfSelDebugger dsDbg = dbgSessions.get(dsSessionId);
+					for(int dsI=0; dsDbg==null && dsI<40; dsI++) { Thread.sleep(50); dsDbg = dbgSessions.get(dsSessionId); }
+					if(dsDbg==null) {
+						dsW.write("data: {\"s\":false,\"m\":\"No debug session\"}\n\n"); dsW.flush(); return;
+					}
+					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsFirst=true; String dsLt=null;
+					try {
+						while(true) {
+							GatfSelDebugger dsS = dbgSessions.get(dsSessionId);
+							if(dsS==null) { dsW.write("data: {\"s\":true,\"r\":false}\n\n"); dsW.flush(); break; }
+							boolean dsR=dsS.getRunning(); int dsP=dsS.getPrevLine(); int dsN=dsS.getNextLine(); int dsV=dsS.getState(); String dsT=dsS.getCurrFile();
+							boolean dsCh = dsFirst || dsP!=dsLp || dsN!=dsLn || dsV!=dsLv || dsR!=dsLr || (dsT==null?dsLt!=null:!dsT.equals(dsLt));
+							if(dsCh) {
+								Map<String, Object> dsOut = new HashMap<>();
+								dsOut.put("s", true); dsOut.put("r", dsR); dsOut.put("p", dsP); dsOut.put("n", dsN); dsOut.put("v", dsV); dsOut.put("t", dsT);
+								dsW.write("data: " + WorkflowContextHandler.OM.writeValueAsString(dsOut) + "\n\n"); dsW.flush();
+								dsLp=dsP; dsLn=dsN; dsLv=dsV; dsLr=dsR; dsLt=dsT; dsFirst=false;
+							}
+							if(!dsR) break;
+							Thread.sleep(150);
+						}
+					} catch (Exception dsE) { /* client disconnected / write failed - end stream */ }
+					return;
 				}
 			    new CacheLessStaticHttpHandler(GatfConfigToolUtil.authSrc!=null, dirPath).service(request, response);
 			} else if(request.getMethod().equals(Method.PUT) ) {

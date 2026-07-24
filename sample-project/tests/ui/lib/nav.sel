@@ -1,0 +1,11 @@
+// Reusable navigation subtests.
+
+subtest "openAppointments"
+{
+  ??+ css@"button.show-menus"
+  ??- css@"button.show-menus" click
+  ??10 xpath@"//a[@data-module='Appointment']"
+  click xpath@"//a[@data-module='Appointment']"
+  ??10 css@"h1.module-title"
+  ?? css@"h1.module-title" text ="Appointments"
+}

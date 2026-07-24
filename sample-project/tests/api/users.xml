@@ -1,0 +1,41 @@
+<TestCases>
+  <!-- Reuses ${authToken} captured by auth.xml, plus ${username}/${patientPrefix}. -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/users</url>
+    <name>List users</name>
+    <method>GET</method>
+    <secure>false</secure>
+    <headers class="linked-hash-map">
+      <property key="Authorization">Bearer ${authToken}</property>
+    </headers>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <!-- JSONPath node assertion: the first element must have an id -->
+    <expectedNodes>
+      <string>$[0].id</string>
+    </expectedNodes>
+    <sequence>1</sequence>
+  </TestCase>
+
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/users</url>
+    <name>Create user</name>
+    <method>POST</method>
+    <secure>false</secure>
+    <headers class="linked-hash-map">
+      <property key="Content-Type">application/json</property>
+      <property key="Authorization">Bearer ${authToken}</property>
+    </headers>
+    <content>{"name":"${patientPrefix}-${username}","role":"nurse"}</content>
+    <expectedResCode>201</expectedResCode>
+    <expectedNodes>
+      <string>id</string>
+    </expectedNodes>
+    <workflowContextParameterMap class="linked-hash-map">
+      <property key="newUserId">id</property>
+    </workflowContextParameterMap>
+    <sequence>2</sequence>
+  </TestCase>
+</TestCases>

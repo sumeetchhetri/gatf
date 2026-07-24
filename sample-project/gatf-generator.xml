@@ -1,0 +1,8 @@
+<configuration>
+  <resourcepath>/Users/sumeetc/Projects/GitHub/gatf/sample-project/generated</resourcepath>
+  <enabled>false</enabled>
+  <overrideSecure>false</overrideSecure>
+  <useSoapClient>false</useSoapClient>
+  <postmanCollectionVersion>0</postmanCollectionVersion>
+  <debugEnabled>false</debugEnabled>
+</configuration>

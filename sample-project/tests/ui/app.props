@@ -1,0 +1,6 @@
+# Project properties loaded by the UI flow via:  config app.properties
+# Each key becomes a top-level provider variable referenced as ${key} in seleasy.
+baseUrl=https://demo.gatf.example
+apiBaseUrl=https://demo.gatf.example/api
+username=demo_user
+password=Demo@123

@@ -1,0 +1,26 @@
+// ── Walk-in registration flow (the flagship UI test) ────────────
+// Demonstrates: include (setup), import (subtests), @call, config/dynprops
+// vars (${...}), conditional element handling (??+/??-), randomize, execjs,
+// and assertions (??).
+
+include setup.sel            // open + load props + sign in (setup imports lib/auth.sel)
+import lib/auth.sel           // ensure doLogout is in scope here too
+import lib/nav.sel           // openAppointments
+
+@call "openAppointments"
+
+// New walk-in with randomized demographics
+??+ css@"input.patient-fname"
+??- css@"input.patient-fname" randomize alphauc 6
+??- css@"input.patient-lname" randomize alphauc 8
+??- css@"input.patient-mobile" randomize range 7000000000 9999999999
+
+// A dynamic date of birth set via JS (execjs); $U is the built-in util helper.
+execjs '$("input[name=\'dob\']").val("$U.someYear(-30, \'dd/MM/yyyy\')").trigger("blur");'
+
+click text@"Save"
+??10 css@"div.toast-success"
+?? css@"div.toast-success" text ="Patient registered"
+
+@call "doLogout"
+close

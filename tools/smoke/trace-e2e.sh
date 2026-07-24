@@ -65,7 +65,7 @@ note "jar: ${GATF_JAR}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
 mkdir -p "${WORK}/data" "${WORK}/out"
-cp sample/trace-smoke.sel "${WORK}/data/"
+cp sample-project/tests/trace-smoke.sel "${WORK}/data/"
 
 CONFIG="${WORK}/gatf-trace-config.xml"
 cat > "${CONFIG}" <<EOF

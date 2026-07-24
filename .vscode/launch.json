@@ -13,7 +13,7 @@
 			"name": "ConfigTool",
 			"request": "launch",
 			"mainClass": "com.gatf.generator.core.GatfTestGeneratorUtil",
-			"args": "-configtool 9080 0.0.0.0 alldep-jar/sample",
+			"args": "-configtool 9080 0.0.0.0 sample-project",
 			"vmArgs" : "-Djdk.attach.allowAttachSelf=true", //it accepts a string or an array of strings,
 			"projectName": "gatf-alldep-jar",
 			"classPaths": [],

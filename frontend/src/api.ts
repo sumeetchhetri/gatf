@@ -512,6 +512,14 @@ export const api = {
   // ---- online debugger (Slice D2) — /reports?action=debug protocol ----
   dbg: (lineCode: string, tcf: string, tc: string, sessionId: string, sline?: string) =>
     dbgFetch(lineCode, tcf, tc, sessionId, sline),
+  // Server-push channel (delta-040): SSE stream of {s,r,p,n,v,t}. Consumed via EventSource; replaces the
+  // ~900ms heartbeat poll. Commands still go over dbg() (PUT). Token is appended like every other call.
+  debugStreamUrl: (sessionId: string) =>
+    withTok('/reports?action=debugStream&sessionId=' + encodeURIComponent(sessionId)),
+  // WebSocket push channel (delta-041): ws(s)://<host>/gatfjdb. The client sends the sessionId as its first
+  // message; the server pushes the same {s,r,p,n,v,t} frames. Preferred over SSE, which stays as fallback.
+  debugWsUrl: () =>
+    (location.protocol === 'https:' ? 'wss:' : 'ws:') + '//' + location.host + '/gatfjdb',
   // ---- single-test run + pause-on-element (Slice D2b) ----
   playTest: (tcf: string, tc: string) =>
     runPut(

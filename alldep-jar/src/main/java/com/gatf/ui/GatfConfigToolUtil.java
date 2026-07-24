@@ -209,6 +209,18 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         // Phase 3.x: read-only JSON API backing the React shell at /app (reports/config/test-files).
         // Additive — no existing handler is touched, and it performs no writes.
         server.getServerConfiguration().addHttpHandler(new GatfApiHandler(mojo), "/api");
+
+        // WebSocket push channel for the debugger (delta-041): mount /gatfjdb + attach the WS add-on to
+        // every listener before start(). The SSE stream (/reports?action=debugStream) stays as the client
+        // fallback, so a WS init failure degrades gracefully.
+        try {
+            for (NetworkListener nl : server.getListeners()) {
+                nl.registerAddOn(new org.glassfish.grizzly.websockets.WebSocketAddOn());
+            }
+            org.glassfish.grizzly.websockets.WebSocketEngine.getEngine().register("", "/gatfjdb", new GatfDebugWebSocket());
+        } catch (Throwable wsErr) {
+            System.out.println("WebSocket debug channel unavailable (SSE fallback active): " + wsErr);
+        }
 		
 		try {
 		    server.start();

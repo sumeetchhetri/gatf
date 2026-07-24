@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { debugLinesFor } from '../api';
+import type { DbgResponse } from '../api';
 import DebugCodeView from './DebugCodeView';
 
 type Status = 'initializing' | 'paused' | 'running' | 'done' | 'terminated' | 'error';
@@ -22,16 +23,27 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   const codeRef = useRef('');
   const currentFileRef = useRef(filePath);
   const currentLineRef = useRef<number | null>(null);
-  const pollRef = useRef<number | null>(null);
+  const esRef = useRef<EventSource | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const closedRef = useRef(false); // intentional teardown — suppresses WS→SSE fallback
   const doneRef = useRef(false);
   codeRef.current = code;
   currentFileRef.current = currentFile;
   currentLineRef.current = currentLine;
 
-  const stopPolling = () => {
-    if (pollRef.current != null) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
+  const stopStream = () => {
+    closedRef.current = true;
+    if (wsRef.current != null) {
+      try {
+        wsRef.current.close();
+      } catch {
+        /* ignore */
+      }
+      wsRef.current = null;
+    }
+    if (esRef.current != null) {
+      esRef.current.close();
+      esRef.current = null;
     }
   };
 
@@ -49,7 +61,7 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
           setDebuggable(debugLinesFor(d.l, filePath));
           setStatus('paused');
           setMsg('Paused.');
-          startPolling();
+          startStream();
         } else {
           setStatus('error');
           setMsg(d.m || 'Could not start the debugger.');
@@ -60,55 +72,93 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
         setMsg(e.message);
       });
     return () => {
-      stopPolling();
+      stopStream();
       if (!doneRef.current) api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const startPolling = () => {
-    stopPolling();
-    pollRef.current = window.setInterval(() => {
+  // One place to apply a pushed {s,r,p,n,v,t} frame — used by both the WebSocket and the SSE fallback.
+  const handleFrame = (raw: string) => {
+    let d: DbgResponse;
+    try {
+      d = JSON.parse(raw) as DbgResponse;
+    } catch {
+      return;
+    }
+    if (d.s === false) {
+      doneRef.current = true;
+      setStatus('terminated');
+      setMsg(d.m || 'Debug session ended.');
+      stopStream();
+      return;
+    }
+    if (d.r === false) {
+      doneRef.current = true;
+      setStatus('done');
+      setMsg('Debug session completed — see the Reports tab.');
+      setCurrentLine(null);
+      stopStream();
+      return;
+    }
+    const line = typeof d.p === 'number' ? d.p : currentLineRef.current;
+    // stepped into another file → load its source
+    if (d.t && d.t !== currentFileRef.current) {
+      const nf = d.t;
       api
-        .dbg('-7', filePath, tc, sessionRef.current)
-        .then((d) => {
-          if (d.s === false) {
-            doneRef.current = true;
-            setStatus('terminated');
-            setMsg(d.m || 'Debug session ended.');
-            stopPolling();
-            return;
-          }
-          if (d.r === false) {
-            doneRef.current = true;
-            setStatus('done');
-            setMsg('Debug session completed — see the Reports tab.');
-            setCurrentLine(null);
-            stopPolling();
-            return;
-          }
-          const line = typeof d.p === 'number' ? d.p : currentLineRef.current;
-          // stepped into another file → load its source
-          if (d.t && d.t !== currentFileRef.current) {
-            const nf = d.t;
-            api
-              .readSel(nf)
-              .then((src) => {
-                setCode(src);
-                setCurrentFile(nf);
-                setDebuggable(debugLinesFor(lFullRef.current, nf));
-                setCurrentLine(typeof line === 'number' ? line : null);
-              })
-              .catch(() => setCurrentLine(typeof line === 'number' ? line : null));
-          } else {
-            setCurrentLine(typeof line === 'number' ? line : null);
-          }
-          setStatus(typeof line === 'number' && line > 0 ? 'paused' : 'running');
+        .readSel(nf)
+        .then((src) => {
+          setCode(src);
+          setCurrentFile(nf);
+          setDebuggable(debugLinesFor(lFullRef.current, nf));
+          setCurrentLine(typeof line === 'number' ? line : null);
         })
-        .catch(() => {
-          /* transient — keep polling */
-        });
-    }, 900);
+        .catch(() => setCurrentLine(typeof line === 'number' ? line : null));
+    } else {
+      setCurrentLine(typeof line === 'number' ? line : null);
+    }
+    setStatus(typeof line === 'number' && line > 0 ? 'paused' : 'running');
+  };
+
+  // SSE fallback (delta-040): server pushes on change; EventSource auto-reconnects on a transient drop.
+  const startSse = () => {
+    if (closedRef.current) return;
+    const es = new EventSource(api.debugStreamUrl(sessionRef.current));
+    esRef.current = es;
+    es.onmessage = (ev: MessageEvent) => handleFrame(ev.data as string);
+    es.onerror = () => {
+      /* transient — EventSource reconnects; a finished session was already closed in handleFrame */
+    };
+  };
+
+  // Prefer the WebSocket (delta-041); if it can't connect (or drops mid-session), fall back to SSE.
+  const startStream = () => {
+    stopStream();
+    closedRef.current = false;
+    let ws: WebSocket;
+    try {
+      ws = new WebSocket(api.debugWsUrl());
+    } catch {
+      startSse();
+      return;
+    }
+    wsRef.current = ws;
+    ws.onopen = () => {
+      try {
+        ws.send(sessionRef.current); // first message = the debug sessionId
+      } catch {
+        /* ignore */
+      }
+    };
+    ws.onmessage = (ev: MessageEvent) => handleFrame(ev.data as string);
+    ws.onerror = () => {
+      /* handled by onclose */
+    };
+    ws.onclose = () => {
+      wsRef.current = null;
+      // WS unavailable or dropped before the session finished → switch to the SSE fallback
+      if (!closedRef.current && !doneRef.current) startSse();
+    };
   };
 
   const cmd = (lineCode: string, sline?: string) => {
@@ -134,7 +184,7 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   const suspend = () => cmd('-5');
   const terminate = () => {
     doneRef.current = true;
-    stopPolling();
+    stopStream();
     api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
     setStatus('terminated');
     setMsg('Stopped.');

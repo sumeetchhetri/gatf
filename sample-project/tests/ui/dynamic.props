@@ -1,0 +1,5 @@
+# Dynamic properties loaded by the UI flow via:  dynprops dynamic.props
+# Dynamic (code) variables make configurable values available to the generated code as ${key}.
+patientPrefix=AUTO
+maxRetries=3
+defaultCity=Pune

@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import type { ViewKey } from '../Shell';
+import { getTheme, toggleTheme, type Theme } from '../theme';
 
 const TABS: { key: ViewKey; label: string }[] = [
   { key: 'viewer', label: 'Trace Viewer' },
@@ -12,6 +14,7 @@ const TABS: { key: ViewKey; label: string }[] = [
 ];
 
 export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigate: (v: ViewKey) => void }) {
+  const [theme, setThemeState] = useState<Theme>(getTheme());
   return (
     <nav className="nav">
       <div className="nav-brand">
@@ -28,6 +31,14 @@ export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigat
           </button>
         ))}
       </div>
+      <button
+        className="nav-theme btn ghost small"
+        title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+        aria-label="Toggle theme"
+        onClick={() => setThemeState(toggleTheme())}
+      >
+        {theme === 'dark' ? '☀︎' : '☾'}
+      </button>
     </nav>
   );
 }
