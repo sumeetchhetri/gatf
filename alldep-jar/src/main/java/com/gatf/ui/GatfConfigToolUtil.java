@@ -125,8 +125,6 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	public void execute() throws Exception {
 		HttpServer server = new HttpServer();
 
-		final String mainDir = rootDir + File.separator + "gatf-config-tool";
-		WorkflowContextHandler.copyResourcesToDirectory("gatf-config-tool", mainDir);
 		
 		try {
 			authSrc.load(new FileInputStream("auth.props"));
@@ -163,11 +161,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         server.addListener(new NetworkListener("ConfigServer", ipAddress, port));
         ReportHandler.MY_URL = "http://localhost:" + port;
         
-        handleRootContext(server, mainDir, mojo);
+        handleRootContext(server, mojo);
 
         // Phase 3: embedded React shell + Trace Viewer, served at /app (the legacy config-tool at
-        // "/" is untouched). The Vite build is packaged on the classpath under gatf-viewer/ and
-        // extracted here just like the config-tool; a plain static handler serves it.
+        // "/" now 302-redirects here). The Vite build is packaged under gatf-viewer/ and
+        // extracted here; a plain static handler serves it. The config-tool is retired.
         final String viewerDir = rootDir + File.separator + "app";
         try {
             WorkflowContextHandler.copyResourcesToDirectory("gatf-viewer", viewerDir);
@@ -254,11 +252,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		}
 	}
 
-    protected static void handleRootContext(HttpServer server, final String mainDir, final GatfConfigToolMojoInt mojo) {
+    protected static void handleRootContext(HttpServer server, final GatfConfigToolMojoInt mojo) {
 		server.getServerConfiguration().addHttpHandler(
 		    new HttpHandler() {
 		        public void service(Request request, Response response) throws Exception {
-		        	new CacheLessStaticHttpHandler(authSrc!=null, mainDir).service(request, response);
+		        	response.setStatus(302); response.setHeader("Location", "/app/");
 		        }
 		    }, "/");
 		

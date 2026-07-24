@@ -28,9 +28,6 @@ export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigat
           </button>
         ))}
       </div>
-      <a className="nav-legacy btn ghost small" href="/" title="The classic editor / config UI">
-        Classic UI &#8599;
-      </a>
     </nav>
   );
 }

@@ -76,9 +76,6 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
 	public void execute() throws MojoExecutionException, MojoFailureException {
 		HttpServer server = new HttpServer();
 
-		final String mainDir = rootDir + File.separator + "gatf-config-tool";
-		WorkflowContextHandler.copyResourcesToDirectory("gatf-config-tool", mainDir);
-        
         final GatfConfigToolMojo mojo = this;
         
         GatfConfigToolUtil.createConfigFileIfNotExists(mojo, true, null);
@@ -89,8 +86,7 @@ public class GatfConfigToolMojo extends AbstractMojo implements GatfConfigToolMo
         
         server.addListener(new NetworkListener("ConfigServer", ipAddress, port));
         
-        GatfConfigToolUtil.handleRootContext(server, mainDir, mojo);
-        
+        GatfConfigToolUtil.handleRootContext(server, mojo);
         Function<String, GatfPlugin> f = new Function<String, GatfPlugin>() {
 			@Override
 			public GatfPlugin apply(String type) {

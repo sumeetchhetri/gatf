@@ -47,7 +47,7 @@ public class GatfProjectZipHandler extends HttpHandler {
 		if(response.getStatus()==401) return;
     	List<String> res = new ArrayList<String>();
     	List<String> err = new ArrayList<String>();
-    	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool");
+    	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool"); configDir.mkdirs();
     	
     	if(new File(configDir, "gatf-test-bin.zip").exists())
     		new File(configDir, "gatf-test-bin.zip").delete();
@@ -90,7 +90,7 @@ public class GatfProjectZipHandler extends HttpHandler {
         	File outdirectory = new File(outbasepath);
         	String folder = System.currentTimeMillis() + "";
         	
-        	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool");
+        	File configDir = new File(mojo.getRootDir()+File.separator+"gatf-config-tool"); configDir.mkdirs();
         	File zipFile = new File(configDir, zipFileName);
         	
         	File zfolder = new File(directory, folder);
