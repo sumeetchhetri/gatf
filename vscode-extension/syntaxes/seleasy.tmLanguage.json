@@ -1,0 +1,226 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "seleasy",
+  "scopeName": "source.seleasy",
+  "_generator": "tools/gen-tmgrammar/gen_tmgrammar.py",
+  "_source": "docs/seleasy/commands.json",
+  "_note": "Generated to mirror Command.java's dispatch. Do not hand-edit; regenerate with the generator above.",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#codeblocks"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#variables"
+    },
+    {
+      "include": "#selectors"
+    },
+    {
+      "include": "#atdirs"
+    },
+    {
+      "include": "#providers"
+    },
+    {
+      "include": "#inlinejava"
+    },
+    {
+      "include": "#conditionals"
+    },
+    {
+      "include": "#kwmulti"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#atoms"
+    },
+    {
+      "include": "#operators"
+    },
+    {
+      "include": "#numbers"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.double-slash.seleasy",
+          "match": "(?:^\\s*|(?<=\\s))//.*$"
+        },
+        {
+          "name": "comment.block.seleasy",
+          "begin": "/\\*",
+          "end": "\\*/"
+        }
+      ]
+    },
+    "codeblocks": {
+      "patterns": [
+        {
+          "name": "meta.embedded.block.seleasy",
+          "begin": "^\\s*(<<<(\\([^)]*\\))?)\\s*.*$",
+          "end": "^\\s*(>>>)\\s*$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.embedded.seleasy"
+            }
+          },
+          "endCaptures": {
+            "1": {
+              "name": "keyword.control.embedded.seleasy"
+            }
+          }
+        },
+        {
+          "name": "meta.embedded.block.seleasy",
+          "begin": "^\\s*(begin\\s+code\\s+in\\b).*$",
+          "end": "^\\s*(end\\s+code)\\s*$",
+          "beginCaptures": {
+            "1": {
+              "name": "keyword.control.embedded.seleasy"
+            }
+          },
+          "endCaptures": {
+            "1": {
+              "name": "keyword.control.embedded.seleasy"
+            }
+          }
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.seleasy",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.seleasy",
+              "match": "\\\\."
+            }
+          ]
+        },
+        {
+          "name": "string.quoted.single.seleasy",
+          "begin": "'",
+          "end": "'",
+          "patterns": [
+            {
+              "name": "constant.character.escape.seleasy",
+              "match": "\\\\."
+            }
+          ]
+        }
+      ]
+    },
+    "variables": {
+      "patterns": [
+        {
+          "name": "variable.other.seleasy",
+          "match": "\\$\\{[A-Za-z0-9_]+\\}"
+        }
+      ]
+    },
+    "selectors": {
+      "patterns": [
+        {
+          "match": "(?<![\\w-])(id|css|xpath|class|name|tag|text|cssselector|linktext|partiallinktext|jq|jquery|cssvalue|attr|active|relative|near|above|below|leftof|rightof)(@)",
+          "captures": {
+            "1": {
+              "name": "entity.name.tag.selector.seleasy"
+            },
+            "2": {
+              "name": "punctuation.definition.selector.seleasy"
+            }
+          }
+        }
+      ]
+    },
+    "atdirs": {
+      "patterns": [
+        {
+          "name": "support.function.directive.seleasy",
+          "match": "@(call|printprovjson|printProv|print|driver|window|element|sc|index|line|cntxtparam)\\b"
+        }
+      ]
+    },
+    "providers": {
+      "patterns": [
+        {
+          "name": "keyword.control.provider.seleasy",
+          "match": "(?:^\\s*|(?<=\\s))#{1,2}(?:sql|mongo|file|provider-sf|provider|counter|optional|transient-provider|p-sf|p|c|o|tp)?(?![\\w-])"
+        }
+      ]
+    },
+    "inlinejava": {
+      "patterns": [
+        {
+          "name": "keyword.control.inline-java.seleasy",
+          "match": "(?:^\\s*|(?<=\\s))#j"
+        }
+      ]
+    },
+    "conditionals": {
+      "patterns": [
+        {
+          "name": "keyword.control.conditional.seleasy",
+          "match": "(?<![\\w-])(\\?\\?[+-]?|:\\?!?|\\?!|\\?|:)(?![\\w-])"
+        },
+        {
+          "name": "keyword.control.skip.seleasy",
+          "match": "^\\s*\\^"
+        }
+      ]
+    },
+    "kwmulti": {
+      "patterns": [
+        {
+          "name": "keyword.control.seleasy",
+          "match": "(?<![\\w-])(wait\\s+till\\s+visible|else\\s+ifnot|loop\\s+over|wait\\s+for|ds\\s+query|else\\s+if)(?![\\w-])"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.seleasy",
+          "match": "(?<![\\w-])(capability_set|scrollpagedown|scrollpageup|readimgtext|doubleclick|hoverclick|scrolldown|execjsfile|screenshot|hidekeypad|randomize|readqrbar|waitready|wopensave|dynprops|provider|scrollup|continue|sendkeys|dblclick|readfile|maximize|variable|counter|refresh|require|confirm|timeout|forward|filevar|netapix|imgsave|subtest|actions|barcode|include|setting|canvas|config|window|select|substr|upload|import|qrcode|unless|submit|plugin|rotate|execjs|scroll|break|elsif|shake|swipe|mongo|ifnot|hover|query|pinch|touch|robot|alert|index|jsvar|while|click|clear|close|chord|frame|layer|sleep|mode|mail|else|exit|func|exec|pass|file|loop|join|open|type|goto|zoom|curl|fail|till|warn|back|http|over|eval|dsq|int|ocr|var|tap|for|sql|api|tab|if|ds)(?![\\w-])"
+        }
+      ]
+    },
+    "atoms": {
+      "patterns": [
+        {
+          "name": "constant.language.seleasy",
+          "match": "(?<![\\w-])(partiallinktext|alphanumericlc|alphanumericuc|movetoelement|movebyoffset|clickandhold|contextclick|draganddrop1|alphanumeric|cssselector|draganddrop|integration|chrome-hdl|currenturl|chrome-dkr|rightclick|pagesource|chrome-rec|className|jsonwrite|dragdrop1|alerttext|clk_focus|clickhold|fuzzyanlc|fuzzyanuc|prefixed_|prefixed|sendKeys|fuzzyauc|fuzzyalc|jsonpath|linktext|dragdrop|relative|xmlwrite|selected|cssvalue|jsonread|xmlpath|firefox|numeric|enabled|fuzzyan|release|rightof|current|alphalc|keydown|visible|tagname|xmlread|alphauc|safari|normal|leftof|moveto|status|parent|fuzzyn|cancel|header|delete|others|height|moveby|active|jquery|chrome|fuzzya|range|opera|width|false|class|above|value|below|title|alpha|xpath|keyup|xpos|true|text|lazy|attr|posx|edge|near|name|ypos|main|this|posy|post|json|off|get|css|put|yes|tag|ie|ok|jq|on|no|id)(?![\\w-])"
+        }
+      ]
+    },
+    "operators": {
+      "patterns": [
+        {
+          "name": "keyword.operator.seleasy",
+          "match": "->|=~|!~|==|!=|>=|<=|&&|\\|\\||[+\\-*/%<>=&|^~]"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.seleasy",
+          "match": "(?<![\\w.])-?\\d+(?:\\.\\d+)?(?![\\w.])"
+        }
+      ]
+    }
+  }
+}

@@ -200,8 +200,14 @@ function tokenSeleasy(stream: StringStream, state: SelState): string | null {
     }
   }
   if (ch === '/' && stream.string.substring(stream.start).startsWith('//')) {
-    stream.skipToEnd();
-    return 'comment';
+    // Phase 7: a `//` is a comment only at line start or when whitespace-preceded, so a
+    // trailing `config foo //note` highlights as a comment while `goto https://x` does not
+    // (its `//` follows a `:`). Otherwise fall through to operator handling below.
+    const before = stream.start === 0 ? ' ' : stream.string.charAt(stream.start - 1);
+    if (stream.start === 0 || before === ' ' || before === '\t') {
+      stream.skipToEnd();
+      return 'comment';
+    }
   }
   if (ch === '$') {
     const v = stream.string.substring(stream.start).match(/\$\{[a-zA-Z_0-9]+\}/);

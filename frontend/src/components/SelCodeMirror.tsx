@@ -55,6 +55,7 @@ export default function SelCodeMirror({
   gotoLine,
   gotoSeq,
   onNavigate,
+  onNavError,
 }: {
   value: string;
   onChange?: (v: string) => void;
@@ -64,6 +65,7 @@ export default function SelCodeMirror({
   gotoLine?: number | null;
   gotoSeq?: number;
   onNavigate?: (path: string, line?: number) => void;
+  onNavError?: (msg: string) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -72,11 +74,13 @@ export default function SelCodeMirror({
   const pathRef = useRef(filePath);
   const gotoLineRef = useRef(gotoLine);
   const onNavigateRef = useRef(onNavigate);
+  const onNavErrorRef = useRef(onNavError);
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
   pathRef.current = filePath;
   gotoLineRef.current = gotoLine;
   onNavigateRef.current = onNavigate;
+  onNavErrorRef.current = onNavError;
 
   // build the editor once
   useEffect(() => {
@@ -97,6 +101,7 @@ export default function SelCodeMirror({
         seleasyNav(
           () => pathRef.current,
           (p, l) => onNavigateRef.current?.(p, l),
+          (m) => onNavErrorRef.current?.(m),
         ),
         lintGutter(),
         EditorView.lineWrapping,

@@ -480,10 +480,34 @@ public class Command {
     
     //Refer to the utf8 whitespace characters list -- https://unicode-explorer.com/articles/space-characters
     static final String[] WHT_SPC_CHARS = {"\u0000", "\u0020", "\u00A0", "\u2000", "\u2001", "\u2002", "\u2003", "\u2004", "\u2005", "\u2006", "\u2007", "\u2008", "\u2009", "\u200A", "\u202F", "\u205F", "\u3000", "\u200B", "\u2060", "\uFEFF", "\u180E", "\u2800", "\u3164", "\uFFA0"};
+    // Phase 7: strip a trailing end-of-line // comment from a (sanitized) command line.
+    // The '//' must be whitespace-preceded, so URL schemes (http://, https://, ws://,
+    // file:///) are never mistaken for a comment; a full-line // (index 0) is left intact so
+    // it still becomes a CommentCommand. Quoted text is already placeholder-masked by
+    // sanitize(), so a // inside a string is invisible here. Returns the line up to the
+    // comment marker, right-trimmed.
+    static String stripTrailingLineComment(String cmd) {
+        if(cmd==null || cmd.length()<3) return cmd;
+        for(int i=1; i<cmd.length()-1; i++) {
+            if(cmd.charAt(i)=='/' && cmd.charAt(i+1)=='/') {
+                char prev = cmd.charAt(i-1);
+                if(prev==' ' || prev=='\t') {
+                    return cmd.substring(0, i).replaceAll("[ \\t]+$", "");
+                }
+            }
+        }
+        return cmd;
+    }
+
     static Command parse(Object[] cmdDetails, CommandState state, Command parent) {
         String cmd = utf8Trim(cmdDetails[0].toString().trim());
         Command comd = null;
         cmd = state.sanitize(cmd);
+        // Phase 7: drop a trailing end-of-line // comment before dispatch (values inside
+        // quotes are already placeholder-masked by sanitize; :// URL schemes are preserved).
+        if(!state.commentStart && !state.codeStart && !(parent instanceof ValueListCommand)) {
+            cmd = stripTrailingLineComment(cmd);
+        }
         if(!state.commentStart && cmd.trim().startsWith("^")) {
         	String skipKey = null;
         	for (String dkey : state.dynProps.keySet()) {

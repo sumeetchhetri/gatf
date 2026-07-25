@@ -16,11 +16,16 @@
 
 program      = { line } ;
 line         = ( statement | block_open | '{' | '}' | value_list
-               | code_block | comment ) , NL ;
+               | code_block | comment ) , [ eol_comment ] , NL ;
 
 (* ---- comments -------------------------------------------------------- *)
-comment      = '//' , text
+comment      = '//' , text                      (* a whole line *)
              | '/*' , { any } , '*/' ;          (* may span multiple lines *)
+(* A trailing // comment may follow any statement on the same line. The '//' must be
+ * whitespace-preceded, which keeps a URL scheme (http://, https://, file:///) intact, and a
+ * '//' inside a quoted string is data, not a comment. Stripped before dispatch by
+ * Command.stripTrailingLineComment; mirrored in the CM6 highlighter and tools/smoke/sel-lint.py. *)
+eol_comment  = ws , '//' , text ;               (* e.g.  config app.properties //notes  *)
 
 (* ---- conditional-skip prefix ---------------------------------------- *)
 (* '^<dynprop> <stmt>' keeps <stmt> only when dynprop <dynprop> is enabled *)

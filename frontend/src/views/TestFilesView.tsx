@@ -41,6 +41,11 @@ export default function TestFilesView() {
   const [gotoSeq, setGotoSeq] = useState(0);
   const [debugging, setDebugging] = useState(false);
   const [running, setRunning] = useState(false);
+  const [navMsg, setNavMsg] = useState<string | null>(null);
+  const flashNav = (m: string) => {
+    setNavMsg(m);
+    window.setTimeout(() => setNavMsg((c) => (c === m ? null : c)), 4000);
+  };
   const jumpTo = (n: number) => {
     setGotoLine(n);
     setGotoSeq((s) => s + 1);
@@ -90,6 +95,7 @@ export default function TestFilesView() {
     setConfirmDel(null);
     setDebugging(false);
     setRunning(false);
+    setNavMsg(null);
     if (kind === 'xml') {
       api
         .readXmlCases(path)
@@ -380,11 +386,13 @@ export default function TestFilesView() {
                           gotoLine={gotoLine}
                           gotoSeq={gotoSeq}
                           onNavigate={onNavigate}
+                          onNavError={flashNav}
                         />
                       </Suspense>
                     ) : (
                       <CodeEditor value={text} onChange={setText} markers={markers} gotoLine={gotoLine} />
                     )}
+                    {navMsg && <div className="view-note muted small tf-navmsg">{navMsg}</div>}
                     {saveMsg && <div className="view-error">{saveMsg}</div>}
                     {parseErrors.length > 0 && (
                       <div className="tf-problems">

@@ -1,0 +1,154 @@
+{
+  "name": "seleasy",
+  "displayName": "seleasy (GATF)",
+  "description": "Language support for GATF's seleasy UI-test DSL: syntax highlighting, completion, diagnostics, and a debugger that bridges to a running GATF server.",
+  "version": "0.1.0",
+  "publisher": "gatf",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sumeetchhetri/gatf"
+  },
+  "engines": {
+    "vscode": "^1.75.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Debuggers",
+    "Linters"
+  ],
+  "main": "./dist/extension.js",
+  "activationEvents": [
+    "onDebug",
+    "onDebugResolve:seleasy"
+  ],
+  "contributes": {
+    "languages": [
+      {
+        "id": "seleasy",
+        "aliases": [
+          "seleasy",
+          "Seleasy"
+        ],
+        "extensions": [
+          ".sel"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "seleasy",
+        "scopeName": "source.seleasy",
+        "path": "./syntaxes/seleasy.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "seleasy",
+      "properties": {
+        "seleasy.strictDiagnostics": {
+          "type": "boolean",
+          "default": false,
+          "description": "Report unrecognised leading keywords as warnings (plugin/NLP/subtest calls trip this)."
+        },
+        "seleasy.gatfUrl": {
+          "type": "string",
+          "default": "http://localhost:9080",
+          "description": "Base URL of the running GATF server (config-tool). Used by the debugger to start/step sessions."
+        },
+        "seleasy.gatfToken": {
+          "type": "string",
+          "default": "",
+          "description": "Auth token appended as ?token= when the GATF server has auth enabled (optional)."
+        }
+      }
+    },
+    "breakpoints": [
+      {
+        "language": "seleasy"
+      }
+    ],
+    "debuggers": [
+      {
+        "type": "seleasy",
+        "label": "seleasy (GATF)",
+        "languages": [
+          "seleasy"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [
+              "testcaseFile"
+            ],
+            "properties": {
+              "testcaseFile": {
+                "type": "string",
+                "description": "Test-case file name as GATF knows it (relative to the test-case dir).",
+                "default": "${relativeFile}"
+              },
+              "testCaseName": {
+                "type": "string",
+                "description": "Sub-test / test name to run (optional).",
+                "default": ""
+              },
+              "gatfUrl": {
+                "type": "string",
+                "description": "Override seleasy.gatfUrl for this session.",
+                "default": ""
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "default": true
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "seleasy",
+            "request": "launch",
+            "name": "Debug seleasy (current file)",
+            "testcaseFile": "${relativeFile}",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "seleasy: Debug current .sel",
+            "description": "Debug the active seleasy file against a running GATF server",
+            "body": {
+              "type": "seleasy",
+              "request": "launch",
+              "name": "Debug seleasy (current file)",
+              "testcaseFile": "^\"\\${relativeFile}\"",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "gen": "python3 ../tools/gen-tmgrammar/gen_tmgrammar.py",
+    "compile": "node esbuild.mjs",
+    "watch": "node esbuild.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "test:grammar": "node test/grammar.test.mjs",
+    "vscode:prepublish": "npm run gen && npm run compile"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1",
+    "vscode-languageserver": "^9.0.1",
+    "vscode-languageserver-textdocument": "^1.0.12",
+    "@vscode/debugadapter": "^1.68.0",
+    "@vscode/debugprotocol": "^1.68.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.75.0",
+    "esbuild": "^0.21.5",
+    "typescript": "^5.6.3",
+    "vscode-oniguruma": "^2.0.1",
+    "vscode-textmate": "^9.1.0"
+  }
+}

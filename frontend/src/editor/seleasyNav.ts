@@ -1,59 +1,41 @@
-// Cross-file navigation for the seleasy editor (C2.1) — ctrl/⌘-click or double-click on a
-// reference line jumps to its target, matching the classic editorEvents() behavior:
-//   include/import/config/dynprops <file>  -> GET …&referencedFile=<file>        -> [targetFile]
-//   @call "subtest"                         -> GET …&possibleSubtestFuncCall=<ln> -> [targetFile, line]
-//   goto https?://…                         -> open the URL in a new tab
+// CodeMirror 6 wiring for cross-file navigation (C2.1). The resolve/classify logic is in
+// navResolve.ts (pure, headless-tested); this module binds it to mouse events + the api client.
+//
+// Phase 7 fix — the defect was the click wiring, not the resolver (headless nav-target tests were
+// 8/8 but nothing happened in-browser). Three changes make it work:
+//   1. Navigate on `click` (fires after selection settles) instead of `mousedown` — a modifier
+//      mousedown in CM6 starts a rectangular/added-cursor selection and swallowed our handler.
+//      `mousedown` now only preventDefaults that selection on a nav line so the click stays clean.
+//   2. posAtCoords(coords, false) returns the *nearest* position instead of null when the point
+//      isn't exactly over a glyph, so an edge/padding click still resolves its line.
+//   3. Resolve failures surface via onNavError instead of being swallowed by an empty .catch.
 import { EditorView, ViewPlugin, Decoration, type DecorationSet } from '@codemirror/view';
 import { RangeSetBuilder, type Extension } from '@codemirror/state';
 import { api } from '../api';
+import { navTarget, navigateForLine, type NavHooks } from './navResolve';
 
-const REF_KW = ['dynprops', 'config', 'include', 'import'];
+export { navTarget } from './navResolve';
+export type { NavTarget } from './navResolve';
 
-export type NavTarget = { kind: 'ref' | 'subtest' | 'goto'; arg: string };
+const resolver = {
+  resolveRef: (path: string, ref: string) => api.resolveRef(path, ref),
+  resolveSubtest: (path: string, call: string) => api.resolveSubtest(path, call),
+};
 
-export function navTarget(lineText: string): NavTarget | null {
-  const t = lineText.trim();
-  for (const kw of REF_KW) if (t.startsWith(kw + ' ')) return { kind: 'ref', arg: t.slice(kw.length).trim() };
-  if (t.startsWith('@call ')) return { kind: 'subtest', arg: t }; // pass the whole @call line
-  if (t.startsWith('goto ')) return { kind: 'goto', arg: t.slice(5).trim() };
-  return null;
+// true if the click point sits on a navigable reference line.
+function isNavAt(e: MouseEvent, view: EditorView): boolean {
+  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
+  if (pos == null) return false;
+  return navTarget(view.state.doc.lineAt(pos).text) != null;
 }
 
-function navAt(
-  e: MouseEvent,
-  view: EditorView,
-  getPath: () => string | null,
-  onNavigate: (path: string, line?: number) => void,
-): boolean {
-  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+function navAt(e: MouseEvent, view: EditorView, hooks: NavHooks): boolean {
+  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY }, false);
   if (pos == null) return false;
   const line = view.state.doc.lineAt(pos);
-  const nt = navTarget(line.text);
-  if (!nt) return false;
+  if (!navTarget(line.text)) return false;
   e.preventDefault();
-  if (nt.kind === 'goto') {
-    if (/^https?:\/\//i.test(nt.arg)) window.open(nt.arg, '_blank', 'noopener');
-    return true;
-  }
-  const path = getPath();
-  if (!path) return true;
-  if (nt.kind === 'ref') {
-    api
-      .resolveRef(path, nt.arg)
-      .then((out) => {
-        const t = out && out[0];
-        if (t) onNavigate(t);
-      })
-      .catch(() => {});
-  } else {
-    api
-      .resolveSubtest(path, nt.arg)
-      .then((out) => {
-        const t = out && out[0];
-        if (t) onNavigate(t, Number(out[1]));
-      })
-      .catch(() => {});
-  }
+  void navigateForLine(line.text, resolver, hooks);
   return true;
 }
 
@@ -97,12 +79,21 @@ function decoPlugin() {
   );
 }
 
-export function seleasyNav(getPath: () => string | null, onNavigate: (path: string, line?: number) => void): Extension {
+export function seleasyNav(
+  getPath: () => string | null,
+  onNavigate: (path: string, line?: number) => void,
+  onNavError?: (msg: string) => void,
+): Extension {
+  const hooks: NavHooks = { getPath, onNavigate, onError: onNavError };
   return [
     decoPlugin(),
     EditorView.domEventHandlers({
-      mousedown: (e, view) => (e.ctrlKey || e.metaKey ? navAt(e, view, getPath, onNavigate) : false),
-      dblclick: (e, view) => navAt(e, view, getPath, onNavigate),
+      // Stop CM from starting a modifier-selection on a nav line so the click stays a plain click.
+      mousedown: (e, view) =>
+        (e.ctrlKey || e.metaKey) && isNavAt(e, view) ? (e.preventDefault(), true) : false,
+      // Navigate here (selection has settled). Modifier for single-click; double-click needs none.
+      click: (e, view) => ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey ? navAt(e, view, hooks) : false),
+      dblclick: (e, view) => navAt(e, view, hooks),
     }),
   ];
 }

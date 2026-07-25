@@ -52,6 +52,15 @@ log "Stage 1/3  LINT  (offline structural check)"
 python3 tools/smoke/sel-lint.py --regen ${STRICT} sample/*.sel
 note "lint passed"
 
+# Editor logic unit test (seleasy cross-file nav wiring) — runs only when the frontend toolchain
+# is available (needs node + the local esbuild); skipped in a bare CI lint otherwise.
+if command -v node >/dev/null 2>&1 && [ -x frontend/node_modules/.bin/esbuild ]; then
+  node tools/smoke/test-nav-wiring.mjs
+  note "nav-wiring test passed"
+else
+  note "nav-wiring test skipped (node/esbuild not present)"
+fi
+
 if [ "${LINT_ONLY}" = "1" ]; then
   log "done (--lint-only)"; exit 0
 fi

@@ -44,6 +44,19 @@ CORE_KEYWORDS = ("open", "goto", "click", "type", "if", "sleep")
 ALPHA_TOK = re.compile(r"[a-z0-9_\-]+")
 
 
+def strip_eol_comment(s: str) -> str:
+    """Drop a trailing end-of-line // comment (Phase 7), mirroring
+    Command.stripTrailingLineComment: the // must be whitespace-preceded so a URL scheme
+    (http://, https://, file:///) is preserved, and quoted text is masked first so a // inside
+    a string is not seen as a comment. A leading full-line // is left for the caller to handle."""
+    masked = re.sub(r'"(?:\\.|[^"\\])*"', lambda m: "\0" * len(m.group()), s)
+    masked = re.sub(r"'(?:\\.|[^'\\])*'", lambda m: "\0" * len(m.group()), masked)
+    for i in range(1, len(masked) - 1):
+        if masked[i] == "/" and masked[i + 1] == "/" and masked[i - 1] in " \t":
+            return s[:i].rstrip()
+    return s
+
+
 class Catalog:
     def __init__(self, doc):
         cmds = doc["commands"]
@@ -137,6 +150,10 @@ def lint_file(path: Path, cat: Catalog):
                 comment_open_line = n
             continue
         if s.startswith("//"):
+            continue
+        # strip a trailing // comment so brace/vlist/keyword classification sees a clean statement
+        s = strip_eol_comment(s)
+        if not s:
             continue
         if s == "<<<" or s.startswith("<<<(") or s.startswith("begin code in"):
             in_code = True
