@@ -218,8 +218,11 @@ function ObjectField({
         const isSection = child.label?.type === 'section';
         const scalar =
           child.type === 'string' || child.type === 'integer' || child.type === 'number' || child.type === 'boolean';
+        // scalars flow into the responsive column grid; sections and complex fields (object/array/map)
+        // span the full width so they keep room to breathe.
+        const span = isSection || !scalar;
         return (
-          <div className="sf-field" key={key}>
+          <div className={'sf-field' + (span ? ' sf-span' : '')} key={key}>
             {isSection && <div className="sf-section">{child.label?.value || humanize(key)}</div>}
             <div className={scalar ? 'sf-row' : 'sf-block'}>
               {!child.nolabel && <label className="sf-label">{humanize(key)}</label>}

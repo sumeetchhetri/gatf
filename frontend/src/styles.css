@@ -453,8 +453,10 @@ select.sf-input { max-width: 520px; }
 .tce-actions-h { width: 1%; }
 
 /* C2.1 cross-file navigation affordance */
-.cm-nav-line { cursor: pointer; }
-.cm-mod-held .cm-nav-line { text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--accent); }
+.cm-nav-line { cursor: text; }
+/* only the line under the pointer gets the link affordance while ctrl/⌘ is held (VS Code style) —
+   previously every navigable line underlined at once */
+.cm-mod-held .cm-nav-line:hover { cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; text-decoration-color: var(--accent); }
 
 /* ---- Slice D1: execute view ---- */
 .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
@@ -564,3 +566,68 @@ select.sf-input { max-width: 520px; }
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
 }
+
+/* ========================= delta-045: forms + tree + tabs ========================= */
+
+/* ---- Material-style schema forms (responsive multi-column) ---- */
+.sf-obj { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px 22px; align-items: start; }
+.sf-field { min-width: 0; }
+.sf-field.sf-span { grid-column: 1 / -1; }
+.sf-block > .sf-obj { gap: 12px 18px; }
+
+/* stacked caption-style label above the control (Material text-field pattern) */
+.sf-row { display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 2px 0; }
+.sf-row > .sf-label, .sf-block > .sf-label {
+  font-size: 11px; font-weight: 600; letter-spacing: .02em; color: var(--muted); text-transform: none; margin: 0;
+}
+/* boolean rows read better inline than stacked */
+.sf-row:has(.sf-check) { flex-direction: row-reverse; align-items: center; justify-content: flex-end; gap: 10px; }
+.sf-row:has(.sf-check) > .sf-label { flex: 1; }
+
+/* filled inputs, comfortable target, clear focus (focus ring comes from Phase 9) */
+.sf-input { width: 100%; max-width: none; background: var(--panel2); color: var(--fg);
+  border: 1px solid var(--border); border-radius: var(--r-2); padding: 8px 10px; font-size: 13px; }
+.sf-input:hover { border-color: var(--muted); }
+select.sf-input { max-width: none; }
+.sf-check { width: 18px; height: 18px; accent-color: var(--accent); }
+
+/* section header as a full-width divider with an accent tick */
+.sf-section { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px;
+  font-weight: 700; color: var(--text); margin: 10px 0 2px; padding: 0 0 6px;
+  border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+.sf-section::before { content: ''; width: 3px; height: 13px; border-radius: 2px; background: var(--accent); }
+
+/* complex containers get a soft material card */
+.sf-arr-complex { background: var(--panel); border: 1px solid var(--border); border-radius: var(--r-3); }
+.sf-block > .sf-array, .sf-block > .sf-map { border-left-color: color-mix(in srgb, var(--accent) 45%, var(--border)); }
+
+/* ---- File tree (left nav, collapsible directories) ---- */
+.tf-tree { display: flex; flex-direction: column; }
+.tf-node { display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: var(--r-1); cursor: pointer; white-space: nowrap; }
+.tf-node:hover { background: var(--panel2); }
+.tf-dir { user-select: none; }
+.tf-caret { width: 12px; display: inline-flex; justify-content: center; font-size: 9px; color: var(--muted); }
+.tf-dir-name { color: var(--text); font-weight: 600; }
+.tf-file.sel { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.tf-file.open .tf-item-name { color: var(--text); }
+.tf-file:not(.open) .tf-item-name { color: var(--muted); }
+.tf-file .tf-del { visibility: hidden; margin-left: auto; background: transparent; border: none; color: var(--muted); cursor: pointer; padding: 0 4px; }
+.tf-file:hover .tf-del { visibility: visible; }
+.tf-file .tf-del:hover { color: var(--red); }
+
+/* ---- Editor tabs + back/forward history ---- */
+.tf-tabs { display: flex; align-items: center; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+.tf-histbtn { flex: 0 0 auto; width: 26px; height: 26px; border: 1px solid var(--border); background: var(--panel2); color: var(--text); border-radius: var(--r-2); font-size: 15px; line-height: 1; }
+.tf-histbtn:disabled { opacity: .4; cursor: not-allowed; }
+.tf-histbtn:not(:disabled):hover { border-color: var(--accent); }
+.tf-tabstrip { display: flex; gap: 2px; overflow-x: auto; flex: 1; min-width: 0; }
+.tf-tab { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px 6px; border: 1px solid transparent; border-bottom: none;
+  border-top-left-radius: var(--r-2); border-top-right-radius: var(--r-2); color: var(--muted); background: transparent; white-space: nowrap; cursor: pointer; max-width: 230px; }
+.tf-tab:hover { background: var(--panel2); color: var(--text); }
+.tf-tab.on { color: var(--text); background: var(--panel); border-color: var(--border); position: relative; }
+.tf-tab.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--accent); }
+.tf-tab .kind { flex: 0 0 auto; }
+.tf-tab-name { overflow: hidden; text-overflow: ellipsis; }
+.tf-tab-dot { color: var(--accent); font-weight: 700; }
+.tf-tab-x { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1; padding: 0 2px; border-radius: var(--r-1); }
+.tf-tab-x:hover { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }

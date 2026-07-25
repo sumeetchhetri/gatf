@@ -16,13 +16,24 @@ const baseName = (p: string) => {
   return i === -1 ? p : p.slice(i + 1);
 };
 
-interface OpenFile {
+// One open editor tab. Each tab keeps its own working copy (draft) so switching tabs never
+// discards edits (delta-045: opening a file adds a tab instead of replacing the open one).
+interface Tab {
   path: string;
   kind: Kind;
   loading: boolean;
   err: string | null;
-  text: string; // original loaded text (.sel/other)
+  text: string; // last-saved text (.sel/other)
+  draft: string; // editor working copy
   cases: ApiTestCase[] | null; // .xml structured
+}
+
+// tree node: a directory (has children) or a file (has kind)
+interface TreeNode {
+  name: string;
+  path: string;
+  kind?: Kind;
+  children?: TreeNode[];
 }
 
 export default function TestFilesView() {
@@ -31,8 +42,14 @@ export default function TestFilesView() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null); // CRUD in flight (message)
 
-  const [open, setOpen] = useState<OpenFile | null>(null);
-  const [text, setText] = useState(''); // editor working copy
+  // open tabs + which is active + browser-style back/forward history of file paths
+  const [tabs, setTabs] = useState<Tab[]>([]);
+  const [activePath, setActivePath] = useState<string | null>(null);
+  const [back, setBack] = useState<string[]>([]);
+  const [fwd, setFwd] = useState<string[]>([]);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set()); // collapsed dir paths
+
+  // transient state for the ACTIVE tab (reset when the active tab changes)
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -42,14 +59,6 @@ export default function TestFilesView() {
   const [debugging, setDebugging] = useState(false);
   const [running, setRunning] = useState(false);
   const [navMsg, setNavMsg] = useState<string | null>(null);
-  const flashNav = (m: string) => {
-    setNavMsg(m);
-    window.setTimeout(() => setNavMsg((c) => (c === m ? null : c)), 4000);
-  };
-  const jumpTo = (n: number) => {
-    setGotoLine(n);
-    setGotoSeq((s) => s + 1);
-  };
 
   // dialogs
   const [newOpen, setNewOpen] = useState(false);
@@ -58,6 +67,29 @@ export default function TestFilesView() {
   const [renaming, setRenaming] = useState(false);
   const [renameTo, setRenameTo] = useState('');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+
+  const active = tabs.find((t) => t.path === activePath) ?? null;
+  const dirty = active != null && active.kind !== 'xml' && active.draft !== active.text;
+
+  const jumpTo = (n: number) => {
+    setGotoLine(n);
+    setGotoSeq((s) => s + 1);
+  };
+  const flashNav = (m: string) => {
+    setNavMsg(m);
+    window.setTimeout(() => setNavMsg((c) => (c === m ? null : c)), 4000);
+  };
+  const resetTransient = () => {
+    setParseErrors([]);
+    setSaveMsg(null);
+    setSaved(false);
+    setDebugging(false);
+    setRunning(false);
+    setNavMsg(null);
+    setRenaming(false);
+  };
+  const patchTab = (path: string, patch: Partial<Tab>) =>
+    setTabs((ts) => ts.map((t) => (t.path === path ? { ...t, ...patch } : t)));
 
   const loadFiles = () => {
     setLoading(true);
@@ -70,74 +102,158 @@ export default function TestFilesView() {
   };
   useEffect(loadFiles, []);
 
-  const groups = useMemo(() => {
-    const m = new Map<string, TestcaseFileEntry[]>();
+  // ---- directory tree ----
+  const tree = useMemo(() => {
+    const root: TreeNode = { name: '', path: '', children: [] };
     for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
-      const i = f.path.lastIndexOf('/');
-      const dir = i === -1 ? '' : f.path.slice(0, i);
-      if (!m.has(dir)) m.set(dir, []);
-      m.get(dir)!.push(f);
+      const parts = f.path.split('/');
+      let cur = root;
+      let acc = '';
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        acc = acc ? acc + '/' + part : part;
+        if (i === parts.length - 1) {
+          cur.children!.push({ name: part, path: f.path, kind: kindOf(f.path) });
+        } else {
+          let dir = cur.children!.find((c) => c.children && c.name === part);
+          if (!dir) {
+            dir = { name: part, path: acc, children: [] };
+            cur.children!.push(dir);
+          }
+          cur = dir;
+        }
+      }
     }
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+    const sortRec = (n: TreeNode) => {
+      if (!n.children) return;
+      n.children.sort((a, b) => {
+        const ad = !!a.children,
+          bd = !!b.children;
+        if (ad !== bd) return ad ? -1 : 1; // directories first
+        return a.name.localeCompare(b.name);
+      });
+      n.children.forEach(sortRec);
+    };
+    sortRec(root);
+    return root;
   }, [files]);
 
-  const dirty = open != null && open.kind !== 'xml' && text !== open.text;
+  const toggleDir = (p: string) =>
+    setCollapsed((s) => {
+      const n = new Set(s);
+      if (n.has(p)) n.delete(p);
+      else n.add(p);
+      return n;
+    });
+
+  // ---- tab / history navigation ----
+  const openPaths = useMemo(() => new Set(tabs.map((t) => t.path)), [tabs]);
+
+  const activate = (path: string, jumpLine?: number, record = true) => {
+    if (record && activePath && activePath !== path) {
+      setBack((b) => [...b, activePath]);
+      setFwd([]);
+    }
+    setActivePath(path);
+    resetTransient();
+    if (jumpLine) jumpTo(jumpLine);
+  };
 
   const openFile = (path: string, jumpLine?: number) => {
-    if (dirty && !window.confirm('Discard unsaved changes?')) return;
+    if (openPaths.has(path)) {
+      activate(path, jumpLine);
+      return;
+    }
     const kind = kindOf(path);
-    setOpen({ path, kind, loading: true, err: null, text: '', cases: null });
-    setText('');
-    setParseErrors([]);
-    setSaveMsg(null);
-    setSaved(false);
-    setRenaming(false);
-    setConfirmDel(null);
-    setDebugging(false);
-    setRunning(false);
-    setNavMsg(null);
+    setTabs((ts) => [...ts, { path, kind, loading: true, err: null, text: '', draft: '', cases: null }]);
+    if (activePath && activePath !== path) {
+      setBack((b) => [...b, activePath]);
+      setFwd([]);
+    }
+    setActivePath(path);
+    resetTransient();
     if (kind === 'xml') {
       api
         .readXmlCases(path)
-        .then((cases) => setOpen({ path, kind, loading: false, err: null, text: '', cases }))
+        .then((cases) => patchTab(path, { loading: false, cases }))
         .catch((e) =>
-          // an empty/new .xml (seeded <TestCases></TestCases>) has no cases yet — open the editor empty
           /no testcases/i.test(e.message)
-            ? setOpen({ path, kind, loading: false, err: null, text: '', cases: [] })
-            : setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }),
+            ? patchTab(path, { loading: false, cases: [] })
+            : patchTab(path, { loading: false, err: e.message }),
         );
     } else {
       api
         .readSel(path)
         .then((t) => {
-          setOpen({ path, kind, loading: false, err: null, text: t, cases: null });
-          setText(t);
+          patchTab(path, { loading: false, text: t, draft: t });
           if (jumpLine) jumpTo(jumpLine);
         })
-        .catch((e) => setOpen({ path, kind, loading: false, err: e.message, text: '', cases: null }));
+        .catch((e) => patchTab(path, { loading: false, err: e.message }));
     }
   };
 
+  const closeTab = (path: string) => {
+    const t = tabs.find((x) => x.path === path);
+    if (t && t.kind !== 'xml' && t.draft !== t.text && !window.confirm(`Discard unsaved changes in ${baseName(path)}?`))
+      return;
+    const idx = tabs.findIndex((x) => x.path === path);
+    const next = tabs.filter((x) => x.path !== path);
+    setTabs(next);
+    setBack((b) => b.filter((p) => p !== path));
+    setFwd((f) => f.filter((p) => p !== path));
+    if (activePath === path) {
+      const nextActive = next.length ? next[Math.min(idx, next.length - 1)].path : null;
+      setActivePath(nextActive);
+      resetTransient();
+    }
+  };
+
+  // back/forward: pop the nearest still-open path, pushing the current one onto the other stack
+  const navHistory = (dir: 'back' | 'fwd') => {
+    const src = dir === 'back' ? back : fwd;
+    const setSrc = dir === 'back' ? setBack : setFwd;
+    const setDst = dir === 'back' ? setFwd : setBack;
+    let i = src.length - 1;
+    while (i >= 0 && !openPaths.has(src[i])) i--;
+    if (i < 0) {
+      setSrc([]);
+      return;
+    }
+    const target = src[i];
+    setSrc(src.slice(0, i));
+    if (activePath) setDst((d) => [...d.filter((p) => p !== activePath), activePath]);
+    setActivePath(target);
+    resetTransient();
+  };
+  const canBack = back.some((p) => openPaths.has(p));
+  const canFwd = fwd.some((p) => openPaths.has(p));
+
   // ctrl/⌘-click or double-click on a reference line → jump within this file or open the target file
   const onNavigate = (p: string, l?: number) => {
-    if (open && p === open.path) {
+    if (active && p === active.path) {
       if (l) jumpTo(l);
     } else {
       openFile(p, l);
     }
   };
 
+  const setDraft = (v: string) => {
+    if (active) patchTab(active.path, { draft: v });
+  };
+
   const save = () => {
-    if (!open || open.kind === 'xml') return;
+    if (!active || active.kind === 'xml') return;
+    const path = active.path;
+    const draft = active.draft;
     setSaving(true);
     setSaveMsg(null);
     setSaved(false);
     setParseErrors([]);
     api
-      .saveSel(open.path, text)
+      .saveSel(path, draft)
       .then((r) => {
         if (r.ok) {
-          setOpen({ ...open, text });
+          patchTab(path, { text: draft });
           setSaved(true);
           setTimeout(() => setSaved(false), 4000);
         } else {
@@ -168,19 +284,23 @@ export default function TestFilesView() {
   };
 
   const doRename = () => {
-    if (!open) return;
+    if (!active) return;
+    const from = active.path;
     const to = renameTo.trim();
-    if (!to || to === open.path) {
+    if (!to || to === from) {
       setRenaming(false);
       return;
     }
     setBusy('Renaming…');
     api
-      .renameTestcaseFile(open.path, to)
+      .renameTestcaseFile(from, to)
       .then(() => {
         setRenaming(false);
+        setTabs((ts) => ts.map((t) => (t.path === from ? { ...t, path: to, kind: kindOf(to) } : t)));
+        setBack((b) => b.map((p) => (p === from ? to : p)));
+        setFwd((f) => f.map((p) => (p === from ? to : p)));
+        if (activePath === from) setActivePath(to);
         loadFiles();
-        openFile(to);
       })
       .catch((e) => setError(e.message))
       .finally(() => setBusy(null));
@@ -192,7 +312,12 @@ export default function TestFilesView() {
       .deleteTestcaseFile(path)
       .then(() => {
         setConfirmDel(null);
-        if (open?.path === path) setOpen(null);
+        const idx = tabs.findIndex((x) => x.path === path);
+        const next = tabs.filter((x) => x.path !== path);
+        setTabs(next);
+        setBack((b) => b.filter((p) => p !== path));
+        setFwd((f) => f.filter((p) => p !== path));
+        if (activePath === path) setActivePath(next.length ? next[Math.min(idx, next.length - 1)].path : null);
         loadFiles();
       })
       .catch((e) => setError(e.message))
@@ -202,6 +327,44 @@ export default function TestFilesView() {
   const markers: EditorMarker[] = parseErrors
     .map((e) => ({ line: Number(e[1]), message: String(e[3] ?? e[2] ?? 'Parse error') }))
     .filter((m) => Number.isFinite(m.line) && m.line > 0);
+
+  const renderNode = (n: TreeNode, depth: number): JSX.Element => {
+    const pad = { paddingLeft: 8 + depth * 14 };
+    if (n.children) {
+      const isCollapsed = collapsed.has(n.path);
+      return (
+        <div key={'d:' + n.path}>
+          <div className="tf-node tf-dir mono small" style={pad} onClick={() => toggleDir(n.path)}>
+            <span className="tf-caret">{isCollapsed ? '▸' : '▾'}</span>
+            <span className="tf-dir-name">{n.name || '(root)'}</span>
+          </div>
+          {!isCollapsed && n.children.map((c) => renderNode(c, depth + 1))}
+        </div>
+      );
+    }
+    return (
+      <div
+        key={'f:' + n.path}
+        className={'tf-node tf-file' + (activePath === n.path ? ' sel' : '') + (openPaths.has(n.path) ? ' open' : '')}
+        style={pad}
+        onClick={() => openFile(n.path)}
+        title={n.path}
+      >
+        <span className={'kind kind-' + n.kind}>{n.kind}</span>
+        <span className="tf-item-name mono ellipsis">{n.name}</span>
+        <button
+          className="tf-del"
+          title="Delete"
+          onClick={(e) => {
+            e.stopPropagation();
+            setConfirmDel(n.path);
+          }}
+        >
+          ✕
+        </button>
+      </div>
+    );
+  };
 
   return (
     <div className="view">
@@ -250,25 +413,38 @@ export default function TestFilesView() {
             {files.length === 0 ? (
               <div className="view-note">No test files. Create one with “+ New file”.</div>
             ) : (
-              groups.map(([dir, entries]) => (
-                <div className="tf-group" key={dir || '(root)'}>
-                  <div className="tf-group-h mono small">{dir || '(root)'}</div>
-                  {entries.map((f) => (
+              <div className="tf-tree">{tree.children!.map((c) => renderNode(c, 0))}</div>
+            )}
+          </div>
+
+          <div className="tf-content">
+            {tabs.length === 0 && <div className="view-note muted">Select a file to edit, or create a new one.</div>}
+
+            {tabs.length > 0 && (
+              <div className="tf-tabs">
+                <button className="tf-histbtn" title="Back" disabled={!canBack} onClick={() => navHistory('back')}>
+                  ‹
+                </button>
+                <button className="tf-histbtn" title="Forward" disabled={!canFwd} onClick={() => navHistory('fwd')}>
+                  ›
+                </button>
+                <div className="tf-tabstrip">
+                  {tabs.map((t) => (
                     <div
-                      key={f.path}
-                      className={'tf-item' + (open?.path === f.path ? ' sel' : '')}
-                      onClick={() => openFile(f.path)}
+                      key={t.path}
+                      className={'tf-tab' + (activePath === t.path ? ' on' : '')}
+                      onClick={() => activate(t.path)}
+                      title={t.path}
                     >
-                      <span className={'kind kind-' + kindOf(f.path)}>{kindOf(f.path)}</span>
-                      <span className="tf-item-name mono ellipsis" title={f.path}>
-                        {baseName(f.path)}
-                      </span>
+                      <span className={'kind kind-' + t.kind}>{t.kind}</span>
+                      <span className="tf-tab-name mono">{baseName(t.path)}</span>
+                      {t.kind !== 'xml' && t.draft !== t.text && <span className="tf-tab-dot">•</span>}
                       <button
-                        className="tf-del"
-                        title="Delete"
+                        className="tf-tab-x"
+                        title="Close"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setConfirmDel(f.path);
+                          closeTab(t.path);
                         }}
                       >
                         ✕
@@ -276,14 +452,10 @@ export default function TestFilesView() {
                     </div>
                   ))}
                 </div>
-              ))
+              </div>
             )}
-          </div>
 
-          <div className="tf-content">
-            {!open && <div className="view-note muted">Select a file to edit, or create a new one.</div>}
-
-            {open && (
+            {active && (
               <>
                 <div className="tf-content-head">
                   {renaming ? (
@@ -304,13 +476,13 @@ export default function TestFilesView() {
                     </div>
                   ) : (
                     <>
-                      <span className="mono small ellipsis" title={open.path}>
-                        {open.path}
+                      <span className="mono small ellipsis" title={active.path}>
+                        {active.path}
                       </span>
-                      <span className={'kind kind-' + open.kind}>{open.kind}</span>
+                      <span className={'kind kind-' + active.kind}>{active.kind}</span>
                       {!debugging && !running && (
                         <div className="tf-head-actions">
-                          {open.kind !== 'xml' && (
+                          {active.kind !== 'xml' && (
                             <>
                               <button className="btn primary small" disabled={!dirty || saving} onClick={save}>
                                 {saving ? 'Saving…' : 'Save'}
@@ -318,13 +490,13 @@ export default function TestFilesView() {
                               <button
                                 className="btn ghost small"
                                 disabled={!dirty || saving}
-                                onClick={() => setText(open.text)}
+                                onClick={() => patchTab(active.path, { draft: active.text })}
                               >
                                 Reset
                               </button>
                             </>
                           )}
-                          {open.kind === 'sel' && (
+                          {active.kind === 'sel' && (
                             <>
                               <button
                                 className="btn small"
@@ -347,7 +519,7 @@ export default function TestFilesView() {
                           <button
                             className="btn ghost small"
                             onClick={() => {
-                              setRenameTo(open.path);
+                              setRenameTo(active.path);
                               setRenaming(true);
                             }}
                           >
@@ -361,65 +533,74 @@ export default function TestFilesView() {
                   )}
                 </div>
 
-                {open.loading && <div className="view-note">Loading…</div>}
-                {open.err && <div className="view-error">Could not read file ({open.err}).</div>}
+                {active.loading && <div className="view-note">Loading…</div>}
+                {active.err && <div className="view-error">Could not read file ({active.err}).</div>}
 
-                {!open.loading && !open.err && open.kind === 'xml' && (
-                  <TestCaseEditor filePath={open.path} cases={open.cases ?? []} onReload={() => openFile(open.path)} />
+                {!active.loading && !active.err && active.kind === 'xml' && (
+                  <TestCaseEditor
+                    filePath={active.path}
+                    cases={active.cases ?? []}
+                    onReload={() => {
+                      const p = active.path;
+                      api
+                        .readXmlCases(p)
+                        .then((cases) => patchTab(p, { cases }))
+                        .catch(() => patchTab(p, { cases: [] }));
+                    }}
+                  />
                 )}
 
-                {!open.loading && !open.err && open.kind !== 'xml' &&
-                  (debugging && open.kind === 'sel' ? (
-                    <SelDebugger filePath={open.path} onExit={() => setDebugging(false)} />
-                  ) : running && open.kind === 'sel' ? (
-                    <SelRunner filePath={open.path} code={text} onExit={() => setRunning(false)} />
+                {!active.loading && !active.err && active.kind !== 'xml' &&
+                  (debugging && active.kind === 'sel' ? (
+                    <SelDebugger filePath={active.path} onExit={() => setDebugging(false)} />
+                  ) : running && active.kind === 'sel' ? (
+                    <SelRunner filePath={active.path} code={active.draft} onExit={() => setRunning(false)} />
                   ) : (
                     <>
-                      {open.kind === 'sel' ? (
-                      <Suspense fallback={<div className="view-note">Loading editor…</div>}>
-                        <SelCodeMirror
-                          value={text}
-                          onChange={setText}
-                          filePath={open.path}
-                          diagnostics={markers}
-                          onSave={save}
-                          gotoLine={gotoLine}
-                          gotoSeq={gotoSeq}
-                          onNavigate={onNavigate}
-                          onNavError={flashNav}
-                        />
-                      </Suspense>
-                    ) : (
-                      <CodeEditor value={text} onChange={setText} markers={markers} gotoLine={gotoLine} />
-                    )}
-                    {navMsg && <div className="view-note muted small tf-navmsg">{navMsg}</div>}
-                    {saveMsg && <div className="view-error">{saveMsg}</div>}
-                    {parseErrors.length > 0 && (
-                      <div className="tf-problems">
-                        <div className="tf-problems-h small">
-                          {parseErrors.length} parse error(s) — file not saved
+                      {active.kind === 'sel' ? (
+                        <Suspense fallback={<div className="view-note">Loading editor…</div>}>
+                          <SelCodeMirror
+                            key={active.path}
+                            value={active.draft}
+                            onChange={setDraft}
+                            filePath={active.path}
+                            diagnostics={markers}
+                            onSave={save}
+                            gotoLine={gotoLine}
+                            gotoSeq={gotoSeq}
+                            onNavigate={onNavigate}
+                            onNavError={flashNav}
+                          />
+                        </Suspense>
+                      ) : (
+                        <CodeEditor key={active.path} value={active.draft} onChange={setDraft} markers={markers} gotoLine={gotoLine} />
+                      )}
+                      {navMsg && <div className="view-note muted small tf-navmsg">{navMsg}</div>}
+                      {saveMsg && <div className="view-error">{saveMsg}</div>}
+                      {parseErrors.length > 0 && (
+                        <div className="tf-problems">
+                          <div className="tf-problems-h small">{parseErrors.length} parse error(s) — file not saved</div>
+                          {parseErrors.map((e, i) => {
+                            const ln = Number(e[1]);
+                            const msg = String(e[3] ?? e[2] ?? 'Parse error');
+                            return (
+                              <div
+                                key={i}
+                                className="tf-problem"
+                                onClick={() => Number.isFinite(ln) && ln > 0 && jumpTo(ln)}
+                              >
+                                <span className="tf-problem-ln">{Number.isFinite(ln) && ln > 0 ? `L${ln}` : '—'}</span>
+                                <span className="tf-problem-msg">{msg}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                        {parseErrors.map((e, i) => {
-                          const ln = Number(e[1]);
-                          const msg = String(e[3] ?? e[2] ?? 'Parse error');
-                          return (
-                            <div
-                              key={i}
-                              className="tf-problem"
-                              onClick={() => Number.isFinite(ln) && ln > 0 && jumpTo(ln)}
-                            >
-                              <span className="tf-problem-ln">{Number.isFinite(ln) && ln > 0 ? `L${ln}` : '—'}</span>
-                              <span className="tf-problem-msg">{msg}</span>
-                            </div>
-                          );
-                        })}
+                      )}
+                      <div className="view-note muted small">
+                        {active.kind === 'sel'
+                          ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
+                          : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
                       </div>
-                    )}
-                    <div className="view-note muted small">
-                      {open.kind === 'sel'
-                        ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
-                        : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
-                    </div>
                     </>
                   ))}
               </>
@@ -433,7 +614,7 @@ export default function TestFilesView() {
           <span className="small">
             Delete <span className="mono">{confirmDel}</span>?
           </span>
-          <button className="btn small" style={{ color: '#e2557b' }} onClick={() => doDelete(confirmDel)}>
+          <button className="btn small" style={{ color: 'var(--red)' }} onClick={() => doDelete(confirmDel)}>
             Delete
           </button>
           <button className="btn ghost small" onClick={() => setConfirmDel(null)}>
