@@ -189,7 +189,9 @@ public abstract class SeleniumTest {
 	private static final String TOP_LEVEL_PROV_NAME = UUID.randomUUID().toString();
 	private static final Map<String, Map<String, String>> DRV_FEATURES = new ConcurrentHashMap<String, Map<String,String>>();
 	private static final Map<String, List<List<Map<String, String>>>> _pdtTables = new HashMap<>();
-	private static ITesseract instance = null;
+	// Tesseract1 wraps a native, non-thread-safe handle; keep one per thread so concurrent
+	// OCR under the load/concurrent engines never shares a single native instance.
+	private static final ThreadLocal<ITesseract> instance = new ThreadLocal<>();
 	private static final Pattern p = Pattern.compile("\\$(p|P)\\{([\"'a-zA-Z0-9_\\.]+)\\.([0-9]+)\\.([a-zA-Z0-9_\\.]+)\\}");
 	public static boolean CONC_WD = false;
 	
@@ -3604,15 +3606,17 @@ public abstract class SeleniumTest {
 	}
 
 	protected String readImageText(WebDriver webDriver, WebElement element, String filepath) throws IOException {
+		ITesseract ocr = instance.get();
 		try {
-			if(instance==null) {
-				instance = new Tesseract1();
-				instance.setDatapath(___cxt___.getGatfExecutorConfig().getExtraProperties().get("tesseract.training.data.path"));
+			if(ocr==null) {
+				ocr = new Tesseract1();
+				ocr.setDatapath(___cxt___.getGatfExecutorConfig().getExtraProperties().get("tesseract.training.data.path"));
+				instance.set(ocr);
 			}
 		} catch (Exception e) {
 			throw new RuntimeException("Unable to initialize tesseract engine");
 		}
-		if(element!=null && element.getTagName().equalsIgnoreCase("img") && instance!=null) {
+		if(element!=null && element.getTagName().equalsIgnoreCase("img") && ocr!=null) {
 			BufferedImage bufferedImage = null;
 			if (webDriver instanceof JavascriptExecutor) {
 				String str = (String) ((JavascriptExecutor) webDriver).executeScript("return window.GatfUtil.imageAsBase64(arguments[0])", element);
@@ -3627,7 +3631,7 @@ public abstract class SeleniumTest {
 			}
 			
 			try {
-				return instance.doOCR(bufferedImage);
+				return ocr.doOCR(bufferedImage);
 			} catch (Exception e) {
 				throw new RuntimeException("Unable to extract text from image file");
 			}

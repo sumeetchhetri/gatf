@@ -106,7 +106,7 @@ import net.lingala.zip4j.ZipFile;
  */
 public class ReportHandler {
 	
-	public static String MY_URL = "http://localhost:9080";
+	public static volatile String MY_URL = "http://localhost:9080";
 	
 	private static final Map<String, Map<Long, Map<String, ImmutableTriple<Integer, AtomicInteger, Map<String, Map<String, Integer[]>>>>>> allRuns = new ConcurrentHashMap<>();
 	
@@ -201,7 +201,7 @@ public class ReportHandler {
 	
 	//private DistributedTestStatus distributedTestStatus = null;
 	
-	private List<TestCaseStats> testCaseStats = new ArrayList<TestCaseStats>();
+	private List<TestCaseStats> testCaseStats = new java.util.concurrent.CopyOnWriteArrayList<TestCaseStats>();
 	
 	private TestSuiteStats testSuiteStats = new TestSuiteStats();
 	
@@ -211,7 +211,7 @@ public class ReportHandler {
 
 	public void clearForLoadTests(AcceptanceTestContext context)
 	{
-		testCaseStats = new ArrayList<TestCaseStats>();
+		testCaseStats = new java.util.concurrent.CopyOnWriteArrayList<TestCaseStats>();
 		testSuiteStats = new TestSuiteStats();
 		clearTestResults();
 	}
@@ -1515,14 +1515,12 @@ public class ReportHandler {
 	
 	public void addTestCaseReport(TestCaseReport testCaseReport) {
 		String key = testCaseReport.getTestCase().getIdentifier() + testCaseReport.getTestCase().getName();
-		getFinalTestResults().get(testCaseReport.getTestCase().getIdentifier()).add(testCaseReport);
-		if(!finalTestReportsDups.containsKey(key)) {
-			finalTestReportsDups.put(key, 1);
-		} else {
-			Integer ncount = finalTestReportsDups.get(key) + 1;
-			String ext = "-" + ncount;
-			finalTestReportsDups.put(key, ncount);
-			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+ext);
+		getFinalTestResults().computeIfAbsent(testCaseReport.getTestCase().getIdentifier(), __k -> new ConcurrentLinkedQueue<TestCaseReport>()).add(testCaseReport);
+		// atomic: compound containsKey/get/put previously let two threads collide on the same
+		// identifier and overwrite each other's report file
+		int ncount = finalTestReportsDups.merge(key, 1, Integer::sum);
+		if(ncount > 1) {
+			testCaseReport.setTestIdentifier(testCaseReport.getTestIdentifier()+"-"+ncount);
 		}
 	}
 	

@@ -871,7 +871,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         startTime = System.currentTimeMillis();
 
         int runNum = 0;
-        List<String> failedFiles = new ArrayList<>();
+        List<String> failedFiles = Collections.synchronizedList(new ArrayList<>());
         while (tests.size() > 0) {
             boolean dorep = false;
 
@@ -2529,7 +2529,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap = new LinkedHashMap<String, List<Map<String, Map<String, List<Object[]>>>>>();
             Map<String, List<Map<String, Map<String, Integer[]>>>> sinfoMap = new LinkedHashMap<>();
             List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
-            List<String> failedFiles = new ArrayList<>();
+            List<String> failedFiles = Collections.synchronizedList(new ArrayList<>());
             summLstMap.put(dContext.getNode(), new ArrayList<>());
             sinfoMap.put(dContext.getNode(), new ArrayList<>());
             if (threadPool != null) {
