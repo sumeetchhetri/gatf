@@ -173,22 +173,6 @@ export default function App({ traceUrl }: { traceUrl?: string }) {
       <Header trace={trace} onClose={() => { setTrace(null); setError(null); }} />
       <div className="main">
         <div className="left">
-          <Stage
-            trace={trace}
-            activeSnap={activeSnap}
-            mode={stageMode}
-            setMode={setStageMode}
-            videoRef={videoRef}
-          />
-          <Timeline
-            trace={trace}
-            currentTime={currentTime}
-            setCurrentTime={setCurrentTime}
-            playing={playing}
-            togglePlay={togglePlay}
-          />
-        </div>
-        <div className="right">
           <div className="tabbar">
             {tabs.map(([id, label, enabled, count]) => (
               <button
@@ -212,6 +196,22 @@ export default function App({ traceUrl }: { traceUrl?: string }) {
             {tab === 'coverage' && <CoverageTab trace={trace} />}
             {tab === 'cpu' && <CpuTab trace={trace} />}
           </div>
+        </div>
+        <div className="right">
+          <Stage
+            trace={trace}
+            activeSnap={activeSnap}
+            mode={stageMode}
+            setMode={setStageMode}
+            videoRef={videoRef}
+          />
+          <Timeline
+            trace={trace}
+            currentTime={currentTime}
+            setCurrentTime={setCurrentTime}
+            playing={playing}
+            togglePlay={togglePlay}
+          />
         </div>
       </div>
     </div>

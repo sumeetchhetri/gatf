@@ -60,10 +60,40 @@ public class DistributedAcceptanceContext implements Serializable {
     
     private int index;
     
+    // Distributed payloads arrive over a socket and Kryo runs with setRegistrationRequired(false),
+    // so without a guard a hostile peer could name a gadget class and have it deserialized (RCE).
+    // Refuse the well-known dangerous classes/packages during class resolution on the READ path.
+    // (Transport-level TLS + auth + bind-address are a separate, config-gated follow-up: see the
+    // Phase-10 audit, Part II §9.)
+    private static final String[] DESER_DENY = {
+        "java.lang.Runtime", "java.lang.ProcessBuilder", "java.lang.ProcessImpl",
+        "org.apache.commons.collections.functors.", "org.apache.commons.collections4.functors.",
+        "org.apache.commons.beanutils.", "org.codehaus.groovy.runtime.", "org.springframework.",
+        "com.sun.org.apache.xalan.", "com.sun.org.apache.xpath.", "com.sun.rowset.",
+        "javax.management.", "javax.naming.", "java.rmi.", "sun.reflect.", "jdk.nashorn.",
+        "bsh.", "org.python.", "clojure.", "javassist.", "org.hibernate.", "com.mchange.",
+        "org.apache.xbean.", "org.jboss.", "net.sf.json.", "org.datanucleus."
+    };
+    private static boolean isDeniedForDeser(String cn) {
+        if(cn==null) return false;
+        for (String p : DESER_DENY) {
+            if(p.endsWith(".") ? cn.startsWith(p) : cn.equals(p)) return true;
+        }
+        return false;
+    }
     private static Pool<Kryo> pool = new Pool<Kryo>(true, true) {
 		@Override
 		protected Kryo create() {
-			Kryo k = new Kryo();
+			Kryo k = new Kryo() {
+				@Override
+				public com.esotericsoftware.kryo.Registration readClass(com.esotericsoftware.kryo.io.Input input) {
+					com.esotericsoftware.kryo.Registration r = super.readClass(input);
+					if(r != null && r.getType() != null && isDeniedForDeser(r.getType().getName())) {
+						throw new com.esotericsoftware.kryo.KryoException("Refused to deserialize disallowed class over distributed transport: " + r.getType().getName());
+					}
+					return r;
+				}
+			};
 			k.setRegistrationRequired(false); 
             k.setClassLoader(DistributedGatfListener.class.getClassLoader());
             return k;

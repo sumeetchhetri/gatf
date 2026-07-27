@@ -1502,7 +1502,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             threadPool = Executors.newFixedThreadPool(threadNum);
         }
 
-        ExecutorService reportingThreadPool = Executors.newFixedThreadPool(30);
+        ExecutorService reportingThreadPool = Executors.newFixedThreadPool(Integer.getInteger("gatf.reportingThreads", 30));
 
         startTime = System.currentTimeMillis();
 
@@ -1605,11 +1605,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
 
         reportingThreadPool.shutdown();
-        while (!reportingThreadPool.isTerminated()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-            }
+        try {
+            reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
         if (numberOfRuns > 1) {
@@ -2219,7 +2218,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
         }
 
-        ExecutorService reportingThreadPool = Executors.newFixedThreadPool(30);
+        ExecutorService reportingThreadPool = Executors.newFixedThreadPool(Integer.getInteger("gatf.reportingThreads", 30));
 
         context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
 
@@ -2332,11 +2331,10 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
 
         reportingThreadPool.shutdown();
-        while (!reportingThreadPool.isTerminated()) {
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-            }
+        try {
+            reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
         if (isLoadTestingEnabled) {

@@ -105,21 +105,9 @@ public class GatfApiHandler extends HttpHandler {
         List<Map<String, Object>> reports = new ArrayList<>();
         List<Map<String, Object>> traces = new ArrayList<>();
         File d = new File(dir);
-        File[] files = d.listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (!f.isFile()) continue;
-                String ln = f.getName().toLowerCase();
-                if (ln.endsWith(".html")) {
-                    Map<String, Object> a = artifact(f);
-                    File sc = new File(f.getParentFile(), f.getName().substring(0, f.getName().length() - 5) + ".data.json");
-                    if (sc.isFile()) a.put("dataUrl", "/reports/" + sc.getName());
-                    reports.add(a);
-                } else if (ln.endsWith("-trace.zip") || ln.endsWith(".zip")) {
-                    traces.add(artifact(f));
-                }
-            }
-        }
+        // Each run writes its artifacts into a per-run subfolder (out/<runId>/*.html, *-trace.zip),
+        // so walk into subdirectories rather than scanning only the top level.
+        collectReports(d, d, reports, traces, 0);
         reports.sort(byModifiedDesc());
         traces.sort(byModifiedDesc());
 
@@ -220,10 +208,39 @@ public class GatfApiHandler extends HttpHandler {
 
     // ---- helpers ---------------------------------------------------------
 
-    private static Map<String, Object> artifact(File f) {
+    // Recursively collect report HTMLs (+ their .data.json) and trace zips, building /reports/<relpath>
+    // URLs so files inside per-run subfolders are reachable through the static /reports handler.
+    private static void collectReports(File baseDir, File dir, List<Map<String, Object>> reports,
+                                       List<Map<String, Object>> traces, int depth) {
+        File[] files = dir.listFiles();
+        if (files == null) return;
+        for (File f : files) {
+            if (f.isDirectory()) {
+                if (depth < 4) collectReports(baseDir, f, reports, traces, depth + 1);
+                continue;
+            }
+            if (!f.isFile()) continue;
+            String ln = f.getName().toLowerCase();
+            if (ln.endsWith(".html")) {
+                Map<String, Object> a = artifact(baseDir, f);
+                File sc = new File(f.getParentFile(), f.getName().substring(0, f.getName().length() - 5) + ".data.json");
+                if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
+                reports.add(a);
+            } else if (ln.endsWith("-trace.zip") || ln.endsWith(".zip")) {
+                traces.add(artifact(baseDir, f));
+            }
+        }
+    }
+
+    // relative URL under /reports for a file anywhere beneath the out dir (forward slashes).
+    private static String reportUrl(File baseDir, File f) {
+        return "/reports/" + baseDir.toURI().relativize(f.toURI()).getPath();
+    }
+
+    private static Map<String, Object> artifact(File baseDir, File f) {
         Map<String, Object> a = new LinkedHashMap<>();
-        a.put("name", f.getName());
-        a.put("url", "/reports/" + f.getName());
+        a.put("name", baseDir.toURI().relativize(f.toURI()).getPath());
+        a.put("url", reportUrl(baseDir, f));
         a.put("size", f.length());
         a.put("modified", f.lastModified());
         return a;

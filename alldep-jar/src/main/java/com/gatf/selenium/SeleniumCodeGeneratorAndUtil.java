@@ -15,12 +15,9 @@
 */
 package com.gatf.selenium;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.InputStreamReader;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -41,7 +38,6 @@ import javax.tools.ToolProvider;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.SystemUtils;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 
@@ -53,8 +49,82 @@ import net.lingala.zip4j.ZipFile;
 
 public class SeleniumCodeGeneratorAndUtil {
 	
-	static URLClassLoader classLoader = null;
+	// --- delta-049: compile once, then cache by source hash and reuse the loaded class; each distinct
+	// source gets its own in-memory classloader. Replaces the single static URLClassLoader, which served
+	// stale bytecode when a same-named script was recompiled in a long-lived JVM, leaked class metadata,
+	// and was racy across concurrent compiles. ---
+	private static final int COMPILE_CACHE_MAX = 256;
+	private static final Object COMPILE_LOCK = new Object();
+
+	static final class CompiledUnit {
+		final Class<?> cls;
+		CompiledUnit(Class<?> cls) { this.cls = cls; }
+	}
+
+	private static final class CompileCache extends java.util.LinkedHashMap<String, CompiledUnit> {
+		private static final long serialVersionUID = 1L;
+		CompileCache() { super(64, 0.75f, true); }
+		protected boolean removeEldestEntry(java.util.Map.Entry<String, CompiledUnit> eldest) {
+			return size() > COMPILE_CACHE_MAX;
+		}
+	}
+
+	private static final Map<String, CompiledUnit> COMPILE_CACHE = java.util.Collections.synchronizedMap(new CompileCache());
+
+	// Loads classes from an in-memory {name -> bytecode} map (the generated test + its inner classes);
+	// everything else delegates to the parent. Holds no OS handles, so it is GC-eligible once dropped.
+	static final class InMemoryClassLoader extends ClassLoader {
+		private final java.util.Map<String, byte[]> code;
+		InMemoryClassLoader(java.util.Map<String, byte[]> code, ClassLoader parent) { super(parent); this.code = code; }
+		protected Class<?> findClass(String name) throws ClassNotFoundException {
+			byte[] b = code.get(name);
+			if(b == null) return super.findClass(name);
+			return defineClass(name, b, 0, b.length);
+		}
+	}
+
+	private static String sha256(String s) {
+		try {
+			java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+			byte[] h = md.digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+			StringBuilder sb = new StringBuilder(h.length * 2);
+			for (byte x : h) { sb.append(Character.forDigit((x >> 4) & 0xf, 16)).append(Character.forDigit(x & 0xf, 16)); }
+			return sb.toString();
+		} catch (Exception e) {
+			return Integer.toHexString(s.hashCode());
+		}
+	}
 	
+	// Builds the -classpath for compiling generated tests, covering both run modes:
+	//  - standalone (java -jar gatf-alldep.jar): java.class.path is the fat jar (all deps shaded);
+	//  - project / Maven mode: java.class.path (and any URLClassLoader realm in the loader chain) carry
+	//    the project's own classes and dependencies.
+	// The gatf jar is always included. Works on Java 9+, where the app loader is not a URLClassLoader
+	// (the old code fell back to the gatf jar alone there and dropped the project classpath).
+	private static String buildCompileClasspath(ClassLoader loader, String gatfJarPath) {
+		java.util.LinkedHashSet<String> cp = new java.util.LinkedHashSet<String>();
+		String jcp = System.getProperty("java.class.path");
+		if(jcp != null && !jcp.isEmpty()) {
+			for (String p : jcp.split(java.util.regex.Pattern.quote(File.pathSeparator))) {
+				if(!p.isEmpty()) cp.add(p);
+			}
+		}
+		ClassLoader l = loader;
+		while(l != null) {
+			if(l instanceof URLClassLoader) {
+				for (URL url : ((URLClassLoader)l).getURLs()) {
+					try { cp.add(new File(url.toURI()).getAbsolutePath()); }
+					catch (Exception e) { cp.add(url.getPath()); }
+				}
+			}
+			l = l.getParent();
+		}
+		if(gatfJarPath != null && !gatfJarPath.trim().isEmpty()) cp.add(gatfJarPath.trim());
+		StringBuilder sb = new StringBuilder();
+		for (String p : cp) { if(sb.length() > 0) sb.append(File.pathSeparator); sb.append(p); }
+		return sb.toString();
+	}
+
 	public static void clean() throws Exception {
 	    File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
         if(gcdir.exists()) {
@@ -173,103 +243,83 @@ public class SeleniumCodeGeneratorAndUtil {
 			}
 		}
 	    
-        File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
         File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
         
         File srcfile = new File(dir, cmd.getClassName()+".java");
         retvals[2] = srcfile.getAbsolutePath();
-        FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
         
         if(retvals.length==5) retvals[4] += "";
         
-        JavaCompiler compiler = ToolProvider.getSystemJavaCompiler();
-        if(compiler!=null) {
-        	List<String> optionList = new ArrayList<String>();
-            optionList.add("-g");
-            optionList.add("-classpath");
-            
-            if(loader instanceof URLClassLoader) {
-            	URL[] urls = ((URLClassLoader)loader).getURLs();
-            	String cp = "";
-            	for (URL url : urls) {
-            		cp += url.getPath() + File.separator;
-    			}
-            	optionList.add(cp);
-            } else {
-            	optionList.add(gatfJarPath);
-            }
-        	
-        	DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
-	        StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
-	        Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
-	        JavaCompiler.CompilationTask task = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit);
-	        if (task.call()) {
-	        	boolean errCd = false;
-	        	for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
-	        		if(diagnostic.getKind()==Kind.ERROR) {
-	        			errCd = true;
-	        			if(retvals.length==5) {
-	        				retvals[4] += diagnostic.toString();
-	        			}
-	        			System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource().toUri());
-	        		}
-	                System.out.println(diagnostic.toString());
-	            }
-	        	
-	        	if(errCd) {
-	        		return null;
-	        	}
-	        	
-	        	URL[] urls = new URL[1];
-	            urls[0] = gcdir.toURI().toURL();
-	            if(classLoader==null) {
-	            	classLoader = new URLClassLoader(urls, loader);
-	            }
-	            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass("com.gatf.selenium." + cmd.getClassName());
-	            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
-	        }
-        }
-        
-        boolean isWindows = SystemUtils.IS_OS_WINDOWS;
-        
-        if(StringUtils.isBlank(config.getJavaHome())) {
-        	throw new RuntimeException("Please provide a jdk home path in the gatf-config configuration file (javaHome)");
-        }
-        
-        List<String> builderList = new ArrayList<>();
-        String javacPath = Paths.get(config.getJavaHome(), "bin", "javac").toString();
-        builderList.add((isWindows?"\"":"") + javacPath + (isWindows?"\"":""));
-        builderList.add("-g");
-        builderList.add("-classpath");
-        builderList.add((isWindows?"\"":"") + gatfJarPath + (isWindows?"\"":""));
-        builderList.add((isWindows?"\"":"") + retvals[2].toString() + (isWindows?"\"":""));
-        
-        ProcessBuilder pb = new ProcessBuilder(builderList);
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-        BufferedReader inStreamReader = new BufferedReader(new InputStreamReader(process.getInputStream())); 
+        String fqcn = "com.gatf.selenium." + cmd.getClassName();
+        String srcHash = sha256(sourceCode);
 
-        boolean errd = false;
-        String err = null;
-        while((err = inStreamReader.readLine()) != null) {
-            errd |= err.indexOf("error: ")!=-1;
-            if(retvals.length==5 && err.indexOf("error: ")!=-1) {
-				retvals[4] += err;
-			}
-            System.out.println(err);
-        }
-        
-        if(errd) {
-            return null;
-        } else {
-            URL[] urls = new URL[1];
-            urls[0] = gcdir.toURI().toURL();
-            if(classLoader==null) {
-                classLoader = new URLClassLoader(urls, loader);
+        CompiledUnit unit = COMPILE_CACHE.get(srcHash);
+        if(unit == null) {
+            synchronized (COMPILE_LOCK) {
+                unit = COMPILE_CACHE.get(srcHash);
+                if(unit == null) {
+                    // write source under the compile lock so concurrent compiles of the same class
+                    // name cannot interleave writes to the same .java (javac's input)
+                    FileUtils.writeStringToFile(srcfile, sourceCode, "UTF-8");
+
+                    // Compile with the bundled pure-Java compiler (ECJ) by default, so behaviour is the
+                    // same on a JDK or a JRE and no external javac is needed; fall back to the platform
+                    // compiler only if ECJ isn't on the classpath.
+                    JavaCompiler compiler = null;
+                    for (JavaCompiler jc : java.util.ServiceLoader.load(JavaCompiler.class)) { compiler = jc; break; }
+                    if(compiler == null) {
+                        compiler = ToolProvider.getSystemJavaCompiler();
+                    }
+                    if(compiler == null) {
+                        throw new RuntimeException("No Java compiler available. Add the Eclipse ECJ compiler (org.eclipse.jdt:ecj) to the classpath, or run GATF on a JDK.");
+                    }
+
+                    String cp = buildCompileClasspath(loader, gatfJarPath);
+
+                    List<String> optionList = Arrays.asList("-g", "-classpath", cp);
+                    DiagnosticCollector<JavaFileObject> diagnostics = new DiagnosticCollector<JavaFileObject>();
+                    StandardJavaFileManager fileManager = compiler.getStandardFileManager(diagnostics, null, null);
+                    Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
+                    boolean ok = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit).call();
+                    boolean errCd = false;
+                    for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
+                        if(diagnostic.getKind() == Kind.ERROR) {
+                            errCd = true;
+                            if(retvals.length == 5) { retvals[4] += diagnostic.toString(); }
+                            System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource()!=null?diagnostic.getSource().toUri():"<source>");
+                        }
+                        System.out.println(diagnostic.toString());
+                    }
+                    try { fileManager.close(); } catch (Exception ce) {}
+                    if(!ok || errCd) {
+                        return null;
+                    }
+
+                    // javac wrote the .class files to disk (still consumed by zipSeleniumTests and the
+                    // distributed node loader); additionally read this class + its inner classes into an
+                    // in-memory loader for LOCAL execution, so a re-edited same-named script never runs
+                    // stale bytecode off disk and the loader stays GC-eligible.
+                    final String clsPrefix = cmd.getClassName();
+                    java.util.Map<String, byte[]> code = new java.util.HashMap<String, byte[]>();
+                    File[] classFiles = dir.listFiles(new java.io.FilenameFilter() {
+                        public boolean accept(File d, String n) {
+                            return n.endsWith(".class") && (n.equals(clsPrefix + ".class") || n.startsWith(clsPrefix + "$"));
+                        }
+                    });
+                    if(classFiles != null) {
+                        for (File cf : classFiles) {
+                            String cn = "com.gatf.selenium." + cf.getName().substring(0, cf.getName().length() - 6);
+                            code.put(cn, FileUtils.readFileToByteArray(cf));
+                        }
+                    }
+                    ClassLoader parent = (loader != null ? loader : SeleniumCodeGeneratorAndUtil.class.getClassLoader());
+                    Class<?> loadedClass = new InMemoryClassLoader(code, parent).loadClass(fqcn);
+                    unit = new CompiledUnit(loadedClass);
+                    COMPILE_CACHE.put(srcHash, unit);
+                }
             }
-            Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)Class.forName("com.gatf.selenium." + cmd.getClassName(), true, classLoader);
-            return loadedClass.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
         }
+        return (SeleniumTest) unit.cls.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
 	}
 	
 	public static File zipSeleniumTests() {

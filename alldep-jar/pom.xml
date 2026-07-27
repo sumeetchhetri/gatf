@@ -162,4 +162,15 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
+	<dependencies>
+		<!-- delta-049: pure-Java compiler (Eclipse ECJ) so GATF compiles seleasy on a plain JRE with
+		     no JDK/javac. Discovered only at runtime via java.util.ServiceLoader; no source references
+		     ECJ, so this dependency does not affect compilation. Match the version to your target
+		     runtime JRE (this build is unaffected by the choice). -->
+		<dependency>
+			<groupId>org.eclipse.jdt</groupId>
+			<artifactId>ecj</artifactId>
+			<version>3.33.0</version>
+		</dependency>
+	</dependencies>
 </project>

@@ -128,6 +128,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private Integer loadTestingReportSamples;
 	
 	private boolean debugEnabled;
+	private boolean acceptAllCerts = true;
 	
 	private String[] ignoreFiles;
 	
@@ -544,6 +545,16 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setDebugEnabled(boolean debugEnabled) {
 		this.debugEnabled = debugEnabled;
+	}
+
+	// When false (default) GATF verifies TLS certificates and hostnames of the systems under
+	// test; set true (or -Dgatf.acceptAllCerts=true) only to allow self-signed/invalid certs.
+	public boolean isAcceptAllCerts() {
+		return acceptAllCerts;
+	}
+
+	public void setAcceptAllCerts(boolean acceptAllCerts) {
+		this.acceptAllCerts = acceptAllCerts;
 	}
 
 	public String[] getIgnoreFiles() {

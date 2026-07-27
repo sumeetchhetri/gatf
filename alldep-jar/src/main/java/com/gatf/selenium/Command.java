@@ -4771,6 +4771,15 @@ public class Command {
             for (String rp : rprops) {
             	config.getCapabilities().remove(rp);
 			}
+            // strip serialization noise ("class"/"property") that legacy XML configs baked into
+            // these maps via <class>linked-hash-map</class>/<property>..</property> elements; they
+            // are not valid Selenium capabilities/prefs and make newer Selenium reject newSession
+            config.getCapabilities().remove("class");
+            config.getCapabilities().remove("property");
+            if(config.getProperties()!=null) {
+                config.getProperties().remove("class");
+                config.getProperties().remove("property");
+            }
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             if(config.getName().startsWith("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");

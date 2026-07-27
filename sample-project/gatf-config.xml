@@ -52,14 +52,8 @@
       <name>chrome</name>
       <driverName>webdriver.chrome.driver</driverName>
       <path>chromedriver</path>
-      <capabilities>
-        <class>linked-hash-map</class>
-        <property>true</property>
-      </capabilities>
-      <properties>
-        <class>linked-hash-map</class>
-        <property>/tmp/</property>
-      </properties>
+      <capabilities/>
+      <properties/>
     </seleniumDriverConfigs>
   </seleniumDriverConfigs>
   <javaVersion>11.0.23</javaVersion>

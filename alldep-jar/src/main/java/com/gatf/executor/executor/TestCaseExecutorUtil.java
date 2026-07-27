@@ -109,7 +109,10 @@ public class TestCaseExecutorUtil {
 	
 	private boolean singleExecutionContext  = false;
 	
-    private static void trustAllCertificates(OkHttpClient.Builder builder) {
+    private static void trustAllCertificates(OkHttpClient.Builder builder, boolean acceptAll) {
+    	if(!acceptAll && !Boolean.getBoolean("gatf.acceptAllCerts")) {
+    		return; // default: standard TLS certificate + hostname verification
+    	}
     	final TrustManager[] trustAllCerts = new TrustManager[] {
     			new X509TrustManager() {
 		            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
@@ -157,7 +160,7 @@ public class TestCaseExecutorUtil {
 			//builder.addInterceptor(new CurlLoggingInterceptor());
 		}
 		
-		trustAllCertificates(builder);
+		trustAllCertificates(builder, context.getGatfExecutorConfig().isAcceptAllCerts());
 		
 		client = builder.build();
 		this.context = context;
@@ -177,7 +180,7 @@ public class TestCaseExecutorUtil {
 			builder.addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
 			//builder.addInterceptor(new CurlLoggingInterceptor());
 		}
-		trustAllCertificates(builder);
+		trustAllCertificates(builder, context.getGatfExecutorConfig().isAcceptAllCerts());
 		util.client = builder.build();
 		util.context = context;
 		return util;
@@ -185,7 +188,7 @@ public class TestCaseExecutorUtil {
 	
 	public static OkHttpClient getClient() {
 		OkHttpClient.Builder builder = new OkHttpClient.Builder();
-		trustAllCertificates(builder);
+		trustAllCertificates(builder, true);
 		return builder.build();
 	}
 	
