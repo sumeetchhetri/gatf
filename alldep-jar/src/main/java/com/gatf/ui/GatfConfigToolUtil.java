@@ -315,7 +315,8 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setOutFilesDir("out");
 		} else {
 			if(gatfConfig.getOutFilesDir().trim().equals(".") || !new File(gatfConfig.getOutFilesBasePath(), gatfConfig.getOutFilesDir().trim()).exists()) {
-				throw new RuntimeException("Invalid Out files directory");
+				//throw new RuntimeException("Invalid Out files directory");
+				new File(gatfConfig.getOutFilesBasePath(), gatfConfig.getOutFilesDir().trim()).mkdir();
 			}
 			gatfConfig.setOutFilesDir(gatfConfig.getOutFilesDir().trim());
 		}

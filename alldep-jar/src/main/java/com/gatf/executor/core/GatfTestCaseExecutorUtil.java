@@ -1056,8 +1056,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     DistributedTestStatus test = (DistributedTestStatus)futureTask.get();
                     if(test!=null) {
                         indexes.putAll(test.getIndexes());
+                    } else {
+                        logger.info("A distributed node returned no result; its tests are omitted from the report");
                     }
                 } catch (Exception e) {
+                    logger.info("A distributed node failed; its results are omitted from the report: " + e.getMessage());
                 }
             }
         }

@@ -1,5 +1,5 @@
 import type { LoadReportData } from '../api';
-import { fmtMs } from '../util';
+import { fmtMs, reportSidecarUrl, reportHtmlUrl } from '../util';
 
 // mirror index-load.vm: the sample url encodes an epoch-ms timestamp
 function sampleDate(url: string): string {
@@ -12,16 +12,13 @@ function sampleDate(url: string): string {
   return new Date(n).toLocaleString();
 }
 
-function dataUrlFromHref(href: string): string {
-  const base = href.startsWith('/') ? href : '/reports/' + href;
-  return base.replace(/\.html$/, '.data.json');
-}
-
 export default function LoadReportView({
   data,
+  baseDir,
   onOpenReport,
 }: {
   data: LoadReportData;
+  baseDir: string;
   onOpenReport: (dataUrl: string) => void;
 }) {
   const s = data.suiteStats;
@@ -60,7 +57,7 @@ export default function LoadReportView({
           <ul className="rv-final-list">
             {nodes.map((node, i) => (
               <li key={i}>
-                <button className="linkish mono" onClick={() => onOpenReport(dataUrlFromHref((data.nodeurls ?? [])[i] || ''))}>
+                <button className="linkish mono" onClick={() => onOpenReport(reportSidecarUrl((data.nodeurls ?? [])[i] || '', baseDir))}>
                   Node — {node}
                 </button>
               </li>
@@ -89,10 +86,10 @@ export default function LoadReportView({
                     <td className="mono">{r.title}</td>
                     <td className="muted small">{sampleDate(r.url)}</td>
                     <td className="row-actions">
-                      <button className="btn small" onClick={() => onOpenReport(dataUrlFromHref(r.url))}>
+                      <button className="btn small" onClick={() => onOpenReport(reportSidecarUrl(r.url, baseDir))}>
                         Open in viewer
                       </button>
-                      <a className="btn ghost small" href={r.url.startsWith('/') ? r.url : '/reports/' + r.url} target="_blank" rel="noopener">
+                      <a className="btn ghost small" href={reportHtmlUrl(r.url, baseDir)} target="_blank" rel="noopener">
                         HTML &#8599;
                       </a>
                     </td>

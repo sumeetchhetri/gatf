@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { reportSidecarUrl } from '../util';
 import type {
   ReportData,
   SeleniumSummaryData,
@@ -24,17 +25,13 @@ function statusClass(s: string): string {
   return 'st-warn';
 }
 
-// derive a per-test report's sidecar URL from its href (e.g. "foo.html" -> "/reports/foo.data.json")
-function dataUrlFromHref(href: string): string {
-  const base = href.startsWith('/') ? href : '/reports/' + href;
-  return base.replace(/\.html$/, '.data.json');
-}
-
 function SummaryView({
   data,
+  baseDir,
   onOpenReport,
 }: {
   data: SeleniumSummaryData;
+  baseDir: string;
   onOpenReport: (dataUrl: string) => void;
 }) {
   const nodes = Object.entries(data.testsMap || {});
@@ -76,7 +73,7 @@ function SummaryView({
                                     {href ? (
                                       <button
                                         className="linkish mono"
-                                        onClick={() => onOpenReport(dataUrlFromHref(href))}
+                                        onClick={() => onOpenReport(reportSidecarUrl(href, baseDir))}
                                       >
                                         {name}
                                       </button>
@@ -159,9 +156,11 @@ function TestView({
 
 function FinalView({
   data,
+  baseDir,
   onOpenReport,
 }: {
   data: SeleniumFinalData;
+  baseDir: string;
   onOpenReport: (dataUrl: string) => void;
 }) {
   const nodes = Object.entries(data.indexes || {});
@@ -174,7 +173,7 @@ function FinalView({
           <ul className="rv-final-list">
             {Object.entries(runs || {}).map(([run, htmlName]) => (
               <li key={run}>
-                <button className="linkish mono" onClick={() => onOpenReport(dataUrlFromHref(String(htmlName)))}>
+                <button className="linkish mono" onClick={() => onOpenReport(reportSidecarUrl(String(htmlName), baseDir))}>
                   Run {run} — {String(htmlName)}
                 </button>
               </li>
@@ -201,6 +200,8 @@ export default function ReportViewer({
   const [data, setData] = useState<ReportData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  // directory of the current report, used to resolve its intra-report links
+  const baseDir = dataUrl.replace(/[^/]*$/, '');
 
   useEffect(() => {
     setLoading(true);
@@ -257,19 +258,19 @@ export default function ReportViewer({
       {data && !loading && (
         <>
           {data.type === 'selenium-summary' && (
-            <SummaryView data={data as SeleniumSummaryData} onOpenReport={onOpenReport} />
+            <SummaryView data={data as SeleniumSummaryData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
           {data.type === 'selenium-test' && <TestView data={data as SeleniumTestData} onOpenTrace={onOpenTrace} />}
           {data.type === 'selenium-final' && (
-            <FinalView data={data as SeleniumFinalData} onOpenReport={onOpenReport} />
+            <FinalView data={data as SeleniumFinalData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
           {data.type === 'api-report' && <ApiReportView data={data as ApiReportData} />}
           {data.type === 'api-index' && <ApiReportView data={data as ApiIndexData} />}
           {data.type === 'load-report' && (
-            <LoadReportView data={data as LoadReportData} onOpenReport={onOpenReport} />
+            <LoadReportView data={data as LoadReportData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
           {data.type === 'load-distributed' && (
-            <DistributedLoadView data={data as DistributedLoadData} onOpenReport={onOpenReport} />
+            <DistributedLoadView data={data as DistributedLoadData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
           {data.type === 'ta-report' && <TAReportView data={data as TAReportData} />}
           {![

@@ -84,11 +84,28 @@ export function parseFiles(files: Record<string, Uint8Array>): Trace {
     ? fileUrl(files, 'video.mp4')
     : null;
 
+  const events = ndjson<TraceEvent>(files, 'events.ndjson').sort((a, b) => a.ts - b.ts);
+  const consoleEntries = ndjson<ConsoleEntry>(files, 'console.ndjson').sort((a, b) => a.ts - b.ts);
+  const snapshots = ndjson<SnapshotRef>(files, 'snapshots.ndjson').sort((a, b) => a.ts - b.ts);
+
+  // metadata.endTs can include browser teardown after recording stopped, which would stretch the
+  // timeline well past the captured video (making the video look like it "ends early"). Prefer the
+  // real data extent — the last event / console / snapshot / network timestamp — and fall back to
+  // metadata.endTs only when there is no timeline data at all.
+  let hi = -Infinity;
+  for (const e of events) if (e.ts > hi) hi = e.ts;
+  for (const c of consoleEntries) if (c.ts > hi) hi = c.ts;
+  for (const s of snapshots) if (s.ts > hi) hi = s.ts;
+  if (har?.log?.entries) {
+    for (const e of har.log.entries as HarEntry[]) if (e.startMs > hi) hi = e.startMs;
+  }
+  const t1 = hi > meta.startTs ? hi : meta.endTs;
+
   return {
     meta,
-    events: ndjson<TraceEvent>(files, 'events.ndjson').sort((a, b) => a.ts - b.ts),
-    console: ndjson<ConsoleEntry>(files, 'console.ndjson').sort((a, b) => a.ts - b.ts),
-    snapshots: ndjson<SnapshotRef>(files, 'snapshots.ndjson').sort((a, b) => a.ts - b.ts),
+    events,
+    console: consoleEntries,
+    snapshots,
     har: har ?? null,
     perf: json<Performance>(files, 'performance.json'),
     memory: json<Memory>(files, 'memory.json'),
@@ -97,7 +114,7 @@ export function parseFiles(files: Record<string, Uint8Array>): Trace {
     files,
     videoUrl,
     t0: meta.startTs,
-    t1: meta.endTs,
+    t1,
   };
 }
 

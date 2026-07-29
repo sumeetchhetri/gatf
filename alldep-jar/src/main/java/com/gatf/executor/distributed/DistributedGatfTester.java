@@ -92,7 +92,8 @@ public class DistributedGatfTester {
 				conn.ois = ois;
 				conn.oos = oos;
 				logger.info("Sending GATF configuration Successful to node " + node);
-				ois.close();
+				// NOTE: do not close ois here — this Input is stored in conn.ois and reused by
+				// distributeTests(); it is closed with the socket in the result task's finally.
 			} else {
 				logger.info("Sending GATF configuration Failed to node " + node);
 			}

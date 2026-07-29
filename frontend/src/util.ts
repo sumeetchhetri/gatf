@@ -32,3 +32,17 @@ export function fmtOffset(ms: number): string {
 export function clamp(x: number, lo: number, hi: number): number {
   return x < lo ? lo : x > hi ? hi : x;
 }
+
+// Resolve a report link to its .data.json sidecar URL. Report data stores bare filenames relative to
+// the report's own folder, so resolve them against baseDir (the current report's directory, e.g.
+// "/reports/<runId>/"); absolute paths are used as-is. This keeps per-run subfolders in the URL.
+export function reportSidecarUrl(href: string, baseDir: string): string {
+  if (href.startsWith('/')) return href.replace(/\.html$/, '.data.json');
+  return baseDir + href.replace(/^\.?\//, '').replace(/\.html$/, '.data.json');
+}
+
+// Resolve a report link to its raw HTML URL (folder-aware), for "open HTML" links.
+export function reportHtmlUrl(href: string, baseDir: string): string {
+  if (href.startsWith('/')) return href;
+  return baseDir + href.replace(/^\.?\//, '');
+}

@@ -33,6 +33,9 @@ import com.esotericsoftware.kryo.io.Output;
  */
 public class DistributedTransport {
 
+    /** Wire protocol version; bump when the coordinator<->node framing/payload changes incompatibly. */
+    public static final int PROTOCOL_VERSION = 1;
+
     public static boolean tls() {
         return Boolean.getBoolean("gatf.dist.tls");
     }
@@ -66,28 +69,35 @@ public class DistributedTransport {
         return new Socket(host, port);
     }
 
-    /** Coordinator side: present the shared secret (if configured) before the protocol. */
+    /**
+     * Coordinator side: before the protocol runs, present the shared secret (if configured) and always
+     * stamp the protocol version, so a version-mismatched node is refused cleanly instead of failing
+     * mid-deserialization.
+     */
     public static void clientHandshake(Output out) {
         String sec = secret();
         if (sec != null) {
             out.writeString(sec);
-            out.flush();
         }
+        out.writeInt(PROTOCOL_VERSION);
+        out.flush();
     }
 
-    /** Node side: verify the shared secret (if configured) before the protocol. false rejects the peer. */
+    /**
+     * Node side: verify the shared secret (if configured) and the protocol-version stamp before the
+     * protocol runs. Returns false (caller drops the socket) on secret mismatch, version mismatch, or a
+     * truncated handshake.
+     */
     public static boolean serverHandshake(Input in) {
-        String sec = secret();
-        if (sec == null) {
-            return true;
-        }
-        String got;
         try {
-            got = in.readString();
+            String sec = secret();
+            if (sec != null && !constantTimeEquals(sec, in.readString())) {
+                return false;
+            }
+            return in.readInt() == PROTOCOL_VERSION;
         } catch (Exception e) {
             return false;
         }
-        return constantTimeEquals(sec, got);
     }
 
     private static boolean constantTimeEquals(String a, String b) {

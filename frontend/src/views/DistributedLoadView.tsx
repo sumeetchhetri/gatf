@@ -1,16 +1,13 @@
 import type { DistributedLoadData } from '../api';
-import { fmtMs } from '../util';
-
-function dataUrlFromHref(href: string): string {
-  const base = href.startsWith('/') ? href : '/reports/' + href;
-  return base.replace(/\.html$/, '.data.json');
-}
+import { fmtMs, reportSidecarUrl } from '../util';
 
 export default function DistributedLoadView({
   data,
+  baseDir,
   onOpenReport,
 }: {
   data: DistributedLoadData;
+  baseDir: string;
   onOpenReport: (dataUrl: string) => void;
 }) {
   const nodes = data.nodes ?? [];
@@ -58,7 +55,7 @@ export default function DistributedLoadView({
             <ul className="rv-final-list">
               {samples.map((r, i) => (
                 <li key={i}>
-                  <button className="linkish mono" onClick={() => onOpenReport(dataUrlFromHref(r.url))}>
+                  <button className="linkish mono" onClick={() => onOpenReport(reportSidecarUrl(r.url, baseDir))}>
                     {r.title}
                   </button>
                 </li>
