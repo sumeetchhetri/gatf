@@ -207,7 +207,7 @@ public class GatfReportsHandler extends HttpHandler {
 			    }
                 else if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
-			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
+			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, new File(gatfConfig.getTestCasesBasePath(), "gatf-config.json").exists() ? "gatf-config.json" : "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
 			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
 			        response.setContentLength(status.getBytes("UTF-8").length);
 			        response.getWriter().write(status);
@@ -662,10 +662,10 @@ public class GatfReportsHandler extends HttpHandler {
                         	}
                     		String configPath = null;
     	                    synchronized (mojo) {
-    	        				if(new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
-    	        					configPath = new File(mojo.getRootDir(), "gatf-config.xml").getAbsolutePath();
-    	        				} else {
+    	        				if(new File(mojo.getRootDir(), "gatf-config.json").exists()) {
     	        					configPath = new File(mojo.getRootDir(), "gatf-config.json").getAbsolutePath();
+    	        				} else {
+    	        					configPath = new File(mojo.getRootDir(), "gatf-config.xml").getAbsolutePath();
     	        				}
     	        			}
     	                    executorMojo.initilaizeContext(gatfConfig, true);

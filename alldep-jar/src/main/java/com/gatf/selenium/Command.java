@@ -9127,7 +9127,7 @@ public class Command {
     }
     
     public static String validateSel(String[] args, String className, boolean testExecution) throws Exception {
-        GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():"gatf-config.xml", args.length>3?args[3].trim():"/workdir");
+        GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():(new File(args.length>3?args[3].trim():"/workdir", "gatf-config.json").exists()?"gatf-config.json":"gatf-config.xml"), args.length>3?args[3].trim():"/workdir");
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {

@@ -71,11 +71,12 @@ public class DistributedGatfTester {
 	            }
 	        }
 			
-			client = new Socket(node, port);
+			client = DistributedTransport.clientSocket(node, port);
 			DistributedAcceptanceContext disContext = context.getDistributedContext(node, testdata);
 			
 			Output oos = new Output(client.getOutputStream());
 			Input ois = new Input(client.getInputStream());
+			DistributedTransport.clientHandshake(oos);
 			
 			logger.info("Sending GATF configuration to node " + node);
 			oos.writeInt(Command.CONFIG_SHARE_REQ.ordinal());
@@ -141,12 +142,12 @@ public class DistributedGatfTester {
 							Command command = Command.values()[connection.ois.readInt()];;
 							while(command==Command.LOAD_TESTS_RES)
 							{
-								Object lentry = DistributedAcceptanceContext.unser(connection.ois);
+								Object lentry = DistributedAcceptanceContext.unser(connection.ois, RuntimeReportUtil.LoadTestEntry.class);
 								RuntimeReportUtil.addEntry(lentry);
 								command = Command.values()[connection.ois.readInt()];;
 							}
 							
-							res = DistributedAcceptanceContext.unser(connection.ois);
+							res = DistributedAcceptanceContext.unser(connection.ois, DistributedTestStatus.class);
 							logger.info("Received GATF tests Results from node " + connection.node);
 							
 							String fileName = "dist-" + res.getZipFileName();
@@ -246,12 +247,12 @@ public class DistributedGatfTester {
 								Command command = Command.values()[connection.ois.readInt()];;
 	                            while(command==Command.LOAD_TESTS_RES)
 	                            {
-	                                Object lentry = DistributedAcceptanceContext.unser(connection.ois);
+	                                Object lentry = DistributedAcceptanceContext.unser(connection.ois, RuntimeReportUtil.LoadTestEntry.class);
 	                                RuntimeReportUtil.addEntry(lentry);
 	                                command = Command.values()[connection.ois.readInt()];
 	                            }
 	                            
-	                            res = DistributedAcceptanceContext.unser(connection.ois);
+	                            res = DistributedAcceptanceContext.unser(connection.ois, DistributedTestStatus.class);
 	                            logger.info("Received GATF Selenium tests Results from node " + connection.node);
 	                            
 	                            String fileName = "dist-" + res.getZipFileName();

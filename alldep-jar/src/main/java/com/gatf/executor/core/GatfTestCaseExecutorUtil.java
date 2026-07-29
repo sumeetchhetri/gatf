@@ -2796,7 +2796,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         return configuration;
     }
 
-    public static String getConfigStrJson(GatfExecutorConfig configuration) throws Exception {
+    public static String getConfigStrJson(GatfExecutorConfig configuration) throws JsonProcessingException {
     	return WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValueAsString(configuration);
     }
 

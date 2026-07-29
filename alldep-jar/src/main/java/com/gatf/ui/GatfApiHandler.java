@@ -214,6 +214,7 @@ public class GatfApiHandler extends HttpHandler {
                                        List<Map<String, Object>> traces, int depth) {
         File[] files = dir.listFiles();
         if (files == null) return;
+        List<File> htmls = new ArrayList<>();
         for (File f : files) {
             if (f.isDirectory()) {
                 if (depth < 4) collectReports(baseDir, f, reports, traces, depth + 1);
@@ -222,13 +223,23 @@ public class GatfApiHandler extends HttpHandler {
             if (!f.isFile()) continue;
             String ln = f.getName().toLowerCase();
             if (ln.endsWith(".html")) {
-                Map<String, Object> a = artifact(baseDir, f);
-                File sc = new File(f.getParentFile(), f.getName().substring(0, f.getName().length() - 5) + ".data.json");
-                if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
-                reports.add(a);
+                htmls.add(f);
             } else if (ln.endsWith("-trace.zip") || ln.endsWith(".zip")) {
                 traces.add(artifact(baseDir, f));
             }
+        }
+        // Prefer index reports per folder: if any *index*.html exists here, list only those (the run
+        // summaries) and hide the per-test pages; otherwise list whatever HTML is present.
+        boolean anyIndex = false;
+        for (File h : htmls) {
+            if (h.getName().toLowerCase().contains("index")) { anyIndex = true; break; }
+        }
+        for (File h : htmls) {
+            if (anyIndex && !h.getName().toLowerCase().contains("index")) continue;
+            Map<String, Object> a = artifact(baseDir, h);
+            File sc = new File(h.getParentFile(), h.getName().substring(0, h.getName().length() - 5) + ".data.json");
+            if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
+            reports.add(a);
         }
     }
 

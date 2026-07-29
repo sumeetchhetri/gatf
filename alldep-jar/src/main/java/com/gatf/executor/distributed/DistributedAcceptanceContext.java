@@ -22,11 +22,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import com.esotericsoftware.kryo.util.Pool;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.WorkflowContextHandler;
 
 public class DistributedAcceptanceContext implements Serializable {
 
@@ -60,45 +59,10 @@ public class DistributedAcceptanceContext implements Serializable {
     
     private int index;
     
-    // Distributed payloads arrive over a socket and Kryo runs with setRegistrationRequired(false),
-    // so without a guard a hostile peer could name a gadget class and have it deserialized (RCE).
-    // Refuse the well-known dangerous classes/packages during class resolution on the READ path.
-    // (Transport-level TLS + auth + bind-address are a separate, config-gated follow-up: see the
-    // Phase-10 audit, Part II §9.)
-    private static final String[] DESER_DENY = {
-        "java.lang.Runtime", "java.lang.ProcessBuilder", "java.lang.ProcessImpl",
-        "org.apache.commons.collections.functors.", "org.apache.commons.collections4.functors.",
-        "org.apache.commons.beanutils.", "org.codehaus.groovy.runtime.", "org.springframework.",
-        "com.sun.org.apache.xalan.", "com.sun.org.apache.xpath.", "com.sun.rowset.",
-        "javax.management.", "javax.naming.", "java.rmi.", "sun.reflect.", "jdk.nashorn.",
-        "bsh.", "org.python.", "clojure.", "javassist.", "org.hibernate.", "com.mchange.",
-        "org.apache.xbean.", "org.jboss.", "net.sf.json.", "org.datanucleus."
-    };
-    private static boolean isDeniedForDeser(String cn) {
-        if(cn==null) return false;
-        for (String p : DESER_DENY) {
-            if(p.endsWith(".") ? cn.startsWith(p) : cn.equals(p)) return true;
-        }
-        return false;
-    }
-    private static Pool<Kryo> pool = new Pool<Kryo>(true, true) {
-		@Override
-		protected Kryo create() {
-			Kryo k = new Kryo() {
-				@Override
-				public com.esotericsoftware.kryo.Registration readClass(com.esotericsoftware.kryo.io.Input input) {
-					com.esotericsoftware.kryo.Registration r = super.readClass(input);
-					if(r != null && r.getType() != null && isDeniedForDeser(r.getType().getName())) {
-						throw new com.esotericsoftware.kryo.KryoException("Refused to deserialize disallowed class over distributed transport: " + r.getType().getName());
-					}
-					return r;
-				}
-			};
-			k.setRegistrationRequired(false); 
-            k.setClassLoader(DistributedGatfListener.class.getClassLoader());
-            return k;
-		}
-	};
+	// Distributed payloads cross a socket; the ser/unser below serialize as JSON (Jackson) rather than
+	// Kryo object graphs. That removes arbitrary-class instantiation on the read path (no deserialization
+	// gadget RCE) and the Kryo binary/version coupling between nodes. The Kryo Input/Output are kept only
+	// as stream framing (length-prefixed strings + varint command ints), which never instantiates classes.
 	
 	public String getNode() {
 		return node;
@@ -182,28 +146,22 @@ public class DistributedAcceptanceContext implements Serializable {
     }
     
 	public static void ser(Output output, Object o) {
-        Kryo kryo = pool.obtain();
-        try {
-            kryo.writeClassAndObject(output, o);
-            output.flush();
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            pool.free(kryo);
-        }
-    }
-    
-    @SuppressWarnings("unchecked")
-	public static <T> T unser(Input input) {
-        Kryo kryo = pool.obtain();
-        try {
-            Object r = kryo.readClassAndObject(input);
-            return (T)r;
-        } catch (Exception e) {
-            e.printStackTrace();
-        } finally {
-            pool.free(kryo);
-        }
-        return null;
-    }
+		try {
+			output.writeString(WorkflowContextHandler.OM.writeValueAsString(o));
+			output.flush();
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static <T> T unser(Input input, Class<T> type) {
+		try {
+			String json = input.readString();
+			if(json == null) return null;
+			return WorkflowContextHandler.OM.readValue(json, type);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

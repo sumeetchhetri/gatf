@@ -414,7 +414,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(isChanged)
 		{
 			synchronized (mojo) {
-				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.xml"), GatfTestCaseExecutorUtil.getConfigStrXml(gatfConfig), "UTF-8");
+				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.json"), GatfTestCaseExecutorUtil.getConfigStrJson(gatfConfig), "UTF-8");
 			}
 		}
 	}
@@ -424,7 +424,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(isExecutor && !new File(mojo.getRootDir(), "gatf-config.xml").exists() && !new File(mojo.getRootDir(), "gatf-config.json").exists()) {
 			try {
 				synchronized (mojo) {
-					new File(mojo.getRootDir(), "gatf-config.xml").createNewFile();
+					new File(mojo.getRootDir(), "gatf-config.json").createNewFile();
 				}
 				GatfExecutorConfig gatfConfig = config==null?new GatfExecutorConfig():(GatfExecutorConfig)config;
 				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
@@ -554,10 +554,10 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(gatfConfig == null)
 		{
 			synchronized (mojo) {
-				if(new File(mojo.getRootDir(), "gatf-config.xml").exists()) {
-					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")), true);
-				} else {
+				if(new File(mojo.getRootDir(), "gatf-config.json").exists()) {
 					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.json")), false);
+				} else {
+					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")), true);
 				}
 			}
 		}

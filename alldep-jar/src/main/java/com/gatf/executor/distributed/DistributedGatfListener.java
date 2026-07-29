@@ -71,7 +71,7 @@ public class DistributedGatfListener {
 	    }
 	    
 	    final String wd = workingDir;
-		ServerSocket server = new ServerSocket(port);
+		ServerSocket server = DistributedTransport.serverSocket(port);
 		logger.info("Distributed GATF node listening on port "+port);
 		try {
 			while(true) {
@@ -107,6 +107,10 @@ public class DistributedGatfListener {
 	private static void handleCommand(Input ois, final Output oos, final String workingDir) throws Exception {
 		
 		logger.info("Got a new distributed GATF request...");
+		if(!DistributedTransport.serverHandshake(ois)) {
+			logger.info("Rejected distributed request - shared-secret handshake failed");
+			return;
+		}
 		
 		DistributedAcceptanceContext context = null;
 		DistributedTestContext tContext = null;
@@ -115,7 +119,7 @@ public class DistributedGatfListener {
 			Command command = Command.values()[ois.readInt()];
 			logger.info("Received command - " + command);
 			if(command==Command.CONFIG_SHARE_REQ) {
-				context = DistributedAcceptanceContext.unser(ois);
+				context = DistributedAcceptanceContext.unser(ois, DistributedAcceptanceContext.class);
 				if(context!=null) {
 					oos.writeInt(Command.CONFIG_SHARE_RES.ordinal());
 					oos.flush();
@@ -134,7 +138,7 @@ public class DistributedGatfListener {
 			command = Command.values()[ois.readInt()];;
 			logger.info("Received command - " + command);
 			if(command==Command.TESTS_SHARE_REQ) {
-				tContext = DistributedAcceptanceContext.unser(ois);
+				tContext = DistributedAcceptanceContext.unser(ois, DistributedTestContext.class);
 				if(tContext!=null) {
 					oos.writeInt(Command.TESTS_SHARE_RES.ordinal());
 					oos.flush();
@@ -178,7 +182,7 @@ public class DistributedGatfListener {
 					context.getConfig().setOutFilesBasePath(workingDir);
 					logger.info("Current working directory is: " + workingDir);
 					
-					GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
+					GatfExecutorConfig localConfig = getConfig(new java.io.File(context.getConfig().getTestCasesBasePath(), "gatf-config.json").exists() ? "gatf-config.json" : "gatf-config.xml", context.getConfig().getTestCasesBasePath());
 					if(localConfig!=null) {
 					    if(localConfig.getJavaHome()!=null) {
 					        context.getConfig().setJavaHome(localConfig.getJavaHome());
@@ -300,7 +304,7 @@ public class DistributedGatfListener {
                 context.getConfig().setOutFilesBasePath(workingDir);
                 logger.info("Current working directory is: " + workingDir);
                 
-                GatfExecutorConfig localConfig = getConfig("gatf-config.xml", context.getConfig().getTestCasesBasePath());
+                GatfExecutorConfig localConfig = getConfig(new java.io.File(context.getConfig().getTestCasesBasePath(), "gatf-config.json").exists() ? "gatf-config.json" : "gatf-config.xml", context.getConfig().getTestCasesBasePath());
                 if(localConfig!=null) {
                     if(localConfig.getJavaHome()!=null) {
                         context.getConfig().setJavaHome(localConfig.getJavaHome());
@@ -346,14 +350,15 @@ public class DistributedGatfListener {
 				Thread.currentThread().setContextClassLoader(classLoader);
 				
 				List<Class<SeleniumTest>> tests = new ArrayList<Class<SeleniumTest>>();
-				List<String> testClassNames = DistributedAcceptanceContext.unser(ois);
+				@SuppressWarnings("unchecked")
+				List<String> testClassNames = DistributedAcceptanceContext.unser(ois, List.class);
 				for (String clsname : testClassNames) {
 					@SuppressWarnings("unchecked")
 					Class<SeleniumTest> loadedClass = (Class<SeleniumTest>)classLoader.loadClass(clsname);
 					tests.add(loadedClass);
 				}
 				
-				tContext = DistributedAcceptanceContext.unser(ois);
+				tContext = DistributedAcceptanceContext.unser(ois, DistributedTestContext.class);
 				
 				oos.writeInt(Command.SELENIUM_RES.ordinal());
 				oos.flush();

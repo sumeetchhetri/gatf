@@ -27,10 +27,7 @@
   <traceVideoQuality>60</traceVideoQuality>
   <traceVideoEveryNthFrame>2</traceVideoEveryNthFrame>
   <gatfTestDataConfig>
-    <globalVariables>
-      <class>linked-hash-map</class>
-      <property>Demo@123</property>
-    </globalVariables>
+    <globalVariables/>
   </gatfTestDataConfig>
   <enabled>true</enabled>
   <loadTestingEnabled>false</loadTestingEnabled>
