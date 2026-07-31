@@ -73,6 +73,7 @@ import com.gatf.executor.validator.XMLResponseValidator;
 import okhttp3.Call;
 import okhttp3.Callback;
 import okhttp3.ConnectionPool;
+import okhttp3.Dispatcher;
 import okhttp3.Headers;
 import okhttp3.MultipartBody;
 import okhttp3.MultipartBody.Part;
@@ -148,8 +149,20 @@ public class TestCaseExecutorUtil {
 		int maxConns = numConcurrentConns>100?numConcurrentConns/10:10;
 		
 		ConnectionPool pool = new ConnectionPool(maxConns, 5, TimeUnit.MINUTES);
+		
+		// Right-size the async dispatcher: OkHttp defaults to maxRequests=64 and
+		// maxRequestsPerHost=5, so the enqueue()-based load engine is silently throttled
+		// to 5 in-flight calls per host regardless of concurrentUserSimulationNum. Lift
+		// the cap to the configured concurrency (never below the OkHttp defaults). Load
+		// tests hammer a single host, so maxRequestsPerHost is the binding constraint.
+		int maxAsync = Math.max(numConcurrentConns, 64);
+		Dispatcher dispatcher = new Dispatcher();
+		dispatcher.setMaxRequests(maxAsync);
+		dispatcher.setMaxRequestsPerHost(maxAsync);
+		
 		OkHttpClient.Builder builder = new OkHttpClient.Builder();
-		builder.connectionPool(pool)
+		builder.dispatcher(dispatcher)
+				.connectionPool(pool)
 				.connectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
 				.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
 				.followRedirects(true).followSslRedirects(true)
@@ -613,7 +626,7 @@ public class TestCaseExecutorUtil {
 				}
 			}
 			
-			if(!hasReferer) {builder.setTags$okhttp(null);
+			if(!hasReferer) {
 				builder.header("Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
 			}
 			

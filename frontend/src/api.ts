@@ -8,11 +8,12 @@ export interface ReportArtifact {
   size: number;
   modified: number;
   dataUrl?: string;
+  // trace bundles produced by this run (attached to the run's single report row)
+  traces?: ReportArtifact[];
 }
 export interface ReportsIndex {
   dir: string;
   reports: ReportArtifact[];
-  traces: ReportArtifact[];
 }
 
 // ---- report data (from the <report>.data.json sidecars ReportHandler writes) ----
@@ -301,7 +302,11 @@ async function sendReq(
   return text;
 }
 
-const tcf = (p: string) => 'testcaseFileName=' + encodeURIComponent(p);
+// Grizzly's HTTP codec rejects an encoded slash (%2F) anywhere in the request URI with a 404, before
+// any handler runs — so a query-param value that is a hierarchical path (e.g. api/restful-api-dev.xml)
+// must carry a real '/', not %2F. A literal slash is legal in a query string; encode everything else.
+const encPath = (p: string) => encodeURIComponent(p).replace(/%2F/gi, '/');
+const tcf = (p: string) => 'testcaseFileName=' + encPath(p);
 
 // ---- execution (Slice D1) ----
 // Both success (200) and the "in progress"/failure (400) responses carry a JSON body we need, so
@@ -386,7 +391,7 @@ async function dbgFetch(
     '/reports?action=debug&line=' +
     encodeURIComponent(lineCode) +
     '&testcaseFileName=' +
-    encodeURIComponent(tcf) +
+    encPath(tcf) +
     '&testCaseName=' +
     encodeURIComponent(tc) +
     '&sessionId=' +
@@ -449,7 +454,7 @@ export const api = {
   subtests: (path: string) => getJson<string[]>('/testcasefiles?' + tcf(path) + '&allsubtests=true'),
   // cross-file navigation (C2.1): resolve an include/import/config/dynprops target → [targetFile]
   resolveRef: (path: string, ref: string) =>
-    getJson<string[]>('/testcasefiles?' + tcf(path) + '&referencedFile=' + encodeURIComponent(ref)),
+    getJson<string[]>('/testcasefiles?' + tcf(path) + '&referencedFile=' + encPath(ref)),
   // resolve an @call subtest reference → [targetFile, lineNo]
   resolveSubtest: (path: string, call: string) =>
     getJson<[string, number]>('/testcasefiles?' + tcf(path) + '&possibleSubtestFuncCall=' + encodeURIComponent(call)),
@@ -476,7 +481,7 @@ export const api = {
   },
   createTestcaseFile: (path: string) => sendReq('POST', '/testcasefiles?' + tcf(path)),
   renameTestcaseFile: (from: string, to: string) =>
-    sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encodeURIComponent(to)),
+    sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encPath(to)),
   deleteTestcaseFile: (path: string) => sendReq('DELETE', '/testcasefiles?' + tcf(path)),
   // structured .xml API test-case CRUD (TestCase JSON; server validates)
   addCase: (path: string, tc: ApiTestCase, configType?: string) =>
@@ -524,7 +529,7 @@ export const api = {
   playTest: (tcf: string, tc: string) =>
     runPut(
       'playTest',
-      '&testcaseFileName=' + encodeURIComponent(tcf) + '&testCaseName=' + encodeURIComponent(tc),
+      '&testcaseFileName=' + encPath(tcf) + '&testCaseName=' + encodeURIComponent(tc),
     ),
   pausedLine: () => runPut('pausedLineNo'),
   pauseEl: (pause: boolean) => runPut(pause ? 'pauseElSearch' : 'unPauseElSearch'),

@@ -56,89 +56,69 @@ export default function ReportsView({
       )}
 
       {data && !loading && (
-        <>
-          <section className="view-section">
-            <h3>
-              HTML reports <span className="muted small">({data.reports.length})</span>
-            </h3>
-            {data.reports.length === 0 ? (
-              <div className="view-note">No reports generated yet. Run a suite to produce one.</div>
-            ) : (
-              <table className="grid-table">
-                <thead>
-                  <tr>
-                    <th>Report</th>
-                    <th className="num">Size</th>
-                    <th>Modified</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.reports.map((r: ReportArtifact) => (
+        <section className="view-section">
+          <h3>
+            Suite runs <span className="muted small">({data.reports.length})</span>
+          </h3>
+          {data.reports.length === 0 ? (
+            <div className="view-note">No reports generated yet. Run a suite to produce one.</div>
+          ) : (
+            <table className="grid-table">
+              <thead>
+                <tr>
+                  <th>Suite run</th>
+                  <th className="num">Size</th>
+                  <th>Modified</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.reports.map((r: ReportArtifact) => {
+                  const traces = r.traces ?? [];
+                  return (
                     <tr key={r.url}>
-                      <td className="mono ellipsis" style={{ maxWidth: 420 }}>
+                      <td className="mono ellipsis" style={{ maxWidth: 460 }} title={r.name}>
                         {r.name}
                       </td>
                       <td className="num mono">{fmtBytes(r.size)}</td>
                       <td className="muted small">{fmtDate(r.modified)}</td>
                       <td className="row-actions">
                         {r.dataUrl && (
-                          <button className="btn small" onClick={() => onOpenReport(r.dataUrl!)}>
-                            Open in viewer
+                          <button
+                            className="btn small"
+                            onClick={() => onOpenReport(r.dataUrl!)}
+                            title="Open in report viewer"
+                          >
+                            View
                           </button>
                         )}
-                        <a className={'btn small' + (r.dataUrl ? ' ghost' : '')} href={r.url} target="_blank" rel="noopener">
-                          {r.dataUrl ? 'HTML \u2197' : 'Open \u2197'}
+                        <a
+                          className="btn ghost small"
+                          href={r.url}
+                          target="_blank"
+                          rel="noopener"
+                          title="Open raw HTML report in a new tab"
+                        >
+                          {'\u2197'}
                         </a>
+                        {traces.map((t, i) => (
+                          <button
+                            key={t.url}
+                            className="btn ghost small"
+                            onClick={() => onOpenTrace(t.url)}
+                            title={'Open trace bundle in viewer \u2014 ' + t.name + ' (' + fmtBytes(t.size) + ')'}
+                          >
+                            {'\u25EB'} Trace{traces.length > 1 ? ' ' + (i + 1) : ''}
+                          </button>
+                        ))}
                       </td>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-
-          <section className="view-section">
-            <h3>
-              Trace bundles <span className="muted small">({data.traces.length})</span>
-            </h3>
-            {data.traces.length === 0 ? (
-              <div className="view-note">
-                No trace bundles found. Enable trace recording on a selenium run to capture one.
-              </div>
-            ) : (
-              <table className="grid-table">
-                <thead>
-                  <tr>
-                    <th>Bundle</th>
-                    <th className="num">Size</th>
-                    <th>Modified</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.traces.map((r: ReportArtifact) => (
-                    <tr key={r.url}>
-                      <td className="mono ellipsis" style={{ maxWidth: 420 }}>
-                        {r.name}
-                      </td>
-                      <td className="num mono">{fmtBytes(r.size)}</td>
-                      <td className="muted small">{fmtDate(r.modified)}</td>
-                      <td className="row-actions">
-                        <button className="btn small" onClick={() => onOpenTrace(r.url)}>
-                          Open in Viewer
-                        </button>
-                        <a className="btn ghost small" href={r.url} download={r.name}>
-                          Download
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </section>
-        </>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </section>
       )}
     </div>
   );

@@ -1034,7 +1034,8 @@ public class TestCase implements Serializable {
 				throw new RuntimeException("Blank HTTP Method specified for testcase");
 			
 			if(!getMethod().toUpperCase().equals(HttpMethod.GET) && !getMethod().toUpperCase().equals(HttpMethod.PUT)
-					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE))
+					&& !getMethod().toUpperCase().equals(HttpMethod.POST) && !getMethod().toUpperCase().equals(HttpMethod.DELETE)
+				 	&& !getMethod().toUpperCase().equals(HttpMethod.PATCH))
 				throw new RuntimeException("Invalid HTTP Method specified for testcase");
 			
 			//if(("POST".equalsIgnoreCase(getMethod()) || "PUT".equalsIgnoreCase(getMethod())) && getHeaders().isEmpty())

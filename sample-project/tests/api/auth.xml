@@ -11,8 +11,8 @@
     <method>POST</method>
     <description>Authenticate and capture the bearer token</description>
     <secure>false</secure>
-    <headers class="linked-hash-map">
-      <property key="Content-Type">application/json</property>
+    <headers>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
     </headers>
     <content>{"username":"${username}","password":"${password}"}</content>
     <expectedResCode>200</expectedResCode>
@@ -21,8 +21,8 @@
       <string>token</string>
     </expectedNodes>
     <!-- capture the response node `token` into ${authToken} for the rest of the suite -->
-    <workflowContextParameterMap class="linked-hash-map">
-      <property key="authToken">token</property>
+    <workflowContextParameterMap>
+      <authToken><![CDATA[token]]></authToken>
     </workflowContextParameterMap>
     <sequence>1</sequence>
   </TestCase>

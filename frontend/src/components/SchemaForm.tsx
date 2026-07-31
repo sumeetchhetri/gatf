@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import type { CfgSchema } from '../config/gatfConfigSchema';
 
 // Enum lists resolved by enumVar path (e.g. 'miscMap.providers', 'alltestcasefiles').
@@ -154,6 +154,13 @@ function MapField({
     value && typeof value === 'object' ? Object.entries(value as Record<string, unknown>) : [],
   );
   const valSchema = node.types?.value ?? { type: 'string' };
+  // Known keys (e.g. common header names) surface as a dropdown via <datalist>; custom keys still allowed.
+  const keyEnum = node.types?.key?.enum;
+  const keyOpts = useMemo<string[]>(
+    () => (Array.isArray(keyEnum) ? (keyEnum as unknown[]).map((x) => String(x)).filter((s) => s !== '') : []),
+    [keyEnum],
+  );
+  const keyListId = useMemo(() => 'sf-mapkeys-' + Math.random().toString(36).slice(2), []);
   const push = (next: [string, unknown][]) => {
     setRows(next);
     const obj: Record<string, unknown> = {};
@@ -162,12 +169,20 @@ function MapField({
   };
   return (
     <div className="sf-map">
+      {keyOpts.length > 0 && (
+        <datalist id={keyListId}>
+          {keyOpts.map((o) => (
+            <option key={o} value={o} />
+          ))}
+        </datalist>
+      )}
       {rows.length === 0 && <div className="sf-empty muted small">none</div>}
       {rows.map(([k, v], i) => (
         <div className="sf-map-row" key={i}>
           <input
             className="sf-input sf-map-key"
             placeholder="key"
+            list={keyOpts.length > 0 ? keyListId : undefined}
             value={k}
             onChange={(e) => {
               const next = rows.slice();

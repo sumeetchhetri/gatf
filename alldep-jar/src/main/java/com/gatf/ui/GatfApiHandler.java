@@ -103,18 +103,15 @@ public class GatfApiHandler extends HttpHandler {
         String dir = cfg.getOutFilesDir() != null ? base + File.separator + cfg.getOutFilesDir() : base;
 
         List<Map<String, Object>> reports = new ArrayList<>();
-        List<Map<String, Object>> traces = new ArrayList<>();
         File d = new File(dir);
-        // Each run writes its artifacts into a per-run subfolder (out/<runId>/*.html, *-trace.zip),
-        // so walk into subdirectories rather than scanning only the top level.
-        collectReports(d, d, reports, traces, 0);
+        // Each run writes its artifacts into a per-run subfolder (out/<runId>/*.html, *-trace.zip).
+        // Emit one row per run folder (the suite index), with that folder's trace bundles attached.
+        collectReports(d, d, reports, 0);
         reports.sort(byModifiedDesc());
-        traces.sort(byModifiedDesc());
 
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("dir", dir);
         out.put("reports", reports);
-        out.put("traces", traces);
         writeJson(response, HttpStatus.OK_200, out);
     }
 
@@ -210,14 +207,14 @@ public class GatfApiHandler extends HttpHandler {
 
     // Recursively collect report HTMLs (+ their .data.json) and trace zips, building /reports/<relpath>
     // URLs so files inside per-run subfolders are reachable through the static /reports handler.
-    private static void collectReports(File baseDir, File dir, List<Map<String, Object>> reports,
-                                       List<Map<String, Object>> traces, int depth) {
+    private static void collectReports(File baseDir, File dir, List<Map<String, Object>> reports, int depth) {
         File[] files = dir.listFiles();
         if (files == null) return;
         List<File> htmls = new ArrayList<>();
+        List<File> traceZips = new ArrayList<>();
         for (File f : files) {
             if (f.isDirectory()) {
-                if (depth < 4) collectReports(baseDir, f, reports, traces, depth + 1);
+                if (depth < 4) collectReports(baseDir, f, reports, depth + 1);
                 continue;
             }
             if (!f.isFile()) continue;
@@ -225,22 +222,38 @@ public class GatfApiHandler extends HttpHandler {
             if (ln.endsWith(".html")) {
                 htmls.add(f);
             } else if (ln.endsWith("-trace.zip") || ln.endsWith(".zip")) {
-                traces.add(artifact(baseDir, f));
+                traceZips.add(f);
             }
         }
-        // Prefer index reports per folder: if any *index*.html exists here, list only those (the run
-        // summaries) and hide the per-test pages; otherwise list whatever HTML is present.
-        boolean anyIndex = false;
+        // One row per run folder: the suite entry point is the *index*.html that is NOT a per-run
+        // LRun-* summary. Fall back to any *index*.html, then any HTML. The folder's trace bundles
+        // hang off that single row (surfaced as icons in the UI).
+        File primary = pickPrimaryReport(htmls);
+        if (primary == null) return;
+        List<Map<String, Object>> traceArtifacts = new ArrayList<>();
+        for (File t : traceZips) traceArtifacts.add(artifact(baseDir, t));
+        traceArtifacts.sort(byModifiedDesc());
+        Map<String, Object> a = artifact(baseDir, primary);
+        String stem = primary.getName().substring(0, primary.getName().length() - 5);
+        File sc = new File(primary.getParentFile(), stem + ".data.json");
+        if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
+        a.put("traces", traceArtifacts);
+        reports.add(a);
+    }
+
+    // The single primary report for a run folder: the suite index (an *index*.html that is not a
+    // per-run LRun-* summary), else any *index*.html, else the first HTML present.
+    private static File pickPrimaryReport(List<File> htmls) {
+        File suiteIndex = null, anyIndex = null;
         for (File h : htmls) {
-            if (h.getName().toLowerCase().contains("index")) { anyIndex = true; break; }
+            String ln = h.getName().toLowerCase();
+            boolean isIndex = ln.contains("index");
+            if (isIndex && !ln.startsWith("lrun") && suiteIndex == null) suiteIndex = h;
+            if (isIndex && anyIndex == null) anyIndex = h;
         }
-        for (File h : htmls) {
-            if (anyIndex && !h.getName().toLowerCase().contains("index")) continue;
-            Map<String, Object> a = artifact(baseDir, h);
-            File sc = new File(h.getParentFile(), h.getName().substring(0, h.getName().length() - 5) + ".data.json");
-            if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
-            reports.add(a);
-        }
+        if (suiteIndex != null) return suiteIndex;
+        if (anyIndex != null) return anyIndex;
+        return htmls.isEmpty() ? null : htmls.get(0);
     }
 
     // relative URL under /reports for a file anywhere beneath the out dir (forward slashes).

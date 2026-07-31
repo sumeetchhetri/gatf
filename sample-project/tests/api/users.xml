@@ -6,8 +6,8 @@
     <name>List users</name>
     <method>GET</method>
     <secure>false</secure>
-    <headers class="linked-hash-map">
-      <property key="Authorization">Bearer ${authToken}</property>
+    <headers>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
     </headers>
     <expectedResCode>200</expectedResCode>
     <expectedResContentType>application/json</expectedResContentType>
@@ -24,17 +24,17 @@
     <name>Create user</name>
     <method>POST</method>
     <secure>false</secure>
-    <headers class="linked-hash-map">
-      <property key="Content-Type">application/json</property>
-      <property key="Authorization">Bearer ${authToken}</property>
+    <headers>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
     </headers>
     <content>{"name":"${patientPrefix}-${username}","role":"nurse"}</content>
     <expectedResCode>201</expectedResCode>
     <expectedNodes>
       <string>id</string>
     </expectedNodes>
-    <workflowContextParameterMap class="linked-hash-map">
-      <property key="newUserId">id</property>
+    <workflowContextParameterMap>
+      <newUserId><![CDATA[id]]></newUserId>
     </workflowContextParameterMap>
     <sequence>2</sequence>
   </TestCase>

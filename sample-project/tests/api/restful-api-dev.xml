@@ -1,0 +1,201 @@
+<TestCases>
+  <!--
+    Authenticated API sample — https://api.restful-api.dev
+    ======================================================
+    restful-api.dev exposes a real JWT-secured API. This suite shows GATF's authenticated-API
+    testing end to end: obtain a JWT, capture it into the workflow variable ${authToken}, then
+    reuse it as a Bearer token across an authenticated CRUD lifecycle on a private collection,
+    finishing with a negative (401) check.
+
+    ONE-TIME SETUP
+      1. Sign in at https://restful-api.dev to obtain your personal x-api-key.
+      2. Fill these in gatf-config.xml -> <gatfTestDataConfig><globalVariables>:
+           apiKey         your x-api-key  (REQUIRED header on every authenticated call)
+           apiEmail       an email to register / log in with
+           apiPassword    a password
+           apiName        a display name
+           collectionName any collection name you want to own (auto-created on first POST)
+      3. Run GATF in API mode: set <isSeleniumExecutor>false</isSeleniumExecutor>.
+
+    AUTHENTICATED CALLS need BOTH:
+      - header  x-api-key: ${apiKey}
+      - query   ?auth-type=jwt   AND   header  Authorization: Bearer ${authToken}
+
+    REPEAT RUNS: "Register" creates the account and only succeeds the first time (a duplicate
+    email returns an error). "Login" is the authoritative token source and runs every time, so
+    on repeat runs Register may report FAILED while the rest of the suite passes. To keep a clean
+    run, comment out the Register case after the first run, or point apiEmail at a fresh address.
+  -->
+
+  <!-- 1) Register: create the account and capture the issued JWT (first run only) -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/register</url>
+    <name>Register user</name>
+    <method>POST</method>
+    <description>Create a restful-api.dev account and capture the issued JWT into ${authToken}</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"email":"${apiEmail}","password":"${apiPassword}","name":"${apiName}"}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>token</string>
+      <string>user.id</string>
+    </expectedNodes>
+    <workflowContextParameterMap>
+      <authToken><![CDATA[token]]></authToken>
+      <userId><![CDATA[user.id]]></userId>
+    </workflowContextParameterMap>
+    <sequence>1</sequence>
+  </TestCase>
+
+  <!-- 2) Login: authoritative token source; (re)captures ${authToken} on every run -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/login</url>
+    <name>Login</name>
+    <method>POST</method>
+    <description>Authenticate and (re)capture the JWT used by the authenticated calls below</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"email":"${apiEmail}","password":"${apiPassword}"}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>token</string>
+      <string>tokenType</string>
+    </expectedNodes>
+    <workflowContextParameterMap>
+      <authToken><![CDATA[token]]></authToken>
+    </workflowContextParameterMap>
+    <sequence>2</sequence>
+  </TestCase>
+
+  <!-- 3) Authenticated create — Bearer JWT + x-api-key; capture the new object id -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects?auth-type=jwt</url>
+    <name>Create object</name>
+    <method>POST</method>
+    <description>Create an object in your private collection using the captured JWT</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"name":"GATF Sample Device","data":{"year":2025,"price":1299.99,"cpu":"Apple M4"}}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedNodes>
+      <string>id</string>
+    </expectedNodes>
+    <workflowContextParameterMap>
+      <objectId><![CDATA[id]]></objectId>
+    </workflowContextParameterMap>
+    <sequence>3</sequence>
+  </TestCase>
+
+  <!-- 4) Authenticated read-back of the created object -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects/${objectId}?auth-type=jwt</url>
+    <name>Get object</name>
+    <method>GET</method>
+    <description>Read the object back and assert its identity</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+    </headers>
+    <expectedResCode>200</expectedResCode>
+    <expectedNodes>
+      <string>id</string>
+      <string>name</string>
+    </expectedNodes>
+    <sequence>4</sequence>
+  </TestCase>
+
+  <!-- 5) Authenticated full replace (PUT) -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects/${objectId}?auth-type=jwt</url>
+    <name>Update object (PUT)</name>
+    <method>PUT</method>
+    <description>Replace the object entirely</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"name":"GATF Sample Device (updated)","data":{"year":2025,"price":1399.99,"cpu":"Apple M4 Pro"}}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedNodes>
+      <string>id</string>
+    </expectedNodes>
+    <sequence>5</sequence>
+  </TestCase>
+
+  <!-- 6) Authenticated partial update (PATCH) -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects/${objectId}?auth-type=jwt</url>
+    <name>Patch object</name>
+    <method>PATCH</method>
+    <description>Partially update just the name</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"name":"GATF Sample Device (patched)"}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedNodes>
+      <string>name</string>
+    </expectedNodes>
+    <sequence>6</sequence>
+  </TestCase>
+
+  <!-- 7) Authenticated delete (cleanup) -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects/${objectId}?auth-type=jwt</url>
+    <name>Delete object</name>
+    <method>DELETE</method>
+    <description>Remove the object and assert the confirmation message</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+    </headers>
+    <expectedResCode>200</expectedResCode>
+    <expectedNodes>
+      <string>message</string>
+    </expectedNodes>
+    <sequence>7</sequence>
+  </TestCase>
+
+  <!-- 8) Negative: restful-api.dev ?status override forces a 401 — proves auth failures are handled -->
+  <TestCase>
+    <baseUrl>https://api.restful-api.dev</baseUrl>
+    <url>/collections/${collectionName}/objects?auth-type=jwt&amp;status=401</url>
+    <name>Unauthorized is handled</name>
+    <method>GET</method>
+    <description>Assert the client treats a 401 correctly (status override)</description>
+    <secure>false</secure>
+    <headers>
+      <x-api-key><![CDATA[${apiKey}]]></x-api-key>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+    </headers>
+    <expectedResCode>401</expectedResCode>
+    <sequence>8</sequence>
+  </TestCase>
+</TestCases>

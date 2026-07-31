@@ -1,0 +1,90 @@
+<TestCases>
+  <!--
+    Load suite for load-server/server.js. Under load, every TestCase in the suite
+    is replayed by each of the concurrentUserSimulationNum simulated users for
+    loadTestingTime ms. Uses ${apiBaseUrl}/${username}/${password} from
+    gatf-config-load.xml globalVariables. isOrderByFileName=true; sequence orders
+    within the file.
+
+    Mix is intentional: a token capture-and-reuse, a couple of fast reads/writes,
+    and a deliberately slow endpoint so the latency percentiles in the report are
+    non-trivial.
+  -->
+
+  <!-- 1) Authenticate and capture the token into ${authToken}. -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/auth/login</url>
+    <name>Login</name>
+    <method>POST</method>
+    <secure>false</secure>
+    <headers>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+    </headers>
+    <content>{"username":"${username}","password":"${password}"}</content>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>token</string>
+    </expectedNodes>
+    <workflowContextParameterMap>
+      <authToken><![CDATA[token]]></authToken>
+    </workflowContextParameterMap>
+    <sequence>1</sequence>
+  </TestCase>
+
+  <!-- 2) Fast read. -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/api/users</url>
+    <name>List users</name>
+    <method>GET</method>
+    <secure>false</secure>
+    <headers>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+    </headers>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>$[0].id</string>
+    </expectedNodes>
+    <sequence>2</sequence>
+  </TestCase>
+
+  <!-- 3) Fast write; capture the new id. -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/api/users</url>
+    <name>Create user</name>
+    <method>POST</method>
+    <secure>false</secure>
+    <headers>
+      <Content-Type><![CDATA[application/json]]></Content-Type>
+      <Authorization><![CDATA[Bearer ${authToken}]]></Authorization>
+    </headers>
+    <content>{"name":"load-${username}","role":"member"}</content>
+    <expectedResCode>201</expectedResCode>
+    <expectedNodes>
+      <string>id</string>
+    </expectedNodes>
+    <workflowContextParameterMap>
+      <newUserId><![CDATA[id]]></newUserId>
+    </workflowContextParameterMap>
+    <sequence>3</sequence>
+  </TestCase>
+
+  <!-- 4) Deliberately slow endpoint (server sleeps 150ms) -> shapes the percentiles. -->
+  <TestCase>
+    <baseUrl>${apiBaseUrl}</baseUrl>
+    <url>/api/slow?ms=150</url>
+    <name>Slow endpoint</name>
+    <method>GET</method>
+    <secure>false</secure>
+    <expectedResCode>200</expectedResCode>
+    <expectedResContentType>application/json</expectedResContentType>
+    <expectedNodes>
+      <string>sleptMs</string>
+    </expectedNodes>
+    <sequence>4</sequence>
+  </TestCase>
+</TestCases>
