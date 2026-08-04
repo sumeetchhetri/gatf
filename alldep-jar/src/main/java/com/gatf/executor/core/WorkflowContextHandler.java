@@ -44,8 +44,7 @@ import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.gatf.ResourceCopy;
 import com.gatf.executor.validator.XMLResponseValidator;
 
-import okhttp3.Cookie;
-import okhttp3.HttpUrl;
+import java.net.HttpCookie;
 
 /**
  * @author Sumeet Chhetri
@@ -202,7 +201,7 @@ public class WorkflowContextHandler {
 		}
 	}
 	
-	public List<Cookie> storeCookies(TestCase testCase, List<String> cookieLst) {
+	public List<HttpCookie> storeCookies(TestCase testCase, List<String> cookieLst) {
 		int simNumber = testCase.getSimulationNumber()==null?0:testCase.getSimulationNumber();
 		if(testCase.isServerApiAuth() || testCase.isServerApiTarget()) {
 			simNumber = -1;
@@ -211,13 +210,18 @@ public class WorkflowContextHandler {
 		} else if(testCase.getSimulationNumber()==null) {
 			simNumber = 0;
 		}
-		List<Cookie> cooklst = new ArrayList<Cookie>();
+		List<HttpCookie> cooklst = new ArrayList<HttpCookie>();
 		if(cookieLst!=null && cookies.get(simNumber)!=null)
 		{
 			for (String cookie : cookieLst) {
-				Cookie c = Cookie.parse(HttpUrl.parse(testCase.getBaseUrl()), cookie);
-				cooklst.add(c);
-				cookies.get(simNumber).put(c.name(), c.value());
+				try {
+					for (HttpCookie c : HttpCookie.parse(cookie)) {
+						cooklst.add(c);
+						cookies.get(simNumber).put(c.getName(), c.getValue());
+					}
+				} catch (IllegalArgumentException e) {
+					// malformed Set-Cookie header; skip it (okhttp3.Cookie.parse returned null here)
+				}
 			}
 		}
 		return cooklst;

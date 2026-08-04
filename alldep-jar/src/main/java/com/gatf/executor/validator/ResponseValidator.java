@@ -40,8 +40,8 @@ import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
-import okhttp3.Cookie;
-import okhttp3.Response;
+import java.net.HttpCookie;
+import com.gatf.executor.core.GatfResponse;
 
 /**
  * @author Sumeet Chhetri
@@ -223,7 +223,7 @@ public abstract class ResponseValidator {
 		return xmlNodeList;
 	}
 	
-	public void validate(Response response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context)
+	public void validate(GatfResponse response, TestCase testCase, TestCaseReport testCaseReport, AcceptanceTestContext context)
 	{
 		try
 		{
@@ -262,7 +262,7 @@ public abstract class ResponseValidator {
 			
 			extractWorkflowVariables(testCase, testCaseReport, intObj, context);
 			
-			List<Cookie> cookies = context.getWorkflowContextHandler().storeCookies(testCase, response.headers().values("Set-Cookie"));
+			List<HttpCookie> cookies = context.getWorkflowContextHandler().storeCookies(testCase, response.headers("Set-Cookie"));
 			
 			boolean authEnabled = testCase.isServerApiAuth()?context.getGatfExecutorConfig().isServerLogsApiAuthEnabled()
 					:context.getGatfExecutorConfig().isAuthEnabled();
@@ -275,10 +275,10 @@ public abstract class ResponseValidator {
 				String authext = "";
 				if(authExtractAuthParams[1].equalsIgnoreCase("cookie")) {
 					authext = "cookie ";
-					for (Cookie cookie : cookies) {
-						if(authExtractAuthParams[0].equals(cookie.name()))
+					for (HttpCookie cookie : cookies) {
+						if(authExtractAuthParams[0].equals(cookie.getName()))
 						{
-							identifier = cookie.value();
+							identifier = cookie.getValue();
 							break;
 						}
 					}

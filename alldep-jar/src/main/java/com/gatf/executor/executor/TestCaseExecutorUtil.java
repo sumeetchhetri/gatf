@@ -56,6 +56,7 @@ import org.junit.Assert;
 import org.w3c.dom.Document;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.GatfResponse;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.ext.AutocannonTestCaseExecutor;
@@ -735,6 +736,7 @@ public class TestCaseExecutorUtil {
 		@Override
 		public void onResponse(Call call, Response response) throws IOException {
 			try {
+				GatfResponse gresp = new OkHttpGatfResponse(response);
 				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 				
 				if(testCase.getExpectedResContentType()!=null)
@@ -779,25 +781,25 @@ public class TestCaseExecutorUtil {
 				if(!testCase.isSoapBase()) {
 					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
 					{
-						jsonResponseValidator.validate(response, testCase, testCaseReport, context);
+						jsonResponseValidator.validate(gresp, testCase, testCaseReport, context);
 					}
 					else if(isMatchesContentType(MediaType.APPLICATION_XML_TYPE, testCase.getExpectedResContentType())
 							|| isMatchesContentType(MediaType.TEXT_XML_TYPE, testCase.getExpectedResContentType()))
 					{
-						xmlResponseValidator.validate(response, testCase, testCaseReport, context);
+						xmlResponseValidator.validate(gresp, testCase, testCaseReport, context);
 					}
 					else if(isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, testCase.getExpectedResContentType())
 							|| isMatchesContentType(MediaType.TEXT_HTML_TYPE, testCase.getExpectedResContentType()))
 					{
-						textResponseValidator.validate(response, testCase, testCaseReport, context);
+						textResponseValidator.validate(gresp, testCase, testCaseReport, context);
 					}
 					else
 					{
-						noContentResponseValidator.validate(response, testCase, testCaseReport, context);
+						noContentResponseValidator.validate(gresp, testCase, testCaseReport, context);
 						testCaseReport.setStatus(TestStatus.Success.status);
 					}
 				} else {
-					soapResponseValidator.validate(response, testCase, testCaseReport, context);
+					soapResponseValidator.validate(gresp, testCase, testCaseReport, context);
 				}
 				
 				if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
