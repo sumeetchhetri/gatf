@@ -1498,11 +1498,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         ExecutorService threadPool = null;
         if (numberOfRuns > 1) {
-            int threadNum = 100;
-            if (numberOfRuns < 100)
-                threadNum = numberOfRuns;
-
-            threadPool = Executors.newFixedThreadPool(threadNum);
+            // Virtual-thread-per-task executor: run every configured simulated user
+            // concurrently instead of capping the load at 100 platform threads. Each
+            // user-simulation thread only parks on a CompletableFuture (the HTTP call is
+            // dispatched asynchronously via OkHttp's own Dispatcher), so the vthreads park
+            // cleanly with no carrier pinning and cost ~nothing while idle.
+            threadPool = Executors.newVirtualThreadPerTaskExecutor();
         }
 
         ExecutorService reportingThreadPool = Executors.newFixedThreadPool(Integer.getInteger("gatf.reportingThreads", 30));
@@ -2200,11 +2201,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         ExecutorService threadPool = null;
         if (numberOfRuns > 1) {
-            int threadNum = 100;
-            if (numberOfRuns < 100)
-                threadNum = numberOfRuns;
-
-            threadPool = Executors.newFixedThreadPool(threadNum);
+            // Virtual-thread-per-task executor: run every configured simulated user
+            // concurrently instead of capping the load at 100 platform threads. Each
+            // user-simulation thread only parks on a CompletableFuture (the HTTP call is
+            // dispatched asynchronously via OkHttp's own Dispatcher), so the vthreads park
+            // cleanly with no carrier pinning and cost ~nothing while idle.
+            threadPool = Executors.newVirtualThreadPerTaskExecutor();
         }
 
         String runPrefix = "DRun-" + tContext.getIndex();
