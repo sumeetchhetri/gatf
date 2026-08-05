@@ -17,10 +17,11 @@ package com.gatf.executor.executor;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.lang.reflect.Method;
-import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
@@ -29,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
@@ -71,20 +71,15 @@ import com.gatf.executor.validator.SOAPResponseValidator;
 import com.gatf.executor.validator.TextResponseValidator;
 import com.gatf.executor.validator.XMLResponseValidator;
 
-import okhttp3.Call;
-import okhttp3.Callback;
-import okhttp3.ConnectionPool;
-import okhttp3.Dispatcher;
-import okhttp3.Headers;
-import okhttp3.MultipartBody;
-import okhttp3.MultipartBody.Part;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpRequest.BodyPublishers;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.time.Duration;
+
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
-import okhttp3.logging.HttpLoggingInterceptor;
-import okhttp3.logging.HttpLoggingInterceptor.Level;
-import okio.Buffer;
 
 /**
  * @author Sumeet Chhetri
@@ -105,7 +100,7 @@ public class TestCaseExecutorUtil {
 	
 	private static final NoContentResponseValidator noContentResponseValidator = new NoContentResponseValidator(); 
 	
-	private OkHttpClient client;
+	private HttpClient client;
 	
 	private AcceptanceTestContext context = null;
 	
@@ -140,43 +135,62 @@ public class TestCaseExecutorUtil {
         }
     }
 	
+	private static HttpClient buildHttpClient(AcceptanceTestContext context) {
+		HttpClient.Builder b = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL);
+		if(context.getGatfExecutorConfig().getHttpConnectionTimeout()>0) {
+			b.connectTimeout(Duration.ofMillis(context.getGatfExecutorConfig().getHttpConnectionTimeout()));
+		}
+		SSLContext ssl = trustAllSslContext(context.getGatfExecutorConfig().isAcceptAllCerts());
+		if(ssl!=null) {
+			b.sslContext(ssl);
+		}
+		return b.build();
+	}
+
+	// Trust-all SSLContext for acceptAllCerts mode (self-signed / mismatched certs in test envs). HttpClient
+	// has no per-client hostname verifier, so hostname verification is disabled via the documented system
+	// property when trust-all is on.
+	private static SSLContext trustAllSslContext(boolean acceptAll) {
+		if(!acceptAll && !Boolean.getBoolean("gatf.acceptAllCerts")) {
+			return null; // default: standard TLS certificate + hostname verification
+		}
+		final TrustManager[] trustAllCerts = new TrustManager[] {
+				new X509TrustManager() {
+					public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+					public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+					public X509Certificate[] getAcceptedIssuers() {
+						return new java.security.cert.X509Certificate[]{};
+					}
+				}
+		};
+		try {
+			System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
+			SSLContext ctx = SSLContext.getInstance("TLS");
+			ctx.init(null, trustAllCerts, new java.security.SecureRandom());
+			return ctx;
+		} catch (Exception e) {
+			return null;
+		}
+	}
+
+	private static final java.util.Set<String> RESTRICTED_HEADERS = new java.util.HashSet<String>(
+			java.util.Arrays.asList("connection", "content-length", "expect", "host", "upgrade"));
+
+	// HttpRequest.Builder rejects a small set of restricted headers (Host/Content-Length/etc.) that OkHttp
+	// allowed; the JDK sets those itself. Skip them (and anything else the builder rejects) instead of failing.
+	private static void addHeaderSafe(HttpRequest.Builder b, String name, String value) {
+		if(name==null || value==null || RESTRICTED_HEADERS.contains(name.trim().toLowerCase())) {
+			return;
+		}
+		try {
+			b.header(name, value);
+		} catch (IllegalArgumentException e) {
+		}
+	}
+
 	public TestCaseExecutorUtil(AcceptanceTestContext context)
 	{
-		int numConcurrentConns = context.getGatfExecutorConfig().getNumConcurrentExecutions();
-		if(context.getGatfExecutorConfig().getConcurrentUserSimulationNum()!=null) {
-			numConcurrentConns = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-		}
-		
-		int maxConns = numConcurrentConns>100?numConcurrentConns/10:10;
-		
-		ConnectionPool pool = new ConnectionPool(maxConns, 5, TimeUnit.MINUTES);
-		
-		// Right-size the async dispatcher: OkHttp defaults to maxRequests=64 and
-		// maxRequestsPerHost=5, so the enqueue()-based load engine is silently throttled
-		// to 5 in-flight calls per host regardless of concurrentUserSimulationNum. Lift
-		// the cap to the configured concurrency (never below the OkHttp defaults). Load
-		// tests hammer a single host, so maxRequestsPerHost is the binding constraint.
-		int maxAsync = Math.max(numConcurrentConns, 64);
-		Dispatcher dispatcher = new Dispatcher();
-		dispatcher.setMaxRequests(maxAsync);
-		dispatcher.setMaxRequestsPerHost(maxAsync);
-		
-		OkHttpClient.Builder builder = new OkHttpClient.Builder();
-		builder.dispatcher(dispatcher)
-				.connectionPool(pool)
-				.connectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
-				.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
-				.followRedirects(true).followSslRedirects(true)
-				.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
-		
-		if(context.getGatfExecutorConfig().isDebugEnabled()) {
-			builder.addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
-			//builder.addInterceptor(new CurlLoggingInterceptor());
-		}
-		
-		trustAllCertificates(builder, context.getGatfExecutorConfig().isAcceptAllCerts());
-		
-		client = builder.build();
+		client = buildHttpClient(context);
 		this.context = context;
 	}
 	
@@ -185,17 +199,7 @@ public class TestCaseExecutorUtil {
 	public static TestCaseExecutorUtil getSingleConnection(AcceptanceTestContext context)
 	{
 		TestCaseExecutorUtil util = new TestCaseExecutorUtil();
-		OkHttpClient.Builder builder = new OkHttpClient.Builder();
-		builder.connectTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
-			.readTimeout(context.getGatfExecutorConfig().getHttpConnectionTimeout(), TimeUnit.MILLISECONDS)
-			.followRedirects(true).followSslRedirects(true)
-			.callTimeout(context.getGatfExecutorConfig().getHttpRequestTimeout(), TimeUnit.MILLISECONDS);
-		if(context.getGatfExecutorConfig().isDebugEnabled()) {
-			builder.addInterceptor(new HttpLoggingInterceptor().setLevel(Level.BODY));
-			//builder.addInterceptor(new CurlLoggingInterceptor());
-		}
-		trustAllCertificates(builder, context.getGatfExecutorConfig().isAcceptAllCerts());
-		util.client = builder.build();
+		util.client = buildHttpClient(context);
 		util.context = context;
 		return util;
 	}
@@ -216,21 +220,23 @@ public class TestCaseExecutorUtil {
 	 * @throws Exception
 	 * Handle the request content, handle flows for rest and soap separately...
 	 */
-	private void handleRequestContent(TestCase testCase, Request.Builder builder, StringBuilder curlAddPars) throws Exception
+	private byte[] handleRequestContent(TestCase testCase, HttpRequest.Builder builder, StringBuilder curlAddPars) throws Exception
 	{
-		RequestBody body = null;
+		byte[] raw = null;
 		//Set the request body first
 		if(testCase.getAcontent()!=null && !testCase.getAcontent().trim().isEmpty() 
 				&& !testCase.getMethod().equals(HttpMethod.GET))
 		{
 			if(!testCase.isSoapBase())
 			{
-				body = RequestBody.create(testCase.getAcontent(), null);
+				raw = testCase.getAcontent().getBytes(StandardCharsets.UTF_8);
 			}
 		}
 		else if(testCase.getMultipartContent()!=null && !testCase.getMultipartContent().isEmpty())
 		{
-			MultipartBody.Builder mb = new MultipartBody.Builder().setType(MultipartBody.FORM);
+			String boundary = "----gatfFormBoundary" + Long.toHexString(System.nanoTime());
+			ByteArrayOutputStream mp = new ByteArrayOutputStream();
+			boolean anyFormPart = false;
 			for (String filedet : testCase.getMultipartContent()) {
 				String[] mulff = filedet.split(":");
 				if(mulff.length==4 || mulff.length==3) {
@@ -262,7 +268,14 @@ public class TestCaseExecutorUtil {
 							File file = getResourceFile(context.getGatfExecutorConfig().getTestCasesBasePath(), fileNmOrTxt);
 							if(!testCase.isSoapBase())
 							{
-								mb.addPart(Part.createFormData(controlname, fileNmOrTxt, RequestBody.create(file, null)));
+								FileInputStream ffis = new FileInputStream(file);
+								byte[] partData = IOUtils.toByteArray(ffis);
+								ffis.close();
+								mp.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+								mp.write(("Content-Disposition: form-data; name=\"" + controlname + "\"; filename=\"" + fileNmOrTxt + "\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+								mp.write(partData);
+								mp.write("\r\n".getBytes(StandardCharsets.UTF_8));
+								anyFormPart = true;
 								curlAddPars.append(String.format("-F \"%s=@%s\" ", controlname, file.getAbsolutePath()));
 							}
 							else
@@ -285,7 +298,11 @@ public class TestCaseExecutorUtil {
 					} else {
 						if(!testCase.isSoapBase())
 						{
-							mb.addPart(Part.createFormData(controlname, fileNmOrTxt));
+							mp.write(("--" + boundary + "\r\n").getBytes(StandardCharsets.UTF_8));
+							mp.write(("Content-Disposition: form-data; name=\"" + controlname + "\"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+							mp.write(fileNmOrTxt.getBytes(StandardCharsets.UTF_8));
+							mp.write("\r\n".getBytes(StandardCharsets.UTF_8));
+							anyFormPart = true;
 							curlAddPars.append(String.format("-F \"%s='%s'\" ", controlname, fileNmOrTxt.replace("\n", "\\n").replace("'", "\\'")));
 						}
 						else
@@ -299,7 +316,11 @@ public class TestCaseExecutorUtil {
 					}
 				}			
 			}
-			body = mb.build();
+			if(anyFormPart) {
+				mp.write(("--" + boundary + "--\r\n").getBytes(StandardCharsets.UTF_8));
+				raw = mp.toByteArray();
+				addHeaderSafe(builder, "Content-Type", "multipart/form-data; boundary=" + boundary);
+			}
 		}
 		else if(StringUtils.isNotBlank(testCase.getContentFile()))
 		{
@@ -317,7 +338,7 @@ public class TestCaseExecutorUtil {
 				content = FileUtils.readFileToString(file, "UTF-8");
 				curlAddPars.append(String.format("--data-raw \"%s=@%s\" ", file.getAbsolutePath()));
 			}
-			body = RequestBody.create(content, null);
+			raw = content.getBytes(StandardCharsets.UTF_8);
 		}
 		
 		//Now set the URL with authentication tokens etc...
@@ -403,7 +424,7 @@ public class TestCaseExecutorUtil {
 				
 				testCase.setAcontent(content);
 				if(StringUtils.isNotBlank(content)) {
-					body = RequestBody.create(content, null);
+					raw = content.getBytes(StandardCharsets.UTF_8);
 				}
 			}
 			
@@ -469,7 +490,7 @@ public class TestCaseExecutorUtil {
 			
 			testCase.setAurl(completeUrl);
 			try {
-			    builder = builder.url(testCase.getAurl());
+			    builder.uri(URI.create(testCase.getAurl()));
             } catch (IllegalArgumentException e) {
                 Assert.assertTrue("Invalid URL, please check the url provided ("+ completeUrl + ")", false);
             }
@@ -484,15 +505,15 @@ public class TestCaseExecutorUtil {
 			String soapAction = context.getSoapActions().get(testCase.getWsdlKey()+testCase.getOperationName());
 			if (request.contains(AcceptanceTestContext.SOAP_1_1_NAMESPACE)) {
                 soapAction = soapAction != null ? "\"" + soapAction + "\"" : "";
-                builder.addHeader(AcceptanceTestContext.PROP_SOAP_ACTION_11, soapAction);
-                builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
+                builder.header(AcceptanceTestContext.PROP_SOAP_ACTION_11, soapAction);
+                builder.header(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
                 testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, AcceptanceTestContext.MIMETYPE_TEXT_XML);
             } else if (request.contains(AcceptanceTestContext.SOAP_1_2_NAMESPACE)) {
                 String contentType = AcceptanceTestContext.MIMETYPE_APPLICATION_XML;
                 if (soapAction != null) {
                     contentType = contentType + AcceptanceTestContext.PROP_DELIMITER + AcceptanceTestContext.PROP_SOAP_ACTION_12 + "\"" + soapAction + "\"";
                 }
-                builder.addHeader(AcceptanceTestContext.PROP_CONTENT_TYPE, contentType);
+                builder.header(AcceptanceTestContext.PROP_CONTENT_TYPE, contentType);
                 testCase.getHeaders().put(AcceptanceTestContext.PROP_CONTENT_TYPE, contentType);
             }
 			
@@ -530,25 +551,26 @@ public class TestCaseExecutorUtil {
 				DOMSource source = new DOMSource(soapMessage);
 				transformer.transform(source, result);
 				request = sw.toString();
-				body = RequestBody.create(request, null);
+				raw = request.getBytes(StandardCharsets.UTF_8);
 			}
 			
 			try {
-			    builder = builder.url(testCase.getAurl());
+			    builder.uri(URI.create(testCase.getAurl()));
             } catch (IllegalArgumentException e) {
                 Assert.assertTrue("Invalid URL, please check the url provided ("+ testCase.getAurl() + ")", false);
             }
 		}
 		
 		if(testCase.getMethod().equalsIgnoreCase("post") || testCase.getMethod().equalsIgnoreCase("put")) {
-			if(body==null) {
-				body = RequestBody.create(StringUtils.EMPTY, null);
+			if(raw==null) {
+				raw = new byte[0];
 			}
 		}
-		builder.method(testCase.getMethod().toUpperCase(), body);
+		builder.method(testCase.getMethod().toUpperCase(), raw!=null ? BodyPublishers.ofByteArray(raw) : BodyPublishers.noBody());
+		return raw;
 	}
 	
-	private String curlize(Request request, String curlOptions, boolean isLog) throws IOException {
+	private String curlize(HttpRequest request, byte[] rawBody, String curlOptions, boolean isLog) {
 		String curlCmd = "curl";
         curlCmd += " -X " + request.method();
         if (curlOptions != null) {
@@ -556,33 +578,25 @@ public class TestCaseExecutorUtil {
         }
 
         boolean compressed = false;
-        Headers headers = request.headers();
-        for (int i = 0, count = headers.size(); i < count; i++) {
-            String name = headers.name(i);
-            String value = headers.value(i);
-            if ("Accept-Encoding".equalsIgnoreCase(name) && "gzip".equalsIgnoreCase(value)) {
-                compressed = true;
+        for (Map.Entry<String, List<String>> he : request.headers().map().entrySet()) {
+            for (String value : he.getValue()) {
+                if ("Accept-Encoding".equalsIgnoreCase(he.getKey()) && "gzip".equalsIgnoreCase(value)) {
+                    compressed = true;
+                }
+                curlCmd += " -H " + "\"" + he.getKey() + ": " + value + "\"";
             }
-            curlCmd += " -H " + "\"" + name + ": " + value + "\"";
         }
 
-        RequestBody requestBody = request.body();
-        if (requestBody != null) {
-            Buffer buffer = new Buffer();
-            requestBody.writeTo(buffer);
-            Charset charset = Charset.forName("UTF-8");
-            okhttp3.MediaType contentType = requestBody.contentType();
-            if (contentType != null) {
-                charset = contentType.charset(charset);
-            }
+        if (rawBody != null && rawBody.length > 0) {
+            String bodyStr = new String(rawBody, StandardCharsets.UTF_8);
             // try to keep to a single line and use a subshell to preserve any line breaks
-            curlCmd += " --data $'" + buffer.readString(charset).replace("\n", "\\n").replace("'", "\\'") + "'";
+            curlCmd += " --data $'" + bodyStr.replace("\n", "\\n").replace("'", "\\'") + "'";
         }
 
-        curlCmd += ((compressed) ? " --compressed " : " ") + request.url();
+        curlCmd += ((compressed) ? " --compressed " : " ") + request.uri();
 
         if(isLog) {
-	        logger.info("╭--- cURL (" + request.url() + ")");
+	        logger.info("╭--- cURL (" + request.uri() + ")");
 	        logger.info(curlCmd);
 	        logger.info("╰--- (copy and paste the above line to a terminal)");
         }
@@ -593,8 +607,7 @@ public class TestCaseExecutorUtil {
 	{
 		long start = System.currentTimeMillis();
 		
-		Request.Builder builder = new Request.Builder();
-		Call call = null;
+		HttpRequest.Builder builder = HttpRequest.newBuilder();
 		
 		try {
 			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks())
@@ -616,29 +629,32 @@ public class TestCaseExecutorUtil {
 			}
 			
 			StringBuilder curlAddPars = new StringBuilder();
-			handleRequestContent(testCase, builder, curlAddPars);
+			byte[] rawBody = handleRequestContent(testCase, builder, curlAddPars);
 			
 			boolean hasReferer = false;
 			if(testCase.getHeaders()!=null)
 			{
 				for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
-					builder = builder.addHeader(entry.getKey(), entry.getValue());
+					addHeaderSafe(builder, entry.getKey(), entry.getValue());
 					hasReferer |= entry.getKey().equalsIgnoreCase("Referer");
 				}
 			}
 			
 			if(!hasReferer) {
-				builder.header("Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
+				addHeaderSafe(builder, "Referer", WorkflowContextHandler.getBaseUrl(testCase.getAurl()));
 			}
 			
 			testCaseReport.setTestCase(testCase);
-			Request request = builder.build();
+			if(context.getGatfExecutorConfig().getHttpRequestTimeout()>0) {
+				builder.timeout(Duration.ofMillis(context.getGatfExecutorConfig().getHttpRequestTimeout()));
+			}
+			HttpRequest request = builder.build();
 			
 			if(!testCase.isExternalApi() && !testCase.isDisablePreHooks() && testCase.getPreWaitMs()!=null && testCase.getPreWaitMs()>0) {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
 			
-			String curlCmd = curlize(request, curlAddPars.toString(), (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
+			String curlCmd = curlize(request, rawBody, curlAddPars.toString(), (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
 			testCaseReport.setCurlCmd(curlCmd);
 			
 			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().equals("none")) {
@@ -653,9 +669,8 @@ public class TestCaseExecutorUtil {
 				future.complete(testCaseReport);
 				return future;
 			} else {
-				call = client.newCall(request);
 				TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
-				call.enqueue(rp);
+				client.sendAsync(request, BodyHandlers.ofByteArray()).whenComplete((resp, err) -> rp.handle(resp, err));
 				return rp.future;
 			}
 		} catch (Throwable e) {
@@ -669,7 +684,7 @@ public class TestCaseExecutorUtil {
 			}
 			e.printStackTrace();
 			TestCaseResponseHandler rp = new TestCaseResponseHandler(testCase, testCaseReport, context, start);
-			rp.onError(call, e);
+			rp.onError(e);
 			return rp.future;
 		}
 	}
@@ -688,7 +703,7 @@ public class TestCaseExecutorUtil {
 	 * @author Sumeet Chhetri
 	 * The Async HTTP Response Handler logic returns a TestCaseReport
 	 */
-	public static class TestCaseResponseHandler implements Callback {
+	public static class TestCaseResponseHandler {
 		private final CompletableFuture<TestCaseReport> future = new CompletableFuture<>();
 		
 		private TestCase testCase;
@@ -712,7 +727,7 @@ public class TestCaseExecutorUtil {
 			this.testCaseReport.setResponseContentType(testCase.getExpectedResContentType());
 		}
 		
-		public void onError(Call call, Throwable e) {
+		public void onError(Throwable e) {
 			testCaseReport.setStatus(TestStatus.Failed.status);
 			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
 			testCaseReport.setError(e.getMessage());
@@ -722,44 +737,36 @@ public class TestCaseExecutorUtil {
 			future.completeExceptionally(e);
 		}
 		
-		@Override
-		public void onFailure(Call call, IOException e) {
-			testCaseReport.setStatus(TestStatus.Failed.status);
-			testCaseReport.setFailureReason(TestFailureReason.Exception.status);
-			testCaseReport.setError(e.getMessage());
-			testCaseReport.setErrorText(ExceptionUtils.getStackTrace(e));
-			testCase.setFailed(true);
-			e.printStackTrace();
-			future.completeExceptionally(e);
-		}
-
-		@Override
-		public void onResponse(Call call, Response response) throws IOException {
+		public void handle(HttpResponse<byte[]> response, Throwable err) {
+			if(err!=null) {
+				onError(err instanceof java.util.concurrent.CompletionException && err.getCause()!=null ? err.getCause() : err);
+				return;
+			}
 			try {
-				GatfResponse gresp = new OkHttpGatfResponse(response);
+				GatfResponse gresp = new JdkGatfResponse(response);
 				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
 				
 				if(testCase.getExpectedResContentType()!=null)
 				{
 					if(testCase.getExpectedResContentType()!=null && !testCase.getExpectedResContentType().trim().isEmpty()
-							&& response.headers().values(HttpHeaders.CONTENT_TYPE)!=null && response.headers().values(HttpHeaders.CONTENT_TYPE).size()>0
-							&& response.headers().values(HttpHeaders.CONTENT_TYPE).get(0).indexOf(testCase.getExpectedResContentType())!=0)
+							&& gresp.headers(HttpHeaders.CONTENT_TYPE)!=null && gresp.headers(HttpHeaders.CONTENT_TYPE).size()>0
+							&& gresp.headers(HttpHeaders.CONTENT_TYPE).get(0).indexOf(testCase.getExpectedResContentType())!=0)
 					{
 						testCaseReport.setError("Expected content type ["+testCase.getExpectedResContentType()
-								+"] does not match actual content type ["+response.headers().values(HttpHeaders.CONTENT_TYPE).get(0)+"]");
+								+"] does not match actual content type ["+gresp.headers(HttpHeaders.CONTENT_TYPE).get(0)+"]");
 						testCaseReport.setStatus(TestStatus.Failed.status);
 						testCaseReport.setFailureReason(TestFailureReason.InvalidContentType.status);
 						if(testCase.isAbortOnInvalidContentType())
 						{
-							response.body().close();
+							gresp.closeBody();
 							future.complete(testCaseReport);
 							return;
 						}
 					}
 				}
-				else if(response.headers().values(HttpHeaders.CONTENT_TYPE)!=null && response.headers().values(HttpHeaders.CONTENT_TYPE).size()>0)
+				else if(gresp.headers(HttpHeaders.CONTENT_TYPE)!=null && gresp.headers(HttpHeaders.CONTENT_TYPE).size()>0)
 				{
-					testCase.setExpectedResContentType(response.headers().values(HttpHeaders.CONTENT_TYPE).get(0));
+					testCase.setExpectedResContentType(gresp.headers(HttpHeaders.CONTENT_TYPE).get(0));
 				}
 				
 				String contType = testCase.getExpectedResContentType();
@@ -770,14 +777,14 @@ public class TestCaseExecutorUtil {
 						|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
 						|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
 				{
-					testCaseReport.setResponseContent(response.body().string());
+					testCaseReport.setResponseContent(gresp.bodyString());
 				}
 				else if(contType.indexOf("json")!=-1 || contType.indexOf("xml")!=-1 || contType.indexOf("text")!=-1)
 				{
-					testCaseReport.setResponseContent(response.body().string());
+					testCaseReport.setResponseContent(gresp.bodyString());
 				}
 				
-				testCaseReport.setResHeaders(response.headers().toMultimap());
+				testCaseReport.setResHeaders(gresp.headersMultimap());
 				if(!testCase.isSoapBase()) {
 					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
 					{
@@ -835,7 +842,7 @@ public class TestCaseExecutorUtil {
 	
 	public void shutdown()
 	{
-		client.connectionPool().evictAll();
+		client.close();
 	}
 
 	public boolean isSingleExecutionContext() {
