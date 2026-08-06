@@ -1,5 +1,10 @@
 package com.gatf.selenium.plugins;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
@@ -11,11 +16,6 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
-
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.RequestBody;
-import okhttp3.Response;
 
 /**
  * @author Sumeet Chhetri<br/>
@@ -29,21 +29,29 @@ public class CurlPlugin {
         }
         return true;
     }
-    
+
+    // HttpRequest.Builder throws on restricted headers (Host/Content-Length/...) the JDK manages itself; skip those.
+    private static void hdr(HttpRequest.Builder b, String name, String value) {
+        try {
+            b.header(name, value);
+        } catch (IllegalArgumentException e) {
+        }
+    }
+
     @SuppressWarnings("unchecked")
     public static Object execute(Object[] args) throws Exception {
         String method = args[0].toString();
         String url = args[1].toString();
-        
-        OkHttpClient client = TestCaseExecutorUtil.getClient();
-        Request.Builder rbuilder = new Request.Builder();
-        rbuilder.url(url);
-        rbuilder.header("Referer", WorkflowContextHandler.getBaseUrl(url));
-        
-        RequestBody body = null;
-        
+
+        HttpClient client = TestCaseExecutorUtil.getClient();
+        HttpRequest.Builder rbuilder = HttpRequest.newBuilder();
+        rbuilder.uri(URI.create(url));
+        hdr(rbuilder, "Referer", WorkflowContextHandler.getBaseUrl(url));
+
+        byte[] body = null;
+
         List<List<Object>> lst = (List<List<Object>>)args[args.length-3];
-        
+
         if(CollectionUtils.isNotEmpty(lst))
         {
             List<Object> iheaders = lst.get(0);
@@ -58,55 +66,58 @@ public class CurlPlugin {
                     	}
                         String name = o.toString().substring(0, o.toString().indexOf(sep));
                         String value = o.toString().substring(o.toString().indexOf(sep)+1);
-                        rbuilder.addHeader(name.trim(), value.trim());
+                        hdr(rbuilder, name.trim(), value.trim());
                     }
                 }
             }
-            
+
             String content = null;
             if(method.equalsIgnoreCase("post") || method.equalsIgnoreCase("put")) {
                 content = lst.get(1).get(0).toString();
-                body = RequestBody.create(content, null);
+                body = content.getBytes(StandardCharsets.UTF_8);
             }
         }
 
         if(method.toUpperCase().equals("post") || method.toUpperCase().equals("put")) {
 			if(body==null) {
-				body = RequestBody.create(StringUtils.EMPTY, null);
+				body = new byte[0];
 			}
 		}
-        Response response = client.newCall(rbuilder.method(method.toUpperCase(), body).build()).execute();
-        
+        rbuilder.method(method.toUpperCase(), body!=null ? HttpRequest.BodyPublishers.ofByteArray(body) : HttpRequest.BodyPublishers.noBody());
+        HttpResponse<byte[]> response = client.send(rbuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
+
         List<String> cookies = new ArrayList<String>();
         Map<String, List<String>> headers = new HashMap<String, List<String>>();
-        for (String name : response.headers().names()) {
-        	if(name.equalsIgnoreCase("Set-Cookie")) {
-        		cookies.addAll(response.headers().values(name));   
+        for (Map.Entry<String, List<String>> he : response.headers().map().entrySet()) {
+        	if(he.getKey().equalsIgnoreCase("Set-Cookie")) {
+        		cookies.addAll(he.getValue());
         	} else {
-        		headers.put(name, response.headers().values(name));
+        		headers.put(he.getKey(), he.getValue());
         	}
         }
-        
+
         Map<String, Object> resp = new HashMap<String, Object>();
-        resp.put("statusCode", response.code());
-        resp.put("statusText", response.message());
-        if(headers.get("Content-Type")!=null) {
-            if(headers.get("Content-Type").get(0).toLowerCase().indexOf("xml")!=-1) {
-                resp.put("xml", XmlPlugin.read(new Object[]{response.body().string()}));
-            } else if(headers.get("Content-Type").get(0).toLowerCase().indexOf("json")!=-1) {
-                resp.put("json", JsonPlugin.read(new Object[]{response.body().string()}));
+        resp.put("statusCode", response.statusCode());
+        resp.put("statusText", "");
+        String contentTypeHeader = response.headers().firstValue("Content-Type").orElse(null);
+        if(contentTypeHeader!=null) {
+            String bodyStr = new String(response.body(), StandardCharsets.UTF_8);
+            if(contentTypeHeader.toLowerCase().indexOf("xml")!=-1) {
+                resp.put("xml", XmlPlugin.read(new Object[]{bodyStr}));
+            } else if(contentTypeHeader.toLowerCase().indexOf("json")!=-1) {
+                resp.put("json", JsonPlugin.read(new Object[]{bodyStr}));
             } else {
-            	resp.put("body", Base64.getEncoder().encodeToString(response.body().bytes()));
+            	resp.put("body", Base64.getEncoder().encodeToString(response.body()));
             }
         } else {
-        	resp.put("body", Base64.getEncoder().encodeToString(response.body().bytes()));
+        	resp.put("body", Base64.getEncoder().encodeToString(response.body()));
         }
-        resp.put("contentType", response.body().contentType().toString());
+        resp.put("contentType", contentTypeHeader!=null ? contentTypeHeader : "");
         resp.put("headers", headers);
         resp.put("cookies", cookies);
         return resp;
     }
-    
+
     public static String[] toSampleSelCmd() {
     	return new String[] {
     		"Curl Plugin",

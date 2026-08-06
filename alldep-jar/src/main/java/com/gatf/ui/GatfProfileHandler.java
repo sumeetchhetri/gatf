@@ -57,7 +57,7 @@ public class GatfProfileHandler  extends HttpHandler {
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	if(request.getMethod().equals(Method.GET) ) {
     		try {
-    			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
     			String dsnames = request.getParameter("dsnames");
     			if(StringUtils.isBlank(dsnames) || dsnames.equalsIgnoreCase("all")) {
     				dsnames = null;

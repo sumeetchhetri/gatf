@@ -7,6 +7,10 @@ export interface ReportArtifact {
   url: string;
   size: number;
   modified: number;
+  // 'API' | 'Selenium' | 'Load' — classified from the .data.json type by the backend
+  type?: string;
+  // display label: the run folder (raw index.html filename stripped)
+  label?: string;
   dataUrl?: string;
   // trace bundles produced by this run (attached to the run's single report row)
   traces?: ReportArtifact[];
@@ -14,6 +18,16 @@ export interface ReportArtifact {
 export interface ReportsIndex {
   dir: string;
   reports: ReportArtifact[];
+}
+export interface ConfigInfo {
+  name: string; // relative path used as the ?config= value
+  file: string; // basename
+  source: string; // 'root' | 'configs'
+  size: number;
+  modified: number;
+}
+export interface ConfigsIndex {
+  configs: ConfigInfo[];
 }
 
 // ---- report data (from the <report>.data.json sidecars ReportHandler writes) ----
@@ -202,10 +216,20 @@ function authToken(): string {
   }
 }
 // Append ?token= like the classic config-tool's $.ajaxPrefilter, so the shell works when auth is on.
+let activeConfig: string | null = null;
+export function setActiveConfig(c: string | null) {
+  activeConfig = c && c.trim() ? c : null;
+}
+export function getActiveConfig(): string | null {
+  return activeConfig;
+}
+
 function withTok(url: string): string {
+  let u = url;
   const t = authToken();
-  if (!t) return url;
-  return url + (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(t);
+  if (t) u = u + (u.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(t);
+  if (activeConfig) u = u + (u.indexOf('?') === -1 ? '?' : '&') + 'config=' + encodeURIComponent(activeConfig);
+  return u;
 }
 
 async function getJson<T>(url: string): Promise<T> {
@@ -424,6 +448,7 @@ export function debugLinesFor(l: unknown, file: string): Set<number> {
 
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
+  configs: () => getJson<ConfigsIndex>('/api/configs'),
   config: () => getJson<ConfigResponse>('/api/config'),
   testfiles: () => getJson<TestFilesIndex>('/api/testfiles'),
   testfile: (path: string) => getJson<TestFileContent>('/api/testfile?path=' + encodeURIComponent(path)),

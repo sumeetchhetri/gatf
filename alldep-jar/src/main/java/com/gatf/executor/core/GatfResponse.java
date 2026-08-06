@@ -24,7 +24,7 @@ import java.util.Map;
  * <p>Introduced by delta-066 (Phase 6 core, increment 2a) ahead of the
  * OkHttp -&gt; {@code java.net.http.HttpClient} transport swap: the validators talk to this
  * interface, and only the implementation changes when the transport is replaced (increment 2b).
- * The OkHttp-backed implementation is {@code com.gatf.executor.executor.OkHttpGatfResponse}.
+ * The JDK HttpClient-backed implementation is {@code com.gatf.executor.executor.JdkGatfResponse}.
  *
  * @author Sumeet Chhetri
  */

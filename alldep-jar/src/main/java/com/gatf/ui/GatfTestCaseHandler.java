@@ -70,7 +70,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		if(!isApiIntType)
 		{
 			try {
-				gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+				gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
     			if(gatfConfig.getTestCaseDir()!=null) {
 	    			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
@@ -91,7 +91,7 @@ public class GatfTestCaseHandler extends HttpHandler {
 		}
 		else
 		{
-			gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+			gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
 			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
 			filePath = basepath + File.separator + testcaseFileName;
 		}

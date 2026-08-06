@@ -55,7 +55,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     			String configJson = null;
     			if(configType.equalsIgnoreCase("executor")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, true, null);
-    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
         			configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
     			} else if(configType.equalsIgnoreCase("generator")) {
     				GatfConfigToolUtil.createConfigFileIfNotExists(mojo, false, null);
@@ -74,7 +74,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     			if(configType.equalsIgnoreCase("executor")) {
     				GatfExecutorConfig gatfConfig = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
         					GatfExecutorConfig.class);
-    				GatfConfigToolUtil.getGatfExecutorConfig(mojo, gatfConfig);
+    				GatfConfigToolUtil.getGatfExecutorConfig(mojo, gatfConfig, request.getParameter("config"));
     				GatfPlugin executorMojo = f.apply(configType);
         			if(executorMojo instanceof GatfTestCaseExecutorUtil) {
     					try {

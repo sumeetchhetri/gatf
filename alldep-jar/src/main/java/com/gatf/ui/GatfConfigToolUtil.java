@@ -283,6 +283,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 
     protected static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojoInt mojo, boolean isChanged) throws IOException
 	{
+		sanitizeAndSaveGatfConfig(gatfConfig, mojo, isChanged, new File(mojo.getRootDir(), "gatf-config.json"));
+	}
+
+    protected static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojoInt mojo, boolean isChanged, File targetFile) throws IOException
+	{
 		if(gatfConfig.getTestCasesBasePath()==null) {
 			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.getRootDir());
@@ -415,7 +420,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		if(isChanged)
 		{
 			synchronized (mojo) {
-				FileUtils.writeStringToFile(new File(mojo.getRootDir(), "gatf-config.json"), GatfTestCaseExecutorUtil.getConfigStrJson(gatfConfig), "UTF-8");
+				FileUtils.writeStringToFile(targetFile, targetFile.getName().toLowerCase().endsWith(".xml") ? GatfTestCaseExecutorUtil.getConfigStrXml(gatfConfig) : GatfTestCaseExecutorUtil.getConfigStrJson(gatfConfig), "UTF-8");
 			}
 		}
 	}
@@ -550,24 +555,50 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 	
 	public static GatfExecutorConfig getGatfExecutorConfig(GatfConfigToolMojoInt mojo, GatfExecutorConfig config) throws Exception
 	{
+		return getGatfExecutorConfig(mojo, config, null);
+	}
+
+	// Filename-aware config load/save. When configFileName names a valid selectable config (root-dir
+	// gatf-config*.{json,xml} or configs/<file>, path-guarded, .json/.xml), that file is the one loaded (when
+	// config==null) AND the one the sanitize save-back writes to (in its own format). When it is blank/invalid,
+	// behaviour is exactly the legacy default: load gatf-config.json (else .xml), save-back to gatf-config.json.
+	public static GatfExecutorConfig getGatfExecutorConfig(GatfConfigToolMojoInt mojo, GatfExecutorConfig config, String configFileName) throws Exception
+	{
 		createConfigFileIfNotExists(mojo, true, config);
+		File selected = selectedExecutorConfigFile(mojo, configFileName);
 		GatfExecutorConfig gatfConfig = config;
 		if(gatfConfig == null)
 		{
+			File loadFile = selected != null ? selected
+					: (new File(mojo.getRootDir(), "gatf-config.json").exists()
+						? new File(mojo.getRootDir(), "gatf-config.json")
+						: new File(mojo.getRootDir(), "gatf-config.xml"));
 			synchronized (mojo) {
-				if(new File(mojo.getRootDir(), "gatf-config.json").exists()) {
-					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.json")), false);
-				} else {
-					gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(new File(mojo.getRootDir(), "gatf-config.xml")), true);
-				}
+				gatfConfig = GatfTestCaseExecutorUtil.getConfig(new FileInputStream(loadFile), loadFile.getName().toLowerCase().endsWith(".xml"));
 			}
 		}
 		if(gatfConfig == null) {
 			throw new RuntimeException("Invalid configuration present");
 		}
-		sanitizeAndSaveGatfConfig(gatfConfig, mojo, config!=null);
+		File saveFile = selected != null ? selected : new File(mojo.getRootDir(), "gatf-config.json");
+		sanitizeAndSaveGatfConfig(gatfConfig, mojo, config!=null, saveFile);
 		return gatfConfig;
 	}
+
+	// Resolve a selectable executor config file (root-dir gatf-config*.{json,xml} or configs/<file>),
+	// path-traversal guarded, .json/.xml only. Returns null when blank/unresolvable (caller uses the default).
+	public static File selectedExecutorConfigFile(GatfConfigToolMojoInt mojo, String configRelPath) throws IOException
+	{
+		if(StringUtils.isBlank(configRelPath)) return null;
+		File root = new File(mojo.getRootDir()).getCanonicalFile();
+		File target = new File(root, configRelPath).getCanonicalFile();
+		if(!target.getPath().equals(root.getPath()) && !target.getPath().startsWith(root.getPath() + File.separator)) return null;
+		if(!target.isFile()) return null;
+		String ln = target.getName().toLowerCase();
+		if(!ln.endsWith(".json") && !ln.endsWith(".xml")) return null;
+		return target;
+	}
+
 	
 	protected static GatfConfiguration getGatfConfiguration(GatfConfigToolMojoInt mojo, GatfConfiguration config) throws Exception
 	{

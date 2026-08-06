@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { ViewKey } from '../Shell';
 import { getTheme, toggleTheme, type Theme } from '../theme';
+import ConfigPicker from './ConfigPicker';
 
 const TABS: { key: ViewKey; label: string }[] = [
   { key: 'viewer', label: 'Trace Viewer' },
@@ -13,7 +14,17 @@ const TABS: { key: ViewKey; label: string }[] = [
   { key: 'integrations', label: 'Integrations' },
 ];
 
-export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigate: (v: ViewKey) => void }) {
+export default function Nav({
+  active,
+  onNavigate,
+  configValue,
+  onConfigChange,
+}: {
+  active: ViewKey;
+  onNavigate: (v: ViewKey) => void;
+  configValue: string;
+  onConfigChange: (name: string) => void;
+}) {
   const [theme, setThemeState] = useState<Theme>(getTheme());
   return (
     <nav className="nav">
@@ -30,6 +41,9 @@ export default function Nav({ active, onNavigate }: { active: ViewKey; onNavigat
             {t.label}
           </button>
         ))}
+      </div>
+      <div style={{ marginLeft: 'auto', marginRight: 8 }}>
+        <ConfigPicker value={configValue} onChange={onConfigChange} />
       </div>
       <button
         className="nav-theme btn ghost small"

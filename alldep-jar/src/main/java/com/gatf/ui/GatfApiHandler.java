@@ -80,11 +80,13 @@ public class GatfApiHandler extends HttpHandler {
                 out.put("api", "v1");
                 writeJson(response, HttpStatus.OK_200, out);
             } else if (sub.equals("reports")) {
-                reports(response);
+                reports(request, response);
+            } else if (sub.equals("configs")) {
+                configs(response);
             } else if (sub.equals("config")) {
-                config(response);
+                config(request, response);
             } else if (sub.equals("testfiles")) {
-                testfiles(response);
+                testfiles(request, response);
             } else if (sub.equals("testfile")) {
                 testfile(request, response);
             } else {
@@ -97,8 +99,54 @@ public class GatfApiHandler extends HttpHandler {
 
     // ---- resources -------------------------------------------------------
 
-    private void reports(Response response) throws Exception {
-        GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    // Resolve the config for this request: the ?config=<relpath> selection if present & valid, else default.
+    private GatfExecutorConfig cfgFor(Request request) throws Exception {
+        return GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+    }
+
+    // List selectable configs: root-dir gatf-config*.{json,xml} + every *.{json,xml} under configs/.
+    private void configs(Response response) throws Exception {
+        List<Map<String, Object>> out = new ArrayList<>();
+        File root = new File(mojo.getRootDir());
+        File[] rf = root.listFiles();
+        if (rf != null) {
+            for (File f : rf) {
+                if (!f.isFile()) continue;
+                String ln = f.getName().toLowerCase();
+                if (ln.startsWith("gatf-config") && (ln.endsWith(".json") || ln.endsWith(".xml")))
+                    out.add(configEntry(f.getName(), f, "root"));
+            }
+        }
+        File cdir = new File(root, "configs");
+        if (cdir.isDirectory()) {
+            File[] cf = cdir.listFiles();
+            if (cf != null) {
+                for (File f : cf) {
+                    if (!f.isFile()) continue;
+                    String ln = f.getName().toLowerCase();
+                    if (ln.endsWith(".json") || ln.endsWith(".xml"))
+                        out.add(configEntry("configs/" + f.getName(), f, "configs"));
+                }
+            }
+        }
+        out.sort(Comparator.comparing(a -> String.valueOf(a.get("name"))));
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("configs", out);
+        writeJson(response, HttpStatus.OK_200, resp);
+    }
+
+    private static Map<String, Object> configEntry(String relPath, File f, String source) {
+        Map<String, Object> m = new LinkedHashMap<>();
+        m.put("name", relPath);
+        m.put("file", f.getName());
+        m.put("source", source);
+        m.put("size", f.length());
+        m.put("modified", f.lastModified());
+        return m;
+    }
+
+    private void reports(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
         String base = cfg.getOutFilesBasePath() == null ? mojo.getRootDir() : cfg.getOutFilesBasePath();
         String dir = cfg.getOutFilesDir() != null ? base + File.separator + cfg.getOutFilesDir() : base;
 
@@ -115,8 +163,8 @@ public class GatfApiHandler extends HttpHandler {
         writeJson(response, HttpStatus.OK_200, out);
     }
 
-    private void config(Response response) throws Exception {
-        GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    private void config(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
         String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
         String tdir = cfg.getTestCaseDir() != null ? tbase + File.separator + cfg.getTestCaseDir() : tbase;
         String obase = cfg.getOutFilesBasePath() == null ? mojo.getRootDir() : cfg.getOutFilesBasePath();
@@ -129,8 +177,8 @@ public class GatfApiHandler extends HttpHandler {
         writeJson(response, HttpStatus.OK_200, out);
     }
 
-    private void testfiles(Response response) throws Exception {
-        GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    private void testfiles(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
         String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
         String tdir = cfg.getTestCaseDir() != null ? tbase + File.separator + cfg.getTestCaseDir() : tbase;
 
@@ -165,7 +213,7 @@ public class GatfApiHandler extends HttpHandler {
             writeJson(response, HttpStatus.BAD_REQUEST_400, err("path is required"));
             return;
         }
-        GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+        GatfExecutorConfig cfg = cfgFor(request);
         String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
         String tdir = cfg.getTestCaseDir() != null ? tbase + File.separator + cfg.getTestCaseDir() : tbase;
 
@@ -237,6 +285,8 @@ public class GatfApiHandler extends HttpHandler {
         String stem = primary.getName().substring(0, primary.getName().length() - 5);
         File sc = new File(primary.getParentFile(), stem + ".data.json");
         if (sc.isFile()) a.put("dataUrl", reportUrl(baseDir, sc));
+        a.put("type", reportType(primary, sc.isFile() ? sc : null));
+        a.put("label", reportLabel((String) a.get("name")));
         a.put("traces", traceArtifacts);
         reports.add(a);
     }
@@ -272,6 +322,44 @@ public class GatfApiHandler extends HttpHandler {
 
     private static Comparator<Map<String, Object>> byModifiedDesc() {
         return Comparator.comparingLong((Map<String, Object> a) -> ((Number) a.get("modified")).longValue()).reversed();
+    }
+
+    // Classify a report row as API / Selenium / Load. Authoritative source is the sidecar .data.json
+    // `type` (api-*/load-*/ta-*/selenium-*), read via a streaming parse that stops at the first top-level
+    // field so a large load-report json isn't fully materialised; falls back to the filename.
+    private static String reportType(File primary, File dataJson) {
+        String t = null;
+        if (dataJson != null) {
+            try (com.fasterxml.jackson.core.JsonParser jp = WorkflowContextHandler.OM.getFactory().createParser(dataJson)) {
+                if (jp.nextToken() == com.fasterxml.jackson.core.JsonToken.START_OBJECT) {
+                    while (jp.nextToken() == com.fasterxml.jackson.core.JsonToken.FIELD_NAME) {
+                        String field = jp.getCurrentName();
+                        jp.nextToken();
+                        if ("type".equals(field)) { t = jp.getValueAsString(); break; }
+                        jp.skipChildren();
+                    }
+                }
+            } catch (Exception ignored) {}
+        }
+        if (t != null) {
+            String lt = t.toLowerCase();
+            if (lt.startsWith("api")) return "API";
+            if (lt.startsWith("load")) return "Load";
+            if (lt.startsWith("ta") || lt.startsWith("selenium")) return "Selenium";
+        }
+        String fn = primary.getName().toLowerCase();
+        if (fn.contains("selenium")) return "Selenium";
+        if (fn.startsWith("lrun") || fn.contains("load")) return "Load";
+        return "API";
+    }
+
+    // Display label for a report row: the run folder, dropping the trailing /index.html (or
+    // /selenium-index.html) that is noise since every run folder's entry point is an index.
+    private static String reportLabel(String name) {
+        if (name == null) return "";
+        int slash = name.lastIndexOf('/');
+        if (slash > 0) return name.substring(0, slash);
+        return name.endsWith(".html") ? name.substring(0, name.length() - 5) : name;
     }
 
     private static String kind(String name) {

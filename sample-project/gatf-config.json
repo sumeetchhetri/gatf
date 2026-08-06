@@ -1,4 +1,5 @@
 {
+  "baseUrl" : "http://localhost:8880",
   "testCasesBasePath" : "/Users/sumeetc/Projects/GitHub/gatf/sample-project",
   "testCaseDir" : "tests",
   "outFilesBasePath" : "/Users/sumeetc/Projects/GitHub/gatf/sample-project",
@@ -52,7 +53,7 @@
     "capabilities" : { },
     "properties" : { }
   } ],
-  "javaVersion" : "11.0.23",
+  "javaVersion" : "21.0.2",
   "selConcWebdriver" : false,
   "extraProperties" : { },
   "autoPauseOnElNotFound" : false,

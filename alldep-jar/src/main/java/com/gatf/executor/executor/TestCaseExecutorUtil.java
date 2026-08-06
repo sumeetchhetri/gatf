@@ -31,10 +31,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 
-import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSession;
-import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.HttpMethod;
@@ -79,7 +76,6 @@ import java.net.http.HttpResponse;
 import java.net.http.HttpResponse.BodyHandlers;
 import java.time.Duration;
 
-import okhttp3.OkHttpClient;
 
 /**
  * @author Sumeet Chhetri
@@ -106,34 +102,6 @@ public class TestCaseExecutorUtil {
 	
 	private boolean singleExecutionContext  = false;
 	
-    private static void trustAllCertificates(OkHttpClient.Builder builder, boolean acceptAll) {
-    	if(!acceptAll && !Boolean.getBoolean("gatf.acceptAllCerts")) {
-    		return; // default: standard TLS certificate + hostname verification
-    	}
-    	final TrustManager[] trustAllCerts = new TrustManager[] {
-    			new X509TrustManager() {
-		            public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
-		            public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
-		            public X509Certificate[] getAcceptedIssuers() {
-		            	return new java.security.cert.X509Certificate[]{};
-		            }
-		        }
-    	};
-        try {
-            SSLContext ctx = SSLContext.getInstance("TLS");
-            ctx.init(null, trustAllCerts, new java.security.SecureRandom());
-            
-            final SSLSocketFactory sslSocketFactory = ctx.getSocketFactory();
-            builder.sslSocketFactory(sslSocketFactory, (X509TrustManager)trustAllCerts[0]);
-            builder.hostnameVerifier(new HostnameVerifier() {
-            	@Override
-                public boolean verify(String hostname, SSLSession session) {
-                    return true;
-                }
-            });
-        } catch (Exception e) {
-        }
-    }
 	
 	private static HttpClient buildHttpClient(AcceptanceTestContext context) {
 		HttpClient.Builder b = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL);
@@ -176,8 +144,8 @@ public class TestCaseExecutorUtil {
 	private static final java.util.Set<String> RESTRICTED_HEADERS = new java.util.HashSet<String>(
 			java.util.Arrays.asList("connection", "content-length", "expect", "host", "upgrade"));
 
-	// HttpRequest.Builder rejects a small set of restricted headers (Host/Content-Length/etc.) that OkHttp
-	// allowed; the JDK sets those itself. Skip them (and anything else the builder rejects) instead of failing.
+	// HttpRequest.Builder rejects a small set of restricted headers (Host/Content-Length/etc.) the JDK sets
+	// itself. Skip them (and anything else the builder rejects) instead of failing.
 	private static void addHeaderSafe(HttpRequest.Builder b, String name, String value) {
 		if(name==null || value==null || RESTRICTED_HEADERS.contains(name.trim().toLowerCase())) {
 			return;
@@ -204,10 +172,13 @@ public class TestCaseExecutorUtil {
 		return util;
 	}
 	
-	public static OkHttpClient getClient() {
-		OkHttpClient.Builder builder = new OkHttpClient.Builder();
-		trustAllCertificates(builder, true);
-		return builder.build();
+	public static HttpClient getClient() {
+		HttpClient.Builder b = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL);
+		SSLContext ssl = trustAllSslContext(true);
+		if(ssl!=null) {
+			b.sslContext(ssl);
+		}
+		return b.build();
 	}
 	
 	public AcceptanceTestContext getContext() {

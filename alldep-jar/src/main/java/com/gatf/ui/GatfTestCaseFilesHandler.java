@@ -60,7 +60,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			String extras = request.getParameter("extras");
     			if(StringUtils.isNotBlank(testcaseFileName)) {
-    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
         			if(!testcaseFileName.toLowerCase().endsWith(".xml") && !testcaseFileName.toLowerCase().endsWith(".sel"))
         			{
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
@@ -108,7 +108,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String testcaseFileNameTo = request.getParameter("testcaseFileNameTo");
     			String extras = request.getParameter("extras");
     			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(testcaseFileNameTo)) {
-    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
         			if(!(testcaseFileName.toLowerCase().endsWith(".xml") && testcaseFileNameTo.toLowerCase().endsWith(".xml")) && 
         			        !(testcaseFileName.toLowerCase().endsWith(".sel") && testcaseFileNameTo.toLowerCase().endsWith(".sel")) && 
         			        !(testcaseFileName.toLowerCase().endsWith(".props") && testcaseFileNameTo.toLowerCase().endsWith(".props")))
@@ -152,7 +152,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			}
         			response.setStatus(HttpStatus.OK_200);
     			} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(extras)) {
-    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
         			if(!(testcaseFileName.toLowerCase().endsWith(".xml") || testcaseFileName.toLowerCase().endsWith(".sel") || testcaseFileName.toLowerCase().endsWith(".props")))
         			{
         			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
@@ -181,7 +181,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			if(StringUtils.isNotBlank(testcaseFileName)) {
-    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
         			if(!testcaseFileName.toLowerCase().endsWith(".xml") && !testcaseFileName.toLowerCase().endsWith(".sel") && !testcaseFileName.toLowerCase().endsWith(".props"))
         			{
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
@@ -214,7 +214,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String referencedFile = request.getParameter("referencedFile");
     			String allsubtests = request.getParameter("allsubtests");
     			
-    			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    			final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
     			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
     			String dirPath = basepath;
     			if(gatfConfig.getTestCaseDir()!=null) {

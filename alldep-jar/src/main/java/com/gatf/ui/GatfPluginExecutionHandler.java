@@ -80,7 +80,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
     	final String pluginType = request.getParameter("pluginType");
     	Map<String, Object> out = new HashMap<>();
 		try {
-			gatfConfig = getGatfPluginConfig(pluginType, mojo);
+			gatfConfig = getGatfPluginConfig(pluginType, mojo, request.getParameter("config"));
 			if(request.getMethod().equals(Method.GET) ) {
 				if(isStarted.get()) {
 					out.put("is_paused", mojo.getContext().isPauseElSearch(false));
@@ -298,11 +298,11 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 		}
     }
 	
-	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojoInt mojo) throws Exception
+	protected static GatfPluginConfig getGatfPluginConfig(String type, GatfConfigToolMojoInt mojo, String configFileName) throws Exception
 	{
 		if(type.startsWith("executor-"))
 		{
-			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, configFileName);
 			return gatfConfig;
 		}
 		else

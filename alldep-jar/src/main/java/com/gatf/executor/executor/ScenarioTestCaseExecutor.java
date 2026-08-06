@@ -80,9 +80,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 			if(!testCaseReport.getTestCase().isRepeatScenariosConcurrentExecution())
 			{
 				try {
-	                while(!CompletableFuture.isDone()) {
-	                    Thread.sleep(1);
-	                }
 					testCaseReport = CompletableFuture.get();
 					ResponseValidator.validateLogicalConditions(testCaseReport.getTestCase(), 
 							testCaseExecutorUtil.getContext(), scenarioMap);
@@ -107,15 +104,6 @@ public class ScenarioTestCaseExecutor implements TestCaseExecutor {
 				futures.add(CompletableFuture);
 			}
 		}
-		
-		for (CompletableFuture<TestCaseReport> CompletableFuture : futures) {
-		    while(!CompletableFuture.isDone()) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                }
-            }
-        }
 		
 		for (CompletableFuture<TestCaseReport> CompletableFuture : futures) {
 			TestCaseReport testCaseReport = null;

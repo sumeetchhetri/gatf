@@ -220,7 +220,7 @@ public class WorkflowContextHandler {
 						cookies.get(simNumber).put(c.getName(), c.getValue());
 					}
 				} catch (IllegalArgumentException e) {
-					// malformed Set-Cookie header; skip it (okhttp3.Cookie.parse returned null here)
+					// malformed Set-Cookie header; skip it (HttpCookie.parse rejected it)
 				}
 			}
 		}

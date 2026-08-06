@@ -26,7 +26,7 @@ import com.gatf.executor.core.GatfResponse;
  * half of the OkHttp -&gt; java.net.http.HttpClient transport swap (Phase 6 core, increment 2b): once
  * {@code TestCaseExecutorUtil} dispatches via {@code HttpClient.sendAsync(req, BodyHandlers.ofByteArray())},
  * the completion stage wraps the {@code HttpResponse} in one of these and hands it to the same
- * validators that {@link OkHttpGatfResponse} feeds today.
+ * validators, replacing the earlier OkHttp-backed response wrapper.
  *
  * <p>The body is captured as a byte[] by the {@code ofByteArray()} handler, so {@link #bodyString()}
  * decodes it using the charset from the response's {@code Content-Type} (UTF-8 when unspecified) to

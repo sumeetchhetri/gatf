@@ -13,7 +13,7 @@
 
   <!-- 1) Authenticate and capture the token into ${authToken}. -->
   <TestCase>
-    <baseUrl>${apiBaseUrl}</baseUrl>
+    
     <url>/auth/login</url>
     <name>Login</name>
     <method>POST</method>
@@ -35,7 +35,7 @@
 
   <!-- 2) Fast read. -->
   <TestCase>
-    <baseUrl>${apiBaseUrl}</baseUrl>
+    
     <url>/api/users</url>
     <name>List users</name>
     <method>GET</method>
@@ -53,7 +53,7 @@
 
   <!-- 3) Fast write; capture the new id. -->
   <TestCase>
-    <baseUrl>${apiBaseUrl}</baseUrl>
+    
     <url>/api/users</url>
     <name>Create user</name>
     <method>POST</method>
@@ -75,7 +75,7 @@
 
   <!-- 4) Deliberately slow endpoint (server sleeps 150ms) -> shapes the percentiles. -->
   <TestCase>
-    <baseUrl>${apiBaseUrl}</baseUrl>
+    
     <url>/api/slow?ms=150</url>
     <name>Slow endpoint</name>
     <method>GET</method>

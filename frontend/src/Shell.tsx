@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import App from './App';
-import { api } from './api';
+import { api, setActiveConfig } from './api';
 import Nav from './components/Nav';
 import Login from './components/Login';
 import ReportsView from './views/ReportsView';
@@ -60,6 +60,11 @@ export default function Shell() {
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
   const [pendingReport, setPendingReport] = useState<string | undefined>(initialReport());
   const [auth, setAuth] = useState<'checking' | 'ok' | 'required'>('checking');
+  const [cfg, setCfg] = useState<string>('');
+  const changeCfg = (name: string) => {
+    setActiveConfig(name || null); // set module state synchronously so the remounted view refetches with it
+    setCfg(name);
+  };
 
   const checkAuth = () =>
     api.probeAuth().then((s) => setAuth(s === 'auth' ? 'required' : 'ok'));
@@ -93,13 +98,18 @@ export default function Shell() {
 
   return (
     <div className="shell">
-      <Nav active={view === 'report' ? 'reports' : view} onNavigate={navigate} />
+      <Nav
+        active={view === 'report' ? 'reports' : view}
+        onNavigate={navigate}
+        configValue={cfg}
+        onConfigChange={changeCfg}
+      />
       <div className="shell-body">
         {/* Viewer stays mounted so a loaded trace survives tab switches. */}
         <div className="view-viewer" style={{ display: view === 'viewer' ? 'flex' : 'none' }}>
           <App traceUrl={pendingTrace} />
         </div>
-        {view === 'reports' && <ReportsView onOpenTrace={openTrace} onOpenReport={openReport} />}
+        {view === 'reports' && <ReportsView key={cfg} onOpenTrace={openTrace} onOpenReport={openReport} />}
         {view === 'report' && pendingReport && (
           <ReportViewer
             dataUrl={pendingReport}
@@ -108,11 +118,11 @@ export default function Shell() {
             onOpenReport={openReport}
           />
         )}
-        {view === 'config' && <ConfigView />}
-        {view === 'testfiles' && <TestFilesView />}
-        {view === 'execute' && <ExecuteView onOpenReports={() => navigate('reports')} />}
-        {view === 'datasources' && <DataSourceStats />}
-        {view === 'compare' && <CompareFiles />}
+        {view === 'config' && <ConfigView key={cfg} />}
+        {view === 'testfiles' && <TestFilesView key={cfg} />}
+        {view === 'execute' && <ExecuteView key={cfg} onOpenReports={() => navigate('reports')} />}
+        {view === 'datasources' && <DataSourceStats key={cfg} />}
+        {view === 'compare' && <CompareFiles key={cfg} />}
         {view === 'integrations' && <ExtApiConfig />}
       </div>
     </div>

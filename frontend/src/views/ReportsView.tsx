@@ -9,6 +9,31 @@ function fmtDate(ms: number): string {
   return d.toLocaleString();
 }
 
+const TYPE_COLOR: Record<string, string> = {
+  API: '#2563eb',
+  Selenium: '#16a34a',
+  Load: '#d97706',
+};
+function typeBadge(type?: string) {
+  const label = type ?? '\u2014';
+  return (
+    <span
+      style={{
+        display: 'inline-block',
+        padding: '1px 8px',
+        borderRadius: 10,
+        fontSize: 11,
+        fontWeight: 600,
+        letterSpacing: 0.2,
+        color: '#fff',
+        background: TYPE_COLOR[type ?? ''] ?? '#6b7280',
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
 export default function ReportsView({
   onOpenTrace,
   onOpenReport,
@@ -66,6 +91,7 @@ export default function ReportsView({
             <table className="grid-table">
               <thead>
                 <tr>
+                  <th>Type</th>
                   <th>Suite run</th>
                   <th className="num">Size</th>
                   <th>Modified</th>
@@ -77,8 +103,9 @@ export default function ReportsView({
                   const traces = r.traces ?? [];
                   return (
                     <tr key={r.url}>
+                      <td>{typeBadge(r.type)}</td>
                       <td className="mono ellipsis" style={{ maxWidth: 460 }} title={r.name}>
-                        {r.name}
+                        {r.label ?? r.name}
                       </td>
                       <td className="num mono">{fmtBytes(r.size)}</td>
                       <td className="muted small">{fmtDate(r.modified)}</td>

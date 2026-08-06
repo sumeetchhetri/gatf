@@ -47,6 +47,18 @@ public final class BiDiTransport implements BrowserControl {
     private volatile NetworkListener netListener;
     private volatile ConsoleListener conListener;
 
+    // Identical to CdpTransport: web-vitals are read from the page's Performance Timeline via JS, which is
+    // protocol-agnostic — no BiDi (or CDP) API is involved, so this is genuine parity, not an approximation.
+    private static final String VITALS_JS =
+        "return JSON.stringify((function(){var o={};try{" +
+        "var n=performance.getEntriesByType('navigation')[0];" +
+        "if(n){o.ttfb=n.responseStart;o.domContentLoaded=n.domContentLoadedEventEnd;o.load=n.loadEventEnd;o.domInteractive=n.domInteractive;}" +
+        "var p=performance.getEntriesByType('paint');" +
+        "for(var i=0;i<p.length;i++){if(p[i].name==='first-contentful-paint')o.fcp=p[i].startTime;if(p[i].name==='first-paint')o.fp=p[i].startTime;}" +
+        "var l=performance.getEntriesByType('largest-contentful-paint');" +
+        "if(l&&l.length){o.lcp=l[l.length-1].startTime;}" +
+        "}catch(e){o.error=String(e);}return o;})());";
+
     BiDiTransport(WebDriver driver) { this.driver = driver; }
 
     private boolean hasBiDi() { return driver instanceof HasBiDi; }
@@ -147,7 +159,18 @@ public final class BiDiTransport implements BrowserControl {
     }
 
     @Override
-    public byte[] fetchBody(String requestId) { return null; }   // BiDi response-body capture deferred
+    public String readWebVitals() {
+        try {
+            if (driver instanceof JavascriptExecutor) {
+                Object r = ((JavascriptExecutor) driver).executeScript(VITALS_JS);
+                return r == null ? null : String.valueOf(r);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    @Override
+    public byte[] fetchBody(String requestId) { return null; }   // BiDi response-body capture deferred (needs Selenium BiDi network data-collector API)
 
     @Override
     public void close() {

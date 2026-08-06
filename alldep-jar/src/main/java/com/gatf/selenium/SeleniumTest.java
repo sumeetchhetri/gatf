@@ -151,10 +151,10 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.xml.bind.DatatypeConverter;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract1;
-import okhttp3.Call;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.Screenshot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -2385,7 +2385,7 @@ public abstract class SeleniumTest {
 		if (!(driver instanceof JavascriptExecutor)) {
 		    throw new IllegalStateException("This driver cannot run JavaScript.");
 		}
-		OkHttpClient client = null;
+		HttpClient client = null;
 		try {
 			//String url = (String)((JavascriptExecutor)driver).executeScript("if("+openPos+"<window.__wosjp__.length) return window.__wosjp__["+openPos+"]; else return 'FAIL';");
 			String url = (String)((JavascriptExecutor)driver).executeScript("return window.GatfUtil.wopensaveFetch("+openPos+")");
@@ -2429,19 +2429,14 @@ public abstract class SeleniumTest {
 				if(url.trim().startsWith("/")) url = url.substring(1);
 				url = burl + url;
 			}
-			Call call = client.newCall(new Request.Builder().url(url).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build());
-			Response res = call.execute();
-			IOUtils.copy(res.body().byteStream(), new FileOutputStream(filePath));
-			res.close();
+			HttpResponse<java.io.InputStream> res = client.send(HttpRequest.newBuilder().uri(URI.create(url)).header("Referer", WorkflowContextHandler.getBaseUrl(url)).build(), HttpResponse.BodyHandlers.ofInputStream());
+			IOUtils.copy(res.body(), new FileOutputStream(filePath));
+			res.body().close();
 			if(extractText && new File(filePath).exists()) {
 				extractTextFromPdf(filePath, colsep, 0, 0);
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		} finally {
-			if(client!=null) {
-				client.connectionPool().evictAll();
-			}
 		}
 	}
 	

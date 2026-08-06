@@ -15,7 +15,6 @@
 		<!-- Phase 3: set -DskipFrontend=true to build the JAR without (re)building the React shell. -->
 		<skipFrontend>false</skipFrontend>
 		<frontend.node.version>v22.11.0</frontend.node.version>
-		<maven.compiler.release>21</maven.compiler.release>
 	</properties>
 
 	<build>

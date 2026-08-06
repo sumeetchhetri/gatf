@@ -1,61 +1,58 @@
 <gatf-execute-config>
-  <!--
-    Load-testing config for the bundled Node server (load-server/server.js).
-    API mode (isSeleniumExecutor=false) so the API executor + embedded load engine run.
-
-      1) node sample-project/load-server/server.js            # starts :8880
-      2) point GATF at THIS config and run the API executor
-
-    testCaseDir is tests/load so ONLY the load suite runs (the ui/ + api/ demo
-    suites are untouched). Absolute *BasePath values below match the rest of the
-    sample — repoint them to your checkout, or run from this folder.
-
-    Load engine activates only when loadTestingEnabled=true AND loadTestingTime>10000 (ms).
-  -->
+  <baseUrl>http://localhost:8880</baseUrl>
   <testCasesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</testCasesBasePath>
   <testCaseDir>tests/load</testCaseDir>
   <outFilesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</outFilesBasePath>
   <outFilesDir>out-load</outFilesDir>
-
   <authEnabled>false</authEnabled>
   <soapAuthEnabled>false</soapAuthEnabled>
-
-  <!-- API mode -->
-  <isSeleniumExecutor>false</isSeleniumExecutor>
-  <isSeleniumModuleTests>false</isSeleniumModuleTests>
-
+  <numConcurrentExecutions>25</numConcurrentExecutions>
   <httpCompressionEnabled>false</httpCompressionEnabled>
   <httpConnectionTimeout>10000</httpConnectionTimeout>
   <httpRequestTimeout>10000</httpRequestTimeout>
-
-  <!-- Load knobs: 25 simulated users, ramped over 5s, 30s run, 6 report samples. -->
-  <loadTestingEnabled>true</loadTestingEnabled>
-  <loadTestingTime>30000</loadTestingTime>
   <concurrentUserSimulationNum>25</concurrentUserSimulationNum>
-  <concurrentUserRampUpTime>5000</concurrentUserRampUpTime>
-  <loadTestingReportSamples>6</loadTestingReportSamples>
-  <numConcurrentExecutions>25</numConcurrentExecutions>
-  <distributedLoadTests>false</distributedLoadTests>
-
   <compareEnabled>false</compareEnabled>
   <enableTrace>false</enableTrace>
-
+  <traceProtocol>cdp</traceProtocol>
+  <traceNetwork>true</traceNetwork>
+  <traceConsole>true</traceConsole>
+  <traceSnapshots>true</traceSnapshots>
+  <traceMaxBodyKb>512</traceMaxBodyKb>
+  <traceMaxTotalMb>64</traceMaxTotalMb>
+  <traceMetrics>true</traceMetrics>
+  <traceMetricsIntervalMs>1000</traceMetricsIntervalMs>
+  <traceWebVitals>true</traceWebVitals>
+  <traceCpu>false</traceCpu>
+  <traceCoverage>false</traceCoverage>
+  <traceVideo>false</traceVideo>
+  <traceVideoQuality>60</traceVideoQuality>
+  <traceVideoEveryNthFrame>2</traceVideoEveryNthFrame>
   <gatfTestDataConfig>
-    <!-- element-name-keyed map (plain Jackson map, no custom serializer) -->
     <globalVariables>
       <apiBaseUrl>http://localhost:8880</apiBaseUrl>
       <username>sumeet</username>
       <password>demo-pass</password>
     </globalVariables>
   </gatfTestDataConfig>
-
   <enabled>true</enabled>
+  <loadTestingEnabled>true</loadTestingEnabled>
+  <loadTestingTime>30000</loadTestingTime>
+  <distributedLoadTests>false</distributedLoadTests>
+  <concurrentUserRampUpTime>5000</concurrentUserRampUpTime>
+  <loadTestingReportSamples>6</loadTestingReportSamples>
   <debugEnabled>false</debugEnabled>
+  <acceptAllCerts>true</acceptAllCerts>
   <isOrderByFileName>true</isOrderByFileName>
   <isServerLogsApiAuthEnabled>false</isServerLogsApiAuthEnabled>
   <isFetchFailureLogs>false</isFetchFailureLogs>
   <repeatSuiteExecutionNum>0</repeatSuiteExecutionNum>
   <isGenerateExecutionLogs>false</isGenerateExecutionLogs>
+  <isSeleniumExecutor>false</isSeleniumExecutor>
+  <isSeleniumModuleTests>false</isSeleniumModuleTests>
+  <seleniumScriptRetryCount>0</seleniumScriptRetryCount>
+  <seleniumDriverConfigs/>
+  <javaVersion>21.0.2</javaVersion>
+  <selConcWebdriver>false</selConcWebdriver>
   <extraProperties/>
   <autoPauseOnElNotFound>false</autoPauseOnElNotFound>
   <waitOnWarnException>0</waitOnWarnException>

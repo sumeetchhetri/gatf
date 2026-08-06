@@ -77,7 +77,7 @@ public class GatfReportsHandler extends HttpHandler {
 		if(response.getStatus()==401) return;
 	    response.setHeader("Cache-Control", "no-cache, no-store");
     	try {
-    		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null);
+    		final GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
 			String basepath = gatfConfig.getOutFilesBasePath()==null?mojo.getRootDir():gatfConfig.getOutFilesBasePath();
 			String dirPath = basepath + File.separator + gatfConfig.getOutFilesDir();
 			if(!new File(dirPath).exists()) {

@@ -85,16 +85,6 @@ public class PerformanceTestCaseExecutor implements TestCaseExecutor {
 		}
 		
 		for(int i = 0; i < testCase.getNumberOfExecutions(); i++) {
-            CompletableFuture<TestCaseReport> CompletableFuture = futures.get(i);
-            while(!CompletableFuture.isDone()) {
-                try {
-                    Thread.sleep(1);
-                } catch (InterruptedException e) {
-                }
-            }
-		}
-		
-		for(int i = 0; i < testCase.getNumberOfExecutions(); i++) {
 			CompletableFuture<TestCaseReport> CompletableFuture = futures.get(i);
 			try {
 				TestCaseReport tc = CompletableFuture.get();
