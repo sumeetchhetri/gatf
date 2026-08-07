@@ -1519,104 +1519,106 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
             isLoadTestingEnabled = true;
 
-        while (allTestCases.size() > 0) {
-            long suiteStartTime = isLoadTestingEnabled ? System.currentTimeMillis() : startTime;
+        try {
+            while (allTestCases.size() > 0) {
+                long suiteStartTime = isLoadTestingEnabled ? System.currentTimeMillis() : startTime;
 
-            boolean dorep = false;
+                boolean dorep = false;
 
-            boolean done = false;
+                boolean done = false;
 
-            ReportHandler reportHandler = new ReportHandler();
+                ReportHandler reportHandler = new ReportHandler();
 
-            Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-            if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
-                runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-            }
+                Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
+                if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
+                    runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+                }
 
-            for (String relativeFileName : relativeFileNames) {
-                reportHandler.initializeResultsHolders(runNums, relativeFileName);
-            }
+                for (String relativeFileName : relativeFileNames) {
+                    reportHandler.initializeResultsHolders(runNums, relativeFileName);
+                }
 
-            if (isLoadTestingEnabled) {
-                long currentTime = System.currentTimeMillis();
+                if (isLoadTestingEnabled) {
+                    long currentTime = System.currentTimeMillis();
 
-                if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                    done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                    dorep = true;
-                } else {
-                    done = (currentTime - startTime) > configuration.getLoadTestingTime();
-
-                    long elapsedFraction = (currentTime - startTime);
-
-                    dorep = done || loadTstReportsCount == 0;
-
-                    if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
+                    if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
+                        done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
                         dorep = true;
+                    } else {
+                        done = (currentTime - startTime) > configuration.getLoadTestingTime();
+
+                        long elapsedFraction = (currentTime - startTime);
+
+                        dorep = done || loadTstReportsCount == 0;
+
+                        if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
+                            dorep = true;
+                        }
+                    }
+                    if (done) {
+                        break;
+                    }
+                } else {
+                    dorep = true;
+                    done = true;
+                }
+
+                if (numberOfRuns > 1) {
+                    Date execTime = new Date();
+                    List<Future> userSimulations = doConcurrentRunExecution(compareEnabledOnlySingleTestCaseExec, numberOfRuns, allTestCases, baseUrlList, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
+                            threadPool, dorep, reportHandler);
+
+                    concurrentUserRampUpTimeMs = 0;
+
+                    long currentTime = System.currentTimeMillis();
+                    String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
+                    for (Future future : userSimulations) {
+                        try {
+                            future.get();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    doAsyncConcReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
+                            loadTestResources, numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), (System.currentTimeMillis() - suiteStartTime), execTime);
+
+                    if (dorep && isLoadTestingEnabled) {
+                        loadTestRunNum++;
+                        loadTstReportsCount++;
+                    }
+                } else {
+                    Date execTime = new Date();
+                    long currentTime = System.currentTimeMillis();
+                    String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
+                    executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec, reportHandler);
+
+                    doAsyncReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
+                            loadTestResources, numberOfRuns, loadStats, reportingThreadPool, (System.currentTimeMillis() - suiteStartTime), execTime);
+
+                    if (dorep && isLoadTestingEnabled) {
+                        loadTestRunNum++;
+                        loadTstReportsCount++;
                     }
                 }
+
+                context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+
                 if (done) {
                     break;
                 }
-            } else {
-                dorep = true;
-                done = true;
+            }
+        } finally {
+            reportingThreadPool.shutdown();
+            try {
+                reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
 
             if (numberOfRuns > 1) {
-            	Date execTime = new Date();
-                List<Future> userSimulations = doConcurrentRunExecution(compareEnabledOnlySingleTestCaseExec, numberOfRuns, allTestCases, baseUrlList, testCaseExecutorUtil, concurrentUserRampUpTimeMs,
-                        threadPool, dorep, reportHandler);
-
-                concurrentUserRampUpTimeMs = 0;
-
-                long currentTime = System.currentTimeMillis();
-                String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
-                for (Future future : userSimulations) {
-                    try {
-                        future.get();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                doAsyncConcReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
-                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), (System.currentTimeMillis() - suiteStartTime), execTime);
-
-                if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
-            } else {
-            	Date execTime = new Date();
-                long currentTime = System.currentTimeMillis();
-                String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
-                executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec, reportHandler);
-
-                doAsyncReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
-                        loadTestResources, numberOfRuns, loadStats, reportingThreadPool, (System.currentTimeMillis() - suiteStartTime), execTime);
-
-                if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
+                threadPool.shutdown();
             }
-
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-
-            if (done) {
-                break;
-            }
-        }
-
-        reportingThreadPool.shutdown();
-        try {
-            reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-        }
-
-        if (numberOfRuns > 1) {
-            threadPool.shutdown();
         }
 
         loadStats.setTotalUserSuiteRuns(numberOfRuns);
@@ -2240,106 +2242,108 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         
         String path = initOutFolderAndGetPath(context, System.nanoTime(), 0, "api");
 
-        while (tContext.getSimTestCases().size() > 0) {
-            ReportHandler reportHandler = new ReportHandler();
+        try {
+            while (tContext.getSimTestCases().size() > 0) {
+                ReportHandler reportHandler = new ReportHandler();
 
-            Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-            if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
-                runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-            }
+                Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
+                if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
+                    runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
+                }
 
-            for (String relativeFileName : tContext.getRelativeFileNames()) {
-                reportHandler.initializeResultsHolders(runNums, relativeFileName);
-            }
+                for (String relativeFileName : tContext.getRelativeFileNames()) {
+                    reportHandler.initializeResultsHolders(runNums, relativeFileName);
+                }
 
-            for (int i = 0; i < numberOfRuns; i++) {
-                reportHandler.getFinalTestResults().put(runPrefix + "-" + (i + 1), new ConcurrentLinkedQueue<TestCaseReport>());
-            }
+                for (int i = 0; i < numberOfRuns; i++) {
+                    reportHandler.getFinalTestResults().put(runPrefix + "-" + (i + 1), new ConcurrentLinkedQueue<TestCaseReport>());
+                }
 
-            long suiteStartTime = isLoadTestingEnabled ? System.currentTimeMillis() : startTime;
+                long suiteStartTime = isLoadTestingEnabled ? System.currentTimeMillis() : startTime;
 
-            boolean dorep = false;
+                boolean dorep = false;
 
-            boolean done = false;
+                boolean done = false;
 
-            if (isLoadTestingEnabled) {
-                long currentTime = System.currentTimeMillis();
+                if (isLoadTestingEnabled) {
+                    long currentTime = System.currentTimeMillis();
 
-                if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                    done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                    dorep = true;
-                } else {
-                    done = (currentTime - startTime) > configuration.getLoadTestingTime();
-
-                    long elapsedFraction = (currentTime - startTime);
-
-                    dorep = done || loadTstReportsCount == 0;
-
-                    if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
+                    if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
+                        done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
                         dorep = true;
+                    } else {
+                        done = (currentTime - startTime) > configuration.getLoadTestingTime();
+
+                        long elapsedFraction = (currentTime - startTime);
+
+                        dorep = done || loadTstReportsCount == 0;
+
+                        if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
+                            dorep = true;
+                        }
+                    }
+                    if (done) {
+                        break;
+                    }
+                } else {
+                    dorep = true;
+                    done = true;
+                }
+
+                if (numberOfRuns > 1) {
+                    Date time = new Date();
+                    List<Future> userSimulations =
+                            doConcurrentRunExecution(false, numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs, threadPool, dorep, reportHandler);
+
+                    concurrentUserRampUpTimeMs = 0;
+
+                    long currentTime = System.currentTimeMillis();
+                    String fileurl = "D" + tContext.getIndex() + "-" + currentTime + ".html";
+                    for (Future future : userSimulations) {
+                        try {
+                            future.get();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    doAsyncDistributedConcReporting(path, reportHandler, suiteStartTime, fileurl, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, numberOfRuns, loadStats,
+                            reportingThreadPool, userSimulations.size(), runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
+
+                    if (dorep) {
+                        loadTestRunNum++;
+                        loadTstReportsCount++;
+                    }
+                } else {
+                    Date time = new Date();
+                    executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false, reportHandler);
+
+                    doAsyncDistributedReporting(path, reportHandler, suiteStartTime, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, loadStats, reportingThreadPool, tContext,
+                            runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
+
+                    if (dorep) {
+                        loadTestRunNum++;
+                        loadTstReportsCount++;
                     }
                 }
+
+                context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
+
                 if (done) {
                     break;
                 }
-            } else {
-                dorep = true;
-                done = true;
             }
-
+        } finally {
             if (numberOfRuns > 1) {
-            	Date time = new Date();
-                List<Future> userSimulations =
-                        doConcurrentRunExecution(false, numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs, threadPool, dorep, reportHandler);
-
-                concurrentUserRampUpTimeMs = 0;
-
-                long currentTime = System.currentTimeMillis();
-                String fileurl = "D" + tContext.getIndex() + "-" + currentTime + ".html";
-                for (Future future : userSimulations) {
-                    try {
-                        future.get();
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                doAsyncDistributedConcReporting(path, reportHandler, suiteStartTime, fileurl, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, numberOfRuns, loadStats,
-                        reportingThreadPool, userSimulations.size(), runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
-
-                if (dorep) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
-            } else {
-            	Date time = new Date();
-                executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false, reportHandler);
-
-                doAsyncDistributedReporting(path, reportHandler, suiteStartTime, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, loadStats, reportingThreadPool, tContext,
-                        runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
-
-                if (dorep) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
+                threadPool.shutdown();
             }
 
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-
-            if (done) {
-                break;
+            reportingThreadPool.shutdown();
+            try {
+                reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
-        }
-
-        if (numberOfRuns > 1) {
-            threadPool.shutdown();
-        }
-
-        reportingThreadPool.shutdown();
-        try {
-            reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
         }
 
         if (isLoadTestingEnabled) {

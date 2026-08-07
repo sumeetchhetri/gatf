@@ -216,9 +216,23 @@ function authToken(): string {
   }
 }
 // Append ?token= like the classic config-tool's $.ajaxPrefilter, so the shell works when auth is on.
-let activeConfig: string | null = null;
+const ACTIVE_CONFIG_KEY = 'gatf.activeConfig';
+let activeConfig: string | null = (() => {
+  try {
+    const v = localStorage.getItem(ACTIVE_CONFIG_KEY);
+    return v && v.trim() ? v : null;
+  } catch {
+    return null;
+  }
+})();
 export function setActiveConfig(c: string | null) {
   activeConfig = c && c.trim() ? c : null;
+  try {
+    if (activeConfig) localStorage.setItem(ACTIVE_CONFIG_KEY, activeConfig);
+    else localStorage.removeItem(ACTIVE_CONFIG_KEY);
+  } catch {
+    /* localStorage unavailable — persistence is best-effort */
+  }
 }
 export function getActiveConfig(): string | null {
   return activeConfig;

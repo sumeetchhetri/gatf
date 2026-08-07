@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import App from './App';
-import { api, setActiveConfig } from './api';
+import { api, setActiveConfig, getActiveConfig } from './api';
 import Nav from './components/Nav';
 import Login from './components/Login';
 import ReportsView from './views/ReportsView';
@@ -60,7 +60,7 @@ export default function Shell() {
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
   const [pendingReport, setPendingReport] = useState<string | undefined>(initialReport());
   const [auth, setAuth] = useState<'checking' | 'ok' | 'required'>('checking');
-  const [cfg, setCfg] = useState<string>('');
+  const [cfg, setCfg] = useState<string>(getActiveConfig() ?? '');
   const changeCfg = (name: string) => {
     setActiveConfig(name || null); // set module state synchronously so the remounted view refetches with it
     setCfg(name);
