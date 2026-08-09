@@ -5,6 +5,7 @@ import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
 import TestCaseEditor from '../components/TestCaseEditor';
 import SelDebugger from '../components/SelDebugger';
 import SelRunner from '../components/SelRunner';
+import CompareFiles from './CompareFiles';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
@@ -67,6 +68,19 @@ export default function TestFilesView() {
   const [renaming, setRenaming] = useState(false);
   const [renameTo, setRenameTo] = useState('');
   const [confirmDel, setConfirmDel] = useState<string | null>(null);
+  // compare-from-tree (delta-064): tick two files → a Compare button opens an inline diff over the pair.
+  const [compareSel, setCompareSel] = useState<Set<string>>(new Set());
+  const [comparePair, setComparePair] = useState<[string, string] | null>(null);
+  const toggleCompare = (path: string) =>
+    setCompareSel((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else {
+        if (next.size >= 2) next.delete([...next][0]); // keep at most the two most-recent picks
+        next.add(path);
+      }
+      return next;
+    });
 
   const active = tabs.find((t) => t.path === activePath) ?? null;
   const dirty = active != null && active.kind !== 'xml' && active.draft !== active.text;
@@ -350,6 +364,14 @@ export default function TestFilesView() {
         onClick={() => openFile(n.path)}
         title={n.path}
       >
+        <input
+          type="checkbox"
+          className="tf-cmp-cb"
+          title="Select for compare (pick two)"
+          checked={compareSel.has(n.path)}
+          onClick={(e) => e.stopPropagation()}
+          onChange={() => toggleCompare(n.path)}
+        />
         <span className={'kind kind-' + n.kind}>{n.kind}</span>
         <span className="tf-item-name mono ellipsis">{n.name}</span>
         <button
@@ -371,6 +393,19 @@ export default function TestFilesView() {
       <div className="view-head">
         <h2>Test files</h2>
         <div className="view-head-right">
+          {compareSel.size > 0 && (
+            <button
+              className="btn ghost small"
+              disabled={compareSel.size !== 2}
+              title={compareSel.size === 2 ? 'Compare the two selected files' : 'Select exactly two files'}
+              onClick={() => {
+                const [a, b] = [...compareSel];
+                setComparePair([a, b]);
+              }}
+            >
+              {'\u21c4'} Compare ({compareSel.size})
+            </button>
+          )}
           <button className="btn ghost small" onClick={() => setNewOpen((o) => !o)}>
             + New file
           </button>
@@ -418,7 +453,16 @@ export default function TestFilesView() {
           </div>
 
           <div className="tf-content">
-            {tabs.length === 0 && <div className="view-note muted">Select a file to edit, or create a new one.</div>}
+            {comparePair ? (
+              <CompareFiles
+                embedded
+                left={comparePair[0]}
+                right={comparePair[1]}
+                onClose={() => setComparePair(null)}
+              />
+            ) : (
+              <>
+                {tabs.length === 0 && <div className="view-note muted">Select a file to edit, or create a new one.</div>}
 
             {tabs.length > 0 && (
               <div className="tf-tabs">
@@ -603,6 +647,8 @@ export default function TestFilesView() {
                       </div>
                     </>
                   ))}
+              </>
+            )}
               </>
             )}
           </div>

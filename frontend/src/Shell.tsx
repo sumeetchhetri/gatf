@@ -9,9 +9,12 @@ import ConfigView from './views/ConfigView';
 import TestFilesView from './views/TestFilesView';
 import ExecuteView from './views/ExecuteView';
 import DataSourceStats from './views/DataSourceStats';
-import CompareFiles from './views/CompareFiles';
 import ExtApiConfig from './views/ExtApiConfig';
+import ImportView from './views/ImportView';
+import RecordView from './views/RecordView';
 
+// Compare is no longer a Shell view (it's invoked from the test-file tree). The Trace Viewer is reached
+// from Reports rather than being a top-level tab, so it maps to 'reports' in the nav highlight.
 export type ViewKey =
   | 'viewer'
   | 'reports'
@@ -19,44 +22,53 @@ export type ViewKey =
   | 'testfiles'
   | 'execute'
   | 'datasources'
-  | 'compare'
   | 'integrations'
+  | 'import'
+  | 'record'
   | 'report';
 
 const HASH: Record<string, ViewKey> = {
-  '': 'viewer',
-  '#': 'viewer',
-  '#/': 'viewer',
+  '': 'reports',
+  '#': 'reports',
+  '#/': 'reports',
   '#/reports': 'reports',
+  '#/viewer': 'viewer',
   '#/config': 'config',
   '#/testfiles': 'testfiles',
   '#/execute': 'execute',
   '#/datasources': 'datasources',
-  '#/compare': 'compare',
   '#/integrations': 'integrations',
+  '#/import': 'import',
+  '#/record': 'record',
 };
 const TO_HASH: Record<ViewKey, string> = {
-  viewer: '#/',
+  viewer: '#/viewer',
   reports: '#/reports',
   config: '#/config',
   testfiles: '#/testfiles',
   execute: '#/execute',
   datasources: '#/datasources',
-  compare: '#/compare',
   integrations: '#/integrations',
+  import: '#/import',
+  record: '#/record',
   report: '#/reports',
 };
 
 function currentView(): ViewKey {
-  return HASH[window.location.hash] ?? 'viewer';
+  return HASH[window.location.hash] ?? 'reports';
 }
 
 function initialReport(): string | undefined {
   return new URLSearchParams(window.location.search).get('report') || undefined;
 }
+function hasTraceParam(): boolean {
+  return !!new URLSearchParams(window.location.search).get('trace');
+}
 
 export default function Shell() {
-  const [view, setView] = useState<ViewKey>(initialReport() ? 'report' : currentView());
+  const [view, setView] = useState<ViewKey>(
+    initialReport() ? 'report' : hasTraceParam() ? 'viewer' : currentView(),
+  );
   const [pendingTrace, setPendingTrace] = useState<string | undefined>(undefined);
   const [pendingReport, setPendingReport] = useState<string | undefined>(initialReport());
   const [auth, setAuth] = useState<'checking' | 'ok' | 'required'>('checking');
@@ -87,6 +99,8 @@ export default function Shell() {
     setPendingTrace(url);
     navigate('viewer');
   };
+  // open the trace viewer with no preloaded bundle (drag-and-drop a trace.zip); framed under Reports
+  const openViewer = () => navigate('viewer');
 
   const openReport = (dataUrl: string) => {
     setPendingReport(dataUrl);
@@ -99,7 +113,7 @@ export default function Shell() {
   return (
     <div className="shell">
       <Nav
-        active={view === 'report' ? 'reports' : view}
+        active={view === 'report' || view === 'viewer' ? 'reports' : view}
         onNavigate={navigate}
         configValue={cfg}
         onConfigChange={changeCfg}
@@ -107,9 +121,19 @@ export default function Shell() {
       <div className="shell-body">
         {/* Viewer stays mounted so a loaded trace survives tab switches. */}
         <div className="view-viewer" style={{ display: view === 'viewer' ? 'flex' : 'none' }}>
+          {view === 'viewer' && (
+            <div className="viewer-topbar">
+              <button className="btn ghost small" onClick={() => navigate('reports')}>
+                {'\u2039'} Reports
+              </button>
+              <span className="muted small">Trace Viewer</span>
+            </div>
+          )}
           <App traceUrl={pendingTrace} />
         </div>
-        {view === 'reports' && <ReportsView key={cfg} onOpenTrace={openTrace} onOpenReport={openReport} />}
+        {view === 'reports' && (
+          <ReportsView key={cfg} onOpenTrace={openTrace} onOpenReport={openReport} onOpenViewer={openViewer} />
+        )}
         {view === 'report' && pendingReport && (
           <ReportViewer
             dataUrl={pendingReport}
@@ -122,8 +146,9 @@ export default function Shell() {
         {view === 'testfiles' && <TestFilesView key={cfg} />}
         {view === 'execute' && <ExecuteView key={cfg} onOpenReports={() => navigate('reports')} />}
         {view === 'datasources' && <DataSourceStats key={cfg} />}
-        {view === 'compare' && <CompareFiles key={cfg} />}
         {view === 'integrations' && <ExtApiConfig />}
+        {view === 'import' && <ImportView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}
+        {view === 'record' && <RecordView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}
       </div>
     </div>
   );

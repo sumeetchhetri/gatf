@@ -26,7 +26,7 @@ public class VegetaTestCaseExecutor {
 
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("vegeta")) {
 			List<String> builderList = new ArrayList<>();
-			builderList.add(config.getVegetaPath());
+			builderList.add(PerfToolProvisioner.resolve("vegeta", config));
 			builderList.add("attack");
 			
 			Integer c = tc.getPerfConfig().getConnections();
@@ -88,13 +88,13 @@ public class VegetaTestCaseExecutor {
  				tcr.setTestCase(tc);
  			}
  			
-			execCmd(config.getVegetaPath(), out, err, tcr, tc, script, builderList, tc.getAurl(), tc.getBaseUrl(), isPlot);
+			execCmd(PerfToolProvisioner.resolve("vegeta", config), out, err, tcr, tc, script, builderList, tc.getAurl(), tc.getBaseUrl(), isPlot);
 			
 			if(isSingleExecutionContext) {
 				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
 					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
 						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-						execCmd(config.getVegetaPath(), out, err, tcr, tc, script, builderList, aurl, burl, isPlot);
+						execCmd(PerfToolProvisioner.resolve("vegeta", config), out, err, tcr, tc, script, builderList, aurl, burl, isPlot);
 					}
 				}
 			}

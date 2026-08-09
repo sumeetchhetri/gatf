@@ -210,6 +210,12 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         // Additive — no existing handler is touched, and it performs no writes.
         server.getServerConfiguration().addHttpHandler(new GatfApiHandler(mojo), "/api");
 
+        // Phase 11 — Playwright/JMeter test importer (preview + save into the test-case dir)
+        server.getServerConfiguration().addHttpHandler(new GatfImportHandler(mojo), "/import");
+
+        // Phase 11 — record mode: infer a test case from live user actions in a visible local Chrome
+        server.getServerConfiguration().addHttpHandler(new GatfRecordHandler(mojo), "/record");
+
         // WebSocket push channel for the debugger (delta-041): mount /gatfjdb + attach the WS add-on to
         // every listener before start(). The SSE stream (/reports?action=debugStream) stays as the client
         // fallback, so a WS init failure degrades gracefully.

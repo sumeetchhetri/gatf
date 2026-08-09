@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import type { ApiTestCase } from '../api';
+import type { ApiTestCase, TestCaseReport } from '../api';
 import { testcaseSchema } from '../config/testcaseSchema';
 import SchemaForm, { type EnumMap } from './SchemaForm';
+import ApiResult from './ApiResult';
 
 function asStrArr(v: unknown): string[] {
   if (!Array.isArray(v)) return [];
@@ -30,6 +31,23 @@ export default function TestCaseEditor({
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [delName, setDelName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // ▶ Play — run an API test case as defined (regular API only; not the external integrations)
+  const canPlay = !configType;
+  const [playBusy, setPlayBusy] = useState<string | null>(null);
+  const [playResult, setPlayResult] = useState<TestCaseReport | null>(null);
+  const [playErr, setPlayErr] = useState<string | null>(null);
+
+  const playOne = (name: string) => {
+    if (!name) return;
+    setPlayBusy(name);
+    setPlayErr(null);
+    setPlayResult(null);
+    api
+      .playApiTest(filePath, name)
+      .then((r) => setPlayResult(r))
+      .catch((e) => setPlayErr(e.message || String(e)))
+      .finally(() => setPlayBusy(null));
+  };
 
   useEffect(() => {
     api
@@ -91,6 +109,19 @@ export default function TestCaseEditor({
       .finally(() => setBusy(false));
   };
 
+  const playPanel =
+    playErr || playResult ? (
+      <div className="tce-play">
+        <div className="tce-play-bar">
+          <strong className="small">Play result</strong>
+          <button className="btn ghost small" onClick={() => { setPlayResult(null); setPlayErr(null); }}>
+            Close
+          </button>
+        </div>
+        {playErr ? <div className="view-error">{playErr}</div> : <ApiResult r={playResult!} showStatus />}
+      </div>
+    ) : null;
+
   if (view === 'form') {
     return (
       <div className="tce">
@@ -99,6 +130,16 @@ export default function TestCaseEditor({
             ← Back to cases
           </button>
           <span className="tce-title small">{mode === 'new' ? 'New test case' : `Edit: ${editingName}`}</span>
+          {canPlay && mode === 'edit' && editingName && (
+            <button
+              className="btn small"
+              disabled={playBusy === editingName}
+              onClick={() => playOne(editingName)}
+              title="Run this test as defined (the last saved version)"
+            >
+              {playBusy === editingName ? 'Playing…' : '\u25b6 Play'}
+            </button>
+          )}
           <button className="btn primary small" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save case'}
           </button>
@@ -107,6 +148,7 @@ export default function TestCaseEditor({
         <div className="view-note muted small">
           Saved to the XML file via the test-case API, which validates the request (name, URL, method…).
         </div>
+        {playPanel}
         <SchemaForm key={ver} schema={testcaseSchema} value={tc} onChange={setTc} enums={enums} />
       </div>
     );
@@ -121,6 +163,7 @@ export default function TestCaseEditor({
         </button>
       </div>
       {saveErr && <div className="view-error">{saveErr}</div>}
+      {playPanel}
       {cases.length === 0 ? (
         <div className="view-note muted">No cases yet. Add one with “+ Add case”.</div>
       ) : (
@@ -142,6 +185,16 @@ export default function TestCaseEditor({
                   {c.url ?? '—'}
                 </td>
                 <td className="tce-actions">
+                  {canPlay && (
+                    <button
+                      className="btn small"
+                      disabled={playBusy === c.name}
+                      onClick={() => playOne(c.name ?? '')}
+                      title="Run this test as defined"
+                    >
+                      {playBusy === c.name ? 'Playing…' : '\u25b6 Play'}
+                    </button>
+                  )}
                   <button className="btn ghost small" onClick={() => openEdit(c)}>
                     Edit
                   </button>

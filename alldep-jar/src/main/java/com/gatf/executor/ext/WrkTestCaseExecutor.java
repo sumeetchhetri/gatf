@@ -259,7 +259,7 @@ public class WrkTestCaseExecutor {
 
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("wrk")) {
 			List<String> builderList = new ArrayList<>();
-			builderList.add(tc.getPerfConfig().getType().equals("wrk")?config.getWrkPath():config.getWrk2Path());
+			builderList.add(PerfToolProvisioner.resolve(tc.getPerfConfig().getType().equals("wrk")?"wrk":"wrk2", config));
 			
 			Integer c = tc.getPerfConfig().getConnections();
 			if(c<=0) {

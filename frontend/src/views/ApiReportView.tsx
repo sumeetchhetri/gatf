@@ -1,12 +1,29 @@
 import { Fragment, useState } from 'react';
+import { api } from '../api';
 import type { ApiReportData, ApiIndexData, TestCaseReport, TestCaseStat, TestSuiteStats } from '../api';
 import { fmtMs } from '../util';
+import ApiResult from '../components/ApiResult';
 
 function stClass(s: string): string {
   const u = (s || '').toLowerCase();
   if (u === 'success' || u === 'pass' || u === 'passed') return 'st-pass';
   if (u === 'skipped' || u === 'skip') return 'st-warn';
   return 'st-fail';
+}
+
+// The server's replayTest resolves a test by (testcaseFileName, testCaseName). TestCaseReport.testIdentifier
+// is built as "identifier\n[sourcefile\n]name" (sourcefile is included only when identifier != sourcefile),
+// so the last segment is the test name and — when present — the middle segment is the source file. Fall back
+// to the group identifier (the testcaseReports map key = testCase.getIdentifier(), the source file for a
+// top-level suite) when the report carries no explicit source file.
+function replayTarget(r: TestCaseReport, groupId: string): { file: string; name: string } {
+  const parts = String(r.testIdentifier ?? '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const name = parts.length ? parts[parts.length - 1] : String(r.workflowName ?? '');
+  const file = parts.length >= 3 ? parts[parts.length - 2] : parts.length === 1 ? parts[0] : groupId;
+  return { file: file || groupId, name };
 }
 
 function SummaryCards({ s }: { s: TestSuiteStats }) {
@@ -33,58 +50,65 @@ function SummaryCards({ s }: { s: TestSuiteStats }) {
   );
 }
 
-function Detail({ r }: { r: TestCaseReport }) {
-  const reqHdr = r.requestHeaders;
-  const resHdr = r.responseHeaders || r.resHeaders;
+function Detail({
+  r,
+  onReplay,
+  busy,
+  err,
+}: {
+  r: TestCaseReport;
+  onReplay: () => void;
+  busy: '' | 'replay';
+  err?: string;
+}) {
   return (
     <div className="ar-detail">
-      {(r.error || r.errorText || r.failureReason) && (
-        <div className="view-error" style={{ margin: '0 0 10px' }}>
-          {r.failureReason || r.error || r.errorText}
-        </div>
-      )}
-      {r.curlCmd && (
-        <>
-          <div className="hdr-title">cURL</div>
-          <pre className="body-pre">{r.curlCmd}</pre>
-        </>
-      )}
-      {reqHdr && (
-        <>
-          <div className="hdr-title">Request headers</div>
-          <pre className="body-pre">{reqHdr}</pre>
-        </>
-      )}
-      {r.requestContent && (
-        <>
-          <div className="hdr-title">Request body {r.requestContentType ? `(${r.requestContentType})` : ''}</div>
-          <pre className="body-pre">{r.requestContent}</pre>
-        </>
-      )}
-      {resHdr && (
-        <>
-          <div className="hdr-title">Response headers</div>
-          <pre className="body-pre">{resHdr}</pre>
-        </>
-      )}
-      {r.responseContent && (
-        <>
-          <div className="hdr-title">Response body {r.responseContentType ? `(${r.responseContentType})` : ''}</div>
-          <pre className="body-pre">{r.responseContent}</pre>
-        </>
-      )}
-      {r.serverLogs && (
-        <>
-          <div className="hdr-title">Server logs</div>
-          <pre className="body-pre">{r.serverLogs}</pre>
-        </>
-      )}
+      <div className="ar-detail-bar">
+        <button
+          className="btn small primary"
+          disabled={!!busy}
+          onClick={onReplay}
+          title="Re-run the captured request (URL / body / headers exactly as sent)"
+        >
+          {busy === 'replay' ? 'Replaying…' : '\u21bb Replay'}
+        </button>
+        <span className="muted small">
+          Replay re-sends the captured request. To run a test as defined, use ▶ Play in Test Files.
+        </span>
+        {err && <span className="st-badge st-fail" style={{ marginLeft: 8 }}>{err}</span>}
+      </div>
+      <ApiResult r={r} />
     </div>
   );
 }
 
-function ResultsTable({ rows }: { rows: TestCaseReport[] }) {
+function ResultsTable({ rows, groupId }: { rows: TestCaseReport[]; groupId: string }) {
   const [open, setOpen] = useState<number | null>(null);
+  const [over, setOver] = useState<Record<number, TestCaseReport>>({});
+  const [busy, setBusy] = useState<Record<number, '' | 'replay'>>({});
+  const [errs, setErrs] = useState<Record<number, string>>({});
+  const [replayed, setReplayed] = useState<Record<number, boolean>>({});
+  const view = (i: number) => over[i] ?? rows[i];
+
+  const replay = (i: number) => {
+    const r = view(i);
+    const { file, name } = replayTarget(r, groupId);
+    if (!file || !name) {
+      setErrs((e) => ({ ...e, [i]: 'Cannot resolve test file / name' }));
+      return;
+    }
+    setBusy((b) => ({ ...b, [i]: 'replay' }));
+    setErrs((e) => ({ ...e, [i]: '' }));
+    api
+      .replayApiTest(file, name, r)
+      .then((nr) => {
+        setOver((o) => ({ ...o, [i]: nr }));
+        setReplayed((s) => ({ ...s, [i]: true }));
+      })
+      .catch((err) => setErrs((e) => ({ ...e, [i]: err.message })))
+      .finally(() => setBusy((b) => ({ ...b, [i]: '' })));
+  };
+
   return (
     <table className="grid-table">
       <thead>
@@ -99,7 +123,8 @@ function ResultsTable({ rows }: { rows: TestCaseReport[] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((r, i) => {
+        {rows.map((_row, i) => {
+          const r = view(i);
           const name = r.workflowName || r.testIdentifier || `#${i + 1}`;
           const time = r.averageExecutionTime ?? r.executionTime;
           const isOpen = open === i;
@@ -107,7 +132,15 @@ function ResultsTable({ rows }: { rows: TestCaseReport[] }) {
             <Fragment key={i}>
               <tr className={stClass(r.status)} onClick={() => setOpen(isOpen ? null : i)} style={{ cursor: 'pointer' }}>
                 <td className="muted">{isOpen ? '\u25be' : '\u25b8'}</td>
-                <td className="mono">{name}</td>
+                <td className="mono">
+                  {String(name).split('\n').pop()}
+                  {replayed[i] && (
+                    <span className="muted small" title="Replayed">
+                      {' '}
+                      {'\u21bb'}
+                    </span>
+                  )}
+                </td>
                 <td className="mono">{r.method || ''}</td>
                 <td className="mono url" style={{ maxWidth: 320 }}>{r.actualUrl || r.url || ''}</td>
                 <td><span className={'st-badge ' + stClass(r.status)}>{r.status}</span></td>
@@ -118,7 +151,7 @@ function ResultsTable({ rows }: { rows: TestCaseReport[] }) {
                 <tr className="ar-detail-row">
                   <td></td>
                   <td colSpan={6}>
-                    <Detail r={r} />
+                    <Detail r={r} onReplay={() => replay(i)} busy={busy[i] || ''} err={errs[i]} />
                   </td>
                 </tr>
               )}
@@ -206,7 +239,7 @@ export default function ApiReportView({ data }: { data: ApiReportData | ApiIndex
             <h3>
               {identifier} <span className="muted small">({rows.length} tests)</span>
             </h3>
-            <ResultsTable rows={rows} />
+            <ResultsTable rows={rows} groupId={identifier} />
           </section>
         ))
       ) : (

@@ -631,3 +631,142 @@ select.sf-input { max-width: none; }
 .tf-tab-dot { color: var(--accent); font-weight: 700; }
 .tf-tab-x { background: transparent; border: none; color: var(--muted); cursor: pointer; font-size: 12px; line-height: 1; padding: 0 2px; border-radius: var(--r-1); }
 .tf-tab-x:hover { color: var(--red); background: color-mix(in srgb, var(--red) 14%, transparent); }
+
+/* ---- delta-064: live load reporting, play/replay bar, embedded compare, More menu, viewer topbar ---- */
+.load-live { }
+.load-chart {
+  width: 100%;
+  height: 200px;
+  display: block;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  margin-top: 8px;
+}
+.load-chart .lc-grid { stroke: var(--border); stroke-width: 1; }
+.load-chart .lc-axis { fill: var(--muted); font-size: 10px; font-family: var(--mono); }
+.load-chart .lc-line { stroke: var(--accent); stroke-width: 1.5; }
+
+.ar-detail-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0 0 12px;
+}
+
+/* embedded compare (invoked from the test-file tree) */
+.cmp-embed { display: flex; flex-direction: column; min-height: 0; height: 100%; }
+.cmp-embed-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.cmp-embed-head .ellipsis { max-width: 40%; }
+.cmp-embed .cmp-grid { overflow: auto; }
+
+/* compare checkbox in the file tree */
+.tf-cmp-cb { margin: 0 4px 0 0; cursor: pointer; flex: 0 0 auto; }
+
+/* Nav "More" dropdown */
+.nav-more { position: relative; display: inline-block; }
+.nav-more-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 6px;
+  min-width: 168px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-3);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16), 0 2px 6px rgba(0, 0, 0, 0.10);
+  padding: 5px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+}
+.nav-more-item {
+  text-align: left;
+  padding: 7px 10px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--r-1);
+  cursor: pointer;
+  font: inherit;
+  white-space: nowrap;
+}
+.nav-more-item:hover { background: var(--bg); }
+.nav-more-item.on { color: var(--accent); font-weight: 600; }
+
+/* trace-viewer top bar (framed under Reports) */
+.viewer-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+/* ---- Import view (Phase 11 — Playwright/JMeter importer) ---- */
+.import-view .view-head { margin-bottom: 12px; }
+.import-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+.import-source {
+  width: 100%; min-height: 220px; box-sizing: border-box; resize: vertical;
+  font-family: var(--mono); font-size: 12.5px; line-height: 1.5;
+  color: var(--text); background: var(--panel2);
+  border: 1px solid var(--border); border-radius: var(--r-2); padding: 10px 12px;
+}
+.import-source:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); }
+.import-actions { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+.import-err {
+  color: var(--red); background: color-mix(in srgb, var(--red) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 40%, transparent);
+  border-radius: var(--r-2); padding: 8px 12px; margin: 8px 0; font-size: 13px;
+}
+.import-saved {
+  color: var(--green); background: color-mix(in srgb, var(--green) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+  border-radius: var(--r-2); padding: 8px 12px; margin: 8px 0; font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+}
+.import-saved code { font-family: var(--mono); }
+.import-result { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 12px; }
+.import-result-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+.import-unsupported {
+  border: 1px solid var(--warn); border-radius: var(--r-2);
+  background: color-mix(in srgb, var(--warn) 8%, transparent); padding: 8px 10px; margin-bottom: 12px;
+}
+.import-unsupported-title { color: var(--warn); font-size: 12.5px; font-weight: 600; margin-bottom: 6px; }
+.import-unsupported .tbl td code { font-family: var(--mono); font-size: 11.5px; }
+.import-preview-title { margin-bottom: 4px; }
+.import-preview {
+  margin: 0; max-height: 420px; overflow: auto;
+  font-family: var(--mono); font-size: 12px; line-height: 1.5;
+  color: var(--text); background: var(--panel2);
+  border: 1px solid var(--border); border-radius: var(--r-2); padding: 10px 12px; white-space: pre;
+}
+
+/* ---- Record view (Phase 11 — record mode) ---- */
+.record-banner {
+  display: flex; align-items: center; gap: 8px;
+  background: color-mix(in srgb, var(--red) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--red) 35%, transparent);
+  border-radius: var(--r-2); padding: 8px 12px; margin-bottom: 10px; font-size: 13px;
+}
+.record-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); animation: record-pulse 1.2s infinite; }
+@keyframes record-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+.record-steps { margin: 0; padding: 0 0 0 28px; max-height: 420px; overflow: auto; }
+.record-steps li {
+  padding: 3px 6px; font-size: 12.5px; border-bottom: 1px solid var(--border); color: var(--text);
+}
+.record-steps li:last-child { border-bottom: none; }
+
+/* ---- shared API result panel (report Replay + test-case Play) ---- */
+.api-result-status { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.tce-play { border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel2); padding: 10px 12px; margin: 10px 0; }
+.tce-play-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }

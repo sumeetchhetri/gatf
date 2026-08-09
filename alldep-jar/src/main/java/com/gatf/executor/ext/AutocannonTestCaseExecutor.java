@@ -21,7 +21,7 @@ public class AutocannonTestCaseExecutor {
 
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("autocannon")) {
 			List<String> builderList = new ArrayList<>();
-			builderList.add(config.getAutocannonPath());
+			builderList.add(PerfToolProvisioner.resolve("autocannon", config));
 			
 			Integer c = tc.getPerfConfig().getConnections();
 			if(c>=0) {

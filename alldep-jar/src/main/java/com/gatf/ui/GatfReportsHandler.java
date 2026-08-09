@@ -271,9 +271,14 @@ public class GatfReportsHandler extends HttpHandler {
 	    if(action.equals("replayTest") || action.equals("playTest") || action.equals("createIssue") || action.equals("getContent") || action.equals("debug"))
         {
             boolean isReplay = action.equals("replayTest");
+            // Play a regular (.xml) API test: re-run it AS DEFINED (no captured-request override). Mirrors the
+            // external-API branch's playTest vs replayTest split. replayTest still re-sends the captured request.
+            boolean isPlayApi = action.equals("playTest") && !isServerLogsApi && !isExternalLogsApi
+                    && testcaseFileName!=null && !testcaseFileName.toLowerCase().endsWith(".sel");
+            boolean applyCaptured = isReplay; // replay = captured request; play = the definition
             List<TestCaseReport> reports = null;
             
-            if(isReplay)
+            if(isReplay || isPlayApi)
             {
                 TestCase origfound = null;
                 String filePath = null;
@@ -337,32 +342,34 @@ public class GatfReportsHandler extends HttpHandler {
                 found.setPreExecutionDataSourceHookName(null);
                 found.setPostExecutionDataSourceHookName(null);
                 
-                if(found.getHeaders()!=null)
-                {
-                    found.getHeaders().clear();
-                }
-                else
+                if(found.getHeaders()==null)
                 {
                     found.setHeaders(new HashMap<String, String>());
                 }
                 
-                found.setAurl(tcReport.getActualUrl());
-                found.setAcontent(tcReport.getRequestContent());
-                found.setAexpectedNodes(tcReport.getAexpectedNodes());
-                
-                if(found.getAurl().startsWith(found.getBaseUrl().trim())) {
-                    String turl = found.getAurl().replace(found.getBaseUrl().trim(), "");
-                    found.setAurl(turl);
-                }
-                
-                if(StringUtils.isNotBlank(tcReport.getRequestHeaders()))
+                // Replay re-sends the captured request (actual URL/body/headers as sent, editable in the report).
+                // Play leaves the definition untouched — no header clear, no actual-url/content override.
+                if(applyCaptured && tcReport!=null)
                 {
-                    String[] headers = tcReport.getRequestHeaders().split("\n");
-                    for(String header: headers)
+                    found.getHeaders().clear();
+                    found.setAurl(tcReport.getActualUrl());
+                    found.setAcontent(tcReport.getRequestContent());
+                    found.setAexpectedNodes(tcReport.getAexpectedNodes());
+                    
+                    if(found.getAurl()!=null && found.getBaseUrl()!=null && found.getAurl().startsWith(found.getBaseUrl().trim())) {
+                        String turl = found.getAurl().replace(found.getBaseUrl().trim(), "");
+                        found.setAurl(turl);
+                    }
+                    
+                    if(StringUtils.isNotBlank(tcReport.getRequestHeaders()))
                     {
-                        if(header.indexOf(": ")!=-1)
+                        String[] headers = tcReport.getRequestHeaders().split("\n");
+                        for(String header: headers)
                         {
-                            found.getHeaders().put(header.substring(0, header.indexOf(": ")), header.substring(header.indexOf(": ")+2));
+                            if(header.indexOf(": ")!=-1)
+                            {
+                                found.getHeaders().put(header.substring(0, header.indexOf(": ")), header.substring(header.indexOf(": ")+2));
+                            }
                         }
                     }
                 }

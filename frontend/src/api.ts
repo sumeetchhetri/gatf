@@ -350,11 +350,37 @@ const tcf = (p: string) => 'testcaseFileName=' + encPath(p);
 // Both success (200) and the "in progress"/failure (400) responses carry a JSON body we need, so
 // execFetch never throws on status — it returns { ok, data }. `error` is a status string, or an
 // array [lineText, line, relFile, msg] (+ `others`) when the run failed with a parse/runtime error.
+// Live load/distributed reporting (delta-064): while a load run is in progress the /execute GET poll
+// carries per-run samples the classic UI graphed live. Server format (RuntimeReportUtil.getEntry):
+//   lstats[i] = [prefix, runNo, reportUrl, node, epochMs, [total,failed,skipped,execMs], selStats|null, fname|null]
+//   sstats[i] = "node|runNo|1|0"  (pipe: node, run, pass-flag, …)   gstats = rolling TestSuiteStats
+export type LoadStatEntry = [
+  string, // 0 prefix ("Run"/"L")
+  string, // 1 runNo
+  string | null, // 2 report file (→ /reports/<file>)
+  string | null, // 3 node
+  number, // 4 epoch ms
+  number[], // 5 [total, failed, skipped, execMs]
+  unknown, // 6 selenium sub-stats (usually null for API load)
+  string | null, // 7 optional label
+];
+export interface LiveGStats {
+  totalSuiteRuns?: number;
+  totalTestCount?: number;
+  failedTestCount?: number;
+  skippedTestCount?: number;
+  executionTime?: number;
+  actualExecutionTime?: number;
+  [k: string]: unknown;
+}
 export interface ExecStatus {
   error: string | (string | number | null)[];
   is_paused?: boolean;
   others?: (string | number | null)[][];
   loadTestingEnabled?: boolean;
+  lstats?: LoadStatEntry[];
+  sstats?: string[];
+  gstats?: LiveGStats;
   [k: string]: unknown;
 }
 async function execFetch(
@@ -460,6 +486,76 @@ export function debugLinesFor(l: unknown, file: string): Set<number> {
   return out;
 }
 
+// ---- Playwright/JMeter importer (Phase 11) — POST source to /import, preview or save ----
+export interface ImportUnsupported {
+  line: number;
+  construct: string;
+  reason: string;
+}
+export interface ImportResultDto {
+  type: string;
+  fileName: string;
+  kind: 'sel' | 'xml';
+  content: string;
+  unsupported: ImportUnsupported[];
+  stats: Record<string, number>;
+  saved?: boolean;
+  savedPath?: string;
+  validation?: string;
+  error?: string;
+}
+async function importSourceReq(
+  type: 'playwright' | 'jmeter',
+  fileName: string,
+  save: boolean,
+  source: string,
+): Promise<ImportResultDto> {
+  const qs =
+    '/import?type=' +
+    encodeURIComponent(type) +
+    (fileName ? '&fileName=' + encodeURIComponent(fileName) : '') +
+    (save ? '&save=true' : '');
+  const r = await fetch(withTok(qs), {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' },
+    body: source,
+  });
+  const d = (await r.json().catch(() => ({}))) as ImportResultDto;
+  if (!r.ok) return { ...d, error: d?.error || 'HTTP ' + r.status } as ImportResultDto;
+  return d;
+}
+
+// ---- record mode (Phase 11) — drive a live browser recording, poll steps, stop/save ----
+export interface RecordStart {
+  sessionId?: string;
+  running?: boolean;
+  error?: string;
+}
+export interface RecordSteps {
+  running: boolean;
+  lines: string[];
+  count: number;
+  error?: string;
+}
+export interface RecordStop {
+  content?: string;
+  lines?: string[];
+  count?: number;
+  error?: string;
+}
+export interface RecordSave {
+  saved?: boolean;
+  savedPath?: string;
+  validation?: string;
+  error?: string;
+}
+async function recordPost<T>(qs: string): Promise<T> {
+  const r = await fetch(withTok(qs), { method: 'POST', headers: { Accept: 'application/json' } });
+  const d = (await r.json().catch(() => ({}))) as T & { error?: string };
+  if (!r.ok && !d.error) (d as { error?: string }).error = 'HTTP ' + r.status;
+  return d as T;
+}
+
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
   configs: () => getJson<ConfigsIndex>('/api/configs'),
@@ -553,6 +649,30 @@ export const api = {
   execStart: (pluginType: string, files: string[]) => execFetch('PUT', pluginType, files),
   execPoll: (pluginType: string) => execFetch('GET', pluginType),
   execStop: (pluginType: string) => execFetch('DELETE', pluginType),
+  // ---- API test Play / Replay (delta-064) ----
+  // Play  = run the test AS DEFINED in its file (no body; ignores the captured request).
+  // Replay= re-run the CAPTURED request from the failed TestCaseReport (actual URL / body / headers as sent).
+  // Both return the fresh TestCaseReport (status / response / headers refreshed).
+  playApiTest: async (fileName: string, testCaseName: string): Promise<TestCaseReport> => {
+    const t = await sendReq(
+      'PUT',
+      '/reports?action=playTest&' + tcf(fileName) + '&testCaseName=' + encodeURIComponent(testCaseName),
+    );
+    return JSON.parse(t) as TestCaseReport;
+  },
+  replayApiTest: async (
+    fileName: string,
+    testCaseName: string,
+    report: TestCaseReport,
+  ): Promise<TestCaseReport> => {
+    const t = await sendReq(
+      'PUT',
+      '/reports?action=replayTest&' + tcf(fileName) + '&testCaseName=' + encodeURIComponent(testCaseName),
+      JSON.stringify(report),
+      'application/json',
+    );
+    return JSON.parse(t) as TestCaseReport;
+  },
   // ---- online debugger (Slice D2) — /reports?action=debug protocol ----
   dbg: (lineCode: string, tcf: string, tc: string, sessionId: string, sline?: string) =>
     dbgFetch(lineCode, tcf, tc, sessionId, sline),
@@ -574,4 +694,17 @@ export const api = {
   pauseEl: (pause: boolean) => runPut(pause ? 'pauseElSearch' : 'unPauseElSearch'),
   restartSubtest: () => runPut('restartSubtest'),
   stopRun: () => runPut('stop'),
+  // ---- Playwright/JMeter importer (Phase 11) ----
+  importSource: (type: 'playwright' | 'jmeter', fileName: string, save: boolean, source: string) =>
+    importSourceReq(type, fileName, save, source),
+  // ---- record mode (Phase 11) ----
+  recordStart: (url: string) => recordPost<RecordStart>('/record?action=start&url=' + encodeURIComponent(url)),
+  recordSteps: (sessionId: string) =>
+    getJson<RecordSteps>('/record?action=steps&sessionId=' + encodeURIComponent(sessionId)),
+  recordStop: (sessionId: string) =>
+    recordPost<RecordStop>('/record?action=stop&sessionId=' + encodeURIComponent(sessionId)),
+  recordSave: (sessionId: string, fileName: string) =>
+    recordPost<RecordSave>(
+      '/record?action=save&sessionId=' + encodeURIComponent(sessionId) + '&fileName=' + encodeURIComponent(fileName),
+    ),
 };

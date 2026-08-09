@@ -37,9 +37,11 @@ function typeBadge(type?: string) {
 export default function ReportsView({
   onOpenTrace,
   onOpenReport,
+  onOpenViewer,
 }: {
   onOpenTrace: (url: string) => void;
   onOpenReport: (dataUrl: string) => void;
+  onOpenViewer: () => void;
 }) {
   const [data, setData] = useState<ReportsIndex | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -66,6 +68,9 @@ export default function ReportsView({
               {data.dir}
             </span>
           )}
+          <button className="btn ghost small" onClick={onOpenViewer} title="Open a trace bundle (.zip) to inspect">
+            {'\u25EB'} Trace Viewer
+          </button>
           <button className="btn ghost small" onClick={load}>
             Refresh
           </button>

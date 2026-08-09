@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
-import type { TestcaseFileEntry, ExecStatus } from '../api';
+import type { TestcaseFileEntry, ExecStatus, LoadStatEntry, LiveGStats } from '../api';
+import { fmtMs } from '../util';
 
 type Mode = 'api' | 'sel';
 type RunState = 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'failed';
@@ -18,6 +19,185 @@ const baseName = (p: string) => {
   return i === -1 ? p : p.slice(i + 1);
 };
 
+// ---- live load/distributed reporting ----
+// One rolling row per completed load-run sample (newest first, capped). Mirrors the classic
+// #lol_tblcu table but driven off the same lstats records the classic UI graphed.
+interface LiveRow {
+  key: string;
+  label: string; // prefix#run
+  node: string;
+  reportUrl: string | null;
+  total: number;
+  failed: number;
+  skipped: number;
+  execMs: number;
+}
+interface LiveState {
+  samples: { t: number; ms: number }[]; // exec-time over wall-clock (for the chart)
+  rows: LiveRow[]; // recent runs, newest first
+  suite: Record<string, { pass: number; fail: number }>; // node|run → tallies (from sstats)
+  gstats: LiveGStats | null;
+  seq: number; // monotonically increasing run counter for row labels
+}
+const emptyLive = (): LiveState => ({ samples: [], rows: [], suite: {}, gstats: null, seq: 0 });
+
+function accumulate(prev: LiveState, data: ExecStatus): LiveState {
+  const next: LiveState = {
+    samples: prev.samples.slice(),
+    rows: prev.rows.slice(),
+    suite: { ...prev.suite },
+    gstats: prev.gstats,
+    seq: prev.seq,
+  };
+  const lstats = (data.lstats || []) as LoadStatEntry[];
+  // server sends newest-last; the classic renders reversed → iterate as given, newest ends on top
+  for (const e of lstats) {
+    const stats = Array.isArray(e[5]) ? e[5] : [0, 0, 0, 0];
+    const execMs = Number(stats[3]) || 0;
+    const t = Number(e[4]) || Date.now();
+    next.seq += 1;
+    next.samples.push({ t, ms: execMs });
+    next.rows.unshift({
+      key: 'r' + next.seq,
+      label: (e[0] || 'Run') + '#' + next.seq,
+      node: String(e[3] ?? e[7] ?? 'local'),
+      reportUrl: e[2] ?? null,
+      total: Number(stats[0]) || 0,
+      failed: Number(stats[1]) || 0,
+      skipped: Number(stats[2]) || 0,
+      execMs,
+    });
+  }
+  if (next.samples.length > 600) next.samples = next.samples.slice(-600);
+  if (next.rows.length > 100) next.rows = next.rows.slice(0, 100);
+  for (const s of data.sstats || []) {
+    const p = String(s).split('|'); // node|run|passFlag
+    const k = (p[0] ?? '') + '|' + (p[1] ?? '');
+    const cell = next.suite[k] || { pass: 0, fail: 0 };
+    if (p[2] === '1' || p[2] === '1.0') cell.pass += 1;
+    else cell.fail += 1;
+    next.suite[k] = cell;
+  }
+  if (data.gstats) next.gstats = data.gstats;
+  return next;
+}
+
+function pctl(sorted: number[], p: number): number {
+  if (sorted.length === 0) return 0;
+  const idx = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
+  return sorted[idx];
+}
+
+// dependency-free exec-time line chart (same SVG-only ethos as the trace viewer)
+function LoadChart({ samples }: { samples: { t: number; ms: number }[] }) {
+  const W = 720,
+    H = 200,
+    padL = 48,
+    padB = 22,
+    padT = 10,
+    padR = 10;
+  if (samples.length < 2) return <div className="view-note muted small">Collecting samples…</div>;
+  const ys = samples.map((s) => s.ms);
+  const maxY = Math.max(...ys, 1);
+  const n = samples.length;
+  const x = (i: number) => padL + (i / (n - 1)) * (W - padL - padR);
+  const y = (v: number) => padT + (1 - v / maxY) * (H - padT - padB);
+  const d = samples.map((s, i) => (i === 0 ? 'M' : 'L') + x(i).toFixed(1) + ' ' + y(s.ms).toFixed(1)).join(' ');
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(maxY * f));
+  return (
+    <svg className="load-chart" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label="Execution time">
+      {ticks.map((tv, i) => {
+        const yy = y(tv);
+        return (
+          <g key={i}>
+            <line x1={padL} y1={yy} x2={W - padR} y2={yy} className="lc-grid" />
+            <text x={padL - 6} y={yy + 3} className="lc-axis" textAnchor="end">
+              {tv}
+            </text>
+          </g>
+        );
+      })}
+      <path d={d} className="lc-line" fill="none" />
+      <text x={(W + padL) / 2} y={H - 4} className="lc-axis" textAnchor="middle">
+        samples (oldest → newest) · y = exec ms
+      </text>
+    </svg>
+  );
+}
+
+function LiveLoadPanel({ live }: { live: LiveState }) {
+  const sorted = useMemo(() => live.samples.map((s) => s.ms).sort((a, b) => a - b), [live.samples]);
+  const g = live.gstats;
+  const rate = g && g.totalTestCount ? Math.round(((g.totalTestCount - (g.failedTestCount || 0)) / g.totalTestCount) * 100) : null;
+  const cards: [string, string][] = [
+    ['Suite runs', String(g?.totalSuiteRuns ?? live.seq)],
+    ['Tests', String(g?.totalTestCount ?? '—')],
+    ['Failed', String(g?.failedTestCount ?? 0)],
+    ['Skipped', String(g?.skippedTestCount ?? 0)],
+    ['Pass rate', rate != null ? rate + '%' : '—'],
+    ['p50', fmtMs(pctl(sorted, 50))],
+    ['p90', fmtMs(pctl(sorted, 90))],
+    ['p99', fmtMs(pctl(sorted, 99))],
+  ];
+  const nodes = Object.keys(live.suite).length;
+  return (
+    <section className="view-section load-live">
+      <h3>
+        Live results{' '}
+        <span className="muted small">
+          {live.seq} sample{live.seq === 1 ? '' : 's'}
+          {nodes > 0 ? ` · ${nodes} suite run(s)` : ''}
+        </span>
+      </h3>
+      <div className="vitals">
+        {cards.map(([label, val]) => (
+          <div className="vital-card" key={label}>
+            <div className="vital-val">{val}</div>
+            <div className="vital-label">{label}</div>
+          </div>
+        ))}
+      </div>
+      <LoadChart samples={live.samples} />
+      {live.rows.length > 0 && (
+        <div className="tbl-scroll" style={{ maxHeight: 260, marginTop: 10 }}>
+          <table className="grid-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Node</th>
+                <th className="num">Total</th>
+                <th className="num">Failed</th>
+                <th className="num">Skipped</th>
+                <th className="num">Exec</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {live.rows.map((r) => (
+                <tr key={r.key} className={r.failed > 0 ? 'st-fail' : ''}>
+                  <td className="mono">{r.label}</td>
+                  <td className="mono">{r.node}</td>
+                  <td className="num mono">{r.total}</td>
+                  <td className="num mono">{r.failed}</td>
+                  <td className="num mono">{r.skipped}</td>
+                  <td className="num mono">{fmtMs(r.execMs)}</td>
+                  <td>
+                    {r.reportUrl && (
+                      <a className="btn ghost small" href={'/reports/' + r.reportUrl} target="_blank" rel="noopener">
+                        {'\u2197'}
+                      </a>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function ExecuteView({ onOpenReports }: { onOpenReports: () => void }) {
   const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,6 +209,8 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
   const [statusMsg, setStatusMsg] = useState('');
   const [fileStatus, setFileStatus] = useState<Record<string, FileStatus>>({});
   const [errored, setErrored] = useState<RunError[]>([]);
+  const [liveEnabled, setLiveEnabled] = useState(false);
+  const [live, setLive] = useState<LiveState>(emptyLive);
 
   const pollRef = useRef<number | null>(null);
   const selectedRef = useRef(selected);
@@ -65,6 +247,10 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
 
   // interpret a status payload (from start or a poll) and drive the state machine
   const interpret = (data: ExecStatus) => {
+    // live load/distributed samples ride on the in-progress poll — fold them in regardless of branch
+    if ((data.lstats && data.lstats.length) || (data.sstats && data.sstats.length) || data.gstats) {
+      setLive((prev) => accumulate(prev, data));
+    }
     const err = data.error;
     if (Array.isArray(err)) {
       const rows: RunError[] = [err, ...(data.others || [])].map((e) => ({
@@ -123,12 +309,15 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
     if (sel.length === 0) return;
     setErrored([]);
     setFileStatus({});
+    setLive(emptyLive());
+    setLiveEnabled(false);
     markFiles(sel, 'running');
     setRunState('starting');
     setStatusMsg('Starting…');
     api
       .execStart(pluginOf(mode), sel)
       .then(({ data }) => {
+        if (data.loadTestingEnabled) setLiveEnabled(true);
         interpret(data);
         const errStr = Array.isArray(data.error) ? '' : String(data.error ?? '');
         const terminal = Array.isArray(data.error) || /completed/i.test(errStr) || /failed with Error|Unknown Error/i.test(errStr);
@@ -226,6 +415,8 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
             </div>
           )}
 
+          {(liveEnabled || live.seq > 0) && <LiveLoadPanel live={live} />}
+
           <section className="view-section">
             {visible.length === 0 ? (
               <div className="view-note muted">No {mode === 'api' ? '.xml' : '.sel'} test files.</div>
@@ -268,9 +459,9 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
           </section>
 
           <div className="view-note muted small">
-            Runs go through the same engine as the classic UI; when a run finishes, its full report (stats,
-            per-test results, traces) is in the <b>Reports</b> tab. A paused Selenium run is resumed from the
-            debugger (coming in D2).
+            Runs go through the same engine as the classic UI. Load / distributed runs stream live samples
+            above while executing; when a run finishes, its full report (stats, per-test results, traces) is
+            in the <b>Reports</b> tab. Pause / resume a Selenium run from the editor's debugger.
           </div>
         </>
       )}

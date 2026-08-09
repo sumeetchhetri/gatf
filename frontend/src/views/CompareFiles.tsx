@@ -32,33 +32,93 @@ function lineDiff(a: string[], b: string[]): Row[] {
   return out;
 }
 
-export default function CompareFiles() {
+// Standalone (picker) mode OR embedded mode. Embedded is used from the test-file tree: pick exactly two
+// files → a Compare button renders this inline over the given pair (delta-064), so Compare is no longer a
+// top-level tab. In embedded mode the pickers are hidden and the given pair auto-compares.
+export default function CompareFiles({
+  left,
+  right,
+  embedded,
+  onClose,
+}: {
+  left?: string;
+  right?: string;
+  embedded?: boolean;
+  onClose?: () => void;
+} = {}) {
   const [paths, setPaths] = useState<string[]>([]);
-  const [f1, setF1] = useState('');
-  const [f2, setF2] = useState('');
+  const [f1, setF1] = useState(left ?? '');
+  const [f2, setF2] = useState(right ?? '');
   const [rows, setRows] = useState<Row[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  useEffect(() => {
-    api
-      .testcaseFiles()
-      .then((fs) => setPaths(fs.map((f) => f.path).filter((p) => p.endsWith('.sel') || p.endsWith('.props'))))
-      .catch((e) => setErr(e.message));
-  }, []);
+  const readAny = (p: string) => api.readSel(p); // /testcases returns raw text for non-xml files
 
-  const compare = () => {
-    if (!f1 || !f2) return;
+  const comparePair = (a: string, b: string) => {
+    if (!a || !b) return;
     setBusy(true);
     setErr(null);
     setRows(null);
-    Promise.all([api.readSel(f1), api.readSel(f2)])
-      .then(([a, b]) => setRows(lineDiff(a.split('\n'), b.split('\n'))))
+    Promise.all([readAny(a), readAny(b)])
+      .then(([x, y]) => setRows(lineDiff(x.split('\n'), y.split('\n'))))
       .catch((e) => setErr(e.message))
       .finally(() => setBusy(false));
   };
 
+  useEffect(() => {
+    if (embedded) return; // no picker list needed
+    api
+      .testcaseFiles()
+      .then((fs) => setPaths(fs.map((f) => f.path).filter((p) => p.endsWith('.sel') || p.endsWith('.props'))))
+      .catch((e) => setErr(e.message));
+  }, [embedded]);
+
+  // embedded: auto-compare the given pair whenever it changes
+  useEffect(() => {
+    if (embedded && left && right) {
+      setF1(left);
+      setF2(right);
+      comparePair(left, right);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [embedded, left, right]);
+
   const changed = useMemo(() => (rows ? rows.filter((r) => r.t !== 'same').length : 0), [rows]);
+
+  const diff = rows && (
+    <div className="cmp-grid mono">
+      {rows.map((r, i) => (
+        <div className={'cmp-row cmp-' + r.t} key={i}>
+          <span className="cmp-ln">{r.an ?? ''}</span>
+          <span className="cmp-side cmp-l">{r.t === 'add' ? '\u00A0' : r.a || '\u00A0'}</span>
+          <span className="cmp-ln">{r.bn ?? ''}</span>
+          <span className="cmp-side cmp-r">{r.t === 'del' ? '\u00A0' : r.b || '\u00A0'}</span>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="cmp-embed">
+        <div className="cmp-embed-head">
+          <span className="mono small ellipsis" title={f1}>{f1}</span>
+          <span className="muted">{'\u21c4'}</span>
+          <span className="mono small ellipsis" title={f2}>{f2}</span>
+          {rows && <span className="muted small">{changed === 0 ? 'Identical' : changed + ' diff line(s)'}</span>}
+          {busy && <span className="muted small">Comparing…</span>}
+          {onClose && (
+            <button className="btn ghost small" style={{ marginLeft: 'auto' }} onClick={onClose}>
+              Close
+            </button>
+          )}
+        </div>
+        {err && <div className="view-error">{err}</div>}
+        {diff}
+      </div>
+    );
+  }
 
   return (
     <div className="view">
@@ -83,24 +143,13 @@ export default function CompareFiles() {
             </option>
           ))}
         </select>
-        <button className="btn primary small" disabled={!f1 || !f2 || busy} onClick={compare}>
+        <button className="btn primary small" disabled={!f1 || !f2 || busy} onClick={() => comparePair(f1, f2)}>
           {busy ? 'Comparing…' : 'Compare'}
         </button>
         {rows && <span className="muted small">{changed === 0 ? 'Identical' : changed + ' differing line(s)'}</span>}
       </div>
       {err && <div className="view-error">{err}</div>}
-      {rows && (
-        <div className="cmp-grid mono">
-          {rows.map((r, i) => (
-            <div className={'cmp-row cmp-' + r.t} key={i}>
-              <span className="cmp-ln">{r.an ?? ''}</span>
-              <span className="cmp-side cmp-l">{r.t === 'add' ? '\u00A0' : r.a || '\u00A0'}</span>
-              <span className="cmp-ln">{r.bn ?? ''}</span>
-              <span className="cmp-side cmp-r">{r.t === 'del' ? '\u00A0' : r.b || '\u00A0'}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {diff}
       <div className="view-note muted small">Compares <code>.sel</code> / <code>.props</code> files line by line.</div>
     </div>
   );
