@@ -16,23 +16,37 @@ import org.openqa.selenium.bidi.network.RequestData;
 import org.openqa.selenium.bidi.network.ResponseData;
 
 /**
- * WebDriver BiDi implementation of {@link BrowserControl} (decision D-2). This is the first BiDi
- * parity increment: network request/response and console/log capture via the Selenium BiDi
- * modules, plus DOM snapshot and screenshot via the protocol-agnostic
- * {@link JavascriptExecutor}/{@link TakesScreenshot} paths (identical to the CDP transport, so no
- * BiDi API is involved for those). Response-body capture and metrics/cpu/coverage/video remain
- * CDP-only for now — reported unsupported so recorders skip them cleanly.
+ * WebDriver BiDi implementation of {@link BrowserControl} (decision D-2). Parity is pushed as far as
+ * BiDi safely allows:
+ *   • NETWORK + CONSOLE — via the Selenium BiDi modules (out-of-band event subscriptions).
+ *   • DOM_SNAPSHOT, SCREENSHOT, web-vitals, and METRICS (performance + JS memory) — via the
+ *     protocol-agnostic {@link JavascriptExecutor}/{@link TakesScreenshot} paths, identical whether the
+ *     active transport is CDP or BiDi (no BiDi API involved). {@code sampleMetrics()} is a read-only
+ *     {@code executeScript} that returns a value and changes no driver state; chromedriver serialises
+ *     per-session commands, so a low-frequency read from the sampler thread is safe. Note the one real
+ *     difference from CDP: CDP reads metrics over its out-of-band DevTools WebSocket, whereas this path
+ *     is in-band on the classic command channel, so on very command-heavy suites it adds a little
+ *     command-queue pressure. Acceptable for the parity it buys (performance.json + memory.json under BiDi).
  *
- * The recorders are unchanged: they depend only on {@link BrowserControl}, which is exactly what
- * D-2 was for — flipping {@code protocol=bidi} routes their calls here without touching them.
+ * Genuinely CDP-only (not a TODO — these have no BiDi- or page-JS-safe equivalent):
+ *   • RESPONSE_BODY — needs the Selenium BiDi network data-collector API, which is version-dependent;
+ *     page JS cannot faithfully retrieve an already-consumed cross-origin body.
+ *   • CPU_PROFILE + COVERAGE — Chrome-DevTools-only protocol features (Profiler, CSS rule-usage); there
+ *     is no BiDi command and no page-JS API that samples the JS engine or reports precise coverage.
+ *   • SCREENCAST (video) — BiDi has no continuous screencast; the only fallback is polling screenshots,
+ *     which both contends heavily with the live test (unlike CDP's out-of-band frame push) and is a
+ *     degraded approximation — deliberately not enabled.
+ * All four are reported unsupported so recorders skip them cleanly under BiDi.
  *
- * NOTE (verification): references the {@code org.openqa.selenium.bidi.*} modules, which are newer
- * than CDP and not used anywhere else in this codebase, so — unlike the CDP transport — there was
- * no in-repo pattern to mirror and no jars in the build container to compile against. The
- * network/console module usage is a best-effort match to the Selenium 4.48 BiDi API and is the
- * highest-CI-risk code in the trace package; if a signature differs, the fix is localized to this
- * file (or revert it to the delta-002 no-op skeleton — the default CDP path is unaffected).
- * Everything is defensively wrapped so a BiDi hiccup degrades to "no capture" rather than a crash.
+ * The recorders are unchanged: they depend only on {@link BrowserControl}, which is exactly what D-2
+ * was for — flipping {@code protocol=bidi} routes their calls here without touching them.
+ *
+ * NOTE (verification): the {@code org.openqa.selenium.bidi.*} module usage (network/console) is the
+ * highest-CI-risk code in the trace package — newer than CDP, no in-repo pattern to mirror, and no jars
+ * in the build container to compile against, so it is a best-effort match to the Selenium 4.48 BiDi API;
+ * if a signature differs, the fix is localised to this file. The JS-based paths (metrics/vitals/snapshot)
+ * carry none of that risk — they use only JavascriptExecutor. Everything is defensively wrapped so a
+ * hiccup degrades to "no capture" rather than a crash.
  *
  * @author Sumeet Chhetri
  */
@@ -59,6 +73,21 @@ public final class BiDiTransport implements BrowserControl {
         "if(l&&l.length){o.lcp=l[l.length-1].startTime;}" +
         "}catch(e){o.error=String(e);}return o;})());";
 
+    // Read-only performance/memory snapshot, sourced from page JS (protocol-agnostic). performance.memory
+    // is Chrome-only but present under BiDi-on-Chrome; keys mirror the CDP Performance.getMetrics names the
+    // MetricsRecorder reads (JSHeapUsedSize / JSHeapTotalSize) so memory.json + performance.json populate.
+    // Returns a JS object → Selenium marshals it to a Map<String,Number>, so no JSON parsing is needed.
+    private static final String METRICS_JS =
+        "return (function(){var o={};try{" +
+        "var m=performance.memory;" +
+        "if(m){o.JSHeapUsedSize=m.usedJSHeapSize;o.JSHeapTotalSize=m.totalJSHeapSize;o.JSHeapLimit=m.jsHeapSizeLimit;}" +
+        "o.Nodes=document.getElementsByTagName('*').length;" +
+        "o.Frames=(window.frames?window.frames.length:0);" +
+        "o.Documents=document.querySelectorAll('iframe,frame').length+1;" +
+        "o.Resources=(performance.getEntriesByType?performance.getEntriesByType('resource').length:0);" +
+        "o.Timestamp=Date.now()/1000;" +
+        "}catch(e){}return o;})();";
+
     BiDiTransport(WebDriver driver) { this.driver = driver; }
 
     private boolean hasBiDi() { return driver instanceof HasBiDi; }
@@ -70,7 +99,8 @@ public final class BiDiTransport implements BrowserControl {
             case CONSOLE:      return hasBiDi();
             case DOM_SNAPSHOT: return driver instanceof JavascriptExecutor;   // protocol-agnostic
             case SCREENSHOT:   return driver instanceof TakesScreenshot;      // protocol-agnostic
-            default:           return false;   // RESPONSE_BODY / METRICS / CPU / COVERAGE / SCREENCAST: CDP-only for now
+            case METRICS:      return driver instanceof JavascriptExecutor;   // performance/memory via read-only JS (in-band; see class doc)
+            default:           return false;   // RESPONSE_BODY / CPU / COVERAGE / SCREENCAST: no BiDi/JS-safe equivalent (see class doc)
         }
     }
 
@@ -156,6 +186,23 @@ public final class BiDiTransport implements BrowserControl {
             if (driver instanceof TakesScreenshot) return ((TakesScreenshot) driver).getScreenshotAs(OutputType.BYTES);
         } catch (Exception ignored) {}
         return null;
+    }
+
+    @Override
+    public Map<String, Number> sampleMetrics() {
+        Map<String, Number> out = new LinkedHashMap<>();
+        try {
+            if (driver instanceof JavascriptExecutor) {
+                Object r = ((JavascriptExecutor) driver).executeScript(METRICS_JS);
+                if (r instanceof Map) {
+                    for (Map.Entry<?, ?> e : ((Map<?, ?>) r).entrySet()) {
+                        Object v = e.getValue();
+                        if (v instanceof Number) out.put(String.valueOf(e.getKey()), (Number) v);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+        return out;
     }
 
     @Override
