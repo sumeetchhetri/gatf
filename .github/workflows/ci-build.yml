@@ -15,7 +15,18 @@ jobs:
     - name: Seleasy smoke (offline lint + command catalog)
       run: python3 tools/smoke/sel-lint.py --regen sample/*.sel
 
-    - name: Build gatf jar
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Frontend unit tests (vitest)
+      run: |
+        cd frontend
+        npm ci
+        npm test
+
+    - name: Build gatf jar (runs backend unit + integration tests via surefire/failsafe)
       run: |
         mvn --quiet install
         docker build . --file Dockerfile
