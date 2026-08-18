@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 
-type Row = { t: 'same' | 'del' | 'add'; a?: string; b?: string; an?: number; bn?: number };
+export type Row = { t: 'same' | 'del' | 'add'; a?: string; b?: string; an?: number; bn?: number };
 
 // LCS line diff → aligned rows (same / deleted-from-left / added-on-right).
-function lineDiff(a: string[], b: string[]): Row[] {
+export function lineDiff(a: string[], b: string[]): Row[] {
   const n = a.length,
     m = b.length;
   const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
