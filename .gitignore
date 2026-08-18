@@ -22,3 +22,5 @@ deltas/
 sample-project/app
 sample-project/out
 sample-project/out-load
+e2e/node_modules
+e2e/test-results

@@ -1,0 +1,14 @@
+{
+  "name": "gatf-e2e",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Playwright end-to-end tests for the GATF /app SPA (drives a live GATF server seeded with sample-project).",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "install-browser": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.0"
+  }
+}
