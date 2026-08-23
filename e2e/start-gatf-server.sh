@@ -22,5 +22,12 @@ PROJ="$(mktemp -d)"
 cp -r "${REPO_ROOT}/sample-project/." "${PROJ}/"
 cd "${PROJ}"
 echo "GATF e2e server: jar=${JAR} proj=${PROJ} port=${PORT}"
+# The GATF server uses SELENIUM_REMOTE_URL for selenium runs (T4c). Take it from GATF_SELENIUM_GRID so
+# it reaches GATF *without* Playwright seeing it (Playwright reserves SELENIUM_REMOTE_URL to route its
+# own browser through a Grid). JAVA_HOME is inherited as-is.
+if [ -n "${GATF_SELENIUM_GRID:-}" ]; then
+  export SELENIUM_REMOTE_URL="${GATF_SELENIUM_GRID}"
+  echo "GATF e2e: Selenium Grid = ${SELENIUM_REMOTE_URL}"
+fi
 # main(): -configtool <port> <ip> <rootdir>  ('.' == cwd). Blocks until killed (Playwright teardown).
 exec java -cp "${JAR}" com.gatf.ui.GatfConfigToolUtil -configtool "${PORT}" 127.0.0.1 .

@@ -19,9 +19,19 @@ copies `sample-project` to a scratch dir, and starts `GatfConfigToolUtil -config
 
 Specs: `app-smoke` (shell + primary-tab navigation), `app-testfiles` (the `/testcasefiles` → SPA path),
 `app-editor` (open a `.sel` in the CodeMirror editor), `app-config` (edit + save the executor config),
-`app-execute` (the Execute controls render). Driving a `.sel` **save**, a full suite **run**, and the
-**debugger** from the browser needs the server-side compile toolchain / a Selenium Grid — those paths
-are covered by the server ITs, the 066c API-execution IT, and `trace-e2e.sh`.
+`app-execute` (the Execute controls render). These 6 run by default.
+
+### Grid workflows (`app-workflow-grid`, T4c)
+Three heavier specs — saving a `.sel` (server-side transpile+compile parse-validation), running a
+selenium script to a terminal state, and opening the online debugger — need the server-side toolchain /
+a Selenium Grid. They **skip** unless `GATF_SELENIUM_GRID` is set (the launcher maps it to
+`SELENIUM_REMOTE_URL` for the GATF server only — Playwright reserves `SELENIUM_REMOTE_URL` to route its
+*own* browser through a Grid, so don't set that one):
+
+```bash
+export GATF_SELENIUM_GRID=http://localhost:4444   # e.g. selenium/standalone-chrome
+cd e2e && npm test
+```
 
 ## 2. Recorder e2e — `tools/smoke/trace-e2e.sh` (Selenium-facing)
 Runs the full recorder suite against a real Selenium Grid over a live click, then validates the
