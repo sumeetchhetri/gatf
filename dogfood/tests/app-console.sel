@@ -1,0 +1,31 @@
+// ── Dogfood: GATF testing its own /app console ──────────────────
+// GATF drives its own embedded React console with seleasy — the "GATF tests its
+// own UI" showcase. Non-gating. Requires a running GATF /app server (see
+// dogfood/README.md) and a Selenium Grid (SELENIUM_REMOTE_URL).
+
+open chrome
+maximize
+
+config app.props             // -> ${appUrl}
+goto ${appUrl}
+
+// the console shell has loaded
+??10 css@".nav-brand"
+
+// Config tab -> the schema-driven config form renders
+??- xpath@"//button[normalize-space()='Config']" click
+??10 css@".sf"
+
+// Test Files tab -> the file view renders
+??- xpath@"//button[normalize-space()='Test Files']" click
+??10 css@".view"
+
+// Execute tab -> the Selenium/API mode toggle renders
+??- xpath@"//button[normalize-space()='Execute']" click
+??10 css@".seg"
+
+// Reports tab
+??- xpath@"//button[normalize-space()='Reports']" click
+??10 css@".view"
+
+close

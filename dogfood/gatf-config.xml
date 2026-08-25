@@ -1,0 +1,34 @@
+<!-- Dogfood config: adjust the two *BasePath values to your checkout's dogfood/ dir. -->
+<gatf-execute-config>
+  <testCasesBasePath>/path/to/gatf/dogfood</testCasesBasePath>
+  <testCaseDir>tests</testCaseDir>
+  <outFilesBasePath>/path/to/gatf/dogfood</outFilesBasePath>
+  <outFilesDir>out</outFilesDir>
+  <authEnabled>false</authEnabled>
+  <soapAuthEnabled>false</soapAuthEnabled>
+  <numConcurrentExecutions>1</numConcurrentExecutions>
+  <concurrentUserSimulationNum>0</concurrentUserSimulationNum>
+  <compareEnabled>false</compareEnabled>
+  <enableTrace>true</enableTrace>
+  <traceProtocol>cdp</traceProtocol>
+  <traceNetwork>true</traceNetwork>
+  <traceConsole>true</traceConsole>
+  <traceSnapshots>true</traceSnapshots>
+  <gatfTestDataConfig>
+    <globalVariables/>
+  </gatfTestDataConfig>
+  <enabled>true</enabled>
+  <loadTestingEnabled>false</loadTestingEnabled>
+  <isOrderByFileName>true</isOrderByFileName>
+  <isSeleniumExecutor>true</isSeleniumExecutor>
+  <seleniumDriverConfigs>
+    <seleniumDriverConfigs>
+      <name>chrome</name>
+      <driverName>webdriver.chrome.driver</driverName>
+      <path>chromedriver</path>
+      <capabilities/>
+      <properties/>
+    </seleniumDriverConfigs>
+  </seleniumDriverConfigs>
+  <autoPauseOnElNotFound>false</autoPauseOnElNotFound>
+</gatf-execute-config>

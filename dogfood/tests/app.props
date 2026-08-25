@@ -1,0 +1,2 @@
+# Dogfood variables. appUrl = a running GATF /app console (see dogfood/README.md).
+appUrl=http://localhost:9223/app/
