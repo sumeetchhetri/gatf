@@ -147,7 +147,6 @@ import com.jayway.jsonpath.JsonPath;
 import io.appium.java_client.AppiumDriver;
 import io.appium.java_client.android.AndroidDriver;
 import io.appium.java_client.ios.IOSDriver;
-import io.github.bonigarcia.wdm.WebDriverManager;
 import jakarta.xml.bind.DatatypeConverter;
 import net.sourceforge.tess4j.ITesseract;
 import net.sourceforge.tess4j.Tesseract1;
@@ -283,49 +282,52 @@ public abstract class SeleniumTest {
 			browserName= browserName.replaceFirst("-hdl", "");
 		}
 		
-		WebDriverManager wdm = null;
 		switch(browserName) {
-			case "chrome": {
-				wdm = WebDriverManager.chromedriver();
+			case "chrome": case "firefox": case "ie": case "edge": case "safari": case "opera":
 				break;
-			}
-			case "firefox": {
-				wdm = WebDriverManager.firefoxdriver();
-				break;
-			}
-			case "ie": {
-				wdm = WebDriverManager.iedriver();
-				break;
-			}
-			case "edge": {
-				wdm = WebDriverManager.edgedriver();
-				break;
-			}
-			case "safari": {
-				wdm = WebDriverManager.safaridriver();
-				break;
-			}
-			case "opera": {
-				wdm = WebDriverManager.operadriver();
-				break;
-			}
-			default: {
+			default:
 				throw new RuntimeException("Invalid browser name specified for browser");
-			}
 		}
-		
-		// External (official Selenium) Grid via SELENIUM_REMOTE_URL -> RemoteWebDriver; CDP resolves
-		// natively through the se:cdp capability. Otherwise a local driver. GATF manages no containers.
-		String __gridUrl = System.getenv("SELENIUM_REMOTE_URL");
-		if(__gridUrl != null && !__gridUrl.trim().isEmpty()) {
-			wdm.remoteAddress(__gridUrl.trim()).capabilities(capabilities);
-		}
-		state.wdmMgs.put(browserName, wdm);
+		// Store the built capabilities; the driver is created in getDockerDriver -- a Grid
+		// RemoteWebDriver when SELENIUM_REMOTE_URL is set, else a local driver whose driver AND browser
+		// (Chrome for Testing) Selenium Manager provisions on demand -- no docker, no manual setup.
+		state.driverCaps.put(browserName, capabilities);
 		return browserName;
 	}
 	
 	protected WebDriver getDockerDriver(String browserName) {
-		return state.wdmMgs.get(browserName).create();
+		org.openqa.selenium.Capabilities caps = state.driverCaps.get(browserName);
+		String __gridUrl = System.getenv("SELENIUM_REMOTE_URL");
+		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {
+			try {
+				return new RemoteWebDriver(new URL(__gridUrl.trim()), caps);
+			} catch (java.net.MalformedURLException e) {
+				throw new RuntimeException("Invalid SELENIUM_REMOTE_URL: " + __gridUrl, e);
+			}
+		}
+		// Local driver: Selenium Manager (built into Selenium 4.6+) auto-resolves the driver and
+		// downloads the browser (Chrome for Testing) when absent -- no docker, no manual setup.
+		switch (browserName) {
+			case "chrome": {
+				org.openqa.selenium.chrome.ChromeOptions __co = (org.openqa.selenium.chrome.ChromeOptions) caps;
+				// Optional local browser-binary override -- e.g. point GATF_CHROME_BINARY at a
+				// chrome-headless-shell binary for a ~150MB footprint. Selenium Manager cannot
+				// auto-download the shell yet, so fetch it (npx @puppeteer/browsers) and set this.
+				String __bin = System.getenv("GATF_CHROME_BINARY");
+				if (__bin != null && !__bin.trim().isEmpty()) __co.setBinary(__bin.trim());
+				return new org.openqa.selenium.chrome.ChromeDriver(__co);
+			}
+			case "firefox":
+				return new org.openqa.selenium.firefox.FirefoxDriver((org.openqa.selenium.firefox.FirefoxOptions) caps);
+			case "edge":
+				return new org.openqa.selenium.edge.EdgeDriver((org.openqa.selenium.edge.EdgeOptions) caps);
+			case "ie":
+				return new org.openqa.selenium.ie.InternetExplorerDriver((org.openqa.selenium.ie.InternetExplorerOptions) caps);
+			case "safari":
+				return new org.openqa.selenium.safari.SafariDriver((org.openqa.selenium.safari.SafariOptions) caps);
+			default:
+				throw new RuntimeException("Unsupported local browser: " + browserName);
+		}
 	}
 	
 	protected void __set__cln__(String line_) {
@@ -1058,9 +1060,6 @@ public abstract class SeleniumTest {
 	public void quitAll() {
 		for (SeleniumTestSession s : state.sessions) {
 			quit(s);
-		}
-		for(WebDriverManager wdm: state.wdmMgs.values()) {
-			wdm.quit();
 		}
 	}
 
@@ -4488,7 +4487,7 @@ public abstract class SeleniumTest {
 
 	public static class TestState {
 		private long timeoutSleepGranularity = 1000;
-		protected transient Map<String, WebDriverManager> wdmMgs = new ConcurrentHashMap<>();
+		protected transient Map<String, org.openqa.selenium.Capabilities> driverCaps = new ConcurrentHashMap<>();
 		protected transient Map<String, Boolean> wdmSessions = new ConcurrentHashMap<>();
 		List<SeleniumTestSession> sessions = new ArrayList<SeleniumTestSession>();
 		protected String cfileName;

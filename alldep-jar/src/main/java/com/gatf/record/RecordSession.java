@@ -25,7 +25,6 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chromium.HasCdp;
 
-import io.github.bonigarcia.wdm.WebDriverManager;
 
 /**
  * Phase 11 (record mode) — a live "infer a test case from user actions" recording session.
@@ -89,7 +88,7 @@ public class RecordSession {
     public String getError() { return error; }
 
     public synchronized void start() throws Exception {
-        driver = WebDriverManager.chromedriver().create(); // visible local Chrome
+        driver = new org.openqa.selenium.chrome.ChromeDriver(); // visible local Chrome (Selenium Manager provisions driver + browser)
         // install the recorder for every document (survives navigations), then load the start page
         ((HasCdp) driver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",
                 Collections.<String, Object>singletonMap("source", RECORDER_JS));
