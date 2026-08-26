@@ -37,7 +37,7 @@ interface TreeNode {
   children?: TreeNode[];
 }
 
-export default function TestFilesView() {
+export default function TestFilesView({ pendingOpen, onConsumePending }: { pendingOpen?: string; onConsumePending?: () => void } = {}) {
   const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +205,14 @@ export default function TestFilesView() {
         .catch((e) => patchTab(path, { loading: false, err: e.message }));
     }
   };
+
+  useEffect(() => {
+    if (!pendingOpen) return;
+    loadFiles();
+    openFile(pendingOpen);
+    onConsumePending?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOpen]);
 
   const closeTab = (path: string) => {
     const t = tabs.find((x) => x.path === path);

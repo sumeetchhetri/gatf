@@ -90,6 +90,7 @@ export default function Shell() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  const [pendingTestFile, setPendingTestFile] = useState<string | undefined>(undefined);
   const navigate = (v: ViewKey) => {
     if (window.location.hash !== TO_HASH[v]) window.location.hash = TO_HASH[v];
     setView(v);
@@ -98,6 +99,10 @@ export default function Shell() {
   const openTrace = (url: string) => {
     setPendingTrace(url);
     navigate('viewer');
+  };
+  const openTestFile = (path: string) => {
+    setPendingTestFile(path);
+    navigate('testfiles');
   };
   // open the trace viewer with no preloaded bundle (drag-and-drop a trace.zip); framed under Reports
   const openViewer = () => navigate('viewer');
@@ -143,12 +148,12 @@ export default function Shell() {
           />
         )}
         {view === 'config' && <ConfigView key={cfg} />}
-        {view === 'testfiles' && <TestFilesView key={cfg} />}
+        {view === 'testfiles' && <TestFilesView key={cfg} pendingOpen={pendingTestFile} onConsumePending={() => setPendingTestFile(undefined)} />}
         {view === 'execute' && <ExecuteView key={cfg} onOpenReports={() => navigate('reports')} />}
         {view === 'datasources' && <DataSourceStats key={cfg} />}
         {view === 'integrations' && <ExtApiConfig />}
         {view === 'import' && <ImportView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}
-        {view === 'record' && <RecordView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}
+        {view === 'record' && <RecordView key={cfg} onOpenInEditor={openTestFile} />}
       </div>
     </div>
   );

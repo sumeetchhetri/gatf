@@ -3,7 +3,7 @@ import { api } from '../api';
 
 type Phase = 'idle' | 'starting' | 'recording' | 'stopped' | 'saved';
 
-export default function RecordView({ onOpenTestFiles }: { onOpenTestFiles: () => void }) {
+export default function RecordView({ onOpenInEditor }: { onOpenInEditor: (path: string) => void }) {
   const [phase, setPhase] = useState<Phase>('idle');
   const [url, setUrl] = useState('https://');
   const [sid, setSid] = useState<string | null>(null);
@@ -91,6 +91,21 @@ export default function RecordView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     }
   };
 
+  const saveAndEdit = async () => {
+    if (!sid) return;
+    setBusy(true);
+    setErr(null);
+    try {
+      const r = await api.recordSave(sid, fileName.trim());
+      if (r.error) setErr(r.error);
+      else onOpenInEditor(r.savedPath || fileName.trim());
+    } catch (e) {
+      setErr(String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const reset = () => {
     stopPoll();
     setPhase('idle');
@@ -152,8 +167,11 @@ export default function RecordView({ onOpenTestFiles }: { onOpenTestFiles: () =>
               onChange={(e) => setFileName(e.target.value)}
               style={{ minWidth: 260 }}
             />
-            <button className="btn primary" disabled={busy || !fileName.trim()} onClick={save}>
-              {busy ? 'Saving…' : 'Save to test files'}
+            <button className="btn primary" disabled={busy || !fileName.trim()} onClick={saveAndEdit}>
+              {busy ? 'Saving…' : 'Save & open in editor'}
+            </button>
+            <button className="btn small" disabled={busy || !fileName.trim()} onClick={save}>
+              Save only
             </button>
             <button className="btn ghost small" disabled={busy} onClick={reset}>
               Record again
@@ -167,7 +185,7 @@ export default function RecordView({ onOpenTestFiles }: { onOpenTestFiles: () =>
       {phase === 'saved' && (
         <div className="import-saved">
           Saved <code>{saved}</code> to the test-case directory.{' '}
-          <button className="btn ghost small" onClick={onOpenTestFiles}>Open in Test Files →</button>
+          <button className="btn ghost small" onClick={() => onOpenInEditor(saved!)}>Open in editor →</button>
           <button className="btn ghost small" onClick={reset}>Record another</button>
         </div>
       )}

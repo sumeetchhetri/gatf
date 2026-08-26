@@ -28,7 +28,7 @@ command -v zip >/dev/null 2>&1 || { echo "error: 'zip' is not installed" >&2; ex
 # (top-level included). Keep each dir pattern on its own line for readability.
 EXCLUDES=(
   '*node_modules/*'                 # frontend deps (npm ci re-creates)
-  '*target/*'                       # Maven build output
+  '*target/*' 'artifacts/*'                       # Maven build output
   '*.mvn-node/*'                    # frontend-maven-plugin's node install (frontend/.mvn-node)
   '*/dist/*' 'dist/*'               # Vite build output
   '.git/*' '*/.git/*'               # git history
