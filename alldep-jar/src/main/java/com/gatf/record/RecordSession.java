@@ -38,8 +38,12 @@ import org.openqa.selenium.chromium.HasCdp;
  * The recorder JS captures click / submit / change(select,input,checkbox) and page navigations, computing
  * a robust selector (id → name → css → xpath) that maps straight onto seleasy's selector prefixes.
  *
- * CDP-only (Chrome) for now — {@code executeCdpCommand} is a Chromium capability. The action→seleasy
- * mapping is mirrored by tools/record/actions_to_seleasy.py, verified lint-clean.
+ * Pacing: every captured action carries a wall-clock stamp {@code t}; when the gap since the previous
+ * emitted action exceeds {@link #SLEEP_THRESHOLD_MS} a {@code sleep <ms>} line is emitted before it
+ * (seleasy sleep is milliseconds), rounded to 100 ms and capped at {@link #SLEEP_CAP_MS} so idle
+ * think-time doesn't become multi-minute waits.
+ *
+ * CDP-only (Chrome) for now — {@code executeCdpCommand} is a Chromium capability.
  */
 public class RecordSession {
 
@@ -57,7 +61,7 @@ public class RecordSession {
         + "  return{s:'xpath',v:xp(el)};"
         + "}"
         + "function xp(el){var p=[];while(el&&el.nodeType===1&&el!==document.documentElement){var i=1,s=el.previousElementSibling;while(s){if(s.tagName===el.tagName)i++;s=s.previousElementSibling;}p.unshift(el.tagName.toLowerCase()+'['+i+']');el=el.parentElement;}return'/html/'+p.join('/');}"
-        + "function push(a){try{window.__gatfRecord__.push(a);}catch(e){}}"
+        + "function push(a){try{a.t=Date.now();window.__gatfRecord__.push(a);}catch(e){}}"
         + "push({type:'goto',url:location.href});"
         + "document.addEventListener('click',function(e){var t=(e.target.closest&&e.target.closest('a,button,input[type=button],input[type=submit],[role=button],[onclick]'))||e.target;var sub=(t.type==='submit')||(t.tagName==='BUTTON'&&(!t.type||t.type==='submit'));if(sub&&t.form)return;var s=sel(t);if(s)push({type:'click',sel:s});},true);"
         + "document.addEventListener('submit',function(e){var s=sel(e.target);if(s)push({type:'submit',sel:s});},true);"
@@ -77,6 +81,10 @@ public class RecordSession {
     // emitted seleasy lines, in order (thread-safe: the poller writes, HTTP threads read)
     private final List<String> lines = new CopyOnWriteArrayList<String>();
     private String lastLine = null;
+    private long lastTs = -1;
+
+    static final long SLEEP_THRESHOLD_MS = 100;   // original FgRecorder threshold
+    static final long SLEEP_CAP_MS = 10000;
 
     public RecordSession(String id, String startUrl) {
         this.id = id;
@@ -112,7 +120,7 @@ public class RecordSession {
                 Object raw = ((JavascriptExecutor) driver).executeScript(DRAIN_JS);
                 if (raw instanceof List) {
                     for (Object o : (List<Object>) raw) {
-                        if (o instanceof Map) addLine(mapAction((Map<String, Object>) o));
+                        if (o instanceof Map) ingest((Map<String, Object>) o);
                     }
                 }
             } catch (org.openqa.selenium.WebDriverException nav) {
@@ -135,10 +143,21 @@ public class RecordSession {
         }
     }
 
-    private void addLine(String line) {
+    // map one captured action, emitting a pacing sleep before it when the gap warrants
+    synchronized void ingest(Map<String, Object> a) {
+        String line = mapAction(a);
         if (line == null) return;
         // collapse consecutive duplicates (e.g. repeated change events, re-emitted goto after re-injection)
         if (line.equals(lastLine)) return;
+        long ts = a.get("t") instanceof Number ? ((Number) a.get("t")).longValue() : -1;
+        if (ts > 0 && lastTs > 0) {
+            long gap = ts - lastTs;
+            if (gap > SLEEP_THRESHOLD_MS) {
+                long ms = Math.min(SLEEP_CAP_MS, Math.max(100, Math.round(gap / 100.0) * 100));
+                lines.add("sleep " + ms);
+            }
+        }
+        if (ts > 0) lastTs = ts;
         lines.add(line);
         lastLine = line;
     }
@@ -210,8 +229,8 @@ public class RecordSession {
                     for (Object o : (List<?>) raw) {
                         if (o instanceof Map) {
                             @SuppressWarnings("unchecked")
-                            String line = mapAction((Map<String, Object>) o);
-                            addLine(line);
+                            Map<String, Object> m = (Map<String, Object>) o;
+                            ingest(m);
                         }
                     }
                 }

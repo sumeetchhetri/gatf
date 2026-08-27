@@ -3,11 +3,8 @@
 BFS-walks a portal and emits a **starter seleasy suite** (a recorded-style walkthrough you then
 enrich with assertions) plus a **coverage map** (`crawl-coverage.json`) of every page/form/input seen.
 
-Two lock-step implementations share one emission contract (xpath + sample-by-type + fill rules):
-
-- **Java** — `com.gatf.crawler.PortalCrawler` (`+ CrawlSpec`). HTTP + lightweight HTML scan, no jsoup.
-- **Reference** — `tools/crawler/portal_crawler.py` (stdlib only). Used to lint-verify the emitted
-  grammar against `tools/smoke/sel-lint.py` without a JVM.
+Implementation: `com.gatf.crawler.PortalCrawler` (`+ CrawlSpec`) — HTTP + lightweight HTML scan, no
+jsoup. (The Python reference was retired in delta 074.)
 
 ## Emitted grammar (FgRecorder-compatible)
 
@@ -18,7 +15,7 @@ goto <url>
 type "value" xpath@"<xpath>"
 click xpath@"<xpath>"
 select index@N xpath@"<xpath>"
-sleep <seconds>
+sleep <milliseconds>
 ```
 
 XPath is id-first (`//*[@id='..']` → `//tag[@name='..']` → `//tag[contains(@class,'..')]` →
@@ -28,17 +25,11 @@ skipped). GET forms are submitted by default; POST forms only with `--submit-for
 
 ## Run
 
-Java:
 ```
 java -cp gatf.jar com.gatf.crawler.PortalCrawler \
   --seed http://host/ [--max-pages 25] [--max-depth 3] [--allow-off-origin] [--submit-forms] \
   [--login-url URL --username U --password P [--user-sel id@u --pass-sel id@p --submit-sel 'xpath@//button']] \
   [--out-dir DIR] [--suite-name crawl-suite]
-```
-
-Reference (same flags):
-```
-python3 tools/crawler/portal_crawler.py --seed http://host/ ...
 ```
 
 ## Credentialed crawl

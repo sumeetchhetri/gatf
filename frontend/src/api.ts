@@ -498,7 +498,8 @@ export interface ImportResultDto {
   kind: 'sel' | 'xml';
   content: string;
   unsupported: ImportUnsupported[];
-  stats: Record<string, number>;
+  stats: Record<string, number | string>;
+  loadConfig?: Record<string, number | boolean>; // JMeter: first ThreadGroup as gatf-config load keys
   saved?: boolean;
   savedPath?: string;
   validation?: string;

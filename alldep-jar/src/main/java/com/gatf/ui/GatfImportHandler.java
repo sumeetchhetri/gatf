@@ -111,6 +111,7 @@ public class GatfImportHandler extends HttpHandler {
             out.put("content", result.content);
             out.put("unsupported", result.unsupported);
             out.put("stats", result.stats);
+            if (result.loadConfig != null) out.put("loadConfig", result.loadConfig);
 
             if (save) {
                 GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));

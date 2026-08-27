@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { TestcaseFileEntry, ExecStatus, LoadStatEntry, LiveGStats } from '../api';
 import { fmtMs } from '../util';
+import { buildExecRows, visibleRows, dirState } from './execTree';
 
 type Mode = 'api' | 'sel';
 type RunState = 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'failed';
@@ -361,6 +362,30 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
 
   const selCount = visible.filter((f) => selected.has(f.path)).length;
 
+  // G6: folder rows — a folder checkbox (tri-state) selects/deselects every descendant file
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const rows = useMemo(() => buildExecRows(visible.map((f) => f.path)), [visible]);
+  const shownRows = useMemo(() => visibleRows(rows, collapsed), [rows, collapsed]);
+  const toggleDir = (files: string[]) =>
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (dirState(files, prev) === 'all') files.forEach((f) => next.delete(f));
+      else files.forEach((f) => next.add(f));
+      return next;
+    });
+  const toggleCollapse = (dir: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(dir)) next.delete(dir);
+      else next.add(dir);
+      return next;
+    });
+  const dirStatus = (files: string[]): FileStatus | undefined => {
+    const st = files.map((f) => fileStatus[f]).filter(Boolean);
+    if (st.length === 0) return undefined;
+    return st.includes('fail') ? 'fail' : st.includes('running') ? 'running' : st.length === files.length ? 'pass' : undefined;
+  };
+
   return (
     <div className="view">
       <div className="view-head">
@@ -432,20 +457,48 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
                   </tr>
                 </thead>
                 <tbody>
-                  {visible.map((f) => {
-                    const st = fileStatus[f.path];
+                  {shownRows.map((r) => {
+                    if (r.kind === 'dir') {
+                      const ds = dirState(r.files, selected);
+                      const dst = dirStatus(r.files);
+                      const open = !collapsed.has(r.path);
+                      return (
+                        <tr key={'d:' + r.path} className="exec-dir">
+                          <td className="exec-cb">
+                            <input
+                              type="checkbox"
+                              checked={ds === 'all'}
+                              ref={(el) => {
+                                if (el) el.indeterminate = ds === 'some';
+                              }}
+                              onChange={() => toggleDir(r.files)}
+                              disabled={busy}
+                              title={`Select all ${r.files.length} file(s) in ${r.path}`}
+                            />
+                          </td>
+                          <td className="mono ellipsis" style={{ maxWidth: 420, paddingLeft: 8 + r.depth * 16 }} title={r.path}>
+                            <button className="exec-twisty" onClick={() => toggleCollapse(r.path)} aria-expanded={open}>
+                              {open ? '\u25BE' : '\u25B8'}
+                            </button>
+                            {r.name}/ <span className="muted small">({r.files.length})</span>
+                          </td>
+                          <td className="exec-st">{dst && <span className={'rag rag-' + dst}>{dst}</span>}</td>
+                        </tr>
+                      );
+                    }
+                    const st = fileStatus[r.path];
                     return (
-                      <tr key={f.path}>
+                      <tr key={r.path}>
                         <td className="exec-cb">
                           <input
                             type="checkbox"
-                            checked={selected.has(f.path)}
-                            onChange={() => toggle(f.path)}
+                            checked={selected.has(r.path)}
+                            onChange={() => toggle(r.path)}
                             disabled={busy}
                           />
                         </td>
-                        <td className="mono ellipsis" style={{ maxWidth: 420 }} title={f.path}>
-                          {f.path}
+                        <td className="mono ellipsis" style={{ maxWidth: 420, paddingLeft: 8 + r.depth * 16 }} title={r.path}>
+                          {r.name}
                         </td>
                         <td className="exec-st">
                           {st && <span className={'rag rag-' + st}>{st === 'running' ? 'running' : st}</span>}

@@ -16,8 +16,7 @@
 package com.gatf.crawler;
 
 /**
- * Configuration for a {@link PortalCrawler} run. Mirrors the flags of the reference
- * implementation tools/crawler/portal_crawler.py.
+ * Configuration for a {@link PortalCrawler} run (CLI flags / JSON body).
  */
 public class CrawlSpec {
     private String seed;

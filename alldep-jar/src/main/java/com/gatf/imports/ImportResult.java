@@ -52,6 +52,8 @@ public class ImportResult {
     public String content;              // generated seleasy or XML (filled by the importer/handler)
     public List<Unsupported> unsupported = new ArrayList<Unsupported>();
     public Map<String, Object> stats = new LinkedHashMap<String, Object>();
+    // JMeter only: load settings from the first ThreadGroup, as GatfExecutorConfig keys (null if none)
+    public Map<String, Object> loadConfig;
 
     // JMeter only: the built cases; the handler serializes via WorkflowContextHandler.XOM for exact fidelity.
     @JsonIgnore

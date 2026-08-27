@@ -46,7 +46,11 @@ import com.gatf.executor.core.TestCase;
  *
  * The built TestCase list is serialized by the handler with WorkflowContextHandler.XOM — the very mapper
  * GATF uses to read/write test XML — so the output round-trips exactly and opens in the XML case editor.
- * The field mapping is mirrored by tools/imports/jmeter_to_gatf.py for verification.
+ * Scoping (JMeter tree semantics): disabled elements (and everything under them) are skipped;
+ * HeaderManagers on any ancestor level are inherited (nearest wins, sampler-level last); an
+ * HTTP Request Defaults (ConfigTestElement) in scope supplies the fallback baseUrl; GET form args are
+ * folded into the URL query. The first enabled ThreadGroup seeds {@link ImportResult#loadConfig}
+ * (GatfExecutorConfig keys) — GATF keeps load settings in gatf-config, not in the test file.
  */
 public class JMeterImporter {
 
@@ -73,6 +77,8 @@ public class JMeterImporter {
         int seq = 0, headerCount = 0, assertCount = 0, captureCount = 0;
         for (int i = 0; i < samplers.getLength(); i++) {
             Element sampler = (Element) samplers.item(i);
+            if (isDisabled(sampler)) { res.unsupported(0, "disabled sampler '" + attr(sampler, "testname") + "'", "skipped (enabled=false in the plan)"); continue; }
+            if (res.loadConfig == null) seedLoadConfig(sampler, res);
             TestCase tc = new TestCase();
             String name = attr(sampler, "testname");
             tc.setName(name.isEmpty() ? ("Request " + (seq + 1)) : name);
@@ -84,6 +90,15 @@ public class JMeterImporter {
             String path = childProp(sampler, "HTTPSampler.path");
             String method = childProp(sampler, "HTTPSampler.method");
             tc.setMethod(method.isEmpty() ? "GET" : method.toUpperCase(Locale.ROOT));
+            if (domain.isEmpty()) {
+                // HTTP Request Defaults in scope → fallback scheme/domain/port
+                Element def = inScopeDefaults(sampler);
+                if (def != null) {
+                    domain = childProp(def, "HTTPSampler.domain");
+                    if (protocol.isEmpty()) protocol = childProp(def, "HTTPSampler.protocol");
+                    if (port.isEmpty()) port = childProp(def, "HTTPSampler.port");
+                }
+            }
 
             if (!domain.isEmpty()) {
                 String scheme = protocol.isEmpty() ? "https" : protocol;
@@ -97,11 +112,18 @@ public class JMeterImporter {
 
             // body: raw post body, or reconstructed form/query args
             String body = extractBody(sampler);
+            boolean raw = "true".equalsIgnoreCase(childProp(sampler, "HTTPSampler.postBodyRaw"));
+            if (body != null && !body.isEmpty() && !raw && "GET".equals(tc.getMethod())) {
+                String u = tc.getUrl();
+                tc.setUrl(u + (u.indexOf('?') >= 0 ? "&" : "?") + body);   // GET args → query string
+                body = null;
+            }
             if (body != null && !body.isEmpty()) tc.setContent(body);
 
             // config from the sampler's following-sibling hashTree
             Element cfg = followingHashTree(sampler);
             Map<String, String> headers = new LinkedHashMap<String, String>();
+            headerCount += inheritedHeaders(sampler, headers);
             if (cfg != null) {
                 headerCount += collectHeaders(cfg, headers);
                 assertCount += applyAssertions(cfg, tc);
@@ -238,6 +260,94 @@ public class JMeterImporter {
         if (!caps.isEmpty()) tc.setWorkflowContextParameterMap(caps);
         return n;
     }
+
+    // ---- scope: ancestors, disabled, inherited config ---------------------------------------------
+
+    // The element owning a <hashTree> = its preceding element sibling (JMeter's Element/hashTree pairing).
+    private Element ownerOf(Element hashTree) {
+        Node n = hashTree.getPreviousSibling();
+        while (n != null && n.getNodeType() != Node.ELEMENT_NODE) n = n.getPreviousSibling();
+        return n == null ? null : (Element) n;
+    }
+
+    // Enclosing hashTrees of an element, nearest first.
+    private List<Element> ancestorTrees(Element el) {
+        List<Element> out = new ArrayList<Element>();
+        Node p = el.getParentNode();
+        while (p != null && p.getNodeType() == Node.ELEMENT_NODE) {
+            if (((Element) p).getTagName().equals("hashTree")) out.add((Element) p);
+            p = p.getParentNode();
+        }
+        return out;
+    }
+
+    private boolean isDisabled(Element el) {
+        if ("false".equalsIgnoreCase(el.getAttribute("enabled"))) return true;
+        for (Element t : ancestorTrees(el)) {
+            Element o = ownerOf(t);
+            if (o != null && "false".equalsIgnoreCase(o.getAttribute("enabled"))) return true;
+        }
+        return false;
+    }
+
+    // HeaderManagers that are direct children of ancestor hashTrees (outermost applied first → nearest wins).
+    private int inheritedHeaders(Element sampler, Map<String, String> headers) {
+        List<Element> trees = ancestorTrees(sampler);
+        int n = 0;
+        for (int i = trees.size() - 1; i >= 0; i--) {
+            for (Element hm : childrenByTag(trees.get(i), "HeaderManager")) {
+                if ("false".equalsIgnoreCase(hm.getAttribute("enabled"))) continue;
+                Element coll = firstChildByTag(hm, "collectionProp");
+                if (coll == null) continue;
+                for (Element e : childrenByTag(coll, "elementProp")) {
+                    String name = propOf(e, "Header.name");
+                    if (name != null && !name.isEmpty()) { headers.put(name, nz(propOf(e, "Header.value"))); n++; }
+                }
+            }
+        }
+        return n;
+    }
+
+    // Nearest enabled HTTP Request Defaults (ConfigTestElement carrying an HTTPSampler.domain) in scope.
+    private Element inScopeDefaults(Element sampler) {
+        for (Element t : ancestorTrees(sampler)) {
+            for (Element c : childrenByTag(t, "ConfigTestElement")) {
+                if ("false".equalsIgnoreCase(c.getAttribute("enabled"))) continue;
+                if (!childProp(c, "HTTPSampler.domain").isEmpty()) return c;
+            }
+        }
+        return null;
+    }
+
+    // First enabled ThreadGroup enclosing a sampler → GatfExecutorConfig load keys (ms). GATF only
+    // load-tests when loadTestingTime > 10000 ms, so a loop-count plan is seeded with 30 s.
+    private void seedLoadConfig(Element sampler, ImportResult res) {
+        for (Element t : ancestorTrees(sampler)) {
+            Element o = ownerOf(t);
+            if (o == null || !o.getTagName().endsWith("ThreadGroup")) continue;
+            int threads = toInt(childProp(o, "ThreadGroup.num_threads"), 1);
+            long rampMs = toInt(childProp(o, "ThreadGroup.ramp_time"), 0) * 1000L;
+            long durMs = toInt(childProp(o, "ThreadGroup.duration"), 0) * 1000L;
+            long loadMs = durMs > 10000 ? durMs : 30000L;
+            Map<String, Object> lc = new LinkedHashMap<String, Object>();
+            lc.put("loadTestingEnabled", Boolean.TRUE);
+            lc.put("concurrentUserSimulationNum", threads);
+            lc.put("concurrentUserRampUpTime", rampMs);
+            lc.put("loadTestingTime", loadMs);
+            res.loadConfig = lc;
+            res.stat("threadGroup", attr(o, "testname") + " (threads=" + threads + ", rampUp=" + rampMs + "ms, time=" + loadMs + "ms)");
+            res.unsupported(0, "ThreadGroup '" + attr(o, "testname") + "'",
+                    "load settings go in gatf-config (see loadConfig): concurrentUserSimulationNum=" + threads
+                            + ", concurrentUserRampUpTime=" + rampMs + ", loadTestingTime=" + loadMs);
+            return;
+        }
+    }
+
+    private static int toInt(String v, int d) {
+        try { return Integer.parseInt(v.trim()); } catch (Exception e) { return d; }
+    }
+
+    private static String nz(String v) { return v == null ? "" : v; }
 
     // ---- advisories ------------------------------------------------------------------------------
 

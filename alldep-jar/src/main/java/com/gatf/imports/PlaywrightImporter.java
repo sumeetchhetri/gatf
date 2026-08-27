@@ -33,8 +33,10 @@ import java.util.regex.Pattern;
  * Selector mapping uses GATF's own selector prefixes (id@/css@/xpath@/text@/name@/class@ — the set the
  * Command.java resolver accepts). Playwright's default CSS selectors map directly to css@.
  *
- * The Java mapping is mirrored by tools/imports/playwright_to_seleasy.py, whose output is verified
- * lint-clean against tools/smoke/sel-lint.py.
+ * Hooks: test.beforeEach / afterEach bodies are inlined at the start / end of every test's subtest
+ * (reproducing per-test setup); test.beforeAll / afterAll become a first / last subtest.
+ *
+ * Note: seleasy {@code sleep} is in MILLISECONDS (Command.SleepCommand → Thread.sleep(ms)).
  */
 public class PlaywrightImporter {
 
@@ -48,6 +50,9 @@ public class PlaywrightImporter {
             "(?:await\\s+)?page\\s*\\.\\s*locator\\s*\\(\\s*([\"'`])(.*?)\\1\\s*\\)\\s*\\.\\s*([a-zA-Z]+)\\s*\\(");
     private static final Pattern GETBY = Pattern.compile(
             "(?:await\\s+)?page\\s*\\.\\s*(getBy[A-Za-z]+)\\s*\\(\\s*([\"'`])(.*?)\\2");
+    // test.beforeEach / afterEach / beforeAll / afterAll hooks (also on test.describe-scoped `test`)
+    private static final Pattern HOOK = Pattern.compile(
+            "\\btest\\s*\\.\\s*(beforeEach|afterEach|beforeAll|afterAll)\\s*\\(");
     private static final Pattern EXPECT = Pattern.compile(
             "(?:await\\s+)?expect\\s*\\(\\s*(.*?)\\s*\\)\\s*\\.\\s*(?:not\\.)?([a-zA-Z]+)\\s*\\(");
 
@@ -77,12 +82,31 @@ public class PlaywrightImporter {
             testNames.add(tm.group(2));
         }
 
-        if (testSpans.isEmpty()) {
+        // hooks — translated once, inlined per test (Each) or emitted as their own subtest (All)
+        StringBuilder beforeEach = new StringBuilder(), afterEach = new StringBuilder();
+        StringBuilder beforeAll = new StringBuilder(), afterAll = new StringBuilder();
+        int hooks = 0;
+        Matcher hm = HOOK.matcher(src);
+        while (hm.find()) {
+            int arrow = src.indexOf("=>", hm.end());
+            int bodyStart = src.indexOf('{', arrow >= 0 ? arrow : hm.end());
+            if (bodyStart < 0) continue;
+            int bodyEnd = matchBrace(src, bodyStart);
+            String kind = hm.group(1);
+            StringBuilder dst = kind.equals("beforeEach") ? beforeEach : kind.equals("afterEach") ? afterEach
+                    : kind.equals("beforeAll") ? beforeAll : afterAll;
+            actions += translateBody(src.substring(bodyStart + 1, Math.max(bodyStart + 1, bodyEnd)),
+                    lineNumberAt(src, bodyStart + 1), dst, res);
+            hooks++;
+        }
+
+        if (testSpans.isEmpty() && hooks == 0) {
             // No test() wrapper — translate the whole file as one subtest.
             testSpans.add(new int[] { 0, src.length() });
             testNames.add(suiteName);
         }
 
+        if (beforeAll.length() > 0) out.append("subtest \"beforeAll\"\n{\n").append(beforeAll).append("}\n\n");
         for (int i = 0; i < testSpans.size(); i++) {
             tests++;
             String name = testNames.get(i).trim();
@@ -90,13 +114,17 @@ public class PlaywrightImporter {
             out.append("subtest \"").append(escSel(name)).append("\"\n{\n");
             String body = src.substring(testSpans.get(i)[0], Math.max(testSpans.get(i)[0], testSpans.get(i)[1]));
             int lineBase = lineNumberAt(src, testSpans.get(i)[0]);
+            out.append(beforeEach);
             actions += translateBody(body, lineBase, out, res);
+            out.append(afterEach);
             out.append("}\n\n");
         }
+        if (afterAll.length() > 0) out.append("subtest \"afterAll\"\n{\n").append(afterAll).append("}\n\n");
 
         res.content = out.toString();
         res.stat("tests", tests);
         res.stat("actions", actions);
+        res.stat("hooks", hooks);
         res.stat("unsupported", res.unsupported.size());
         return res;
     }
@@ -111,6 +139,15 @@ public class PlaywrightImporter {
             int lineNo = lineBase; // approximate — per-statement line within the body is not tracked precisely
             String sel = null;
 
+            // expect(...) first — its subject may itself contain page.getBy*/locator(...)
+            if (s.matches("^(?:await\\s+)?expect\\s*\\(.*")) {
+                Matcher em0 = EXPECT.matcher(s);
+                if (em0.find()) {
+                    String line = emitExpect(em0.group(1), em0.group(2).toLowerCase(Locale.ROOT), argsAfter(s, em0.end() - 1), s, lineNo, res);
+                    if (line != null) { out.append("  ").append(line).append("\n"); actions++; }
+                    continue;
+                }
+            }
             // page.locator('x').action(args)
             Matcher lm = LOCATOR_CALL.matcher(s);
             if (lm.find()) {
@@ -156,7 +193,12 @@ public class PlaywrightImporter {
                 }
                 if (method.equals("waitfortimeout")) {
                     long ms = parseLong(a.isEmpty() ? "0" : a.get(0), 0);
-                    out.append("  sleep ").append(Math.max(1, Math.round(ms / 1000.0))).append("\n"); actions++;
+                    out.append("  sleep ").append(Math.max(1, ms)).append("\n"); actions++; // seleasy sleep = ms
+                    continue;
+                }
+                if (method.equals("goback") || method.equals("goforward") || method.equals("reload")) {
+                    out.append("  ").append(method.equals("goback") ? "back" : method.equals("goforward") ? "forward" : "refresh")
+                            .append("\n"); actions++;
                     continue;
                 }
                 if (method.equals("waitforselector") || method.equals("waitfor")) {
@@ -164,7 +206,7 @@ public class PlaywrightImporter {
                     continue;
                 }
                 if (method.equals("waitforloadstate") || method.equals("waitfornavigation")) {
-                    out.append("  sleep 1\n"); actions++;
+                    out.append("  sleep 1000\n"); actions++; // ms
                     continue;
                 }
                 // page.click/fill/type/selectOption/check/hover/... with a selector as arg 0
@@ -231,9 +273,19 @@ public class PlaywrightImporter {
         if (matcher.equals("tobevisible") || matcher.equals("tobeattached") || matcher.equals("tobeenabled")) {
             return sel != null ? "??+ " + sel : reportExpect(subject, matcher, lineNo, res);
         }
+        if (matcher.equals("tohavetext") && sel != null && !a.isEmpty()) {
+            return "?? " + sel + " text =\"" + escSel(unquote(a.get(0))) + "\"";   // exact text of the subject
+        }
         if (matcher.equals("tohavetext") || matcher.equals("tocontaintext")) {
             String t = a.isEmpty() ? "" : unquote(a.get(0));
             return "??+ text@\"" + escSel(t) + "\"";
+        }
+        if (matcher.equals("tohavevalue") && sel != null) {
+            String v = a.isEmpty() ? "" : unquote(a.get(0));
+            return "?? " + sel + " attr@value =\"" + escSel(v) + "\"";              // getAttribute("value") = live value
+        }
+        if (matcher.equals("tobechecked") && sel != null) {
+            return "?? " + sel + " attr@checked =\"true\"";
         }
         if (matcher.equals("tobehidden") || matcher.equals("tobedisabled")) {
             return sel != null ? "??- " + sel : reportExpect(subject, matcher, lineNo, res);

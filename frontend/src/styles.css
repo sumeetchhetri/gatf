@@ -770,3 +770,7 @@ select.sf-input { max-width: none; }
 .api-result-status { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
 .tce-play { border: 1px solid var(--border); border-radius: var(--r-2); background: var(--panel2); padding: 10px 12px; margin: 10px 0; }
 .tce-play-bar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+
+/* G6 folder execution rows */
+.exec-dir td { background: rgba(127,127,127,.06); font-weight: 600; }
+.exec-twisty { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px 0 0; font: inherit; }

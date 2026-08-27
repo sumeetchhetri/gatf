@@ -150,6 +150,12 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
             <div className="muted small" style={{ marginBottom: 6 }}>parse-check: {result.validation}</div>
           )}
 
+          {result.loadConfig && (
+            <div className="muted small" style={{ marginBottom: 6 }}>
+              load settings for gatf-config: <code>{JSON.stringify(result.loadConfig)}</code>
+            </div>
+          )}
+
           {result.unsupported && result.unsupported.length > 0 && (
             <div className="import-unsupported">
               <div className="import-unsupported-title">

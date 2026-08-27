@@ -39,13 +39,12 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * Phase 12 — credentialed/uncredentialed portal crawler that BFS-walks a web portal and emits a
- * starter seleasy suite plus a coverage map. This is the Java counterpart of the verified reference
- * implementation tools/crawler/portal_crawler.py; the two are kept in lock-step so the emitted
- * grammar stays lint-clean against tools/smoke/sel-lint.py.
+ * starter seleasy suite plus a coverage map. The emitted grammar is lint-clean against
+ * tools/smoke/sel-lint.py and parse-validates via Command.validateSel.
  *
  * The emitted grammar is exactly the FgRecorder grammar (the recorder shipped with GATF):
  *   open chrome / maximize / goto &lt;url&gt; / type "v" xpath@"&lt;xpath&gt;" /
- *   click xpath@"&lt;xpath&gt;" / select index@N xpath@"&lt;xpath&gt;" / sleep &lt;seconds&gt;
+ *   click xpath@"&lt;xpath&gt;" / select index@N xpath@"&lt;xpath&gt;" / sleep &lt;milliseconds&gt;
  * so a generated suite reads like a recorded walkthrough that the user then enriches with assertions.
  *
  * HTML is scanned with lightweight regexes (no jsoup dependency) — adequate for a starter suite. For
@@ -138,7 +137,7 @@ public class PortalCrawler {
         // Submit GET forms by default (non-mutating searches/filters); POST needs submitForms.
         if (submit != null && (submitForms || form.method.equals("get"))) {
             out.add("click xpath@\"" + xpathFor(submit) + "\"");
-            out.add("sleep 1");
+            out.add("sleep 1000"); // seleasy sleep = ms
             submitEmitted = 1;
         }
         return new int[] { filled, submitEmitted };
@@ -330,7 +329,7 @@ public class PortalCrawler {
                 sb.append("type \"").append(spec.getPassword()).append("\" ").append(passSel).append("\n");
                 if (submitSel != null) sb.append("click ").append(submitSel).append("\n");
             }
-            sb.append("sleep 2\n\n");
+            sb.append("sleep 2000\n\n");
         }
 
         int idx = 0;
@@ -339,7 +338,7 @@ public class PortalCrawler {
             if (pg.status == 0) continue;
             sb.append("// page ").append(idx).append(": ").append(pg.url);
             if (pg.title != null) sb.append(" — ").append(pg.title);
-            sb.append("\n").append("goto ").append(pg.url).append("\n").append("sleep 1\n");
+            sb.append("\n").append("goto ").append(pg.url).append("\n").append("sleep 1000\n");
             for (Form form : pg.forms) {
                 List<String> lines = new ArrayList<String>();
                 int[] r = fillLinesForForm(form, spec.isSubmitForms(), lines);

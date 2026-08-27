@@ -21,10 +21,9 @@ parse-validated (`Command.validateSel`) and the result returned.
 
 Java: `com.gatf.imports.{PlaywrightImporter,JMeterImporter,ImportResult}` + handler
 `com.gatf.ui.GatfImportHandler`. Both importers are **best-effort** — constructs with no GATF
-equivalent are reported (never dropped silently). The mappings are mirrored by the stdlib references
-`tools/imports/playwright_to_seleasy.py` and `tools/imports/jmeter_to_gatf.py`, which are used to
-verify the output (seleasy lint-clean against `tools/smoke/sel-lint.py`; XML well-formed + field
-mapping correct) without a JVM.
+equivalent are reported (never dropped silently). Covered by `ImportersTest` (JUnit) against the
+fixtures in `alldep-jar/src/test/resources/imports/`. (The earlier Python references were retired in
+delta 074.)
 
 ## Playwright → seleasy
 
@@ -41,15 +40,22 @@ Each `test('name', …)` becomes a file-scope `subtest "name" { … }` (auto-run
 | `page.selectOption(sel, v)` | `select value@"v" <sel>` (`{label}`→text@, `{index}`→index@) |
 | `page.press(sel, key)` | `sendkeys "key" <sel>` |
 | `page.setInputFiles(sel, file)` | `upload "file" <sel>` |
-| `page.waitForTimeout(ms)` | `sleep <s>` (ms/1000) |
+| `page.waitForTimeout(ms)` | `sleep <ms>` (seleasy sleep is milliseconds) |
+| `page.goBack/goForward/reload()` | `back` / `forward` / `refresh` |
 | `page.waitForSelector(sel)` | `??+ <sel>` |
 | `expect(loc).toBeVisible()` | `??+ <sel>` |
-| `expect(loc).toHaveText/toContainText(t)` | `??+ text@"t"` |
+| `expect(loc).toHaveText(t)` | `?? <sel> text ="t"` |
+| `expect(loc).toContainText(t)` | `??+ text@"t"` |
+| `expect(loc).toHaveValue(v)` | `?? <sel> attr@value ="v"` |
+| `expect(loc).toBeChecked()` | `?? <sel> attr@checked ="true"` |
 | `expect(loc).toBeHidden()` | `??- <sel>` |
+
+Hooks: `test.beforeEach/afterEach` are inlined at the start/end of every test's subtest;
+`test.beforeAll/afterAll` become a first/last subtest.
 
 Selectors: `#id`→`id@`, CSS→`css@`, `text=`/`getByText`→`text@`, `xpath=`/`//…`→`xpath@`,
 `getByRole/Label/Placeholder/TestId`→best-effort `xpath@`. Not translated (reported): `toHaveURL`,
-`toHaveTitle`, `toHaveValue`, `toHaveCount`, arbitrary JS in the test body.
+`toHaveTitle`, `toHaveCount`, arbitrary JS in the test body. One action per source line.
 
 ## JMeter → GATF API test case
 
@@ -57,15 +63,19 @@ Each `HTTPSamplerProxy` → a `<TestCase>`.
 
 | JMeter | GATF TestCase |
 |---|---|
-| protocol + domain + port | `baseUrl` |
-| path | `url` |
+| protocol + domain + port (else in-scope HTTP Request Defaults) | `baseUrl` |
+| path (+ GET form args as query) | `url` |
 | method | `method` |
 | raw post body / form args | `content` |
-| sibling `HeaderManager` | `headers` |
+| `HeaderManager` at any enclosing level + sibling (nearest wins) | `headers` |
 | `ResponseAssertion` (response_code) | `expectedResCode` |
 | `ResponseAssertion` (response_data/substring) | `expectedNodes` |
 | `JSONPostProcessor` / `RegexExtractor` | `workflowContextParameterMap` (captures) |
 
+Disabled elements (and everything under them) are skipped and reported. The first enabled Thread
+Group is returned as `loadConfig` — `{loadTestingEnabled, concurrentUserSimulationNum,
+concurrentUserRampUpTime(ms), loadTestingTime(ms)}` to paste into gatf-config (duration < 10 s ⇒ 30 s,
+since GATF only load-tests above 10 s).
+
 `${var}` passes through unchanged (JMeter and GATF share the syntax). Reported (no direct mapping):
-script samplers (JSR223/BeanShell), controllers (If/Loop/ForEach), CSV Data Sets, timers, thread-group
-ramp settings; user-defined variables are noted for moving into `gatf-config` globalVariables.
+script samplers (JSR223/BeanShell), controllers (If/Loop/ForEach), CSV Data Sets, timers; user-defined variables are noted for moving into `gatf-config` globalVariables.
