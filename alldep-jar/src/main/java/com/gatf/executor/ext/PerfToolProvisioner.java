@@ -23,6 +23,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,23 +50,40 @@ import com.gatf.executor.core.GatfExecutorConfig;
  *
  * Cache dir: -Dgatf.tools.dir, else $GATF_TOOLS_DIR, else ~/.gatf/tools/&lt;os&gt;-&lt;arch&gt;.
  *
+ * delta-077 policy — least resistance per OS, host binaries first:
+ *   vegeta, autocannon  DEFAULT engines, auto-set-up on every OS (vegeta: official release binary;
+ *                       autocannon: host node, else a portable Node LTS from nodejs.org, SHA-256 checked).
+ *   wrk, wrk2           configured path → cache → PATH (brew/apt) → `docker exec` into the gatf-loadgen
+ *                       container wherever Docker is running ({@link DockerLoadgen}) → otherwise the test
+ *                       FALLS BACK to vegeta with an explicit reduced-capability notice. GATF no longer
+ *                       builds wrk/wrk2 from source.
+ * Use {@link #command} (full launch prefix) rather than {@link #resolve} (single path, legacy).
+ *
  * Per-tool download strategy (verified asset naming):
  *   vegeta     — GitHub release binary. unix: vegeta_&lt;ver&gt;_&lt;os&gt;_&lt;arch&gt;.tar.gz ;
  *                windows: vegeta_&lt;ver&gt;_windows_&lt;arch&gt;.zip . os=linux|darwin, arch=amd64|arm64.
  *   autocannon — Node CLI. `npm i --prefix &lt;cache&gt;/autocannon autocannon@&lt;ver&gt;` →
  *                &lt;cache&gt;/autocannon/node_modules/.bin/autocannon(.cmd). Requires node+npm on PATH.
- *   wrk / wrk2 — C programs with NO official cross-platform prebuilt binaries. We (a) use PATH,
- *                (b) build from source on macOS/Linux when a C toolchain (make + cc) is present,
- *                (c) return null on Windows (unsupported natively — run under WSL, or use
- *                vegeta/autocannon which ARE auto-provisioned on Windows).
+ *   wrk / wrk2 — no official prebuilt binaries and no native Windows port: host install or Docker only.
+ *   node       — portable nodejs.org build (tar.gz / win zip) + SHASUMS256.txt verification.
  *
  * Versions are pinned but overridable: -Dgatf.vegeta.version (default 12.12.0),
- * -Dgatf.autocannon.version (default 7).
+ * -Dgatf.autocannon.version (default 7), -Dgatf.node.version (exact; default newest LTS in
+ * <base>/index.json), -Dgatf.node.baseUrl (mirror / air-gapped; default https://nodejs.org/dist).
+ *
+ * Integrity (delta-076): downloads land in a temp file and are renamed into place only when
+ * complete; vegeta archives are verified against the release's SHA-256 checksums file (mismatch
+ * aborts); first-use provisioning is serialized per tool (concurrent tests no longer race the same
+ * download).
  */
 public class PerfToolProvisioner {
 
     private static final String DEFAULT_VEGETA_VERSION = "12.12.0";
     private static final String DEFAULT_AUTOCANNON_VERSION = "7";
+    private static final String DEFAULT_NODE_BASE = "https://nodejs.org/dist";
+
+    // one lock per tool: first-use download/build is serialized across concurrent test threads
+    private static final Map<String, Object> LOCKS = new ConcurrentHashMap<String, Object>();
 
     // resolved-path cache so we don't re-probe / re-download within a JVM run
     private static final Map<String, String> RESOLVED = new ConcurrentHashMap<String, String>();
@@ -90,12 +108,19 @@ public class PerfToolProvisioner {
         if (isRunnableFile(cached)) return cached;
 
         String resolved = null;
-        try {
-            resolved = provision(key);
-        } catch (Throwable t) {
-            System.err.println("[gatf] could not provision '" + key + "': " + t.getMessage());
+        synchronized (LOCKS.computeIfAbsent(key, k -> new Object())) {
+            cached = RESOLVED.get(key);
+            if (isRunnableFile(cached)) return cached; // another thread provisioned it while we waited
+            try {
+                resolved = provision(key);
+            } catch (Throwable t) {
+                System.err.println("[gatf] could not provision '" + key + "': " + t.getMessage());
+            }
+            if (resolved != null) RESOLVED.put(key, resolved);
         }
-        if (resolved != null) RESOLVED.put(key, resolved);
+        if (resolved == null && !"wrk".equals(key) && !"wrk2".equals(key)) { // wrk/wrk2 → docker / vegeta (see command())
+            System.err.println("[gatf] '" + key + "' is unavailable — falling back to the bare command name (PATH lookup at run time).");
+        }
         // fall back to the bare tool name — lets ProcessBuilder find it on PATH even if our probe missed,
         // preserving the pre-provisioner behaviour rather than hard-failing.
         return resolved != null ? resolved : (configured != null ? configured : key);
@@ -112,9 +137,9 @@ public class PerfToolProvisioner {
 
         // 4. download / install
         if ("vegeta".equals(key)) return provisionVegeta();
-        if ("autocannon".equals(key)) return provisionAutocannon();
-        if ("wrk".equals(key) || "wrk2".equals(key)) return provisionWrk(key);
-        return null;
+        if ("autocannon".equals(key)) return null; // node-hosted: use command("autocannon")
+        if ("node".equals(key)) return provisionNode();
+        return null; // wrk / wrk2: host install or Docker only (see command())
     }
 
     // ---------------------------------------------------------------- vegeta
@@ -133,6 +158,7 @@ public class PerfToolProvisioner {
         dir.mkdirs();
         File archive = new File(dir, asset);
         download(url, archive);
+        verifyVegeta(ver, asset, archive);
 
         File bin = new File(dir, exeName("vegeta"));
         if (win) {
@@ -151,6 +177,45 @@ public class PerfToolProvisioner {
         return bin.getAbsolutePath();
     }
 
+    // SHA-256 against the release's vegeta_<ver>_checksums.txt. A mismatch aborts (tampered/corrupt);
+    // an unreachable checksums file only warns (e.g. a mirror without it).
+    private static void verifyVegeta(String ver, String asset, File archive) throws Exception {
+        File sums = new File(archive.getParentFile(), "vegeta_" + ver + "_checksums.txt");
+        try {
+            download("https://github.com/tsenart/vegeta/releases/download/v" + ver + "/" + sums.getName(), sums);
+        } catch (Exception e) {
+            System.err.println("[gatf] WARNING: could not fetch vegeta checksums (" + e.getMessage() + ") — archive not verified");
+            return;
+        }
+        try {
+            String expected = null;
+            for (String line : new String(java.nio.file.Files.readAllBytes(sums.toPath()), "UTF-8").split("\\r?\\n")) {
+                String[] f = line.trim().split("\\s+");
+                if (f.length == 2 && f[1].equals(asset)) expected = f[0].toLowerCase(Locale.ROOT);
+            }
+            if (expected == null) throw new IllegalStateException(asset + " not listed in " + sums.getName());
+            String actual = sha256(archive);
+            if (!expected.equals(actual)) {
+                archive.delete();
+                throw new IllegalStateException("SHA-256 mismatch for " + asset + " (expected " + expected + ", got " + actual + ")");
+            }
+        } finally {
+            sums.delete();
+        }
+    }
+
+    static String sha256(File f) throws Exception {
+        java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+        try (InputStream in = new java.io.FileInputStream(f)) {
+            byte[] buf = new byte[65536];
+            int n;
+            while ((n = in.read(buf)) > 0) md.update(buf, 0, n);
+        }
+        StringBuilder sb = new StringBuilder();
+        for (byte b : md.digest()) sb.append(String.format("%02x", b));
+        return sb.toString();
+    }
+
     private static String vegetaOs() {
         if (SystemUtils.IS_OS_WINDOWS) return "windows";
         if (SystemUtils.IS_OS_MAC) return "darwin";
@@ -163,84 +228,148 @@ public class PerfToolProvisioner {
         return "amd64";
     }
 
-    // ---------------------------------------------------------------- autocannon
+    // ---------------------------------------------------------------- command() — full launch prefix
 
-    private static String provisionAutocannon() throws Exception {
-        String npm = findOnPath(SystemUtils.IS_OS_WINDOWS ? "npm.cmd" : "npm");
-        if (npm == null) npm = findOnPath("npm");
-        if (npm == null) {
-            System.err.println("[gatf] autocannon needs Node.js/npm on PATH — install Node or set autocannonPath.");
+    /**
+     * Launch prefix for a tool, or null when it cannot be run here (wrk/wrk2 → caller falls back to vegeta).
+     *   vegeta     → [vegeta]
+     *   autocannon → [autocannonPath] | [node, &lt;cache&gt;/autocannon/node_modules/autocannon/autocannon.js]
+     *   wrk, wrk2  → [path] (configured / cache / PATH) | [docker, exec, -i, &lt;container&gt;, wrk] | null
+     */
+    public static List<String> command(String tool, GatfExecutorConfig cfg) {
+        String key = tool == null ? "" : tool.trim().toLowerCase(Locale.ROOT);
+        if ("vegeta".equals(key)) {
+            String p = resolve("vegeta", cfg);
+            return isRunnableFile(p) || onPath("vegeta") ? Arrays.asList(p) : null;
+        }
+        if ("autocannon".equals(key)) {
+            String configured = cfg == null ? null : cfg.getAutocannonPath();
+            if (isRunnableFile(configured)) return Arrays.asList(configured);
+            try {
+                return autocannonCommand(cfg);
+            } catch (Exception e) {
+                System.err.println("[gatf] autocannon unavailable: " + e.getMessage());
+                return null;
+            }
+        }
+        if ("wrk".equals(key) || "wrk2".equals(key)) {
+            String p = resolve(key, cfg); // configured → cache → PATH (never downloads/builds)
+            if (isRunnableFile(p)) return Arrays.asList(p);
+            List<String> d = DockerLoadgen.execPrefix(key, cfg);
+            if (d != null) return d;
             return null;
         }
-        File dir = toolDir("autocannon");
-        dir.mkdirs();
-        File bin = autocannonBin(dir);
-        if (bin.exists()) return bin.getAbsolutePath();
-
-        String ver = prop("gatf.autocannon.version", DEFAULT_AUTOCANNON_VERSION);
-        int rc = run(dir, Arrays.asList(npm, "i", "--prefix", dir.getAbsolutePath(), "autocannon@" + ver));
-        if (rc != 0 || !bin.exists()) {
-            System.err.println("[gatf] `npm i autocannon` failed (rc=" + rc + ") in " + dir);
-            return null;
-        }
-        makeExecutable(bin);
-        return bin.getAbsolutePath();
+        String p = resolve(key, cfg);
+        return p == null ? null : Arrays.asList(p);
     }
 
-    private static File autocannonBin(File prefix) {
-        // npm puts CLIs under <prefix>/node_modules/.bin (bare) or, on Windows, <prefix> too
-        File binDir = new File(new File(prefix, "node_modules"), ".bin");
-        String name = SystemUtils.IS_OS_WINDOWS ? "autocannon.cmd" : "autocannon";
-        return new File(binDir, name);
+    // node (configured nodePath → PATH → portable) + autocannon installed into the cache with that node's npm
+    private static List<String> autocannonCommand(GatfExecutorConfig cfg) throws Exception {
+        synchronized (LOCKS.computeIfAbsent("autocannon", k -> new Object())) {
+            String node = cfg != null && isRunnableFile(cfg.getNodePath()) ? cfg.getNodePath() : null;
+            if (node == null) node = findOnPath(exeName("node"));
+            if (node == null) node = findOnPath("node");
+            if (node == null) node = provisionNode();
+            File dir = toolDir("autocannon");
+            dir.mkdirs();
+            File js = new File(new File(new File(dir, "node_modules"), "autocannon"), "autocannon.js");
+            if (!js.isFile()) {
+                File npmCli = npmCliFor(new File(node));
+                if (npmCli == null) throw new IllegalStateException("npm not found next to " + node);
+                String ver = prop("gatf.autocannon.version", DEFAULT_AUTOCANNON_VERSION);
+                int rc = run(dir, Arrays.asList(node, npmCli.getAbsolutePath(), "i", "--no-audit", "--no-fund",
+                        "--prefix", dir.getAbsolutePath(), "autocannon@" + ver));
+                if (rc != 0 || !js.isFile()) throw new IllegalStateException("`npm i autocannon@" + ver + "` failed (rc=" + rc + ")");
+            }
+            // [node, script] — no .cmd/.sh shim, so no shell re-parses URLs or header values on any OS
+            return Arrays.asList(node, js.getAbsolutePath());
+        }
     }
 
-    // ---------------------------------------------------------------- wrk / wrk2
-
-    private static String provisionWrk(String key) {
-        if (SystemUtils.IS_OS_WINDOWS) {
-            System.err.println("[gatf] " + key + " has no native Windows build. Run GATF under WSL for "
-                    + key + ", or use vegeta/autocannon (auto-provisioned on Windows).");
-            return null;
-        }
-        if (!hasToolchain()) {
-            System.err.println("[gatf] " + key + " is not on PATH and no C toolchain (make + cc) is available to "
-                    + "build it. Install it (brew install " + key + " / apt-get install " + key + ") or set "
-                    + key + "Path.");
-            return null;
-        }
+    // npm-cli.js for a node binary: portable layout (<home>/lib/node_modules or <home>/node_modules), or
+    // a system install where npm sits beside node (resolved through symlinks)
+    static File npmCliFor(File node) {
         try {
-            return buildWrkFromSource(key);
-        } catch (Throwable t) {
-            System.err.println("[gatf] building " + key + " from source failed: " + t.getMessage());
-            return null;
+            File real = node.toPath().toRealPath().toFile();
+            File binDir = real.getParentFile();
+            File[] candidates = {
+                    new File(binDir, "node_modules/npm/bin/npm-cli.js"),                          // windows zip
+                    new File(binDir.getParentFile(), "lib/node_modules/npm/bin/npm-cli.js"),       // unix tarball, /usr/local
+                    new File("/usr/lib/node_modules/npm/bin/npm-cli.js"),                          // distro packages
+                    new File("/usr/share/nodejs/npm/bin/npm-cli.js") };                            // debian nodejs
+            for (File c : candidates) if (c.isFile()) return c;
+        } catch (Exception ignore) {
+        }
+        return null;
+    }
+
+    // ---------------------------------------------------------------- node (portable)
+
+    private static String provisionNode() throws Exception {
+        synchronized (LOCKS.computeIfAbsent("node", k -> new Object())) {
+            String base = prop("gatf.node.baseUrl", DEFAULT_NODE_BASE);
+            String ver = prop("gatf.node.version", null);
+            if (ver == null) ver = latestNodeLts(base);
+            if (!ver.startsWith("v")) ver = "v" + ver;
+            String plat = nodePlatform();
+            boolean win = SystemUtils.IS_OS_WINDOWS;
+            String asset = "node-" + ver + "-" + plat + (win ? ".zip" : ".tar.gz");
+            File dir = toolDir("node");
+            File home = new File(dir, "node-" + ver + "-" + plat);
+            File bin = win ? new File(home, "node.exe") : new File(new File(home, "bin"), "node");
+            if (bin.isFile()) return bin.getAbsolutePath();
+            dir.mkdirs();
+            File archive = new File(dir, asset);
+            download(base + "/" + ver + "/" + asset, archive);
+            File sums = new File(dir, "SHASUMS256-" + ver + ".txt");
+            try {
+                download(base + "/" + ver + "/SHASUMS256.txt", sums);
+                String expected = null;
+                for (String line : new String(java.nio.file.Files.readAllBytes(sums.toPath()), "UTF-8").split("\\r?\\n")) {
+                    String[] f = line.trim().split("\\s+");
+                    if (f.length == 2 && f[1].equals(asset)) expected = f[0].toLowerCase(Locale.ROOT);
+                }
+                if (expected == null) throw new IllegalStateException(asset + " not in SHASUMS256.txt");
+                if (!expected.equals(sha256(archive))) {
+                    archive.delete();
+                    throw new IllegalStateException("SHA-256 mismatch for " + asset);
+                }
+            } finally {
+                sums.delete();
+            }
+            if (win) ZipUtil.unpack(archive, dir);
+            else extractTarGz(archive, dir);   // tar keeps npm's symlinks + exec bits
+            archive.delete();
+            if (!bin.isFile()) throw new IllegalStateException("node binary missing after extracting " + asset);
+            makeExecutable(bin);
+            return bin.getAbsolutePath();
         }
     }
 
-    // wrk = wg/wrk, wrk2 = giltene/wrk2. Both are `make` from a source tarball producing a single binary.
-    private static String buildWrkFromSource(String key) throws Exception {
-        String repo = "wrk2".equals(key) ? "giltene/wrk2" : "wg/wrk";
-        String ref = "master";
-        String url = "https://codeload.github.com/" + repo + "/tar.gz/refs/heads/" + ref;
-        File dir = toolDir(key);
-        dir.mkdirs();
-        File archive = new File(dir, key + "-src.tar.gz");
-        download(url, archive);
-        extractTarGz(archive, dir);
-        archive.delete();
-        File srcRoot = findDir(dir, key.substring(0, 3)); // wrk-master / wrk2-master
-        if (srcRoot == null) throw new IllegalStateException("source tree not found for " + key);
-        int rc = run(srcRoot, Arrays.asList("make"));
-        if (rc != 0) throw new IllegalStateException("`make` failed (rc=" + rc + ")");
-        File built = new File(srcRoot, "wrk");
-        if (!built.exists()) throw new IllegalStateException("built binary not found");
-        File out = new File(dir, exeName(key));
-        copy(built, out);
-        makeExecutable(out);
-        return out.getAbsolutePath();
+    // newest LTS from <base>/index.json (entries newest-first; "lts" is false or a codename)
+    static String latestNodeLts(String base) throws Exception {
+        File idx = File.createTempFile("node-index", ".json");
+        try {
+            download(base + "/index.json", idx);
+            String json = new String(java.nio.file.Files.readAllBytes(idx.toPath()), "UTF-8");
+            java.util.regex.Matcher m = java.util.regex.Pattern.compile("\\{[^{}]*\\}").matcher(json);
+            java.util.regex.Pattern ver = java.util.regex.Pattern.compile("\"version\"\\s*:\\s*\"(v[0-9.]+)\"");
+            java.util.regex.Pattern lts = java.util.regex.Pattern.compile("\"lts\"\\s*:\\s*\"[^\"]+\"");
+            while (m.find()) {
+                java.util.regex.Matcher v = ver.matcher(m.group());
+                if (v.find() && lts.matcher(m.group()).find()) return v.group(1);
+            }
+            throw new IllegalStateException("no LTS release in " + base + "/index.json");
+        } finally {
+            idx.delete();
+        }
     }
 
-    private static boolean hasToolchain() {
-        return findOnPath("make") != null && (findOnPath("cc") != null || findOnPath("gcc") != null || findOnPath("clang") != null);
+    static String nodePlatform() {
+        String arch = vegetaArch().equals("arm64") ? "arm64" : "x64";
+        if (SystemUtils.IS_OS_WINDOWS) return "win-" + arch;
+        if (SystemUtils.IS_OS_MAC) return "darwin-" + arch;
+        return "linux-" + arch;
     }
 
     // ---------------------------------------------------------------- paths / cache
@@ -251,10 +380,12 @@ public class PerfToolProvisioner {
         if ("wrk2".equals(key)) return cfg.getWrk2Path();
         if ("vegeta".equals(key)) return cfg.getVegetaPath();
         if ("autocannon".equals(key)) return cfg.getAutocannonPath();
+        if ("node".equals(key)) return cfg.getNodePath();
         return null;
     }
 
-    private static File cacheRoot() {
+    /** Tools cache root for this os/arch (shared with the Chrome-for-Testing provisioner). */
+    public static File cacheRoot() {
         String override = prop("gatf.tools.dir", System.getenv("GATF_TOOLS_DIR"));
         File root = (override != null && !override.trim().isEmpty())
                 ? new File(override.trim())
@@ -267,10 +398,7 @@ public class PerfToolProvisioner {
     }
 
     private static File cachedBinary(String key) {
-        if ("autocannon".equals(key)) {
-            File b = autocannonBin(toolDir("autocannon"));
-            return b.exists() ? b : null;
-        }
+        if ("autocannon".equals(key) || "node".equals(key)) return null; // see command() / provisionNode()
         File b = new File(toolDir(key), exeName(key));
         return b.exists() ? b : null;
     }
@@ -293,6 +421,21 @@ public class PerfToolProvisioner {
     }
 
     // ---------------------------------------------------------------- process / io helpers
+
+    public static boolean onPath(String tool) {
+        return findOnPath(exeName(tool)) != null || findOnPath(tool) != null;
+    }
+
+    /**
+     * Run argv with NO shell (paths/URLs/header values are never re-parsed), stdout/stderr to files
+     * (no pipe-buffer deadlock). Returns the exit code.
+     */
+    public static int exec(java.util.List<String> cmd, File stdout, File stderr) throws Exception {
+        ProcessBuilder pb = new ProcessBuilder(cmd);
+        pb.redirectOutput(stdout);
+        pb.redirectError(stderr);
+        return pb.start().waitFor();
+    }
 
     // locate an executable on PATH (`where` on Windows, `which` elsewhere)
     private static String findOnPath(String exe) {
@@ -325,7 +468,9 @@ public class PerfToolProvisioner {
         return p.waitFor();
     }
 
-    private static void download(String url, File dest) throws Exception {
+    // Downloads to <dest>.part and renames into place only on success, so an interrupted/failed transfer
+    // never leaves a truncated file that a later run would mistake for a good one.
+    public static void download(String url, File dest) throws Exception {
         HttpURLConnection conn = null;
         URL u = new URL(url);
         conn = (HttpURLConnection) u.openConnection();
@@ -349,13 +494,18 @@ public class PerfToolProvisioner {
         if (code != 200) {
             throw new IllegalStateException("download failed HTTP " + code + " for " + url);
         }
-        try (InputStream in = conn.getInputStream(); OutputStream out = new FileOutputStream(dest)) {
+        File part = new File(dest.getParentFile(), dest.getName() + ".part");
+        try (InputStream in = conn.getInputStream(); OutputStream out = new FileOutputStream(part)) {
             byte[] buf = new byte[65536];
             int n;
             while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+        } catch (Exception e) {
+            part.delete();
+            throw e;
         } finally {
             conn.disconnect();
         }
+        java.nio.file.Files.move(part.toPath(), dest.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
 
     // Extract a .tar.gz by shelling to `tar` — present by default on macOS, Linux, and Windows 10+ (bsdtar).
@@ -374,14 +524,6 @@ public class PerfToolProvisioner {
         }
     }
 
-    private static void copy(File src, File dst) throws Exception {
-        try (InputStream in = new java.io.FileInputStream(src); OutputStream out = new FileOutputStream(dst)) {
-            byte[] buf = new byte[65536];
-            int n;
-            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-        }
-    }
-
     private static File findFile(File root, String name) {
         File[] kids = root.listFiles();
         if (kids == null) return null;
@@ -395,15 +537,6 @@ public class PerfToolProvisioner {
         return null;
     }
 
-    private static File findDir(File root, String prefix) {
-        File[] kids = root.listFiles();
-        if (kids == null) return null;
-        for (File k : kids) {
-            if (k.isDirectory() && k.getName().startsWith(prefix)) return k;
-        }
-        return null;
-    }
-
     private static String prop(String key, String def) {
         String v = System.getProperty(key);
         return (v != null && !v.trim().isEmpty()) ? v.trim() : def;
@@ -411,21 +544,21 @@ public class PerfToolProvisioner {
 
     /**
      * CLI: pre-provision one or more tools (handy for CI / air-gapped prep / Windows validation).
-     * Usage: java -cp gatf.jar com.gatf.executor.ext.PerfToolProvisioner [wrk] [wrk2] [vegeta] [autocannon]
-     * With no args, provisions the two tools that have cross-platform auto-download (vegeta, autocannon).
+     * Usage: java -cp gatf.jar com.gatf.executor.ext.PerfToolProvisioner [vegeta] [autocannon] [wrk] [wrk2]
+     * Prints the launch command each tool resolves to on this machine (UNAVAILABLE → vegeta fallback).
      */
     public static void main(String[] args) {
         String[] tools = (args != null && args.length > 0)
                 ? args
-                : new String[] { "vegeta", "autocannon" };
+                : new String[] { "vegeta", "autocannon", "wrk", "wrk2" };
         Map<String, String> results = new LinkedHashMap<String, String>();
         for (String t : tools) {
-            String p = resolve(t, null);
-            results.put(t, p);
+            List<String> c = command(t, null);
+            results.put(t, c == null ? null : String.join(" ", c));
         }
         System.out.println("Provisioned load tools (" + osKey() + "-" + vegetaArch() + "):");
         for (Map.Entry<String, String> e : results.entrySet()) {
-            System.out.println("  " + e.getKey() + " -> " + (e.getValue() == null ? "UNAVAILABLE" : e.getValue()));
+            System.out.println("  " + e.getKey() + " -> " + (e.getValue() == null ? "UNAVAILABLE (tests fall back to vegeta)" : e.getValue()));
         }
     }
 }

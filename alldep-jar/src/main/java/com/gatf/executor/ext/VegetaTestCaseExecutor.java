@@ -28,7 +28,7 @@ import org.apache.commons.lang3.StringUtils;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfFunctionHandler;
+import com.gatf.executor.core.PerformanceConfig;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
@@ -37,193 +37,108 @@ import com.gatf.executor.report.TestCaseReport.TestStatus;
 public class VegetaTestCaseExecutor {
 
 	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {
-		GatfExecutorConfig config = context.getGatfExecutorConfig();
-
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("vegeta")) {
-			List<String> builderList = new ArrayList<>();
-			builderList.add(PerfToolProvisioner.resolve("vegeta", config));
-			builderList.add("attack");
-			
-			Integer c = tc.getPerfConfig().getConnections();
-			if(c>=0) {
-				builderList.add("-connections");
-				builderList.add(c.toString());
-			}
-			
-			Integer t = tc.getPerfConfig().getThreads();
-			if(t>=0) {
-				builderList.add("-workers");
-				builderList.add(t.toString());
-			}
-			
-			Integer r = tc.getPerfConfig().getRate();
-			if(r>0) {
-				builderList.add("-rate");
-				builderList.add(c.toString());
-			}
-			
-			Integer d = tc.getPerfConfig().getDurationSeconds();
-			if(d<=0) {
-				d = 10;
-			}
-			builderList.add("-duration");
-			builderList.add(d+"s");
-			
-			Integer to = tc.getPerfConfig().getTimeout();
-			if(to>0) {
-				builderList.add("-timeout");
-				builderList.add(to+"s");
-			}
-			
-			boolean isPlot = StringUtils.isNotBlank(tc.getPerfConfig().getExtras()) && tc.getPerfConfig().getExtras().indexOf("plot=1")!=-1;
-			
-			File script = null;
-			
-			if(StringUtils.isNotBlank(tc.getPerfConfig().getFilePath()) && context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).exists()) {
-				script = context.getResourceFile(tc.getPerfConfig().getFilePath().trim());
-			}
-			
-			if(script==null && StringUtils.isNotBlank(tc.getContentFile())) {
-				if(context.getResourceFile(tc.getContentFile().trim()).exists()) {
-					script = context.getResourceFile(tc.getContentFile().trim());
-				}
-			}
-			
-			if(script==null && StringUtils.isNotBlank(tc.getContent())) {
-				script = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
-				FileUtils.write(script, tc.getContent(), "UTF-8");
-			}
-			
-			StringBuilder out = new StringBuilder();
-			StringBuilder err = new StringBuilder();
-			
-			long start = System.currentTimeMillis();
- 			
- 			if(tcr.getTestCase()==null) {
- 				tcr.setTestCase(tc);
- 			}
- 			
-			execCmd(PerfToolProvisioner.resolve("vegeta", config), out, err, tcr, tc, script, builderList, tc.getAurl(), tc.getBaseUrl(), isPlot);
-			
-			if(isSingleExecutionContext) {
-				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
-					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
-						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-						execCmd(PerfToolProvisioner.resolve("vegeta", config), out, err, tcr, tc, script, builderList, aurl, burl, isPlot);
-					}
-				}
-			}
-			
-			if(script!=null) {
-				script.delete();
-			}
-
-			if(out.length()>0) {
-				tcr.setResponseContent(out.toString());
-				tcr.setResponseContentType(MediaType.TEXT_PLAIN);
-				tcr.setStatus(TestStatus.Success.status);
-			}
- 			if(err.length()>0) {
- 				tcr.setErrorText(err.toString());
-				tcr.setStatus(TestStatus.Failed.status);
-			}
- 			
- 			tcr.setExecutionTime(System.currentTimeMillis() - start);
+			run(context, tc, tcr, isSingleExecutionContext, null);
 		}
 	}
-	
-	@SuppressWarnings("unchecked")
-	private static void execCmd(String vegetaPath, StringBuilder out, StringBuilder err, TestCaseReport tcr, TestCase tc, File script, List<String> bl, String url, String baseUrl, boolean isPlot) throws Exception {
-		File results = File.createTempFile(UUID.randomUUID().toString(), ".bin");
-		File target = null;
-		List<String> builderList = new ArrayList<>();
-		if(tc.getHeaders()!=null && tc.getHeaders().size()>0) {
-			StringBuilder httpreq = new StringBuilder(tc.getMethod().toUpperCase() + " " + url);
-			httpreq.append("\r\n");
-			for (String hdr : tc.getHeaders().keySet()) {
-				httpreq.append(hdr);
-				httpreq.append(": ");
-				httpreq.append(tc.getHeaders().get(hdr));
-				httpreq.append("\r\n");
-			}
-			if(script!=null) {
-				httpreq.append("@");
-				httpreq.append(script.getAbsolutePath());
-			}
-			target = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
-			FileUtils.write(target, httpreq.toString(), "UTF-8");
-			
-			bl.add("-format");
-			bl.add("http");
-			bl.add("-targets");
-			bl.add(target.getAbsolutePath());
-			builderList = bl;
-		} else {
-			builderList.add("echo");
-			builderList.add("'GET");
-			builderList.add(tc.getAurl());
-			builderList.add("'|");
-			builderList.addAll(bl);
+
+	/**
+	 * wrk / wrk2 test on a machine with no wrk binary and no Docker: run it on vegeta and say so.
+	 * wrk → max-throughput attack (-rate=0, -max-workers=connections); wrk2 → constant rate (-rate=R).
+	 */
+	public static void executeAsFallback(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext, String from) throws Exception {
+		run(context, tc, tcr, isSingleExecutionContext, from);
+	}
+
+	static String fallbackNotice(String from, boolean hadScript) {
+		return "NOTICE: " + from + " is not available here (no configured/PATH binary, no Docker for the gatf-loadgen container) — "
+				+ "this test ran on vegeta instead. Reduced capabilities: no Lua scripting"
+				+ (hadScript ? " (perfConfig.filePath was ignored)" : "")
+				+ "; vegeta's report format/percentiles instead of wrk's; "
+				+ ("wrk2".equals(from) ? "constant-rate open-loop attack (same model as wrk2 -R)." : "open-loop max-rate attack approximates wrk's closed-loop max throughput.")
+				+ " For native " + from + ": install it (brew/apt), set " + from + "Path, or run Docker (see docs/load-tools.md).";
+	}
+
+	private static void run(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext, String fallbackFrom) throws Exception {
+		GatfExecutorConfig config = context.getGatfExecutorConfig();
+		PerformanceConfig pc = tc.getPerfConfig();
+		if(tcr.getTestCase()==null) {
+			tcr.setTestCase(tc);
 		}
-		
-		builderList.add("|");
-		builderList.add("tee");
-		builderList.add(results.getAbsolutePath());
-		builderList.add("|");
-		builderList.add(vegetaPath);
-		builderList.add("report");
-		
-		StringBuilder out1 = new StringBuilder();
-		StringBuilder err1 = new StringBuilder();
-		GatfFunctionHandler.executeCmd(builderList, out1, err1, true);
-		if(out1.length()>0) {
-			List<String> rbl = new ArrayList<>();
-			rbl.add(vegetaPath);
-			rbl.add("report");
-			rbl.add("-type=json");
-			rbl.add(results.getAbsolutePath());
-			StringBuilder out2 = new StringBuilder();
-			GatfFunctionHandler.executeCmd(rbl, out2, null, true);
-			Map<String, Object> retval = WorkflowContextHandler.OM.readValue(out2.toString(), Map.class);
-			tcr.getPerfResult().add(retval);
-			
-			if(isPlot) {
-				File plothtml = File.createTempFile(UUID.randomUUID().toString(), ".html");
-				rbl = new ArrayList<>();
-				rbl.add("cat");
-				rbl.add(results.getAbsolutePath());
-				rbl.add("|");
-				rbl.add(vegetaPath);
-				rbl.add("plot");
-				rbl.add(">");
-				rbl.add(plothtml.getAbsolutePath());
-				
-				if(retval!=null) {
-					GatfFunctionHandler.executeCmd(rbl, null, null, true);
-					retval.put("_plot_html_", plothtml.getAbsolutePath());
+		List<String> vegeta = PerfToolProvisioner.command("vegeta", config);
+		if(vegeta==null) {
+			tcr.setErrorText("vegeta is not available and could not be downloaded — set vegetaPath (or check network/proxy to github.com)");
+			tcr.setStatus(TestStatus.Failed.status);
+			return;
+		}
+		int c = pc.getConnections(), t = pc.getThreads(), rate = pc.getRate(), to = pc.getTimeout();
+		int d = pc.getDurationSeconds()<=0 ? 10 : pc.getDurationSeconds();
+		int maxWorkers = 0;
+		String notice = null;
+		if(fallbackFrom!=null) {
+			if("wrk2".equals(fallbackFrom)) {
+				rate = rate>0 ? rate : 1000;               // wrk2's default in WrkTestCaseExecutor
+			} else {
+				rate = 0;
+				maxWorkers = c>0 ? c : 10;                 // wrk's connection count as the concurrency cap
+			}
+			t = 0;
+			notice = fallbackNotice(fallbackFrom, StringUtils.isNotBlank(pc.getFilePath()));
+			System.err.println("[gatf] " + notice);
+		}
+		boolean isPlot = StringUtils.isNotBlank(pc.getExtras()) && pc.getExtras().indexOf("plot=1")!=-1;
+
+		// request body: perfConfig.filePath (native vegeta only — for wrk it is a Lua script), else contentFile, else content
+		File body = null;
+		boolean tempBody = false;
+		if(fallbackFrom==null && StringUtils.isNotBlank(pc.getFilePath()) && context.getResourceFile(pc.getFilePath().trim()).exists()) {
+			body = context.getResourceFile(pc.getFilePath().trim());
+		}
+		if(body==null && StringUtils.isNotBlank(tc.getContentFile()) && context.getResourceFile(tc.getContentFile().trim()).exists()) {
+			body = context.getResourceFile(tc.getContentFile().trim());
+		}
+		if(body==null && StringUtils.isNotBlank(tc.getContent())) {
+			body = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
+			FileUtils.write(body, tc.getContent(), "UTF-8");
+			tempBody = true;                                // only files WE created are deleted (was: the user's file too)
+		}
+
+		List<String[]> targets = new ArrayList<>();
+		targets.add(new String[] {tc.getAurl(), tc.getBaseUrl()});
+		if(isSingleExecutionContext && config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
+			for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
+				targets.add(new String[] {tc.getAurl().replaceFirst(config.getBaseUrl(), burl), burl});   // per-env URL (was: always the primary)
+			}
+		}
+
+		StringBuilder out = new StringBuilder(), err = new StringBuilder();
+		long start = System.currentTimeMillis();
+		try {
+			for (String[] tg : targets) {
+				VegetaRunner.Result r = VegetaRunner.run(vegeta, tc.getMethod(), tg[0], tc.getHeaders(), body, c, t, rate, maxWorkers, d, to, isPlot);
+				if(r.json!=null) {
+					@SuppressWarnings("unchecked")
+					Map<String, Object> retval = WorkflowContextHandler.OM.readValue(r.json, Map.class);
+					if(r.plotHtml!=null) retval.put("_plot_html_", r.plotHtml.getAbsolutePath());
+					retval.put("tool", "vegeta");
+					if(fallbackFrom!=null) retval.put("fallback_from", fallbackFrom);
+					tcr.getPerfResult().add(retval);
+				}
+				out.append(String.join(" ", r.attackCmd)).append("\n\nResult for ").append(tg[1]).append("\n").append(r.text).append("\n\n");
+				if(r.rc!=0 || r.json==null) {
+					err.append(String.join(" ", r.attackCmd)).append("\n\nError for ").append(tg[1]).append("\n").append(r.err).append("\n\n");
 				}
 			}
-			
-			out.append(String.join(" ", builderList)+"\n\n");
-			out.append("Result for ");
-			out.append(baseUrl);
-			out.append("\n");
-			out.append(out1.toString());
-			out.append("\n\n");
+		} finally {
+			if(tempBody) body.delete();
 		}
-		if(err1.length()>0) {
-			err.append(String.join(" ", builderList)+"\n\n");
-			err.append("Error for ");
-			err.append(baseUrl);
-			err.append("\n");
-			err.append(err1.toString());
-			err.append("\n\n");
+		tcr.setResponseContent((notice!=null ? notice + "\n\n" : "") + out);
+		tcr.setResponseContentType(MediaType.TEXT_PLAIN);
+		tcr.setStatus(TestStatus.Success.status);
+		if(err.length()>0) {
+			tcr.setErrorText(err.toString());
+			tcr.setStatus(TestStatus.Failed.status);
 		}
-		
-		if(target!=null) {
-			target.delete();
-		}
-		
-		results.delete();
+		tcr.setExecutionTime(System.currentTimeMillis() - start);
 	}
 }

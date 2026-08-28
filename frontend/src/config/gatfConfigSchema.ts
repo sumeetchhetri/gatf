@@ -541,6 +541,12 @@ export const executorSchema: CfgSchema = {
     "autocannonPath": {
       "type": "string"
     },
+    "nodePath": {
+      "type": "string"
+    },
+    "perfToolContainer": {
+      "type": "string"
+    },
     "extraProperties": {
       "label": {
         "type": "section",

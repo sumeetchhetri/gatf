@@ -178,6 +178,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String autocannonPath;
     
+    private String nodePath;
+    
+    private String perfToolContainer;
+    
     private Map<String, String> extraProperties = new HashMap<String, String>();  
     
     @JsonIgnore
@@ -761,6 +765,24 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setAutocannonPath(String autocannonPath) {
 		this.autocannonPath = autocannonPath;
+	}
+
+	/** Host path to the node binary used for autocannon (else PATH, else a portable download). */
+	public String getNodePath() {
+		return nodePath;
+	}
+
+	public void setNodePath(String nodePath) {
+		this.nodePath = nodePath;
+	}
+
+	/** Container that wrk/wrk2 run in via `docker exec` (default gatf-loadgen; env GATF_PERF_CONTAINER). */
+	public String getPerfToolContainer() {
+		return perfToolContainer;
+	}
+
+	public void setPerfToolContainer(String perfToolContainer) {
+		this.perfToolContainer = perfToolContainer;
 	}
 
 	public Map<String, String> getExtraProperties() {

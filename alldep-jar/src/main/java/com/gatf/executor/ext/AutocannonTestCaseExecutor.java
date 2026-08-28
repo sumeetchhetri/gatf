@@ -18,155 +18,118 @@ package com.gatf.executor.ext;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.ws.rs.core.MediaType;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfFunctionHandler;
+import com.gatf.executor.core.PerformanceConfig;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 public class AutocannonTestCaseExecutor {
 
+	/** autocannon argv after the launch prefix (no shell — header values/URLs are passed verbatim). */
+	static List<String> args(String method, String url, Map<String, String> headers, File body, int connections,
+			int workers, int rate, int durationSecs, int timeoutSecs) {
+		List<String> a = new ArrayList<>();
+		a.add("--json");
+		a.add("--no-progress");
+		if(connections>0) { a.add("-c"); a.add(String.valueOf(connections)); }
+		if(workers>0) { a.add("-w"); a.add(String.valueOf(workers)); }
+		if(rate>0) { a.add("-R"); a.add(String.valueOf(rate)); }          // was: the connection count
+		a.add("-d"); a.add(String.valueOf(durationSecs));
+		if(timeoutSecs>0) { a.add("-t"); a.add(String.valueOf(timeoutSecs)); }
+		if(StringUtils.isNotBlank(method)) { a.add("-m"); a.add(method.trim().toUpperCase()); }  // was: never sent → always GET
+		if(body!=null) { a.add("-i"); a.add(body.getAbsolutePath()); }     // was: -b <path> → sent the PATH as the body
+		if(headers!=null) {
+			for (Map.Entry<String, String> h : headers.entrySet()) {
+				a.add("-H");
+				a.add(h.getKey() + "=" + (h.getValue()==null ? "" : h.getValue()));
+			}
+		}
+		a.add(url);
+		return a;
+	}
+
 	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {
 		GatfExecutorConfig config = context.getGatfExecutorConfig();
+		if(tc.getPerfConfig()==null || tc.getPerfConfig().getType()==null || !tc.getPerfConfig().getType().startsWith("autocannon")) {
+			return;
+		}
+		PerformanceConfig pc = tc.getPerfConfig();
+		if(tcr.getTestCase()==null) {
+			tcr.setTestCase(tc);
+		}
+		List<String> prefix = PerfToolProvisioner.command("autocannon", config);
+		if(prefix==null) {
+			tcr.setErrorText("autocannon is not available: no autocannonPath, no Node.js on PATH/nodePath, and the portable Node download failed (check network/proxy to nodejs.org and registry.npmjs.org)");
+			tcr.setStatus(TestStatus.Failed.status);
+			return;
+		}
+		int d = pc.getDurationSeconds()<=0 ? 10 : pc.getDurationSeconds();
 
-		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("autocannon")) {
-			List<String> builderList = new ArrayList<>();
-			builderList.add(PerfToolProvisioner.resolve("autocannon", config));
-			
-			Integer c = tc.getPerfConfig().getConnections();
-			if(c>=0) {
-				builderList.add("-c");
-				builderList.add(c.toString());
+		// body for non-GET: perfConfig.filePath, else contentFile, else content (only our temp file is deleted)
+		File body = null;
+		boolean tempBody = false;
+		if(!"GET".equalsIgnoreCase(tc.getMethod())) {
+			if(StringUtils.isNotBlank(pc.getFilePath()) && context.getResourceFile(pc.getFilePath().trim()).exists()) {
+				body = context.getResourceFile(pc.getFilePath().trim());
+			} else if(StringUtils.isNotBlank(tc.getContentFile()) && context.getResourceFile(tc.getContentFile().trim()).exists()) {
+				body = context.getResourceFile(tc.getContentFile().trim());
+			} else if(StringUtils.isNotBlank(tc.getContent())) {
+				body = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
+				FileUtils.write(body, tc.getContent(), "UTF-8");
+				tempBody = true;
 			}
-			
-			Integer t = tc.getPerfConfig().getThreads();
-			if(t>=0) {
-				builderList.add("-w");
-				builderList.add(t.toString());
+		}
+
+		List<String[]> targets = new ArrayList<>();
+		targets.add(new String[] {tc.getAurl(), tc.getBaseUrl()});
+		if(isSingleExecutionContext && config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
+			for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
+				targets.add(new String[] {tc.getAurl().replaceFirst(config.getBaseUrl(), burl), burl});
 			}
-			
-			Integer r = tc.getPerfConfig().getRate();
-			if(r>0) {
-				builderList.add("-R");
-				builderList.add(c.toString());
-			}
-			
-			builderList.add("--no-progress");
-			
-			Integer d = tc.getPerfConfig().getDurationSeconds();
-			if(d<=0) {
-				d = 10;
-			}
-			builderList.add("-d");
-			builderList.add(d.toString());
-			
-			Integer to = tc.getPerfConfig().getTimeout();
-			if(to>0) {
-				builderList.add("-t");
-				builderList.add(to.toString());
-			}
-			
-			if(tc.getPerfConfig().isLatency()) {
-				builderList.add("--latency");
-			}
-			
-			File script = null;
-			
-			if(StringUtils.isNotBlank(tc.getPerfConfig().getFilePath()) && context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).exists()) {
-				script = context.getResourceFile(tc.getPerfConfig().getFilePath().trim());
-			}
-			
-			if(script==null && StringUtils.isNotBlank(tc.getContentFile())) {
-				if(context.getResourceFile(tc.getContentFile().trim()).exists()) {
-					script = context.getResourceFile(tc.getContentFile().trim());
-				}
-			}
-			
-			if(script==null && StringUtils.isNotBlank(tc.getContent())) {
-				script = File.createTempFile(UUID.randomUUID().toString(), ".tmp");
-				FileUtils.write(script, tc.getContent(), "UTF-8");
-			}
-			
-			if(!tc.getMethod().equalsIgnoreCase("GET")) {
-				if(script!=null) {
-					builderList.add("-b");
-					builderList.add(script.getAbsolutePath());
-				}
-			}
-			
-			for (String hdr : tc.getHeaders().keySet()) {
-				builderList.add("-H");
-				builderList.add(hdr+"="+tc.getHeaders().get(hdr));
-			}
-			
-			builderList.add(tc.getAurl());
-			
-			StringBuilder out = new StringBuilder();
-			StringBuilder err = new StringBuilder();
-			
-			long start = System.currentTimeMillis();
- 			
- 			if(tcr.getTestCase()==null) {
- 				tcr.setTestCase(tc);
- 			}
-			executeInt(builderList, out, err, tcr, tc.getBaseUrl());
-			
-			if(isSingleExecutionContext) {
-				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
-					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
-						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-						builderList.set(builderList.size()-1, aurl);
-						executeInt(builderList, out, err, tcr, burl);
+		}
+		StringBuilder out = new StringBuilder(), err = new StringBuilder();
+		long start = System.currentTimeMillis();
+		try {
+			for (String[] tg : targets) {
+				List<String> cmd = new ArrayList<>(prefix);
+				cmd.addAll(args(tc.getMethod(), tg[0], tc.getHeaders(), body, pc.getConnections(), pc.getThreads(), pc.getRate(), d, pc.getTimeout()));
+				File so = File.createTempFile("gatf-ac-", ".out"), se = File.createTempFile("gatf-ac-", ".err");
+				try {
+					int rc = PerfToolProvisioner.exec(cmd, so, se);
+					String json = FileUtils.readFileToString(so, "UTF-8").trim();
+					String stderr = FileUtils.readFileToString(se, "UTF-8");
+					out.append(String.join(" ", cmd)).append("\n\nResult for ").append(tg[1]).append("\n").append(json).append("\n\n");
+					if(rc==0 && json.startsWith("{")) {
+						@SuppressWarnings("unchecked")
+						Map<String, Object> retval = WorkflowContextHandler.OM.readValue(json, Map.class);
+						retval.put("tool", "autocannon");
+						tcr.getPerfResult().add(retval);
+					} else {
+						err.append(String.join(" ", cmd)).append("\n\nError for ").append(tg[1]).append(" (rc=").append(rc).append(")\n").append(stderr).append("\n\n");
 					}
+				} finally {
+					so.delete();
+					se.delete();
 				}
 			}
-			
-			if(script!=null) {
-				script.delete();
-			}
-
-			if(out.length()>0) {
-				tcr.setResponseContent(out.toString());
-				tcr.setResponseContentType(MediaType.TEXT_PLAIN);
-				tcr.setStatus(TestStatus.Success.status);
-			}
- 			if(err.length()>0) {
- 				tcr.setErrorText(err.toString());
-				tcr.setStatus(TestStatus.Failed.status);
-			}
- 			
- 			tcr.setExecutionTime(System.currentTimeMillis() - start);
+		} finally {
+			if(tempBody) body.delete();
 		}
-	}
-	
-	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl) {
-		StringBuilder out1 = new StringBuilder();
-		StringBuilder err1 = new StringBuilder();
-		GatfFunctionHandler.executeCmd(builderList, out1, err1, true);
-		if(err1.length()>0) {
-			//Map<String, Object> retval = parse_autocannon_output(out1);
-			//tcr.getPerfResult().add(retval);
-			out.append(String.join(" ", builderList)+"\n\n");
-			out.append("Result for ");
-			out.append(baseUrl);
-			out.append("\n");
-			String errd = err1.toString();
-			errd = errd.replace('?', '*');
-			out.append(errd);
-			out.append("\n\n");
+		tcr.setResponseContent(out.toString());
+		tcr.setResponseContentType(MediaType.TEXT_PLAIN);
+		tcr.setStatus(TestStatus.Success.status);
+		if(err.length()>0) {
+			tcr.setErrorText(err.toString());
+			tcr.setStatus(TestStatus.Failed.status);
 		}
-		/*if(err1.length()>0) {
-			err.append(String.join(" ", builderList)+"\n\n");
-			err.append("Error for ");
-			err.append(baseUrl);
-			err.append("\n");
-			err.append(err1.toString());
-			err.append("\n\n");
-		}*/
+		tcr.setExecutionTime(System.currentTimeMillis() - start);
 	}
 }

@@ -273,8 +273,16 @@ public class WrkTestCaseExecutor {
 		GatfExecutorConfig config = context.getGatfExecutorConfig();
 
 		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("wrk")) {
-			List<String> builderList = new ArrayList<>();
-			builderList.add(PerfToolProvisioner.resolve(tc.getPerfConfig().getType().equals("wrk")?"wrk":"wrk2", config));
+			// host binary (configured / cache / PATH) → docker exec into gatf-loadgen → else run on vegeta with a notice
+			String wrkType = tc.getPerfConfig().getType().equals("wrk")?"wrk":"wrk2";
+			List<String> wrkCmd = PerfToolProvisioner.command(wrkType, config);
+			if(wrkCmd==null) {
+				VegetaTestCaseExecutor.executeAsFallback(context, tc, tcr, isSingleExecutionContext, wrkType);
+				return;
+			}
+			boolean inDocker = DockerLoadgen.isDockerCommand(wrkCmd);
+			List<String> staged = new ArrayList<>();
+			List<String> builderList = new ArrayList<>(wrkCmd);
 			
 			Integer c = tc.getPerfConfig().getConnections();
 			if(c<=0) {
@@ -321,11 +329,12 @@ public class WrkTestCaseExecutor {
 			}
 			
 			File script = null;
+			boolean tempScript = false;
 			
 			if(StringUtils.isNotBlank(tc.getPerfConfig().getFilePath()) && context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).exists()) {
 				script = context.getResourceFile(tc.getPerfConfig().getFilePath().trim());
-				builderList.add("-s ");
-				builderList.add(context.getResourceFile(tc.getPerfConfig().getFilePath().trim()).getAbsolutePath());
+				builderList.add("-s"); // was "-s " (trailing space) → getopt took " " as the script, the path as the URL
+				builderList.add(scriptArg(script, inDocker, wrkCmd, staged));
 			}
 			
 			if(script==null) {
@@ -354,13 +363,14 @@ public class WrkTestCaseExecutor {
 					
 					script = File.createTempFile(UUID.randomUUID().toString(), ".lua");
 					FileUtils.write(script, prog.toString(), "UTF-8");
+					tempScript = true;
 					
 					builderList.add("-s");
-					builderList.add(script.getAbsolutePath());
+					builderList.add(scriptArg(script, inDocker, wrkCmd, staged));
 				}
 			}
 			
-			builderList.add(tc.getAurl());
+			builderList.add(inDocker ? DockerLoadgen.rewriteUrl(tc.getAurl(), wrkCmd) : tc.getAurl());
  			
  			if(tcr.getTestCase()==null) {
  				tcr.setTestCase(tc);
@@ -376,14 +386,17 @@ public class WrkTestCaseExecutor {
 				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
 					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
 						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
-						builderList.set(builderList.size()-1, aurl);
+						builderList.set(builderList.size()-1, inDocker ? DockerLoadgen.rewriteUrl(aurl, wrkCmd) : aurl);
 						executeInt(builderList, out, err, tcr, burl);
 					}
 				}
 			}
 			
-			if(script!=null) {
-				script.delete();
+			if(tempScript) {
+				script.delete(); // only the generated script — never the user's perfConfig.filePath
+			}
+			for (String sp : staged) {
+				DockerLoadgen.unstage(sp, wrkCmd);
 			}
 
 			if(out.length()>0) {
@@ -400,6 +413,14 @@ public class WrkTestCaseExecutor {
 		}
 	}
 	
+	// local path, or the in-container path after `docker cp` when wrk runs in gatf-loadgen
+	private static String scriptArg(File f, boolean inDocker, List<String> wrkCmd, List<String> staged) throws Exception {
+		if(!inDocker) return f.getAbsolutePath();
+		String p = DockerLoadgen.stage(f, wrkCmd);
+		staged.add(p);
+		return p;
+	}
+
 	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl) {
 		StringBuilder out1 = new StringBuilder();
 		StringBuilder err1 = new StringBuilder();
