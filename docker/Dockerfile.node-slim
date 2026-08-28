@@ -1,0 +1,36 @@
+# Slim GATF Selenium node — chrome-headless-shell + chromedriver, no VNC/desktop/JVM-Grid.
+# ~400-500 MB vs the official selenium/standalone-chrome ~3.4 GB. GATF ships no images (D-1);
+# this is a recipe you build and adapt.
+#
+#   docker build -t gatf-node-slim -f docker/Dockerfile.node-slim .
+#   docker run --rm -p 4444:4444 --shm-size=1g gatf-node-slim
+#   export SELENIUM_REMOTE_URL=http://localhost:4444   # then run GATF as usual
+#
+# See docker/README.md for the se:cdp/tracing note and the browser-binary caveat.
+FROM debian:bookworm-slim
+
+ARG CFT_CHANNEL=stable
+ENV DEBIAN_FRONTEND=noninteractive
+
+# chrome-headless-shell runtime deps (libs + fonts) + node (to fetch Chrome for Testing binaries).
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      ca-certificates curl unzip nodejs npm \
+      libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+      libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 \
+      libgbm1 libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 \
+      fonts-liberation fonts-noto-color-emoji \
+ && rm -rf /var/lib/apt/lists/*
+
+# Fetch chrome-headless-shell + a version-matched chromedriver from Chrome for Testing.
+RUN npx --yes @puppeteer/browsers install chrome-headless-shell@${CFT_CHANNEL} --path /opt/cft \
+ && npx --yes @puppeteer/browsers install chromedriver@${CFT_CHANNEL}          --path /opt/cft \
+ && ln -sf "$(find /opt/cft -type f -name chrome-headless-shell | head -1)" /usr/local/bin/chrome-headless-shell \
+ && ln -sf "$(find /opt/cft -type f -name chromedriver          | head -1)" /usr/local/bin/chromedriver \
+ && chmod +x /usr/local/bin/chrome-headless-shell /usr/local/bin/chromedriver \
+ && apt-get purge -y npm && apt-get autoremove -y
+
+EXPOSE 4444
+# chromedriver as a standalone W3C WebDriver endpoint; GATF connects via RemoteWebDriver.
+# The browser binary is chosen by the client's ChromeOptions — set goog:chromeOptions.binary to
+# /usr/local/bin/chrome-headless-shell in your GATF driver config (see README).
+CMD ["chromedriver", "--port=4444", "--allowed-ips=", "--allowed-origins=*"]

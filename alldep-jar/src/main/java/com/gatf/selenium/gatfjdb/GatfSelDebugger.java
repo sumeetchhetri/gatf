@@ -1,15 +1,29 @@
+/*
+    Copyright 2013-2026, Sumeet Chhetri
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
 package com.gatf.selenium.gatfjdb;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
@@ -43,16 +57,24 @@ import com.sun.jdi.request.ClassPrepareRequest;
 @SuppressWarnings("rawtypes")
 public class GatfSelDebugger {
 	private static class DebugState {
-		private Set<Integer> breaks = new HashSet<Integer>();
-		private int prevLine;
-		private int nextLine;
+		// user breakpoints, as 1-based SEL line numbers (delta-075: was mixing sel/java lines)
+		private final Set<Integer> breaks = ConcurrentHashMap.newKeySet();
+		private volatile int prevLine;
+		private volatile int nextLine;
 	}
 	
-	private Map<String, DebugState> stateMap = new HashMap<>();
+	// Read by the SSE/WebSocket push threads while the JDI event thread + HTTP threads write → concurrent.
+	private final Map<String, DebugState> stateMap = new ConcurrentHashMap<>();
+	// Implicit breakpoints set to emulate step-over/step-into/initial pause; removed on the next hit so
+	// they never linger as invisible user breakpoints.
+	private final Set<BreakpointRequest> tempBps = ConcurrentHashMap.newKeySet();
+	// Change notification for push channels (delta-075): bumped on every pushed-field mutation.
+	private final Object changeLock = new Object();
+	private volatile long version = 0;
 	private Stack<String> selFiles = new Stack<>();
 	private String selscript;
 	private String srcCode;
-	private LocatableEvent cbe;
+	private volatile LocatableEvent cbe;
 	private Class debugClass; 
 	private VirtualMachine dvm;
 	private ClassPrepareEvent cpe;
@@ -60,17 +82,51 @@ public class GatfSelDebugger {
 	private Thread eventThr = null;
 	private volatile int running = 1;
 	private volatile AtomicInteger activity = new AtomicInteger(0);
-	private String currFile;
+	private volatile String currFile;
 	private volatile int state = 0;
 	private Command allcmds;
 	
 	public boolean isActivityObserved() {
-		int actCount = activity.get();
-		activity.set(0);
-		if(actCount>0) {
+		// delta-075: returned true on both branches → the idle reaper never reaped an abandoned session
+		// (closed tab → JDI VM + browser leaked). Checked every 10 s by GatfConfigToolUtil; a session is
+		// reaped only after IDLE_CHECKS_BEFORE_REAP consecutive idle checks (~60 s). Any command or push-
+		// channel read (connected viewer) counts as activity.
+		if(activity.getAndSet(0) > 0) {
+			idleChecks = 0;
 			return true;
 		}
-		return true;
+		return ++idleChecks < IDLE_CHECKS_BEFORE_REAP;
+	}
+	static final int IDLE_CHECKS_BEFORE_REAP = 6;
+	private volatile int idleChecks = 0;
+
+	private void changed() {
+		synchronized (changeLock) {
+			version++;
+			changeLock.notifyAll();
+		}
+	}
+
+	private void setState(int s) {
+		state = s;
+		changed();
+	}
+
+	public long getVersion() {
+		return version;
+	}
+
+	/** Block until the pushed state changes from {@code seen}, the session ends, or the timeout elapses. */
+	public long awaitChange(long seen, long timeoutMs) throws InterruptedException {
+		long end = System.currentTimeMillis() + timeoutMs;
+		synchronized (changeLock) {
+			while (version == seen && running == 1) {
+				long w = end - System.currentTimeMillis();
+				if (w <= 0) break;
+				changeLock.wait(w);
+			}
+			return version;
+		}
 	}
 	
     public String getSrcCode() {
@@ -108,11 +164,13 @@ public class GatfSelDebugger {
     }
 	
 	public int getPrevLine() {
-		return stateMap.get(currFile).prevLine;
+		DebugState ds = currFile == null ? null : stateMap.get(currFile);
+		return ds == null ? -1 : ds.prevLine;
 	}
 	
 	public int getNextLine() {
-		return stateMap.get(currFile).nextLine;
+		DebugState ds = currFile == null ? null : stateMap.get(currFile);
+		return ds == null ? -1 : ds.nextLine;
 	}
 	
 	private int resolveLines(boolean resolvePrevLine) {
@@ -149,6 +207,7 @@ public class GatfSelDebugger {
 			}
 		}
 		stateMap.get(currFile).nextLine = nextLine;
+		changed();
 		return nextLine;
 	}
 
@@ -185,9 +244,12 @@ public class GatfSelDebugger {
     		return false;
     	}
     	stateMap.get(currFile).breaks.remove(selLineNum);
+    	if(cpe==null) {
+    		return true; // never applied to the VM (class not prepared yet)
+    	}
     	List<BreakpointRequest> bpl = dvm.eventRequestManager().breakpointRequests();
     	for (BreakpointRequest bpr : bpl) {
-			if(bpr.location().toString().indexOf(debugClass.getName()+":")!=-1 && bpr.location().lineNumber()==lineNumber) {
+			if(!tempBps.contains(bpr) && bpr.location().toString().indexOf(debugClass.getName()+":")!=-1 && bpr.location().lineNumber()==lineNumber) {
 				dvm.eventRequestManager().deleteEventRequest(bpr);
 				return true;
 			}
@@ -213,12 +275,59 @@ public class GatfSelDebugger {
     	if(lineNumber==-1) {
     		return false;
     	}
-    	stateMap.get(currFile).breaks.add(lineNumber);
+    	stateMap.get(currFile).breaks.add(selLineNum);
+    	if(cpe==null) {
+    		return true; // applied when the class is prepared (see applyPendingBreakpoints)
+    	}
+    	return createBreakpoint(lineNumber, false);
+    }
+
+    private int javaLineFor(String file, int selLineNum) {
+    	List<List<Integer[]>> fl = file == null ? null : selToJavaLineMap.get(file);
+    	if(fl == null) return -1;
+    	for (List<Integer[]> fset : fl) {
+			for (Integer[] linf : fset) {
+				if(linf[0].equals(selLineNum)) {
+					return linf[1];
+				}
+			}
+		}
+    	return -1;
+    }
+
+    private boolean createBreakpoint(int javaLine, boolean temp) throws AbsentInformationException {
+    	if(cpe==null || javaLine<0) return false;
         ClassType classType = (ClassType) cpe.referenceType();
-        Location location = classType.locationsOfLine(lineNumber).get(0);
-        BreakpointRequest bpReq = dvm.eventRequestManager().createBreakpointRequest(location);
+        List<Location> locs = classType.locationsOfLine(javaLine);
+        if(locs.isEmpty()) return false;
+        BreakpointRequest bpReq = dvm.eventRequestManager().createBreakpointRequest(locs.get(0));
+        if(temp) tempBps.add(bpReq);
         bpReq.enable();
         return true;
+    }
+
+    // implicit breakpoint at a SEL line of the current file (step emulation / initial pause); skipped
+    // when a user breakpoint already covers that line
+    private boolean setTempBreakPoint(int selLineNum) throws AbsentInformationException {
+    	DebugState ds = stateMap.get(currFile);
+    	if(ds!=null && ds.breaks.contains(selLineNum)) return true;
+    	return createBreakpoint(javaLineFor(currFile, selLineNum), true);
+    }
+
+    private void clearTempBreakpoints() {
+    	for (BreakpointRequest r : tempBps) {
+    		try { dvm.eventRequestManager().deleteEventRequest(r); } catch (Exception ignore) {}
+    	}
+    	tempBps.clear();
+    }
+
+    // user breakpoints toggled before ClassPrepare
+    private void applyPendingBreakpoints() throws AbsentInformationException {
+    	for (Map.Entry<String, DebugState> e : stateMap.entrySet()) {
+    		for (Integer sl : e.getValue().breaks) {
+    			createBreakpoint(javaLineFor(e.getKey(), sl), false);
+    		}
+    	}
     }
 
     public void displayVariables(LocatableEvent event) throws IncompatibleThreadStateException, AbsentInformationException {
@@ -242,14 +351,14 @@ public class GatfSelDebugger {
         		resolveLines(true);
         		currFile = fld[5].toString();
         		stateMap.get(currFile).prevLine = (Integer)fld[1];
-            	setBreakPoint((Integer)fld[1]);
+            	setTempBreakPoint((Integer)fld[1]);
             	resolveLines(false);
             	dvm.resume();
         	}
-        	state = -1;
+        	setState(-1);
             return true;
         }
-    	state = -1;
+    	setState(-1);
     	//StepRequest stepRequest = dvm.eventRequestManager().createStepRequest(cbe.thread(), StepRequest.STEP_LINE, StepRequest.STEP_OVER);
     	//stepRequest.enable();
         return false;
@@ -260,46 +369,63 @@ public class GatfSelDebugger {
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1 && selFiles.size()>0) {
         	currFile = selFiles.pop();
         	resolveLines(false);
-        	state = -2;
+        	setState(-2);
             return true;
         }
-    	state = -2;
+    	setState(-2);
         return false;
     }
 
     public boolean enableStepOverRequest() throws AbsentInformationException {
     	activity.incrementAndGet();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
-        	setBreakPoint(resolveLines(true));
+        	setTempBreakPoint(resolveLines(true));
         	dvm.resume();
-        	state = -3;
+        	setState(-3);
             return true;
         }
-    	state = -3;
+    	setState(-3);
         return false;
     }
     
     public void resume() {
     	activity.incrementAndGet();
     	dvm.resume();
-    	state = -4;
+    	setState(-4);
     }
     
     public void suspend() {
     	activity.incrementAndGet();
     	dvm.suspend();
-    	state = -5;
+    	setState(-5);
     }
     
     public void destroy() {
-    	dvm.exit(0);
-    	while(running==1) {
-    		try {
-				Thread.sleep(1000);
-			} catch (InterruptedException e) {
-			}
+    	// delta-075: bounded — was an unbounded wait (runs under the handler's execution lock) and threw
+    	// VMDisconnectedException when the VM had already gone
+    	try {
+    		dvm.exit(0);
+    	} catch (VMDisconnectedException alreadyGone) {
     	}
-    	state = -6;
+    	long end = System.currentTimeMillis() + 10000;
+    	try {
+    		while(running==1 && System.currentTimeMillis() < end) {
+    			awaitChange(version, 500);
+    		}
+    	} catch (InterruptedException e) {
+    		Thread.currentThread().interrupt();
+    	}
+    	setState(-6);
+    }
+
+    // paused at a breakpoint/step: temp breakpoints are spent; resolve the paused SEL line and push it
+    private void onPaused() {
+    	clearTempBreakpoints();
+    	try {
+    		resolveLines(true);
+    	} catch (Exception e) {
+    		changed();
+    	}
     }
 
     public static GatfSelDebugger debugSession(Class<? extends SeleniumTest> testClass, String[] args, Map<String, List<List<Integer[]>>> selToJavaLineMap, Command out) throws Exception {
@@ -337,16 +463,17 @@ public class GatfSelDebugger {
 		                    if (event instanceof ClassPrepareEvent) {
 		                    	System.out.println("ClassPrepareEvent received...");
 		                    	dbgIns.cpe = (ClassPrepareEvent)event;
-		                    	dbgIns.setBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
+		                    	dbgIns.applyPendingBreakpoints();
+		                    	dbgIns.setTempBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
 		                    	dbgIns.dvm.resume();
 		                    } else if (event instanceof BreakpointEvent) {
 		                    	System.out.println("BreakpointEvent received...");
 		                    	dbgIns.cbe = (BreakpointEvent) event;
-		                        //dbgIns.displayVariables(dbgIns.cbe);
+		                    	dbgIns.onPaused();
 		                    } else if (event instanceof StepEvent) {
 		                    	System.out.println("StepEvent received...");
 		                    	dbgIns.cbe = (StepEvent) event;
-		                        //dbgIns.displayVariables(dbgIns.cbe);
+		                    	dbgIns.onPaused();
 		                    } else {
 		                    	dbgIns.cbe = null;
 		                    	System.out.println(event.getClass().getSimpleName() + " received...");
@@ -369,13 +496,14 @@ public class GatfSelDebugger {
 		        } finally {
 		        	dbgIns.eventThr = null;
 		        	dbgIns.running = 0;
+		        	dbgIns.changed();
 		        	if(dbgIns.dvm!=null) {
 			            InputStreamReader reader = new InputStreamReader(dbgIns.dvm.process().getInputStream());
 			            OutputStreamWriter writer = new OutputStreamWriter(System.out);
 			            char[] buf = new char[512];
 			            try {
-							reader.read(buf);
-							writer.write(buf);
+							int rn = reader.read(buf);
+							if(rn>0) writer.write(buf, 0, rn);
 				            writer.flush();
 						} catch (IOException e) {
 							e.printStackTrace();

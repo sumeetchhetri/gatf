@@ -20,6 +20,9 @@ jobs:
       with:
         node-version: '20'
 
+    - name: Apache-2.0 license headers (source code files)
+      run: node tools/license/license-headers.mjs --check
+
     - name: Frontend unit tests (vitest)
       run: |
         cd frontend

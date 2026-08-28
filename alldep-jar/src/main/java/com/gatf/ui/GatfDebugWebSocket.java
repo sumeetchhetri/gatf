@@ -1,3 +1,18 @@
+/*
+    Copyright 2013-2026, Sumeet Chhetri
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
 package com.gatf.ui;
 
 import java.util.HashMap;
@@ -16,9 +31,9 @@ import com.gatf.selenium.gatfjdb.GatfSelDebugger;
  * WebSocket push channel for the online seleasy debugger (delta-041).
  *
  * The client connects to <code>/gatfjdb</code> and sends the debug sessionId as its first (text) message;
- * this app then pushes <code>{s,r,p,n,v,t}</code> frames whenever the debugger's line/state changes, by
- * fast-polling the shared {@link GatfReportsHandler#dbgSessions} getters (gatfjdb exposes only pollable
- * getters, no push events at that layer).
+ * this app then pushes <code>{s,r,p,n,v,t}</code> frames whenever the debugger's line/state changes. Since
+ * delta-075 the pusher blocks on {@link GatfSelDebugger#awaitChange} (woken on every state mutation, 1 s
+ * safety timeout) instead of fast-polling every 150 ms.
  *
  * This mirrors the SSE stream ({@code GatfReportsHandler} action=debugStream), which stays as an automatic
  * client fallback. Debug COMMANDS still travel over {@code PUT /reports?action=debug} — this channel is
@@ -46,9 +61,6 @@ public class GatfDebugWebSocket extends WebSocketApplication {
     @Override
     public void onMessage(final WebSocket socket, final String text) {
         // First message = the debug sessionId. Ignore later messages (one pusher per socket).
-        if (pushers.containsKey(socket)) {
-            return;
-        }
         final String sessionId = (text == null) ? "" : text.trim();
         Thread t = new Thread(new Runnable() {
             public void run() {
@@ -56,7 +68,10 @@ public class GatfDebugWebSocket extends WebSocketApplication {
             }
         }, "gatfjdb-ws-" + sessionId);
         t.setDaemon(true);
-        pushers.put(socket, t);
+        // delta-075: atomic claim (was containsKey-then-put → two quick messages could spawn two pushers)
+        if (pushers.putIfAbsent(socket, t) != null) {
+            return;
+        }
         t.start();
     }
 
@@ -64,6 +79,7 @@ public class GatfDebugWebSocket extends WebSocketApplication {
         int lp = Integer.MIN_VALUE, ln = Integer.MIN_VALUE, lv = Integer.MIN_VALUE;
         boolean lr = true, first = true;
         String lt = null;
+        long ver = -1;
         try {
             // init (line=0) may race the connect — wait briefly for the session to appear
             GatfSelDebugger d = GatfReportsHandler.dbgSessions.get(sessionId);
@@ -95,14 +111,17 @@ public class GatfDebugWebSocket extends WebSocketApplication {
                     lp = p; ln = n; lv = v; lr = r; lt = t; first = false;
                 }
                 if (!r) {
+                    GatfReportsHandler.dbgSessions.remove(sessionId, s);
                     break;
                 }
-                Thread.sleep(150);
+                ver = s.awaitChange(ver, 1000);
             }
         } catch (InterruptedException ie) {
             // socket closed / teardown — exit quietly
         } catch (Exception e) {
-            // send failed / client gone — end the loop
+            // send failed / client gone — end the loop (the idle reaper owns session cleanup)
+            java.util.logging.Logger.getLogger(GatfDebugWebSocket.class.getName())
+                    .fine("gatfjdb ws pusher ended for " + sessionId + ": " + e);
         } finally {
             pushers.remove(socket);
         }

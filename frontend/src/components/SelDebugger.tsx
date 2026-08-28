@@ -1,11 +1,30 @@
+/*
+    Copyright 2013-2026, Sumeet Chhetri
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
-import { debugLinesFor } from '../api';
+import { debugLinesFor, DBG } from '../api';
 import type { DbgResponse } from '../api';
 import DebugCodeView from './DebugCodeView';
 
 type Status = 'initializing' | 'paused' | 'running' | 'done' | 'terminated' | 'error';
-const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+// The sessionId is the only capability guarding the push channels (WS/SSE) — use a CSPRNG id.
+const uid = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
 export default function SelDebugger({ filePath, onExit }: { filePath: string; onExit: () => void }) {
   const tc = ''; // whole-file .sel debug uses an empty test-case name
@@ -51,7 +70,7 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   useEffect(() => {
     const sid = sessionRef.current;
     api
-      .dbg('0', filePath, tc, sid)
+      .dbg(DBG.INIT, filePath, tc, sid)
       .then((d) => {
         if (d.s) {
           setCode(String(d.c ?? ''));
@@ -73,7 +92,7 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
       });
     return () => {
       stopStream();
-      if (!doneRef.current) api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
+      if (!doneRef.current) api.dbg(DBG.TERMINATE, filePath, tc, sessionRef.current).catch(() => {});
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -176,25 +195,24 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   const stepInto = () => {
     const ln = currentLineRef.current;
     const sline = ln ? (codeRef.current.split('\n')[ln - 1] ?? '') : '';
-    cmd('-1', sline);
+    cmd(DBG.STEP_INTO, sline);
   };
-  const stepOut = () => cmd('-2');
-  const stepOver = () => cmd('-3');
-  const cont = () => cmd('-4');
-  const suspend = () => cmd('-5');
+  const stepOut = () => cmd(DBG.STEP_OUT);
+  const stepOver = () => cmd(DBG.STEP_OVER);
+  const cont = () => cmd(DBG.CONTINUE);
+  const suspend = () => cmd(DBG.SUSPEND);
   const terminate = () => {
     doneRef.current = true;
     stopStream();
-    api.dbg('-6', filePath, tc, sessionRef.current).catch(() => {});
+    api.dbg(DBG.TERMINATE, filePath, tc, sessionRef.current).catch(() => {});
     setStatus('terminated');
     setMsg('Stopped.');
   };
 
   const toggleBreakpoint = (ln: number) => {
     const has = breakpoints.has(ln);
-    // gutter index is 0-based in the classic; server adds 1, so send (ln-1)
     api
-      .dbg((has ? 'r' : 'b') + (ln - 1), filePath, tc, sessionRef.current)
+      .dbg(has ? DBG.removeBreakpoint(ln) : DBG.addBreakpoint(ln), filePath, tc, sessionRef.current)
       .then((d) => {
         if (d.s === false) {
           setMsg(d.m || 'Breakpoint change rejected.');

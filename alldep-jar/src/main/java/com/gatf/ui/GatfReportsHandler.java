@@ -1,12 +1,12 @@
 /*
-    Copyright 2013-2019, Sumeet Chhetri
-    
+    Copyright 2013-2026, Sumeet Chhetri
+
     Licensed under the Apache License, Version 2.0 (the "License");
     you may not use this file except in compliance with the License.
     You may obtain a copy of the License at
-    
+
     http://www.apache.org/licenses/LICENSE-2.0
-    
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -109,7 +109,7 @@ public class GatfReportsHandler extends HttpHandler {
 					if(dsDbg==null) {
 						dsW.write("data: {\"s\":false,\"m\":\"No debug session\"}\n\n"); dsW.flush(); return;
 					}
-					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsFirst=true; String dsLt=null;
+					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsFirst=true; String dsLt=null; long dsVer=-1;
 					try {
 						while(true) {
 							GatfSelDebugger dsS = dbgSessions.get(dsSessionId);
@@ -122,8 +122,8 @@ public class GatfReportsHandler extends HttpHandler {
 								dsW.write("data: " + WorkflowContextHandler.OM.writeValueAsString(dsOut) + "\n\n"); dsW.flush();
 								dsLp=dsP; dsLn=dsN; dsLv=dsV; dsLr=dsR; dsLt=dsT; dsFirst=false;
 							}
-							if(!dsR) break;
-							Thread.sleep(150);
+							if(!dsR) { dbgSessions.remove(dsSessionId, dsS); break; }
+							dsVer = dsS.awaitChange(dsVer, 1000); // delta-075: event-driven (was a 150 ms poll)
 						}
 					} catch (Exception dsE) { /* client disconnected / write failed - end stream */ }
 					return;
@@ -734,8 +734,10 @@ public class GatfReportsHandler extends HttpHandler {
 									break;
 								}
 								case -6: {
-									// Ctrl X Terminate
+									// Ctrl X Terminate — delta-075: also drop the session (only -7 used to, and
+									// the push-channel clients no longer send -7)
 									dbgSession.destroy();
+									dbgSessions.remove(sessionId, dbgSession);
 									break;
 								}
 								case -7: {
@@ -927,12 +929,16 @@ public class GatfReportsHandler extends HttpHandler {
 	}
 
 	public void clearInactiveDebugSessions() {
-		Set<String> sessIds = dbgSessions.keySet();
-		for (String sessId : sessIds) {
-			if(!dbgSessions.get(sessId).isActivityObserved()) {
-				GatfSelDebugger dbgSession = dbgSessions.get(sessId);
-				dbgSessions.remove(sessId);
-				dbgSession.destroy();
+		for (Map.Entry<String, GatfSelDebugger> e : dbgSessions.entrySet()) {
+			GatfSelDebugger dbgSession = e.getValue();
+			if(!dbgSession.getRunning() || !dbgSession.isActivityObserved()) {
+				if(dbgSessions.remove(e.getKey(), dbgSession)) {
+					try {
+						dbgSession.destroy();
+					} catch (Exception ignore) {
+						// already gone
+					}
+				}
 			}
 		}
 	}

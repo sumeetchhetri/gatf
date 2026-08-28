@@ -1,3 +1,18 @@
+/*
+    Copyright 2013-2026, Sumeet Chhetri
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+*/
 // Client for the read-only JSON API (Phase 3.x) exposed by GatfApiHandler at /api.
 // These endpoints are additive over the legacy Grizzly handlers; writes still go through
 // the classic config-tool at "/". Absolute paths so they resolve regardless of the /app base.
@@ -431,6 +446,21 @@ async function runPut(action: string, extra = ''): Promise<RunPaused> {
 
 // ---- online debugger (Slice D2) ----
 // -5 suspend; -6 terminate; -7 heartbeat {s,r,p,n,v,t}; b<n>/r<n> add/remove breakpoint (server uses n+1).
+// Debug protocol line codes for PUT /reports?action=debug (GatfReportsHandler dispatch). Breakpoint
+// codes carry the 0-based gutter index — the server adds 1 — so pass the 1-based line here.
+export const DBG = {
+  INIT: '0',
+  STEP_INTO: '-1',
+  STEP_OUT: '-2',
+  STEP_OVER: '-3',
+  CONTINUE: '-4',
+  SUSPEND: '-5',
+  TERMINATE: '-6',
+  HEARTBEAT: '-7',
+  addBreakpoint: (line1: number) => 'b' + (line1 - 1),
+  removeBreakpoint: (line1: number) => 'r' + (line1 - 1),
+} as const;
+
 export interface DbgResponse {
   s?: boolean; // command accepted / session ok
   c?: string; // source code (init)
