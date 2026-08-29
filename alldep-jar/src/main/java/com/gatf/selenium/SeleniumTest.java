@@ -310,10 +310,23 @@ public abstract class SeleniumTest {
 		switch (browserName) {
 			case "chrome": {
 				org.openqa.selenium.chrome.ChromeOptions __co = (org.openqa.selenium.chrome.ChromeOptions) caps;
-				// Optional local browser-binary override -- e.g. point GATF_CHROME_BINARY at a
-				// chrome-headless-shell binary for a ~150MB footprint. Selenium Manager cannot
-				// auto-download the shell yet, so fetch it (npx @puppeteer/browsers) and set this.
+				// Optional local browser-binary override: a path, or GATF_CHROME_BINARY=headless-shell to
+				// auto-provision Chrome for Testing's chrome-headless-shell + its matching chromedriver
+				// (delta-076, G4). Selenium Manager still handles every other local chrome.
 				String __bin = System.getenv("GATF_CHROME_BINARY");
+				if (__bin == null || __bin.trim().isEmpty()) __bin = System.getProperty("gatf.chrome.binary");
+				if (ChromeForTesting.isHeadlessShellRequest(__bin)) {
+					try {
+						ChromeForTesting.Install __cft = ChromeForTesting.headlessShell();
+						__co.setBinary(__cft.browser.getAbsolutePath());
+						return new org.openqa.selenium.chrome.ChromeDriver(new org.openqa.selenium.chrome.ChromeDriverService.Builder()
+								.usingDriverExecutable(__cft.driver).build(), __co);
+					} catch (RuntimeException e) {
+						throw e;
+					} catch (Exception e) {
+						throw new RuntimeException("chrome-headless-shell provisioning failed: " + e.getMessage(), e);
+					}
+				}
 				if (__bin != null && !__bin.trim().isEmpty()) __co.setBinary(__bin.trim());
 				return new org.openqa.selenium.chrome.ChromeDriver(__co);
 			}

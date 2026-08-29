@@ -16,9 +16,6 @@
 package com.gatf.selenium.gatfjdb;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,8 +24,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.jdiscript.util.VMLauncher;
 
 import com.gatf.selenium.Command;
 import com.gatf.selenium.SeleniumTest;
@@ -41,8 +36,6 @@ import com.sun.jdi.StackFrame;
 import com.sun.jdi.VMDisconnectedException;
 import com.sun.jdi.Value;
 import com.sun.jdi.VirtualMachine;
-import com.sun.jdi.connect.IllegalConnectorArgumentsException;
-import com.sun.jdi.connect.VMStartException;
 import com.sun.jdi.event.BreakpointEvent;
 import com.sun.jdi.event.ClassPrepareEvent;
 import com.sun.jdi.event.Event;
@@ -75,6 +68,7 @@ public class GatfSelDebugger {
 	private String selscript;
 	private String srcCode;
 	private volatile LocatableEvent cbe;
+	private volatile Process proc; // debuggee process (an accept()ed VM has no vm.process())
 	private Class debugClass; 
 	private VirtualMachine dvm;
 	private ClassPrepareEvent cpe;
@@ -211,11 +205,14 @@ public class GatfSelDebugger {
 		return nextLine;
 	}
 
-	public void connectAndLaunchVM(String[] args) throws IOException, IllegalConnectorArgumentsException, VMStartException {
+	public void connectAndLaunchVM(String[] args) throws Exception {
 		activity.incrementAndGet();
     	File dir = new File(FileUtils.getTempDirectory(), "gatf-code/");
     	String cp = System.getProperty("java.class.path") + File.pathSeparatorChar + dir.getAbsolutePath();
-    	dvm = new VMLauncher("-cp "+cp, debugClass.getName() + " " + StringUtils.join(args, " ")).start();
+    	// public JDI only (delta-078): the old reflective launcher needed --add-opens jdk.jdi on Java 17+
+    	GatfJdiLauncher.Launched l = GatfJdiLauncher.launch(cp, debugClass.getName(), args == null ? null : java.util.Arrays.asList(args));
+    	dvm = l.vm;
+    	proc = l.process;
     }
 
     public void enableClassPrepareRequest() {
@@ -497,17 +494,16 @@ public class GatfSelDebugger {
 		        	dbgIns.eventThr = null;
 		        	dbgIns.running = 0;
 		        	dbgIns.changed();
-		        	if(dbgIns.dvm!=null) {
-			            InputStreamReader reader = new InputStreamReader(dbgIns.dvm.process().getInputStream());
-			            OutputStreamWriter writer = new OutputStreamWriter(System.out);
-			            char[] buf = new char[512];
-			            try {
-							int rn = reader.read(buf);
-							if(rn>0) writer.write(buf, 0, rn);
-				            writer.flush();
-						} catch (IOException e) {
-							e.printStackTrace();
-						}
+		        	// debuggee output is inherited (streams live to GATF's console); just make sure the
+		        	// process is gone once the VM disconnects
+		        	Process pr = dbgIns.proc;
+		        	if(pr!=null) {
+		        		try {
+		        			if(!pr.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) pr.destroyForcibly();
+		        		} catch (InterruptedException ie) {
+		        			pr.destroyForcibly();
+		        			Thread.currentThread().interrupt();
+		        		}
 		        	}
 		        }
 			}
