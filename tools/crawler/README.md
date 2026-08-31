@@ -38,11 +38,16 @@ Pass `--login-url/--username/--password`. If `--user-sel/--pass-sel` are omitted
 auto-discovered (the form containing a `type=password` field; the preceding text/email input is the
 username). The emitted suite performs the login block first, then walks the pages.
 
-## JavaScript-rendered portals
+## JavaScript-rendered apps (SPA) — use the browser crawler
 
-The HTTP crawler sees server-rendered HTML. For SPA/JS portals, drive the identical emission from a
-Selenium session (reuse `xpathFor` / `sampleByType` / `fillLinesForForm`); the seleasy output
-contract is unchanged.
+The HTTP crawler above only sees server-rendered HTML. For React/Angular/Vue apps use
+`com.gatf.crawler.SpaCrawler` — the **Crawl** view in /app (More → Crawl) or `POST /crawl?action=start`.
+It walks the *rendered* DOM in a real Chrome (headless by default; honours `SELENIUM_REMOTE_URL` and
+`GATF_CHROME_BINARY=headless-shell`), follows `a[href]`, hash routes (`#/…`) and `routerlink`, and captures
+forms, inputs outside `<form>` and action buttons. It emits a starter `.sel` plus a prioritized
+`<name>-coverage.json`. Logout/delete-style links are never followed (override with `exclude`), POST forms
+are only submitted with `submitForms`, and credentials appear in the suite only as `${username}` /
+`${password}`.
 
 ## Verify the emitted suite
 

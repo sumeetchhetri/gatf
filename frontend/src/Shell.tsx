@@ -27,6 +27,7 @@ import DataSourceStats from './views/DataSourceStats';
 import ExtApiConfig from './views/ExtApiConfig';
 import ImportView from './views/ImportView';
 import RecordView from './views/RecordView';
+import CrawlView from './views/CrawlView';
 
 // Compare is no longer a Shell view (it's invoked from the test-file tree). The Trace Viewer is reached
 // from Reports rather than being a top-level tab, so it maps to 'reports' in the nav highlight.
@@ -40,6 +41,7 @@ export type ViewKey =
   | 'integrations'
   | 'import'
   | 'record'
+  | 'crawl'
   | 'report';
 
 const HASH: Record<string, ViewKey> = {
@@ -55,6 +57,7 @@ const HASH: Record<string, ViewKey> = {
   '#/integrations': 'integrations',
   '#/import': 'import',
   '#/record': 'record',
+  '#/crawl': 'crawl',
 };
 const TO_HASH: Record<ViewKey, string> = {
   viewer: '#/viewer',
@@ -66,6 +69,7 @@ const TO_HASH: Record<ViewKey, string> = {
   integrations: '#/integrations',
   import: '#/import',
   record: '#/record',
+  crawl: '#/crawl',
   report: '#/reports',
 };
 
@@ -169,6 +173,7 @@ export default function Shell() {
         {view === 'integrations' && <ExtApiConfig />}
         {view === 'import' && <ImportView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}
         {view === 'record' && <RecordView key={cfg} onOpenInEditor={openTestFile} />}
+        {view === 'crawl' && <CrawlView key={cfg} onOpenInEditor={openTestFile} />}
       </div>
     </div>
   );

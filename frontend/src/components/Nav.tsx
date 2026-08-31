@@ -30,6 +30,7 @@ const TABS: { key: ViewKey; label: string }[] = [
 const MORE: { key: ViewKey; label: string }[] = [
   { key: 'import', label: 'Import' },
   { key: 'record', label: 'Record' },
+  { key: 'crawl', label: 'Crawl' },
   { key: 'datasources', label: 'Data Sources' },
   { key: 'integrations', label: 'Integrations' },
 ];

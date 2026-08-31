@@ -587,6 +587,79 @@ async function recordPost<T>(qs: string): Promise<T> {
   return d as T;
 }
 
+// ---- SPA crawler (G3) — start a browser-driven crawl, poll progress, fetch result, save ----
+export interface CrawlStartBody {
+  seed: string;
+  maxPages?: number;
+  maxDepth?: number;
+  loginUrl?: string;
+  username?: string;
+  password?: string;
+  userSel?: string;
+  passSel?: string;
+  submitSel?: string;
+  submitForms?: boolean;
+  exclude?: string;
+  headless?: boolean;
+  suiteName?: string;
+}
+export interface CrawlPage {
+  url: string;
+  title?: string;
+  depth: number;
+  forms: number;
+  fields: number;
+  buttons: number;
+  error?: string;
+}
+export interface CrawlStatus {
+  running: boolean;
+  done: boolean;
+  visited: number;
+  maxPages: number;
+  queued: number;
+  current?: string | null;
+  elapsedMs: number;
+  pages: CrawlPage[];
+  log: string[];
+  loginWarning?: string;
+  error?: string;
+}
+export interface CoverageItem {
+  url: string;
+  title?: string;
+  depth: number;
+  forms: number;
+  fields: number;
+  required: number;
+  buttons: number;
+  links: number;
+  score: number;
+  priority: 'high' | 'medium' | 'low' | 'error';
+  reasons: string;
+}
+export interface CrawlResult {
+  content?: string;
+  coverage?: CoverageItem[];
+  error?: string;
+}
+export interface CrawlSave {
+  savedPath?: string;
+  coveragePath?: string;
+  validation?: string;
+  error?: string;
+}
+async function crawlCall<T>(qs: string, method: 'GET' | 'POST', body?: unknown): Promise<T> {
+  const r = await fetch(withTok(qs), {
+    method,
+    headers: body ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const d = (await r.json().catch(() => ({}))) as T & { error?: string };
+  if (!r.ok && !d.error) (d as { error?: string }).error = 'HTTP ' + r.status;
+  return d as T;
+}
+
 export const api = {
   reports: () => getJson<ReportsIndex>('/api/reports'),
   configs: () => getJson<ConfigsIndex>('/api/configs'),
@@ -728,6 +801,13 @@ export const api = {
   // ---- Playwright/JMeter importer (Phase 11) ----
   importSource: (type: 'playwright' | 'jmeter', fileName: string, save: boolean, source: string) =>
     importSourceReq(type, fileName, save, source),
+  // ---- SPA crawler (G3) ----
+  crawlStart: (b: CrawlStartBody) => crawlCall<{ sessionId?: string; error?: string }>('/crawl?action=start', 'POST', b),
+  crawlStatus: (id: string) => crawlCall<CrawlStatus>('/crawl?action=status&sessionId=' + encodeURIComponent(id), 'GET'),
+  crawlStop: (id: string) => crawlCall<CrawlStatus>('/crawl?action=stop&sessionId=' + encodeURIComponent(id), 'POST'),
+  crawlResult: (id: string) => crawlCall<CrawlResult>('/crawl?action=result&sessionId=' + encodeURIComponent(id), 'GET'),
+  crawlSave: (id: string, fileName: string) =>
+    crawlCall<CrawlSave>('/crawl?action=save&sessionId=' + encodeURIComponent(id) + '&fileName=' + encodeURIComponent(fileName), 'POST'),
   // ---- record mode (Phase 11) ----
   recordStart: (url: string) => recordPost<RecordStart>('/record?action=start&url=' + encodeURIComponent(url)),
   recordSteps: (sessionId: string) =>

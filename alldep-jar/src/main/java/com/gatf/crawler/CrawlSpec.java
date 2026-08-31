@@ -36,6 +36,23 @@ public class CrawlSpec {
     private String passSel;
     private String submitSel;
 
+    // ---- SPA crawler (G3) ----
+    /** Links matching this are never followed (keeps a credentialed session alive, avoids destructive GETs). */
+    public static final String DEFAULT_EXCLUDE = "(?i)(log-?out|sign-?out|/logoff|/delete|/remove|/destroy)";
+    private String exclude;
+    private long settleMs = 5000;   // max wait for a page to finish rendering
+    private long pollMs = 300;      // DOM-stability poll interval
+    private boolean headless = true;
+
+    public String getExclude() { return exclude; }
+    public void setExclude(String exclude) { this.exclude = exclude; }
+    public long getSettleMs() { return settleMs; }
+    public void setSettleMs(long settleMs) { this.settleMs = settleMs; }
+    public long getPollMs() { return pollMs; }
+    public void setPollMs(long pollMs) { this.pollMs = pollMs; }
+    public boolean isHeadless() { return headless; }
+    public void setHeadless(boolean headless) { this.headless = headless; }
+
     public boolean isCredentialed() {
         return loginUrl != null && username != null && password != null;
     }

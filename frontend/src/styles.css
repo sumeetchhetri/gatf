@@ -789,3 +789,12 @@ select.sf-input { max-width: none; }
 /* G6 folder execution rows */
 .exec-dir td { background: rgba(127,127,127,.06); font-weight: 600; }
 .exec-twisty { background: none; border: 0; color: var(--muted); cursor: pointer; padding: 0 4px 0 0; font: inherit; }
+
+/* G3 crawl view */
+.crawl-form { display: flex; flex-direction: column; gap: 8px; }
+.crawl-creds { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.crawl-creds details .inp { margin: 4px 6px 0 0; }
+.inp.num { width: 70px; }
+.crawl-bar { height: 4px; background: rgba(127,127,127,.2); border-radius: 2px; margin: 6px 0; overflow: hidden; }
+.crawl-bar > div { height: 100%; background: var(--accent, #4f8cff); transition: width .4s; }
+.crawl-log { max-height: 260px; overflow: auto; background: rgba(127,127,127,.06); padding: 8px; border-radius: 4px; }

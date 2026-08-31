@@ -215,6 +215,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 
         // Phase 11 — record mode: infer a test case from live user actions in a visible local Chrome
         server.getServerConfiguration().addHttpHandler(new GatfRecordHandler(mojo), "/record");
+        server.getServerConfiguration().addHttpHandler(new GatfCrawlHandler(mojo), "/crawl");
 
         // WebSocket push channel for the debugger (delta-041): mount /gatfjdb + attach the WS add-on to
         // every listener before start(). The SSE stream (/reports?action=debugStream) stays as the client
