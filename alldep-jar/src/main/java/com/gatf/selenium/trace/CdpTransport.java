@@ -100,6 +100,7 @@ public final class CdpTransport implements BrowserControl {
             case CPU_PROFILE:
             case COVERAGE:      return driver instanceof HasCdp;
             case SCREENCAST:    return devTools != null && driver instanceof HasCdp;
+            case PRINT_PDF:     return driver instanceof HasCdp || driver instanceof org.openqa.selenium.PrintsPage;
             default:            return false;
         }
     }
@@ -256,6 +257,26 @@ public final class CdpTransport implements BrowserControl {
             if (driver instanceof JavascriptExecutor) {
                 Object r = ((JavascriptExecutor) driver).executeScript(VITALS_JS);
                 return r == null ? null : String.valueOf(r);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    // --- G10: print-to-PDF via raw CDP Page.printToPDF, falling back to the W3C classic print command ---
+    @Override
+    public byte[] printPdf() {
+        try {
+            if (driver instanceof HasCdp) {
+                Map<String, Object> args = new HashMap<>();
+                args.put("printBackground", true);
+                Object data = ((HasCdp) driver).executeCdpCommand("Page.printToPDF", args).get("data");
+                if (data != null) return java.util.Base64.getDecoder().decode(String.valueOf(data));
+            }
+        } catch (Exception ignored) {}
+        try {
+            if (driver instanceof org.openqa.selenium.PrintsPage) {
+                return java.util.Base64.getDecoder().decode(((org.openqa.selenium.PrintsPage) driver)
+                        .print(new org.openqa.selenium.print.PrintOptions()).getContent());
             }
         } catch (Exception ignored) {}
         return null;

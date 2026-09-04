@@ -85,6 +85,9 @@ public interface BrowserControl extends AutoCloseable {
 
     /** Stop the screencast. Default no-op. */
     default void disableVideo() { }
+    // --- G10: print-to-PDF (default unsupported) ---
+    /** Current page as PDF bytes, or null (PRINT_PDF). */
+    default byte[] printPdf() { return null; }
 
     @Override
     void close();

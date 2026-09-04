@@ -24,7 +24,7 @@ package com.gatf.selenium.trace;
  */
 public final class TraceConfig {
     private boolean enableTrace = false;
-    private String protocol = "cdp";            // cdp | bidi
+    private String protocol = "cdp";            // cdp | bidi | hybrid (BiDi + CDP only for CPU/coverage/screencast)
     private boolean network = true;
     private boolean console = true;
     private boolean snapshots = true;
@@ -39,10 +39,17 @@ public final class TraceConfig {
     private boolean video = false;                   // screencast -> mp4 (opt-in; heaviest)
     private int videoQuality = 60;                   // jpeg quality 0-100
     private int videoEveryNthFrame = 2;              // screencast frame decimation
+    // G10 knobs (system properties, so no config-schema change): page.pdf at stop; BiDi polled-screenshot video fps
+    private boolean pdf = Boolean.getBoolean("gatf.trace.pdf");
+    private int videoPollFps = Integer.getInteger("gatf.trace.videoPollFps", 0);
 
     public boolean isEnableTrace() { return enableTrace; }
     public TraceConfig setEnableTrace(boolean v) { this.enableTrace = v; return this; }
     public String getProtocol() { return protocol; }
+    public boolean isPdf() { return pdf; }
+    public TraceConfig setPdf(boolean pdf) { this.pdf = pdf; return this; }
+    public int getVideoPollFps() { return videoPollFps; }
+    public TraceConfig setVideoPollFps(int fps) { this.videoPollFps = Math.max(0, Math.min(10, fps)); return this; }
     public TraceConfig setProtocol(String v) { this.protocol = (v == null ? "cdp" : v.trim().toLowerCase()); return this; }
     public boolean isNetwork() { return network; }
     public TraceConfig setNetwork(boolean v) { this.network = v; return this; }

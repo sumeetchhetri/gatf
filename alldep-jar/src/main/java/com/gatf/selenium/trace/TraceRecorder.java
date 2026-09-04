@@ -125,6 +125,12 @@ public final class TraceRecorder implements AutoCloseable {
         if (cpu != null) cpu.stop();            // retrieves + writes cpu.cpuprofile
         if (coverage != null) coverage.stop();  // retrieves + writes coverage.json
         if (video != null) video.stop();        // finalizes frames + muxes video.mp4 (best-effort)
+        if (cfg.isPdf() && browser.supports(Capability.PRINT_PDF)) {   // G10: opt-in final-page PDF
+            try {
+                byte[] pdf = browser.printPdf();
+                if (pdf != null && pdf.length > 0) Files.write(workDir.resolve("page.pdf"), pdf);
+            } catch (Exception ignored) {}
+        }
         if (net != null) net.flush();
         if (console != null) console.flush();
         if (snap != null) snap.flush();
@@ -182,10 +188,23 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("recCpu", cpu != null)
                 .put("recCoverage", coverage != null)
                 .put("recVideo", video != null)
+                .put("transport", browser.getClass().getSimpleName())
+                .put("capabilities", capabilityList())
                 .put("truncatedBodies", net != null ? net.truncatedBodies() : 0)
                 .put("bytesCaptured", net != null ? net.bytesCaptured() : 0)
                 .end();
         Files.write(workDir.resolve("metadata.json"), meta.getBytes(StandardCharsets.UTF_8));
+    }
+
+    // G10: which capabilities the active transport served for this trace (honest parity record)
+    private String capabilityList() {
+        StringBuilder b = new StringBuilder();
+        for (Capability c : Capability.values()) {
+            boolean ok;
+            try { ok = browser.supports(c); } catch (Exception e) { ok = false; }
+            if (ok) b.append(b.length() == 0 ? "" : ",").append(c.name());
+        }
+        return b.toString();
     }
 
     private static void deleteTree(Path root) {

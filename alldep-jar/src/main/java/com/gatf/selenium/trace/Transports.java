@@ -33,11 +33,23 @@ public final class Transports {
     private Transports() {}
 
     public static BrowserControl create(WebDriver driver, TraceConfig cfg) {
-        if ("bidi".equals(cfg.getProtocol())) return new BiDiTransport(driver);
+        if ("bidi".equals(cfg.getProtocol())) return new BiDiTransport(driver, cfg);
+        if ("hybrid".equals(cfg.getProtocol())) {
+            // G10: BiDi for everything it can serve; CDP only for the Chromium-only domains (CPU/coverage/screencast)
+            BiDiTransport bidi = new BiDiTransport(driver, cfg);
+            if (driver instanceof HasDevTools) {
+                try {
+                    return new HybridTransport(bidi, new CdpTransport(driver, ((HasDevTools) driver).getDevTools(), cfg));
+                } catch (Exception cdpUnavailable) {
+                    return bidi;
+                }
+            }
+            return bidi;   // e.g. Firefox: CPU/coverage simply unsupported
+        }
         if (driver instanceof HasDevTools) {
             DevTools dt = ((HasDevTools) driver).getDevTools();
             return new CdpTransport(driver, dt, cfg);
         }
-        return new BiDiTransport(driver);
+        return new BiDiTransport(driver, cfg);
     }
 }

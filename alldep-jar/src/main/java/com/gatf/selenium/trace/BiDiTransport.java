@@ -29,6 +29,11 @@ import org.openqa.selenium.bidi.module.Network;
 import org.openqa.selenium.bidi.network.Header;
 import org.openqa.selenium.bidi.network.RequestData;
 import org.openqa.selenium.bidi.network.ResponseData;
+import org.openqa.selenium.bidi.Command;
+import org.openqa.selenium.bidi.browsingcontext.BrowsingContext;
+import org.openqa.selenium.bidi.browsingcontext.CaptureScreenshotParameters;
+import org.openqa.selenium.PrintsPage;
+import org.openqa.selenium.print.PrintOptions;
 
 /**
  * WebDriver BiDi implementation of {@link BrowserControl} (decision D-2). Parity is pushed as far as
@@ -43,25 +48,25 @@ import org.openqa.selenium.bidi.network.ResponseData;
  *     is in-band on the classic command channel, so on very command-heavy suites it adds a little
  *     command-queue pressure. Acceptable for the parity it buys (performance.json + memory.json under BiDi).
  *
- * Genuinely CDP-only (not a TODO — these have no BiDi- or page-JS-safe equivalent):
- *   • RESPONSE_BODY — needs the Selenium BiDi network data-collector API, which is version-dependent;
- *     page JS cannot faithfully retrieve an already-consumed cross-origin body.
- *   • CPU_PROFILE + COVERAGE — Chrome-DevTools-only protocol features (Profiler, CSS rule-usage); there
- *     is no BiDi command and no page-JS API that samples the JS engine or reports precise coverage.
- *   • SCREENCAST (video) — BiDi has no continuous screencast; the only fallback is polling screenshots,
- *     which both contends heavily with the live test (unlike CDP's out-of-band frame push) and is a
- *     degraded approximation — deliberately not enabled.
- * All four are reported unsupported so recorders skip them cleanly under BiDi.
+ * G10 (delta-080) additions:
+ *   • RESPONSE_BODY — raw BiDi {@code network.addDataCollector} + {@code network.getData} (with
+ *     {@code disown}, so the browser frees each body once read), sent through {@code BiDi.send} because
+ *     Selenium 4.48's Java API does not wrap them. Decided at runtime: if the browser rejects the
+ *     collector, RESPONSE_BODY reports unsupported and bodies are simply not captured.
+ *   • PRINT_PDF — {@code browsingContext.print}, falling back to the W3C classic print command.
+ *   • SCREENCAST — opt-in APPROXIMATION ({@code -Dgatf.trace.videoPollFps=N}, 1–10): polled JPEG
+ *     {@code browsingContext.captureScreenshot}s. Unlike CDP's out-of-band frame push this is in-band and
+ *     contends with the test, so it is off by default and low-fps; it exists so non-Chromium browsers
+ *     (Firefox) can produce a video at all.
+ * Still CDP-only (no BiDi command, no page-JS equivalent): CPU_PROFILE, COVERAGE. Use protocol=hybrid
+ * to take those from CDP on Chromium while everything else stays on BiDi (see HybridTransport).
  *
  * The recorders are unchanged: they depend only on {@link BrowserControl}, which is exactly what D-2
  * was for — flipping {@code protocol=bidi} routes their calls here without touching them.
  *
- * NOTE (verification): the {@code org.openqa.selenium.bidi.*} module usage (network/console) is the
- * highest-CI-risk code in the trace package — newer than CDP, no in-repo pattern to mirror, and no jars
- * in the build container to compile against, so it is a best-effort match to the Selenium 4.48 BiDi API;
- * if a signature differs, the fix is localised to this file. The JS-based paths (metrics/vitals/snapshot)
- * carry none of that risk — they use only JavascriptExecutor. Everything is defensively wrapped so a
- * hiccup degrades to "no capture" rather than a crash.
+ * Verification: since delta-080 this class compiles against the real Selenium 4.48 jars (Network,
+ * LogInspector, BrowsingContext, Command/BiDi.send). Browser-side acceptance of network.addDataCollector /
+ * getData depends on the browser + driver version, which is why RESPONSE_BODY is decided at runtime.
  *
  * @author Sumeet Chhetri
  */
@@ -103,7 +108,12 @@ public final class BiDiTransport implements BrowserControl {
         "o.Timestamp=Date.now()/1000;" +
         "}catch(e){}return o;})();";
 
-    BiDiTransport(WebDriver driver) { this.driver = driver; }
+    private final TraceConfig cfg;
+    private volatile String collectorId;          // network data collector (RESPONSE_BODY), null = unsupported
+    private volatile Thread videoPoller;
+
+    BiDiTransport(WebDriver driver) { this(driver, new TraceConfig()); }
+    BiDiTransport(WebDriver driver, TraceConfig cfg) { this.driver = driver; this.cfg = cfg == null ? new TraceConfig() : cfg; }
 
     private boolean hasBiDi() { return driver instanceof HasBiDi; }
 
@@ -115,7 +125,10 @@ public final class BiDiTransport implements BrowserControl {
             case DOM_SNAPSHOT: return driver instanceof JavascriptExecutor;   // protocol-agnostic
             case SCREENSHOT:   return driver instanceof TakesScreenshot;      // protocol-agnostic
             case METRICS:      return driver instanceof JavascriptExecutor;   // performance/memory via read-only JS (in-band; see class doc)
-            default:           return false;   // RESPONSE_BODY / CPU / COVERAGE / SCREENCAST: no BiDi/JS-safe equivalent (see class doc)
+            case RESPONSE_BODY: return collectorId != null;                   // runtime: browser accepted network.addDataCollector
+            case PRINT_PDF:    return hasBiDi() || driver instanceof PrintsPage;
+            case SCREENCAST:   return cfg.getVideoPollFps() > 0 && hasBiDi(); // opt-in polled approximation
+            default:           return false;   // CPU_PROFILE / COVERAGE: CDP-only (protocol=hybrid on Chromium)
         }
     }
 
@@ -152,6 +165,18 @@ public final class BiDiTransport implements BrowserControl {
                 } catch (Exception ignored) {}
             });
         } catch (Exception ignored) {}
+        if (cfg.isCaptureBodies()) {
+            try {
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("dataTypes", java.util.Collections.singletonList("response"));
+                p.put("maxEncodedDataSize", cfg.getMaxBodyBytes());
+                Object r = ((HasBiDi) driver).getBiDi().send(new Command<>("network.addDataCollector", p, Map.class));
+                Object id = r instanceof Map ? ((Map<?, ?>) r).get("collector") : null;
+                collectorId = id == null ? null : String.valueOf(id);
+            } catch (Exception unsupported) {
+                collectorId = null;   // older browser / driver: bodies not captured under BiDi
+            }
+        }
     }
 
     @Override
@@ -232,10 +257,91 @@ public final class BiDiTransport implements BrowserControl {
     }
 
     @Override
-    public byte[] fetchBody(String requestId) { return null; }   // BiDi response-body capture deferred (needs Selenium BiDi network data-collector API)
+    public byte[] fetchBody(String requestId) {
+        String c = collectorId;
+        if (c == null || requestId == null) return null;
+        try {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("dataType", "response");
+            p.put("request", requestId);
+            p.put("collector", c);
+            p.put("disown", true);   // release it in the browser once read
+            Object r = ((HasBiDi) driver).getBiDi().send(new Command<>("network.getData", p, Map.class));
+            return decodeBytes(r instanceof Map ? ((Map<?, ?>) r).get("bytes") : null);
+        } catch (Exception e) {
+            return null;   // not collected (redirect, over maxEncodedDataSize, evicted, ...)
+        }
+    }
+
+    // BiDi network.BytesValue: {type:"string", value:"..."} | {type:"base64", value:"..."}
+    static byte[] decodeBytes(Object bytes) {
+        if (!(bytes instanceof Map)) return null;
+        Object type = ((Map<?, ?>) bytes).get("type"), value = ((Map<?, ?>) bytes).get("value");
+        if (value == null) return null;
+        if ("base64".equals(String.valueOf(type))) return java.util.Base64.getDecoder().decode(String.valueOf(value));
+        return String.valueOf(value).getBytes(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    @Override
+    public byte[] printPdf() {
+        try {
+            String b64 = hasBiDi()
+                    ? new BrowsingContext(driver, driver.getWindowHandle()).print(new PrintOptions())
+                    : ((PrintsPage) driver).print(new PrintOptions()).getContent();
+            return b64 == null ? null : java.util.Base64.getDecoder().decode(b64);
+        } catch (Exception e) {
+            try {
+                if (driver instanceof PrintsPage) return java.util.Base64.getDecoder().decode(((PrintsPage) driver).print(new PrintOptions()).getContent());
+            } catch (Exception ignored) {}
+            return null;
+        }
+    }
+
+    // Opt-in polled screencast (see class doc): JPEG straight from browsingContext.captureScreenshot.
+    @Override
+    public void enableVideo(VideoListener l) {
+        if (l == null || cfg.getVideoPollFps() <= 0 || !hasBiDi() || videoPoller != null) return;
+        final long periodMs = 1000L / cfg.getVideoPollFps();
+        final double q = Math.max(0.1, Math.min(1.0, cfg.getVideoQuality() / 100.0));
+        final String ctx;
+        try { ctx = driver.getWindowHandle(); } catch (Exception e) { return; }
+        Thread t = new Thread(() -> {
+            BrowsingContext bc = new BrowsingContext(driver, ctx);
+            CaptureScreenshotParameters params = new CaptureScreenshotParameters().imageFormat("image/jpeg", q);
+            while (videoPoller == Thread.currentThread()) {
+                long t0 = System.currentTimeMillis();
+                try {
+                    String b64 = bc.captureScreenshot(params);
+                    if (b64 != null) l.onFrame(java.util.Base64.getDecoder().decode(b64), t0);
+                } catch (Exception ignored) {}   // navigation in progress / context gone: skip a frame
+                long sleep = periodMs - (System.currentTimeMillis() - t0);
+                try { if (sleep > 0) Thread.sleep(sleep); } catch (InterruptedException ie) { return; }
+            }
+        }, "gatf-bidi-screencast");
+        t.setDaemon(true);
+        videoPoller = t;
+        t.start();
+    }
+
+    @Override
+    public void disableVideo() {
+        Thread t = videoPoller;
+        videoPoller = null;
+        if (t != null) t.interrupt();
+    }
 
     @Override
     public void close() {
+        disableVideo();
+        String c = collectorId;
+        collectorId = null;
+        if (c != null) {
+            try {
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("collector", c);
+                ((HasBiDi) driver).getBiDi().send(new Command<>("network.removeDataCollector", p, Map.class));
+            } catch (Exception ignored) {}
+        }
         this.networkOn = false;
         this.consoleOn = false;
         this.netListener = null;
