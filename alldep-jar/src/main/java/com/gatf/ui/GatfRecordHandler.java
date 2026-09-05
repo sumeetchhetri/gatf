@@ -71,12 +71,12 @@ public class GatfRecordHandler extends HttpHandler {
             if ("start".equals(action)) {
                 if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to start")); return; }
                 String id = UUID.randomUUID().toString();
-                RecordSession s = new RecordSession(id, request.getParameter("url"));
+                RecordSession s = new RecordSession(id, request.getParameter("url"), request.getParameter("browser"));
                 try {
                     s.start();
                 } catch (Throwable t) {
                     writeJson(response, HttpStatus.INTERNAL_SERVER_ERROR_500,
-                            err("could not launch a local Chrome for recording: " + msg(t)));
+                            err("could not launch a local " + s.getBrowser() + " for recording: " + msg(t)));
                     return;
                 }
                 SESSIONS.put(id, s);

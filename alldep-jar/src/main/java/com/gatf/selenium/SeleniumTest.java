@@ -297,6 +297,19 @@ public abstract class SeleniumTest {
 	
 	protected WebDriver getDockerDriver(String browserName) {
 		org.openqa.selenium.Capabilities caps = state.driverCaps.get(browserName);
+		// G9: tracing over WebDriver BiDi needs the session to negotiate a BiDi socket ('webSocketUrl').
+		// Non-Chromium browsers (Firefox, Safari) have no CDP, so they always trace over BiDi; Chrome/Edge
+		// only when traceProtocol is bidi|hybrid (default cdp keeps today's behaviour). Local + Grid alike.
+		try {
+			GatfExecutorConfig __tcfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
+			if (__tcfg!=null && __tcfg.isEnableTrace() && caps instanceof org.openqa.selenium.MutableCapabilities) {
+				String __tp = __tcfg.getTraceProtocol();
+				boolean __chromium = "chrome".equals(browserName) || "edge".equals(browserName);
+				if (!__chromium || "bidi".equals(__tp) || "hybrid".equals(__tp)) {
+					((org.openqa.selenium.MutableCapabilities) caps).setCapability("webSocketUrl", true);
+				}
+			}
+		} catch (Exception __ignore) { /* never block driver creation */ }
 		String __gridUrl = System.getenv("SELENIUM_REMOTE_URL");
 		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {
 			try {
@@ -3952,7 +3965,8 @@ public abstract class SeleniumTest {
 			}
 		}
 		
-		if(driver instanceof HasDevTools) {
+		// G9: trace any browser with DevTools (Chromium) OR a live BiDi socket (Firefox, Safari, BiDi-Chrome)
+		if(driver instanceof HasDevTools || com.gatf.selenium.trace.BidiRaw.available(driver)) {
 			try {
 				// Streaming trace: functional UI runs only (not load, not multi-user). Read straight from
 				// config so no Command.java codegen change is needed. Never breaks browser init.
@@ -3963,7 +3977,7 @@ public abstract class SeleniumTest {
 					String __sid = ((RemoteWebDriver)driver).getSessionId().toString();
 					com.gatf.selenium.trace.TraceConfig __tc = new com.gatf.selenium.trace.TraceConfig()
 							.setEnableTrace(true)
-							.setProtocol(__cfg.getTraceProtocol())
+							.setProtocol(driver instanceof HasDevTools ? __cfg.getTraceProtocol() : "bidi")
 							.setNetwork(__cfg.isTraceNetwork())
 							.setConsole(__cfg.isTraceConsole())
 							.setSnapshots(__cfg.isTraceSnapshots())

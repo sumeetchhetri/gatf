@@ -601,6 +601,7 @@ export interface CrawlStartBody {
   submitForms?: boolean;
   exclude?: string;
   headless?: boolean;
+  browser?: 'chrome' | 'firefox' | 'edge';
   suiteName?: string;
 }
 export interface CrawlPage {
@@ -809,7 +810,8 @@ export const api = {
   crawlSave: (id: string, fileName: string) =>
     crawlCall<CrawlSave>('/crawl?action=save&sessionId=' + encodeURIComponent(id) + '&fileName=' + encodeURIComponent(fileName), 'POST'),
   // ---- record mode (Phase 11) ----
-  recordStart: (url: string) => recordPost<RecordStart>('/record?action=start&url=' + encodeURIComponent(url)),
+  recordStart: (url: string, browser = 'chrome') =>
+    recordPost<RecordStart>('/record?action=start&url=' + encodeURIComponent(url) + '&browser=' + encodeURIComponent(browser)),
   recordSteps: (sessionId: string) =>
     getJson<RecordSteps>('/record?action=steps&sessionId=' + encodeURIComponent(sessionId)),
   recordStop: (sessionId: string) =>

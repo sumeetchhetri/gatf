@@ -43,6 +43,7 @@ public class CrawlSpec {
     private long settleMs = 5000;   // max wait for a page to finish rendering
     private long pollMs = 300;      // DOM-stability poll interval
     private boolean headless = true;
+    private String browser = "chrome";   // G9: chrome | firefox | edge
 
     public String getExclude() { return exclude; }
     public void setExclude(String exclude) { this.exclude = exclude; }
@@ -50,6 +51,11 @@ public class CrawlSpec {
     public void setSettleMs(long settleMs) { this.settleMs = settleMs; }
     public long getPollMs() { return pollMs; }
     public void setPollMs(long pollMs) { this.pollMs = pollMs; }
+    public String getBrowser() { return browser; }
+    public void setBrowser(String b) {
+        String v = b == null ? "" : b.trim().toLowerCase(java.util.Locale.ROOT);
+        this.browser = v.equals("firefox") || v.equals("edge") ? v : "chrome";
+    }
     public boolean isHeadless() { return headless; }
     public void setHeadless(boolean headless) { this.headless = headless; }
 

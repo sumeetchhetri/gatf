@@ -33,6 +33,7 @@ export default function CrawlView({ onOpenInEditor }: { onOpenInEditor: (path: s
   const [submitSel, setSubmitSel] = useState('');
   const [submitForms, setSubmitForms] = useState(false);
   const [headless, setHeadless] = useState(true);
+  const [browser, setBrowser] = useState<'chrome' | 'firefox' | 'edge'>('chrome');
   const [exclude, setExclude] = useState('');
 
   const [phase, setPhase] = useState<Phase>('idle');
@@ -63,6 +64,7 @@ export default function CrawlView({ onOpenInEditor }: { onOpenInEditor: (path: s
         maxDepth,
         submitForms,
         headless,
+        browser,
         exclude: exclude.trim() || undefined,
         suiteName: fileName.trim() || undefined,
         ...(creds
@@ -159,6 +161,11 @@ export default function CrawlView({ onOpenInEditor }: { onOpenInEditor: (path: s
           </div>
           <div className="import-controls small">
             <label><input type="checkbox" checked={creds} onChange={(e) => setCreds(e.target.checked)} /> log in first</label>
+            <select className="inp" value={browser} onChange={(e) => setBrowser(e.target.value as 'chrome' | 'firefox' | 'edge')} title="browser">
+              <option value="chrome">Chrome</option>
+              <option value="firefox">Firefox</option>
+              <option value="edge">Edge</option>
+            </select>
             <label><input type="checkbox" checked={headless} onChange={(e) => setHeadless(e.target.checked)} /> headless</label>
             <label title="POST forms are only filled, not submitted, unless enabled">
               <input type="checkbox" checked={submitForms} onChange={(e) => setSubmitForms(e.target.checked)} /> submit POST forms

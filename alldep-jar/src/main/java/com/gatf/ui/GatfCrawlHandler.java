@@ -87,7 +87,7 @@ public class GatfCrawlHandler extends HttpHandler {
                 SESSIONS.put(id, s);
                 s.start(new CrawlSession.BrowserFactory() {
                     public SpaCrawler.Browser open(CrawlSpec sp) throws Exception {
-                        return SeleniumCrawlBrowser.create(sp.isHeadless());
+                        return SeleniumCrawlBrowser.create(sp.isHeadless(), sp.getBrowser());
                     }
                 });
                 Map<String, Object> out = new LinkedHashMap<String, Object>();
@@ -152,6 +152,7 @@ public class GatfCrawlHandler extends HttpHandler {
         s.setMaxDepth(clamp(num(b.get("maxDepth"), 3), 0, 10));
         s.setSubmitForms(Boolean.TRUE.equals(b.get("submitForms")));
         s.setHeadless(!Boolean.FALSE.equals(b.get("headless")));
+        s.setBrowser(str(b.get("browser")));
         s.setExclude(str(b.get("exclude")));
         if (b.get("suiteName") != null) s.setSuiteName(str(b.get("suiteName")));
         s.setLoginUrl(str(b.get("loginUrl")));

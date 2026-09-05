@@ -41,10 +41,29 @@ public class SeleniumCrawlBrowser implements SpaCrawler.Browser {
     }
 
     public static SeleniumCrawlBrowser create(boolean headless) throws Exception {
+        return create(headless, "chrome");
+    }
+
+    /** G9: chrome | firefox | edge (Grid via SELENIUM_REMOTE_URL for any of them). */
+    public static SeleniumCrawlBrowser create(boolean headless, String browser) throws Exception {
+        String grid = System.getenv("SELENIUM_REMOTE_URL");
+        if ("firefox".equals(browser)) {
+            org.openqa.selenium.firefox.FirefoxOptions fo = new org.openqa.selenium.firefox.FirefoxOptions();
+            if (headless) fo.addArguments("-headless");
+            fo.addArguments("--width=1366", "--height=900");
+            if (grid != null && !grid.trim().isEmpty()) return new SeleniumCrawlBrowser(new RemoteWebDriver(new URL(grid.trim()), fo));
+            return new SeleniumCrawlBrowser(new org.openqa.selenium.firefox.FirefoxDriver(fo));
+        }
+        if ("edge".equals(browser)) {
+            org.openqa.selenium.edge.EdgeOptions eo = new org.openqa.selenium.edge.EdgeOptions();
+            if (headless) eo.addArguments("--headless=new");
+            eo.addArguments("--window-size=1366,900");
+            if (grid != null && !grid.trim().isEmpty()) return new SeleniumCrawlBrowser(new RemoteWebDriver(new URL(grid.trim()), eo));
+            return new SeleniumCrawlBrowser(new org.openqa.selenium.edge.EdgeDriver(eo));
+        }
         ChromeOptions o = new ChromeOptions();
         if (headless) o.addArguments("--headless=new");
         o.addArguments("--window-size=1366,900", "--disable-gpu");
-        String grid = System.getenv("SELENIUM_REMOTE_URL");
         if (grid != null && !grid.trim().isEmpty()) return new SeleniumCrawlBrowser(new RemoteWebDriver(new URL(grid.trim()), o));
         String bin = System.getenv("GATF_CHROME_BINARY");
         if (bin == null || bin.trim().isEmpty()) bin = System.getProperty("gatf.chrome.binary");

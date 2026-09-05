@@ -7,6 +7,20 @@ GATF Acceptance Test executor is data-type agnostic, which means that your testc
 
 > The primary goal of GATF is Automation with Simplicity.
 
+Install
+==========
+
+macOS / Linux:
+```
+curl -fsSL https://github.com/sumeetchhetri/gatf/releases/latest/download/install.sh | bash
+```
+Windows (PowerShell):
+```
+irm https://github.com/sumeetchhetri/gatf/releases/latest/download/install.ps1 | iex
+```
+Offline: download `gatf-<version>.zip` from Releases, unzip, and run `./install.sh` (or `powershell -ExecutionPolicy Bypass -File .\install.ps1`).
+The installer uses an installed JDK 21+ or offers a private Eclipse Temurin 21 download, installs per user (no admin), and can optionally set up the load tools. Then: `gatf ui` → http://127.0.0.1:9080/.
+
 Important features
 ==========
 1. Robotic Process Automation
@@ -1565,5 +1579,6 @@ Limitations
 License
 ------
 Apache License Version 2.0
+
 
 

@@ -86,9 +86,28 @@ public class RecordSession {
     static final long SLEEP_THRESHOLD_MS = 100;   // original FgRecorder threshold
     static final long SLEEP_CAP_MS = 10000;
 
+    private final String browser;   // G9: chrome | firefox | edge
+
     public RecordSession(String id, String startUrl) {
+        this(id, startUrl, "chrome");
+    }
+
+    public RecordSession(String id, String startUrl, String browser) {
         this.id = id;
         this.startUrl = (startUrl == null || startUrl.trim().isEmpty()) ? "about:blank" : startUrl.trim();
+        String b = browser == null ? "" : browser.trim().toLowerCase(java.util.Locale.ROOT);
+        this.browser = b.equals("firefox") || b.equals("edge") ? b : "chrome";
+    }
+
+    public String getBrowser() { return browser; }
+
+    // visible local browser (Selenium Manager provisions driver + browser); Firefox gets a BiDi socket
+    private WebDriver newDriver() {
+        if ("firefox".equals(browser)) {
+            return new org.openqa.selenium.firefox.FirefoxDriver(new org.openqa.selenium.firefox.FirefoxOptions().enableBiDi());
+        }
+        if ("edge".equals(browser)) return new org.openqa.selenium.edge.EdgeDriver();
+        return new org.openqa.selenium.chrome.ChromeDriver();
     }
 
     public String getId() { return id; }
@@ -96,10 +115,17 @@ public class RecordSession {
     public String getError() { return error; }
 
     public synchronized void start() throws Exception {
-        driver = new org.openqa.selenium.chrome.ChromeDriver(); // visible local Chrome (Selenium Manager provisions driver + browser)
-        // install the recorder for every document (survives navigations), then load the start page
-        ((HasCdp) driver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",
-                Collections.<String, Object>singletonMap("source", RECORDER_JS));
+        driver = newDriver();
+        // install the recorder for every document (survives navigations), then load the start page:
+        // CDP on Chromium, a BiDi preload script elsewhere; the poll loop re-injects as a universal fallback
+        if (driver instanceof HasCdp) {
+            ((HasCdp) driver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",
+                    Collections.<String, Object>singletonMap("source", RECORDER_JS));
+        } else if (com.gatf.selenium.trace.BidiRaw.available(driver)) {
+            try {
+                new org.openqa.selenium.bidi.module.Script(driver).addPreloadScript("() => {" + RECORDER_JS + "}");
+            } catch (Exception ignore) { /* poll-loop re-injection still covers it */ }
+        }
         if (!"about:blank".equals(startUrl)) driver.get(startUrl);
         // belt-and-braces: also inject into the already-loaded document (idempotent via the guard)
         try { ((JavascriptExecutor) driver).executeScript(RECORDER_JS); } catch (Exception ignore) {}
@@ -117,6 +143,9 @@ public class RecordSession {
             try {
                 Thread.sleep(400);
                 if (!running) break;
+                // universal fallback (any WebDriver): (re)install into a document that lacks the recorder —
+                // guarded by __gatfRecInit, so it is a no-op wherever CDP/BiDi preload already did it
+                ((JavascriptExecutor) driver).executeScript(RECORDER_JS);
                 Object raw = ((JavascriptExecutor) driver).executeScript(DRAIN_JS);
                 if (raw instanceof List) {
                     for (Object o : (List<Object>) raw) {

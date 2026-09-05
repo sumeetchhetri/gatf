@@ -18,7 +18,10 @@ import { api } from '../api';
 
 type Phase = 'idle' | 'starting' | 'recording' | 'stopped' | 'saved';
 
+type Browser = 'chrome' | 'firefox' | 'edge';
+
 export default function RecordView({ onOpenInEditor }: { onOpenInEditor: (path: string) => void }) {
+  const [browser, setBrowser] = useState<Browser>('chrome');
   const [phase, setPhase] = useState<Phase>('idle');
   const [url, setUrl] = useState('https://');
   const [sid, setSid] = useState<string | null>(null);
@@ -45,7 +48,7 @@ export default function RecordView({ onOpenInEditor }: { onOpenInEditor: (path: 
     setContent('');
     setPhase('starting');
     try {
-      const r = await api.recordStart(url);
+      const r = await api.recordStart(url, browser);
       if (r.error || !r.sessionId) {
         setErr(r.error || 'could not start recording');
         setPhase('idle');
@@ -150,6 +153,11 @@ export default function RecordView({ onOpenInEditor }: { onOpenInEditor: (path: 
             style={{ minWidth: 360 }}
             onKeyDown={(e) => e.key === 'Enter' && start()}
           />
+          <select className="inp" value={browser} onChange={(e) => setBrowser(e.target.value as Browser)} title="browser to record in">
+            <option value="chrome">Chrome</option>
+            <option value="firefox">Firefox</option>
+            <option value="edge">Edge</option>
+          </select>
           <button className="btn primary" disabled={!url.trim() || url.trim() === 'https://'} onClick={start}>
             ● Start recording
           </button>

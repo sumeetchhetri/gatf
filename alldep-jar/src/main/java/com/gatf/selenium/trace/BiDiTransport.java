@@ -23,13 +23,11 @@ import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.TakesScreenshot;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.bidi.HasBiDi;
 import org.openqa.selenium.bidi.module.LogInspector;
 import org.openqa.selenium.bidi.module.Network;
 import org.openqa.selenium.bidi.network.Header;
 import org.openqa.selenium.bidi.network.RequestData;
 import org.openqa.selenium.bidi.network.ResponseData;
-import org.openqa.selenium.bidi.Command;
 import org.openqa.selenium.bidi.browsingcontext.BrowsingContext;
 import org.openqa.selenium.bidi.browsingcontext.CaptureScreenshotParameters;
 import org.openqa.selenium.PrintsPage;
@@ -115,7 +113,13 @@ public final class BiDiTransport implements BrowserControl {
     BiDiTransport(WebDriver driver) { this(driver, new TraceConfig()); }
     BiDiTransport(WebDriver driver, TraceConfig cfg) { this.driver = driver; this.cfg = cfg == null ? new TraceConfig() : cfg; }
 
-    private boolean hasBiDi() { return driver instanceof HasBiDi; }
+    // G9: a LIVE BiDi socket, not just the HasBiDi interface (every 4.48 RemoteWebDriver implements it)
+    private volatile Boolean bidiLive;
+    private boolean hasBiDi() {
+        Boolean b = bidiLive;
+        if (b == null) bidiLive = b = BidiRaw.available(driver);
+        return b;
+    }
 
     @Override
     public boolean supports(Capability c) {
@@ -170,7 +174,7 @@ public final class BiDiTransport implements BrowserControl {
                 Map<String, Object> p = new LinkedHashMap<>();
                 p.put("dataTypes", java.util.Collections.singletonList("response"));
                 p.put("maxEncodedDataSize", cfg.getMaxBodyBytes());
-                Object r = ((HasBiDi) driver).getBiDi().send(new Command<>("network.addDataCollector", p, Map.class));
+                Object r = BidiRaw.send(driver, "network.addDataCollector", p);
                 Object id = r instanceof Map ? ((Map<?, ?>) r).get("collector") : null;
                 collectorId = id == null ? null : String.valueOf(id);
             } catch (Exception unsupported) {
@@ -266,7 +270,7 @@ public final class BiDiTransport implements BrowserControl {
             p.put("request", requestId);
             p.put("collector", c);
             p.put("disown", true);   // release it in the browser once read
-            Object r = ((HasBiDi) driver).getBiDi().send(new Command<>("network.getData", p, Map.class));
+            Object r = BidiRaw.send(driver, "network.getData", p);
             return decodeBytes(r instanceof Map ? ((Map<?, ?>) r).get("bytes") : null);
         } catch (Exception e) {
             return null;   // not collected (redirect, over maxEncodedDataSize, evicted, ...)
@@ -339,7 +343,7 @@ public final class BiDiTransport implements BrowserControl {
             try {
                 Map<String, Object> p = new LinkedHashMap<>();
                 p.put("collector", c);
-                ((HasBiDi) driver).getBiDi().send(new Command<>("network.removeDataCollector", p, Map.class));
+                BidiRaw.send(driver, "network.removeDataCollector", p);
             } catch (Exception ignored) {}
         }
         this.networkOn = false;
