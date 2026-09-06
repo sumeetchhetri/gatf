@@ -19,7 +19,7 @@ Windows (PowerShell):
 irm https://github.com/sumeetchhetri/gatf/releases/latest/download/install.ps1 | iex
 ```
 Offline: download `gatf-<version>.zip` from Releases, unzip, and run `./install.sh` (or `powershell -ExecutionPolicy Bypass -File .\install.ps1`).
-The installer uses an installed JDK 21+ or offers a private Eclipse Temurin 21 download, installs per user (no admin), and can optionally set up the load tools. Then: `gatf ui` → http://127.0.0.1:9080/.
+Needs Java 21+ — a JRE is enough (tests compile with the bundled ECJ); only the online debugger needs a JDK. The installer detects installed Java (preferring a JDK) or offers a private Eclipse Temurin 21 download (JDK by default, `--jre` for the smaller runtime), installs per user (no admin), and can optionally set up the load tools. Then: `gatf ui` → http://127.0.0.1:9080/.
 
 Important features
 ==========

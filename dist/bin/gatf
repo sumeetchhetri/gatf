@@ -1,0 +1,60 @@
+#!/bin/sh
+#    Copyright 2013-2026, Sumeet Chhetri
+#
+#    Licensed under the Apache License, Version 2.0 (the "License");
+#    you may not use this file except in compliance with the License.
+#    You may obtain a copy of the License at
+#
+#    http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS,
+#    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#    See the License for the specific language governing permissions and
+#    limitations under the License.
+#
+# GATF launcher (macOS / Linux). JDK: $GATF_JAVA_HOME, else the one pinned by the installer in
+# ~/.gatf/gatf.conf, else `java` on PATH. Extra JVM flags: $GATF_JAVA_OPTS.
+self="$0"
+# shellcheck disable=SC2012  # portable symlink read (macOS has no readlink -f)
+while [ -h "$self" ]; do
+  l="$(ls -ld "$self" | sed 's/.* -> //')"
+  case "$l" in /*) self="$l" ;; *) self="$(dirname "$self")/$l" ;; esac
+done
+GATF_DIR="$(cd "$(dirname "$self")/.." && pwd)"
+JAR="$GATF_DIR/lib/gatf.jar"
+if [ -z "${GATF_JAVA_HOME:-}" ] && [ -f "${GATF_HOME:-$HOME/.gatf}/gatf.conf" ]; then
+  # shellcheck disable=SC1091
+  . "${GATF_HOME:-$HOME/.gatf}/gatf.conf"
+fi
+if [ -n "${GATF_JAVA_HOME:-}" ]; then JAVA="$GATF_JAVA_HOME/bin/java"; else JAVA="java"; fi
+
+usage() {
+  cat <<USAGE
+gatf $(cat "$GATF_DIR/VERSION" 2>/dev/null)
+  gatf ui [port] [dir]          web console (default 9080, current dir; host \$GATF_UI_HOST or 127.0.0.1)
+  gatf tools install [tool...]  set up load tools (vegeta autocannon; wrk/wrk2 via host or Docker)
+  gatf version                  GATF + JDK versions
+  gatf <args>                   passed to the jar, e.g. -executor gatf-config.json | -selenium ... | -listener ...
+USAGE
+}
+
+# GATF_JAVA_OPTS is intentionally unquoted: it carries several JVM flags
+# shellcheck disable=SC2086
+case "${1:-}" in
+  ui)
+    shift
+    exec "$JAVA" ${GATF_JAVA_OPTS:-} -jar "$JAR" -configtool "${1:-9080}" "${GATF_UI_HOST:-127.0.0.1}" "${2:-.}" ;;
+  tools)
+    shift
+    [ "${1:-}" = install ] && shift
+    exec "$JAVA" -cp "$JAR" com.gatf.executor.ext.PerfToolProvisioner "$@" ;;
+  version|--version|-v)
+    echo "gatf $(cat "$GATF_DIR/VERSION" 2>/dev/null || echo unknown)"
+    "$JAVA" -version 2>&1 | head -1
+    exit 0 ;;
+  ""|help|-h|--help)
+    usage; exit 0 ;;
+  *)
+    exec "$JAVA" ${GATF_JAVA_OPTS:-} -jar "$JAR" "$@" ;;
+esac

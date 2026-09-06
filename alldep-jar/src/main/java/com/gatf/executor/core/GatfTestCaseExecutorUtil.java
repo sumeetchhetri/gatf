@@ -581,6 +581,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         
         @SuppressWarnings("unused")
 		String path = initOutFolderAndGetPath(context, System.nanoTime(), 0, "sel");
+        com.gatf.selenium.gatfjdb.DebuggerSupport.requireDebugger();   // clear error on a JRE (no jdk.jdi / jdwp agent)
         GatfSelDebugger session = null;
     	try {
     		selscript = context.getWorkflowContextHandler().templatize(selscript);
