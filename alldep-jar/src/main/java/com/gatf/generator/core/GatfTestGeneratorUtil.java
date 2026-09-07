@@ -25,29 +25,14 @@ import java.io.InputStream;
 import java.io.StringWriter;
 import java.io.Writer;
 import java.lang.annotation.Annotation;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
-import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 import java.nio.channels.FileChannel;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.Set;
-import java.util.TreeMap;
 
 import javax.ws.rs.HttpMethod;
 import javax.ws.rs.core.HttpHeaders;
@@ -56,7 +41,6 @@ import javax.xml.bind.JAXBContext;
 import javax.xml.bind.Marshaller;
 import javax.xml.namespace.QName;
 
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -69,17 +53,13 @@ import com.gatf.GatfPlugin;
 import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
-import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
-import com.gatf.executor.distributed.DistributedGatfListener;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 import com.gatf.executor.executor.TestCaseExecutorUtil.TestCaseResponseHandler;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.generator.postman.PostmanCollection;
-import com.gatf.selenium.Command;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
-import com.gatf.ui.GatfConfigToolUtil;
 
 /**
  * @author Sumeet Chhetri<br/>
@@ -402,7 +382,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                                     		params.put(formpnm, (String)vm.invoke(annotations[1]));
                                     	}
                                     	else
-                                    		params.put(formpnm, String.valueOf(getPrimitiveValue(argTypes[i])));
+                                    		params.put(formpnm, String.valueOf(samples().getPrimitiveValue(argTypes[i])));
                                     	continue;
                                     }
                                     
@@ -454,13 +434,13 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
                                     		hparams.put(formpnm, (String)vm.invoke(annotations[1]));
                                     	}
                                     	else
-                                    		hparams.put(formpnm, String.valueOf(getPrimitiveValue(argTypes[i])));
+                                    		hparams.put(formpnm, String.valueOf(samples().getPrimitiveValue(argTypes[i])));
                                         continue;
                                     }
                                 }
                                 else
                                 {
-                                	ViewField vf = getViewField(argTypes[i]);
+                                	ViewField vf = samples().getViewField(argTypes[i]);
                                     if(vf!=null) {
                                     	contentvf = vf;
                                     	if(isDebugEnabled())
@@ -757,387 +737,10 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
      *             full service
      */
     @SuppressWarnings("rawtypes")
-    private ViewField getViewField(Type claz) throws Exception
-    {
-    	ViewField viewField = null;
-    	try 
-    	{
-    		ParameterizedType type = null;
-    		Class clas = null;
-    		if(claz instanceof ParameterizedType)
-    		{
-    			type = (ParameterizedType)claz;
-    			clas = (Class)type.getRawType();
-    		}
-    		else
-    		{
-    			clas = (Class)claz;
-    		}
-    		
-    		List<Type> heirarchies = new ArrayList<Type>();
-	        if (isPrimitive(clas))
-	        {
-	            viewField = new ViewField();
-	            viewField.setClaz(clas);
-	            viewField.setValue(getPrimitiveValue(claz));
-	        }
-	        else if (clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.Attachment")
-	        		|| clas.getName().equals("org.apache.cxf.message.Attachment")
-	        		|| clas.getName().equals("org.apache.cxf.jaxrs.ext.multipart.MultipartBody")
-	        		|| clas.getName().equals("javax.ws.rs.core.MultivaluedMap")
-	        		|| clas.getName().equals("javax.ws.rs.core.MultivaluedHashMap")
-	        		|| 
-	        		(isCollection(clas) && clas.getTypeParameters().length>0 
-	        				&& clas.getTypeParameters()[0].toString().equals("class org.apache.cxf.jaxrs.ext.multipart.Attachment"))
-	        		||
-	        		(isCollection(clas) && clas.getTypeParameters().length>0 
-	        				&& clas.getTypeParameters()[0].toString().equals("class org.apache.cxf.message.Attachment")))
-	        {
-	            return null;
-	        }
-	        else if (isMap(clas))
-	        {
-	        	viewField = new ViewField();
-	            viewField.setClaz(clas);
-	            viewField.setValue(getMapValue(clas, type.getActualTypeArguments(), heirarchies));
-	        }
-	        else if (isCollection(clas))
-	        {
-	        	viewField = new ViewField();
-	            viewField.setClaz(clas);
-	            viewField.setValue(getListSetValue(clas, type.getActualTypeArguments(), heirarchies));
-	        }
-	        else if(!clas.isInterface())
-        	{
-	            viewField = new ViewField();
-	            viewField.setClaz(clas);
-	            viewField.setValue(getObject(clas, heirarchies));
-        	}
-    	} catch (Exception e) {
-    		logger.error(ExceptionUtils.getStackTrace(e));
-    		logger.info("Invalid class, cannot be represented as a form/object in a test case - class name = " + claz);
-    	}
-        return viewField;
-    }
-    
-    @SuppressWarnings("rawtypes")
-    private List<Field> getAllFields(Class claz) {
-    	List<Field> allFields = new ArrayList<Field>();
-    	allFields.addAll(Arrays.asList(claz.getFields()));
-    	allFields.addAll(Arrays.asList(claz.getDeclaredFields()));
-    	
-    	if(!Object.class.equals(claz.getSuperclass())) {
-    		allFields.addAll(getAllFields(claz.getSuperclass()));
-    	}
-    	return allFields;
-    }
-    
-    private String getHeirarchyStr(List<Type> fheirlst) {
-    	StringBuilder b = new StringBuilder();
-    	if(!fheirlst.isEmpty()) {
-    		for (Type type : fheirlst) {
-				b.append(type.toString()+".");
-			}
-    	}
-    	return b.toString();
-    }
-    
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-    private Object getObject(Class claz, List<Type> heirarchies) throws Exception {
-
-    	if(claz.isEnum())return claz.getEnumConstants()[0];
-    	
-    	if (isMap(claz))
-        {
-    		return getMapValue(claz, claz.getTypeParameters(), heirarchies);
-        }
-        else if (isCollection(claz))
-        {
-        	return getListSetValue(claz, claz.getTypeParameters(), heirarchies);
-        }
-        else if(claz.isInterface() || Modifier.isAbstract(claz.getModifiers())) 
-        {
-        	return null;
-        }
-    	
-    	if(heirarchies.contains(claz) || heirarchies.size()>=2)return null;
-    	heirarchies.add(claz);
-    	
-    	Constructor cons = null;
-    	try {
-    		cons = claz.getConstructor(new Class[]{});
-		} catch (Exception e) {
-			if(isPrimitive(claz)) {
-				return getPrimitiveValue(claz);
-			}
-			logger.error("No public no-args constructor found for class " + claz.getName());
-			return null;
-		}
-    	
-    	Object object = cons.newInstance(new Object[]{});
-    	if(claz.equals(Object.class)) return null;
-    	List<Field> allFields = getAllFields(claz);
-    	
-    	for (Field field : allFields) {
-    		
-    		if (Modifier.isStatic(field.getModifiers()))
-    			continue;
-    			
-			//if(!field.isAccessible())
-			{
-				field.setAccessible(true);
-			}
-    		
-			List<Type> fheirlst = new ArrayList<Type>(heirarchies);
-			
-			if(isDebugEnabled())
-				logger.info("Parsing Class " + getHeirarchyStr(fheirlst) + " field " + field.getName() + " type " + field.getType().equals(boolean.class));
-            
-			if (isPrimitive(field.getType()))
-            {
-                field.set(object, getPrimitiveValue(field.getType()));
-            }
-            else if (isMap(field.getType()) && field.getGenericType() instanceof ParameterizedType)
-            {
-            	ParameterizedType type = (ParameterizedType)field.getGenericType();
-            	field.set(object, getMapValue(field.getType(), type.getActualTypeArguments(), fheirlst));
-            }
-            else if (isCollection(field.getType()) && field.getGenericType() instanceof ParameterizedType)
-            {
-            	ParameterizedType type = (ParameterizedType)field.getGenericType();
-            	field.set(object, getListSetValue(field.getType(), type.getActualTypeArguments(), fheirlst));
-            }
-            else if (!claz.equals(field.getType()))
-            {
-            	Object fieldval = getObject(field.getType(), fheirlst);
-            	field.set(object, fieldval);
-            }
-            else if (claz.equals(field.getType()))
-            {
-            	if(isDebugEnabled())
-            		logger.info("Ignoring recursive fields...");
-            }
-		}
-        return object;
-    }
-    
-    @SuppressWarnings("rawtypes")
-	private Object getObject(Type claz, List<Type> heirarchies) throws Exception {
-    	
-    	ParameterizedType type = null;
-		Class clas = null;
-		if(claz instanceof Class)
-		{
-			clas = (Class)claz;
-		}
-		else if(claz instanceof ParameterizedType)
-		{
-			type = (ParameterizedType)claz;
-			clas = (Class)type.getRawType();
-		}
-		else return null;
-		if (isPrimitive(clas))
-        {
-            return getPrimitiveValue(clas);
-        }
-        else if (isMap(clas))
-        {
-        	return getMapValue(clas, type.getActualTypeArguments(), heirarchies);
-        }
-        else if (isCollection(clas))
-        {
-        	return getListSetValue(clas, type.getActualTypeArguments(), heirarchies);
-        }
-        else if(!clas.isInterface())
-    	{
-            return getObject(clas, heirarchies);
-    	}
-    	return null;
-    }
-    
-    private Object getPrimitiveValue(Type claz) {
-    	 if (isPrimitive(claz))
-    	 {
-    		 if(claz.equals(boolean.class) || claz.equals(Boolean.class)) {
-    			 Random rand = new Random();
-    			 return rand.nextBoolean();
-    		 } else if(claz.equals(Date.class)) {
-    			 return new Date();
-    		 } else if(claz.equals(java.sql.Date.class)) {
-    			 return new java.sql.Date(new Date().getTime());
-    		 } else if(claz.equals(java.sql.Time.class)) {
-    			 return new java.sql.Time(new Date().getTime());
-    		 } else if(claz.equals(java.sql.Timestamp.class)) {
-    			 return new java.sql.Timestamp(new Date().getTime());
-    		 } else if(claz.equals(Double.class) || claz.equals(double.class)) {
-    			 Random rand = new Random(12345678L);
-    			 return rand.nextDouble();
-    		 } else if(claz.equals(Float.class) || claz.equals(float.class)) {
-    			 Random rand = new Random(12345678L);
-    			 return rand.nextFloat();
-    		 } else if(claz.equals(String.class)) {
-    			 return RandomStringUtils.insecure().nextAlphabetic(10);
-    		 } else if(claz.equals(Long.class) || claz.equals(long.class) || claz.equals(Number.class)) {
-    			 Random rand = new Random();
-    			 return Long.valueOf(rand.nextInt(123));
-    		 } else if(claz.equals(Integer.class) || claz.equals(int.class)) {
-    			 Random rand = new Random();
-    			 return Integer.valueOf(rand.nextInt(123));
-    		 } else if(claz.equals(BigInteger.class)) {
-    			 Random rand = new Random();
-    			 return new BigInteger(new BigInteger("1234567890123456789").bitLength(), rand);
-    		 } else if(claz.equals(BigDecimal.class)) {
-    			 Random rand = new Random();
-    			 return new BigDecimal(rand.nextInt(123));
-    		 } else if(claz.equals(Short.class) || claz.equals(short.class)) {
-    			 Random rand = new Random();
-    			 return Short.valueOf((short)rand.nextInt(123));
-    		 }
-    	 }
-    	 return null;
-    }
-    
-    private boolean isPrimitive(Type claz) {
-    	return (claz.equals(Integer.class) || claz.equals(String.class) || claz.equals(Short.class)
-                || claz.equals(Long.class) || claz.equals(Double.class) || claz.equals(Float.class)
-                || claz.equals(Boolean.class) || claz.equals(int.class) || claz.equals(short.class)
-                || claz.equals(long.class) || claz.equals(double.class) || claz.equals(float.class)
-                || claz.equals(boolean.class) || claz.equals(Number.class) || claz.equals(Date.class)
-                || claz.equals(BigInteger.class) || claz.equals(BigDecimal.class)
-                || claz.equals(java.sql.Date.class) || claz.equals(java.sql.Timestamp.class)
-                || claz.equals(java.sql.Time.class));
-    }
-    
-    private boolean isCollection(Type claz) {
-    	return (claz.equals(List.class) || claz.equals(ArrayList.class)
-                || claz.equals(LinkedList.class) || claz.equals(Set.class) 
-                || claz.equals(HashSet.class) || claz.equals(LinkedHashSet.class)
-                || claz.equals(Collection.class));
-    }
-    
-    private boolean isMap(Type claz) {
-    	return (claz.equals(Map.class) || claz.equals(HashMap.class)
-                || claz.equals(LinkedHashMap.class) || claz.equals(TreeMap.class));
-    }
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getMapValue(Type type, Type[] types, List<Type> heirarchies) throws Exception {
-    	
-    	Class claz = null;
-    	if(type.equals(Map.class) || type.equals(HashMap.class)
-                || type.equals(LinkedHashMap.class))
-    	{
-    		if(type.equals(Map.class))
-    		{
-    			claz = HashMap.class;
-    		}
-    		else
-    		{
-    			claz = (Class)type;
-    		}
-    	}
-    	
-    	Constructor cons = claz.getConstructor(new Class[]{});
-    	Object object = cons.newInstance(new Object[]{});
-    	
-    	for (int i = 0; i < 1; i++)
-    	{
-	    	Object k = null;
-	    	if(isPrimitive(types[0])) {
-	    		k = getPrimitiveValue(types[0]);
-	    	} else if(!heirarchies.contains(types[0])) {
-	    		if(types[0] instanceof Class)
-	    			k = getObject((Class)types[0], heirarchies);
-	    		else
-	    			k = getObject(types[0], heirarchies);
-	    		heirarchies.remove(types[0]);
-	    	}
-	    	Object v = null;
-	    	if(isPrimitive(types[1])) {
-	    		v = getPrimitiveValue(types[1]);
-	    	} else if(!heirarchies.contains(types[1])) {
-	    		if(types[1] instanceof Class)
-	    			v = getObject((Class)types[1], heirarchies);
-	    		else
-	    			v = getObject(types[1], heirarchies);
-	    		heirarchies.remove(types[1]);
-	    	}
-	    	if(k==null && isDebugEnabled()) {
-	    		logger.info(types[0].toString());
-	    		logger.info(types[1].toString());
-	    		logger.error("Null key " + types[0]);
-	    	}
-	    	if(k!=null) {
-	    	    ((Map)object).put(k, v);
-	    	}
-    	}
-    	if(!isPrimitive(types[0]))
-    	{
-    		heirarchies.add(types[0]);
-    	}
-    	if(!isPrimitive(types[1]))
-    	{
-    		heirarchies.add(types[1]);
-    	}
-    	return object;
-    }
-    
-    @SuppressWarnings({ "unchecked", "rawtypes" })
-	private Object getListSetValue(Type type, Type[] types, List<Type> heirarchies) throws Exception {
-    	
-    	Class claz = null;
-    	if(type.equals(List.class) || type.equals(Collection.class)
-    			|| type.equals(ArrayList.class) || type.equals(LinkedList.class))
-    	{
-    		if(type.equals(List.class) || type.equals(Collection.class))
-    		{
-    			claz = ArrayList.class;
-    		}
-    		else
-    		{
-    			claz = (Class)type;
-    		}
-    	}
-    	else if(type.equals(Set.class) || type.equals(HashSet.class) || type.equals(LinkedHashSet.class))
-    	{
-    		if(type.equals(Set.class))
-    		{
-    			claz = HashSet.class;
-    		}
-    		else
-    		{
-    			claz = (Class)type;
-    		}
-    	}
-    	
-    	Constructor cons = claz.getConstructor(new Class[]{});
-    	Object object = cons.newInstance(new Object[]{});
-    	
-        if (types.length == 1)
-        {
-        	for (int i = 0; i < 1; i++) {
-	        	Object v = null;
-	        	if(isPrimitive(types[0])) {
-	        		v = getPrimitiveValue(types[0]);
-	        	} else if(!heirarchies.contains(types[0])) {
-		    		if(types[0] instanceof Class)
-		    			v = getObject((Class)types[0], heirarchies);
-		    		else
-		    			v = getObject(types[0], heirarchies);
-		    		heirarchies.remove(types[0]);
-		    	}
-	        	((Collection)object).add(v);
-			}
-        	if(!isPrimitive(types[0]))
-        	{
-        		heirarchies.add(types[0]);
-        	}
-        }
-    	return object;
-    }
-    
-
+	// G8: sample-object synthesis moved to SampleValueFactory (built per use so setLogger() is honoured)
+	private SampleValueFactory samples() {
+		return new SampleValueFactory(logger, isDebugEnabled());
+	}
     private ClassLoader getClassLoader()
     {
         return getClass().getClassLoader();
@@ -1145,85 +748,7 @@ public class GatfTestGeneratorUtil implements GatfPlugin {
 
     public static void main(String[] args) throws Exception
     {
-		// Install ByteBuddy agent programmatically
-        //ByteBuddyAgent.install();
-
-    	System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
-    	boolean showHelp = false;
-    	if(args.length>=1) {
-    		if(args.length>1 && args[0].equals("-generator") && !args[1].trim().isEmpty())
-    		{
-    			GatfConfiguration config = null;
-    			
-    			if(args[1].trim().endsWith(".xml")) {
-    				InputStream io = new FileInputStream(args[1]);
-		    		config = (GatfConfiguration) WorkflowContextHandler.XOM.readValue(io, GatfConfiguration.class);
-    			} else if(args[1].trim().endsWith(".json")) {
-    				InputStream io = new FileInputStream(args[1]);
-    				config = WorkflowContextHandler.OM.readValue(io, GatfConfiguration.class);
-    			} else {
-    				showHelp = true;
-    			}
-	    		
-	    		GatfTestGeneratorUtil testGenerator = new GatfTestGeneratorUtil();
-	    		testGenerator.setDebugEnabled(config.isDebugEnabled());
-	    		testGenerator.setEnabled(config.isEnabled());
-	    		testGenerator.setRequestDataType(config.getRequestDataType());
-	    		testGenerator.setTestPaths(config.getTestPaths());
-	    		testGenerator.setSoapWsdlKeyPairs(config.getSoapWsdlKeyPairs());
-	    		testGenerator.setUrlPrefix(config.getUrlPrefix());
-	    		testGenerator.setResourcepath(config.getResourcepath());
-	    		testGenerator.setOutDataType(config.getResponseDataType()); 
-	    		testGenerator.setOverrideSecure(config.isOverrideSecure());
-	    		testGenerator.setUrlSuffix(config.getUrlSuffix());
-	    		testGenerator.setUseSoapClient(config.isUseSoapClient());
-	    		testGenerator.setTestCaseFormat(config.getTestCaseFormat());
-	    		testGenerator.setPostmanCollectionVersion(config.getPostmanCollectionVersion());
-	    		testGenerator.setOverrideSecure(config.isOverrideSecure());
-	    		testGenerator.execute();
-    		}
-    		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
-    		{
-    			try {
-    				GatfTestCaseExecutorUtil.main(args);
-				} catch (Exception e) {
-					e.printStackTrace();
-					showHelp = true;
-				}
-    			
-    		}
-    		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
-    				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
-    		{
-    			GatfConfigToolUtil.main(args);
-    		}
-    		else if(args[0].equals("-listener"))
-    		{
-    			DistributedGatfListener.main(args);
-    		}
-    		else if(args[0].equals("-validate-sel"))
-    		{
-    			Command.validateSel(args, null, false);
-    		}
-    		else
-    		{
-    			showHelp = true;
-    		}
-    	} else {
-    		showHelp = true;
-    	}
-    	
-    	if(showHelp) {
-    		System.out.println("Invalid invocation - valid invocation options are, \n" +
-					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
-					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
-					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
-					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
-					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
-					"java -jar gatf-plugin-{version}.jar -listener\n");
-    	}
-    	
-		System.exit(0);
+    	GatfCli.main(args);   // G8: CLI routing lives in GatfCli
     }
 
     /*
