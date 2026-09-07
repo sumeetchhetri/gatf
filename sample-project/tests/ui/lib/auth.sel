@@ -11,6 +11,7 @@ subtest "doLogin"
   ??10 css@"nav.app-menu"
   // e2e edit
   // e2e edit
+  // e2e edit
   ?? css@"nav.app-menu" visible
 }
 

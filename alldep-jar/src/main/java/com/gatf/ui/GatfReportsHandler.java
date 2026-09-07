@@ -90,42 +90,11 @@ public class GatfReportsHandler extends HttpHandler {
 					Map<String, Object> out = new HashMap<>();
 					ReportHandler.updatePaths(type, out);
 					String text = WorkflowContextHandler.OM.writeValueAsString(out);
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(text.getBytes("UTF-8").length);
-			        response.getWriter().write(text);
-			        response.setStatus(HttpStatus.OK_200);
+			    	writeJson(response, text);
 			        return;
 				}
 				else if(StringUtils.isNotBlank(action) && action.equals("debugStream")) {
-					// Server-push debug channel (delta-040): stream {s,r,p,n,v,t} over SSE, pushing on change.
-					// Replaces the client's ~900ms heartbeat poll. Commands still arrive on PUT ?action=debug.
-					String dsSessionId = request.getParameter("sessionId");
-					response.setContentType("text/event-stream; charset=utf-8");
-					response.setHeader("Cache-Control", "no-cache");
-					response.setStatus(HttpStatus.OK_200);
-					java.io.Writer dsW = response.getWriter();
-					GatfSelDebugger dsDbg = dbgSessions.get(dsSessionId);
-					for(int dsI=0; dsDbg==null && dsI<40; dsI++) { Thread.sleep(50); dsDbg = dbgSessions.get(dsSessionId); }
-					if(dsDbg==null) {
-						dsW.write("data: {\"s\":false,\"m\":\"No debug session\"}\n\n"); dsW.flush(); return;
-					}
-					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsFirst=true; String dsLt=null; long dsVer=-1;
-					try {
-						while(true) {
-							GatfSelDebugger dsS = dbgSessions.get(dsSessionId);
-							if(dsS==null) { dsW.write("data: {\"s\":true,\"r\":false}\n\n"); dsW.flush(); break; }
-							boolean dsR=dsS.getRunning(); int dsP=dsS.getPrevLine(); int dsN=dsS.getNextLine(); int dsV=dsS.getState(); String dsT=dsS.getCurrFile();
-							boolean dsCh = dsFirst || dsP!=dsLp || dsN!=dsLn || dsV!=dsLv || dsR!=dsLr || (dsT==null?dsLt!=null:!dsT.equals(dsLt));
-							if(dsCh) {
-								Map<String, Object> dsOut = new HashMap<>();
-								dsOut.put("s", true); dsOut.put("r", dsR); dsOut.put("p", dsP); dsOut.put("n", dsN); dsOut.put("v", dsV); dsOut.put("t", dsT);
-								dsW.write("data: " + WorkflowContextHandler.OM.writeValueAsString(dsOut) + "\n\n"); dsW.flush();
-								dsLp=dsP; dsLn=dsN; dsLv=dsV; dsLr=dsR; dsLt=dsT; dsFirst=false;
-							}
-							if(!dsR) { dbgSessions.remove(dsSessionId, dsS); break; }
-							dsVer = dsS.awaitChange(dsVer, 1000); // delta-075: event-driven (was a 150 ms poll)
-						}
-					} catch (Exception dsE) { /* client disconnected / write failed - end stream */ }
+					GatfDebugDispatcher.streamDebug(request, response);
 					return;
 				}
 			    new CacheLessStaticHttpHandler(GatfConfigToolUtil.authSrc!=null, dirPath).service(request, response);
@@ -139,79 +108,15 @@ public class GatfReportsHandler extends HttpHandler {
 			    int selDbgline = -1;
 			    boolean selDbgBrkRemove = false, setBreakpoint = false;
 			    TestCaseReport tcReport = null;
-			    if(action.equals("pauseElSearch") || action.equals("unPauseElSearch"))
+			    if(isRunControl(action))
 			    {
-                    String status = "{\"status\": false, \"running\": "+(context!=null)+"}";
-                    if(context!=null) {
-                        if(action.equals("pauseElSearch")) context.pauseElSearch();
-                        else context.unPauseElSearch();
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("file", context.getPausedFile());
-                        out.put("line", context.getPausedLineNo());
-                        out.put("is_paused", context.isPauseElSearch(false));
-                        out.put("running", context!=null);
-                        status = WorkflowContextHandler.OM.writeValueAsString(out);
-                    }
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(status.getBytes("UTF-8").length);
-			        response.getWriter().write(status);
-			        response.setStatus(HttpStatus.OK_200);
-			        return;
-			    }
-                else if(action.equals("restartSubtest"))
-			    {
-                    String status = "{\"status\": false}";
-                    if(context!=null) {
-                        if(action.equals("restartSubtest")) context.restartSubtest();
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("status", true);
-                        status = WorkflowContextHandler.OM.writeValueAsString(out);
-                    }
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(status.getBytes("UTF-8").length);
-			        response.getWriter().write(status);
-			        response.setStatus(HttpStatus.OK_200);
-			        return;
-			    }
-                else if(action.equals("stop"))
-			    {
-                    String status = "{\"status\": false}";
-                    if(context!=null) {
-                        if(action.equals("stop")) context.stopExec();
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("status", true);
-                        status = WorkflowContextHandler.OM.writeValueAsString(out);
-                    }
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(status.getBytes("UTF-8").length);
-			        response.getWriter().write(status);
-			        response.setStatus(HttpStatus.OK_200);
-			        return;
-			    }
-                else if(action.equals("pausedLineNo"))
-			    {
-                    String status = "{\"line\": -1, \"running\": "+(context!=null)+"}";
-                    if(context!=null) {
-                        Map<String, Object> out = new HashMap<>();
-                        out.put("file", context.getPausedFile());
-                        out.put("line", context.getPausedLineNo());
-                        out.put("is_paused", context.isPauseElSearch(false));
-                        out.put("running", context!=null);
-                        status = WorkflowContextHandler.OM.writeValueAsString(out);
-                    }
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(status.getBytes("UTF-8").length);
-			        response.getWriter().write(status);
-			        response.setStatus(HttpStatus.OK_200);
-			        return;
+			    	writeJson(response, runControl(action));
+			    	return;
 			    }
                 else if(action.equals("validateTest") && testcaseFileName.endsWith(".sel"))
 			    {
 			    	String status = Command.validateSel(new String[] {"-validate-sel", testcaseFileName, new File(gatfConfig.getTestCasesBasePath(), "gatf-config.json").exists() ? "gatf-config.json" : "gatf-config.xml", gatfConfig.getTestCasesBasePath()}, null, false);
-			    	response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
-			        response.setContentLength(status.getBytes("UTF-8").length);
-			        response.getWriter().write(status);
-			        response.setStatus(HttpStatus.OK_200);
+			    	writeJson(response, status);
 			        return;
 			    }
 			    else if(action.equals("replayTest"))
@@ -652,136 +557,7 @@ public class GatfReportsHandler extends HttpHandler {
                     gatfConfig.setSeleniumScripts(new String[]{testcaseFileName});
                     Map<String, Object> out = new HashMap<>();
                     if(action.equals("debug")) {
-                    	if(selDbgline<-8) {
-                    		String cont = "Fail: Invalid debug command";
-    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
-                    	}
-                    	if(StringUtils.isBlank(sessionId)) {
-                    		String cont = "Fail: Invalid sessionId";
-    	                    return new Object[]{HttpStatus.OK_200, cont.getBytes("UTF-8"), MediaType.TEXT_PLAIN, null};
-                    	}
-                    	GatfSelDebugger dbgSession = dbgSessions.get(sessionId);
-                    	if(selDbgline==0) {
-                    		if(dbgSession!=null) {
-                    			dbgSessions.get(sessionId).destroy();
-                    			dbgSessions.remove(sessionId);
-                    			dbgSession = null;
-                        	}
-                    		String configPath = null;
-    	                    synchronized (mojo) {
-    	        				if(new File(mojo.getRootDir(), "gatf-config.json").exists()) {
-    	        					configPath = new File(mojo.getRootDir(), "gatf-config.json").getAbsolutePath();
-    	        				} else {
-    	        					configPath = new File(mojo.getRootDir(), "gatf-config.xml").getAbsolutePath();
-    	        				}
-    	        			}
-    	                    executorMojo.initilaizeContext(gatfConfig, true);
-    	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
-    	                    dbgSessions.put(sessionId, dbgSession);
-    	                    out.put("s", true);
-    	                    out.put("c", dbgSession.getSrcCode());
-    	                    out.put("l", dbgSession.getDebuggableLines());
-    	                    out.put("i", dbgSession.getPrevLine());
-    	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-    	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-                    	} else {
-                    		if(dbgSession==null) {
-        	                    out.put("s", false);
-        	                    out.put("m", "No Debug session running for script " + testcaseFileName);
-        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-                        	}
-                    		switch (selDbgline) {
-								case -1: {
-									String line = request.getParameter("sline");
-									//F5 Step into
-									if(!dbgSession.enableStepIntoRequest(line)) {
-		        	                    out.put("s", false);
-		        	                    out.put("m", "Please suspend the debugger first");
-		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-									}
-									break;
-								}
-								case -2: {
-									//F7 Step out
-									if(!dbgSession.enableStepOutRequest()) {
-		        	                    out.put("s", false);
-		        	                    out.put("m", "Please suspend the debugger first");
-		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-									}
-									break;
-								}
-								case -3: {
-									//F6 Step over
-									if(!dbgSession.enableStepOverRequest()) {
-		        	                    out.put("s", false);
-		        	                    out.put("m", "Please suspend the debugger first");
-		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-									}
-									break;
-								}
-								case -4: {
-									//F8 Continue
-									dbgSession.resume();
-									break;
-								}
-								case -5: {
-									// Ctrl C Stop
-									dbgSession.suspend();
-									break;
-								}
-								case -6: {
-									// Ctrl X Terminate — delta-075: also drop the session (only -7 used to, and
-									// the push-channel clients no longer send -7)
-									dbgSession.destroy();
-									dbgSessions.remove(sessionId, dbgSession);
-									break;
-								}
-								case -7: {
-									//Status check call 1 - running, 0 - stopped
-	        	                    out.put("s", true);
-	        	                    out.put("r", dbgSession.getRunning());
-	        	                    out.put("p", dbgSession.getPrevLine());
-	        	                    out.put("n", dbgSession.getNextLine());
-	        	                    out.put("v", dbgSession.getState());
-	        	                    out.put("t", dbgSession.getCurrFile());
-	        	                    if(!dbgSession.getRunning()) {
-	        	                    	dbgSessions.remove(sessionId);
-	        	                    }
-	        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-	        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-								}
-								default: {
-									if(selDbgBrkRemove) {
-										//Click on line number in script (remove breakpoint)
-										if(!dbgSession.unsetBreakPoint(selDbgline+1)) {
-			        	                    out.put("s", false);
-			        	                    out.put("m", "No breakpoint found at line + " + (selDbgline+1));
-			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-										}
-									} else {
-										//Click on line number in script (add breakpoint)
-										if(!dbgSession.setBreakPoint(selDbgline+1)) {
-			        	                    out.put("s", false);
-			        	                    out.put("m", "Breakpoint cannot be added on line " + (selDbgline+1));
-			        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-			        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-										}
-									}
-									break;
-								}
-							}
-    	                    out.put("s", true);
-    	                    out.put("p", dbgSession.getPrevLine());
-    	                    out.put("n", dbgSession.getNextLine());
-    	                    ReportHandler.updatePaths("sel", out);
-    	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
-    	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
-                    	}
+                    	return GatfDebugDispatcher.dispatch(mojo, executorMojo, gatfConfig, request, testcaseFileName, sessionId, selDbgline, selDbgBrkRemove);
                     } else {
                         context = new AcceptanceTestContext(gatfConfig, null);
                         executorMojo.setContext(context);
@@ -926,6 +702,44 @@ public class GatfReportsHandler extends HttpHandler {
             }
         }
 	    return new Object[]{HttpStatus.NOT_FOUND_404, null, null, null};
+	}
+
+	// ---- G8: extracted from service() (behaviour unchanged) ----
+
+	private static void writeJson(Response response, String json) throws Exception {
+		response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+		response.setContentLength(json.getBytes("UTF-8").length);
+		response.getWriter().write(json);
+		response.setStatus(HttpStatus.OK_200);
+	}
+
+	private static boolean isRunControl(String action) {
+		return action.equals("pauseElSearch") || action.equals("unPauseElSearch") || action.equals("restartSubtest")
+				|| action.equals("stop") || action.equals("pausedLineNo");
+	}
+
+	// pauseElSearch / unPauseElSearch / pausedLineNo report the pause position; restartSubtest / stop act.
+	// Same JSON as the four former inline blocks.
+	private String runControl(String action) throws Exception {
+		AcceptanceTestContext ctx = context;
+		if(action.equals("restartSubtest") || action.equals("stop")) {
+			if(ctx==null) return "{\"status\": false}";
+			if(action.equals("restartSubtest")) ctx.restartSubtest(); else ctx.stopExec();
+			Map<String, Object> out = new HashMap<>();
+			out.put("status", true);
+			return WorkflowContextHandler.OM.writeValueAsString(out);
+		}
+		if(ctx==null) {
+			return action.equals("pausedLineNo") ? "{\"line\": -1, \"running\": false}" : "{\"status\": false, \"running\": false}";
+		}
+		if(action.equals("pauseElSearch")) ctx.pauseElSearch();
+		else if(action.equals("unPauseElSearch")) ctx.unPauseElSearch();
+		Map<String, Object> out = new HashMap<>();
+		out.put("file", ctx.getPausedFile());
+		out.put("line", ctx.getPausedLineNo());
+		out.put("is_paused", ctx.isPauseElSearch(false));
+		out.put("running", true);
+		return WorkflowContextHandler.OM.writeValueAsString(out);
 	}
 
 	public void clearInactiveDebugSessions() {

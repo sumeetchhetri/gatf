@@ -21,15 +21,19 @@ import { test, expect, type Page } from '@playwright/test';
 // frames for a live session. Needs the server-side selenium toolchain → Grid-gated like the T4c specs.
 const NEEDS_GRID = !process.env.GATF_SELENIUM_GRID;
 
-async function openFirstSel(page: Page) {
+// Debug needs a RUNNABLE script (one with its own `open`): library files like ui/lib/auth.sel only
+// define subtests and fail with "No open command found". sample-project's trace-smoke.sel is standalone.
+const DEBUG_SCRIPT = process.env.GATF_E2E_DEBUG_SEL || 'trace-smoke.sel';
+
+async function openSel(page: Page, name: string) {
   await page.getByRole('button', { name: 'Test Files' }).click();
-  let sel = page.locator('.tf-node.tf-file', { hasText: '.sel' });
-  if ((await sel.count()) === 0) {
+  let node = page.locator('.tf-node.tf-file', { hasText: name });
+  if ((await node.count()) === 0) {
     const dirs = page.locator('.tf-node.tf-dir');
     for (let i = 0, n = await dirs.count(); i < n; i++) await dirs.nth(i).click().catch(() => {});
-    sel = page.locator('.tf-node.tf-file', { hasText: '.sel' });
+    node = page.locator('.tf-node.tf-file', { hasText: name });
   }
-  await sel.first().click();
+  await node.first().click();
   await expect(page.locator('.cm-content')).toBeVisible();
 }
 
@@ -41,7 +45,7 @@ test.describe('GATF /app online debugger (Selenium Grid)', () => {
   test('breakpoint toggle, pause, F6 step-over, F8 continue, stop', async ({ page }) => {
     test.setTimeout(240_000);
     await page.goto('/app/');
-    await openFirstSel(page);
+    await openSel(page, DEBUG_SCRIPT);
     await page.getByRole('button', { name: /Debug/ }).click();
 
     // initial pause: a highlighted current line
@@ -92,7 +96,7 @@ test.describe('GATF /app online debugger (Selenium Grid)', () => {
   test('the /gatfjdb WebSocket pushes frames for a live session', async ({ page }) => {
     test.setTimeout(240_000);
     await page.goto('/app/');
-    await openFirstSel(page);
+    await openSel(page, DEBUG_SCRIPT);
     // capture the sessionId the SPA mints for the debug init PUT
     const initReq = page.waitForRequest((r) => r.url().includes('action=debug') && /[?&]line=0(&|$)/.test(r.url()));
     await page.getByRole('button', { name: /Debug/ }).click();
