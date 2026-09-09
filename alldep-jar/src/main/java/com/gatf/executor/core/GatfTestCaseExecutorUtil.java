@@ -109,7 +109,7 @@ import au.com.bytecode.opencsv.CSVWriter;
  */
 public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
-	private Logger logger = LogManager.getLogger(GatfTestCaseExecutorUtil.class.getSimpleName());
+	Logger logger = LogManager.getLogger(GatfTestCaseExecutorUtil.class.getSimpleName());
     
     private String baseUrl;
 
@@ -204,20 +204,20 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
     private String javaHome;
 
-    private Long startTime = 0L;
+    Long startTime = 0L;
     
     private boolean selConcWebdriver;
 
-    private AcceptanceTestContext context;
+    AcceptanceTestContext context;
 
     private DistributedGatfTester distributedGatfTester;
 
     // Test case execution log generator
-    private Thread tclgenerator = null;
+    Thread tclgenerator = null;
 
     private TestCase authTestCase;
     
-    private Function<Void, ClassLoader> fcl = new Function<Void, ClassLoader>() {
+    Function<Void, ClassLoader> fcl = new Function<Void, ClassLoader>() {
 		@Override
 		public ClassLoader apply(Void t) {
 			return getClass().getClassLoader();
@@ -777,29 +777,22 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         // If load testing time is greater than 10sec only then run load tests..
         boolean isLoadTestingEnabled = configuration.isLoadTestingEnabled() && configuration.getLoadTestingTime() > 10000;
 
-        int loadTstReportsCount = 0;
 
-        int loadTestRunNum = 1;
 
         long concurrentUserRampUpTimeMs = 0;
         if (configuration.getConcurrentUserSimulationNum() > 1 && configuration.getConcurrentUserRampUpTime() > 0)
             concurrentUserRampUpTimeMs = configuration.getConcurrentUserRampUpTime() / configuration.getConcurrentUserSimulationNum();
 
-        int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
-        if (loadTestingReportSamplesNum < 3)
-            loadTestingReportSamplesNum = 3;
-        if (loadTestingReportSamplesNum > 100)
-        	loadTestingReportSamplesNum = 100;
+        // G8: sample clamp + interval + per-iteration decision + counters shared with the other run loop
+        LoadRunSchedule schedule = new LoadRunSchedule(isLoadTestingEnabled, configuration);
 
         List<FutureTask<Object>> distTasks = new ArrayList<FutureTask<Object>>();
         List<String> taskNodes = new ArrayList<String>();
-        long reportSampleTimeMs = 0;
         
         Map<String, Map<Integer, String>> indexes = new HashMap<String, Map<Integer, String>>();
         indexes.put("local", new HashMap<Integer, String>());
 
         if (isLoadTestingEnabled) {
-            reportSampleTimeMs = configuration.getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
             if (configuration.isDistributedLoadTests() && configuration.getDistributedNodes() != null && configuration.getDistributedNodes().length > 0) {
                 distConnections = new ArrayList<DistributedConnection>();
 
@@ -880,30 +873,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
             boolean done = false;
 
-            if (isLoadTestingEnabled) {
-                long currentTime = System.currentTimeMillis();
-
-                if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                    done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                    dorep = true;
-                } else {
-                    done = (currentTime - startTime) > configuration.getLoadTestingTime();
-
-                    long elapsedFraction = (currentTime - startTime);
-
-                    dorep = done || loadTstReportsCount == 0;
-
-                    if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
-                        dorep = true;
-                    }
-                }
-                if (done) {
-                    break;
-                }
-            } else {
-                dorep = true;
-                done = true;
+            if (schedule.next(isLoadTestingEnabled, context.getGatfExecutorConfig(), configuration, startTime)) {
+                break;
             }
+            dorep = schedule.dorep;
+            done = schedule.done;
 
             runNum++;
 
@@ -962,8 +936,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
+                    schedule.advance();
                 }
             } else {
                 try {
@@ -979,8 +952,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
+                    schedule.advance();
                 }
             }
 
@@ -1087,7 +1059,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
     }
 
-    private static class ConcSeleniumTest implements Callable<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>>> {
+    static class ConcSeleniumTest implements Callable<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>>> {
         private int index;
         private int findx;
         private AcceptanceTestContext context;
@@ -1417,28 +1389,21 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         // If load testing time is greater than 10sec only then run load tests..
         boolean isLoadTestingEnabled = !compareEnabledOnlySingleTestCaseExec && configuration.isLoadTestingEnabled() && configuration.getLoadTestingTime() > 10000;
 
-        int loadTstReportsCount = 0;
 
         TestSuiteStats loadStats = new TestSuiteStats();
 
-        int loadTestRunNum = 1;
 
         long concurrentUserRampUpTimeMs = 0;
         if (configuration.getConcurrentUserSimulationNum() > 1 && configuration.getConcurrentUserRampUpTime() > 0)
             concurrentUserRampUpTimeMs = configuration.getConcurrentUserRampUpTime() / configuration.getConcurrentUserSimulationNum();
 
-        int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
-        if (loadTestingReportSamplesNum < 3)
-            loadTestingReportSamplesNum = 3;
-        if (loadTestingReportSamplesNum > 100)
-        	loadTestingReportSamplesNum = 100;
+        // G8: sample clamp + interval + per-iteration decision + counters shared with the other run loop
+        LoadRunSchedule schedule = new LoadRunSchedule(isLoadTestingEnabled, configuration);
 
         validateTestCases(allTestCases, testCaseExecutorUtil);
 
         List<FutureTask<DistributedTestStatus>> distTasks = null;
-        long reportSampleTimeMs = 0;
         if (isLoadTestingEnabled) {
-            reportSampleTimeMs = configuration.getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
 
             if (configuration.isDistributedLoadTests() && configuration.getDistributedNodes() != null && configuration.getDistributedNodes().length > 0 && numberOfRuns > 1) {
                 distConnections = new ArrayList<DistributedConnection>();
@@ -1541,30 +1506,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     reportHandler.initializeResultsHolders(runNums, relativeFileName);
                 }
 
-                if (isLoadTestingEnabled) {
-                    long currentTime = System.currentTimeMillis();
-
-                    if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                        done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                        dorep = true;
-                    } else {
-                        done = (currentTime - startTime) > configuration.getLoadTestingTime();
-
-                        long elapsedFraction = (currentTime - startTime);
-
-                        dorep = done || loadTstReportsCount == 0;
-
-                        if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
-                            dorep = true;
-                        }
-                    }
-                    if (done) {
-                        break;
-                    }
-                } else {
-                    dorep = true;
-                    done = true;
+                if (schedule.next(isLoadTestingEnabled, context.getGatfExecutorConfig(), configuration, startTime)) {
+                    break;
                 }
+                dorep = schedule.dorep;
+                done = schedule.done;
 
                 if (numberOfRuns > 1) {
                     Date execTime = new Date();
@@ -1583,12 +1529,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         }
                     }
 
-                    doAsyncConcReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
+                    doAsyncConcReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, schedule.loadTestRunNum(),
                             loadTestResources, numberOfRuns, loadStats, reportingThreadPool, userSimulations.size(), (System.currentTimeMillis() - suiteStartTime), execTime);
 
                     if (dorep && isLoadTestingEnabled) {
-                        loadTestRunNum++;
-                        loadTstReportsCount++;
+                        schedule.advance();
                     }
                 } else {
                     Date execTime = new Date();
@@ -1596,12 +1541,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                     String fileurl = isLoadTestingEnabled ? currentTime + ".html" : "index.html";
                     executeTestCases(allTestCases, testCaseExecutorUtil, compareEnabledOnlySingleTestCaseExec, dorep, !isLoadTestingEnabled && !compareEnabledOnlySingleTestCaseExec, reportHandler);
 
-                    doAsyncReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, loadTestRunNum,
+                    doAsyncReporting(path, compareEnabledOnlySingleTestCaseExec, reportHandler, suiteStartTime, fileurl, isLoadTestingEnabled, testPercentiles, runPercentiles, dorep, schedule.loadTestRunNum(),
                             loadTestResources, numberOfRuns, loadStats, reportingThreadPool, (System.currentTimeMillis() - suiteStartTime), execTime);
 
                     if (dorep && isLoadTestingEnabled) {
-                        loadTestRunNum++;
-                        loadTstReportsCount++;
+                        schedule.advance();
                     }
                 }
 
@@ -1807,7 +1751,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     @SuppressWarnings("rawtypes")
-    private List<Future> doConcurrentRunExecution(boolean compareEnabledOnlySingleTestCaseExec, Integer numberOfRuns, List<TestCase> allTestCases, List<String> baseUrlList,
+    List<Future> doConcurrentRunExecution(boolean compareEnabledOnlySingleTestCaseExec, Integer numberOfRuns, List<TestCase> allTestCases, List<String> baseUrlList,
             final TestCaseExecutorUtil testCaseExecutorUtil, Long concurrentUserRampUpTimeMs, ExecutorService threadPool, boolean dorep, final ReportHandler reportHandler) {
         final boolean onlySingleTestCaseExecl = compareEnabledOnlySingleTestCaseExec;
 
@@ -2042,7 +1986,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         return success;
     }
 
-    private void executeTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil, boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs,
+    void executeTestCases(List<TestCase> allTestCases, TestCaseExecutorUtil testCaseExecutorUtil, boolean onlySingleTestCaseExec, boolean dorep, boolean isFetchFailureLogs,
             ReportHandler reportHandler) {
         for (TestCase testCase : allTestCases) {
             boolean success = executeSingleTestCase(testCase, testCaseExecutorUtil, onlySingleTestCaseExec, dorep, isFetchFailureLogs, reportHandler);
@@ -2170,510 +2114,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
     }
 
-    @SuppressWarnings("rawtypes")
     public DistributedTestStatus handleDistributedTests(DistributedAcceptanceContext dContext, DistributedTestContext tContext) {
-        context = new AcceptanceTestContext(dContext, fcl.apply(null));
-        context.handleTestDataSourcesAndHooks(context.getGatfExecutorConfig().getGatfTestDataConfig());
-
-        GatfExecutorConfig configuration = context.getGatfExecutorConfig();
-
-        if (configuration.isGenerateExecutionLogs()) {
-            tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
-            tclgenerator.start();
-        }
-
-        final TestCaseExecutorUtil testCaseExecutorUtil = new TestCaseExecutorUtil(context);
-
-        long concurrentUserRampUpTimeMs = 0;
-        if (configuration.getConcurrentUserSimulationNum() > 1 && configuration.getConcurrentUserRampUpTime() > 0)
-            concurrentUserRampUpTimeMs = configuration.getConcurrentUserRampUpTime() / configuration.getConcurrentUserSimulationNum();
-
-        int loadTestingReportSamplesNum = configuration.getLoadTestingReportSamples();
-        if (loadTestingReportSamplesNum < 3)
-            loadTestingReportSamplesNum = 3;
-        if (loadTestingReportSamplesNum > 100)
-        	loadTestingReportSamplesNum = 100;
-
-        int numberOfRuns = tContext.getNumberOfRuns();
-
-        int loadTstReportsCount = 0;
-
-        TestSuiteStats loadStats = new TestSuiteStats();
-
-        int loadTestRunNum = 1;
-
-        long reportSampleTimeMs = configuration.getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
-
-        ExecutorService threadPool = null;
-        if (numberOfRuns > 1) {
-            // Virtual-thread-per-task executor: run every configured simulated user
-            // concurrently instead of capping the load at 100 platform threads. Each
-            // user-simulation thread only parks on a CompletableFuture (the HTTP call is
-            // dispatched asynchronously via OkHttp's own Dispatcher), so the vthreads park
-            // cleanly with no carrier pinning and cost ~nothing while idle.
-            threadPool = Executors.newVirtualThreadPerTaskExecutor();
-        }
-
-        String runPrefix = "DRun-" + tContext.getIndex();
-
-        boolean isLoadTestingEnabled = true;
-
-        for (TestCase tc : tContext.getSimTestCases()) {
-            tc.setIdentifierPrefix(runPrefix);
-        }
-
-        if (numberOfRuns == 1) {
-            for (TestCase tc : tContext.getSimTestCases()) {
-                tc.setSimulationNumber(1);
-            }
-        }
-
-        ExecutorService reportingThreadPool = Executors.newFixedThreadPool(Integer.getInteger("gatf.reportingThreads", 30));
-
-        context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-
-        startTime = System.currentTimeMillis();
-
-        List<LoadTestResource> loadTestResources = new ArrayList<LoadTestResource>();
-
-        TestExecutionPercentile testPercentiles = new TestExecutionPercentile();
-
-        TestExecutionPercentile runPercentiles = new TestExecutionPercentile();
-
-        if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
-            isLoadTestingEnabled = true;
-        
-        String path = initOutFolderAndGetPath(context, System.nanoTime(), 0, "api");
-
-        try {
-            while (tContext.getSimTestCases().size() > 0) {
-                ReportHandler reportHandler = new ReportHandler();
-
-                Integer runNums = context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-                if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
-                    runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-                }
-
-                for (String relativeFileName : tContext.getRelativeFileNames()) {
-                    reportHandler.initializeResultsHolders(runNums, relativeFileName);
-                }
-
-                for (int i = 0; i < numberOfRuns; i++) {
-                    reportHandler.getFinalTestResults().put(runPrefix + "-" + (i + 1), new ConcurrentLinkedQueue<TestCaseReport>());
-                }
-
-                long suiteStartTime = isLoadTestingEnabled ? System.currentTimeMillis() : startTime;
-
-                boolean dorep = false;
-
-                boolean done = false;
-
-                if (isLoadTestingEnabled) {
-                    long currentTime = System.currentTimeMillis();
-
-                    if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                        done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                        dorep = true;
-                    } else {
-                        done = (currentTime - startTime) > configuration.getLoadTestingTime();
-
-                        long elapsedFraction = (currentTime - startTime);
-
-                        dorep = done || loadTstReportsCount == 0;
-
-                        if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
-                            dorep = true;
-                        }
-                    }
-                    if (done) {
-                        break;
-                    }
-                } else {
-                    dorep = true;
-                    done = true;
-                }
-
-                if (numberOfRuns > 1) {
-                    Date time = new Date();
-                    List<Future> userSimulations =
-                            doConcurrentRunExecution(false, numberOfRuns, tContext.getSimTestCases(), null, testCaseExecutorUtil, concurrentUserRampUpTimeMs, threadPool, dorep, reportHandler);
-
-                    concurrentUserRampUpTimeMs = 0;
-
-                    long currentTime = System.currentTimeMillis();
-                    String fileurl = "D" + tContext.getIndex() + "-" + currentTime + ".html";
-                    for (Future future : userSimulations) {
-                        try {
-                            future.get();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    doAsyncDistributedConcReporting(path, reportHandler, suiteStartTime, fileurl, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, numberOfRuns, loadStats,
-                            reportingThreadPool, userSimulations.size(), runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
-
-                    if (dorep) {
-                        loadTestRunNum++;
-                        loadTstReportsCount++;
-                    }
-                } else {
-                    Date time = new Date();
-                    executeTestCases(tContext.getSimTestCases(), testCaseExecutorUtil, false, dorep, false, reportHandler);
-
-                    doAsyncDistributedReporting(path, reportHandler, suiteStartTime, testPercentiles, runPercentiles, dorep, loadTestRunNum, loadTestResources, loadStats, reportingThreadPool, tContext,
-                            runPrefix, dContext, (System.currentTimeMillis() - suiteStartTime), time);
-
-                    if (dorep) {
-                        loadTestRunNum++;
-                        loadTstReportsCount++;
-                    }
-                }
-
-                context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-
-                if (done) {
-                    break;
-                }
-            }
-        } finally {
-            if (numberOfRuns > 1) {
-                threadPool.shutdown();
-            }
-
-            reportingThreadPool.shutdown();
-            try {
-                reportingThreadPool.awaitTermination(Long.MAX_VALUE, java.util.concurrent.TimeUnit.NANOSECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-        }
-
-        if (isLoadTestingEnabled) {
-            loadStats.setExecutionTime(System.currentTimeMillis() - startTime);
-            ReportHandler.doFinalLoadTestReport(path, runPrefix + "-", loadStats, context, null, null, loadTestResources);
-        }
-
-        if (loadStats != null) {
-            logger.info(loadStats.show());
-        }
-
-        DistributedTestStatus finalStats = new DistributedTestStatus();
-        finalStats.setNode(dContext.getNode());
-        finalStats.setIdentifier(runPrefix);
-        finalStats.setTestPercentileTimes(testPercentiles.getPercentileTimes());
-        finalStats.setRunPercentileTimes(runPercentiles.getPercentileTimes());
-        finalStats.setSuiteStats(loadStats);
-        return finalStats;
+        return new DistributedExecution(this).handleDistributedTests(dContext, tContext);   // G8: moved to DistributedExecution
     }
 
     public DistributedTestStatus handleDistributedSeleniumTests(DistributedAcceptanceContext dContext, List<Class<SeleniumTest>> classes, DistributedTestContext tContext) throws Exception {
-        context = new AcceptanceTestContext(dContext, fcl.apply(null));
-        context.handleTestDataSourcesAndHooks(dContext.getConfig().getGatfTestDataConfig());
-
-        long concurrentUserRampUpTimeMs = 0;
-        if (dContext.getConfig().getConcurrentUserSimulationNum() > 1 && dContext.getConfig().getConcurrentUserRampUpTime() > 0)
-            concurrentUserRampUpTimeMs = dContext.getConfig().getConcurrentUserRampUpTime() / dContext.getConfig().getConcurrentUserSimulationNum();
-
-        int loadTestingReportSamplesNum = dContext.getConfig().getLoadTestingReportSamples();
-        if (loadTestingReportSamplesNum < 3)
-            loadTestingReportSamplesNum = 3;
-        if (loadTestingReportSamplesNum > 100)
-        	loadTestingReportSamplesNum = 100;
-
-        int numberOfRuns = tContext.getNumberOfRuns();
-
-        int loadTstReportsCount = 0;
-
-        String runPrefix = "DRun-" + tContext.getIndex();
-
-        boolean isLoadTestingEnabled = true;
-
-        startTime = System.currentTimeMillis();
-
-        if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
-            isLoadTestingEnabled = true;
-
-        int loadTestRunNum = 1;
-
-        long reportSampleTimeMs = dContext.getConfig().getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
-
-        Map<String, Map<Integer, String>> indexes = new HashMap<String, Map<Integer, String>>();
-        indexes.put(dContext.getNode(), new HashMap<Integer, String>());
-        
-        for (SeleniumDriverConfig selConf : dContext.getConfig().getSeleniumDriverConfigs()) {
-            if (selConf != null && selConf.getDriverName() != null && selConf.getPath()!=null && new File(selConf.getPath()).exists()) {
-                System.setProperty(selConf.getDriverName(), selConf.getPath());
-            }
-        }
-        
-        //System.setProperty("java.home", configuration.getJavaHome());
-        System.setProperty("jdk.tls.client.protocols", "TLSv1,TLSv1.1,TLSv1.2");
-        Security.setProperty("crypto.policy", "unlimited");
-        System.setProperty("webdriver.http.factory", "jdk-http-client");
-        if(!SystemUtils.IS_OS_WINDOWS) {
-        	System.setProperty("jna.library.path", "/usr/local/lib:/usr/lib");
-        }
-        
-        if(dContext.getConfig().getExtraProperties()!=null) {
-        	if(dContext.getConfig().getExtraProperties().containsKey("jdk.tls.client.protocols")) {
-        		System.setProperty("jdk.tls.client.protocols", dContext.getConfig().getExtraProperties().get("jdk.tls.client.protocols"));
-        	} else if(dContext.getConfig().getExtraProperties().containsKey("crypto.policy")) {
-        		System.setProperty("crypto.policy", dContext.getConfig().getExtraProperties().get("crypto.policy"));
-        	} else if(dContext.getConfig().getExtraProperties().containsKey("webdriver.http.factory")) {
-        		System.setProperty("webdriver.http.factory", dContext.getConfig().getExtraProperties().get("webdriver.http.factory"));
-        	} else if(dContext.getConfig().getExtraProperties().containsKey("jna.library.path")) {
-        		System.setProperty("jna.library.path", dContext.getConfig().getExtraProperties().get("jna.library.path"));
-        	}
-        }
-
-        try {
-            SeleniumCodeGeneratorAndUtil.clean();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        
-        if(dContext.getConfig().isSeleniumModuleTests()) {
-        	File mdir = context.getResourceFile(dContext.getConfig().getTestCaseDir());
-        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
-        	List<String> modules = new ArrayList<String>();
-        	for (File f : dirs) {
-    			if(new File(f, "main.sel").exists()) {
-    				String sfpath = new File(f, "main.sel").getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
-    				if(sfpath.charAt(0)==File.separatorChar) {
-    					sfpath = sfpath.substring(1);
-    				}
-    				modules.add(sfpath);
-    			}
-    		}
-        	dContext.getConfig().setSeleniumScripts(modules.toArray(new String[modules.size()]));
-        }
-
-        final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(dContext.getConfig());
-
-        final List<SeleniumTest> tests = new ArrayList<SeleniumTest>();
-        for (Class<SeleniumTest> dynC : classes) {
-            try {
-                tests.add(dynC.getConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {context, 1}));
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        ExecutorService threadPool = null;
-        boolean concExec = false;
-        if (numberOfRuns > 1) {
-            int threadNum = 100;
-            if (numberOfRuns < 100)
-                threadNum = numberOfRuns;
-
-            threadPool = Executors.newFixedThreadPool(threadNum);
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-        } else if(context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
-        	//Parallel selenium execution of multiple scripts
-        	int threadNum = context.getGatfExecutorConfig().getNumConcurrentExecutions();
-        	if (threadNum > 10)
-                threadNum = 10;
-        	threadPool = Executors.newFixedThreadPool(threadNum);
-        	numberOfRuns = 1;
-        	concExec = true;
-        	context.getWorkflowContextHandler().initializeSuiteContext(tests.size());
-        } else {
-        	context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-        }
-
-        if (isLoadTestingEnabled) {
-            reportSampleTimeMs = context.getGatfExecutorConfig().getLoadTestingTime() / (loadTestingReportSamplesNum - 1);
-        }
-
-        if (!isLoadTestingEnabled && context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1)
-            isLoadTestingEnabled = true;
-        
-        Long sessionId = System.nanoTime();
-        String path = initOutFolderAndGetPath(context, sessionId, 0, "sel");
-
-        List<GatfRunTimeError> allErrors = new ArrayList<>();
-        int runNum = 0;
-        while (tests.size() > 0) {
-            // long suiteStartTime = isLoadTestingEnabled?System.currentTimeMillis():startTime;
-
-            boolean dorep = false;
-
-            boolean done = false;
-
-            // ReportHandler reportHandler = new ReportHandler(null, null);
-
-            // Integer runNums =
-            // context.getGatfExecutorConfig().getConcurrentUserSimulationNum();
-            if (context.getGatfExecutorConfig().getCompareBaseUrlsNum() != null) {
-                // runNums = context.getGatfExecutorConfig().getCompareBaseUrlsNum();
-            }
-
-            if (isLoadTestingEnabled) {
-                long currentTime = System.currentTimeMillis();
-
-                if (context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() > 1) {
-                    done = context.getGatfExecutorConfig().getRepeatSuiteExecutionNum() == loadTestRunNum - 1;
-                    dorep = true;
-                } else {
-                    done = (currentTime - startTime) > context.getGatfExecutorConfig().getLoadTestingTime();
-
-                    long elapsedFraction = (currentTime - startTime);
-
-                    dorep = done || loadTstReportsCount == 0;
-
-                    if (!dorep && elapsedFraction >= reportSampleTimeMs * loadTstReportsCount) {
-                        dorep = true;
-                    }
-                }
-                if (done) {
-                    break;
-                }
-            } else {
-                dorep = true;
-                done = true;
-            }
-
-            runNum++;
-
-            Map<String, List<Map<String, Map<String, List<Object[]>>>>> summLstMap = new LinkedHashMap<String, List<Map<String, Map<String, List<Object[]>>>>>();
-            Map<String, List<Map<String, Map<String, Integer[]>>>> sinfoMap = new LinkedHashMap<>();
-            List<ImmutablePair<Method, Object[]>> reportLst = new ArrayList<>();
-            List<String> failedFiles = Collections.synchronizedList(new ArrayList<>());
-            summLstMap.put(dContext.getNode(), new ArrayList<>());
-            sinfoMap.put(dContext.getNode(), new ArrayList<>());
-            if (threadPool != null) {
-            	List<FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>>>> ltasks = new ArrayList<>();
-            	if(!concExec) {
-                    for (int i = 0; i < numberOfRuns; i++) {
-                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>>>(
-                                new ConcSeleniumTest(sessionId, path, i, -1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles)));
-                        threadPool.execute(ltasks.get(i));
-                        try {
-                            Thread.sleep(concurrentUserRampUpTimeMs);
-                        } catch (InterruptedException e) {
-                        }
-                    }
-                    for (int i = 0; i < numberOfRuns; i++) {
-                        try {
-                        	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>> o = ltasks.get(i).get();
-                            summLstMap.get(dContext.getNode()).add(o.getLeft());
-                            reportLst.addAll(o.getRight().getLeft());
-                            sinfoMap.get(dContext.getNode()).add(o.getRight().getRight());
-                            if(o.getMiddle()!=null && o.getMiddle().size()>0) {
-                            	allErrors.addAll(o.getMiddle());
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-            	} else {
-                	for (int i = 0; i < tests.size(); i++) {
-                		List<SeleniumTest> ctests = new ArrayList<>();
-                		ctests.add(tests.get(i));
-                		List<Object[]> ctestdata = new ArrayList<>();
-                		ctestdata.add(dContext.getSelTestdata().get(i));
-                        ltasks.add(new FutureTask<ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>>>(
-                        		new ConcSeleniumTest(sessionId, path, 0, i, context, ctests, ctestdata, lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles)));
-                        threadPool.execute(ltasks.get(i));
-                    }
-                    for (int i = 0; i < tests.size(); i++) {
-                        try {
-                        	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>> o = ltasks.get(i).get();
-                            summLstMap.get(dContext.getNode()).add(o.getLeft());
-                            reportLst.addAll(o.getRight().getLeft());
-                            sinfoMap.get(dContext.getNode()).add(o.getRight().getRight());
-                            if(o.getMiddle()!=null && o.getMiddle().size()>0) {
-                            	allErrors.addAll(o.getMiddle());
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-
-                if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
-            } else {
-                try {
-                	ImmutableTriple<Map<String, Map<String, List<Object[]>>>, List<GatfRunTimeError>, ImmutablePair<List<ImmutablePair<Method, Object[]>>, Map<String, Map<String, Integer[]>>>> o = 
-                			new ConcSeleniumTest(sessionId, path, 0, -1, context, tests, dContext.getSelTestdata(), lp, dorep, isLoadTestingEnabled, runNum, runPrefix, dContext.getNode(), failedFiles).call();
-                    summLstMap.get(dContext.getNode()).add(o.getLeft());
-                    reportLst.addAll(o.getRight().getLeft());
-                    sinfoMap.get(dContext.getNode()).add(o.getRight().getRight());
-                    if(o.getMiddle()!=null && o.getMiddle().size()>0) {
-                    	allErrors.addAll(o.getMiddle());
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-
-                if (dorep && isLoadTestingEnabled) {
-                    loadTestRunNum++;
-                    loadTstReportsCount++;
-                }
-            }
-
-            if (dorep) {
-            	if(!isLoadTestingEnabled) {
-            		try {
-		            	String pdfReport = context.getOutDir().getAbsolutePath() + File.separator + path + File.separator + (runPrefix + "-" + (runNum) + "-report " + System.currentTimeMillis());
-		                String csvReport = pdfReport + ".csv";
-		                pdfReport += ".pdf";
-		            	Document document = new Document(new PdfDocument(new PdfWriter(pdfReport)));
-		                CSVWriter csvdoc = new CSVWriter(new FileWriter(csvReport), ',', '"', '\\', "\n");
-		                Table table = null;
-		                for (ImmutablePair<Method, Object[]> p : reportLst) {
-							switch (p.getLeft().getName()) {
-								case "start":
-									p.getRight()[p.getRight().length-2] = document;
-									p.getRight()[p.getRight().length-1] = csvdoc;
-									table = (Table)p.getLeft().invoke(null, p.getRight());
-									break;
-								case "addSubTest":
-									p.getRight()[p.getRight().length-3] = table;
-									p.getRight()[p.getRight().length-2] = document;
-									p.getRight()[p.getRight().length-1] = csvdoc;
-									table = (Table)p.getLeft().invoke(null, p.getRight());
-									break;
-								case "addErrorDetails":
-									if(table!=null) {
-										table.setMarginBottom(30.0f);
-						                document.add(table);
-						                table = null;
-									}
-									p.getRight()[p.getRight().length-1] = document;
-									table = (Table)p.getLeft().invoke(null, p.getRight());
-									break;
-								default:
-									break;
-							}
-						}
-		                document.close();
-		                csvdoc.close();
-            		} catch (Exception e) {
-                        e.printStackTrace();
-                    }
-            	}
-            	
-                ReportHandler.doSeleniumSummaryTestReport(sessionId, context.getGatfExecutorConfig().getRetryCounter(), path, summLstMap, sinfoMap, context, runNum, runPrefix);
-                indexes.get(dContext.getNode()).put(runNum, runPrefix + "-" + runNum + "-selenium-index.html");
-            }
-
-            context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
-
-            if (done) {
-                break;
-            }
-        }
-
-        DistributedTestStatus finalStats = new DistributedTestStatus();
-        finalStats.setNode(dContext.getNode());
-        finalStats.setIdentifier(runPrefix);
-        finalStats.setIndexes(indexes);
-        return finalStats;
+        return new DistributedExecution(this).handleDistributedSeleniumTests(dContext, classes, tContext);   // G8: moved to DistributedExecution
     }
 
     @SuppressWarnings("unused")
@@ -2714,88 +2160,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
 
-    private void doAsyncDistributedConcReporting(String path, final ReportHandler reportHandler, final long suiteStartTime, final String fileurl, final TestExecutionPercentile testPercentiles,
-            final TestExecutionPercentile runPercentiles, final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, final int numberOfRuns,
-            final TestSuiteStats loadStats, final ExecutorService reportingThreadPool, final int concrunNos, final String runPrefix, final DistributedAcceptanceContext dContext,
-            final long suiteExecTime, Date time) {
-        reportingThreadPool.execute(new Runnable() {
-            public void run() {
-                for (int y = 0; y < concrunNos; y++) {
-                    try {
-                        if (dorep) {
-                            reportHandler.doConcurrentRunReporting(path, context, suiteStartTime, fileurl, (y + 1), loadTestRunNum == 1, testPercentiles, runPercentiles, runPrefix);
-                        }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }
-
-                if (dorep) {
-                    TestSuiteStats stats = reportHandler.doReportingIndex(path, context, suiteStartTime, fileurl, numberOfRuns, runPrefix + "-", true);
-                    stats.setExecutionTime(suiteExecTime);
-                    synchronized (loadStats) {
-                        if (loadStats.getExecutionTime() == 0) {
-                            loadStats.copy(stats);
-                        } else {
-                            stats.setGroupStats(null);
-                            loadStats.updateStats(stats, false);
-                        }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats, time));
-                    }
-                    reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
-                    reportHandler.clearForLoadTests(context);
-                } else {
-                    TestSuiteStats stats = reportHandler.doLoadTestReporting(path, context, suiteStartTime, testPercentiles, runPercentiles);
-                    stats.setExecutionTime(suiteExecTime);
-                    synchronized (loadStats) {
-                        if (loadStats.getExecutionTime() == 0) {
-                            loadStats.copy(stats);
-                        } else {
-                            loadStats.updateStats(stats, false);
-                        }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats, time));
-                    }
-                }
-            }
-        });
-    }
-
-    private void doAsyncDistributedReporting(String path, final ReportHandler reportHandler, final long suiteStartTime, final TestExecutionPercentile testPercentiles, final TestExecutionPercentile runPercentiles,
-            final boolean dorep, final Integer loadTestRunNum, final List<LoadTestResource> loadTestResources, final TestSuiteStats loadStats, final ExecutorService reportingThreadPool,
-            final DistributedTestContext tContext, final String runPrefix, final DistributedAcceptanceContext dContext, final long suiteExecTime, Date time) {
-        reportingThreadPool.execute(new Runnable() {
-            public void run() {
-                if (dorep) {
-                    long currentTime = System.currentTimeMillis();
-                    String fileurl = "D" + tContext.getIndex() + "-" + currentTime + ".html";
-                    TestSuiteStats stats = reportHandler.doReporting(path, context, suiteStartTime, fileurl, runPrefix + "-", true, testPercentiles, runPercentiles);
-                    stats.setExecutionTime(suiteExecTime);
-                    reportHandler.addToLoadTestResources(null, loadTestRunNum, fileurl, loadTestResources);
-                    synchronized (loadStats) {
-                        if (loadStats.getExecutionTime() == 0) {
-                            loadStats.copy(stats);
-                        } else {
-                            stats.setGroupStats(null);
-                            loadStats.updateStats(stats, false);
-                        }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, fileurl, stats, time));
-                    }
-                    reportHandler.clearForLoadTests(context);
-                } else {
-                    TestSuiteStats stats = reportHandler.doLoadTestReporting(path, context, suiteStartTime, testPercentiles, runPercentiles);
-                    stats.setExecutionTime(suiteExecTime);
-                    synchronized (loadStats) {
-                        if (loadStats.getExecutionTime() == 0) {
-                            loadStats.copy(stats);
-                        } else {
-                            loadStats.updateStats(stats, false);
-                        }
-                        RuntimeReportUtil.addLEntry(new LoadTestEntry(dContext.getNode(), null, loadTestRunNum, null, stats, time));
-                    }
-                }
-            }
-        });
-    }
+    // G8: doAsyncDistributed(Conc)Reporting moved to DistributedExecution
 
     public static GatfExecutorConfig getConfig(InputStream resource, boolean isXml) throws Exception {
     	GatfExecutorConfig configuration = null;
@@ -2837,7 +2202,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
     }
     
-    private String initOutFolderAndGetPath(AcceptanceTestContext context, Long sessionId, int retryCnter, String type) {
+    String initOutFolderAndGetPath(AcceptanceTestContext context, Long sessionId, int retryCnter, String type) {
     	String path = sessionId + (retryCnter==0?"":("-"+retryCnter));
         File resource = context.getOutDir();
         // Phase 3.x Slice E: gatf-resources retired. Reports now render in the React viewer (/app) via

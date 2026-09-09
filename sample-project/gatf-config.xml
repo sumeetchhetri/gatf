@@ -1,7 +1,5 @@
 <gatf-execute-config>
-  <testCasesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</testCasesBasePath>
   <testCaseDir>tests</testCaseDir>
-  <outFilesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</outFilesBasePath>
   <outFilesDir>out</outFilesDir>
   <authEnabled>false</authEnabled>
   <soapAuthEnabled>false</soapAuthEnabled>

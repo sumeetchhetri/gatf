@@ -34,6 +34,9 @@ JAR="$(cd "$(dirname "${JAR}")" && pwd)/$(basename "${JAR}")"   # absolute (we c
 PROJ="$(mktemp -d)"
 cp -r "${REPO_ROOT}/sample-project/." "${PROJ}/"
 cd "${PROJ}"
+# Isolation guard: a config that pins absolute base paths would make the server read/write THAT tree
+# (this is how e2e edits once landed in the repo). Drop them so everything resolves to the scratch copy.
+node -e 'const fs=require("fs"),f="gatf-config.json";if(fs.existsSync(f)){const c=JSON.parse(fs.readFileSync(f,"utf8"));delete c.testCasesBasePath;delete c.outFilesBasePath;fs.writeFileSync(f,JSON.stringify(c,null,2))}'
 echo "GATF e2e server: jar=${JAR} proj=${PROJ} port=${PORT}"
 # The GATF server uses SELENIUM_REMOTE_URL for selenium runs (T4c). Take it from GATF_SELENIUM_GRID so
 # it reaches GATF *without* Playwright seeing it (Playwright reserves SELENIUM_REMOTE_URL to route its

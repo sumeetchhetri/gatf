@@ -1,8 +1,6 @@
 <gatf-execute-config>
   <baseUrl>http://localhost:8880</baseUrl>
-  <testCasesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</testCasesBasePath>
   <testCaseDir>tests/load</testCaseDir>
-  <outFilesBasePath>/Users/sumeetc/Projects/GitHub/gatf/sample-project</outFilesBasePath>
   <outFilesDir>out-load</outFilesDir>
   <authEnabled>false</authEnabled>
   <soapAuthEnabled>false</soapAuthEnabled>

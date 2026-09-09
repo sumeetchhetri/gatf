@@ -1,8 +1,5 @@
-<!-- Dogfood config: adjust the two *BasePath values to your checkout's dogfood/ dir. -->
 <gatf-execute-config>
-  <testCasesBasePath>/path/to/gatf/dogfood</testCasesBasePath>
   <testCaseDir>tests</testCaseDir>
-  <outFilesBasePath>/path/to/gatf/dogfood</outFilesBasePath>
   <outFilesDir>out</outFilesDir>
   <authEnabled>false</authEnabled>
   <soapAuthEnabled>false</soapAuthEnabled>

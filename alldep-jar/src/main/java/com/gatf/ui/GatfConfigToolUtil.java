@@ -295,8 +295,9 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 
     protected static void sanitizeAndSaveGatfConfig(GatfExecutorConfig gatfConfig, GatfConfigToolMojoInt mojo, boolean isChanged, File targetFile) throws IOException
 	{
+		// Base paths default to the server root IN MEMORY only: persisting them pinned this machine's absolute
+		// path into the project's config, so a copied/cloned project kept using the original checkout.
 		if(gatfConfig.getTestCasesBasePath()==null) {
-			isChanged = true;
 			gatfConfig.setTestCasesBasePath(mojo.getRootDir());
 		} else {
 			if(gatfConfig.getTestCasesBasePath().trim().equals(".") || !new File(gatfConfig.getTestCasesBasePath()).exists()) {
@@ -305,7 +306,6 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			gatfConfig.setTestCasesBasePath(gatfConfig.getTestCasesBasePath().trim());
 		}
 		if(gatfConfig.getOutFilesBasePath()==null) {
-			isChanged = true;
 			gatfConfig.setOutFilesBasePath(mojo.getRootDir());
 		} else {
 			if(gatfConfig.getOutFilesBasePath().trim().equals(".") || !new File(gatfConfig.getOutFilesBasePath()).exists()) {
@@ -369,16 +369,16 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
         	gatfConfig.setSeleniumScriptRetryCount(0);
         }
 		
+		// D_* environment overrides apply IN MEMORY only (they are per-machine: persisting them wrote this
+		// machine's JAVA_HOME / jar path / driver paths into the shared project config).
 		String tmp = System.getProperty("D_JAVA_HOME")!=null?System.getProperty("D_JAVA_HOME"):System.getenv("D_JAVA_HOME");
 		if(tmp!=null) {
-			isChanged = true;
 			gatfConfig.setJavaHome(tmp);
 		}
 		
 		boolean isDocker = false;
 		tmp = System.getProperty("D_DOCKER")!=null?System.getProperty("D_DOCKER"):System.getenv("D_DOCKER");
 		if("true".equalsIgnoreCase(tmp)) {
-			isChanged = true;
 			isDocker = true;
 			gatfConfig.setTestCasesBasePath("/workdir");
 			gatfConfig.setOutFilesBasePath("/workdir");
@@ -389,8 +389,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("chrome")) {
-						isChanged = true;
-						sc.setPath(tmp);
+									sc.setPath(tmp);
 						if(isDocker) {
 							String args = "--no-sandbox";
 							if(StringUtils.isNotBlank(sc.getArguments())) {
@@ -411,8 +410,7 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 			if(gatfConfig.getSeleniumDriverConfigs().length>0) {
 				for (SeleniumDriverConfig sc : gatfConfig.getSeleniumDriverConfigs()) {
 					if(sc.getName().equalsIgnoreCase("firefox")) {
-						isChanged = true;
-						sc.setPath(tmp);
+									sc.setPath(tmp);
 					}
 				}
 			}
@@ -420,15 +418,33 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 		
 		tmp = System.getProperty("D_GATF_JAR")!=null?System.getProperty("D_GATF_JAR"):System.getenv("D_GATF_JAR");
 		if(tmp!=null) {
-			isChanged = true;
 			gatfConfig.setGatfJarPath(tmp);
 		}
 		
 		if(isChanged)
 		{
 			synchronized (mojo) {
-				FileUtils.writeStringToFile(targetFile, targetFile.getName().toLowerCase().endsWith(".xml") ? GatfTestCaseExecutorUtil.getConfigStrXml(gatfConfig) : GatfTestCaseExecutorUtil.getConfigStrJson(gatfConfig), "UTF-8");
+				// never persist the server's own root dir as an absolute base path (keeps project configs portable;
+				// already-pinned configs heal on their next save). A deliberately different path is kept as-is.
+				String tcb = gatfConfig.getTestCasesBasePath(), ofb = gatfConfig.getOutFilesBasePath();
+				try {
+					if(isRootDir(tcb, mojo)) gatfConfig.setTestCasesBasePath(null);
+					if(isRootDir(ofb, mojo)) gatfConfig.setOutFilesBasePath(null);
+					FileUtils.writeStringToFile(targetFile, targetFile.getName().toLowerCase().endsWith(".xml") ? GatfTestCaseExecutorUtil.getConfigStrXml(gatfConfig) : GatfTestCaseExecutorUtil.getConfigStrJson(gatfConfig), "UTF-8");
+				} finally {
+					gatfConfig.setTestCasesBasePath(tcb);
+					gatfConfig.setOutFilesBasePath(ofb);
+				}
 			}
+		}
+	}
+
+	static boolean isRootDir(String path, GatfConfigToolMojoInt mojo) {
+		if(path == null || mojo.getRootDir() == null) return false;
+		try {
+			return new File(path).getCanonicalFile().equals(new File(mojo.getRootDir()).getCanonicalFile());
+		} catch (IOException e) {
+			return false;
 		}
 	}
 

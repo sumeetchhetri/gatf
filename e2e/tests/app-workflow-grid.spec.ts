@@ -26,13 +26,13 @@ const NEEDS_GRID = !process.env.GATF_SELENIUM_GRID;
 test.describe('GATF /app full workflows (Selenium Grid)', () => {
   test.skip(NEEDS_GRID, 'set GATF_SELENIUM_GRID to a Selenium Grid endpoint to run these');
 
-  async function openFirstSel(page: Page) {
+  async function openFirstSel(page: Page, name = '.sel') {
     await page.getByRole('button', { name: 'Test Files' }).click();
-    let sel = page.locator('.tf-node.tf-file', { hasText: '.sel' });
+    let sel = page.locator('.tf-node.tf-file', { hasText: name });
     if ((await sel.count()) === 0) {
       const dirs = page.locator('.tf-node.tf-dir');
       for (let i = 0, n = await dirs.count(); i < n; i++) await dirs.nth(i).click().catch(() => {});
-      sel = page.locator('.tf-node.tf-file', { hasText: '.sel' });
+      sel = page.locator('.tf-node.tf-file', { hasText: name });
     }
     await sel.first().click();
     await expect(page.locator('.cm-content')).toBeVisible();
@@ -75,7 +75,8 @@ test.describe('GATF /app full workflows (Selenium Grid)', () => {
   test('opens the online debugger for a .sel', async ({ page }) => {
     test.setTimeout(180_000);
     await page.goto('/app/');
-    await openFirstSel(page); // opened file starts clean -> Debug is enabled
+    // debug needs a RUNNABLE script (library .sel files like ui/lib/auth.sel have no `open`)
+    await openFirstSel(page, process.env.GATF_E2E_DEBUG_SEL || 'trace-smoke.sel'); // opened file starts clean -> Debug is enabled
 
     await page.getByRole('button', { name: /Debug/ }).click();
     // the debugger control bar renders (it starts a paused selenium session via gatfjdb)

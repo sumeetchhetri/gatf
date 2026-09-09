@@ -1,8 +1,6 @@
 {
   "baseUrl" : "http://localhost:8880",
-  "testCasesBasePath" : "/Users/sumeetc/Projects/GitHub/gatf/sample-project",
   "testCaseDir" : "tests",
-  "outFilesBasePath" : "/Users/sumeetc/Projects/GitHub/gatf/sample-project",
   "outFilesDir" : "out",
   "authEnabled" : false,
   "soapAuthEnabled" : false,

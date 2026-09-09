@@ -504,7 +504,10 @@ select.sf-input { max-width: 520px; }
 .dbg-cur { background: rgba(240,180,41,.16); }
 .dbg-cur:hover { background: rgba(240,180,41,.20); }
 .dbg-bp { width: 18px; flex: 0 0 auto; text-align: center; color: var(--red); cursor: default;
-  user-select: none; font-size: 11px; }
+  user-select: none; font-size: 11px;
+  /* stretch to the row: an EMPTY gutter span is otherwise 18x0 in this flex-start row, so it could be
+     neither clicked nor hovered (no breakpoint could be added until one already existed) */
+  align-self: stretch; min-height: 1em; }
 .dbg-bp-able { cursor: pointer; }
 .dbg-bp-able:hover::before { content: '●'; color: rgba(248,113,113,.35); }
 .dbg-bp-on:hover::before { content: none; }

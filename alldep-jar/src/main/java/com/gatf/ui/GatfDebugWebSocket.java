@@ -21,8 +21,11 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import org.glassfish.grizzly.http.HttpRequestPacket;
 import org.glassfish.grizzly.websockets.DataFrame;
+import org.glassfish.grizzly.websockets.ProtocolHandler;
+import org.glassfish.grizzly.websockets.SimpleWebSocket;
 import org.glassfish.grizzly.websockets.WebSocket;
 import org.glassfish.grizzly.websockets.WebSocketApplication;
+import org.glassfish.grizzly.websockets.WebSocketListener;
 
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.selenium.gatfjdb.GatfSelDebugger;
@@ -40,6 +43,17 @@ import com.gatf.selenium.gatfjdb.GatfSelDebugger;
  * push-only, so the existing command dispatch is untouched.
  */
 public class GatfDebugWebSocket extends WebSocketApplication {
+
+    /**
+     * Servlet-free socket. Grizzly's default createSocket() returns DefaultWebSocket, which needs
+     * grizzly-http-servlet + the servlet API (not on GATF's classpath): every /gatfjdb upgrade failed with
+     * NoClassDefFoundError HttpServletResponseImpl and the SPA silently fell back to SSE. SimpleWebSocket
+     * provides everything this push-only channel uses (send / isConnected / close).
+     */
+    @Override
+    public WebSocket createSocket(ProtocolHandler handler, HttpRequestPacket requestPacket, WebSocketListener... listeners) {
+        return new SimpleWebSocket(handler, listeners);
+    }
 
     private final Map<WebSocket, Thread> pushers = new ConcurrentHashMap<WebSocket, Thread>();
 

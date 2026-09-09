@@ -91,7 +91,9 @@ class CodegenGoldenTest {
                 } catch (Exception e) {
                     String m = String.valueOf(e.getMessage());
                     if (m.contains("No open command")) { skipped++; continue; }   // library of subtests
-                    problems.add(project + "/" + rel + ": generation failed: " + m);
+                    StackTraceElement[] st = e.getStackTrace();
+                    problems.add(project + "/" + rel + ": generation failed: " + e.getClass().getName() + ": " + m
+                            + (st.length > 0 ? " at " + st[0] : ""));
                     continue;
                 }
                 if (!a.equals(b)) {

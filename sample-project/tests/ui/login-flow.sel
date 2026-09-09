@@ -4,7 +4,7 @@
 // and assertions (??).
 
 include setup.sel            // open + load props + sign in (setup imports lib/auth.sel)
-import lib/auth.sel           // ensure doLogout is in scope here too
+// (lib/auth.sel is already imported by setup.sel above; importing it again is rejected as "recursion")
 import lib/nav.sel           // openAppointments
 
 @call "openAppointments"
