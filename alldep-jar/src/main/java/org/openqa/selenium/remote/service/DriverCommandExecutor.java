@@ -120,7 +120,7 @@ public class DriverCommandExecutor extends HttpCommandExecutor implements Closea
     }
 
     org.apache.commons.lang3.tuple.ImmutableTriple<Boolean, String, String[]> IN_DOCKER = com.gatf.selenium.SeleniumTest.IN_DOCKER.get();
-    
+
     if (DriverCommand.QUIT.equals(command.getName())) {
       CompletableFuture<@Nullable Response> commandComplete =
           CompletableFuture.supplyAsync(
