@@ -12,6 +12,13 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - name: Setup JDK 21 (Maven builds with <release>21</release>)
+      uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: maven
+
     - name: Seleasy smoke (offline lint + command catalog)
       run: python3 tools/smoke/sel-lint.py --regen sample/*.sel
 
@@ -28,6 +35,14 @@ jobs:
         cd frontend
         npm ci
         npm test
+
+    - name: VS Code extension (typecheck, bundle, grammar tests)
+      run: |
+        cd vscode-extension
+        npm ci
+        npx tsc --noEmit
+        node esbuild.mjs
+        node test/grammar.test.mjs
 
     - name: Build gatf jar (runs backend unit + integration tests via surefire/failsafe)
       run: |

@@ -104,35 +104,66 @@ public class TestCaseExecutorUtil {
 	
 	
 	private static HttpClient buildHttpClient(AcceptanceTestContext context) {
-		HttpClient.Builder b = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL);
-		if(context.getGatfExecutorConfig().getHttpConnectionTimeout()>0) {
-			b.connectTimeout(Duration.ofMillis(context.getGatfExecutorConfig().getHttpConnectionTimeout()));
-		}
-		SSLContext ssl = trustAllSslContext(context.getGatfExecutorConfig().isAcceptAllCerts());
-		if(ssl!=null) {
-			b.sslContext(ssl);
-		}
-		return b.build();
+		Integer cto = context.getGatfExecutorConfig().getHttpConnectionTimeout();
+		return sharedClient(context.getGatfExecutorConfig().isAcceptAllCerts(), cto!=null ? cto : 0);
 	}
 
-	// Trust-all SSLContext for acceptAllCerts mode (self-signed / mismatched certs in test envs). HttpClient
-	// has no per-client hostname verifier, so hostname verification is disabled via the documented system
-	// property when trust-all is on.
+	// delta-102: HttpClient is thread-safe and meant to be long-lived. Clients used to be built per UI run and per
+	// Curl/Mail plugin step, and closed only on the happy path (or never), leaking their selector threads. One shared
+	// client per distinct (trust-all, connect-timeout, redirect-policy) is created lazily and reused for the JVM's life.
+	private static final java.util.concurrent.ConcurrentHashMap<String, HttpClient> CLIENTS = new java.util.concurrent.ConcurrentHashMap<String, HttpClient>();
+
+	// Redirect policy. Default ALWAYS = OkHttp parity (it followed http->https AND https->http). The JDK strips
+	// Authorization/Cookie on cross-host redirects (verified, delta-102), as OkHttp did. -Dgatf.http.redirect=normal
+	// refuses https->http downgrades; =never follows nothing.
+	static HttpClient.Redirect redirectPolicy() {
+		String v = System.getProperty("gatf.http.redirect", "always").trim().toLowerCase(java.util.Locale.ROOT);
+		if(v.equals("normal")) return HttpClient.Redirect.NORMAL;
+		if(v.equals("never")) return HttpClient.Redirect.NEVER;
+		return HttpClient.Redirect.ALWAYS;
+	}
+
+	static HttpClient sharedClient(boolean acceptAllCerts, int connectTimeoutMs) {
+		final boolean trustAll = acceptAllCerts || Boolean.getBoolean("gatf.acceptAllCerts");   // same rule as trustAllSslContext
+		final HttpClient.Redirect redirect = redirectPolicy();
+		String key = trustAll + "|" + Math.max(0, connectTimeoutMs) + "|" + redirect;
+		return CLIENTS.computeIfAbsent(key, k -> {
+			SSLContext ssl = trustAll ? trustAllSslContext(true) : null;   // built once per cached client
+			HttpClient.Builder b = HttpClient.newBuilder().followRedirects(redirect);
+			if(connectTimeoutMs>0) {
+				b.connectTimeout(Duration.ofMillis(connectTimeoutMs));
+			}
+			if(ssl!=null) {
+				b.sslContext(ssl);
+			}
+			return b.build();
+		});
+	}
+
+	// Trust-all SSLContext for acceptAllCerts mode (self-signed / mismatched certs in test envs), scoped to the
+	// client it is installed on. It is an X509ExtendedTrustManager, so JSSE does not wrap it with its endpoint
+	// (hostname) identification check. This replaces the JVM-global jdk.internal.httpclient.disableHostnameVerification
+	// property, which (a) leaked: one trust-all client (e.g. a Curl/Mail plugin call) disabled hostname checks for
+	// EVERY HttpClient in the JVM, and (b) was read once at first HttpClient use, so it silently had no effect when
+	// any client (e.g. Selenium's JDK http client) ran first. Both verified on JDK 21 (delta-101).
 	private static SSLContext trustAllSslContext(boolean acceptAll) {
 		if(!acceptAll && !Boolean.getBoolean("gatf.acceptAllCerts")) {
 			return null; // default: standard TLS certificate + hostname verification
 		}
 		final TrustManager[] trustAllCerts = new TrustManager[] {
-				new X509TrustManager() {
+				new javax.net.ssl.X509ExtendedTrustManager() {
 					public void checkClientTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
 					public void checkServerTrusted(X509Certificate[] xcs, String string) throws CertificateException {}
+					public void checkClientTrusted(X509Certificate[] xcs, String s, java.net.Socket k) throws CertificateException {}
+					public void checkServerTrusted(X509Certificate[] xcs, String s, java.net.Socket k) throws CertificateException {}
+					public void checkClientTrusted(X509Certificate[] xcs, String s, javax.net.ssl.SSLEngine e) throws CertificateException {}
+					public void checkServerTrusted(X509Certificate[] xcs, String s, javax.net.ssl.SSLEngine e) throws CertificateException {}
 					public X509Certificate[] getAcceptedIssuers() {
 						return new java.security.cert.X509Certificate[]{};
 					}
 				}
 		};
 		try {
-			System.setProperty("jdk.internal.httpclient.disableHostnameVerification", "true");
 			SSLContext ctx = SSLContext.getInstance("TLS");
 			ctx.init(null, trustAllCerts, new java.security.SecureRandom());
 			return ctx;
@@ -173,12 +204,7 @@ public class TestCaseExecutorUtil {
 	}
 	
 	public static HttpClient getClient() {
-		HttpClient.Builder b = HttpClient.newBuilder().followRedirects(HttpClient.Redirect.NORMAL);
-		SSLContext ssl = trustAllSslContext(true);
-		if(ssl!=null) {
-			b.sslContext(ssl);
-		}
-		return b.build();
+		return sharedClient(true, 0);   // shared trust-all client for Curl/Mail plugins (was a new client per call)
 	}
 	
 	public AcceptanceTestContext getContext() {
@@ -602,13 +628,18 @@ public class TestCaseExecutorUtil {
 			StringBuilder curlAddPars = new StringBuilder();
 			byte[] rawBody = handleRequestContent(testCase, builder, curlAddPars);
 			
-			boolean hasReferer = false;
+			boolean hasReferer = false, hasAcceptEncoding = false;
 			if(testCase.getHeaders()!=null)
 			{
 				for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
 					addHeaderSafe(builder, entry.getKey(), entry.getValue());
 					hasReferer |= entry.getKey().equalsIgnoreCase("Referer");
+					hasAcceptEncoding |= entry.getKey().equalsIgnoreCase("Accept-Encoding");
 				}
+			}
+			// httpCompressionEnabled: ask for gzip (OkHttp did this implicitly); JdkGatfResponse decodes it
+			if(!hasAcceptEncoding && context.getGatfExecutorConfig().isHttpCompressionEnabled()) {
+				addHeaderSafe(builder, "Accept-Encoding", "gzip");
 			}
 			
 			if(!hasReferer) {
@@ -813,7 +844,8 @@ public class TestCaseExecutorUtil {
 	
 	public void shutdown()
 	{
-		client.close();
+		// delta-102: the client is shared and long-lived (see sharedClient); closing it here would break other
+		// executors using the same settings. Kept as a no-op so existing callers stay valid.
 	}
 
 	public boolean isSingleExecutionContext() {

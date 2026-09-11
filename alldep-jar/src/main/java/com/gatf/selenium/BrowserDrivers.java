@@ -185,7 +185,8 @@ final class BrowserDrivers {
 				}
 			}
 		} catch (Exception __ignore) { /* never block driver creation */ }
-		String __gridUrl = System.getenv("SELENIUM_REMOTE_URL");
+		// G11: SELENIUM_REMOTE_URL / -Dgatf.selenium.remoteUrl, or an on-demand official Grid (GATF_WITH_GRID)
+		String __gridUrl = SeleniumGrid.remoteUrl(browserName);
 		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {
 			try {
 				return new RemoteWebDriver(new URL(__gridUrl.trim()), caps);
@@ -195,39 +196,44 @@ final class BrowserDrivers {
 		}
 		// Local driver: Selenium Manager (built into Selenium 4.6+) auto-resolves the driver and
 		// downloads the browser (Chrome for Testing) when absent -- no docker, no manual setup.
-		switch (browserName) {
-			case "chrome": {
-				org.openqa.selenium.chrome.ChromeOptions __co = (org.openqa.selenium.chrome.ChromeOptions) caps;
-				// Optional local browser-binary override: a path, or GATF_CHROME_BINARY=headless-shell to
-				// auto-provision Chrome for Testing's chrome-headless-shell + its matching chromedriver
-				// (delta-076, G4). Selenium Manager still handles every other local chrome.
-				String __bin = System.getenv("GATF_CHROME_BINARY");
-				if (__bin == null || __bin.trim().isEmpty()) __bin = System.getProperty("gatf.chrome.binary");
-				if (ChromeForTesting.isHeadlessShellRequest(__bin)) {
-					try {
-						ChromeForTesting.Install __cft = ChromeForTesting.headlessShell();
-						__co.setBinary(__cft.browser.getAbsolutePath());
-						return new org.openqa.selenium.chrome.ChromeDriver(new org.openqa.selenium.chrome.ChromeDriverService.Builder()
-								.usingDriverExecutable(__cft.driver).build(), __co);
-					} catch (RuntimeException e) {
-						throw e;
-					} catch (Exception e) {
-						throw new RuntimeException("chrome-headless-shell provisioning failed: " + e.getMessage(), e);
+		try {
+			switch (browserName) {
+				case "chrome": {
+					org.openqa.selenium.chrome.ChromeOptions __co = (org.openqa.selenium.chrome.ChromeOptions) caps;
+					// Optional local browser-binary override: a path, or GATF_CHROME_BINARY=headless-shell to
+					// auto-provision Chrome for Testing's chrome-headless-shell + its matching chromedriver
+					// (delta-076, G4). Selenium Manager still handles every other local chrome.
+					String __bin = System.getenv("GATF_CHROME_BINARY");
+					if (__bin == null || __bin.trim().isEmpty()) __bin = System.getProperty("gatf.chrome.binary");
+					if (ChromeForTesting.isHeadlessShellRequest(__bin)) {
+						try {
+							ChromeForTesting.Install __cft = ChromeForTesting.headlessShell();
+							__co.setBinary(__cft.browser.getAbsolutePath());
+							return new org.openqa.selenium.chrome.ChromeDriver(new org.openqa.selenium.chrome.ChromeDriverService.Builder()
+									.usingDriverExecutable(__cft.driver).build(), __co);
+						} catch (RuntimeException e) {
+							throw e;
+						} catch (Exception e) {
+							throw new RuntimeException("chrome-headless-shell provisioning failed: " + e.getMessage(), e);
+						}
 					}
+					if (__bin != null && !__bin.trim().isEmpty()) __co.setBinary(__bin.trim());
+					return new org.openqa.selenium.chrome.ChromeDriver(__co);
 				}
-				if (__bin != null && !__bin.trim().isEmpty()) __co.setBinary(__bin.trim());
-				return new org.openqa.selenium.chrome.ChromeDriver(__co);
+				case "firefox":
+					return new org.openqa.selenium.firefox.FirefoxDriver((org.openqa.selenium.firefox.FirefoxOptions) caps);
+				case "edge":
+					return new org.openqa.selenium.edge.EdgeDriver((org.openqa.selenium.edge.EdgeOptions) caps);
+				case "ie":
+					return new org.openqa.selenium.ie.InternetExplorerDriver((org.openqa.selenium.ie.InternetExplorerOptions) caps);
+				case "safari":
+					return new org.openqa.selenium.safari.SafariDriver((org.openqa.selenium.safari.SafariOptions) caps);
+				default:
+					throw new RuntimeException("Unsupported local browser: " + browserName);
 			}
-			case "firefox":
-				return new org.openqa.selenium.firefox.FirefoxDriver((org.openqa.selenium.firefox.FirefoxOptions) caps);
-			case "edge":
-				return new org.openqa.selenium.edge.EdgeDriver((org.openqa.selenium.edge.EdgeOptions) caps);
-			case "ie":
-				return new org.openqa.selenium.ie.InternetExplorerDriver((org.openqa.selenium.ie.InternetExplorerOptions) caps);
-			case "safari":
-				return new org.openqa.selenium.safari.SafariDriver((org.openqa.selenium.safari.SafariOptions) caps);
-			default:
-				throw new RuntimeException("Unsupported local browser: " + browserName);
+		} catch (org.openqa.selenium.WebDriverException __local) {
+			// G11: explain the options (gatf grid up / GATF_WITH_GRID / docker run) instead of a bare driver error
+			throw SeleniumGrid.withGuidance(browserName, __local);
 		}
 	}
 }

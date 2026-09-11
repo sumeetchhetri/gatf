@@ -26,6 +26,7 @@ if "%GATF_UI_HOST%"=="" set "GATF_UI_HOST=127.0.0.1"
 
 if /i "%~1"=="ui" goto :ui
 if /i "%~1"=="tools" goto :tools
+if /i "%~1"=="grid" goto :grid
 if /i "%~1"=="version" goto :version
 if /i "%~1"=="--version" goto :version
 if "%~1"=="" goto :usage
@@ -39,6 +40,10 @@ if "%PORT%"=="" set "PORT=9080"
 set "DIR=%~3"
 if "%DIR%"=="" set "DIR=."
 "%JAVA%" %GATF_JAVA_OPTS% -jar "%JAR%" -configtool %PORT% %GATF_UI_HOST% "%DIR%"
+exit /b %ERRORLEVEL%
+
+:grid
+"%JAVA%" %GATF_JAVA_OPTS% -cp "%JAR%" com.gatf.selenium.SeleniumGrid %2 %3
 exit /b %ERRORLEVEL%
 
 :tools
@@ -58,6 +63,7 @@ exit /b 0
 :usage
 echo gatf ui [port] [dir]          web console (default 9080, current dir)
 echo gatf tools install [tool...]  set up load tools (vegeta autocannon)
+echo gatf grid up^|down^|status [b]  official selenium/standalone-^<b^> container on :4444
 echo gatf version                  GATF + JDK versions
 echo gatf ^<args^>                   passed to the jar (-executor ^| -selenium ^| -listener ...)
 exit /b 0

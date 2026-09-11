@@ -46,7 +46,7 @@ public class SeleniumCrawlBrowser implements SpaCrawler.Browser {
 
     /** G9: chrome | firefox | edge (Grid via SELENIUM_REMOTE_URL for any of them). */
     public static SeleniumCrawlBrowser create(boolean headless, String browser) throws Exception {
-        String grid = System.getenv("SELENIUM_REMOTE_URL");
+        String grid = com.gatf.selenium.SeleniumGrid.remoteUrl(browser);   // G11: env / -D / on-demand Grid
         if ("firefox".equals(browser)) {
             org.openqa.selenium.firefox.FirefoxOptions fo = new org.openqa.selenium.firefox.FirefoxOptions();
             if (headless) fo.addArguments("-headless");

@@ -6,7 +6,7 @@ WORKDIR /tmp
 
 ENV NODE_MAJOR=20
 
-RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates ca-certificates curl gnupg openjdk-11-jdk openjdk-11-jre libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools maven build-essential software-properties-common xvfb fluxbox wmctrl && rm -rf /var/lib/apt/lists/*
+RUN apt update -yqq && apt install -yqq --no-install-recommends zlib1g-dev ca-certificates ca-certificates curl gnupg openjdk-21-jdk-headless libluajit-5.1-dev luajit libssl-dev git wget unzip net-tools maven build-essential software-properties-common xvfb fluxbox wmctrl && rm -rf /var/lib/apt/lists/*
 RUN mkdir -p /etc/apt/keyrings && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 RUN printf 'Package: nodejs\nPin: origin deb.nodesource.com\nPin-Priority: 600\n' > /etc/apt/preferences.d/nodesource
@@ -39,13 +39,10 @@ RUN chmod +x /usr/local/bin/wrk /usr/local/bin/wrk2 /usr/local/bin/vegeta
 
 WORKDIR /tmp
 RUN rm -rf wrk wrk2
-RUN git clone https://github.com/sumeetchhetri/gatf
-#RUN rm -rf alldep-jar plugin sample pom.xml plugins.txt
-#COPY alldep-jar /tmp/gatf/alldep-jar
-#COPY plugin /tmp/gatf/plugin
-#COPY sample /tmp/gatf/sample
-#COPY pom.xml /tmp/gatf/
-#COPY plugins.txt /tmp/gatf/
-RUN cd gatf && git checkout tags/3.0.8 -b v3.0.8 && mvn --quiet install
-
-RUN mv /tmp/gatf/alldep-jar/target/gatf-alldep-jar-3.0.8.jar /gatf-alldep.jar
+# Build the CHECKED-OUT sources (the release tag's own tree), with the JDK 21 installed above. This used to
+# git-clone GitHub and build the hard-coded tag 3.0.8 with JDK 11, so every image/release shipped old code.
+# Tests are skipped here: CI runs them (mvn install) before this image is built.
+COPY . /tmp/gatf
+RUN cd /tmp/gatf && mvn --quiet -DskipTests install \
+ && cp "$(ls alldep-jar/target/gatf-alldep-jar-*.jar | grep -Ev -- '-(sources|javadoc)\.jar$' | head -1)" /gatf-alldep.jar \
+ && cd / && rm -rf /tmp/gatf /root/.m2

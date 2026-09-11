@@ -53,7 +53,7 @@ public final class DockerLoadgen {
 
     private DockerLoadgen() {}
 
-    static String docker() {
+    public static String docker() {
         String d = System.getProperty("gatf.docker.bin");
         return d != null && !d.trim().isEmpty() ? d.trim() : "docker";
     }
@@ -168,9 +168,9 @@ public final class DockerLoadgen {
 
     // ---- process helper (no shell; stdout+stderr merged; optional stdin) ----
 
-    static final class Out {
-        final int rc;
-        final String out;
+    public static final class Out {
+        public final int rc;
+        public final String out;
 
         Out(int rc, String out) {
             this.rc = rc;
@@ -178,7 +178,7 @@ public final class DockerLoadgen {
         }
     }
 
-    static Out run(List<String> cmd, byte[] stdin) {
+    public static Out run(List<String> cmd, byte[] stdin) {
         try {
             Process p = new ProcessBuilder(cmd).redirectErrorStream(true).start();
             try (OutputStream o = p.getOutputStream()) {

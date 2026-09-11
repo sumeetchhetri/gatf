@@ -1469,7 +1469,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             // Virtual-thread-per-task executor: run every configured simulated user
             // concurrently instead of capping the load at 100 platform threads. Each
             // user-simulation thread only parks on a CompletableFuture (the HTTP call is
-            // dispatched asynchronously via OkHttp's own Dispatcher), so the vthreads park
+            // dispatched asynchronously via java.net.http's HttpClient.sendAsync), so the vthreads park
             // cleanly with no carrier pinning and cost ~nothing while idle.
             threadPool = Executors.newVirtualThreadPerTaskExecutor();
         }

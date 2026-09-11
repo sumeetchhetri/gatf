@@ -69,10 +69,39 @@ public class JdkGatfResponse implements GatfResponse {
 	@Override
 	public String bodyString() {
 		if (cachedBody == null) {
-			byte[] body = response.body();
+			byte[] body = decoded(response.body(), header("Content-Encoding"));
 			cachedBody = body != null ? new String(body, charset()) : null;
 		}
 		return cachedBody;
+	}
+
+	/**
+	 * java.net.http does not decompress (OkHttp did, transparently). Decode gzip / deflate bodies so a test
+	 * that asks for compression (Accept-Encoding / httpCompressionEnabled) validates the real content.
+	 * Unknown encodings and undecodable bodies are returned unchanged.
+	 */
+	static byte[] decoded(byte[] body, String contentEncoding) {
+		if (body == null || body.length == 0 || contentEncoding == null) return body;
+		String enc = contentEncoding.trim().toLowerCase(java.util.Locale.ROOT);
+		try {
+			if (enc.equals("gzip") || enc.equals("x-gzip")) {
+				try (java.io.InputStream in = new java.util.zip.GZIPInputStream(new java.io.ByteArrayInputStream(body))) {
+					return in.readAllBytes();
+				}
+			}
+			if (enc.equals("deflate")) {
+				try (java.io.InputStream in = new java.util.zip.InflaterInputStream(new java.io.ByteArrayInputStream(body))) {
+					return in.readAllBytes();                                   // zlib-wrapped (RFC 1950), the norm
+				} catch (java.util.zip.ZipException raw) {
+					try (java.io.InputStream in = new java.util.zip.InflaterInputStream(new java.io.ByteArrayInputStream(body), new java.util.zip.Inflater(true))) {
+						return in.readAllBytes();                               // raw deflate (some servers)
+					}
+				}
+			}
+		} catch (Exception ignore) {
+			// not actually compressed / corrupt: fall back to the raw bytes
+		}
+		return body;
 	}
 
 	@Override

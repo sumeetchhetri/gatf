@@ -10,7 +10,7 @@
     "url": "https://github.com/sumeetchhetri/gatf"
   },
   "engines": {
-    "vscode": "^1.75.0"
+    "vscode": "^1.82.0"
   },
   "categories": [
     "Programming Languages",
@@ -99,6 +99,11 @@
               "stopOnEntry": {
                 "type": "boolean",
                 "default": true
+              },
+              "gatfToken": {
+                "type": "string",
+                "description": "GATF auth token (sent as ?token=) when the GATF server runs with authentication; empty for anonymous mode.",
+                "default": ""
               }
             }
           }
@@ -145,7 +150,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
-    "@types/vscode": "^1.75.0",
+    "@types/vscode": "^1.82.0",
     "esbuild": "^0.21.5",
     "typescript": "^5.6.3",
     "vscode-oniguruma": "^2.0.1",
