@@ -40,7 +40,8 @@ import com.gatf.executor.core.GatfExecutorConfig;
  * decomposition of Command / SeleniumTest / GatfTestCaseExecutorUtil cannot silently change generated code.
  *
  *  - Goldens: src/test/resources/codegen-golden/&lt;project&gt;/&lt;path&gt;.java.txt
- *  - Missing golden → it is written and reported (commit it); refresh all with -Dgatf.golden.update=true
+ *  - Missing golden → written and reported locally (commit it); under CI (env CI=true) a missing golden FAILS,
+ *    so a new .sel cannot pass unguarded. Refresh all with -Dgatf.golden.update=true
  *  - Non-deterministic parts are normalized (STC_&lt;nanoTime&gt; class names, UUIDs, &lt;nanoTime&gt;.png,
  *    absolute paths). Each script is generated TWICE and the two normalized outputs must match, so any
  *    nondeterminism the normalizer misses fails loudly here with the exact line, not as a flaky drift later.
@@ -52,6 +53,7 @@ class CodegenGoldenTest {
     private static final String[] PROJECTS = { "sample-project", "dogfood" };
     private static final Path GOLDEN_ROOT = Paths.get("src/test/resources/codegen-golden");
     private static final boolean UPDATE = Boolean.getBoolean("gatf.golden.update");
+    private static final boolean CI = "true".equalsIgnoreCase(System.getenv("CI"));
 
     @Test
     void generatedJavaMatchesGoldens() throws Exception {
@@ -101,6 +103,11 @@ class CodegenGoldenTest {
                     continue;
                 }
                 Path golden = GOLDEN_ROOT.resolve(project).resolve(rel + ".java.txt");
+                if (!UPDATE && CI && !Files.exists(golden)) {
+                    problems.add(project + "/" + rel + ": no golden " + golden
+                            + " (run locally with -Dgatf.golden.update=true and commit it)");
+                    continue;
+                }
                 if (UPDATE || !Files.exists(golden)) {
                     Files.createDirectories(golden.getParent());
                     Files.write(golden, a.getBytes(StandardCharsets.UTF_8));

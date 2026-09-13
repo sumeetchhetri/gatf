@@ -27,7 +27,6 @@
     <seleniumDriverConfig>
       <name>chrome</name>
       <driverName>webdriver.chrome.driver</driverName>
-      <path>/Users/sumeetc/Projects/home/selenium/chromedriver</path>
       <capabilities class="linked-hash-map">
         <property key="deviceName">test</property>
       </capabilities>

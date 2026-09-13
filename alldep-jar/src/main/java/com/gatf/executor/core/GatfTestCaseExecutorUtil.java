@@ -1148,6 +1148,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                         SeleniumResult res = e.getValue();
                         if (res.getResult() == null) {
+                            consoleSelResult((String) retvals[0], keykey, null, null);
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                             skp++;
                             tskp++;
@@ -1167,6 +1168,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             String fileName = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", fileName + ".html", res.getResult().isStatus() ? "SUCCESS" : "FAILED",
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
+                            consoleSelResult((String) retvals[0], keykey, null, res.getResult());
                             if (dorep) {
                                 String __traceRel = null;
                                 if(sess.__trace__!=null) {
@@ -1200,6 +1202,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                         for (Map.Entry<String, SeleniumTestResult> e1 : res.getSubTestResults().entrySet()) {
                             if (e1.getValue() == null) {
+                                consoleSelResult((String) retvals[0], keykey, e1.getKey(), null);
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
                                 skp++;
                                 tskp++;
@@ -1225,6 +1228,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                         + e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), fileName + ".html", e1.getValue().isStatus() ? "SUCCESS" : "FAILED",
                                         !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
+                                consoleSelResult((String) retvals[0], keykey, e1.getKey(), e1.getValue());
                                 if (dorep) {
                                     ReportHandler.doSeleniumTestReport(path, fileName, retvals, e1.getValue(), context, null);
                                     if(!isLoadTestingEnabled) {
@@ -1313,6 +1317,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
     @SuppressWarnings({"rawtypes"})
     public void doExecute(GatfExecutorConfig configuration, List<String> files) throws Exception {
+
+        // CLI reporter (no-op unless GatfCli activated it): per-test lines only for functional single-user runs
+        com.gatf.log.RunConsole.suite(configuration.isSeleniumExecutor() ? "UI (seleasy)" : "API",
+                new File(configuration.getOutFilesBasePath() != null ? configuration.getOutFilesBasePath() : ".",
+                        configuration.getOutFilesDir() != null ? configuration.getOutFilesDir() : "out").getAbsolutePath(),
+                configuration.getNumConcurrentExecutions() != null ? configuration.getNumConcurrentExecutions() : 1,
+                !(configuration.isLoadTestingEnabled() && configuration.getLoadTestingTime() != null && configuration.getLoadTestingTime() > 10000)
+                        && (configuration.getConcurrentUserSimulationNum() == null || configuration.getConcurrentUserSimulationNum() <= 1));
 
         if (configuration.isGenerateExecutionLogs()) {
             tclgenerator = new Thread(new TestCaseExecutionLogGenerator(configuration));
@@ -1839,6 +1851,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
                 if ((isPerfTest && index == 0) || !isPerfTest) {
                     reportHandler.addTestCaseReport(testCaseReport);
+                    consoleApiResult(testCaseReport);
                 }
 
                 if (context.getGatfExecutorConfig().isGenerateExecutionLogs() && ((isPerfTest && index > 0) || !isPerfTest)) {
@@ -2049,6 +2062,43 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         } catch (Exception e) {
             logger.error(ExceptionUtils.getStackTrace(e));
         }
+    }
+
+    // ---- CLI reporter hooks (no-ops unless GatfCli activated RunConsole) --------------------------------------------
+
+    private static void consoleApiResult(TestCaseReport r) {
+        if (!com.gatf.log.RunConsole.isActive() || r == null || r.getTestCase() == null) return;
+        TestCase tc = r.getTestCase();
+        String file = tc.getSourcefileName() != null ? tc.getSourcefileName() : "api";
+        String title = file + " \u203a " + (tc.getName() != null ? tc.getName() : String.valueOf(tc.getIdentifier()));
+        com.gatf.log.RunConsole.Status st = TestStatus.Success.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.PASSED
+                : TestStatus.Skipped.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.SKIPPED : com.gatf.log.RunConsole.Status.FAILED;
+        if (!com.gatf.log.RunConsole.wantsDetail()) { com.gatf.log.RunConsole.result(title, st, 0L, null, null); return; }
+        String err = r.getError() != null && !r.getError().trim().isEmpty() ? r.getError() : r.getErrorText();
+        String detail = (r.getMethod() != null ? r.getMethod() : tc.getMethod()) + " " + (r.getActualUrl() != null ? r.getActualUrl() : tc.getUrl())
+                + " -> " + r.getResponseStatusCode() + (r.getErrorText() != null && !r.getErrorText().trim().isEmpty() ? "\n" + r.getErrorText() : "");
+        com.gatf.log.RunConsole.result(title, st, r.getExecutionTime() != null ? r.getExecutionTime() : 0L, err, detail);
+    }
+
+    private static void consoleSelResult(String selFile, String browserKey, String subtest, SeleniumTestResult res) {
+        if (!com.gatf.log.RunConsole.isActive()) return;
+        String title = "[" + browserKey + "] \u203a " + selFile + (subtest != null && !subtest.equals("-") ? " \u203a " + subtest : "");
+        if (res == null) {
+            com.gatf.log.RunConsole.result(title, com.gatf.log.RunConsole.Status.SKIPPED, 0L, null, null);
+            return;
+        }
+        if (!com.gatf.log.RunConsole.wantsDetail()) {
+            com.gatf.log.RunConsole.result(title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED, 0L, null, null);
+            return;
+        }
+        String msg = null;
+        if (res.getLogs() != null && res.getLogs().get("gatf") != null && res.getLogs().get("gatf").getAll().size() > 0) {
+            msg = res.getLogs().get("gatf").getAll().get(0).getMessage();
+        }
+        if (msg == null && res.getCause() != null) msg = String.valueOf(res.getCause().getMessage());
+        String detail = res.getCause() != null ? org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(res.getCause()) : null;
+        com.gatf.log.RunConsole.result(title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
+                res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail);
     }
 
     public static void main(String[] args) throws Exception {

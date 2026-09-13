@@ -31,6 +31,9 @@ export default defineConfig({
       provider: 'v8',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/main.tsx'],
+      // T0-5 ratchet: floors just under the 2026-09-23 baseline (21.05% lines/stmts, 23.8% funcs, 71.07% branches).
+      // Raise them as tests land; never lower them.
+      thresholds: { lines: 20, statements: 20, functions: 23, branches: 70 },
     },
   },
 });

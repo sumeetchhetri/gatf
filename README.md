@@ -1,41 +1,173 @@
-Generic Automated Test Framework (GATF)
-=========
+# GATF — Generic Automated Test Framework
 
-**GATF** is an automated test generator and acceptance testing framework. It provides multiple components namely the **Test Generator**, the **Test Executor** , the **Config Tool** and the **Robotic Process Automation Tool**
+[![Build gatf](https://github.com/sumeetchhetri/gatf/actions/workflows/ci-build.yml/badge.svg)](https://github.com/sumeetchhetri/gatf/actions/workflows/ci-build.yml)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
-GATF Acceptance Test executor is data-type agnostic, which means that your testcases can be in any formats like XML, JSON or plain old CSV. Whereas the Test generator generates only XML files (so that even complex data structures can be supported within your testcases) 
+**One tool for API, UI, load, performance and distributed testing (plus RPA).** It comes with a browser-based console, a trace viewer and a VS Code extension.
 
-> The primary goal of GATF is Automation with Simplicity.
+UI tests are written in **seleasy**, a terse automation language that compiles to Selenium Java in-process. API tests are data (XML/JSON/CSV). The same suites scale from a single run to concurrent users, load runs and distributed agents.
 
-Install
-==========
+> The primary goal of GATF is automation with simplicity.
+
+## What you get
+
+| Area | Capabilities |
+|---|---|
+| **API testing** | Test cases in XML/JSON/CSV; workflows and scenarios; data providers (SQL, MongoDB, CSV/JSON/XML/XLS(X)/ODT, inline, random, custom); pre/post hooks; comparative multi-environment runs |
+| **UI testing** | seleasy scripts, compiled in-process by the bundled ECJ (a JRE is enough). Chrome, Firefox, Edge, Safari and IE. Runs on a local browser (Selenium Manager downloads the driver and Chrome for Testing), on the lean chrome-headless-shell, or on any Selenium Grid |
+| **Authoring** | Web editor (autocomplete, diagnostics, go-to-definition); live **recorder**; **SPA crawler** that proposes a suite plus a coverage map; **Playwright and JMeter importers**; VS Code extension (language server + debugger) |
+| **Debugging** | Step debugger in the web console and in VS Code: breakpoints, step over/into, continue |
+| **Traces** | `trace.zip` per run: network (HAR), console, DOM snapshots, video, web-vitals, performance and memory, CPU profile, JS/CSS coverage. Captured over CDP or WebDriver BiDi, viewed in the built-in Trace Viewer |
+| **Load & performance** | Embedded load engine plus vegeta, autocannon and wrk/wrk2 (auto-provisioned); concurrent-user simulation; distributed agents with live charts |
+| **Reporting** | HTML reports and a report viewer in the console. CLI runs print Playwright-style ✓/✘ console output with a detailed log file, and the exit code is non-zero on failure (CI-friendly) |
+
+## Install
 
 macOS / Linux:
-```
+```sh
 curl -fsSL https://github.com/sumeetchhetri/gatf/releases/latest/download/install.sh | bash
 ```
 Windows (PowerShell):
-```
+```powershell
 irm https://github.com/sumeetchhetri/gatf/releases/latest/download/install.ps1 | iex
 ```
-Offline: download `gatf-<version>.zip` from Releases, unzip, and run `./install.sh` (or `powershell -ExecutionPolicy Bypass -File .\install.ps1`).
-Needs Java 21+ — a JRE is enough (tests compile with the bundled ECJ); only the online debugger needs a JDK. The installer detects installed Java (preferring a JDK) or offers a private Eclipse Temurin 21 download (JDK by default, `--jre` for the smaller runtime), installs per user (no admin), and can optionally set up the load tools. Then: `gatf ui` → http://127.0.0.1:9080/.
+**Offline:** download `gatf-<version>.zip` from [Releases](https://github.com/sumeetchhetri/gatf/releases), unzip it, and run `./install.sh` (or `powershell -ExecutionPolicy Bypass -File .\install.ps1`).
 
-Important features
-==========
-1. Robotic Process Automation
-2. Comparative Env Testing
-3. Concurrent User Testing
-4. Performance Testing
-5. Load Testing (API and UI both) [wrk, wrk2, vegeta, autocannon, embedded]
-6. UI Testing with seleasy language + seleasy debugger
-7. Reporting Engine
-8. Remote Agent for Distributed Load Testing
-9. Workflow Testing
-10. Data Source Integrations
-	- SQL
-	- MongoDB
-	- Files (XML/JSON/CSV/XLS/XLSX/ODT)
+**Java:** needs Java 21+. A JRE is enough; only the online debugger needs a JDK. The installer:
+- detects an installed Java (preferring a JDK), or offers a private Eclipse Temurin 21 (a JDK by default, `--jre` for the smaller runtime);
+- installs per user, with no admin rights;
+- can set up the load tools (`--with-tools`).
+
+**From source:** `mvn -B install`, then use `alldep-jar/target/gatf-alldep-jar-<version>.jar`.
+
+## Quick start
+
+```sh
+gatf ui                                  # web console → http://127.0.0.1:9080/  (project = current dir)
+gatf ui 9080 ./sample-project            # ...or point it at a project folder
+gatf -selenium gatf-config.xml           # run the UI (seleasy) suite from the CLI
+gatf -executor gatf-config.xml           # run the API suite from the CLI
+```
+Without the installer, replace `gatf` with `java -jar gatf-alldep-jar-<version>.jar` (and `gatf ui` with `-configtool 9080 127.0.0.1 .`).
+
+A minimal seleasy script:
+```
+open chrome
+goto https://example.com
+??10 id@username type "user"
+??10 id@password type "password"
+??10 class@loginBtn click
+?? xpath@"//h1" text ="Welcome"
+```
+[`sample-project/`](sample-project/) is a runnable project with API tests, UI tests, a load config and a local target server.
+
+## Commands
+
+| Command | What it does |
+|---|---|
+| `gatf ui [port] [dir]` | Web console: config, test files, editor, recorder, crawler, importer, execution, reports, traces, debugger. Default port 9080; bind host via `GATF_UI_HOST` |
+| `gatf -executor <config>` | Run the API suite |
+| `gatf -selenium <config>` | Run the UI (seleasy) suite |
+| `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
+| `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
+| `gatf -listener` | Start a distributed-execution agent |
+| `gatf tools install …` | Provision the load tools (vegeta, autocannon, wrk/wrk2) |
+| `gatf version` | Print the installed version |
+
+JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=debug"`).
+
+## Console output, logs and exit codes
+
+CLI runs (`-executor`, `-selenium`) print one line per finished test, then a summary:
+```
+Running GATF UI (seleasy) tests
+
+  ✓  1 [chrome] › ui/login-flow.sel (4.2s)
+  ✘  2 [chrome] › ui/checkout.sel › pay (3.1s)
+       Element not found: id@payBtn
+  -  3 [chrome] › ui/checkout.sel › refund
+
+  1 failed
+    [chrome] › ui/checkout.sel › pay
+  1 skipped
+  1 passed (9.8s)
+
+  Report: /work/project/out
+  Log:    /work/project/logs/gatf.log
+```
+
+- **Console:** only the pass/fail lines above, plus warnings and errors. Passes are green, failures red, skips yellow.
+  - Colour is automatic on terminals and GitHub Actions.
+  - `NO_COLOR` or `-Dgatf.color=never` disables it; `FORCE_COLOR` or `-Dgatf.color=always` forces it.
+  - Load and multi-user runs show only the summary; the report has the per-request detail.
+- **Log file:** `logs/gatf.log` in the working directory holds everything:
+  - every result with its request, response code and error detail;
+  - the engine's step output;
+  - stack traces.
+
+  Each run starts a fresh file. The previous run's log is kept as `gatf.1.log.gz`, and the last 10 are retained.
+- **Exit code:** `0` when every test passed; `1` if any test failed, the run aborted, or the command line was invalid.
+
+| Setting (`-D…`) | Default | Effect |
+|---|---|---|
+| `gatf.log.dir` | `logs` | Where `gatf.log` is written |
+| `gatf.log.level` | `info` | Detail in the log file (`debug` for more) |
+| `gatf.console.level` | `warn` for CLI runs, `info` otherwise | Log events shown on the console |
+| `gatf.capture.stdout` | `true` | `false` also shows the engine's raw output on the console |
+| `gatf.color` | `auto` | `always` / `never` |
+
+## Guides
+
+- [Browser modes](docs/browser-modes.md): local, chrome-headless-shell, or Selenium Grid.
+- [Load tools](docs/load-tools.md): vegeta, autocannon, wrk/wrk2, and the embedded engine.
+- [seleasy language](docs/seleasy/README.md), plus the [syntax reference](#seleasy-syntax-reference) below.
+- [VS Code extension](vscode-extension/README.md).
+- [Windows support](docs/WINDOWS-SUPPORT.md).
+- [End-to-end tests](e2e/README.md).
+- [Roadmap](GATF_REVIEW_AND_ROADMAP.md), including Phase 13, Playwright parity+.
+
+## Running in CI
+
+```yaml
+jobs:
+  ui-tests:
+    runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chrome:latest
+        ports: ['4444:4444']
+        options: --shm-size=2g
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '21' }
+      - run: java -jar gatf-alldep-jar-<version>.jar -selenium gatf-config.xml   # fails the job on any failed test
+        env: { SELENIUM_REMOTE_URL: 'http://localhost:4444' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: gatf-results
+          path: |
+            out/
+            logs/
+```
+
+## Developing GATF
+
+```sh
+mvn -B install                         # build + unit tests + integration tests + codegen goldens + JaCoCo report
+cd frontend && npm ci && npx vitest run --coverage   # SPA unit tests (coverage floors enforced)
+cd e2e && npm ci && npx playwright test              # SPA e2e against a live server (see e2e/README.md)
+```
+- **Codegen goldens:** refresh with `mvn -pl alldep-jar -am test -Dtest=CodegenGoldenTest -Dsurefire.failIfNoSpecifiedTests=false -Dgatf.golden.update=true`, then commit the files under `alldep-jar/src/test/resources/codegen-golden/`. CI fails on a missing golden.
+- **Coverage:** the JaCoCo report is at `alldep-jar/target/site/jacoco/index.html`, with its floor set by `gatf.coverage.line.min` in `pom.xml`.
+- **Snapshot of the source tree** (for reviews): `tools/package-source.sh`.
+
+---
+
+# Reference
+
+The sections below are the detailed reference for each component.
 
 GATF Test Executor
 ================
@@ -56,7 +188,7 @@ The GATF Test Executor module provides a consolidated testing tool for,
   3. Detailed test case reports with comprehensive information about a test execution request/response
   4. Maven/Executable-Jar test case execution options
 
-It uses a highly performant asynchronous http client library - async-http-client and hence achieves very good execution times.
+It uses the JDK's asynchronous `java.net.http` client (HTTP/1.1 and HTTP/2) with virtual threads for load runs.
 
 
 
@@ -339,7 +471,7 @@ It uses a highly performant asynchronous http client library - async-http-client
 For direct execution, we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -executor /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-jar-5.0.0.jar -executor /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -349,7 +481,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For direct execution for RPA (selenium), we just need to specify a simple config.xml(any name .xml) file with the contents as follows, on the command line,
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -selenium /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-jar-5.0.0.jar -selenium /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -359,7 +491,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For validating test script for RPA (selenium), use the following command,
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-jar-5.0.0.jar -validate-sel test-script-name-relative-to-workdir.sel /workdir/path/to/gatf/config.xml
 ```
 
 ```sh
@@ -369,7 +501,7 @@ docker run -v /dev/shm:/dev/shm -v /local-folder:/workdir -e TZ=Asia/Kolkata -it
 For running gatf in distributed mode as a listener, use the following command,
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -listener
+java -jar gatf-alldep-jar-5.0.0.jar -listener
 ```
 
 ```sh
@@ -383,18 +515,14 @@ GATF Robotic Process Automation Tool
 
 The GATF RPA tool provides an easy to use language to write process automation tests called **seleasy**, using seleasy it becomes super easy to write any simple or complex test cases also utilizing the full capabilities of the workflow and provider logic described in the configuration above, moreover UI load and Distributed load testing can now be very easily performed with gatf.
 
-Moreover a javascript library is provided as an additional support system to automatically record and playback browser actions, this small script when injected into the (Inspect Element - Chrome), (Developer Tools - Firefox) etc, provides an initial bootstrap to generate most of the automation scripts.
+Scripts can also be **recorded**: the console's Record view opens a browser and turns your clicks and typing into seleasy. They can be **crawled** (the Crawl view proposes a suite for a whole site) or **imported** from Playwright specs.
 
-Just to give a glimpse of how easy it is to write process automation test cases with seleasy(gatf) assume we have a login page hosted at http://example.com and after logging in we need to see the Name of the user in the Profile section under the xpath */html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]*, an example gatf script to execute the test in 4 different browsers would look like,
+Just to give a glimpse of how easy it is to write process automation test cases with seleasy(gatf) assume we have a login page hosted at http://example.com and after logging in we need to see the Name of the user in the Profile section under the xpath */html/body/div[4]/div[1]/div/div[2]/div[1]/div/p[1]*, an example gatf script to execute the test in 3 different browsers would look like,
 
 ```
 open chrome
-open chrome-hdl
-open chrome-dkr
-open chrome-rec
 open firefox
-open ie
-open opera
+open edge
 goto http://example.com
 ??10 id@username type "user"
 ??10 id@password type "password"
@@ -403,17 +531,7 @@ goto http://example.com
 ```
 Simplicity lies at the core of the seleasy language which was invented just to ensure that we focus on the problem at hand instead of writing lengthy selenium scripts in java.
 
-To start recording browser actions just type into the Inspect Element -> Console (Chrome)
-
-```
-Fg.startRecording()
-```
-
-To stop recording
-
-```
-Fg.stopRecording()
-```
+The legacy browser suffixes (`chrome-hdl`, `chrome-dkr`, `chrome-rec`) are still accepted and resolve to the same browser. Headless, Grid and headless-shell are chosen by configuration; see [browser modes](docs/browser-modes.md).
 
 Seleasy Syntax Reference
 ---------------------
@@ -1361,7 +1479,7 @@ Gatf also provides with a User Interface for managing and executing test cases o
 <br>
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -configtool 9080 0.0.0.0 .
+java -jar gatf-alldep-jar-5.0.0.jar -configtool 9080 0.0.0.0 .
 ```
 
 ```sh
@@ -1560,7 +1678,7 @@ jsonapi/users/1,GetUser,GET,Get a user with id = 1,,someheader:val|anotherheader
 <br>
 
 ```sh
-java -jar gatf-alldep-3.0.8.jar -generator /workdir/path/to/gatf/config.xml
+java -jar gatf-alldep-jar-5.0.0.jar -generator /workdir/path/to/gatf/config.xml
 ```
 
 ```sh

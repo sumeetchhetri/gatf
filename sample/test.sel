@@ -4,11 +4,11 @@ maximize
 
 subtest "a"
 {
- goto https://app.ohumhealthcare.com/ilbs_front/
+ goto https://xyz.com
   ??+ id@"faug-freeze-element"
-  ??- id@usernameId type "ha@ilbs"
+  ??- id@usernameId type "sdsds"
   ??+ id@"faug-freeze-element"
-  ??- id@passwordId type "Ohum@123"
+  ??- id@passwordId type "sdsd"
   ??+ id@"faug-freeze-element"
   ??- xpath@"//*[contains(text(),'Login')]" click
   ??- xpath@"//*[contains(@class,'showAllMenus')]" click
@@ -36,11 +36,11 @@ subtest "a"
   close others
   tab main
   
-  goto https://app.ohumhealthcare.com/ilbs_front/
+  goto https://xyz.com
   ??+ id@"faug-freeze-element"
-  ??- id@usernameId type "ha@ilbs"
+  ??- id@usernameId type "sdsds"
   ??+ id@"faug-freeze-element"
-  ??- id@passwordId type "Ohum@123"
+  ??- id@passwordId type "sdsd"
   ??+ id@"faug-freeze-element"
   ??- xpath@"//*[contains(text(),'Login')]" click
   ??- xpath@"//*[contains(@class,'showAllMenus')]" click

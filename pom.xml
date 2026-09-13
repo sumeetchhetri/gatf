@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.github.sumeetchhetri.gatf</groupId>
 	<artifactId>gatf-parent</artifactId>
-	<version>3.0.8</version>
+	<version>5.0.0</version>
 	<packaging>pom</packaging>
 	<name>gatf</name>
 	<description>Generic Automated Test Framework For API/UI Testing</description>
@@ -26,6 +26,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<manifold.version>2021.1.33</manifold.version>
 		<selenium.version>4.48.0</selenium.version>
+		<!-- T0-5: JaCoCo line-coverage floor (bundle). 0.00 until the first CI run measures the baseline;
+		     then set it just below that number and only ever raise it (ratchet). -->
+		<gatf.coverage.line.min>0.00</gatf.coverage.line.min>
 	</properties>
 
 	<repositories>
@@ -54,6 +57,15 @@
 			<groupId>javax.ws.rs</groupId>
 			<artifactId>javax.ws.rs-api</artifactId>
 			<version>2.1.1</version>
+		</dependency>
+
+		<!-- T0-3: JUnit 4 is a RUNTIME dependency: validators, data providers, TestCaseExecutorUtil and every
+		     generated seleasy class use org.junit.Assert. It used to arrive only transitively; pinned here so a
+		     dependency bump cannot silently drop it (replaced by GatfAssert in roadmap M16). -->
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<version>4.13.2</version>
 		</dependency>
 
 		<!-- Test harness (test-scope; NOT shaded into the fat jar) -->
@@ -543,6 +555,49 @@
 							<goal>integration-test</goal>
 							<goal>verify</goal>
 						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<!-- T0-5: coverage. prepare-agent sets ${argLine}, which surefire AND failsafe pick up, so unit + IT
+			     runs append to one target/jacoco.exec; report + floor check run at verify (after failsafe). -->
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.13</version>
+				<executions>
+					<execution>
+						<id>jacoco-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-check</id>
+						<phase>verify</phase>
+						<goals>
+							<goal>check</goal>
+						</goals>
+						<configuration>
+							<rules>
+								<rule>
+									<element>BUNDLE</element>
+									<limits>
+										<limit>
+											<counter>LINE</counter>
+											<value>COVEREDRATIO</value>
+											<minimum>${gatf.coverage.line.min}</minimum>
+										</limit>
+									</limits>
+								</rule>
+							</rules>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>

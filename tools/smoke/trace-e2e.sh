@@ -18,7 +18,7 @@
 # Runs GATF with the FULL recorder suite enabled (network, console, snapshots,
 # metrics, web-vitals, cpu, coverage, video) against a real Selenium Grid over a
 # tiny UI scenario that fires a real click, then validates the produced
-# trace.zip with tools/smoke/validate-trace.py.
+# trace.zip with tools/smoke/validate-trace.mjs (node).
 #
 # This is the run that de-risks all the CDP-facing recorder code at once -- the
 # screencast ack loop, the Profiler/Performance command shapes, the per-action
@@ -128,4 +128,4 @@ if ! ( cd "${WORK}" && "${JAVA_HOME}/bin/java" -jar "${GATF_JAR}" -selenium "$(b
 fi
 
 log "validate the produced trace.zip"
-python3 "${REPO_ROOT}/tools/smoke/validate-trace.py" "${WORK}/out"
+node "${REPO_ROOT}/tools/smoke/validate-trace.mjs" "${WORK}/out"

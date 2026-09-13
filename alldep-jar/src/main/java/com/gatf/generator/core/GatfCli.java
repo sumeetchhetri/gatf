@@ -20,6 +20,8 @@ import java.io.InputStream;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.distributed.DistributedGatfListener;
+import com.gatf.log.GatfLogging;
+import com.gatf.log.RunConsole;
 import com.gatf.selenium.Command;
 import com.gatf.ui.GatfConfigToolUtil;
 
@@ -40,6 +42,7 @@ public final class GatfCli {
 
     	System.setProperty("java.util.logging.manager", "org.apache.logging.log4j.jul.LogManager");
     	boolean showHelp = false;
+    	int exitCode = 0;
     	if(args.length>=1) {
     		if(args.length>1 && args[0].equals("-generator") && !args[1].trim().isEmpty())
     		{
@@ -76,11 +79,16 @@ public final class GatfCli {
     		}
     		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
     		{
+    			// quiet console + detailed log file + pass/fail reporter; must precede log4j initialisation
+    			GatfLogging.initForRun();
+    			RunConsole.activate();
     			try {
     				GatfTestCaseExecutorUtil.main(args);
+    				// Playwright-style exit status: non-zero when any test failed
+    				if (RunConsole.finish() > 0) exitCode = 1;
 				} catch (Exception e) {
-					e.printStackTrace();
-					showHelp = true;
+					RunConsole.abort(e);
+					exitCode = 1;
 				}
     			
     		}
@@ -115,6 +123,6 @@ public final class GatfCli {
 					"java -jar gatf-plugin-{version}.jar -listener\n");
     	}
     	
-		System.exit(showHelp ? 1 : 0);   // G8: non-zero on invalid usage / executor failure (was always 0)
+		System.exit(showHelp ? 1 : exitCode);   // non-zero on invalid usage, an aborted run, or any failed test
     }
 }

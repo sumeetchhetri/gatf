@@ -35,7 +35,7 @@ cd e2e && npm test
 
 ## 2. Recorder e2e — `tools/smoke/trace-e2e.sh` (Selenium-facing)
 Runs the full recorder suite against a real Selenium Grid over a live click, then validates the
-produced `trace.zip` with `tools/smoke/validate-trace.py`. This is the run that de-risks the
+produced `trace.zip` with `tools/smoke/validate-trace.mjs` (node). This is the run that de-risks the
 CDP/BiDi-facing recorder code (screencast, Profiler/Performance, per-action hook) + the `se:cdp`
 acquisition path.
 

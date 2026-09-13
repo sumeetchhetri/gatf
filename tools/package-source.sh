@@ -49,6 +49,10 @@ EXCLUDES=(
   'sample-project/out/*' 'sample-project/app/*'   # sample run output + extracted SPA
   'out/*' '*/out/*'                 # any other report/run output dir
   '*/.settings/*' '*/.idea/*' '*.iml' '*/.vscode/*'   # IDE metadata
+  '.settings/*' '.idea/*' '.vscode/*'                 # ...also at the repo root
+  'tmp/*' 'temp/*' 'test-output/*' '*/test-results/*' # local scratch / run output
+  '*/hsperfdata_*' '*.bk'                              # JVM perf data, editor backups
+  'sample/*'                                           # gitignored local scratch (may hold real credentials)
   '*.class' '*.log'                 # compiled / log artifacts
   '*.DS_Store' '*/Thumbs.db'        # OS cruft
   'dependency-reduced-pom.xml'      # shade-plugin generated pom
@@ -63,10 +67,18 @@ echo "Repo root : $REPO_ROOT"
 echo "Output    : $OUT"
 rm -f "$OUT"
 
-( cd -- "$REPO_ROOT" && zip -r -q -X "$OUT" . "${XARGS[@]}" )
+# In a git checkout, package exactly what git would: tracked + untracked-not-ignored files (honours
+# .gitignore), minus the same EXCLUDES. Otherwise fall back to zipping the tree with EXCLUDES.
+if git -C "$REPO_ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  ( cd -- "$REPO_ROOT" && git ls-files -co --exclude-standard -z \
+      | while IFS= read -r -d '' f; do [ -f "$f" ] && printf '%s\n' "$f"; done \
+      | zip -q -X "$OUT" -@ "${XARGS[@]}" )
+else
+  ( cd -- "$REPO_ROOT" && zip -r -q -X "$OUT" . "${XARGS[@]}" )
+fi
 
 # Self-check: fail loudly if any excluded heavyweight slipped in.
-LEAK="$(unzip -Z1 "$OUT" | grep -E '(^|/)(node_modules|target|dist|\.mvn-node|deltas)/|(^|/)\.git/|^sample-project/(out|app)/' || true)"
+LEAK="$(unzip -Z1 "$OUT" | grep -E '(^|/)(node_modules|target|dist|\.mvn-node|deltas)/|(^|/)\.git/|^sample-project/(out|app)/|^(tmp|temp|test-output|sample)/|\.bk$' || true)"
 if [ -n "$LEAK" ]; then
   echo "WARNING: excluded paths leaked into the archive:" >&2
   echo "$LEAK" | head >&2

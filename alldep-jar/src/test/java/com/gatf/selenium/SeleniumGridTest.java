@@ -16,6 +16,7 @@
 package com.gatf.selenium;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import java.io.File;
 import java.io.OutputStream;
@@ -49,9 +50,16 @@ class SeleniumGridTest {
         } finally {
             System.clearProperty("gatf.selenium.remoteUrl");
         }
-        if (System.getenv("SELENIUM_REMOTE_URL") == null && System.getenv("GATF_WITH_GRID") == null) {
-            assertThat(SeleniumGrid.remoteUrl("chrome")).isNull();   // D-1 default: local driver, no container
-        }
+    }
+
+    @Test
+    void defaultIsLocalDriverWithNoContainer() {
+        // env-dependent: reported as SKIPPED (not a silent pass) when the runner exports a Grid
+        assumeTrue(System.getenv("SELENIUM_REMOTE_URL") == null && System.getenv("GATF_WITH_GRID") == null,
+                "SELENIUM_REMOTE_URL / GATF_WITH_GRID is set in this environment");
+        System.clearProperty("gatf.withGrid");
+        System.clearProperty("gatf.selenium.remoteUrl");
+        assertThat(SeleniumGrid.remoteUrl("chrome")).isNull();   // D-1 default: local driver, no container
     }
 
     @Test

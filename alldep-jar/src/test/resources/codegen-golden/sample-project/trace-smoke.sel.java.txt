@@ -1,0 +1,101 @@
+package com.gatf.selenium;
+import org.openqa.selenium.WebDriver;
+
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
+import java.util.List;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.Util;
+import com.gatf.selenium.SeleniumTestSession;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
+import java.util.function.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.jruby.embed.LocalVariableBehavior;
+import org.jruby.embed.ScriptingContainer;
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import java.util.Map;
+import org.junit.Assert;
+import org.openqa.selenium.Keys;
+import ru.yandex.qatools.ashot.AShot;
+import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
+
+@SuppressWarnings({"unused", "unchecked", "serial"})
+/*GATF_ST_CLASS_START_*/public class STC_<N> extends SeleniumTest implements Serializable {
+public STC_<N>(AcceptanceTestContext ___cxt___, int index) {
+/*GATF_ST_CLASS_INIT_*/super("<ROOT>/tests/trace-smoke.sel", ___cxt___, index);
+}
+public void close() {
+/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();
+}
+public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+return new STC_<N>(ctx, index);}
+public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+boolean logconsole = false, logdebug = false, lognw = false;
+/*GATF_ST_DRIVER_INIT_CHROME*/org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
+___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);
+___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".trim());
+Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
+___dc___.setExperimentalOption("prefs", __prefs);
+String __bkey__ = addWdm("chrome", ___dc___);
+set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+initBrowser(get___d___(), logconsole, logdebug, lognw, false);
+
+}
+public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception {
+this.setOutPath(outPath);
+/*GATF_ST_START_*/addTest(null, "chrome");
+
+
+setSession(null, 0, true);
+quit();
+/*GATF_OP_LINE@<ROOT>/tests/trace-smoke.sel:1*/__set__cln__("<ROOT>/tests/trace-smoke.sel:1");setupDriverchrome(___lp___);
+_execute(___lp___);
+return get__sessions__();
+}
+public int concurrentExecutionNum() {
+return 0;
+}
+public void _execute(LoggingPreferences ___lp___) throws Exception {
+WebDriver ___ocw___ = null;
+try {
+SearchContext ___sc___1 = get___d___();
+WebDriver ___cw___ = get___d___();
+___ocw___ = ___cw___;
+List<WebElement> ___ce___ = null;
+/*GATF_LINE@<ROOT>/tests/trace-smoke.sel:3*/__set__cln__("<ROOT>/tests/trace-smoke.sel:3");navigateTo(___cw___, evaluate("https://example.com"));
+
+/*GATF_LINE@<ROOT>/tests/trace-smoke.sel:4*/__set__cln__("<ROOT>/tests/trace-smoke.sel:4");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 10, "", new String[] {evaluate("a"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector css@'a' at line number 4 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 4 ,"");
+
+/*GATF_LINE@<ROOT>/tests/trace-smoke.sel:5*/__set__cln__("<ROOT>/tests/trace-smoke.sel:5");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("a"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector css@'a' at line number 5 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 5 ,"");
+
+/*GATF_LINE@<ROOT>/tests/trace-smoke.sel:6*/__set__cln__("<ROOT>/tests/trace-smoke.sel:6");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 5, "", new String[] {evaluate("body"), evaluate("")}, new String[]{"tagname", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector tagname@'body' at line number 6 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 6 ,"");
+
+pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+}
+catch(Throwable ___e___1)
+{pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, getOutDir() + java.io.File.separator + "<UUID>.png", ___lp___, null));
+}}
+}

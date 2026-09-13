@@ -1,0 +1,8 @@
+**/node_modules
+**/target
+.git
+frontend/dist
+vscode-extension/dist
+e2e/test-results
+e2e/playwright-report
+sample-project/out

@@ -6,7 +6,7 @@ A ~400–500 MB WebDriver node — `chrome-headless-shell` + `chromedriver`, no 
 docker build -t gatf-node-slim -f docker/Dockerfile.node-slim .
 docker run --rm -p 4444:4444 --shm-size=1g gatf-node-slim
 export SELENIUM_REMOTE_URL=http://localhost:4444
-java -jar gatf-alldep-jar-3.0.8.jar -selenium gatf-config.xml
+java -jar gatf-alldep-jar-5.0.0.jar -selenium gatf-config.xml
 ```
 
 ## Browser-binary caveat

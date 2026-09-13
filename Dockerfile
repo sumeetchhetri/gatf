@@ -40,7 +40,7 @@ RUN chmod +x /usr/local/bin/wrk /usr/local/bin/wrk2 /usr/local/bin/vegeta
 WORKDIR /tmp
 RUN rm -rf wrk wrk2
 # Build the CHECKED-OUT sources (the release tag's own tree), with the JDK 21 installed above. This used to
-# git-clone GitHub and build the hard-coded tag 3.0.8 with JDK 11, so every image/release shipped old code.
+# git-clone GitHub and build the hard-coded tag 5.0.0 with JDK 11, so every image/release shipped old code.
 # Tests are skipped here: CI runs them (mvn install) before this image is built.
 COPY . /tmp/gatf
 RUN cd /tmp/gatf && mvn --quiet -DskipTests install \

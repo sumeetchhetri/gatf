@@ -4,13 +4,13 @@ on:
   push:
     branches:
       - master
+  pull_request:
 
 jobs:
-  push:
+  build:
     runs-on: ubuntu-latest
-    #if: contains(github.event.head_commit.message, '[docker_push]') && github.event_name == 'push'
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v4
 
     - name: Setup JDK 21 (Maven builds with <release>21</release>)
       uses: actions/setup-java@v4
@@ -19,22 +19,20 @@ jobs:
         java-version: '21'
         cache: maven
 
-    - name: Seleasy smoke (offline lint + command catalog)
-      run: python3 tools/smoke/sel-lint.py --regen sample/*.sel
-
     - name: Setup Node
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: '22'
 
     - name: Apache-2.0 license headers (source code files)
       run: node tools/license/license-headers.mjs --check
 
-    - name: Frontend unit tests (vitest)
+    - name: Frontend (typecheck + unit tests with coverage floors)
       run: |
         cd frontend
         npm ci
-        npm test
+        npx tsc -b --noEmit
+        npx vitest run --coverage
 
     - name: VS Code extension (typecheck, bundle, grammar tests)
       run: |
@@ -44,7 +42,91 @@ jobs:
         node esbuild.mjs
         node test/grammar.test.mjs
 
-    - name: Build gatf jar (runs backend unit + integration tests via surefire/failsafe)
+    # unit (surefire) + integration (failsafe) + codegen goldens over every sample-project/dogfood .sel
+    # (CI=true: a .sel without a committed golden fails) + JaCoCo report/floor
+    - name: Build gatf jar + backend tests + coverage
+      run: mvn -B install
+
+    - name: Docker image build
+      if: github.event_name == 'push'
+      run: docker build . --file Dockerfile
+
+    - name: Upload test + coverage reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: backend-reports
+        path: |
+          alldep-jar/target/surefire-reports/
+          alldep-jar/target/failsafe-reports/
+          alldep-jar/target/site/jacoco/
+          frontend/coverage/
+        if-no-files-found: ignore
+
+    - name: Upload shaded jar (for the e2e job)
+      uses: actions/upload-artifact@v4
+      with:
+        name: gatf-jar
+        path: alldep-jar/target/gatf-alldep-jar-*.jar
+
+  e2e:
+    needs: build
+    runs-on: ubuntu-latest
+    services:
+      selenium:
+        image: selenium/standalone-chrome:latest
+        ports:
+          - 4444:4444
+        options: --shm-size=2g
+        env:
+          # advertise se:cdp / BiDi websocket URLs on the address the runner can reach
+          SE_NODE_GRID_URL: http://localhost:4444
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: gatf-jar
+        path: alldep-jar/target
+
+    - name: Wait for the Grid
       run: |
-        mvn --quiet install
-        docker build . --file Dockerfile
+        for i in $(seq 1 60); do
+          curl -sf http://localhost:4444/status | grep -q '"ready": *true' && exit 0
+          sleep 2
+        done
+        echo "Selenium Grid not ready"; exit 1
+
+    # all 12 specs, incl. the 5 Grid-gated workflow/debugger specs
+    - name: Playwright e2e (/app SPA against a live GATF server + Grid)
+      env:
+        GATF_SELENIUM_GRID: http://localhost:4444
+      run: |
+        cd e2e
+        npm ci
+        npx playwright install --with-deps chromium
+        npx playwright test
+
+    - name: Trace e2e (full recorder suite, validated by validate-trace.mjs)
+      env:
+        SELENIUM_REMOTE_URL: http://localhost:4444
+      run: tools/smoke/trace-e2e.sh
+
+    - name: Upload e2e artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: e2e-results
+        path: |
+          e2e/test-results/
+          e2e/playwright-report/
+        if-no-files-found: ignore
