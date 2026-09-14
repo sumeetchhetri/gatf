@@ -14,6 +14,7 @@
     limitations under the License.
 */
 import { test, expect, type Page } from '@playwright/test';
+import { fileNode } from './helpers';
 
 // G5 — online debugger end-to-end: breakpoint add/REMOVE (removal was broken server-side before delta-075),
 // initial pause + current-line highlight, F6 step-over advances, F8 continue runs to the breakpoint /
@@ -26,14 +27,7 @@ const NEEDS_GRID = !process.env.GATF_SELENIUM_GRID;
 const DEBUG_SCRIPT = process.env.GATF_E2E_DEBUG_SEL || 'trace-smoke.sel';
 
 async function openSel(page: Page, name: string) {
-  await page.getByRole('button', { name: 'Test Files' }).click();
-  let node = page.locator('.tf-node.tf-file', { hasText: name });
-  if ((await node.count()) === 0) {
-    const dirs = page.locator('.tf-node.tf-dir');
-    for (let i = 0, n = await dirs.count(); i < n; i++) await dirs.nth(i).click().catch(() => {});
-    node = page.locator('.tf-node.tf-file', { hasText: name });
-  }
-  await node.first().click();
+  await (await fileNode(page, name)).click();
   await expect(page.locator('.cm-content')).toBeVisible();
 }
 

@@ -14,6 +14,7 @@
     limitations under the License.
 */
 import { test, expect, type Page } from '@playwright/test';
+import { fileNode } from './helpers';
 
 // T4c — full workflows that need the server-side selenium toolchain / a Selenium Grid:
 // saving a .sel (server-side transpile+compile parse-validation), running a selenium script, and the
@@ -27,14 +28,7 @@ test.describe('GATF /app full workflows (Selenium Grid)', () => {
   test.skip(NEEDS_GRID, 'set GATF_SELENIUM_GRID to a Selenium Grid endpoint to run these');
 
   async function openFirstSel(page: Page, name = '.sel') {
-    await page.getByRole('button', { name: 'Test Files' }).click();
-    let sel = page.locator('.tf-node.tf-file', { hasText: name });
-    if ((await sel.count()) === 0) {
-      const dirs = page.locator('.tf-node.tf-dir');
-      for (let i = 0, n = await dirs.count(); i < n; i++) await dirs.nth(i).click().catch(() => {});
-      sel = page.locator('.tf-node.tf-file', { hasText: name });
-    }
-    await sel.first().click();
+    await (await fileNode(page, name)).click();
     await expect(page.locator('.cm-content')).toBeVisible();
   }
 
