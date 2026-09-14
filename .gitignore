@@ -28,4 +28,9 @@ e2e/test-results
 *.bk
 hsperfdata_*/
 frontend/coverage/
+*.java.txt
 .vscode/
+# ...but the codegen goldens ARE source: CodegenGoldenTest fails in CI (CI=true) when they are missing
+!alldep-jar/src/test/resources/codegen-golden/**/*.java.txt
+# per-run detailed logs (com.gatf.log.GatfLogging)
+logs/

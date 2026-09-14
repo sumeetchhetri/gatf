@@ -1,5 +1,7 @@
 # seleasy language assets
 
+**Looking for the language itself?** See the [seleasy language reference](REFERENCE.md).
+
 Generated, single-source-of-truth artifacts for the seleasy DSL. Used by the
 Phase-0 smoke guardrail today and by the editor / VSCode extension later.
 
@@ -22,4 +24,5 @@ It parses the `parse()` / `handleActions()` dispatch in
 
 Structural checks (brace/value-list balance, unterminated comment/code blocks)
 fail the run; unrecognised leading keywords warn (or fail under `--strict`).
-This is the offline half of `tools/smoke/run-smoke.sh` and runs in CI.
+This is a quick dev-side check (no JDK needed). CI instead parses and compiles every sample script via
+`CodegenGoldenTest` in `mvn verify`.

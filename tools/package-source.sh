@@ -43,7 +43,7 @@ EXCLUDES=(
   '*node_modules/*'                 # frontend deps (npm ci re-creates)
   '*target/*' 'artifacts/*'                       # Maven build output
   '*.mvn-node/*'                    # frontend-maven-plugin's node install (frontend/.mvn-node)
-  '*/dist/*' 'dist/*'               # Vite build output
+  'frontend/dist/*' 'vscode-extension/dist/*'   # build output (NOT the repo-root dist/: installers + launcher)
   '.git/*' '*/.git/*'               # git history
   '*/deltas/*' 'deltas/*'           # delta changelogs / packaged deltas
   'sample-project/out/*' 'sample-project/app/*'   # sample run output + extracted SPA
@@ -78,7 +78,7 @@ else
 fi
 
 # Self-check: fail loudly if any excluded heavyweight slipped in.
-LEAK="$(unzip -Z1 "$OUT" | grep -E '(^|/)(node_modules|target|dist|\.mvn-node|deltas)/|(^|/)\.git/|^sample-project/(out|app)/|^(tmp|temp|test-output|sample)/|\.bk$' || true)"
+LEAK="$(unzip -Z1 "$OUT" | grep -E '(^|/)(node_modules|target|\.mvn-node|deltas)/|^(frontend|vscode-extension)/dist/|(^|/)\.git/|^sample-project/(out|app)/|^(tmp|temp|test-output|sample)/|\.bk$' || true)"
 if [ -n "$LEAK" ]; then
   echo "WARNING: excluded paths leaked into the archive:" >&2
   echo "$LEAK" | head >&2
