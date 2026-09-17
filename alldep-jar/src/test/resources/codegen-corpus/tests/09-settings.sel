@@ -1,0 +1,8 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+mode normal
+setting width 100
+setting clk_focus true
+timeout 60 1 1000
+layer id@"loader-icon"

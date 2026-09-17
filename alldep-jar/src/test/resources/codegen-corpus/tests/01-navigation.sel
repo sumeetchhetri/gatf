@@ -1,0 +1,20 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+goto http://abc.com/testpage.html
+maximize
+back
+forward
+refresh
+scroll up
+scroll id@dsdsd
+window
+window 0
+window main
+tab main
+tab 0
+frame main
+frame parent
+frame 2
+close 1
+close others

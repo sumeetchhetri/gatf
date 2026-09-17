@@ -1,0 +1,19 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+func "cmd1"
+{
+    select index@4 id@"Location"
+}
+subtest "sb1"
+{
+    click id@'ele1'
+    pass "Sub-Test passed"
+}
+subtest "sb2"
+{
+    warn "Sub-Test failed"
+}
+// single-line comment
+/* block
+   comment */

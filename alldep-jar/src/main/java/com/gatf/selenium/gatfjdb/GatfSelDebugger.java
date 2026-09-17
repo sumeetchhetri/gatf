@@ -24,6 +24,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import com.gatf.selenium.Command;
 import com.gatf.selenium.SeleniumTest;
@@ -49,6 +51,9 @@ import com.sun.jdi.request.ClassPrepareRequest;
 
 @SuppressWarnings("rawtypes")
 public class GatfSelDebugger {
+
+    // session lifecycle at INFO, event/breakpoint/variable chatter at DEBUG (was System.out)
+    private static final Logger LOG = LogManager.getLogger(GatfSelDebugger.class);
 	private static class DebugState {
 		// user breakpoints, as 1-based SEL line numbers (delta-075: was mixing sel/java lines)
 		private final Set<Integer> breaks = ConcurrentHashMap.newKeySet();
@@ -227,7 +232,7 @@ public class GatfSelDebugger {
     	if(!stateMap.get(currFile).breaks.contains(selLineNum)) {
     		return false;
     	}
-    	System.out.println("Removing breakpoint at line " + selLineNum);
+    	LOG.debug("Removing breakpoint at line {}", selLineNum);
     	int lineNumber = -1;
     	outer: for (List<Integer[]> fset : selToJavaLineMap.get(currFile)) {
 			for (Integer[] linf : fset) {
@@ -259,7 +264,7 @@ public class GatfSelDebugger {
     	if(stateMap.get(currFile).breaks.contains(selLineNum)) {
     		return true;
     	}
-    	System.out.println("Adding breakpoint at line " + selLineNum);
+    	LOG.debug("Adding breakpoint at line {}", selLineNum);
     	int lineNumber = -1;
     	outer: for (List<Integer[]> fset : selToJavaLineMap.get(currFile)) {
 			for (Integer[] linf : fset) {
@@ -332,9 +337,11 @@ public class GatfSelDebugger {
         StackFrame stackFrame = event.thread().frame(0);
         if(stackFrame.location().toString().contains(debugClass.getName())) {
             Map<LocalVariable, Value> visibleVariables = stackFrame.getValues(stackFrame.visibleVariables());
-            System.out.println("Variables at " +stackFrame.location().toString() +  " > ");
-            for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
-                System.out.println(entry.getKey().name() + " = " + entry.getValue());
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Variables at {} >", stackFrame.location());
+                for (Map.Entry<LocalVariable, Value> entry : visibleVariables.entrySet()) {
+                    LOG.debug("  {} = {}", entry.getKey().name(), entry.getValue());
+                }
             }
         }
     }
@@ -458,22 +465,22 @@ public class GatfSelDebugger {
 		            while ((eventSet = dbgIns.dvm.eventQueue().remove()) != null) {
 		                for (Event event : eventSet) {
 		                    if (event instanceof ClassPrepareEvent) {
-		                    	System.out.println("ClassPrepareEvent received...");
+		                    	LOG.debug("ClassPrepareEvent received");
 		                    	dbgIns.cpe = (ClassPrepareEvent)event;
 		                    	dbgIns.applyPendingBreakpoints();
 		                    	dbgIns.setTempBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
 		                    	dbgIns.dvm.resume();
 		                    } else if (event instanceof BreakpointEvent) {
-		                    	System.out.println("BreakpointEvent received...");
+		                    	LOG.debug("BreakpointEvent received");
 		                    	dbgIns.cbe = (BreakpointEvent) event;
 		                    	dbgIns.onPaused();
 		                    } else if (event instanceof StepEvent) {
-		                    	System.out.println("StepEvent received...");
+		                    	LOG.debug("StepEvent received");
 		                    	dbgIns.cbe = (StepEvent) event;
 		                    	dbgIns.onPaused();
 		                    } else {
 		                    	dbgIns.cbe = null;
-		                    	System.out.println(event.getClass().getSimpleName() + " received...");
+		                    	LOG.debug("{} received", event.getClass().getSimpleName());
 		                    	if(event instanceof VMDeathEvent) {
 		                    		dbgIns.dvm.resume();
 		                    	} else if(event instanceof VMDisconnectEvent) {
@@ -485,11 +492,11 @@ public class GatfSelDebugger {
 		                }
 		            }
 				} catch (VMDisconnectedException e) {
-		            System.out.println("Virtual Machine disconnected");
+		            LOG.info("Debug session ended (debuggee JVM disconnected)");
 		        } catch (InterruptedException e) {
-		        	System.out.println("Stopping debugger session");
+		        	LOG.info("Stopping debug session");
 		        } catch (Exception e) {
-		            e.printStackTrace();
+		            LOG.error("Debugger event loop failed", e);
 		        } finally {
 		        	dbgIns.eventThr = null;
 		        	dbgIns.running = 0;
@@ -509,7 +516,7 @@ public class GatfSelDebugger {
 			}
 		});
         dbgIns.eventThr.start();
-        System.out.println("Started debugger session");
+        LOG.info("Started debug session");
         return dbgIns;
     }
 }

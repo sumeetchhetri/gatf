@@ -45,8 +45,7 @@ public class ApiPlugin {
         		false, index, true, 0, false, false, null);
         TestCaseReport report = (TestCaseReport)out[3];
         
-        System.out.println("Executed api " + testname + "@" + testcaseFileName);
-        System.out.println(report);
+        org.apache.logging.log4j.LogManager.getLogger(ApiPlugin.class).info("api plugin: executed {}@{} -> {}", testname, testcaseFileName, report);
         
         if(report!=null && !report.getStatus().equalsIgnoreCase("failed")) {
             if(report.getResponseContentType()!=null) {

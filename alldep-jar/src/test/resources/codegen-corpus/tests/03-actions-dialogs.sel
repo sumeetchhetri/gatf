@@ -1,0 +1,15 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
+actions movetoelement id@'ele' sendkeys 'abc'
+actions draganddrop id@'source' id@'target'
+actions moveto id@'handle' clickandhold moveby 120 0 release
+robot keydown 1
+robot keyup 1
+robot keypress 1
+alert
+alert 'Hello'
+confirm ok
+confirm cancel
+confirm yes 'Confirm'

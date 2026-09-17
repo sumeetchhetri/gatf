@@ -1,0 +1,32 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+??+ id@'eleid'
+??- id@'eleid'
+??10 id@'ele1' click
+?? css@"h1" text ="Welcome"
+click id@'ele1'
+clickfo id@'ele1'
+clicknf id@'ele1'
+doubleclick id@'ele1'
+submit id@'ele1'
+type 'abc' id@'ele1'
+sendkeys 'abc' id@'ele1'
+typebl 'abc' id@'ele1'
+sendkeyscl 'abc' id@'ele1'
+chord \u0048\u0065\u006c\u006c\u006f id@'abc'
+randomize id@'ele1' alphanumeric 12
+randomize id@'ele1' numeric 5
+randomize id@'ele1' range 9999 99999
+randomize id@'ele1' value 'abcd'
+clear id@'ele1'
+select text@'first' id@'abc'
+select index@2 id@'abc'
+select value@'second' id@'abc'
+select first id@'abc'
+select last id@'abc'
+hover id@'abc'
+hoverclick id@'hoverele' id@'clickele'
+upload '/path/to/file.txt' id@'ele1'
+canvas xpath@"asds"
+sleep 100

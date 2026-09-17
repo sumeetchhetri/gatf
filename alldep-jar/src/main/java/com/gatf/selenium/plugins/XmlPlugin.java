@@ -67,7 +67,18 @@ public class XmlPlugin {
         return null;
     }
     
+    /** An XML document: a parsed JsonNode (from xmlread) or text that starts with '<'. */
+    static boolean isXmlDoc(Object o) {
+        if(o instanceof JsonNode) return true;
+        return o instanceof String && ((String)o).trim().startsWith("<");
+    }
+
     public static Object write(Object[] args) throws Exception {
+        // Q1: documented `xmlwrite {file} {object}`; the code read {object} {file}. Accept both.
+        if(args.length==5 && args[0] instanceof String && !isXmlDoc(args[0])
+                && (isXmlDoc(args[1]) || args[1] instanceof Map || args[1] instanceof List || args[1] instanceof Set)) {
+            Object t = args[0]; args[0] = args[1]; args[1] = t;
+        }
         if(args.length==4) {
             if(args[0] instanceof List || args[0] instanceof Set || args[0] instanceof Map) {
                 String ret = xmlMapper.writeValueAsString(args[0]).replaceFirst("<ObjectNode xmlns=\"\">", "");
@@ -89,6 +100,11 @@ public class XmlPlugin {
     
     public static Object path(Object[] args) throws Exception {
         if(args.length==5) {
+            // Q1: documented `xmlpath {xml} {xpath}`; the code expected {xpath} {xml}. Accept either order: the
+            // argument that is an XML document is the document (normalised here to the code's args[1]).
+            if(isXmlDoc(args[0]) && !isXmlDoc(args[1])) {
+                Object t = args[0]; args[0] = args[1]; args[1] = t;
+            }
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
             DocumentBuilder builder = factory.newDocumentBuilder();
             if(args[1] instanceof JsonNode) {

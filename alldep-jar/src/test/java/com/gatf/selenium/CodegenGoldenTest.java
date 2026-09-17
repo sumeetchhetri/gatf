@@ -50,7 +50,9 @@ import com.gatf.executor.core.GatfExecutorConfig;
  */
 class CodegenGoldenTest {
 
-    private static final String[] PROJECTS = { "sample-project", "dogfood" };
+    // project dirs relative to the alldep-jar module; the golden sub-dir is the last path segment.
+    // codegen-corpus (Q1) holds one script per keyword category, transpiled only, never executed.
+    private static final String[] PROJECTS = { "../sample-project", "../dogfood", "src/test/resources/codegen-corpus" };
     private static final Path GOLDEN_ROOT = Paths.get("src/test/resources/codegen-golden");
     private static final boolean UPDATE = Boolean.getBoolean("gatf.golden.update");
     private static final boolean CI = "true".equalsIgnoreCase(System.getenv("CI"));
@@ -60,8 +62,9 @@ class CodegenGoldenTest {
         List<String> problems = new ArrayList<String>();
         List<String> created = new ArrayList<String>();
         int compared = 0, skipped = 0;
-        for (String project : PROJECTS) {
-            Path src = Paths.get("..", project).toAbsolutePath().normalize();
+        for (String projectPath : PROJECTS) {
+            Path src = Paths.get(projectPath).toAbsolutePath().normalize();
+            String project = src.getFileName().toString();
             if (!Files.isDirectory(src)) continue;
             Path work = Paths.get("target", "codegen-golden-work", project).toAbsolutePath();
             deleteTree(work);

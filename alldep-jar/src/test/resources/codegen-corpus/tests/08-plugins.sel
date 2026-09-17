@@ -1,0 +1,15 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+var j plugin jsonread '{"a": "abc", "b": 1}'
+var p plugin jsonpath $v{j} a
+var x plugin xmlread '<o><a>abc</a><b>1</b></o>'
+var xp plugin xmlpath '<o><a>abc</a><b>1</b></o>' '/o/a'
+curl get http://abc.com
+curl post http://abc.com
+{
+    [
+        Content-Type: application/xml
+    ]
+    <abc>abc</abc>
+}

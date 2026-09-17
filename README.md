@@ -68,7 +68,7 @@ Replay the same suite against several base URLs (`compareEnvBaseUrls`) to compar
 ### OCR, QR/barcodes, PDF and files
 - **OCR:** read the text of an element image (for example a captcha) with Tesseract (`ocr` / `readimgtext`).
 - **QR and barcodes:** decode them from the page (`qrcode` / `barcode` / `readqrbar`, via ZXing).
-- **PDF:** extract text and tables from PDFs (`printpdf`, via PDFBox), with per-table or single-header modes.
+- **PDF:** capture a document the page opens with `window.open` (for example a generated PDF report), save it, and extract its text and tables with PDFBox (`wopensave on` … `wopensave off <file> text`). The tables are also available to embedded code via `pdfTable(path)`.
 - **Screenshots and files:** full page and per element, element images saved to files, files read line by line into variables.
 
 ### Mail and HTTP simulators

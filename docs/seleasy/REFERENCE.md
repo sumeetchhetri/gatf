@@ -128,7 +128,7 @@ Examples :-
 	goto http://abc.com/testpage.html
 ```
 
-### Save URL passed to window.open
+### Capture network API calls (netapix)
 
 ```
 	netapix on {api-method} {api-url}
@@ -978,6 +978,8 @@ Examples :-
 
 ### Print pdf of the page to file
 
+> **Disabled:** the `printpdf` statement's parser branch is commented out in `Command.java`, so it is not accepted today. To extract text or tables from a PDF the page opens, use [`wopensave`](#save-url-passed-to-windowopen).
+
 ```
 	printpdf {filepath} {text?} {col-separator}?
 Examples :-
@@ -1120,6 +1122,16 @@ Examples :-
 ```
 
 ## Plugins
+
+Built-in plugins are statements, or values via `var x plugin <name> ...`. Your own are registered in `plugins.txt` as
+`name=com.acme.MyPlugin@method`, where the method is `public static Object method(Object[] args)` or
+`public static Object method(String name, Object[] args)`. Entries that don't match are skipped with a warning in the log.
+
+- `jsonpath` / `xmlpath` take the document and the path in either order. The document may be text or a value from
+  `jsonread` / `xmlread`.
+- `jsonwrite` / `xmlwrite` take the file and the object in either order.
+- `curl` headers may be written `Name=value` or `Name: value`. `POST`/`PUT`/`PATCH`/`DELETE` send the body block.
+  The executor's `httpRequestTimeout` applies.
 
 ### XML Plugin
 

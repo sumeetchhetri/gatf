@@ -1,0 +1,26 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+var var0 "Some text"
+var var1 @var0
+var var2 123455
+var var3 123.455
+var var4 true
+var var5 new java.util.Date()
+jsvar var6 'return "123"'
+#tv var7 id@'abc' text
+#tv var8 id@'abc' attr@data-prop
+#tp prov1 var1,var2 id@'abc' text,attr@abc
+require java.util.Date
+exec @print("something-to-console")
+exec System.out.println("Hello World!")
+execjs 'console.log("Hello");'
+<<<(java) var0
+System.out.println(var0);
+>>>
+<<<(js) var0
+console.log(var0);
+>>>
+<<<(groovy) var0
+println var0
+>>>

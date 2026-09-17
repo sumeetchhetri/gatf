@@ -659,11 +659,13 @@ public class TestCaseExecutorUtil {
 			String curlCmd = curlize(request, rawBody, curlAddPars.toString(), (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
 			testCaseReport.setCurlCmd(curlCmd);
 			
-			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().equals("none")) {
+			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().trim().isEmpty()
+					&& !testCase.getPerfConfig().getType().trim().equals("none")) {
 				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
-				if(testCase.getPerfConfig().getType().startsWith("wrk")) {
+				String perfType = perfToolType(testCase.getPerfConfig().getType());   // Q1: unknown type fails the case
+				if(perfType.startsWith("wrk")) {
 					WrkTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
-				} else if(testCase.getPerfConfig().getType().equals("vegeta")) {
+				} else if(perfType.equals("vegeta")) {
 					VegetaTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
 				} else {
 					AutocannonTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
@@ -691,6 +693,19 @@ public class TestCaseExecutorUtil {
 		}
 	}
 	
+	/**
+	 * Q1: validates perfConfig.type. It used to fall through to autocannon for ANY unrecognised value, so a typo such as
+	 * "vegata" silently ran a different tool. Now an unknown type throws, and the enclosing catch fails the test case
+	 * with this message.
+	 */
+	static String perfToolType(String type) {
+		// exact match: the tool executors compare the raw value case-sensitively
+		if("wrk".equals(type) || "wrk2".equals(type) || "vegeta".equals(type) || "autocannon".equals(type)) {
+			return type;
+		}
+		throw new IllegalArgumentException("Unknown perfConfig.type '" + type + "' - expected one of: vegeta, autocannon, wrk, wrk2 (or none)");
+	}
+
 	private File getResourceFile(String baseFolder, String filename) {
 		try {
 			File basePath = new File(baseFolder);

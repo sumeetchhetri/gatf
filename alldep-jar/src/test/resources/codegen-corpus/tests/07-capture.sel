@@ -1,0 +1,13 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+screenshot
+screenshot "/path/to/image/file/file.png"
+ele-screenshot id@'eleid'
+imgsave id@'eleid' '/path/to/image/file/file.png'
+ocr id@'eleid' somevar
+readimgtext id@'eleid' captchatext '/path/to/image/file/file.png'
+qrcode id@'eleid' somevar
+barcode id@'eleid' somevar
+wopensave on
+wopensave off '/path/to/file.txt' text

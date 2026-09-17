@@ -1,0 +1,34 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+open chrome
+var bvar "a"
+? xpath@"ddd"
+{
+    exec @print("if")
+}
+:? xpath@"eee"
+{
+    exec @print("else-if")
+}
+:
+{
+    exec @print("else")
+}
+? eval "a"=="a"
+{
+    exec @print("eval")
+}
+## class@"ddd"
+{
+    exec @print(@index)
+    click xpath@"ddd-@index"
+}
+#counter 0 5
+{
+    exec @print(@index)
+}
+#c 3
+{
+    exec @print(@index)
+}
+#jif(1==1) {} else {}

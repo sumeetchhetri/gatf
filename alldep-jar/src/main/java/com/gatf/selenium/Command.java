@@ -328,7 +328,8 @@ public class Command {
     }
 
     protected boolean isTop = false;
-    protected static Map<String, String> plugins = new HashMap<String, String>();
+    // Q1: concurrent - loaded and read by parallel sessions/servers (was a plain HashMap)
+    protected static Map<String, String> plugins = new java.util.concurrent.ConcurrentHashMap<String, String>();
     protected CommandState state;
     protected String name;
     protected Object[] fileLineDetails;
@@ -1644,43 +1645,17 @@ public class Command {
                         method = parts[1].trim();
                     }
 
-                    try {
-                        Class.forName(clsname);
-                    } catch (Exception e) {
-                        System.out.println("Invalid Plugin specified, Plugin class not found - " + clsname);
+                    String err = pluginSignatureError(clsname, method);
+                    if(err != null) {
+                        org.apache.logging.log4j.LogManager.getLogger(Command.class).warn("Invalid plugin '{}' ({}): {}", name.trim(), plg, err);
                         continue;
                     }
-
-                    try {
-                        Class<?> cls = Class.forName(clsname);
-                        Method meth = cls.getMethod(method, new Class[]{Object[].class});
-                        if(meth.getReturnType().equals(Void.class)) {
-                            System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
-                                    + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
-                            continue;
-                        }
-                        plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
-                    } catch (Exception e) {
-                        try {
-                            Class<?> cls = Class.forName(clsname);
-                            Method meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
-                            if(meth.getReturnType().equals(Void.class)) {
-                                System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
-                                        + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
-                                continue;
-                            }
-                            plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
-                        } catch (Exception e1) {
-                            System.out.println("Invalid Plugin specified, Plugin class method should have either of the following signatures - "
-                                    + "public static Object execute(Object[] args) | public static Object execute(String name, Object[] args) - " + plg);
-                            continue;
-                        }
-                    }
+                    plugins.put(name.toLowerCase().trim(), clsname+"@"+method);
                 } else {
                     if(name.trim().isEmpty()) {
-                        System.out.println("Invalid Plugin name specified");
+                        org.apache.logging.log4j.LogManager.getLogger(Command.class).warn("Invalid plugin entry (empty name): {}", plg);
                     } else {
-                        System.out.println("Plugin already defined " + name); 
+                        org.apache.logging.log4j.LogManager.getLogger(Command.class).debug("Plugin already defined, keeping the first definition: {}", name);
                     }
                 }
             }
@@ -1697,9 +1672,44 @@ public class Command {
 	            meth.invoke(null, new Object[] {cntxt});
 	        } catch (NoSuchMethodException e) {
 	        } catch (Exception e) {
-	        	System.out.println("Exception during initilization of plugin \n" + ExceptionUtils.getStackTrace(e));
+	        	org.apache.logging.log4j.LogManager.getLogger(Command.class).warn("Plugin '{}' init(AcceptanceTestContext) failed", name, e);
 	        }
 		}
+    }
+
+    /**
+     * Q1: validates a plugin entry. Returns null when {@code clsname} has a {@code public static} method named
+     * {@code method} taking {@code (Object[])} or {@code (String, Object[])} and returning a value; otherwise returns
+     * the reason. The old check compared against {@code Void.class}, which never matches the primitive
+     * {@code void.class}, so void methods were accepted. It also didn't check {@code static}, so an instance method
+     * failed later with an NPE at {@code invoke(null, ...)}.
+     */
+    static String pluginSignatureError(String clsname, String method) {
+        Class<?> cls;
+        try {
+            cls = Class.forName(clsname);
+        } catch (Throwable e) {
+            return "class not found: " + clsname;
+        }
+        Method meth = null;
+        for (Class<?>[] sig : new Class<?>[][] { {Object[].class}, {String.class, Object[].class} }) {
+            try {
+                meth = cls.getMethod(method, sig);
+                break;
+            } catch (NoSuchMethodException e) {
+                // try the next signature
+            }
+        }
+        if(meth == null) {
+            return "no public method " + method + "(Object[]) or " + method + "(String, Object[]) in " + clsname;
+        }
+        if(!java.lang.reflect.Modifier.isStatic(meth.getModifiers())) {
+            return "method " + method + " must be static";
+        }
+        if(meth.getReturnType() == void.class || meth.getReturnType() == Void.class) {
+            return "method " + method + " must return a value (Object), not void";
+        }
+        return null;
     }
 
     public static String[] toSampleSelCmd() {
