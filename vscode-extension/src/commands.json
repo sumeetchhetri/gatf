@@ -2,7 +2,7 @@
  "_generator": "tools/gen-commands/gen_commands.py",
  "_source": "alldep-jar/src/main/java/com/gatf/selenium/Command.java",
  "_note": "seleasy statement keywords extracted from the parse() and handleActions() dispatch. match: 'prefix' = keyword begins the line (startsWith); 'exact' = whole-line keyword only; 'regex' = matched via a compiled Pattern (see qualifiers). requiresArg=true means the keyword must be followed by a space+argument and cannot stand alone (e.g. `open `). canBeBare=true means the keyword may appear as a whole line (e.g. `clear`, `submit`). Regenerate with the generator above; do not hand-edit.",
- "count": 125,
+ "count": 126,
  "commands": [
   {
    "keyword": "chord",
@@ -658,6 +658,13 @@
    "requiresArg": true,
    "canBeBare": false,
    "class": "MPinchCommand"
+  },
+  {
+   "keyword": "printpdf",
+   "match": "prefix",
+   "requiresArg": true,
+   "canBeBare": false,
+   "class": "PrintPDFCommand"
   },
   {
    "keyword": "qrcode",

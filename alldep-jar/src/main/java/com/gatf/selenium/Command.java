@@ -848,9 +848,9 @@ public class Command {
             comd = new WindowCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("frame ")) {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
-        } /*else if (cmd.toLowerCase().startsWith("printpdf ")) {
-            comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);
-        }*/ else if (cmd.toLowerCase().startsWith("mail ")) {
+        } else if (cmd.toLowerCase().startsWith("printpdf ")) {
+            comd = new PrintPDFCommand(cmd.substring(9).trim(), cmdDetails, state);   // re-enabled (transport-agnostic print)
+        } else if (cmd.toLowerCase().startsWith("mail ")) {
             comd = new MailCommand(cmd.substring(5).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("http")) {
             comd = new HttpCommand(cmd.substring(5).trim(), cmdDetails, state);
@@ -4074,26 +4074,27 @@ public class Command {
             super(cmdDetails, state);
             String[] parts = cmd.trim().split("[\t ]+");
             this.extractText = parts.length>1 && parts[1].trim().equalsIgnoreCase("text")?true:false;
-            colsep = (parts.length>2 && StringUtils.isNotBlank(parts[1]))?parts[1].trim():"|";
+            // the separator is the 3rd token (`printpdf <file> text <sep>`); this used to read parts[1], i.e. the word "text"
+            colsep = (parts.length>2 && StringUtils.isNotBlank(parts[2]))?unSantizedUnQuoted(parts[2].trim(), state):"|";
             name = unSantizedUnQuoted(parts[0].trim(), state);
             if(StringUtils.isBlank(name)) {
             	throwParseError(null, new RuntimeException("Print pdf command needs a file path argument"));
             }
         }
         String toCmd() {
-            return "printpdf \"" + name + "\"" + (extractText?" text":"");
+            return "printpdf \"" + name + "\"" + (extractText?" text" + ("|".equals(colsep)?"":" " + colsep):"");
         }
         String javacode() {
             return "\nprintToPdf(___cw___, evaluate(\""+esc(name)+"\"), "+extractText+", \""+esc(colsep)+"\");\n";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-        		"Print pdf of the page to file",
-        		"\tprintpdf {filepath} {text?} {col-separator}?",
+        		"Print the page to a PDF file (optionally extract its text/tables to <file>.txt)",
+        		"\tprintpdf {pdf-filepath} {text?} {col-separator}?",
         		"Examples :-",
-        		"\tprintpdf '/path/to/file.txt'",
-        		"\tprintpdf '/path/to/file.txt' text",
-        		"\tprintpdf '/path/to/file.txt' text |",
+        		"\tprintpdf '/path/to/page.pdf'",
+        		"\tprintpdf '/path/to/page.pdf' text",
+        		"\tprintpdf '/path/to/page.pdf' text ;",
             };
         }
     }

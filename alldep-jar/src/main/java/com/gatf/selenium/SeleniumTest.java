@@ -1883,60 +1883,49 @@ public abstract class SeleniumTest {
 	}
 	
 	//Unused for now....does not work correctly--- use wopensave instead
+	/**
+	 * `printpdf <file> [text [colsep]]`: writes the current page as a PDF to {@code file}. With {@code text}, it also
+	 * extracts the text and tables (PDFBox) to {@code <file>.txt} and makes them available via {@link #pdfTable(String)}.
+	 * <ul>
+	 *  <li>A page showing a {@code blob:} document (e.g. a PDF opened in the viewer) saves the document bytes
+	 *      themselves, not a print of the viewer.</li>
+	 *  <li>Otherwise the page is printed via {@link com.gatf.selenium.trace.Transports#printPdf}: raw CDP, else BiDi,
+	 *      else W3C print. That works on Chromium, Firefox, Edge and Grid, with no pinned devtools version.</li>
+	 *  <li>Failures fail the step. The old code swallowed every exception, leaked its streams, was pinned to CDP v150,
+	 *      and wrote the blob branch through a UTF-8 String, which corrupted binary PDFs.</li>
+	 * </ul>
+	 */
 	protected void printToPdf(WebDriver pdr, String filePath, boolean extractText, String colsep) {
-		if(pdr instanceof HasDevTools) {///only prints the main page/tab
-			DevTools devTools = ((HasDevTools)pdr).getDevTools();
-			// Set up PDF print options
-            // Execute prin//
-            PrintToPDFResponse pdfResponse = devTools.send(org.openqa.selenium.devtools.v150.page.Page.printToPDF(
-                Optional.of(false),     // landscape
-                Optional.of(true),      // displayHeaderFooter
-                Optional.of(true),      // printBackground
-                Optional.empty(),       // scale
-                Optional.empty(),      // paperWidth (A4 width in inches)
-                Optional.empty(),     // paperHeight (A4 height in inches)
-                Optional.empty(),       // marginTop
-                Optional.empty(),       // marginBottom
-                Optional.empty(),       // marginLeft
-                Optional.empty(),       // marginRight
-                Optional.empty(),     // pageRanges
-                Optional.empty(),       // headerTemplate
-                Optional.empty(),       // footerTemplate
-                Optional.of(false),     // preferCSSPageSize
-                Optional.empty(),      // transferMode
-                Optional.empty(),       // generateTaggedPDF
-                Optional.empty()        // generateDocumentOutline
-            ));
-			try {
-				IOUtils.write(Base64.getDecoder().decode(pdfResponse.getData()), new FileOutputStream(filePath));
-				if(extractText && new File(filePath).exists()) {
-					extractTextFromPdf(filePath, colsep, 0, 0);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
+		byte[] pdf = null;
+		String cur = null;
+		try {
+			cur = pdr.getCurrentUrl();
+		} catch (Exception e) {
+			// no current URL (closed/switching window): fall through to printing
+		}
+		if (cur != null && cur.startsWith("blob:")) {
+			String b64 = readBlob(pdr, cur);
+			if (b64 != null && !b64.equals(cur)) {
+				pdf = Base64.getDecoder().decode(b64.substring(b64.indexOf(',') + 1).trim());
 			}
-		} else if(pdr instanceof PrintsPage) {//only prints the print viewport....useless
-			try {
-				PrintOptions po = new PrintOptions();
-				Pdf pdf = ((PrintsPage)pdr).print(po);
-				IOUtils.write(Base64.getDecoder().decode(pdf.getContent()), new FileOutputStream(filePath));
-				if(extractText && new File(filePath).exists()) {
-					extractTextFromPdf(filePath, colsep, 0, 0);
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
+		}
+		if (pdf == null) {
+			pdf = com.gatf.selenium.trace.Transports.printPdf(pdr);
+		}
+		if (pdf == null || pdf.length == 0) {
+			throw new RuntimeException("printpdf: this browser session cannot print to PDF (CDP Page.printToPDF, BiDi browsingContext.print and W3C print are all unavailable)");
+		}
+		File out = new File(filePath);
+		try {
+			if (out.getParentFile() != null) {
+				out.getParentFile().mkdirs();
 			}
-		} else if(pdr.getCurrentUrl().startsWith("blob:")) {///returns 0 with the xhr fetch method
-			System.out.println(pdr.getCurrentUrl());
-			String data = readBlob(pdr, pdr.getCurrentUrl());
-			try {
-				data = new String(org.apache.commons.codec.binary.Base64.decodeBase64(data), "UTF-8");
-				IOUtils.write(data, new FileOutputStream(filePath), "UTF-8");
-				if(extractText && new File(filePath).exists()) {
-					extractTextFromPdf(filePath, colsep, 0, 0);
-				}
-			} catch(Exception e) {
-			}
+			java.nio.file.Files.write(out.toPath(), pdf);
+		} catch (IOException e) {
+			throw new RuntimeException("printpdf: cannot write " + out.getAbsolutePath(), e);
+		}
+		if (extractText) {
+			extractTextFromPdf(out.getPath(), StringUtils.isBlank(colsep) ? "|" : colsep, 0, 0);
 		}
 	}
 	

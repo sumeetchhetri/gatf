@@ -52,4 +52,26 @@ public final class Transports {
         }
         return new BiDiTransport(driver, cfg);
     }
+
+    /**
+     * Print the current page to PDF without tracing and without pinning a CDP version (D-2). In order:
+     * <ol>
+     *  <li>raw CDP {@code Page.printToPDF} (Chromium, incl. an augmented Grid driver);</li>
+     *  <li>BiDi {@code browsingContext.print} when a live BiDi socket exists (Firefox; Chromium with webSocketUrl);</li>
+     *  <li>the W3C classic print command.</li>
+     * </ol>
+     * Both transports' printPdf() already fall back to W3C print. Neither constructor opens a DevTools session.
+     * Returns null when none of the three is available.
+     */
+    public static byte[] printPdf(WebDriver driver) {
+        TraceConfig cfg = new TraceConfig();
+        byte[] pdf = null;
+        if (driver instanceof org.openqa.selenium.chromium.HasCdp) {
+            pdf = new CdpTransport(driver, null, cfg).printPdf();
+        }
+        if ((pdf == null || pdf.length == 0) && (BidiRaw.available(driver) || driver instanceof org.openqa.selenium.PrintsPage)) {
+            pdf = new BiDiTransport(driver, cfg).printPdf();
+        }
+        return pdf == null || pdf.length == 0 ? null : pdf;
+    }
 }

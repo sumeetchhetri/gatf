@@ -37,7 +37,7 @@ export const SELEASY: Record<string, Style> = {
   forward: 1, refresh: 1, clear: 3, submit: 3, setting: 1, window: 1, frame: 1, tab: 1, jsvar: 1,
   execjs: 1, screenshot: 1, 'ele-screenshot': 1, hoverclick: 3, actions: 1, chord: 3, provider: 1,
   'transient-provider': 1, confirm: 1, alert: 1, moveby: 3, doubleclick: 3, dblclick: 3, netapix: 1,
-  wopensave: 1, sendKeys: 3, moveto: 3, clickhold: 3, release: 3, keyup: 3, keydown: 3, api: 1,
+  wopensave: 1, printpdf: 1, sendKeys: 3, moveto: 3, clickhold: 3, release: 3, keyup: 3, keydown: 3, api: 1,
   plugin: 1, jsonwrite: 3, xmlwrite: 3, zoom: 1, pinch: 1, tap: 1, swipe: 1, rotate: 1, hidekeypad: 1,
   shake: 1, chrome: 3, 'chrome-dkr': 3, 'chrome-hdl': 3, 'chrome-rec': 3, firefox: 3, opera: 3,
   safari: 3, ie: 3, edge: 3, readfile: 1, mode: 1, hover: 3, upload: 3, randomize: 3, func: 1,

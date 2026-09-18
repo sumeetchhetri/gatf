@@ -976,17 +976,19 @@ Examples :-
 	imgsave id@'eleid' '/path/to/image/file/file.png'
 ```
 
-### Print pdf of the page to file
-
-> **Disabled:** the `printpdf` statement's parser branch is commented out in `Command.java`, so it is not accepted today. To extract text or tables from a PDF the page opens, use [`wopensave`](#save-url-passed-to-windowopen).
+### Print the page to a PDF file
 
 ```
-	printpdf {filepath} {text?} {col-separator}?
+	printpdf {pdf-filepath} {text?} {col-separator}?
 Examples :-
-	printpdf '/path/to/file.txt'
-	printpdf '/path/to/file.txt' text
-	printpdf '/path/to/file.txt' text |
+	printpdf '/path/to/page.pdf'
+	printpdf '/path/to/page.pdf' text
+	printpdf '/path/to/page.pdf' text ;
 ```
+- **Browser support:** Chromium uses CDP `Page.printToPDF`, Firefox uses BiDi `browsingContext.print`, and anything else falls back to W3C print. It works locally and on a Grid, and the step fails if the session cannot print.
+- **PDF already open:** if the page is showing a PDF blob, the document itself is saved, not a print of the viewer.
+- **`text`:** also writes the extracted text and tables to `<file>.txt`, using the column separator (default `|`). Embedded code can read the tables with `pdfTable("<file>")`.
+- For a document the page opens in a new window, use [`wopensave`](#save-url-passed-to-windowopen).
 
 ### Take screenshot
 

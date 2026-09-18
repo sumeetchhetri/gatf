@@ -1,0 +1,6 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+open chrome
+goto http://abc.com/report.html
+printpdf '/tmp/gatf-corpus/page.pdf'
+printpdf '/tmp/gatf-corpus/page.pdf' text
+printpdf '/tmp/gatf-corpus/page.pdf' text ;
