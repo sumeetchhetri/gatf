@@ -20,7 +20,9 @@ import java.io.PrintStream;
 import java.lang.reflect.Method;
 import java.nio.charset.Charset;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.concurrent.atomic.LongAdder;
 
@@ -56,8 +58,21 @@ public final class RunConsole {
     // LongAdder: load / multi-user runs report thousands of results per second from many threads; there we only
     // count (no lock, no per-result log I/O) so the reporter cannot perturb the load being measured
     private static final LongAdder passed = new LongAdder(), failed = new LongAdder(), skipped = new LongAdder();
-    private static final List<String> failures = new ArrayList<String>();
+    // Q4/Q6: per-test records (functional runs only). A selenium retry round re-reports failed scripts under the
+    // same key, so the final status is the LAST attempt: failed-then-passed = FLAKY (passes the run, as in Playwright).
+    private static final Map<String, Rec> recs = new LinkedHashMap<String, Rec>();
     private static boolean color, unicode;
+
+    /** One test's history across attempts. */
+    static final class Rec {
+        final String suite, name, title;
+        final List<Status> attempts = new ArrayList<Status>();
+        long millis;
+        String error, detail;
+        Rec(String suite, String name, String title) { this.suite = suite; this.name = name; this.title = title; }
+        Status last() { return attempts.get(attempts.size() - 1); }
+        boolean flaky() { return last() == Status.PASSED && attempts.contains(Status.FAILED); }
+    }
 
     private RunConsole() {}
 
@@ -70,7 +85,7 @@ public final class RunConsole {
         passed.reset();
         failed.reset();
         skipped.reset();
-        failures.clear();
+        recs.clear();
         color = detectColor();
         unicode = detectUnicode();
     }
@@ -100,16 +115,36 @@ public final class RunConsole {
      * @param detail full detail for the log file (url, status code, stack...), may be null
      */
     public static void result(String title, Status status, long millis, String error, String detail) {
+        result(null, null, title, status, millis, error, detail);
+    }
+
+    /**
+     * One finished test, with the grouping used by the CI reporters: {@code suite} = the test file (JUnit
+     * testsuite/classname), {@code name} = the test within it (JUnit testcase). Null suite/name derive from the title.
+     */
+    public static void result(String suite, String name, String title, Status status, long millis, String error, String detail) {
         if (!active) return;
         (status == Status.PASSED ? passed : status == Status.FAILED ? failed : skipped).increment();
         if (!perTest) return;
-        line(title, status, millis, error, detail);
+        line(suite, name, title, status, millis, error, detail);
     }
 
-    private static synchronized void line(String title, Status status, long millis, String error, String detail) {
+    private static synchronized void line(String suite, String name, String title, Status status, long millis, String error, String detail) {
+        String key = (suite == null ? "" : suite) + '\u0000' + title;
+        Rec r = recs.get(key);
+        boolean retry = r != null;
+        if (r == null) {
+            int cut = title.lastIndexOf(" \u203a ");
+            r = new Rec(suite != null ? suite : (cut > 0 ? title.substring(0, cut) : "gatf"),
+                    name != null ? name : (cut > 0 ? title.substring(cut + 3) : title), title);
+            recs.put(key, r);
+        }
+        r.attempts.add(status);
+        r.millis = millis;
+        r.error = error;
+        r.detail = detail;
         if (!unicode) title = title.replace('\u203a', '>');
         int n = ++seq;
-        if (status == Status.FAILED) failures.add(title);
         if (status == Status.FAILED) {
             LOG.error("FAILED {} ({}ms){}{}", title, millis, error != null ? " - " + error : "", detail != null ? "\n" + detail : "");
         } else {
@@ -119,21 +154,42 @@ public final class RunConsole {
         String mark = status == Status.PASSED ? green(unicode ? "\u2713" : "ok")
                 : status == Status.FAILED ? red(unicode ? "\u2718" : "x") : yellow("-");
         String line = "  " + mark + "  " + dim(String.valueOf(n)) + " " + title
-                + (status == Status.SKIPPED ? "" : " " + dim("(" + dur(millis) + ")"));
+                + (status == Status.SKIPPED ? "" : " " + dim("(" + dur(millis) + ")"))
+                + (retry ? " " + yellow("retry #" + (r.attempts.size() - 1)) : "");
         o.println(line);
         if (status == Status.FAILED && error != null && !error.trim().isEmpty()) {
             o.println("       " + red(firstLine(error)));
         }
     }
 
-    /** Prints the summary; returns the number of failed tests (the CLI's exit code source). */
+    /** A selenium retry round is starting (seleniumScriptRetryCount). */
+    public static synchronized void retrying(int scripts, int round) {
+        if (!active || !perTest) return;
+        GatfLogging.out().println();
+        GatfLogging.out().println(yellow("  Retrying " + scripts + " failed script(s), round " + round));
+        LOG.info("retry round {}: {} script(s)", round, scripts);
+    }
+
+    /** Prints the summary and writes the CI reports; returns the number of failed tests (the CLI's exit code source). */
     public static synchronized int finish() {
         if (!active) return 0;
         active = false;
         PrintStream o = GatfLogging.out();
         long ms = (System.nanoTime() - startNanos) / 1_000_000L;
-        long passed = RunConsole.passed.sum(), failed = RunConsole.failed.sum(), skipped = RunConsole.skipped.sum();
-        long total = passed + failed + skipped;
+        long passed, failed, skipped, flaky = 0;
+        List<String> failures = new ArrayList<String>(), flakies = new ArrayList<String>();
+        if (!recs.isEmpty()) {   // functional run: final status per test (last attempt)
+            passed = failed = skipped = 0;
+            for (Rec r : recs.values()) {
+                if (r.flaky()) { flaky++; flakies.add(r.title); }
+                else if (r.last() == Status.PASSED) passed++;
+                else if (r.last() == Status.FAILED) { failed++; failures.add(r.title); }
+                else skipped++;
+            }
+        } else {                 // load / multi-user run: counters only
+            passed = RunConsole.passed.sum(); failed = RunConsole.failed.sum(); skipped = RunConsole.skipped.sum();
+        }
+        long total = passed + failed + skipped + flaky;
         o.println();
         if (total == 0) {
             o.println(yellow("  No tests were executed."));
@@ -144,17 +200,24 @@ public final class RunConsole {
             int shown = 0;
             for (String f : failures) {
                 if (shown++ == 20) { o.println(dim("    ... " + (failures.size() - 20) + " more")); break; }
-                o.println(red("    " + f));
+                o.println(red("    " + (unicode ? f : f.replace('\u203a', '>'))));
             }
+        }
+        if (flaky > 0) {
+            o.println(yellow("  " + flaky + " flaky"));
+            for (String f : flakies) o.println(yellow("    " + (unicode ? f : f.replace('\u203a', '>'))));
         }
         if (skipped > 0) o.println(yellow("  " + skipped + " skipped"));
         if (passed > 0) o.println(green("  " + passed + " passed") + dim(" (" + dur(ms) + ")"));
         else if (total > 0) o.println(dim("  (" + dur(ms) + ")"));
         o.println();
         if (reportDir != null) o.println(dim("  Report: " + reportDir));
+        for (String f : CiReports.write(new ArrayList<Rec>(recs.values()), reportDir, ms)) {
+            o.println(dim("  " + f));
+        }
         o.println(dim("  Log:    " + GatfLogging.logFile()));
         o.println();
-        LOG.info("run finished: passed={} failed={} skipped={} in {}ms", passed, failed, skipped, ms);
+        LOG.info("run finished: passed={} failed={} flaky={} skipped={} in {}ms", passed, failed, flaky, skipped, ms);
         return (int) Math.min(Integer.MAX_VALUE, failed);
     }
 

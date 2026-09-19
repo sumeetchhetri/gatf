@@ -1045,6 +1045,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         shutdown();
         
         if(configuration.getSeleniumScriptRetryCount()>0 && failedFiles.size()>0) {
+        	com.gatf.log.RunConsole.retrying(failedFiles.size(), configuration.getRetryCounter());
         	configuration.setSeleniumScriptRetryCount(configuration.getSeleniumScriptRetryCount() - 1);
         	configuration.setSeleniumScripts(failedFiles.toArray(new String[failedFiles.size()]));
         	configuration.setSeleniumScript(null);
@@ -2073,22 +2074,25 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         String title = file + " \u203a " + (tc.getName() != null ? tc.getName() : String.valueOf(tc.getIdentifier()));
         com.gatf.log.RunConsole.Status st = TestStatus.Success.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.PASSED
                 : TestStatus.Skipped.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.SKIPPED : com.gatf.log.RunConsole.Status.FAILED;
-        if (!com.gatf.log.RunConsole.wantsDetail()) { com.gatf.log.RunConsole.result(title, st, 0L, null, null); return; }
+        String tname = tc.getName() != null ? tc.getName() : String.valueOf(tc.getIdentifier());
+        if (!com.gatf.log.RunConsole.wantsDetail()) { com.gatf.log.RunConsole.result(file, tname, title, st, 0L, null, null); return; }
         String err = r.getError() != null && !r.getError().trim().isEmpty() ? r.getError() : r.getErrorText();
         String detail = (r.getMethod() != null ? r.getMethod() : tc.getMethod()) + " " + (r.getActualUrl() != null ? r.getActualUrl() : tc.getUrl())
                 + " -> " + r.getResponseStatusCode() + (r.getErrorText() != null && !r.getErrorText().trim().isEmpty() ? "\n" + r.getErrorText() : "");
-        com.gatf.log.RunConsole.result(title, st, r.getExecutionTime() != null ? r.getExecutionTime() : 0L, err, detail);
+        com.gatf.log.RunConsole.result(file, tname, title, st, r.getExecutionTime() != null ? r.getExecutionTime() : 0L, err, detail);
     }
 
     private static void consoleSelResult(String selFile, String browserKey, String subtest, SeleniumTestResult res) {
         if (!com.gatf.log.RunConsole.isActive()) return;
-        String title = "[" + browserKey + "] \u203a " + selFile + (subtest != null && !subtest.equals("-") ? " \u203a " + subtest : "");
+        boolean sub = subtest != null && !subtest.equals("-");
+        String title = "[" + browserKey + "] \u203a " + selFile + (sub ? " \u203a " + subtest : "");
+        String tname = "[" + browserKey + "]" + (sub ? " " + subtest : "");
         if (res == null) {
-            com.gatf.log.RunConsole.result(title, com.gatf.log.RunConsole.Status.SKIPPED, 0L, null, null);
+            com.gatf.log.RunConsole.result(selFile, tname, title, com.gatf.log.RunConsole.Status.SKIPPED, 0L, null, null);
             return;
         }
         if (!com.gatf.log.RunConsole.wantsDetail()) {
-            com.gatf.log.RunConsole.result(title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED, 0L, null, null);
+            com.gatf.log.RunConsole.result(selFile, tname, title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED, 0L, null, null);
             return;
         }
         String msg = null;
@@ -2097,7 +2101,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
         if (msg == null && res.getCause() != null) msg = String.valueOf(res.getCause().getMessage());
         String detail = res.getCause() != null ? org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(res.getCause()) : null;
-        com.gatf.log.RunConsole.result(title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
+        com.gatf.log.RunConsole.result(selFile, tname, title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
                 res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail);
     }
 

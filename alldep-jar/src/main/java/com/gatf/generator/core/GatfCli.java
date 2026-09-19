@@ -87,7 +87,10 @@ public final class GatfCli {
     				// Playwright-style exit status: non-zero when any test failed
     				if (RunConsole.finish() > 0) exitCode = 1;
 				} catch (Exception e) {
-					RunConsole.abort(e);
+					// A selenium run with failed scripts ends by throwing GatfRunTimeErrors, and that is not an abort.
+					// Always print the summary and write the CI reports. Report "aborted" only when no test failure
+					// explains the exception.
+					if (RunConsole.finish() == 0) RunConsole.abort(e);
 					exitCode = 1;
 				}
     			

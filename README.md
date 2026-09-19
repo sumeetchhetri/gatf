@@ -221,7 +221,9 @@ Running GATF UI (seleasy) tests
   - stack traces.
 
   Each run starts a fresh file. The previous run's log is kept as `gatf.1.log.gz`, and the last 10 are retained.
-- **Exit code:** `0` when every test passed; `1` if any test failed, the run aborted, or the command line was invalid.
+- **Flaky tests:** with `seleniumScriptRetryCount`, failed scripts are retried. A script that fails and then passes is reported as **flaky** (yellow), and it doesn't fail the run.
+- **CI reports:** `gatf-junit.xml` (JUnit XML; flaky tests carry `<flakyFailure>`) and `gatf-results.json` are written to the run's out dir. On GitHub Actions each failure is also an `::error` annotation, and each flaky test a `::warning`.
+- **Exit code:** `0` when every test passed or was flaky; `1` if any test failed, the run aborted, or the command line was invalid. The summary always prints, even when failures end the run with an exception.
 
 | Setting (`-D…`) | Default | Effect |
 |---|---|---|
@@ -230,6 +232,7 @@ Running GATF UI (seleasy) tests
 | `gatf.console.level` | `warn` for CLI runs, `info` otherwise | Log events shown on the console |
 | `gatf.capture.stdout` | `true` | `false` also shows the engine's raw output on the console |
 | `gatf.color` | `auto` | `always` / `never` |
+| `gatf.reporters` | `junit,json,github` | Which CI reports to write; `none` disables them |
 
 ## Running in CI
 
