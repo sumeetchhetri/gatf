@@ -171,6 +171,7 @@ public class CurlPlugin {
     		"Examples :-",
     		"\tcurl get http://abc.com",
     		"\tcurl post http://abc.com\n\t{\n\t\t[\n\t\t\tContent-Type=application/xml\n\t\t]\n\t\t<abc>abc</abc>\n\t}",
+    		"\tcurl 'http://abc.com/api' -H 'Content-Type: application/json' --data-raw '{\"a\":1}'    (raw cURL command line, single line)",
         };
     }
 }

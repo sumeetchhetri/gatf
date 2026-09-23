@@ -1134,6 +1134,9 @@ Built-in plugins are statements, or values via `var x plugin <name> ...`. Your o
 - `jsonwrite` / `xmlwrite` take the file and the object in either order.
 - `curl` headers may be written `Name=value` or `Name: value`. `POST`/`PUT`/`PATCH`/`DELETE` send the body block.
   The executor's `httpRequestTimeout` applies.
+- `curl` also takes a raw cURL command line on one line (from dev tools "Copy as cURL" or a GATF report):
+  `-X`, `-H`, `-d`/`--data*`, `--json`, `-u`, `-b`, `-A`, `-e`, `-G` are converted when the script is compiled.
+  Multipart (`-F`), body files (`@file`) and options GATF does not reproduce (`-x`, `-T`, ...) fail the parse.
 
 ### XML Plugin
 
@@ -1166,6 +1169,7 @@ Examples :-
 		]
 		<abc>abc</abc>
 	}
+	curl 'http://abc.com/api' -H 'Content-Type: application/json' --data-raw '{"a":1}'    (raw cURL command line, single line)
 ```
 
 ### JSON Plugin

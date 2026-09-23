@@ -24,9 +24,9 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.gatf.executor.core.TestCase;
 
 /**
- * Outcome of importing an external test artifact (Playwright spec or JMeter .jmx) into GATF.
+ * Outcome of importing an external test artifact (Playwright spec, JMeter .jmx, cURL, Postman, HAR) into GATF.
  * Carries the generated file content, an unsupported-construct report, and summary stats.
- * For JMeter, {@link #testCases} holds the built TestCase objects — the handler serializes them
+ * For the API importers (JMeter, cURL, Postman, HAR), {@link #testCases} holds the built TestCase objects — the handler serializes them
  * with the same XmlMapper GATF uses everywhere else, so the output round-trips exactly.
  */
 public class ImportResult {
@@ -46,7 +46,7 @@ public class ImportResult {
         }
     }
 
-    public String type;                 // playwright | jmeter
+    public String type;                 // playwright | jmeter | curl | postman | har
     public String fileName;             // suggested output test-file name
     public String kind;                 // sel | xml
     public String content;              // generated seleasy or XML (filled by the importer/handler)
@@ -54,8 +54,10 @@ public class ImportResult {
     public Map<String, Object> stats = new LinkedHashMap<String, Object>();
     // JMeter only: load settings from the first ThreadGroup, as GatfExecutorConfig keys (null if none)
     public Map<String, Object> loadConfig;
+    // Q2 Postman only: collection variables, as gatf-config globalVariables (null if none)
+    public Map<String, Object> variables;
 
-    // JMeter only: the built cases; the handler serializes via WorkflowContextHandler.XOM for exact fidelity.
+    // API importers: the built cases; the handler serializes via WorkflowContextHandler.XOM for exact fidelity.
     @JsonIgnore
     public List<TestCase> testCases;
 

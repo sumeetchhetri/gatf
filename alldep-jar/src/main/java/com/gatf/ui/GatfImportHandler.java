@@ -37,21 +37,20 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.imports.ImportResult;
-import com.gatf.imports.JMeterImporter;
-import com.gatf.imports.PlaywrightImporter;
+import com.gatf.imports.Importers;
 import com.gatf.selenium.Command;
 
 /**
- * Phase 11 — Playwright/JMeter test importer endpoint for the React shell.
+ * Phase 11 / Q2 — test importer endpoint for the React shell.
  *
- *   POST /import?type=playwright|jmeter[&fileName=<name>][&save=true]
- *     body = the raw Playwright .spec source or JMeter .jmx XML
+ *   POST /import?type=playwright|jmeter|curl|postman|har[&fileName=<name>][&save=true][&filter=<url regex, har>]
+ *     body = the raw Playwright .spec source, JMeter .jmx XML, curl command(s), Postman collection or HAR JSON
  *     ->   { type, fileName, kind, content, unsupported:[{line,construct,reason}], stats:{...},
- *            saved:bool, savedPath?, validation? }
+ *            loadConfig?, variables?, saved:bool, savedPath?, validation? }
  *
  * With save omitted/false the endpoint only previews (parse + translate). With save=true it also writes
  * the file into the test-case directory (the same location /testcasefiles create uses), so it appears in
- * the test tree. JMeter cases are written via WorkflowContextHandler.XOM — the exact mapper GATF uses to
+ * the test tree. API cases (JMeter, cURL, Postman, HAR) are written via WorkflowContextHandler.XOM — the exact mapper GATF uses to
  * read/write test XML — so the file round-trips and opens in the structured XML editor; imported .sel is
  * additionally parse-validated (Command.validateSel) and the result returned.
  *
@@ -90,15 +89,15 @@ public class GatfImportHandler extends HttpHandler {
             String suite = deriveSuiteName(fileName, source, type);
 
             ImportResult result;
-            if ("playwright".equalsIgnoreCase(type)) {
-                result = new PlaywrightImporter().importSource(source, suite);
-            } else if ("jmeter".equalsIgnoreCase(type)) {
-                result = new JMeterImporter().importSource(source, suite);
+            try {
+                result = Importers.importSource(type, source, suite, request.getParameter("filter"));
+            } catch (IllegalArgumentException e) {
+                writeJson(response, HttpStatus.BAD_REQUEST_400, err(e.getMessage()));
+                return;
+            }
+            if ("xml".equals(result.kind) && result.testCases != null) {
                 // serialize the built cases with GATF's own XmlMapper — guarantees round-trip fidelity
                 result.content = WorkflowContextHandler.XOM.writeValueAsString(result.testCases);
-            } else {
-                writeJson(response, HttpStatus.BAD_REQUEST_400, err("unknown import type '" + type + "' (expected playwright|jmeter)"));
-                return;
             }
             if (fileName != null && !fileName.trim().isEmpty()) {
                 result.fileName = ensureExt(fileName.trim(), result.kind);
@@ -112,6 +111,7 @@ public class GatfImportHandler extends HttpHandler {
             out.put("unsupported", result.unsupported);
             out.put("stats", result.stats);
             if (result.loadConfig != null) out.put("loadConfig", result.loadConfig);
+            if (result.variables != null) out.put("variables", result.variables);
 
             if (save) {
                 GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
@@ -174,7 +174,7 @@ public class GatfImportHandler extends HttpHandler {
             String n = fileName.trim().replaceAll("\\.(sel|xml)$", "");
             return n.replaceAll("[^A-Za-z0-9_-]", "_");
         }
-        return "jmeter".equalsIgnoreCase(type) ? "imported-jmeter" : "imported-playwright";
+        return "imported-" + (type == null || type.isBlank() ? "tests" : type.trim().toLowerCase().replaceAll("[^a-z]", ""));
     }
 
     private String ensureExt(String name, String kind) {

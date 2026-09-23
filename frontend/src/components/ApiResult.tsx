@@ -13,6 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+import { useState } from 'react';
 import type { TestCaseReport } from '../api';
 import { fmtMs } from '../util';
 
@@ -21,6 +22,25 @@ export function apiStatusClass(s: string): string {
   if (u === 'success' || u === 'pass' || u === 'passed') return 'st-pass';
   if (u === 'skipped' || u === 'skip') return 'st-warn';
   return 'st-fail';
+}
+
+// Q2: copy the report's cURL line — it pastes into bash and imports back via Import → cURL.
+function CopyButton({ text }: { text: string }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setDone(true);
+      setTimeout(() => setDone(false), 1500);
+    } catch {
+      /* clipboard unavailable (insecure context) — the text is selectable below */
+    }
+  };
+  return (
+    <button className="btn ghost small" onClick={copy} title="Copy as cURL">
+      {done ? 'Copied' : 'Copy'}
+    </button>
+  );
 }
 
 // Renders one API test-case result: status line (optional), error, cURL, request/response, server logs.
@@ -52,7 +72,9 @@ export default function ApiResult({ r, showStatus }: { r: TestCaseReport; showSt
       )}
       {r.curlCmd && (
         <>
-          <div className="hdr-title">cURL</div>
+          <div className="hdr-title">
+            cURL <CopyButton text={r.curlCmd} />
+          </div>
           <pre className="body-pre">{r.curlCmd}</pre>
         </>
       )}

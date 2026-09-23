@@ -1,0 +1,28 @@
+{
+  "info": {"name": "Demo", "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"},
+  "auth": {"type": "bearer", "bearer": [{"key": "token", "value": "{{token}}", "type": "string"}]},
+  "variable": [{"key": "baseUrl", "value": "https://api.demo.test"}, {"key": "token", "value": "t0k"}],
+  "event": [{"listen": "prerequest", "script": {"exec": ["console.log('x')"]}}],
+  "item": [
+    {"name": "Auth", "auth": {"type": "noauth"}, "item": [
+      {"name": "Login", "request": {"method": "POST",
+        "header": [{"key": "Accept", "value": "application/json"}, {"key": "X-Off", "value": "1", "disabled": true}],
+        "body": {"mode": "raw", "raw": "{\"u\":\"{{user}}\"}", "options": {"raw": {"language": "json"}}},
+        "url": {"raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"]}},
+       "event": [{"listen": "test", "script": {"exec": ["pm.test(\"ok\", function () {", "    pm.response.to.have.status(200);", "});", "pm.environment.set('token', pm.response.json().token);"]}}]}
+    ]},
+    {"name": "Get user", "request": {"method": "GET", "header": [],
+       "url": {"raw": "{{baseUrl}}/users/:id?expand=1", "host": ["{{baseUrl}}"], "path": ["users", ":id"],
+               "query": [{"key": "expand", "value": "1"}], "variable": [{"key": "id", "value": "42"}]}},
+     "event": [{"listen": "test", "script": {"exec": ["pm.expect(pm.response.code).to.eql(200);"]}}]},
+    {"name": "Upload", "request": {"method": "POST", "auth": {"type": "basic", "basic": [{"key": "username", "value": "a"}, {"key": "password", "value": "b"}]},
+       "body": {"mode": "formdata", "formdata": [{"key": "f", "type": "file", "src": "/data/x.csv"}, {"key": "k", "value": "v", "type": "text"}, {"key": "t", "value": "http://x", "type": "text"}]},
+       "url": "https://files.test/up"}},
+    {"name": "Form", "request": {"method": "PUT", "auth": {"type": "apikey", "apikey": [{"key": "key", "value": "api_key"}, {"key": "value", "value": "{{k}}"}, {"key": "in", "value": "query"}]},
+       "body": {"mode": "urlencoded", "urlencoded": [{"key": "a b", "value": "c&d"}, {"key": "v", "value": "{{x}}"}, {"key": "off", "value": "1", "disabled": true}]},
+       "url": "https://f.test/form"}},
+    {"name": "GQL", "request": {"method": "POST", "body": {"mode": "graphql", "graphql": {"query": "query { me { id } }", "variables": "{\"a\":1}"}}, "url": "{{baseUrl}}/graphql"}},
+    {"name": "Head", "request": {"method": "HEAD", "url": "{{baseUrl}}/h"}},
+    {"name": "Get user", "request": "https://api.demo.test/plain"}
+  ]
+}

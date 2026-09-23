@@ -67,6 +67,7 @@ public class PluginCommand extends Command {
         List<String> in = new ArrayList<String>();
         List<String[]> in1 = new ArrayList<String[]>();
         String outtype;
+        boolean rawCurl;
         String toCmd() {
             return "";
         }
@@ -116,6 +117,10 @@ public class PluginCommand extends Command {
                 if(!plugins.containsKey(name)) {
                     throwError(cmdDetails, new RuntimeException("Plugin not found with name " + name));
                 }
+                if("curl".equals(name) && parts.length > 1 && isRawCurl(unSantizedUnQuoted(parts[1], state))) {
+                    rawCurl(state.unsanitize(info.trim()), cmdDetails);
+                    return;
+                }
                 for (int i = 1; i < parts.length; i++) {
                     in.add(unSantizedUnQuoted(parts[i], state));
                 }
@@ -138,7 +143,53 @@ public class PluginCommand extends Command {
                 //excep
             }
         }
+        private static final java.util.Set<String> CURL_METHODS = java.util.Set.of("get", "post", "put", "delete", "patch", "head", "options");
+
+        /** Q2: {@code curl <method> <url> {…}} is the plugin form; anything else after "curl" is a raw cURL command line. */
+        static boolean isRawCurl(String firstArg) {
+            return !CURL_METHODS.contains(firstArg.toLowerCase(java.util.Locale.ROOT));
+        }
+
+        /**
+         * Q2: a raw cURL command line (as copied from browser dev tools or a GATF report) on one seleasy line, e.g.
+         * {@code curl 'https://x/api' -H 'Accept: application/json' --data-raw '{"a":1}'}. It is converted here, at
+         * transpile time, into the plugin's method/url/headers/body arguments, so it runs exactly like the block form.
+         * Anything the plugin cannot send (multipart, body files, options GATF does not reproduce) fails the parse.
+         */
+        private void rawCurl(String line, Object[] cmdDetails) {
+            rawCurl = true;
+            com.gatf.imports.CurlCommand.Parsed p = null;
+            try {
+                p = com.gatf.imports.CurlCommand.parseOne(line);
+            } catch (IllegalArgumentException e) {
+                throwError(cmdDetails, new RuntimeException("curl: " + e.getMessage()));
+            }
+            if (!p.issues.isEmpty()) {
+                throwError(cmdDetails, new RuntimeException("curl: " + p.issues.get(0).construct + " — " + p.issues.get(0).reason));
+            }
+            com.gatf.imports.ApiRequest r = p.request;
+            if (!r.formParts.isEmpty() || r.contentFile != null) {
+                throwError(cmdDetails, new RuntimeException("curl: multipart (-F) and file bodies (@file) are not supported by the curl plugin — use an API test case"));
+            }
+            in.add(r.upperMethod().toLowerCase(java.util.Locale.ROOT));
+            in.add(r.fullUrl);
+            List<String> hdrs = new ArrayList<String>();
+            for (Map.Entry<String, String> h : r.headers.entrySet()) {
+                hdrs.add(h.getKey() + ": " + h.getValue());
+            }
+            in1.add(hdrs.toArray(new String[0]));
+            if (r.body != null && !r.body.isEmpty()) {
+                in1.add(new String[] { r.body });
+            }
+        }
+
         public void reconcile() {
+            if (rawCurl) {
+                if (!children.isEmpty()) {
+                    throwError(fileLineDetails, new RuntimeException("curl: a raw cURL command line cannot have a { } block"));
+                }
+                return;
+            }
             for (int i = 0; i < children.size(); i++) {
                 if(children.get(i) instanceof ValueListCommand) {
                     ValueListCommand vlc = (ValueListCommand)children.get(i);

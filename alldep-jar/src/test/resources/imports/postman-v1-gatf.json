@@ -1,0 +1,1 @@
+{"id":"c1","name":"Gen","requests":[{"id":"r1","name":"create","url":"{{host}}/api/items","method":"POST","headers":"Content-Type: application/json\nAccept: application/json\n","dataMode":"raw","data":"{\"n\":1}","tests":"var data = JSON.parse(responseBody);\n\ntests[\"create\"] = responseCode.code === 201;\n\n"}],"order":["r1"]}

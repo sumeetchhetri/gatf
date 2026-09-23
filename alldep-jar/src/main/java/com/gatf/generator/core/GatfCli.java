@@ -103,6 +103,11 @@ public final class GatfCli {
     				exitCode = runSuite(new String[] { "-executor", t.config });
     			}
     		}
+    		else if(args[0].equals("import"))
+    		{
+    			// Q2: `gatf import <playwright|jmeter|curl|postman|har> <file|-> [-o out] [--name ..] [--filter ..] [--force]`
+    			exitCode = ImportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
+    		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
     		{
@@ -127,6 +132,7 @@ public final class GatfCli {
     	if(showHelp) {
     		System.out.println("Invalid invocation - valid invocation options are, \n" +
 					"java -jar gatf-plugin-{version}.jar " + TestCommandArgs.USAGE.substring("gatf ".length()).replace("\n", "\n    ") + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +

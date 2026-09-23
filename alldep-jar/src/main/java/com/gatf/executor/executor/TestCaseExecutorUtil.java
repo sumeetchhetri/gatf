@@ -24,6 +24,7 @@ import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
@@ -56,6 +57,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfResponse;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.imports.CurlCommand;
 import com.gatf.executor.ext.AutocannonTestCaseExecutor;
 import com.gatf.executor.ext.VegetaTestCaseExecutor;
 import com.gatf.executor.ext.WrkTestCaseExecutor;
@@ -217,7 +219,7 @@ public class TestCaseExecutorUtil {
 	 * @throws Exception
 	 * Handle the request content, handle flows for rest and soap separately...
 	 */
-	private byte[] handleRequestContent(TestCase testCase, HttpRequest.Builder builder, StringBuilder curlAddPars) throws Exception
+	private byte[] handleRequestContent(TestCase testCase, HttpRequest.Builder builder, List<String[]> curlForm) throws Exception
 	{
 		byte[] raw = null;
 		//Set the request body first
@@ -273,7 +275,7 @@ public class TestCaseExecutorUtil {
 								mp.write(partData);
 								mp.write("\r\n".getBytes(StandardCharsets.UTF_8));
 								anyFormPart = true;
-								curlAddPars.append(String.format("-F \"%s=@%s\" ", controlname, file.getAbsolutePath()));
+								curlForm.add(new String[] {"file", controlname, file.getAbsolutePath()});
 							}
 							else
 							{
@@ -300,7 +302,7 @@ public class TestCaseExecutorUtil {
 							mp.write(fileNmOrTxt.getBytes(StandardCharsets.UTF_8));
 							mp.write("\r\n".getBytes(StandardCharsets.UTF_8));
 							anyFormPart = true;
-							curlAddPars.append(String.format("-F \"%s='%s'\" ", controlname, fileNmOrTxt.replace("\n", "\\n").replace("'", "\\'")));
+							curlForm.add(new String[] {"text", controlname, fileNmOrTxt});
 						}
 						else
 						{
@@ -333,7 +335,9 @@ public class TestCaseExecutorUtil {
 			else
 			{
 				content = FileUtils.readFileToString(file, "UTF-8");
-				curlAddPars.append(String.format("--data-raw \"%s=@%s\" ", file.getAbsolutePath()));
+				// (was String.format("--data-raw \"%s=@%s\" ", path) — one argument for two %s threw
+				// MissingFormatArgumentException, failing every non-SOAP case with a contentFile; the body now goes
+				// into the cURL line like any inline content)
 			}
 			raw = content.getBytes(StandardCharsets.UTF_8);
 		}
@@ -567,37 +571,33 @@ public class TestCaseExecutorUtil {
 		return raw;
 	}
 	
-	private String curlize(HttpRequest request, byte[] rawBody, String curlOptions, boolean isLog) {
-		String curlCmd = "curl";
-        curlCmd += " -X " + request.method();
-        if (curlOptions != null) {
-            curlCmd += " " + curlOptions;
-        }
+	/**
+	 * The report/log cURL line. Q2: written by {@link CurlCommand#format} — values are single-quoted (or $'…' when
+	 * needed), so quotes, backslashes and $ in headers/bodies survive a paste into bash, and the line imports back
+	 * (Import → cURL) to the same request. Multipart parts are emitted as -F / --form-string instead of the raw
+	 * multipart bytes.
+	 */
+	private String curlize(HttpRequest request, byte[] rawBody, List<String[]> formParts, boolean isLog) {
+		boolean compressed = false;
+		List<String[]> headers = new ArrayList<String[]>();
+		for (Map.Entry<String, List<String>> he : request.headers().map().entrySet()) {
+			for (String value : he.getValue()) {
+				if ("Accept-Encoding".equalsIgnoreCase(he.getKey()) && "gzip".equalsIgnoreCase(value)) {
+					compressed = true;
+					continue;      // --compressed sends it
+				}
+				headers.add(new String[] {he.getKey(), value});
+			}
+		}
+		String body = rawBody != null && rawBody.length > 0 ? new String(rawBody, StandardCharsets.UTF_8) : null;
+		String curlCmd = CurlCommand.format(request.method(), request.uri().toString(), headers, body, formParts, compressed);
 
-        boolean compressed = false;
-        for (Map.Entry<String, List<String>> he : request.headers().map().entrySet()) {
-            for (String value : he.getValue()) {
-                if ("Accept-Encoding".equalsIgnoreCase(he.getKey()) && "gzip".equalsIgnoreCase(value)) {
-                    compressed = true;
-                }
-                curlCmd += " -H " + "\"" + he.getKey() + ": " + value + "\"";
-            }
-        }
-
-        if (rawBody != null && rawBody.length > 0) {
-            String bodyStr = new String(rawBody, StandardCharsets.UTF_8);
-            // try to keep to a single line and use a subshell to preserve any line breaks
-            curlCmd += " --data $'" + bodyStr.replace("\n", "\\n").replace("'", "\\'") + "'";
-        }
-
-        curlCmd += ((compressed) ? " --compressed " : " ") + request.uri();
-
-        if(isLog) {
-	        logger.info("╭--- cURL (" + request.uri() + ")");
-	        logger.info(curlCmd);
-	        logger.info("╰--- (copy and paste the above line to a terminal)");
-        }
-        return curlCmd;
+		if(isLog) {
+			logger.info("╭--- cURL (" + request.uri() + ")");
+			logger.info(curlCmd);
+			logger.info("╰--- (copy and paste the above line to a terminal)");
+		}
+		return curlCmd;
 	}
 	
 	public CompletableFuture<TestCaseReport> executeTestCase(TestCase testCase, TestCaseReport testCaseReport)
@@ -625,8 +625,8 @@ public class TestCaseExecutorUtil {
 				}
 			}
 			
-			StringBuilder curlAddPars = new StringBuilder();
-			byte[] rawBody = handleRequestContent(testCase, builder, curlAddPars);
+			List<String[]> curlForm = new ArrayList<String[]>();
+			byte[] rawBody = handleRequestContent(testCase, builder, curlForm);
 			
 			boolean hasReferer = false, hasAcceptEncoding = false;
 			if(testCase.getHeaders()!=null)
@@ -656,7 +656,7 @@ public class TestCaseExecutorUtil {
 				Thread.sleep(testCase.getPreWaitMs());
 			}
 			
-			String curlCmd = curlize(request, rawBody, curlAddPars.toString(), (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
+			String curlCmd = curlize(request, rawBody, curlForm, (testCase.isDetailedLog() || context.getGatfExecutorConfig().isDebugEnabled()));
 			testCaseReport.setCurlCmd(curlCmd);
 			
 			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().trim().isEmpty()
@@ -762,6 +762,16 @@ public class TestCaseExecutorUtil {
 			try {
 				GatfResponse gresp = new JdkGatfResponse(response);
 				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
+				testCaseReport.setResponseStatusCode(gresp.code());
+				// Q2: expectedResCode was stored, exported and shown but never compared with the response
+				String statusError = statusMismatch(testCase.getExpectedResCode(), gresp.code());
+				if(statusError!=null && testCase.isAbortOnInvalidStatusCode())
+				{
+					failStatus(statusError);
+					gresp.closeBody();
+					future.complete(testCaseReport);
+					return;
+				}
 				
 				if(testCase.getExpectedResContentType()!=null)
 				{
@@ -788,9 +798,16 @@ public class TestCaseExecutorUtil {
 				
 				String contType = testCase.getExpectedResContentType();
 				testCaseReport.setResponseContentType(contType);
+				if(contType==null || contType.trim().isEmpty()) {
+					contType = "";   // no Content-Type (e.g. 204): MediaType.valueOf(null) / contType.indexOf threw here
+				}
 				
 				testCaseReport.setExecutionTime(System.currentTimeMillis() - start);
-				if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
+				if(contType.isEmpty())
+				{
+					// no body type to report or validate
+				}
+				else if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, contType) || isMatchesContentType(MediaType.APPLICATION_XML_TYPE, contType)
 						|| isMatchesContentType(MediaType.TEXT_PLAIN_TYPE, contType) || isMatchesContentType(MediaType.TEXT_HTML_TYPE, contType)
 						|| isMatchesContentType(MediaType.TEXT_XML_TYPE, contType))
 				{
@@ -802,7 +819,10 @@ public class TestCaseExecutorUtil {
 				}
 				
 				testCaseReport.setResHeaders(gresp.headersMultimap());
-				if(!testCase.isSoapBase()) {
+				if(!testCase.isSoapBase() && contType.isEmpty()) {
+					noContentResponseValidator.validate(gresp, testCase, testCaseReport, context);
+					testCaseReport.setStatus(TestStatus.Success.status);
+				} else if(!testCase.isSoapBase()) {
 					if(isMatchesContentType(MediaType.APPLICATION_JSON_TYPE, testCase.getExpectedResContentType()))
 					{
 						jsonResponseValidator.validate(gresp, testCase, testCaseReport, context);
@@ -825,6 +845,10 @@ public class TestCaseExecutorUtil {
 				} else {
 					soapResponseValidator.validate(gresp, testCase, testCaseReport, context);
 				}
+				// the validators set Success on their own, so a status mismatch is applied after them
+				if(statusError!=null) {
+					failStatus(statusError);
+				}
 				
 				if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
 						&& testCase.getPostWaitMs()>0) {
@@ -841,10 +865,24 @@ public class TestCaseExecutorUtil {
 			}
 		}
 		
+		private void failStatus(String message) {
+			testCaseReport.setStatus(TestStatus.Failed.status);
+			testCaseReport.setFailureReason(TestFailureReason.InvalidStatusCode.status);
+			String prev = testCaseReport.getError();
+			testCaseReport.setError(prev==null || prev.trim().isEmpty() ? message : message + "; " + prev);
+			testCase.setFailed(true);
+		}
+		
 		public static boolean isMatchesContentType(MediaType md, String contType) {
 			MediaType md2 = MediaType.valueOf(contType);
 			return md.getType().equalsIgnoreCase(md2.getType()) && md.getSubtype().equalsIgnoreCase(md2.getSubtype());
 		}
+	}
+
+	/** null when {@code expected} is unset (0) or equal to {@code actual}; otherwise the failure message. */
+	static String statusMismatch(int expected, int actual) {
+		if(expected<=0 || expected==actual) return null;
+		return "Expected status code " + expected + " but got " + actual;
 	}
 
 	private String getUrl(String baseUrl, String urlPart)

@@ -25,7 +25,7 @@ Java 21 jar with a web console, a trace viewer, a step debugger and a VS Code ex
 - **Protocols:** REST over HTTP/1.1 and HTTP/2 (the JDK `java.net.http` client). SOAP via WSDL keys and operations. Multipart uploads, request bodies from files, custom headers and cookies.
 - **Assertions:** status code, content type and body. Node assertions use JSONPath for JSON and XPath for XML/SOAP. **Logical validations** are Velocity expressions over the response and variables.
 - **Auto-authentication:** log in once through a configured auth call; `secure` cases get the token as a header or query parameter. SOAP auth is also supported.
-- **In the console:** *Play* runs a case as defined. *Replay* re-sends a captured request from a report. Every report carries the equivalent `curl` command.
+- **In the console:** *Play* runs a case as defined. *Replay* re-sends a captured request from a report. Every report carries the equivalent `curl` command (copy it, paste it into a shell, or import it back).
 
 ### Workflow (chained) API testing
 - **Capture values** from one response into variables for later tests: response nodes, `#responseHeader[..]`, `#responseCookie[..]`, `#responseMappedValue[..]` and `#responseMappedCount[..]` (`workflowContextParameterMap`).
@@ -89,6 +89,10 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 - **Recorder:** opens a browser (Chrome, Firefox or Edge) and turns your clicks and typing into seleasy, with timing pauses preserved.
 - **Crawler:** logs into an application (including JavaScript SPAs), explores it in a real browser, and proposes a seleasy suite plus a coverage map.
 - **Importers:** Playwright specs become seleasy; JMeter plans become GATF API tests, and their thread-group load settings are shown to apply.
+  cURL commands (bash/cmd/PowerShell "Copy as cURL", or a report's cURL line), Postman collections (v2.x and v1) and HAR
+  recordings become GATF API tests: headers, bodies (raw, urlencoded, multipart, GraphQL), auth, Postman variables
+  (`{{x}}` → `${x}`) and recorded/asserted status codes carry over. What cannot be converted is listed, never dropped
+  silently. In the console (**Import**) or `gatf import`.
 - **Test generator:** creates API test cases from JAX-RS or Spring controllers and SOAP WSDLs, and can also produce a Postman collection.
 - **VS Code extension:** language server (completion, diagnostics, navigation) and a debugger.
 
@@ -194,6 +198,7 @@ goto https://example.com/login
 | `gatf ui [port] [dir]` | Web console: config, test files, editor, recorder, crawler, importer, execution, reports, traces, debugger. Default port 9080; bind host via `GATF_UI_HOST` |
 | `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
+| `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman` or `har` input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |

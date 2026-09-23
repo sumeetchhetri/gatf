@@ -14,9 +14,9 @@
     limitations under the License.
 */
 import { useRef, useState } from 'react';
-import { api, type ImportResultDto } from '../api';
+import { api, type ImportResultDto, type ImportType } from '../api';
 
-type Kind = 'playwright' | 'jmeter';
+type Kind = ImportType;
 
 const META: Record<Kind, { label: string; accept: string; ext: string; hint: string }> = {
   playwright: {
@@ -31,12 +31,37 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
     ext: '.xml',
     hint: 'A JMeter test plan (.jmx). Each HTTP sampler becomes a GATF API test case.',
   },
+  curl: {
+    label: 'cURL',
+    accept: '.sh,.txt,.curl,text/plain',
+    ext: '.xml',
+    hint: 'One or more curl commands (bash, cmd or PowerShell "Copy as cURL", or the cURL line of a GATF report). Each becomes an API test case.',
+  },
+  postman: {
+    label: 'Postman',
+    accept: '.json,application/json',
+    ext: '.xml',
+    hint: 'A Postman collection (v2.0/v2.1, or v1). Folders, auth, bodies and status assertions carry over; {{var}} becomes ${var}.',
+  },
+  har: {
+    label: 'HAR',
+    accept: '.har,.json,application/json',
+    ext: '.xml',
+    hint: 'A HAR recording (browser dev tools "Save all as HAR"). XHR/fetch calls become API test cases with the recorded status.',
+  },
 };
+
+// stats values may be nested counts (HAR skipped / origins)
+function fmtStat(v: unknown): string {
+  if (v && typeof v === 'object') return Object.entries(v as Record<string, unknown>).map(([k, n]) => `${k} ${n}`).join(', ');
+  return String(v);
+}
 
 export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () => void }) {
   const [kind, setKind] = useState<Kind>('playwright');
   const [source, setSource] = useState('');
   const [fileName, setFileName] = useState('');
+  const [filter, setFilter] = useState('');
   const [busy, setBusy] = useState<'' | 'preview' | 'save'>('');
   const [result, setResult] = useState<ImportResultDto | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -56,7 +81,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     if (!f) return;
     const text = await f.text();
     setSource(text);
-    if (!fileName) setFileName(f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js)$/i, '') + meta.ext);
+    if (!fileName) setFileName(f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|sh|txt|curl)$/i, '') + meta.ext);
     setResult(null);
     setSaved(null);
     setErr(null);
@@ -71,7 +96,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     setErr(null);
     setSaved(null);
     try {
-      const r = await api.importSource(kind, fileName.trim(), save, source);
+      const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' ? filter.trim() : undefined);
       if (r.error) {
         setErr(r.error);
         setResult(null);
@@ -90,7 +115,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     <div className="view import-view">
       <div className="view-head">
         <h2>Import tests</h2>
-        <span className="muted small">Convert Playwright or JMeter tests into GATF test cases (best-effort).</span>
+        <span className="muted small">Convert Playwright, JMeter, cURL, Postman or HAR into GATF test cases (best-effort).</span>
       </div>
 
       <div className="import-controls">
@@ -108,6 +133,15 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           onChange={(e) => setFileName(e.target.value)}
           style={{ minWidth: 260 }}
         />
+        {kind === 'har' && (
+          <input
+            className="inp"
+            placeholder="URL filter regex (optional, e.g. api\.example\.com)"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            style={{ minWidth: 240 }}
+          />
+        )}
         <input
           ref={fileRef}
           type="file"
@@ -157,7 +191,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           <div className="import-result-head">
             <strong>{result.fileName}</strong>
             <span className="muted small">
-              {Object.entries(result.stats).map(([k, v]) => `${k}: ${v}`).join('  ·  ')}
+              {Object.entries(result.stats).map(([k, v]) => `${k}: ${fmtStat(v)}`).join('  ·  ')}
             </span>
           </div>
 
@@ -168,6 +202,12 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           {result.loadConfig && (
             <div className="muted small" style={{ marginBottom: 6 }}>
               load settings for gatf-config: <code>{JSON.stringify(result.loadConfig)}</code>
+            </div>
+          )}
+
+          {result.variables && (
+            <div className="muted small" style={{ marginBottom: 6 }}>
+              collection variables for gatf-config globalVariables: <code>{JSON.stringify(result.variables)}</code>
             </div>
           )}
 

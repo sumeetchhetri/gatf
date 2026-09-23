@@ -1,0 +1,6 @@
+// Q2 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Raw cURL command lines for the curl plugin (converted at transpile time into the block form's arguments).
+open chrome
+curl 'http://abc.com/api/items?page=1' -H 'Accept: application/json'
+curl -X POST 'http://abc.com/api/items' -H 'Content-Type: application/json' --data-raw '{"name":"a b"}'
+var r plugin curl http://abc.com/login -u admin:secret -d 'user=a&pass=b'

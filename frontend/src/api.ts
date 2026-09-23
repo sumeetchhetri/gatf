@@ -518,7 +518,8 @@ export function debugLinesFor(l: unknown, file: string): Set<number> {
   return out;
 }
 
-// ---- Playwright/JMeter importer (Phase 11) — POST source to /import, preview or save ----
+// ---- test importers (Phase 11 Playwright/JMeter, Q2 cURL/Postman/HAR) — POST source to /import, preview or save ----
+export type ImportType = 'playwright' | 'jmeter' | 'curl' | 'postman' | 'har';
 export interface ImportUnsupported {
   line: number;
   construct: string;
@@ -530,24 +531,27 @@ export interface ImportResultDto {
   kind: 'sel' | 'xml';
   content: string;
   unsupported: ImportUnsupported[];
-  stats: Record<string, number | string>;
+  stats: Record<string, number | string | Record<string, number>>;
   loadConfig?: Record<string, number | boolean>; // JMeter: first ThreadGroup as gatf-config load keys
+  variables?: Record<string, string>; // Postman: collection variables for gatf-config globalVariables
   saved?: boolean;
   savedPath?: string;
   validation?: string;
   error?: string;
 }
 async function importSourceReq(
-  type: 'playwright' | 'jmeter',
+  type: ImportType,
   fileName: string,
   save: boolean,
   source: string,
+  filter?: string,
 ): Promise<ImportResultDto> {
   const qs =
     '/import?type=' +
     encodeURIComponent(type) +
     (fileName ? '&fileName=' + encodeURIComponent(fileName) : '') +
-    (save ? '&save=true' : '');
+    (save ? '&save=true' : '') +
+    (filter ? '&filter=' + encodeURIComponent(filter) : '');
   const r = await fetch(withTok(qs), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' },
@@ -801,9 +805,9 @@ export const api = {
   pauseEl: (pause: boolean) => runPut(pause ? 'pauseElSearch' : 'unPauseElSearch'),
   restartSubtest: () => runPut('restartSubtest'),
   stopRun: () => runPut('stop'),
-  // ---- Playwright/JMeter importer (Phase 11) ----
-  importSource: (type: 'playwright' | 'jmeter', fileName: string, save: boolean, source: string) =>
-    importSourceReq(type, fileName, save, source),
+  // ---- test importers (Phase 11 / Q2) ----
+  importSource: (type: ImportType, fileName: string, save: boolean, source: string, filter?: string) =>
+    importSourceReq(type, fileName, save, source, filter),
   // ---- SPA crawler (G3) ----
   crawlStart: (b: CrawlStartBody) => crawlCall<{ sessionId?: string; error?: string }>('/crawl?action=start', 'POST', b),
   crawlStatus: (id: string) => crawlCall<CrawlStatus>('/crawl?action=status&sessionId=' + encodeURIComponent(id), 'GET'),

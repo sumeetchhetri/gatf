@@ -960,6 +960,9 @@ public class Command {
             try {
                 comd = new PluginCommand(cmd, cmdDetails, state);
             } catch (GatfSelCodeParseError e) {
+            	if(e.getCause()!=null && String.valueOf(e.getCause().getMessage()).startsWith("curl: ")) {
+            		throw e;   // Q2: a raw cURL line that failed to convert — keep the specific reason
+            	}
             	try {
             		 comd = new NlpExecSubTestCommand(cmd, cmdDetails, state);
 				} catch (Exception e2) {
