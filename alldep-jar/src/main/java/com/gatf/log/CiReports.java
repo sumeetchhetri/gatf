@@ -105,6 +105,12 @@ final class CiReports {
                     b.append("      <flakyFailure message=\"failed ").append(r.attempts.size() - 1)
                             .append(" time(s) before passing\"/>\n");
                 }
+                if (!r.attachments.isEmpty()) {
+                    // Q3: the Jenkins/GitLab JUnit attachment convention: [[ATTACHMENT|/abs/path]] in system-out
+                    b.append("      <system-out>");
+                    for (String a : r.attachments) b.append("[[ATTACHMENT|").append(xml(a)).append("]]\n");
+                    b.append("</system-out>\n");
+                }
                 b.append("    </testcase>\n");
             }
             b.append("  </testsuite>\n");
@@ -132,7 +138,8 @@ final class CiReports {
             b.append(i == 0 ? "\n" : ",\n").append("    {\"suite\": ").append(js(r.suite)).append(", \"name\": ").append(js(r.name))
                     .append(", \"title\": ").append(js(r.title)).append(", \"status\": ").append(js(st))
                     .append(", \"attempts\": ").append(r.attempts.size()).append(", \"durationMs\": ").append(r.millis)
-                    .append(", \"error\": ").append(r.last() == Status.FAILED ? js(r.error) : "null").append("}");
+                    .append(", \"error\": ").append(r.last() == Status.FAILED ? js(r.error) : "null")
+                    .append(", \"attachments\": ").append(jsArr(r.attachments)).append("}");
         }
         return b.append(recs.isEmpty() ? "]\n}\n" : "\n  ]\n}\n").toString();
     }
@@ -204,6 +211,12 @@ final class CiReports {
             }
         }
         return b.append('"').toString();
+    }
+
+    static String jsArr(List<String> l) {
+        StringBuilder b = new StringBuilder("[");
+        for (int i = 0; i < l.size(); i++) b.append(i == 0 ? "" : ", ").append(js(l.get(i)));
+        return b.append(']').toString();
     }
 
     /** GitHub workflow-command escaping (message part). */

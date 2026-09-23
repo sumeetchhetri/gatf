@@ -361,6 +361,8 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .rv-test-detail { max-width: 1000px; }
 .rv-test-status { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
 .rv-code-title { font-size: 13px; margin: 14px 0 6px; }
+.rv-shot { margin: 0 0 12px; }
+.rv-shot img { display: block; max-width: 100%; max-height: 480px; border: 1px solid var(--border); border-radius: var(--r-2, 6px); }
 .rv-details summary { cursor: pointer; color: var(--muted); margin: 10px 0 6px; }
 .rv-final-list { margin: 6px 0 0; padding-left: 18px; line-height: 1.8; }
 

@@ -3531,7 +3531,8 @@ public abstract class SeleniumTest {
 				// Streaming trace: functional UI runs only (not load, not multi-user). Read straight from
 				// config so no Command.java codegen change is needed. Never breaks browser init.
 				GatfExecutorConfig __cfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
-				if(__cfg!=null && __cfg.isEnableTrace() && !__cfg.isLoadTestingEnabled()
+				// Q3: traceMode decides whether this round traces (off / on / retain-on-failure / on-first-retry)
+				if(__cfg!=null && __cfg.captureTraceThisRun() && !__cfg.isLoadTestingEnabled()
 						&& (__cfg.getConcurrentUserSimulationNum()==null || __cfg.getConcurrentUserSimulationNum()<=1)
 						&& getSession()!=null && getSession().__trace__==null) {
 					String __sid = ((RemoteWebDriver)driver).getSessionId().toString();

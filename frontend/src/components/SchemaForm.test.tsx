@@ -39,6 +39,17 @@ describe('<SchemaForm>', () => {
     expect(onChange.mock.calls.at(-1)![0]).toMatchObject({ baseUrl: 'http://y' });
   });
 
+  it('renders fixed options as a select and emits the chosen option (Q3 traceMode)', () => {
+    const onChange = vi.fn();
+    const s: CfgSchema = { type: 'object', properties: { traceMode: { type: 'string', options: ['off', 'on', 'retain-on-failure'] } } };
+    render(<SchemaForm schema={s} value={{ traceMode: 'on' }} onChange={onChange} enums={{}} />);
+    const sel = screen.getByRole('combobox') as HTMLSelectElement;
+    expect(sel.value).toBe('on');
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual(['', 'off', 'on', 'retain-on-failure']);
+    fireEvent.change(sel, { target: { value: 'retain-on-failure' } });
+    expect(onChange.mock.calls.at(-1)![0]).toMatchObject({ traceMode: 'retain-on-failure' });
+  });
+
   it('calls onChange when a boolean is toggled', () => {
     const onChange = vi.fn();
     render(<SchemaForm schema={schema} value={value} onChange={onChange} enums={{}} />);

@@ -1169,14 +1169,27 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             String fileName = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + keykey.replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", fileName + ".html", res.getResult().isStatus() ? "SUCCESS" : "FAILED",
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
-                            consoleSelResult((String) retvals[0], keykey, null, res.getResult());
-                            if (dorep) {
-                                String __traceRel = null;
-                                if(sess.__trace__!=null) {
-                                    java.nio.file.Path __tzp = sess.__trace__.writeZip(new File(context.getOutDir().getAbsolutePath() + File.separator + path, fileName + "-trace.zip").toPath());
-                                    if(__tzp!=null) __traceRel = fileName + "-trace.zip";
-                                    sess.__trace__ = null; // one trace bundle per session
+                            // Q3: keep or drop the session's trace per traceMode (retain-on-failure drops passing scripts').
+                            // "Failed" = the script or any of its subtests failed. One trace bundle per session.
+                            String __traceRel = null, __traceAbs = null;
+                            if (dorep && sess.__trace__ != null) {
+                                boolean __failed = !res.getResult().isStatus();
+                                for (SeleniumTestResult __st : res.getSubTestResults().values()) {
+                                    if (__st != null && !__st.isStatus()) __failed = true;
                                 }
+                                if (context.getGatfExecutorConfig().keepTrace(__failed)) {
+                                    java.nio.file.Path __tzp = sess.__trace__.writeZip(new File(context.getOutDir().getAbsolutePath() + File.separator + path, fileName + "-trace.zip").toPath());
+                                    if(__tzp!=null) {
+                                        __traceRel = fileName + "-trace.zip";
+                                        __traceAbs = __tzp.toAbsolutePath().toString();
+                                    }
+                                } else {
+                                    sess.__trace__.discard();
+                                }
+                                sess.__trace__ = null;
+                            }
+                            consoleSelResult((String) retvals[0], keykey, null, res.getResult(), __traceAbs);
+                            if (dorep) {
                                 ReportHandler.doSeleniumTestReport(path, fileName, retvals, res.getResult(), context, __traceRel);
                                 if(!isLoadTestingEnabled) {
 	                                String prefix = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + counter;
@@ -1256,6 +1269,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             tot++;
                             ttot++;
                         }
+                    }
+                }
+                // Q3: a session whose trace was never written (reporting off, or no result) must not leak its working dir
+                for (SeleniumTestSession __s : sessions) {
+                    if (__s.__trace__ != null) {
+                        __s.__trace__.discard();
+                        __s.__trace__ = null;
                     }
                 }
                 
@@ -2083,6 +2103,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     private static void consoleSelResult(String selFile, String browserKey, String subtest, SeleniumTestResult res) {
+        consoleSelResult(selFile, browserKey, subtest, res, null);
+    }
+
+    /** Q3: {@code tracePath} = the kept trace.zip (absolute) or null; the failure screenshot is taken from the result. */
+    private static void consoleSelResult(String selFile, String browserKey, String subtest, SeleniumTestResult res, String tracePath) {
         if (!com.gatf.log.RunConsole.isActive()) return;
         boolean sub = subtest != null && !subtest.equals("-");
         String title = "[" + browserKey + "] \u203a " + selFile + (sub ? " \u203a " + subtest : "");
@@ -2101,8 +2126,13 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
         if (msg == null && res.getCause() != null) msg = String.valueOf(res.getCause().getMessage());
         String detail = res.getCause() != null ? org.apache.commons.lang3.exception.ExceptionUtils.getStackTrace(res.getCause()) : null;
+        java.util.List<String> att = new java.util.ArrayList<String>(2);
+        if (!res.isStatus() && res.getSubtestImg() != null && new File(res.getSubtestImg()).isFile()) {
+            att.add(new File(res.getSubtestImg()).getAbsolutePath());   // failure screenshot (taken by the step's failure path)
+        }
+        if (tracePath != null) att.add(tracePath);
         com.gatf.log.RunConsole.result(selFile, tname, title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
-                res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail);
+                res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail, att);
     }
 
     public static void main(String[] args) throws Exception {

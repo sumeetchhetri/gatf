@@ -177,7 +177,7 @@ final class BrowserDrivers {
 		// only when traceProtocol is bidi|hybrid (default cdp keeps today's behaviour). Local + Grid alike.
 		try {
 			GatfExecutorConfig __tcfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
-			if (__tcfg!=null && __tcfg.isEnableTrace() && caps instanceof org.openqa.selenium.MutableCapabilities) {
+			if (__tcfg!=null && __tcfg.captureTraceThisRun() && caps instanceof org.openqa.selenium.MutableCapabilities) {
 				String __tp = __tcfg.getTraceProtocol();
 				boolean __chromium = "chrome".equals(browserName) || "edge".equals(browserName);
 				if (!__chromium || "bidi".equals(__tp) || "hybrid".equals(__tp)) {

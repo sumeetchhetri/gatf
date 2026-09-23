@@ -144,6 +144,12 @@ public final class TraceRecorder implements AutoCloseable {
         try { browser.close(); } catch (Exception ignored) {}
     }
 
+    /** Q3: stop capture and delete the working dir without producing a bundle (retain-on-failure on a passing
+     *  script, or a session whose result was never reported). Safe to call more than once. */
+    public void discard() {
+        try { stop(); } finally { deleteTree(workDir); }
+    }
+
     /** Zip the working dir to {@code target} (streamed) and delete the working dir. */
     public Path writeZip(Path target) {
         stop();

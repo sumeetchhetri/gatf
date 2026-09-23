@@ -106,6 +106,17 @@ Each UI run can produce a `trace.zip` containing:
 
 It is captured over CDP or **WebDriver BiDi** (Chromium, Firefox and Edge) and opens in the built-in Trace Viewer, with a timeline synced to every tab.
 
+`traceMode` decides when a trace is captured and kept (it overrides the older `enableTrace` flag):
+
+| `traceMode` | Captures | Keeps |
+|---|---|---|
+| `off` | never | — |
+| `on` | every script | every trace |
+| `retain-on-failure` | every script | only scripts where the script or a subtest failed |
+| `on-first-retry` | only in retry round 1 (needs `seleniumScriptRetryCount` ≥ 1) | every trace it captured |
+
+When a step fails, its screenshot is shown in the test's report, next to the "Open in Trace Viewer" button.
+
 ### Reports and analysis
 - **HTML reports** per run, with pass/fail summary charts and full request/response detail per test case.
 - **PDF and CSV run reports** for UI (seleasy) suites, built with iText and written next to the HTML report as `…-RP-<timestamp>.pdf` / `.csv`. There is one results table per script (session, subtest, time, status, message). The PDF adds an error-details page per failure, with the stack trace and the failure screenshot.
@@ -222,7 +233,8 @@ Running GATF UI (seleasy) tests
 
   Each run starts a fresh file. The previous run's log is kept as `gatf.1.log.gz`, and the last 10 are retained.
 - **Flaky tests:** with `seleniumScriptRetryCount`, failed scripts are retried. A script that fails and then passes is reported as **flaky** (yellow), and it doesn't fail the run.
-- **CI reports:** `gatf-junit.xml` (JUnit XML; flaky tests carry `<flakyFailure>`) and `gatf-results.json` are written to the run's out dir. On GitHub Actions each failure is also an `::error` annotation, and each flaky test a `::warning`.
+- **Failure artifacts:** a failed line is followed by the paths of its screenshot and, if one was kept, its trace.
+- **CI reports:** `gatf-junit.xml` (JUnit XML; flaky tests carry `<flakyFailure>`) and `gatf-results.json` are written to the run's out dir. In the JUnit XML, a failure's screenshot and trace are attached with the `[[ATTACHMENT|path]]` convention that Jenkins and GitLab display. On GitHub Actions each failure is also an `::error` annotation, and each flaky test a `::warning`.
 - **Exit code:** `0` when every test passed or was flaky; `1` if any test failed, the run aborted, or the command line was invalid. The summary always prints, even when failures end the run with an exception.
 
 | Setting (`-D…`) | Default | Effect |

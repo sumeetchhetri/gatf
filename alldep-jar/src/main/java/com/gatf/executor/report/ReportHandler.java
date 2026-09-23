@@ -1425,12 +1425,29 @@ public class ReportHandler {
             sdata.put("logs", result.getLogs());
             sdata.put("status", result.isStatus());
             sdata.put("tracePath", tracePath);
+            sdata.put("screenshot", copyFailureScreenshot(result, getPath(resource, path), prefix));
             writeReportDataSidecar(filenm, sdata);
             writeReportHtmlRedirect(filenm);
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
+
+	/** Q3: copies a failed step's screenshot next to its report as {@code <prefix>-failure.png} (report-relative name,
+	 *  like tracePath) so the React viewer can show it. The original lives in the out dir under a random name.
+	 *  Returns null when there is none. Never throws: a missing screenshot must not lose the report. */
+	static String copyFailureScreenshot(SeleniumTestResult result, String reportDir, String prefix) {
+		try {
+			if (result == null || result.isStatus() || result.getSubtestImg() == null) return null;
+			File src = new File(result.getSubtestImg());
+			if (!src.isFile()) return null;
+			String name = prefix + "-failure.png";
+			java.nio.file.Files.copy(src.toPath(), new File(reportDir, name).toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+			return name;
+		} catch (Exception e) {
+			return null;
+		}
+	}
 
 	// Phase 3.x strangler: persist a report's data as a <basename>.data.json sidecar next to the
 	// generated HTML, so the React report viewer (/app) can render it without scraping the HTML.

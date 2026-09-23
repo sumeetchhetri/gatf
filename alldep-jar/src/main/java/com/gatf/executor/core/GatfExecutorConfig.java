@@ -90,6 +90,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	
 	// --- Trace recorder (streaming trace for functional UI runs; Phase 1) ---
 	private boolean enableTrace = false;
+	// Q3: when to capture/keep the trace bundle: off | on | retain-on-failure | on-first-retry.
+	// null/blank = legacy behaviour (enableTrace true -> on, false -> off). When set, it wins over enableTrace.
+	private String traceMode;
 	private String traceProtocol = "cdp";
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
@@ -466,6 +469,43 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public boolean isEnableTrace() { return enableTrace; }
 	public void setEnableTrace(boolean enableTrace) { this.enableTrace = enableTrace; }
+	public String getTraceMode() { return traceMode; }
+	public void setTraceMode(String traceMode) { this.traceMode = normalizeTraceMode(traceMode); }
+
+	public static final String[] TRACE_MODES = { "off", "on", "retain-on-failure", "on-first-retry" };
+
+	/** Q3: validates/normalises a traceMode value (blank -> null = legacy enableTrace). Unknown values are rejected
+	 *  when the config is loaded or saved, naming the valid ones, so a typo can't silently disable tracing. */
+	static String normalizeTraceMode(String v) {
+		if (v == null || v.trim().isEmpty()) return null;
+		String t = v.trim().toLowerCase(java.util.Locale.ROOT);
+		for (String m : TRACE_MODES) {
+			if (m.equals(t)) return t;
+		}
+		throw new IllegalArgumentException("Invalid traceMode '" + v + "' - expected one of: " + String.join(", ", TRACE_MODES));
+	}
+
+	/** Q3: the effective trace mode (traceMode if set, else enableTrace -> on/off). Not a bean property. Normalised
+	 *  here too, because a deserializer may write the field directly rather than through setTraceMode. */
+	public String effectiveTraceMode() {
+		String m = traceMode == null ? "" : traceMode.trim().toLowerCase(java.util.Locale.ROOT);
+		return !m.isEmpty() ? m : (enableTrace ? "on" : "off");
+	}
+
+	/** Q3: should the browser session opened in the current round start a trace? on-first-retry = only in the first
+	 *  retry round (retryCounter == 2: 1 = the normal round when retries are enabled, 2 = retry round 1). */
+	public boolean captureTraceThisRun() {
+		String m = effectiveTraceMode();
+		if ("off".equals(m)) return false;
+		if ("on-first-retry".equals(m)) return retryCounter == 2;
+		return true;
+	}
+
+	/** Q3: keep (zip into the report) a captured trace for a script that {@code failed}? retain-on-failure drops
+	 *  passing scripts' traces; on and on-first-retry keep everything they captured. */
+	public boolean keepTrace(boolean failed) {
+		return !"retain-on-failure".equals(effectiveTraceMode()) || failed;
+	}
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
 	public boolean isTraceNetwork() { return traceNetwork; }

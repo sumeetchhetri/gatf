@@ -80,8 +80,8 @@ function Scalar({
     );
   }
   // string
-  if (node.enumVar) {
-    const opts = enums[node.enumVar] ?? [];
+  if (node.enumVar || node.options) {
+    const opts = node.options ?? enums[node.enumVar as string] ?? [];
     const cur = value == null ? '' : String(value);
     const list = cur && !opts.includes(cur) ? [cur, ...opts] : opts;
     return (

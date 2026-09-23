@@ -69,6 +69,8 @@ public final class RunConsole {
         final List<Status> attempts = new ArrayList<Status>();
         long millis;
         String error, detail;
+        // Q3: files for this test's LAST attempt (failure screenshot, kept trace.zip); absolute paths
+        final List<String> attachments = new ArrayList<String>();
         Rec(String suite, String name, String title) { this.suite = suite; this.name = name; this.title = title; }
         Status last() { return attempts.get(attempts.size() - 1); }
         boolean flaky() { return last() == Status.PASSED && attempts.contains(Status.FAILED); }
@@ -123,13 +125,20 @@ public final class RunConsole {
      * testsuite/classname), {@code name} = the test within it (JUnit testcase). Null suite/name derive from the title.
      */
     public static void result(String suite, String name, String title, Status status, long millis, String error, String detail) {
+        result(suite, name, title, status, millis, error, detail, null);
+    }
+
+    /** As above, plus {@code attachments}: files for this attempt (failure screenshot, trace.zip), absolute paths. */
+    public static void result(String suite, String name, String title, Status status, long millis, String error, String detail,
+            List<String> attachments) {
         if (!active) return;
         (status == Status.PASSED ? passed : status == Status.FAILED ? failed : skipped).increment();
         if (!perTest) return;
-        line(suite, name, title, status, millis, error, detail);
+        line(suite, name, title, status, millis, error, detail, attachments);
     }
 
-    private static synchronized void line(String suite, String name, String title, Status status, long millis, String error, String detail) {
+    private static synchronized void line(String suite, String name, String title, Status status, long millis, String error, String detail,
+            List<String> attachments) {
         String key = (suite == null ? "" : suite) + '\u0000' + title;
         Rec r = recs.get(key);
         boolean retry = r != null;
@@ -143,6 +152,8 @@ public final class RunConsole {
         r.millis = millis;
         r.error = error;
         r.detail = detail;
+        r.attachments.clear();
+        if (attachments != null) r.attachments.addAll(attachments);
         if (!unicode) title = title.replace('\u203a', '>');
         int n = ++seq;
         if (status == Status.FAILED) {
@@ -160,6 +171,12 @@ public final class RunConsole {
         if (status == Status.FAILED && error != null && !error.trim().isEmpty()) {
             o.println("       " + red(firstLine(error)));
         }
+        if (status == Status.FAILED) {
+            for (String a : r.attachments) {
+                o.println("       " + dim((a.endsWith(".zip") ? "trace:      " : "screenshot: ") + a));
+            }
+        }
+        if (!r.attachments.isEmpty()) LOG.info("  attachments: {}", r.attachments);
     }
 
     /** A selenium retry round is starting (seleniumScriptRetryCount). */

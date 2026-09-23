@@ -66,6 +66,8 @@ export interface SeleniumTestData {
   logs: unknown;
   status: boolean;
   tracePath: string | null;
+  // Q3: report-relative failure screenshot (<report>-failure.png); absent on passing tests and older reports
+  screenshot?: string | null;
 }
 export interface SeleniumFinalData {
   type: 'selenium-final';

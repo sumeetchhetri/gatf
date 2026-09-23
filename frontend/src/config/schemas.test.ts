@@ -27,6 +27,11 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(Object.keys(props).length).toBeGreaterThan(40);
   });
 
+  it('executor schema exposes traceMode with exactly the values the backend accepts', () => {
+    // must match GatfExecutorConfig.TRACE_MODES; the backend rejects anything else when the config is saved
+    expect(executorSchema.properties!.traceMode.options).toEqual(['off', 'on', 'retain-on-failure', 'on-first-retry']);
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

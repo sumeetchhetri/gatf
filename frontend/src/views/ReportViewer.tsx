@@ -15,7 +15,7 @@
 */
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { reportSidecarUrl } from '../util';
+import { reportHtmlUrl, reportSidecarUrl } from '../util';
 import type {
   ReportData,
   SeleniumSummaryData,
@@ -124,18 +124,19 @@ function SummaryView({
 
 function TestView({
   data,
+  baseDir,
   onOpenTrace,
 }: {
   data: SeleniumTestData;
+  baseDir: string;
   onOpenTrace: (url: string) => void;
 }) {
   const logs =
     typeof data.logs === 'string' ? data.logs : data.logs == null ? '' : JSON.stringify(data.logs, null, 2);
-  const traceUrl = data.tracePath
-    ? data.tracePath.startsWith('/')
-      ? data.tracePath
-      : '/reports/' + data.tracePath
-    : null;
+  // tracePath / screenshot are report-relative names (the report lives in the run's session folder, so they must
+  // resolve against the report's own folder; '/reports/' + name missed that folder and 404'd).
+  const traceUrl = data.tracePath ? reportHtmlUrl(data.tracePath, baseDir) : null;
+  const shotUrl = data.screenshot ? reportHtmlUrl(data.screenshot, baseDir) : null;
   return (
     <div className="rv-test-detail">
       <div className="rv-test-status">
@@ -148,6 +149,15 @@ function TestView({
           </button>
         )}
       </div>
+
+      {shotUrl && (
+        <figure className="rv-shot">
+          <figcaption className="rv-code-title">Failure screenshot</figcaption>
+          <a href={shotUrl} target="_blank" rel="noreferrer">
+            <img src={shotUrl} alt="Screenshot taken when the step failed" />
+          </a>
+        </figure>
+      )}
 
       <h3 className="rv-code-title mono">{data.selFileName}</h3>
       <pre className="body-pre">{data.selCode}</pre>
@@ -275,7 +285,9 @@ export default function ReportViewer({
           {data.type === 'selenium-summary' && (
             <SummaryView data={data as SeleniumSummaryData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
-          {data.type === 'selenium-test' && <TestView data={data as SeleniumTestData} onOpenTrace={onOpenTrace} />}
+          {data.type === 'selenium-test' && (
+            <TestView data={data as SeleniumTestData} baseDir={baseDir} onOpenTrace={onOpenTrace} />
+          )}
           {data.type === 'selenium-final' && (
             <FinalView data={data as SeleniumFinalData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}

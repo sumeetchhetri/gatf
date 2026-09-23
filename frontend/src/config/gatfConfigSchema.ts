@@ -23,6 +23,9 @@ export interface CfgSchema {
   types?: { key: CfgSchema; value: CfgSchema };
   label?: { type: string; value: string; border?: boolean };
   enumVar?: string;
+  // Q3: a fixed option list rendered as a select (like enumVar). Deliberately NOT the legacy `enum` key: the
+  // transcribed testcase schema carries `enum` lists (e.g. method: GET/POST/PUT/DELETE) that were never enforced.
+  options?: string[];
   default?: string;
   defaultIndex?: number;
   required?: boolean;
@@ -222,6 +225,31 @@ export const executorSchema: CfgSchema = {
     "seleniumScriptRetryCount": {
       "type": "integer",
       "required": false
+    },
+    // Q3: trace capture. traceMode wins over the legacy enableTrace flag when set (blank = use enableTrace).
+    "traceMode": {
+      "label": {
+        "type": "section",
+        "value": "Trace (UI runs)"
+      },
+      "type": "string",
+      "options": ["off", "on", "retain-on-failure", "on-first-retry"]
+    },
+    "traceProtocol": {
+      "type": "string",
+      "options": ["cdp", "bidi", "hybrid"]
+    },
+    "traceNetwork": {
+      "type": "boolean"
+    },
+    "traceConsole": {
+      "type": "boolean"
+    },
+    "traceSnapshots": {
+      "type": "boolean"
+    },
+    "traceVideo": {
+      "type": "boolean"
     },
     "seleniumScripts": {
       "type": "array",

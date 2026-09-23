@@ -83,6 +83,17 @@ class CiReportsTest {
     }
 
     @Test
+    void failureAttachmentsGoToJUnitSystemOutAndJson() throws Exception {
+        Rec r = rec("ui/login.sel", "[chrome]", "Element not found", Status.FAILED);
+        r.attachments.add("/w/out/shot.png");
+        r.attachments.add("/w/out/1/login-trace.zip");
+        String xml = CiReports.junitXml(List.of(r), 1000);
+        assertThat(xml).contains("<system-out>[[ATTACHMENT|/w/out/shot.png]]\n[[ATTACHMENT|/w/out/1/login-trace.zip]]\n</system-out>");
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        assertThat(CiReports.json(List.of(r), 1000)).contains("\"attachments\": [\"/w/out/shot.png\", \"/w/out/1/login-trace.zip\"]");
+    }
+
+    @Test
     void githubAnnotationsEscapeAndCoverFailedAndFlaky() {
         List<String> a = CiReports.githubAnnotations(RECS);
         assertThat(a).hasSize(2);
