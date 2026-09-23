@@ -51,6 +51,7 @@ public final class RunConsole {
     private static final Logger LOG = LogManager.getLogger("gatf.run");
 
     private static volatile boolean active = false;
+    private static volatile String filterNote;   // Q5: e.g. "--tag @smoke", shown in the run header
     private static volatile boolean perTest = true;
     private static String reportDir = null;
     private static long startNanos;
@@ -94,6 +95,12 @@ public final class RunConsole {
 
     public static boolean isActive() { return active; }
 
+    /** True once any test result has been reported in this run. */
+    public static boolean hasResults() { return passed.sum() + failed.sum() + skipped.sum() > 0; }
+
+    /** Q5: the active test filter, shown in the run header (null = none). */
+    public static void setFilterNote(String note) { filterNote = note; }
+
     /** True when per-test lines/log entries are wanted, so callers can skip building costly detail strings. */
     public static boolean wantsDetail() { return active && perTest; }
 
@@ -105,7 +112,8 @@ public final class RunConsole {
         PrintStream o = GatfLogging.out();
         o.println();
         o.println(dim("Running GATF " + kind + (workers > 1 ? " tests using " + workers + " workers" : " tests")
-                + (perTestLines ? "" : " (load / multi-user run: per-test lines suppressed, see the report)")));
+                + (perTestLines ? "" : " (load / multi-user run: per-test lines suppressed, see the report)")
+                + (filterNote != null ? ", filter: " + filterNote : "")));
         o.println();
         LOG.info("suite start: kind={} outDir={} workers={} perTestLines={}", kind, outDir, workers, perTestLines);
     }
@@ -240,6 +248,7 @@ public final class RunConsole {
 
     /** The run aborted with an exception before completing. */
     public static synchronized void abort(Throwable t) {
+        active = false;
         LOG.error("run aborted", t);
         PrintStream o = GatfLogging.out();
         o.println();

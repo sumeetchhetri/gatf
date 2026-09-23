@@ -546,6 +546,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
         
         configuration.setJavaVersion(System.getProperty("java.version"));
+        RunOverrides.apply(configuration);   // Q7: `gatf test` --trace / --retries / --workers (no-op otherwise)
         
         try {
             doExecute(configuration, null);
@@ -696,6 +697,20 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 			}
         }
         
+        if (TestFilter.isActive() && configuration.getSeleniumScripts() != null && configuration.getSeleniumScripts().length > 0) {
+            // Q5: `gatf test --grep/--tag` selects whole scripts by path + the @tags in their leading // comments
+            List<String> keep = new ArrayList<String>();
+            for (String s : configuration.getSeleniumScripts()) {
+                if (TestFilter.active().matches(TestFilter.selTitle(s, TestFilter.selHeaderTags(selHeaderLines(context, configuration, s))))) {
+                    keep.add(s);
+                }
+            }
+            if (keep.isEmpty()) {
+                throw new RuntimeException("No UI scripts match " + TestFilter.active().describe());
+            }
+            configuration.setSeleniumScripts(keep.toArray(new String[keep.size()]));
+        }
+
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
         	throw new RuntimeException("Please provide Selenium scripts for execution");
         }
@@ -1388,6 +1403,18 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         Set<String> relativeFileNames = new HashSet<String>();
         List<TestCase> allTestCases = getAllTestCases(context, relativeFileNames, files);
+        if (TestFilter.isActive()) {
+            // Q5: `gatf test --grep/--tag` selection; relatedTestName dependencies of selected tests are kept
+            allTestCases = TestFilter.active().select(allTestCases,
+                    tc -> TestFilter.apiTitle(tc.getSourcefileName(), tc.getName(), tc.getDescription()),
+                    TestCase::getName, TestCase::getRelatedTestName);
+            if (allTestCases.isEmpty()) {
+                throw new RuntimeException("No API tests match " + TestFilter.active().describe());
+            }
+            Set<String> keptFiles = new HashSet<String>();
+            for (TestCase tc : allTestCases) keptFiles.add(tc.getSourcefileName());
+            relativeFileNames.retainAll(keptFiles);   // no empty groups in the report
+        }
 
         List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
         Map<String, Set<String>> relTsts = new HashMap<String, Set<String>>();
@@ -2083,6 +2110,24 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         } catch (Exception e) {
             logger.error(ExceptionUtils.getStackTrace(e));
         }
+    }
+
+    /** Q5: the first lines of a configured .sel script (for its header tags); empty if the file can't be found/read. */
+    private static List<String> selHeaderLines(AcceptanceTestContext context, GatfExecutorConfig configuration, String script) {
+        List<File> candidates = new ArrayList<File>();
+        candidates.add(new File(script));
+        if (configuration.getTestCaseDir() != null) candidates.add(new File(context.getResourceFile(configuration.getTestCaseDir()), script));
+        candidates.add(context.getResourceFile(script));
+        for (File f : candidates) {
+            if (f != null && f.isFile()) {
+                try (java.util.stream.Stream<String> lines = java.nio.file.Files.lines(f.toPath(), java.nio.charset.StandardCharsets.UTF_8)) {
+                    return lines.limit(60).collect(java.util.stream.Collectors.toList());
+                } catch (Exception e) {
+                    return java.util.Collections.emptyList();   // unreadable (e.g. not UTF-8): no header tags
+                }
+            }
+        }
+        return java.util.Collections.emptyList();
     }
 
     // ---- CLI reporter hooks (no-ops unless GatfCli activated RunConsole) --------------------------------------------

@@ -18,6 +18,8 @@ package com.gatf.generator.core;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
+import com.gatf.executor.core.RunOverrides;
+import com.gatf.executor.core.TestFilter;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.distributed.DistributedGatfListener;
 import com.gatf.log.GatfLogging;
@@ -79,21 +81,27 @@ public final class GatfCli {
     		}
     		else if(args.length>1 && (args[0].equals("-executor") || args[0].equals("-selenium")) && !args[1].trim().isEmpty())
     		{
-    			// quiet console + detailed log file + pass/fail reporter; must precede log4j initialisation
-    			GatfLogging.initForRun();
-    			RunConsole.activate();
+    			exitCode = runSuite(args);
+    		}
+    		else if(args[0].equals("test"))
+    		{
+    			// Q7: `gatf test [config] [--grep ..] [--tag ..] [--reporter ..] [--trace ..] [--retries N] [--workers N]`
+    			TestCommandArgs t = null;
     			try {
-    				GatfTestCaseExecutorUtil.main(args);
-    				// Playwright-style exit status: non-zero when any test failed
-    				if (RunConsole.finish() > 0) exitCode = 1;
-				} catch (Exception e) {
-					// A selenium run with failed scripts ends by throwing GatfRunTimeErrors, and that is not an abort.
-					// Always print the summary and write the CI reports. Report "aborted" only when no test failure
-					// explains the exception.
-					if (RunConsole.finish() == 0) RunConsole.abort(e);
-					exitCode = 1;
-				}
-    			
+    				t = TestCommandArgs.parse(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")));
+    				TestFilter f = new TestFilter(t.grep, t.grepInvert, t.tags);   // invalid regex -> IllegalArgumentException
+    				RunOverrides.set(t.traceMode, t.retries, t.workers);          // invalid --trace -> IllegalArgumentException
+    				TestFilter.activate(f);
+    				RunConsole.setFilterNote(f.isEmpty() ? null : f.describe());
+    				if (t.reporters != null) System.setProperty("gatf.reporters", t.reporters);
+    			} catch (IllegalArgumentException e) {
+    				System.err.println("gatf test: " + e.getMessage());
+    				t = null;
+    				exitCode = 1;
+    			}
+    			if (t != null) {
+    				exitCode = runSuite(new String[] { "-executor", t.config });
+    			}
     		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
@@ -118,6 +126,7 @@ public final class GatfCli {
     	
     	if(showHelp) {
     		System.out.println("Invalid invocation - valid invocation options are, \n" +
+					"java -jar gatf-plugin-{version}.jar " + TestCommandArgs.USAGE.substring("gatf ".length()).replace("\n", "\n    ") + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
@@ -127,5 +136,27 @@ public final class GatfCli {
     	}
     	
 		System.exit(showHelp ? 1 : exitCode);   // non-zero on invalid usage, an aborted run, or any failed test
+    }
+
+    /**
+     * Runs an API or UI suite with the CLI reporter: quiet console, a detailed log file, CI reports, and an exit code
+     * of 1 when any test failed or the run aborted. {@code args} = {"-executor"|"-selenium", config}.
+     */
+    private static int runSuite(String[] args) {
+    	// must precede log4j initialisation
+    	GatfLogging.initForRun();
+    	RunConsole.activate();
+    	try {
+    		GatfTestCaseExecutorUtil.main(args);
+    		return RunConsole.finish() > 0 ? 1 : 0;
+    	} catch (Throwable e) {
+    		// Throwable, not Exception: execute() wraps every failure in an AssertionError, so a UI run whose scripts
+    		// failed (GatfRunTimeErrors) used to escape here with no summary and no CI reports.
+    		Throwable cause = (e instanceof AssertionError && e.getCause() != null) ? e.getCause() : e;
+    		// Failed tests explain the exception: print the summary, not "aborted". Nothing ran (e.g. no test matched the
+    		// filter, or the config failed to load): just the reason.
+    		if (!RunConsole.hasResults() || RunConsole.finish() == 0) RunConsole.abort(cause);
+    		return 1;
+    	}
     }
 }

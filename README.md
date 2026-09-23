@@ -157,8 +157,8 @@ irm https://github.com/sumeetchhetri/gatf/releases/latest/download/install.ps1 |
 ```sh
 gatf ui                                  # web console → http://127.0.0.1:9080/  (project = current dir)
 gatf ui 9080 ./sample-project            # ...or point it at a project folder
-gatf -executor gatf-config.xml           # run the API suite from the CLI
-gatf -selenium gatf-config.xml           # run the UI (seleasy) suite from the CLI
+gatf test                                # run the suite in ./gatf-config.json (or .xml) from the CLI
+gatf test --tag smoke                    # ...only tests tagged @smoke
 ```
 Without the installer, replace `gatf` with `java -jar gatf-alldep-jar-<version>.jar`, and `gatf ui` with `-configtool 9080 127.0.0.1 .`.
 
@@ -192,8 +192,8 @@ goto https://example.com/login
 | Command | What it does |
 |---|---|
 | `gatf ui [port] [dir]` | Web console: config, test files, editor, recorder, crawler, importer, execution, reports, traces, debugger. Default port 9080; bind host via `GATF_UI_HOST` |
-| `gatf -executor <config>` | Run the API suite |
-| `gatf -selenium <config>` | Run the UI (seleasy) suite |
+| `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
+| `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
@@ -201,6 +201,30 @@ goto https://example.com/login
 | `gatf version` | Print the installed version |
 
 JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=debug"`).
+
+### `gatf test` options
+
+| Option | Effect |
+|---|---|
+| `--grep RE` / `-g RE` | Run only tests whose title matches the regex (repeatable; any match) |
+| `--grep-invert RE` | Skip tests whose title matches (repeatable; wins over `--grep`) |
+| `--tag T` / `-t T` | Run only tests tagged `@T` (repeatable; combined with `--grep` as OR) |
+| `--reporter junit,json,github` | CI reports to write (`none` to disable) |
+| `--trace MODE` | Override `traceMode`: `off`, `on`, `retain-on-failure`, `on-first-retry` |
+| `--retries N` | Override `seleniumScriptRetryCount` |
+| `--workers N` / `-j N` | Override `numConcurrentExecutions` |
+
+Both `--opt value` and `--opt=value` work. If nothing matches, the run stops with `No API tests match …` or `No UI scripts match …` and exit code 1.
+
+**Titles and tags.** Filters match a test's title:
+- **API test:** `<file> › <name>`, plus any `@tags` in its description. A tag can also go in the name itself, e.g. `List users @smoke`.
+- **UI script:** its path, plus the `@tags` in the `//` comment lines at the top of the `.sel` file:
+  ```
+  // Checkout happy path @smoke @checkout
+  open chrome
+  ```
+  A script's subtests always run together.
+- **Dependencies:** an API test's `relatedTestName` dependency is included automatically. For chains that capture values (e.g. a login token), tag the whole chain, or select it with `--grep <file>`.
 
 ## Console output, logs and exit codes
 
@@ -261,7 +285,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
-      - run: java -jar gatf-alldep-jar-<version>.jar -selenium gatf-config.xml   # fails the job on any failed test
+      - run: java -jar gatf-alldep-jar-<version>.jar test gatf-config.xml --reporter junit,json,github   # fails the job on any failed test
         env: { SELENIUM_REMOTE_URL: 'http://localhost:4444' }
       - uses: actions/upload-artifact@v4
         if: always()
