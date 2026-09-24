@@ -68,6 +68,28 @@ export interface SeleniumTestData {
   tracePath: string | null;
   // Q3: report-relative failure screenshot (<report>-failure.png); absent on passing tests and older reports
   screenshot?: string | null;
+  // Q9/Q10: performance budgets + passive security findings from the script's trace
+  checks?: TraceChecks | null;
+}
+export interface BudgetResult {
+  metric: string;
+  budget: string;
+  actual: number | null;
+  display: string | null;
+  outcome: 'pass' | 'breach' | 'not_measured';
+  message: string;
+}
+export interface SecurityFinding {
+  severity: 'high' | 'medium' | 'low' | string;
+  rule: string;
+  page: string;
+  url: string | null;
+  message: string;
+}
+export interface TraceChecks {
+  budgets: BudgetResult[];
+  security: SecurityFinding[] | null; // null = security checks off
+  failure: string | null;
 }
 export interface SeleniumFinalData {
   type: 'selenium-final';

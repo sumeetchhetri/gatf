@@ -124,6 +124,18 @@ It is captured over CDP or **WebDriver BiDi** (Chromium, Firefox and Edge) and o
 
 When a step fails, its screenshot is shown in the test's report, next to the "Open in Trace Viewer" button.
 
+**Performance budgets and security checks** run over each captured trace; results appear in the test's report and in `checks.json` inside the trace.
+- **Budgets:** set `perfBudgets` in the config (e.g. `lcp<2500, requests<80, jsheap<50mb`) or per script in its leading comments (`// @budget lcp<2000 transfer<2mb`). A script budget overrides the config one for the same metric. A breach fails the script with the measured value.
+  - Metrics for the page open at the end of the script: `lcp`, `fcp`, `ttfb`, `dcl`, `load` (ms) and `cls`.
+  - Metrics over the whole script: `jsheap`, `transfer` (b/kb/mb), `requests`, `failedRequests` and `consoleErrors`.
+  - A metric the browser didn't report is shown as "not measured"; it doesn't fail the script.
+- **Passive security checks** (`securityChecks`: `report` default, `fail` = fail on medium or high, `off`):
+  - HTML pages: missing CSP, HSTS, nosniff, clickjacking protection or Referrer-Policy, and server-version disclosure.
+  - First-party cookies without Secure or HttpOnly, and `SameSite=None` without Secure.
+  - Mixed content, wildcard CORS with credentials, and CSP violations in the console.
+
+  Findings are listed per page. Nothing extra is sent to the site.
+
 ### Reports and analysis
 - **HTML reports** per run, with pass/fail summary charts and full request/response detail per test case.
 - **PDF and CSV run reports** for UI (seleasy) suites, built with iText and written next to the HTML report as `…-RP-<timestamp>.pdf` / `.csv`. There is one results table per script (session, subtest, time, status, message). The PDF adds an error-details page per failure, with the stack trace and the failure screenshot.

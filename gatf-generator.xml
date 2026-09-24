@@ -1,0 +1,7 @@
+<configuration>
+  <enabled>false</enabled>
+  <overrideSecure>false</overrideSecure>
+  <useSoapClient>false</useSoapClient>
+  <postmanCollectionVersion>0</postmanCollectionVersion>
+  <debugEnabled>false</debugEnabled>
+</configuration>

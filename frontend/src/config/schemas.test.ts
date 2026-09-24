@@ -37,6 +37,11 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.browserApiSession.options).toEqual(['sync', 'send', 'off']);
   });
 
+  it('executor schema exposes securityChecks with exactly the values the backend accepts', () => {
+    // must match TraceChecks.SECURITY_MODES
+    expect(executorSchema.properties!.securityChecks.options).toEqual(['report', 'fail', 'off']);
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

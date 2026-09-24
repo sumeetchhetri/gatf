@@ -1177,6 +1177,30 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 tim = parts[0] + "." + (parts[1].length() > 3 ? parts[1].substring(0, 3) : parts[1]);
                             }
                             tim += "s";
+                            // Q9/Q10: budgets + passive security checks over the session's (stopped) trace, before the
+                            // result is summarised and before the keep/discard decision (a breach keeps the trace)
+                            if (dorep && sess.__trace__ != null) {
+                                try {
+                                    com.gatf.selenium.checks.TraceChecks.Report __chk = com.gatf.selenium.checks.TraceChecks.run(
+                                            sess.__trace__.workDir(), context.getGatfExecutorConfig().getPerfBudgets(),
+                                            java.util.Arrays.asList(String.valueOf(retvals[1]).split("\n", 81)),
+                                            context.getGatfExecutorConfig().getSecurityChecks());
+                                    if (__chk != null) {
+                                        res.getResult().setChecks(__chk.toMap());
+                                        if (__chk.failure() != null) res.getResult().failWith(__chk.failure());
+                                        org.apache.logging.log4j.LogManager.getLogger(GatfTestCaseExecutorUtil.class)
+                                                .info("{} [{}]: {}", retvals[0], keykey, __chk.summary());
+                                    }
+                                } catch (Exception __ce) {
+                                    org.apache.logging.log4j.LogManager.getLogger(GatfTestCaseExecutorUtil.class)
+                                            .warn("budget/security checks failed for {}: {}", retvals[0], __ce.toString());
+                                }
+                            } else if (dorep && res.getResult() != null && !checksWarned
+                                    && context.getGatfExecutorConfig().getPerfBudgets() != null) {
+                                checksWarned = true;
+                                org.apache.logging.log4j.LogManager.getLogger(GatfTestCaseExecutorUtil.class)
+                                        .warn("perfBudgets are set but no trace was captured for {} - budgets need traceMode on or retain-on-failure (Chromium or BiDi browsers)", retvals[0]);
+                            }
                             String msg = "";
                             if(res.getResult().getLogs()!=null && res.getResult().getLogs().get("gatf")!=null && res.getResult().getLogs().get("gatf").getAll().size()>0) {
                             	msg = res.getResult().getLogs().get("gatf").getAll().get(0).getMessage();
@@ -2111,6 +2135,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             logger.error(ExceptionUtils.getStackTrace(e));
         }
     }
+
+    /** Q9: warn once per JVM when budgets are configured but a script ran without a trace. */
+    private static volatile boolean checksWarned;
 
     /** Q5: the first lines of a configured .sel script (for its header tags); empty if the file can't be found/read. */
     private static List<String> selHeaderLines(AcceptanceTestContext context, GatfExecutorConfig configuration, String script) {

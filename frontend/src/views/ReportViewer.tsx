@@ -15,6 +15,7 @@
 */
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import TraceChecksPanel from '../components/TraceChecksPanel';
 import { reportHtmlUrl, reportSidecarUrl } from '../util';
 import type {
   ReportData,
@@ -158,6 +159,8 @@ function TestView({
           </a>
         </figure>
       )}
+
+      {data.checks && <TraceChecksPanel checks={data.checks} />}
 
       <h3 className="rv-code-title mono">{data.selFileName}</h3>
       <pre className="body-pre">{data.selCode}</pre>

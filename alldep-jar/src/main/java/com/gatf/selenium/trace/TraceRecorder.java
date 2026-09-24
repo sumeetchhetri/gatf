@@ -106,6 +106,11 @@ public final class TraceRecorder implements AutoCloseable {
         return r;
     }
 
+    /** Q9/Q10: the streamed working directory (valid until {@link #writeZip} / {@link #discard}). */
+    public Path workDir() {
+        return workDir;
+    }
+
     public void event(String type, String name, String detail) {
         if (timeline != null) timeline.event(type, name, detail);
     }

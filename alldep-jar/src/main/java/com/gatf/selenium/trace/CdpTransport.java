@@ -255,6 +255,10 @@ public final class CdpTransport implements BrowserControl {
     public String readWebVitals() {
         try {
             if (driver instanceof JavascriptExecutor) {
+                try {   // Q9: async script so LCP/CLS (observer-only entries) are included
+                    Object a = ((JavascriptExecutor) driver).executeAsyncScript(WebVitals.ASYNC_JS);
+                    if (a != null) return String.valueOf(a);
+                } catch (Exception ignored) {}
                 Object r = ((JavascriptExecutor) driver).executeScript(VITALS_JS);
                 return r == null ? null : String.valueOf(r);
             }

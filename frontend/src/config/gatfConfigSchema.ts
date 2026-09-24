@@ -251,6 +251,15 @@ export const executorSchema: CfgSchema = {
     "traceVideo": {
       "type": "boolean"
     },
+    // Q9: e.g. "lcp<2500, requests<80, jsheap<50mb" - evaluated from each UI script's trace; a breach fails the script
+    "perfBudgets": {
+      "type": "string"
+    },
+    // Q10: passive security checks over each UI script's trace (report = list findings, fail = fail on medium+)
+    "securityChecks": {
+      "type": "string",
+      "options": ["report", "fail", "off"]
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

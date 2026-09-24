@@ -96,6 +96,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private String traceProtocol = "cdp";
 	// Q8: api/curl plugin calls from a UI script share the browser session: sync (default) | send | off.
 	private String browserApiSession;
+	// Q9: performance budgets for UI scripts, e.g. "lcp<2500, requests<80, jsheap<50mb" (needs a captured trace)
+	private String perfBudgets;
+	// Q10: passive security checks over each UI script's trace: report (default) | fail | off
+	private String securityChecks;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -508,6 +512,13 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public boolean keepTrace(boolean failed) {
 		return !"retain-on-failure".equals(effectiveTraceMode()) || failed;
 	}
+	public String getPerfBudgets() { return perfBudgets; }
+	public void setPerfBudgets(String perfBudgets) {
+		com.gatf.selenium.checks.PerfBudget.parse(perfBudgets);   // rejects unknown metrics / bad units at load
+		this.perfBudgets = perfBudgets == null || perfBudgets.trim().isEmpty() ? null : perfBudgets.trim();
+	}
+	public String getSecurityChecks() { return securityChecks; }
+	public void setSecurityChecks(String securityChecks) { this.securityChecks = com.gatf.selenium.checks.TraceChecks.normalizeSecurityMode(securityChecks); }
 	public String getBrowserApiSession() { return browserApiSession; }
 	public void setBrowserApiSession(String browserApiSession) { this.browserApiSession = SessionBridge.normalizeMode(browserApiSession); }
 	public String getTraceProtocol() { return traceProtocol; }

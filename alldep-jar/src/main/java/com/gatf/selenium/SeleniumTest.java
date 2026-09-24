@@ -1111,6 +1111,28 @@ public abstract class SeleniumTest {
 
 		private Map<String, Object[]> internalTestRes = new HashMap<String, Object[]>();
 
+		/** Q9/Q10: budget + security results from the trace (report sidecar); null when not checked. */
+		private transient Map<String, Object> checks;
+
+		public Map<String, Object> getChecks() {
+			return checks;
+		}
+		public void setChecks(Map<String, Object> checks) {
+			this.checks = checks;
+		}
+		/** Q9/Q10: fail an otherwise finished script (budget breach, security findings); the message leads its logs. */
+		public void failWith(String message) {
+			this.status = false;
+			if (this.cause == null) this.cause = new RuntimeException(message);
+			List<LogEntry> entries = new ArrayList<LogEntry>();
+			entries.add(new LogEntry(Level.ALL, new Date().getTime(), message));
+			SerializableLogEntries prev = this.logs.get("gatf");
+			if (prev != null) {
+				for (SerializableLogEntry e : prev.getAll()) entries.add(new LogEntry(e.getLevel(), e.getTimestamp(), e.getMessage()));
+			}
+			this.logs.put("gatf", new SerializableLogEntries(entries));
+		}
+
 		public Throwable getCause() {
 			return cause;
 		}

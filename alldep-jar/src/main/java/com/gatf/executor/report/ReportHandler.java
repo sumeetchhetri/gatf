@@ -1426,6 +1426,7 @@ public class ReportHandler {
             sdata.put("status", result.isStatus());
             sdata.put("tracePath", tracePath);
             sdata.put("screenshot", copyFailureScreenshot(result, getPath(resource, path), prefix));
+            if (result.getChecks() != null) sdata.put("checks", result.getChecks());   // Q9/Q10 budgets + security
             writeReportDataSidecar(filenm, sdata);
             writeReportHtmlRedirect(filenm);
         } catch (Exception e) {

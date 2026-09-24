@@ -1,0 +1,3 @@
+{"ts":1,"level":"error","text":"Refused to load the script 'https://x/y.js' because it violates the following Content Security Policy directive: \"script-src 'self'\".","url":"https://app.shop.com/","line":1,"source":"security"}
+{"ts":2,"level":"warning","text":"Mixed Content: The page at 'https://app.shop.com/' was loaded over HTTPS, but requested an insecure image 'http://img/x.png'.","url":"https://app.shop.com/","line":null,"source":"security"}
+{"ts":3,"level":"info","text":"hello","url":null,"line":null,"source":"console-api"}

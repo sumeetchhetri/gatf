@@ -1,18 +1,3 @@
-<!--
-    Copyright 2013-2026, Sumeet Chhetri
-
-    Licensed under the Apache License, Version 2.0 (the "License");
-    you may not use this file except in compliance with the License.
-    You may obtain a copy of the License at
-
-    http://www.apache.org/licenses/LICENSE-2.0
-
-    Unless required by applicable law or agreed to in writing, software
-    distributed under the License is distributed on an "AS IS" BASIS,
-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-    See the License for the specific language governing permissions and
-    limitations under the License.
--->
 # seleasy language reference
 
 seleasy is GATF's UI / RPA automation language. A `.sel` script is compiled in-process (bundled ECJ) into a Selenium Java test, so a JRE is enough. The web console editor and the VS Code extension give autocomplete, diagnostics and go-to-definition for everything below.
@@ -1134,6 +1119,8 @@ Built-in plugins are statements, or values via `var x plugin <name> ...`. Your o
 - `jsonwrite` / `xmlwrite` take the file and the object in either order.
 - `curl` headers may be written `Name=value` or `Name: value`. `POST`/`PUT`/`PATCH`/`DELETE` send the body block.
   The executor's `httpRequestTimeout` applies.
+- A script's leading `//` comment lines may carry `@budget lcp<2000 requests<50` (performance budgets, checked from
+  the script's trace; see the README).
 - `api` and `curl` share the browser session (config `browserApiSession`: `sync` default, `send`, `off`): the
   browser's cookies for the URL are sent (an explicit `Cookie` header wins by name) and Set-Cookies are stored back.
   Chromium does this over CDP for any domain; other browsers only for the domain of the page currently open.
