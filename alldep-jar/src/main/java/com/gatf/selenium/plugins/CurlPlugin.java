@@ -33,6 +33,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.CookieRules;
+import com.gatf.executor.core.SessionBridge;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.executor.TestCaseExecutorUtil;
 
@@ -94,6 +96,7 @@ public class CurlPlugin {
         byte[] body = null;
 
         List<List<Object>> lst = (List<List<Object>>)args[args.length-3];
+        String explicitCookie = null;
 
         if(CollectionUtils.isNotEmpty(lst))
         {
@@ -105,6 +108,10 @@ public class CurlPlugin {
                         if(nv == null) {
                             LOG.warn("curl plugin: ignoring header entry without '=' or ':' separator: {}", o);
                             continue;
+                        }
+                        if(nv[0].equalsIgnoreCase("Cookie")) {
+                            explicitCookie = explicitCookie==null ? nv[1] : explicitCookie + "; " + nv[1];
+                            continue;   // sent below, merged with the browser's cookies
                         }
                         hdr(rbuilder, nv[0], nv[1]);
                     }
@@ -129,6 +136,19 @@ public class CurlPlugin {
                 rbuilder.timeout(Duration.ofMillis(rt));
             }
         }
+        // Q8: inside a UI script, send the browser's cookies for this URL; an explicit Cookie header wins by name
+        SessionBridge.Bridge bridge = SessionBridge.current();
+        URI uri = URI.create(url);
+        String cookieHeader = explicitCookie;
+        if(bridge!=null) {
+            String ch = bridge.cookieHeader(uri);
+            if(ch!=null && !ch.isEmpty()) {
+                cookieHeader = explicitCookie==null ? ch : CookieRules.merge(ch, explicitCookie);
+            }
+        }
+        if(cookieHeader!=null) {
+            hdr(rbuilder, "Cookie", cookieHeader);
+        }
         rbuilder.method(method.toUpperCase(), body!=null ? HttpRequest.BodyPublishers.ofByteArray(body) : HttpRequest.BodyPublishers.noBody());
         HttpResponse<byte[]> response = client.send(rbuilder.build(), HttpResponse.BodyHandlers.ofByteArray());
 
@@ -140,6 +160,10 @@ public class CurlPlugin {
         	} else {
         		headers.put(he.getKey(), he.getValue());
         	}
+        }
+
+        if(bridge!=null && !cookies.isEmpty()) {
+            bridge.onSetCookies(uri, cookies);   // Q8: sync mode stores them in the browser
         }
 
         Map<String, Object> resp = new HashMap<String, Object>();

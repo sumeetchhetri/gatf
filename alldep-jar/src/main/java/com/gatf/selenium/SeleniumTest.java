@@ -1734,7 +1734,20 @@ public abstract class SeleniumTest {
 			nargs[c++] = state.index==-1?0:state.index;
 			nargs[c++] = ___cxt___;
 
-			return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
+			// Q8: api/curl calls share the browser session (cookies) while the plugin runs
+			WebDriver bridgeDriver = null;
+			try {
+				bridgeDriver = get___d___();
+			} catch (Exception e) {
+				// no browser session open yet
+			}
+			com.gatf.executor.core.SessionBridge.Bridge prevBridge = BrowserSession.enter(bridgeDriver,
+					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiSession() : null);
+			try {
+				return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
+			} finally {
+				com.gatf.executor.core.SessionBridge.restore(prevBridge);
+			}
 		}
 		catch (Exception e)
 		{

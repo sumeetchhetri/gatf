@@ -57,6 +57,8 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfResponse;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.core.CookieRules;
+import com.gatf.executor.core.SessionBridge;
 import com.gatf.imports.CurlCommand;
 import com.gatf.executor.ext.AutocannonTestCaseExecutor;
 import com.gatf.executor.ext.VegetaTestCaseExecutor;
@@ -483,7 +485,9 @@ public class TestCaseExecutorUtil {
 				}
 				else if(authExtractAuthParams[3].equalsIgnoreCase("cookie"))
 				{
-					testCase.getHeaders().put("Cookie", authExtractAuthParams[2] + "=" + sessIdentifier);
+					// Q8: merge the session cookie into any Cookie header instead of replacing it
+					testCase.getHeaders().put("Cookie", CookieRules.merge(testCase.getHeaders().get("Cookie"),
+							java.util.Collections.singletonMap(authExtractAuthParams[2], sessIdentifier)));
 				}
 			}
 
@@ -629,13 +633,24 @@ public class TestCaseExecutorUtil {
 			byte[] rawBody = handleRequestContent(testCase, builder, curlForm);
 			
 			boolean hasReferer = false, hasAcceptEncoding = false;
+			// Q8: called from a UI script (api plugin) — start from the browser's cookies for this URL; the case's own
+			// Cookie header (explicit or from GATF's cookie store) overrides same-named ones
+			String browserCookies = browserCookieHeader(testCase);
 			if(testCase.getHeaders()!=null)
 			{
 				for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {
-					addHeaderSafe(builder, entry.getKey(), entry.getValue());
+					String value = entry.getValue();
+					if(browserCookies!=null && entry.getKey().equalsIgnoreCase("Cookie")) {
+						value = CookieRules.merge(browserCookies, value);
+						browserCookies = null;
+					}
+					addHeaderSafe(builder, entry.getKey(), value);
 					hasReferer |= entry.getKey().equalsIgnoreCase("Referer");
 					hasAcceptEncoding |= entry.getKey().equalsIgnoreCase("Accept-Encoding");
 				}
+			}
+			if(browserCookies!=null) {
+				addHeaderSafe(builder, "Cookie", browserCookies);
 			}
 			// httpCompressionEnabled: ask for gzip (OkHttp did this implicitly); JdkGatfResponse decodes it
 			if(!hasAcceptEncoding && context.getGatfExecutorConfig().isHttpCompressionEnabled()) {
@@ -876,6 +891,18 @@ public class TestCaseExecutorUtil {
 		public static boolean isMatchesContentType(MediaType md, String contType) {
 			MediaType md2 = MediaType.valueOf(contType);
 			return md.getType().equalsIgnoreCase(md2.getType()) && md.getSubtype().equalsIgnoreCase(md2.getSubtype());
+		}
+	}
+
+	/** Q8: the browser session's Cookie header for this case's URL, when running inside a UI script's api call. */
+	private static String browserCookieHeader(TestCase testCase) {
+		SessionBridge.Bridge bridge = SessionBridge.current();
+		if(bridge==null || testCase.isSoapBase() || testCase.getAurl()==null) return null;
+		try {
+			String h = bridge.cookieHeader(URI.create(testCase.getAurl()));
+			return h==null || h.isEmpty() ? null : h;
+		} catch (IllegalArgumentException e) {
+			return null;
 		}
 	}
 

@@ -304,14 +304,19 @@ public class WorkflowContextHandler {
 		//initialize cookies and headers
 		if(testCase != null) {
 			Map<String, String> cookieMap = getCookies(testCase);
-			if(cookieMap!=null) {
-				for (Map.Entry<String, String> entry : cookieMap.entrySet()) {
-					if(testCase.getHeaders()==null)
-					{
-						testCase.setHeaders(new HashMap<String, String>());
-					}
-					testCase.getHeaders().put("Cookie", entry.getKey() + "=" + entry.getValue());
+			if(cookieMap!=null && !cookieMap.isEmpty()) {
+				if(testCase.getHeaders()==null)
+				{
+					testCase.setHeaders(new HashMap<String, String>());
 				}
+				// Q8: was put("Cookie", k=v) per stored cookie, so only the last one was sent and an explicit Cookie
+				// header was replaced; now the stored cookies are merged into it (stored values win by name)
+				String existing = null;
+				for (Map.Entry<String, String> h : testCase.getHeaders().entrySet()) {
+					if(h.getKey().equalsIgnoreCase("Cookie")) existing = h.getValue();
+				}
+				testCase.getHeaders().keySet().removeIf(k -> k.equalsIgnoreCase("Cookie"));
+				testCase.getHeaders().put("Cookie", CookieRules.merge(existing, cookieMap));
 			}
 			if(MapUtils.isNotEmpty(testCase.getHeaders())) {
 			    for (Map.Entry<String, String> entry : testCase.getHeaders().entrySet()) {

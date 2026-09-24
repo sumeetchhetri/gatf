@@ -94,6 +94,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// null/blank = legacy behaviour (enableTrace true -> on, false -> off). When set, it wins over enableTrace.
 	private String traceMode;
 	private String traceProtocol = "cdp";
+	// Q8: api/curl plugin calls from a UI script share the browser session: sync (default) | send | off.
+	private String browserApiSession;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -506,6 +508,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public boolean keepTrace(boolean failed) {
 		return !"retain-on-failure".equals(effectiveTraceMode()) || failed;
 	}
+	public String getBrowserApiSession() { return browserApiSession; }
+	public void setBrowserApiSession(String browserApiSession) { this.browserApiSession = SessionBridge.normalizeMode(browserApiSession); }
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
 	public boolean isTraceNetwork() { return traceNetwork; }

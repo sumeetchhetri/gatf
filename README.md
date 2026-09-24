@@ -77,6 +77,9 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 ### Plugin and extension framework
 - **seleasy plugins:** map a keyword to any static Java method in `plugins.txt` (`name=com.acme.MyPlugin@method`), then use it as a statement or `var x plugin name ...`.
   - Built-ins: `jsonread` / `jsonwrite` / `jsonpath`, `xmlread` / `xmlwrite` / `xmlpath`, `api` (call a GATF API test from a UI script and use its response) and `curl` (ad-hoc HTTP).
+    Both share the browser's session: the browser's cookies for the target URL are sent, and response Set-Cookies are
+    stored back in the browser, so a script can log in through the UI and call the API authenticated (or the reverse).
+    `browserApiSession`: `sync` (default), `send` (browser → API only), `off`.
 - **API hooks, custom data sources and custom providers:** plain Java classes referenced from the config.
 - **Integrations:**
   - fetch server-side logs through your own APIs when a test fails (`gatf-logging-api-int.xml`);

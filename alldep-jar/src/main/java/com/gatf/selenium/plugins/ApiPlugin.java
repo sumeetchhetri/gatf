@@ -15,7 +15,13 @@
 */
 package com.gatf.selenium.plugins;
 
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.executor.core.SessionBridge;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.ui.GatfConfigToolUtil;
 import com.gatf.ui.GatfReportsHandler;
@@ -44,6 +50,7 @@ public class ApiPlugin {
         Object[] out = handler.executeTest(null, mojo.getContext().getGatfExecutorConfig(), null, "playTest", testcaseFileName, testname, false, 
         		false, index, true, 0, false, false, null);
         TestCaseReport report = (TestCaseReport)out[3];
+        syncCookies(report);
         
         org.apache.logging.log4j.LogManager.getLogger(ApiPlugin.class).info("api plugin: executed {}@{} -> {}", testname, testcaseFileName, report);
         
@@ -67,13 +74,29 @@ public class ApiPlugin {
         return null;
     }
     
+    /** Q8: in sync mode, Set-Cookies from the API response go into the browser (the executor already sent its cookies). */
+    static void syncCookies(TestCaseReport report) {
+        SessionBridge.Bridge bridge = SessionBridge.current();
+        if (bridge == null || report == null || report.getResHeaders() == null || report.getActualUrl() == null) return;
+        List<String> setCookies = new ArrayList<String>();
+        for (Map.Entry<String, List<String>> h : report.getResHeaders().entrySet()) {
+            if (h.getKey() != null && h.getKey().equalsIgnoreCase("Set-Cookie") && h.getValue() != null) setCookies.addAll(h.getValue());
+        }
+        if (setCookies.isEmpty()) return;
+        try {
+            bridge.onSetCookies(URI.create(report.getActualUrl()), setCookies);
+        } catch (IllegalArgumentException e) {
+            // relative or malformed URL: nothing to scope the cookies to
+        }
+    }
+
     public static String[] toSampleSelCmd() {
     	return new String[] {
     		"API Plugin",
-    		"\tapi {test-name}@{optional test-case-file-name}",
+    		"\tapi {optional test-case-file-name}@{test-name}",
     		"Examples :-",
     		"\tapi api-name",
-    		"\tapi api-name@test-case-file-path",
+    		"\tapi test-case-file-path@api-name",
         };
     }
 }

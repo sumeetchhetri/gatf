@@ -267,6 +267,15 @@ export const executorSchema: CfgSchema = {
     "gatfJarPath": {
       "type": "string"
     },
+    // Q8: api/curl calls from a UI script share the browser's cookies (sync = both ways, send = browser → API only).
+    "browserApiSession": {
+      "label": {
+        "type": "section",
+        "value": "UI ↔ API session"
+      },
+      "type": "string",
+      "options": ["sync", "send", "off"]
+    },
     "seleniumDriverConfigs": {
       "label": {
         "type": "section",

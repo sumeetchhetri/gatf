@@ -32,6 +32,11 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.traceMode.options).toEqual(['off', 'on', 'retain-on-failure', 'on-first-retry']);
   });
 
+  it('executor schema exposes browserApiSession with exactly the values the backend accepts', () => {
+    // must match SessionBridge.MODES; the backend rejects anything else when the config is saved
+    expect(executorSchema.properties!.browserApiSession.options).toEqual(['sync', 'send', 'off']);
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);
