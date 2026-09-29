@@ -22,7 +22,7 @@ import java.util.List;
 /**
  * Q7: arguments of {@code gatf test} (the one documented entry point for CLI runs):
  * <pre>
- *   gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github|none]
+ *   gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]
  *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N]
  * </pre>
  * The config defaults to gatf-config.json, else gatf-config.xml, in the working directory. Whether the suite is
@@ -41,7 +41,7 @@ public final class TestCommandArgs {
     public Integer workers;
 
     public static final String USAGE =
-            "gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github|none]\n"
+            "gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]\n"
           + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N]";
 
     /** Parses {@code args} (everything after "test"). Throws IllegalArgumentException with a usage message on error. */

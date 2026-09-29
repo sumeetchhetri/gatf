@@ -1,0 +1,24 @@
+// Checkout flows @smoke @P1
+// Covers cart to payment. @REQ-101
+open chrome
+goto https://shop.test/
+include common.sel
+
+// Pay by card @REQ-102 @req:PAY-CARD
+subtest "pay by card"
+{
+  click id@"cart"
+  type "4111 1111" css@"input.card"   // test card
+  ?? css@"div.ok" text ="Paid, thanks"
+  if xpath@"//x" {
+    click id@"x"
+  }
+}
+
+subtest "refund"
+{
+  @call "login"
+  click text@"Refund"
+  ?? id@"status" contains Refunded
+}
+close

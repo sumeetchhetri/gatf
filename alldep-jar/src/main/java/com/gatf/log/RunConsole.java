@@ -101,6 +101,9 @@ public final class RunConsole {
     /** Q5: the active test filter, shown in the run header (null = none). */
     public static void setFilterNote(String note) { filterNote = note; }
 
+    /** Q11: the run's report dir (where gatf-results.json is written); null before a suite started. */
+    public static String reportDir() { return reportDir; }
+
     /** True when per-test lines/log entries are wanted, so callers can skip building costly detail strings. */
     public static boolean wantsDetail() { return active && perTest; }
 

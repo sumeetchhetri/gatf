@@ -93,7 +93,12 @@ public final class GatfCli {
     				RunOverrides.set(t.traceMode, t.retries, t.workers);          // invalid --trace -> IllegalArgumentException
     				TestFilter.activate(f);
     				RunConsole.setFilterNote(f.isEmpty() ? null : f.describe());
-    				if (t.reporters != null) System.setProperty("gatf.reporters", t.reporters);
+    				if (t.reporters != null) {
+    					// Q11: the docs reporter needs the JSON results
+    					String rep = t.reporters.toLowerCase();
+    					if (rep.contains("docs") && !rep.contains("json")) rep += ",json";
+    					System.setProperty("gatf.reporters", rep);
+    				}
     			} catch (IllegalArgumentException e) {
     				System.err.println("gatf test: " + e.getMessage());
     				t = null;
@@ -101,7 +106,15 @@ public final class GatfCli {
     			}
     			if (t != null) {
     				exitCode = runSuite(new String[] { "-executor", t.config });
+    				if (t.reporters != null && t.reporters.toLowerCase().contains("docs")) {
+    					postRunDocs(t.config);
+    				}
     			}
+    		}
+    		else if(args[0].equals("docs"))
+    		{
+    			// Q11: test-case documents + traceability matrix + coverage (xlsx/csv)
+    			exitCode = DocsCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
     		else if(args[0].equals("import"))
     		{
@@ -133,6 +146,7 @@ public final class GatfCli {
     		System.out.println("Invalid invocation - valid invocation options are, \n" +
 					"java -jar gatf-plugin-{version}.jar " + TestCommandArgs.USAGE.substring("gatf ".length()).replace("\n", "\n    ") + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + DocsCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
@@ -142,6 +156,21 @@ public final class GatfCli {
     	}
     	
 		System.exit(showHelp ? 1 : exitCode);   // non-zero on invalid usage, an aborted run, or any failed test
+    }
+
+    /** Q11: `--reporter …,docs` — documents with this run's status into <report dir>/docs. Never changes the exit code. */
+    private static void postRunDocs(String config) {
+    	try {
+    		String dir = RunConsole.reportDir();
+    		if (dir == null) return;
+    		com.gatf.docs.TestDocsGenerator.Options o = new com.gatf.docs.TestDocsGenerator.Options();
+    		o.outDir = new java.io.File(dir, "docs").toPath();
+    		java.io.File res = new java.io.File(dir, "gatf-results.json");
+    		if (res.isFile()) o.resultsFile = res.toPath();
+    		DocsCli.generate(java.util.Collections.singletonList(config), new java.io.File(System.getProperty("user.dir")), o, GatfLogging.out());
+    	} catch (Exception e) {
+    		System.err.println("gatf test: docs not written: " + e.getMessage());
+    	}
     }
 
     /**

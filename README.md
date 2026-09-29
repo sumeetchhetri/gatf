@@ -214,6 +214,7 @@ goto https://example.com/login
 | `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
 | `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman` or `har` input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
+| `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
@@ -229,7 +230,7 @@ JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=
 | `--grep RE` / `-g RE` | Run only tests whose title matches the regex (repeatable; any match) |
 | `--grep-invert RE` | Skip tests whose title matches (repeatable; wins over `--grep`) |
 | `--tag T` / `-t T` | Run only tests tagged `@T` (repeatable; combined with `--grep` as OR) |
-| `--reporter junit,json,github` | CI reports to write (`none` to disable) |
+| `--reporter junit,json,github,docs` | CI reports to write (`none` to disable). `docs` also writes the test-case documents, traceability matrix and coverage, with this run's status, to `<out>/docs` |
 | `--trace MODE` | Override `traceMode`: `off`, `on`, `retain-on-failure`, `on-first-retry` |
 | `--retries N` | Override `seleniumScriptRetryCount` |
 | `--workers N` / `-j N` | Override `numConcurrentExecutions` |
@@ -245,6 +246,17 @@ Both `--opt value` and `--opt=value` work. If nothing matches, the run stops wit
   ```
   A script's subtests always run together.
 - **Dependencies:** an API test's `relatedTestName` dependency is included automatically. For chains that capture values (e.g. a login token), tag the whole chain, or select it with `--grep <file>`.
+
+### Test-case documents, traceability and coverage
+
+`gatf docs` turns the configured tests into manual-style test cases. The output is `gatf-testcases.xlsx`, with three sheets, plus matching CSVs (`--format`):
+- **Test Cases:** ID, module, source, title, tags, requirements, preconditions, steps and expected results.
+  - **API tests:** the request becomes the steps; the status, content type, nodes, validations and captured variables become the expected results.
+  - **UI scripts:** each script and each subtest it defines becomes a test case. Commands are written in plain words, `include` and `@call` are expanded, and `??` assertions become expected results.
+- **Traceability:** requirement → test cases, with pass/fail/not-run counts and a status (Passing, Failing, Partially run, Not run, Not covered).
+- **Coverage:** requirement and test-case totals and percentages, broken down by module.
+
+Requirements are linked with tags: `@REQ-101`, any Jira-style `@PROJ-12`, or `@req:<anything>` (`--req-pattern` overrides). They go in an API case's name or description, a script's header comments, or the comment above a subtest. `--requirements reqs.csv|xlsx` (columns id, title, module) adds the full list, so uncovered requirements show up. Status comes from the last run's `gatf-results.json` (found automatically in the out dir, or `--results`). `gatf test --reporter junit,json,docs` produces the documents after every run.
 
 ## Console output, logs and exit codes
 

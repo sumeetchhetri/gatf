@@ -1,0 +1,6 @@
+subtest "login"
+{
+  type "bob" id@"u"
+  click id@"go"
+  ??5 id@"home"
+}
