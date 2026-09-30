@@ -72,6 +72,11 @@ public final class RunResults {
         return best[0];
     }
 
+    /** {@link #latest} with no age limit, null on an I/O error. */
+    public static Path latestQuietly(Path root) {
+        try { return latest(root, Long.MIN_VALUE); } catch (IOException e) { return null; }
+    }
+
     /**
      * @param status  "failed" (failed + flaky + tests with soft failures; the default), "all", or one status
      * @param grep    case-insensitive substring of the test's name/title/suite; null = every test

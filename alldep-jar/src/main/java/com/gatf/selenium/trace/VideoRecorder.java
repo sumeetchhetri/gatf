@@ -41,6 +41,7 @@ public final class VideoRecorder implements VideoListener {
     private final AtomicInteger seq = new AtomicInteger(0);
     private final long startTs;
     private volatile long lastTs;
+    private volatile String liveKey;   // M15: publish frames to the console's live view under this script path
 
     public VideoRecorder(Path traceDir) throws IOException {
         this.traceDir = traceDir;
@@ -51,9 +52,16 @@ public final class VideoRecorder implements VideoListener {
         this.lastTs = startTs;
     }
 
+    /** M15: also publish each frame to {@link LiveFrames} under {@code key} (the script path); null = off. */
+    public void setLiveKey(String key) {
+        this.liveKey = key;
+        if (key != null) LiveFrames.begin(key);
+    }
+
     @Override
     public void onFrame(byte[] jpeg, long tsMillis) {
         if (jpeg == null || jpeg.length == 0) return;
+        if (liveKey != null) LiveFrames.publish(liveKey, jpeg, tsMillis);
         int n = seq.incrementAndGet();
         try {
             Files.write(framesDir.resolve("frame-" + n + ".jpg"), jpeg);
@@ -64,6 +72,7 @@ public final class VideoRecorder implements VideoListener {
 
     /** Finalize the frame index and mux to mp4 (best-effort). */
     public void stop() {
+        if (liveKey != null) LiveFrames.end(liveKey);
         index.flush();
         index.close();
         int frames = seq.get();

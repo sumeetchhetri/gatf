@@ -123,6 +123,7 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 ### Debugging
 - A **step debugger** for seleasy, in the web console and in VS Code: breakpoints, step over and into, continue, and live line highlighting.
 - `-validate-sel` compiles a script without running it.
+- **Watch:** the editor's **Watch** button runs the script beside the editor and re-runs it on every save, with the live browser screencast next to the step list (the Run and Debug views show it too). The frames are the trace video's, so turn on `traceVideo`. `gatf test --watch` does the same for the CLI.
 - **Coding agents (MCP):** `gatf mcp` is a Model Context Protocol server over stdio. An agent (Claude Code, Claude Desktop, IDE agents) can list the tests, lint a script, run the suite (`gatf test` with grep/tag/trace/retries), read the failed tests from the last run, condense a trace zip (last actions, console errors, failed and slow requests, checks, web vitals), and record or crawl new scripts. Register it with, for example, `claude mcp add gatf -- java -jar gatf-alldep-jar-<version>.jar mcp --root /path/to/project`.
 
 ### Traces and the Trace Viewer
@@ -262,6 +263,7 @@ JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=
 | `--workers N` / `-j N` | Override `numConcurrentExecutions`: UI scripts run file-parallel on N workers (no fixed cap; never more than the script count). `N%` = that share of the CPU cores |
 | `--update-snapshots` / `-u` | Rewrite the baselines of every `screenshot compare` instead of comparing (config `updateSnapshots`) |
 | `--shard i/n` | Run only shard i of n (1-based): files are split deterministically by a path hash, so every machine gets the same split. `relatedTestName` prerequisites come along. An empty shard exits 0 |
+| `--watch` | Keep running: after the first run, a save re-runs the changed scripts / API case files plus the last failures. A change to anything else (config, properties, a library script others import) re-runs everything, failures first. Enter re-runs everything (failures first; the rest only once they pass), `f` + Enter only the failures, `q` + Enter quits |
 
 Both `--opt value` and `--opt=value` work. If nothing matches, the run stops with `No API tests match …` or `No UI scripts match …` and exit code 1.
 

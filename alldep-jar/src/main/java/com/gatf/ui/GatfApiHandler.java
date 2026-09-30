@@ -85,6 +85,8 @@ public class GatfApiHandler extends HttpHandler {
                 plugins(request, response);
             } else if (sub.equals("history")) {
                 history(request, response);
+            } else if (sub.equals("live")) {
+                live(request, response);
             } else if (sub.equals("reports")) {
                 reports(request, response);
             } else if (sub.equals("configs")) {
@@ -178,6 +180,37 @@ public class GatfApiHandler extends HttpHandler {
         bases.add(new File(tbase));
         bases.add(new File(System.getProperty("user.dir")));
         writeJson(response, HttpStatus.OK_200, com.gatf.selenium.PluginCatalog.list(bases));
+    }
+
+    // M15: GET /api/live?file=<script>&after=<seq> — the newest screencast frame of a running script (image/jpeg with
+    // X-Frame-Seq / X-Frame-Ts / X-Frame-Ended), or 204 when there is none newer. Frames come from the trace video
+    // recorder, so they exist only when the config has traceVideo on.
+    private void live(Request request, Response response) throws Exception {
+        String file = request.getParameter("file");
+        if (file == null || file.trim().isEmpty()) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("file is required"));
+            return;
+        }
+        long after = 0;
+        try {
+            if (request.getParameter("after") != null) after = Long.parseLong(request.getParameter("after").trim());
+        } catch (NumberFormatException e) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("after must be a number"));
+            return;
+        }
+        com.gatf.selenium.trace.LiveFrames.Frame f = com.gatf.selenium.trace.LiveFrames.latest(file, after);
+        response.setHeader("Cache-Control", "no-cache, no-store");
+        if (f == null) {
+            response.setStatus(HttpStatus.NO_CONTENT_204);
+            return;
+        }
+        response.setStatus(HttpStatus.OK_200);
+        response.setContentType("image/jpeg");
+        response.setHeader("X-Frame-Seq", String.valueOf(f.seq));
+        response.setHeader("X-Frame-Ts", String.valueOf(f.ts));
+        response.setHeader("X-Frame-Ended", String.valueOf(f.ended));
+        response.setContentLength(f.jpeg.length);
+        response.getOutputStream().write(f.jpeg);
     }
 
     // M12: GET /api/history?limit=N -> the newest N archived gatf-results.json (summary + compact tests), newest first

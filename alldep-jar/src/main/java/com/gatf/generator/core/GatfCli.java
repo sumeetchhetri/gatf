@@ -109,7 +109,10 @@ public final class GatfCli {
     				t = null;
     				exitCode = 1;
     			}
-    			if (t != null) {
+    			if (t != null && t.watch) {
+    				// M15: `gatf test --watch` — each run is a child JVM; this process only watches
+    				exitCode = WatchMode.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.in, System.out);
+    			} else if (t != null) {
     				exitCode = runSuite(new String[] { "-executor", t.config });
     				if (t.reporters != null && t.reporters.toLowerCase().contains("docs")) {
     					postRunDocs(t.config);

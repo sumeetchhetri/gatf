@@ -13,13 +13,14 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
 import TestCaseEditor from '../components/TestCaseEditor';
 import SelDebugger from '../components/SelDebugger';
 import SelRunner from '../components/SelRunner';
+import { initialWatch, onFinished as watchFinished, onSaved as watchSaved, watchOn, type WatchAction, type WatchState } from '../components/watchQueue';
 import CompareFiles from './CompareFiles';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
@@ -74,6 +75,15 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
   const [gotoSeq, setGotoSeq] = useState(0);
   const [debugging, setDebugging] = useState(false);
   const [running, setRunning] = useState(false);
+  // M15: watch mode — the runner sits beside the editor and every successful save re-runs the script
+  const [watching, setWatching] = useState(false);
+  const [watch, setWatch] = useState<WatchState>(initialWatch);
+  const watchRef = useRef(watch);
+  watchRef.current = watch;
+  const applyWatch = ([next, action]: [WatchState, WatchAction]) => {
+    setWatch(next);
+    if (action === 'stop') api.stopRun().catch(() => {});
+  };
   const [navMsg, setNavMsg] = useState<string | null>(null);
 
   // dialogs
@@ -114,6 +124,8 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
     setSaved(false);
     setDebugging(false);
     setRunning(false);
+    setWatching(false);
+    setWatch(initialWatch);
     setNavMsg(null);
     setRenaming(false);
   };
@@ -291,6 +303,7 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
       .then((r) => {
         if (r.ok) {
           patchTab(path, { text: draft });
+          if (watching) applyWatch(watchSaved(watchRef.current));
           setSaved(true);
           setTimeout(() => setSaved(false), 4000);
         } else {
@@ -567,7 +580,7 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                             <>
                               <button
                                 className="btn small"
-                                disabled={dirty}
+                                disabled={dirty || watching}
                                 title={dirty ? 'Save before running' : 'Run this script'}
                                 onClick={() => setRunning(true)}
                               >
@@ -575,11 +588,28 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                               </button>
                               <button
                                 className="btn small"
-                                disabled={dirty}
+                                disabled={dirty || watching}
                                 title={dirty ? 'Save before debugging' : 'Debug this script'}
                                 onClick={() => setDebugging(true)}
                               >
                                 🐞 Debug
+                              </button>
+                              <button
+                                className={'btn small' + (watching ? ' primary' : '')}
+                                disabled={dirty && !watching}
+                                title={watching ? 'Stop watching' : dirty ? 'Save before watching' : 'Run beside the editor and re-run on every save'}
+                                onClick={() => {
+                                  if (watching) {
+                                    if (watch.running) api.stopRun().catch(() => {});
+                                    setWatching(false);
+                                    setWatch(initialWatch);
+                                  } else {
+                                    setWatching(true);
+                                    applyWatch(watchOn(initialWatch));
+                                  }
+                                }}
+                              >
+                                👁 {watching ? 'Watching' : 'Watch'}
                               </button>
                             </>
                           )}
@@ -623,7 +653,8 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                   ) : running && active.kind === 'sel' ? (
                     <SelRunner filePath={active.path} code={active.draft} onExit={() => setRunning(false)} />
                   ) : (
-                    <>
+                    <div className={watching && active.kind === 'sel' ? 'tf-watch' : undefined}>
+                    <div>
                       {active.kind === 'sel' ? (
                         <Suspense fallback={<div className="view-note">Loading editor…</div>}>
                           <SelCodeMirror
@@ -668,7 +699,22 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                           ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
                           : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
                       </div>
-                    </>
+                    </div>
+                    {watching && active.kind === 'sel' && watch.runId > 0 && (
+                      <SelRunner
+                        key={watch.runId}
+                        filePath={active.path}
+                        code={active.text}
+                        embedded
+                        onFinished={() => setWatch((w) => watchFinished(w)[0])}
+                        onExit={() => {
+                          if (watchRef.current.running) api.stopRun().catch(() => {});
+                          setWatching(false);
+                          setWatch(initialWatch);
+                        }}
+                      />
+                    )}
+                    </div>
                   ))}
               </>
             )}

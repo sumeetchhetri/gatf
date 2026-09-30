@@ -352,6 +352,25 @@ function withTok(url: string): string {
   return u;
 }
 
+export interface LiveFrame {
+  seq: number;
+  ts: number;
+  ended: boolean;
+  blob: Blob;
+}
+// M15: 200 = a newer frame (image/jpeg + X-Frame-Seq/Ts/Ended), 204 = nothing newer
+async function liveFrameReq(file: string, after: number): Promise<LiveFrame | null> {
+  const r = await fetch(withTok('/api/live?file=' + encodeURIComponent(file) + '&after=' + after));
+  if (r.status === 204) return null;
+  if (!r.ok) throw new Error(`HTTP ${r.status} for /api/live`);
+  return {
+    seq: Number(r.headers.get('X-Frame-Seq') ?? 0),
+    ts: Number(r.headers.get('X-Frame-Ts') ?? 0),
+    ended: r.headers.get('X-Frame-Ended') === 'true',
+    blob: await r.blob(),
+  };
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const r = await fetch(withTok(url), { headers: { Accept: 'application/json' } });
   if (!r.ok) throw new Error(`HTTP ${r.status} for ${url}`);
@@ -943,6 +962,8 @@ export const api = {
       '&testcaseFileName=' + encPath(tcf) + '&testCaseName=' + encodeURIComponent(tc),
     ),
   pausedLine: () => runPut('pausedLineNo'),
+  // M15: the newest live screencast frame of a running script (GET /api/live), or null when nothing newer
+  liveFrame: (file: string, after: number) => liveFrameReq(file, after),
   pauseEl: (pause: boolean) => runPut(pause ? 'pauseElSearch' : 'unPauseElSearch'),
   restartSubtest: () => runPut('restartSubtest'),
   stopRun: () => runPut('stop'),

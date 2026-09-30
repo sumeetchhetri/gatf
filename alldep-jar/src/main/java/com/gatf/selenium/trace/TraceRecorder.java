@@ -97,6 +97,7 @@ public final class TraceRecorder implements AutoCloseable {
             }
             if (cfg.isVideo() && browser.supports(Capability.SCREENCAST)) {
                 r.video = new VideoRecorder(workDir);
+                r.video.setLiveKey(selFile);   // M15: the console's live screencast
                 browser.enableVideo(r.video);
             }
             r.timeline.event("lifecycle", "trace-start", selFile);

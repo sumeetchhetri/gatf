@@ -16,6 +16,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import DebugCodeView from './DebugCodeView';
+import LivePane from './LivePane';
 
 type Status = 'starting' | 'running' | 'paused' | 'done' | 'failed';
 
@@ -26,10 +27,16 @@ export default function SelRunner({
   filePath,
   code,
   onExit,
+  onFinished,
+  embedded = false,
 }: {
   filePath: string;
   code: string;
   onExit: () => void;
+  /** M15: called once when the run ends (passed, failed or stopped) — the editor's watch mode queues re-runs on it */
+  onFinished?: (ok: boolean) => void;
+  /** M15: shown beside the editor (watch mode): no "Back to editor" */
+  embedded?: boolean;
 }) {
   const [status, setStatus] = useState<Status>('starting');
   const [msg, setMsg] = useState('Starting run…');
@@ -47,11 +54,13 @@ export default function SelRunner({
     }
   };
   const finish = (s: Status, m: string) => {
+    if (doneRef.current) return;
     doneRef.current = true;
     stopPolling();
     setStatus(s);
     setMsg(m);
     setCurrentLine(null);
+    onFinished?.(s === 'done');
   };
 
   useEffect(() => {
@@ -166,19 +175,24 @@ export default function SelRunner({
           <button className="btn ghost small" onClick={() => (window.location.hash = '#/reports')}>
             Open Reports →
           </button>
-          <button className="btn ghost small" style={{ marginLeft: 8 }} onClick={onExit}>
-            Back to editor
-          </button>
+          {!embedded && (
+            <button className="btn ghost small" style={{ marginLeft: 8 }} onClick={onExit}>
+              Back to editor
+            </button>
+          )}
         </div>
       )}
-      <DebugCodeView
-        code={code}
-        currentLine={currentLine}
-        breakpoints={new Set()}
-        debuggableLines={null}
-        onToggleBreakpoint={() => {}}
-        showBreakpoints={false}
-      />
+      <div className="dbg-split">
+        <DebugCodeView
+          code={code}
+          currentLine={currentLine}
+          breakpoints={new Set()}
+          debuggableLines={null}
+          onToggleBreakpoint={() => {}}
+          showBreakpoints={false}
+        />
+        <LivePane file={filePath} active={status === 'starting' || running} />
+      </div>
       <div className="view-note muted small">
         Runs the whole script; the current line highlights while it executes. <b>Pause</b> stops at the next
         element lookup so you can inspect the browser, then <b>Continue</b>. The full report lands in the{' '}

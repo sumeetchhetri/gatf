@@ -18,6 +18,7 @@ import { api } from '../api';
 import { debugLinesFor, DBG } from '../api';
 import type { DbgResponse } from '../api';
 import DebugCodeView from './DebugCodeView';
+import LivePane from './LivePane';
 
 type Status = 'initializing' | 'paused' | 'running' | 'done' | 'terminated' | 'error';
 // The sessionId is the only capability guarding the push channels (WS/SSE) — use a CSPRNG id.
@@ -284,13 +285,16 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
           </button>
         )}
       </div>
-      <DebugCodeView
-        code={code}
-        currentLine={currentLine}
-        breakpoints={breakpoints}
-        debuggableLines={debuggable}
-        onToggleBreakpoint={toggleBreakpoint}
-      />
+      <div className="dbg-split">
+        <DebugCodeView
+          code={code}
+          currentLine={currentLine}
+          breakpoints={breakpoints}
+          debuggableLines={debuggable}
+          onToggleBreakpoint={toggleBreakpoint}
+        />
+        <LivePane file={filePath} active={active} />
+      </div>
       <div className="view-note muted small">
         Click a line's gutter to toggle a breakpoint. Stepping into an <code>@call</code>/include switches
         to that file. The full run report is in the <b>Reports</b> tab.
