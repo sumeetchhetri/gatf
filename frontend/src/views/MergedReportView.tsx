@@ -46,10 +46,12 @@ export default function MergedReportView({
   data,
   baseDir,
   onOpenReport,
+  onOpenTrace,
 }: {
   data: MergedIndexData;
   baseDir: string;
   onOpenReport: (dataUrl: string) => void;
+  onOpenTrace?: (url: string) => void;
 }) {
   // M12: the merged gatf-results.json drives the timeline / slowest / flaky analysis
   const [results, setResults] = useState<RunResults | null>(null);
@@ -121,7 +123,7 @@ export default function MergedReportView({
       {results && (
         <>
           <h3>Run insights</h3>
-          <RunInsights data={results} showSummary={false} />
+          <RunInsights data={results} showSummary={false} baseDir={baseDir} onOpenTrace={onOpenTrace} />
         </>
       )}
       {!results && data.flaky.length > 0 && (

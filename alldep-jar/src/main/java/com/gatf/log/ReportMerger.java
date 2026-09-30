@@ -498,6 +498,9 @@ public final class ReportMerger {
         Files.walkFileTree(from, new SimpleFileVisitor<Path>() {
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+                if (dir.getParent() != null && dir.getParent().equals(from) && dir.getFileName().toString().equals(RunHistory.DIR)) {
+                    return FileVisitResult.SKIP_SUBTREE;   // M12: a shard's run history is not part of this run
+                }
                 Files.createDirectories(to.resolve(from.relativize(dir).toString()));
                 return FileVisitResult.CONTINUE;
             }

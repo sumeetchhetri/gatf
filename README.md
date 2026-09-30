@@ -157,7 +157,8 @@ When a step fails, its screenshot is shown in the test's report, next to the "Op
 - **PDF and CSV run reports** for UI (seleasy) suites, built with iText and written next to the HTML report as `…-RP-<timestamp>.pdf` / `.csv`. There is one results table per script (session, subtest, time, status, message). The PDF adds an error-details page per failure, with the stack trace and the failure screenshot.
 - **Load reports:** live charts and latency percentiles; distributed runs are aggregated per node.
 - The console's **report viewer**, **file compare** and **data-source statistics** views.
-- **Run insights** (Reports › Latest CLI run › Insights, and every merged report): a duration timeline per worker lane, the slowest tests and files, the flaky list, and status / tag / text filters, from the run's `gatf-results.json`.
+- **Run insights** (Reports › Latest CLI run › Insights, and every merged report): a duration timeline per worker lane, the slowest tests and files, the flaky list, and status / tag / text filters, from the run's `gatf-results.json`. An **attachments gallery** (screenshots, visual diffs, traces, checks, accessibility results) and **Raise defect** on failed tests.
+- **Trends:** every CLI run's results are archived in `<out>/history/` (newest 50 kept; `-Dgatf.history.keep=N`). Reports › Trends charts the last 10 runs (passed / flaky / failed / skipped, duration) and ranks the least stable tests. API: `GET /api/history?limit=N`.
 - **CLI runs** print Playwright-style ✓/✘ output, write a detailed log file, and return a CI-friendly exit code (see [below](#console-output-logs-and-exit-codes)).
 
 ### The web console (`gatf ui`)

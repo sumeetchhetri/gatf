@@ -19,10 +19,11 @@ import RunInsights from './RunInsights';
 import type { RunResults } from '../report/results';
 
 const data: RunResults = {
+  dir: '/w/out',
   summary: { total: 4, passed: 2, failed: 1, flaky: 1, skipped: 0, durationMs: 5000, workers: 2 },
   tests: [
     { suite: 'a.sel', name: '[chrome]', title: 'a.sel › [chrome] @smoke', status: 'passed', attempts: 1, durationMs: 300, startMs: 0, worker: 0 },
-    { suite: 'b.sel', name: '[chrome]', title: 'b.sel › [chrome]', status: 'failed', attempts: 1, durationMs: 4800, startMs: 0, worker: 1, error: 'boom' },
+    { suite: 'b.sel', name: '[chrome]', title: 'b.sel › [chrome]', status: 'failed', attempts: 1, durationMs: 4800, startMs: 0, worker: 1, error: 'boom', attachments: ['/w/out/17/b.png', '/w/out/17/b-trace.zip'] },
     { suite: 'c.sel', name: '[chrome]', title: 'c.sel › [chrome] @smoke', status: 'flaky', attempts: 2, durationMs: 1500, startMs: 300, worker: 0 },
     { suite: 'd.sel', name: '[chrome]', title: 'd.sel › [chrome]', status: 'passed', attempts: 1, durationMs: 100, startMs: 1800, worker: 0 },
   ],
@@ -38,6 +39,15 @@ describe('RunInsights', () => {
     expect(flk).toHaveTextContent('passed on attempt 2');
     expect(screen.getAllByTestId('tl-bar')).toHaveLength(4);
     expect(screen.getByText(/2 lane\(s\)/)).toBeInTheDocument();
+  });
+
+  it('shows the attachments gallery and a raise-defect action on failures', () => {
+    const opened: string[] = [];
+    render(<RunInsights data={data} baseDir="/reports/" onOpenTrace={(u) => opened.push(u)} />);
+    expect(screen.getByAltText('Screenshot: b.sel › [chrome]').getAttribute('src')).toBe('/reports/17/b.png');
+    fireEvent.click(screen.getByText(/b-trace\.zip/));
+    expect(opened).toEqual(['/reports/17/b-trace.zip']);
+    expect(screen.getAllByText('Raise defect').length).toBeGreaterThan(0);
   });
 
   it('filters by tag and status', () => {

@@ -17,6 +17,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import type { ReportsIndex, ReportArtifact } from '../api';
 import type { RunResults } from '../report/results';
+import type { HistoryRun } from '../report/history';
+import RunTrends from '../components/RunTrends';
 import { fmtBytes } from '../util';
 
 function fmtDate(ms: number): string {
@@ -85,6 +87,14 @@ export default function ReportsView({
     load();
     loadLatest();
   }, []);
+  // M12: trend over the last 10 archived CLI runs
+  const [runs, setRuns] = useState<HistoryRun[]>([]);
+  useEffect(() => {
+    api
+      .history(10)
+      .then((h) => setRuns(h.runs))
+      .catch(() => setRuns([]));
+  }, []);
   const [docsMsg, setDocsMsg] = useState<string | null>(null);
   const downloadDocs = () => {
     setDocsMsg('Generating…');
@@ -147,6 +157,13 @@ export default function ReportsView({
               Insights
             </button>
           </div>
+        </section>
+      )}
+
+      {runs.length > 0 && (
+        <section className="view-section">
+          <h3>Trends</h3>
+          <RunTrends runs={runs} />
         </section>
       )}
 

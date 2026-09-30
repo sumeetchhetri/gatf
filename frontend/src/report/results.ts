@@ -35,6 +35,8 @@ export interface ResultTest {
 }
 
 export interface RunResults {
+  /** absolute report dir of the run (M12), used to map attachment paths to /reports URLs */
+  dir?: string;
   summary: {
     total: number;
     passed: number;

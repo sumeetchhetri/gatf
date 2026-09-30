@@ -305,7 +305,7 @@ export default function ReportViewer({
         </div>
       )}
 
-      {data && !loading && isRunResults(data) && <RunInsights data={data} />}
+      {data && !loading && isRunResults(data) && <RunInsights data={data} baseDir={baseDir} onOpenTrace={onOpenTrace} />}
       {data && !loading && !isRunResults(data) && (
         <>
           {data.type === 'selenium-summary' && (
@@ -327,7 +327,12 @@ export default function ReportViewer({
           )}
           {data.type === 'ta-report' && <TAReportView data={data as TAReportData} />}
           {data.type === 'merged-index' && (
-            <MergedReportView data={data as MergedIndexData} baseDir={baseDir} onOpenReport={onOpenReport} />
+            <MergedReportView
+              data={data as MergedIndexData}
+              baseDir={baseDir}
+              onOpenReport={onOpenReport}
+              onOpenTrace={onOpenTrace}
+            />
           )}
           {![
             'selenium-summary',

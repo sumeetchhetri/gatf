@@ -59,8 +59,14 @@ final class CiReports {
             }
             if (sel.contains("json")) {
                 File f = new File(out, "gatf-results.json");
-                Files.write(f.toPath(), json(recs, totalMs).getBytes(StandardCharsets.UTF_8));
+                String js = json(recs, totalMs, out.getAbsoluteFile().toPath().normalize().toString());
+                Files.write(f.toPath(), js.getBytes(StandardCharsets.UTF_8));
                 shown.add("JSON:   " + f.getAbsolutePath());
+                try {   // M12: history for the console's trend charts (never fails the run)
+                    RunHistory.archive(out, js, System.currentTimeMillis(), RunHistory.keep());
+                } catch (IOException | RuntimeException e) {
+                    shown.add("history not archived: " + e.getMessage());
+                }
             }
         } catch (IOException e) {
             shown.add("CI reports not written: " + e.getMessage());
@@ -129,6 +135,11 @@ final class CiReports {
     // ---- JSON ------------------------------------------------------------------------------------------------
 
     static String json(List<Rec> recs, long totalMs) {
+        return json(recs, totalMs, null);
+    }
+
+    /** As above; {@code dir} (the report dir, absolute) lets the console map attachment paths to /reports URLs. */
+    static String json(List<Rec> recs, long totalMs, String dir) {
         int passed = 0, failed = 0, skipped = 0, flaky = 0, soft = 0;
         for (Rec r : recs) {
             soft += r.soft;
@@ -137,7 +148,9 @@ final class CiReports {
             else if (r.last() == Status.FAILED) failed++;
             else skipped++;
         }
-        StringBuilder b = new StringBuilder("{\n  \"summary\": {");
+        StringBuilder b = new StringBuilder("{\n");
+        if (dir != null) b.append("  \"dir\": ").append(js(dir.replace('\\', '/'))).append(",\n");
+        b.append("  \"summary\": {");
         b.append("\"total\": ").append(recs.size()).append(", \"passed\": ").append(passed).append(", \"failed\": ").append(failed)
                 .append(", \"flaky\": ").append(flaky).append(", \"skipped\": ").append(skipped)
                 .append(", \"softFailures\": ").append(soft)

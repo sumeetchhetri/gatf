@@ -17,6 +17,8 @@ import { useMemo, useState } from 'react';
 import type { RunResults, ResultTest, TestStatus } from '../report/results';
 import { allTags, filterTests, flaky, slowest, slowestFiles, timeline, utilisation } from '../report/results';
 import { SummaryTiles } from '../views/MergedReportView';
+import AttachmentsGallery from './AttachmentsGallery';
+import RaiseDefect from './RaiseDefect';
 import { fmtMs } from '../util';
 
 const STATUSES: TestStatus[] = ['passed', 'failed', 'flaky', 'skipped'];
@@ -98,10 +100,15 @@ export function RunTimeline({ tests }: { tests: ResultTest[] }) {
 export default function RunInsights({
   data,
   showSummary = true,
+  baseDir = '/reports/',
+  onOpenTrace,
 }: {
   data: RunResults;
   /** false when the host view already shows the totals (merged report) */
   showSummary?: boolean;
+  /** folder the results file was loaded from (resolves attachments) */
+  baseDir?: string;
+  onOpenTrace?: (url: string) => void;
 }) {
   const [statuses, setStatuses] = useState<Set<TestStatus>>(new Set());
   const [tag, setTag] = useState('');
@@ -213,7 +220,10 @@ export default function RunInsights({
         </table>
       )}
 
-      <details className="rv-details">
+      <h3>Attachments</h3>
+      <AttachmentsGallery tests={shown} runDir={data.dir} baseDir={baseDir} onOpenTrace={onOpenTrace} />
+
+      <details className="rv-details" open={statuses.size === 1 && statuses.has('failed')}>
         <summary>All tests in the selection ({shown.length})</summary>
         <table className="grid-table">
           <thead>
@@ -232,7 +242,20 @@ export default function RunInsights({
                   <span className={'st-badge ' + statusCls(t.status)}>{t.status}</span>
                 </td>
                 <td className="num mono">{fmtMs(t.durationMs)}</td>
-                <td className="small muted">{t.error ? t.error.split('\n')[0] : ''}</td>
+                <td className="small muted">
+                  {t.error ? t.error.split('\n')[0] : ''}
+                  {t.status === 'failed' && (
+                    <RaiseDefect
+                      report={{
+                        status: 'Failed',
+                        workflowName: t.suite,
+                        testIdentifier: t.title,
+                        error: t.error ? t.error.split('\n')[0] : 'Failed: ' + t.title,
+                        errorText: t.error ?? '',
+                      }}
+                    />
+                  )}
+                </td>
               </tr>
             ))}
           </tbody>

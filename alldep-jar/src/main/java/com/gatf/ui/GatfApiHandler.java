@@ -44,6 +44,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
  *
  *   GET /api            | /api/health   -> { ok, service, api, version }
  *   GET /api/reports                    -> { dir, reports:[{name,url,size,modified}], traces:[...] }
+ *   GET /api/history?limit=N            -> { dir, runs:[{id,time,summary,tests:[{title,status,durationMs}]}] } (M12)
  *   GET /api/config                     -> { testDir, outDir, config:{...effective GatfExecutorConfig} }
  *   GET /api/testfiles                  -> { dir, files:[{name,path,size,modified,kind}] }
  *   GET /api/testfile?path=<relative>   -> { path, kind, size, truncated, content }
@@ -79,6 +80,8 @@ public class GatfApiHandler extends HttpHandler {
                 out.put("service", "gatf");
                 out.put("api", "v1");
                 writeJson(response, HttpStatus.OK_200, out);
+            } else if (sub.equals("history")) {
+                history(request, response);
             } else if (sub.equals("reports")) {
                 reports(request, response);
             } else if (sub.equals("configs")) {
@@ -160,6 +163,24 @@ public class GatfApiHandler extends HttpHandler {
         Map<String, Object> out = new LinkedHashMap<>();
         out.put("dir", dir);
         out.put("reports", reports);
+        writeJson(response, HttpStatus.OK_200, out);
+    }
+
+    // M12: GET /api/history?limit=N -> the newest N archived gatf-results.json (summary + compact tests), newest first
+    private void history(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
+        String base = cfg.getOutFilesBasePath() == null ? mojo.getRootDir() : cfg.getOutFilesBasePath();
+        String dir = cfg.getOutFilesDir() != null ? base + File.separator + cfg.getOutFilesDir() : base;
+        int limit = 10;
+        try {
+            if (request.getParameter("limit") != null) limit = Integer.parseInt(request.getParameter("limit").trim());
+        } catch (NumberFormatException e) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("limit must be a number"));
+            return;
+        }
+        Map<String, Object> out = new LinkedHashMap<>();
+        out.put("dir", dir);
+        out.put("runs", com.gatf.log.RunHistory.list(new File(dir), limit));
         writeJson(response, HttpStatus.OK_200, out);
     }
 

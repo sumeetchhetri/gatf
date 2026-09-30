@@ -81,8 +81,11 @@ class ReportMergerTest {
         // shard 4 also ran a.sel (an API-style prerequisite pulled into two shards) and it failed there: worst wins
         dirs.add(shard(4, List.of(rec("f.sel", "[chrome]", Status.PASSED), rec("a.sel", "[chrome]", Status.FAILED))));
         File dest = new File(tmp, "merged");
+        new File(dirs.get(0), "history").mkdirs();   // a shard's run history is not copied
+        Files.write(new File(dirs.get(0), "history/gatf-results-1.json").toPath(), "{}".getBytes(StandardCharsets.UTF_8));
 
         ReportMerger.Summary s = ReportMerger.merge(dirs, dest);
+        assertThat(new File(dest, "shard-1-of-4/history").exists()).isFalse();
         assertThat(s.total).isEqualTo(6);
         assertThat(s.passed).isEqualTo(2);
         assertThat(s.failed).isEqualTo(2);

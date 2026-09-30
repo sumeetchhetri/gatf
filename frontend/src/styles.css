@@ -380,6 +380,12 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .ri-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
 .ri-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
 .ri-timeline svg { display: block; margin-top: 4px; }
+.ri-trends svg { display: block; margin: 4px 0 8px; }
+.ag-group h4 { font-size: 12px; margin: 10px 0 6px; }
+.ag-thumbs { display: flex; flex-wrap: wrap; gap: 10px; }
+.ag-thumb { margin: 0; width: 180px; }
+.ag-thumb img { display: block; width: 180px; height: 110px; object-fit: cover; border: 1px solid var(--border); border-radius: 4px; }
+.ag-list { display: flex; flex-wrap: wrap; gap: 6px; }
 
 /* ---------- API report viewer (Slice A cont.) ---------- */
 .ar-detail-row > td { background: var(--panel3); padding: 12px; }
