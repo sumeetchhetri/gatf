@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import TraceChecksPanel from '../components/TraceChecksPanel';
+import RaiseDefect from '../components/RaiseDefect';
 import { reportHtmlUrl, reportSidecarUrl } from '../util';
 import type {
   ReportData,
@@ -148,6 +149,17 @@ function TestView({
           <button className="btn small" onClick={() => onOpenTrace(traceUrl)}>
             Open in Trace Viewer
           </button>
+        )}
+        {!data.status && (
+          <RaiseDefect
+            report={{
+              status: 'Failed',
+              workflowName: data.selFileName,
+              testIdentifier: data.selFileName,
+              error: 'Selenium script failed: ' + data.selFileName,
+              errorText: logs.slice(-4000),
+            }}
+          />
         )}
       </div>
 

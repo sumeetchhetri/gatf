@@ -55,7 +55,7 @@ Replay the same suite against several base URLs (`compareEnvBaseUrls`) to compar
 ### UI automation and RPA with seleasy
 - **Multi-browser:** multiple browser sessions per script (Chrome, Firefox, Edge, Safari, IE, and Appium Android/iOS). Local (Selenium Manager downloads the driver and Chrome for Testing), the lean chrome-headless-shell, or any Selenium Grid ([browser modes](docs/browser-modes.md)).
 - **Locating elements:** id, name, class, CSS, XPath, text, link text and jQuery selectors, with smart waits (`??10`, `??+`, `??-`) and assertions on text, attributes, CSS values and state.
-- **Auto-wait** (`autoWait` config, on in the sample and dogfood configs): before every element action (click, type, select, hover, clear, submit, upload, double-click, drag) GATF waits until the element is attached, visible, enabled, stable (same box over two animation frames) and not covered (the click point hits it); `type` also needs an editable field. The wait is bounded by `actionTimeout` (ms, default 5000), and a failure names the unmet condition, e.g. `covered by <div.modal>`. Opt a single step out with `click! …` or `nowait …`. Configs without `autoWait` behave as before.
+- **Auto-wait** (`autoWait` config, on in the sample and dogfood configs): before every element action (click, type, select, hover, clear, submit, upload, double-click, drag) GATF waits until the element is attached, visible, enabled, stable (same box over two animation frames) and not covered (the click point hits it); `type` fails only on a readonly text field and `clear` needs an editable one. The wait is bounded by `actionTimeout` (ms, default 5000), and a failure names the unmet condition, e.g. `covered by <div.modal>`. Opt a single step out with `click! …` or `nowait …`. Configs without `autoWait` behave as before; projects created from the console get `autoWait` and `webFirstAssertions` on.
 - **Web-first assertions** (`webFirstAssertions` config, on in the sample and dogfood configs): a value assertion such as `?? css@h1 text ="Welcome"` whose element is already there but whose condition is not yet true is retried until `assertTimeout` (ms, default 5000) instead of failing at once, so late-rendered text passes without an explicit wait. The failure then names the condition, e.g. `text = "Welcome" still false after 5000 ms`. `nowait` opts a line out; configs without the setting fail at once as before.
 - **Soft assertions:** `??~ css@h1 text ="Welcome"` records a failed assertion and carries on; the script (or subtest) then fails at the end with every soft failure listed. The console, JUnit XML (`softFailures` property) and `gatf-results.json` show the count.
 - **Semantic locators:** `role@button[name=Save]`, `label@'Email address'`, `placeholder@Search`, `testid@save-btn` (attribute set by `testIdAttribute`, default `data-testid`), `alt@`, `title@`, and exact / regex text (`text@'=Order placed'`, `text@'/placed|shipped/i'`). They resolve in the page with implicit ARIA roles and accessible names, pierce open shadow roots, and with `strictLocators` fail when more than one element matches, listing the candidates.
@@ -105,12 +105,13 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
   silently. In the console (**Import**) or `gatf import`.
   OpenAPI 3.0/3.1 and Swagger 2.0 specs (JSON or YAML) become one API test per operation: parameters and bodies from the
   spec's examples/defaults or a value built from the schema, the first 2xx as the expected status, `$ref`s (local and
-  relative files) resolved, security schemes as `${authToken}`/API-key placeholders, and operation tags as `@tags`.
+  relative files — in the Import view, multi-select the spec with the files it references) resolved, security schemes
+  as `${authToken}`/API-key placeholders, and operation tags as `@tags`.
   Each imported case also keeps a `contract` pointer (`<spec>#<operation>`, the spec is saved beside the .xml), so a run
   fails a response whose status or Content-Type the operation does not declare, or whose JSON body breaks the response
   schema; the failure names the operation and the JSON pointer (`/photoUrls: required property missing`). `--negative`
   (or the Import view checkbox) adds cases that drop a required parameter or send a wrong-typed body property and expect
-  the spec's 4xx. Re-importing over an existing file lists the operations added, removed or changed since.
+  400 (422 when only that is declared). Re-importing over an existing file lists the operations added, removed or changed since.
 - **Test generator:** creates API test cases from JAX-RS or Spring controllers and SOAP WSDLs, and can also produce a Postman collection.
 - **VS Code extension:** language server (completion, diagnostics, navigation) and a debugger.
 
@@ -140,7 +141,7 @@ It is captured over CDP or **WebDriver BiDi** (Chromium, Firefox and Edge) and o
 When a step fails, its screenshot is shown in the test's report, next to the "Open in Trace Viewer" button.
 
 **Performance budgets and security checks** run over each captured trace; results appear in the test's report and in `checks.json` inside the trace.
-- **Budgets:** set `perfBudgets` in the config (e.g. `lcp<2500, requests<80, jsheap<50mb`) or per script in its leading comments (`// @budget lcp<2000 transfer<2mb`). A script budget overrides the config one for the same metric. A breach fails the script with the measured value.
+- **Budgets:** set `perfBudgets` in the config (e.g. `lcp<2500, requests<80, jsheap<50mb`) or per script in its leading comments (`// @budget lcp<2000 transfer<2mb`). A script budget overrides the config one for the same metric. A breach fails the script with the measured value. Web-vital budgets (`lcp fcp ttfb dcl load cls`) apply to the worst page the script visited (per-navigation vitals, `webVitalsByPage` in performance.json; under BiDi only pages left within the same origin are captured), else to the final page.
   - Metrics for the page open at the end of the script: `lcp`, `fcp`, `ttfb`, `dcl`, `load` (ms) and `cls`.
   - Metrics over the whole script: `jsheap`, `transfer` (b/kb/mb), `requests`, `failedRequests` and `consoleErrors`.
   - A metric the browser didn't report is shown as "not measured"; it doesn't fail the script.
@@ -229,7 +230,7 @@ goto https://example.com/login
 | `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
 | `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--negative] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
-| `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
+| `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--requirements-jql JQL] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
@@ -272,7 +273,7 @@ Both `--opt value` and `--opt=value` work. If nothing matches, the run stops wit
 - **Traceability:** requirement → test cases, with pass/fail/not-run counts and a status (Passing, Failing, Partially run, Not run, Not covered).
 - **Coverage:** requirement and test-case totals and percentages, broken down by module.
 
-Requirements are linked with tags: `@REQ-101`, any Jira-style `@PROJ-12`, or `@req:<anything>` (`--req-pattern` overrides). They go in an API case's name or description, a script's header comments, or the comment above a subtest. `--requirements reqs.csv|xlsx` (columns id, title, module) adds the full list, so uncovered requirements show up. Status comes from the last run's `gatf-results.json` (found automatically in the out dir, or `--results`). `gatf test --reporter junit,json,docs` produces the documents after every run.
+Requirements are linked with tags: `@REQ-101`, any Jira-style `@PROJ-12`, or `@req:<anything>` (`--req-pattern` overrides). They go in an API case's name or description, a script's header comments, or the comment above a subtest. `--requirements reqs.csv|xlsx` (columns id, title, module) adds the full list, so uncovered requirements show up. Status comes from the last run's `gatf-results.json` (found automatically in the out dir, or `--results`). `gatf test --reporter junit,json,docs` produces the documents after every run. `--requirements-jql '<JQL>'` imports the requirement list from Jira (id = key, title = summary, module = first component or project), using `GATF_JIRA_URL` + `GATF_JIRA_TOKEN` (Bearer; add `GATF_JIRA_USER` for Basic user:token). The console's Reports view has a **Test cases (xlsx)** download.
 
 ## Console output, logs and exit codes
 

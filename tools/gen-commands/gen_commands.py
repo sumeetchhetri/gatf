@@ -69,6 +69,11 @@ PATTERN_KEYWORDS = [
     for k in ("only", "skip", "fixme")
 ]
 
+# M1: `nowait <verb> ...` / `nowait ?? ...` opt-out prefix, stripped by Command.stripNoWait before dispatch.
+NOWAIT_KEYWORD = {"keyword": "nowait", "match": "prefix", "requiresArg": True, "canBeBare": False, "class": "Command"}
+# M1: `<verb>! ...` is the same opt-out; the verbs are read from Command.NOWAIT_VERBS and flagged bang=true.
+NOWAIT_VERBS_RE = re.compile(r'NOWAIT_VERBS\s*=\s*((?:"(?:[^"\\]|\\.)*"\s*\+?\s*)+);')
+
 # Verbs whose authoritative class comes from handleActions(): when the same
 # keyword is also seen in the main chain (routed via the global-timeout wrapper
 # to WaitTill...), the handleActions class wins.
@@ -288,6 +293,16 @@ def main():
     for e in PATTERN_KEYWORDS:
         merged[e["keyword"].lower()] = dict(e)
 
+    # M1: auto-wait opt-out -- the `nowait` prefix, and `bang` on every verb that accepts `<verb>!`
+    merged[NOWAIT_KEYWORD["keyword"]] = dict(NOWAIT_KEYWORD)
+    vm = NOWAIT_VERBS_RE.search(src)
+    if not vm:
+        raise SystemExit("could not locate Command.NOWAIT_VERBS")
+    verbs = re.compile("".join(unescape_java(x) for x in re.findall(r'"((?:[^"\\]|\\.)*)"', vm.group(1))))
+    for e in merged.values():
+        if verbs.fullmatch(e["keyword"].lower()):
+            e["bang"] = True
+
     entries = sorted(merged.values(),
                      key=lambda e: (e["match"] != "regex", e["keyword"]))
 
@@ -301,7 +316,8 @@ def main():
                   "requiresArg=true means the keyword must be followed by a "
                   "space+argument and cannot stand alone (e.g. `open `). "
                   "canBeBare=true means the keyword may appear as a whole line "
-                  "(e.g. `clear`, `submit`). Regenerate with the generator "
+                  "(e.g. `clear`, `submit`). bang=true means `<keyword>! ...` is "
+                  "accepted (auto-wait opt-out, like the `nowait` prefix). Regenerate with the generator "
                   "above; do not hand-edit."),
         "count": len(entries),
         "commands": entries,

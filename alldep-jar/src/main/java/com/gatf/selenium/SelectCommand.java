@@ -121,6 +121,7 @@ public class SelectCommand extends FindCommandImpl {
                 cvarnm = state.currvarname();
             }
             String selvrnm = state.varname();
+            if(state.autoWait) b.append("\nawaitActionable(___cw___, "+cvarnm+".get(0), \"select\");");
             b.append("\nSelect "+selvrnm+" = new Select("+cvarnm+".get(0));");
             if(by.equalsIgnoreCase("text")) {
                 b.append("\n"+selvrnm+".selectByVisibleText(evaluate(\""+value+"\"));");

@@ -104,4 +104,17 @@ class ContractCheckTest {
         assertThat(ContractDrift.diff(none, none).isEmpty()).isTrue();
         for (TestCase tc : before.testCases) assertThat(tc.getContract()).startsWith("petstore-v3.yaml#/paths/");
     }
+
+    @Test
+    void nonPointerFragmentsAndUnresolvableRefs() throws Exception {
+        SpecDoc d = SpecDoc.load(spec("petstore-v3.yaml"));
+        assertThat(ContractCheck.check(d, "getPetById", 200, "application/json", "{}").failures)
+                .containsExactly("operation getPetById not found in the spec");                  // hand-edited spec#getPetById
+        SpecDoc a = new SpecDoc(new com.fasterxml.jackson.databind.ObjectMapper().readTree("{\"openapi\":\"3.1.0\",\"paths\":{\"/p\":{\"get\":"
+                + "{\"responses\":{\"200\":{\"description\":\"\",\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#pa\"}}}}}}}}}"), null);
+        ContractCheck.Result r = ContractCheck.check(a, "/paths/~1p/get", 200, "application/json", "{}");
+        assertThat(r.ok()).isTrue();
+        assertThat(r.notes).containsExactly("schema $ref #pa unresolvable — not validated");
+        assertThat(r.summary()).isEqualTo("contract GET /p: ok [note: schema $ref #pa unresolvable — not validated]");
+    }
 }

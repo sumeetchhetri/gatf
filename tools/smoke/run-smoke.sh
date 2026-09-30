@@ -82,6 +82,14 @@ else
   note "actionability probe test skipped (node not present)"
 fi
 
+# Q9 per-navigation web-vitals observer (injected JS) against a mocked Performance API — needs node only.
+if command -v node >/dev/null 2>&1; then
+  node tools/smoke/test-web-vitals.mjs >/dev/null
+  note "web-vitals observer test passed"
+else
+  note "web-vitals observer test skipped (node not present)"
+fi
+
 # M3 semantic-locator resolver (injected JS) against jsdom — needs node + the frontend dev deps.
 if command -v node >/dev/null 2>&1 && [ -d frontend/node_modules/jsdom ]; then
   node tools/smoke/test-semantic.mjs >/dev/null

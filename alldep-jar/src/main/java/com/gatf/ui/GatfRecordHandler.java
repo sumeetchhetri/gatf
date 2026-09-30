@@ -71,7 +71,7 @@ public class GatfRecordHandler extends HttpHandler {
             if ("start".equals(action)) {
                 if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to start")); return; }
                 String id = UUID.randomUUID().toString();
-                RecordSession s = new RecordSession(id, request.getParameter("url"), request.getParameter("browser"));
+                RecordSession s = new RecordSession(id, request.getParameter("url"), request.getParameter("browser"), testIdAttribute(request));
                 try {
                     s.start();
                 } catch (Throwable t) {
@@ -122,6 +122,16 @@ public class GatfRecordHandler extends HttpHandler {
             }
         } catch (Exception e) {
             writeJson(response, HttpStatus.INTERNAL_SERVER_ERROR_500, err(msg(e)));
+        }
+    }
+
+    // M3: the project's testIdAttribute for testid@ candidates (null = data-testid); an unreadable config keeps the default
+    private String testIdAttribute(Request request) {
+        try {
+            GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+            return cfg == null ? null : cfg.getTestIdAttribute();
+        } catch (Exception e) {
+            return null;
         }
     }
 

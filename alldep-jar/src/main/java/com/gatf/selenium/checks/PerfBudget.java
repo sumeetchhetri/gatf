@@ -38,7 +38,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
  * budget overrides the config one for the same metric. Limits take units: {@code ms}/{@code s} for times,
  * {@code b}/{@code kb}/{@code mb} for sizes (bare numbers are ms / bytes).
  *
- * <p>Metrics: web vitals of the page open when the trace stopped ({@code lcp fcp ttfb dcl load} in ms, {@code cls}),
+ * <p>Metrics: web vitals ({@code lcp fcp ttfb dcl load} in ms, {@code cls}) of the worst page the script visited when
+ * the trace has per-navigation vitals ({@code webVitalsByPage}), else of the page open when the trace stopped,
  * the peak JS heap ({@code jsheap}), and over the whole script: {@code requests} (count), {@code transfer} (bytes on
  * the wire, falling back to decoded size), {@code failedRequests}, {@code consoleErrors}. A metric the browser did
  * not report is "not measured" — a warning, not a failure.
@@ -183,6 +184,19 @@ public final class PerfBudget {
                 num(m, "dcl", wv.get("domContentLoaded"));
                 num(m, "load", wv.get("load"));
                 num(m, "cls", wv.get("cls"));
+                // Q9: per-navigation vitals present -> each web-vital budget applies to the worst page
+                JsonNode pages = p.path("webVitalsByPage");
+                if (pages.isArray() && pages.size() > 0) {
+                    for (String[] k : new String[][] { { "lcp", "lcp" }, { "fcp", "fcp" }, { "ttfb", "ttfb" },
+                            { "dcl", "domContentLoaded" }, { "load", "load" }, { "cls", "cls" } }) {
+                        Double w = null;
+                        for (JsonNode pg : pages) {
+                            JsonNode v = pg.get(k[1]);
+                            if (v != null && v.isNumber() && v.asDouble() >= 0) w = w == null ? v.asDouble() : Math.max(w, v.asDouble());
+                        }
+                        if (w != null) m.put(k[0], w);
+                    }
+                }
                 double heap = -1;
                 for (JsonNode s : p.path("samples")) {
                     JsonNode h = s.get("JSHeapUsedSize");

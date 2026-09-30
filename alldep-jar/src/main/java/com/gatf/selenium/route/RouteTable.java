@@ -29,6 +29,8 @@ public final class RouteTable {
     public interface Rule {
         /** The decision for this request, or null when the rule does not apply. */
         Route decide(String method, String url);
+        /** As above, with the request body when the transport has it (null otherwise); HAR replay uses it. */
+        default Route decide(String method, String url, String body) { return decide(method, url); }
         /** the URL glob the rule was registered with ({@code unroute <glob>} removes by it) */
         String glob();
         String describe();
@@ -67,8 +69,13 @@ public final class RouteTable {
 
     /** The first matching decision, or null (let the request through untouched). */
     public Route match(String method, String url) {
+        return match(method, url, null);
+    }
+
+    /** As {@link #match(String, String)}, with the request body when known (picks between HAR entries). */
+    public Route match(String method, String url, String body) {
         for (Rule r : rules) {
-            Route d = r.decide(method, url);
+            Route d = r.decide(method, url, body);
             if (d != null) {
                 if (log.size() < 1000) log.add(method + " " + url + " -> " + d);
                 return d;

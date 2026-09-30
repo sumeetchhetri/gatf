@@ -232,17 +232,25 @@ public class ActionsCommand extends FindCommandImpl {
         String toCmd() {
             return "action ";
         }
+        // M1: auto-wait probe (hover mode) before an element step; emitted only for autoWait projects
+        private String probe(String el, boolean on) {
+            return on && state.autoWait ? "\nawaitActionable(___cw___, "+el+", \"hover\");" : "";
+        }
         String _javacode(String acnm) {
             StringBuilder b = new StringBuilder();
             if(action.toLowerCase().matches("click|clickandhold|release|doubleclick|contextclick")) {
+            	boolean hold = action.equals("clickAndHold");
             	if(cond!=null && expr1==null) {
+                    b.append(probe(cond.getActionableVar()+".get(0)", hold));
                     b.append("\n"+acnm+"."+action+"("+cond.getActionableVar()+".get(0));");
                 } else if(expr1==null) {
                     b.append("\n"+acnm+"."+action+"();");
                 } else {
                 	if(expr1.equals("this")) {
+                		b.append(probe(state.currthisat()+".get(0)", hold));
                 		b.append("\n"+acnm+"."+action+"("+state.currthisat()+".get(0));");
                 	} else if(expr1.equals("current")) {
+                		b.append(probe("___ce___.get(0)", hold));
                 		b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
                 	} else {
 	                	String ck = state.unsanitize(expr1);
@@ -256,6 +264,7 @@ public class ActionsCommand extends FindCommandImpl {
 	                    //b.append("sleep("+state.timeoutSleepGranularity+");\n");
 	                    //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
 	                    //b.append("}\n");
+	                    b.append(probe(fc.getActionableVar()+".get(0)", hold));
 	                    b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
                 	}
                 }
@@ -273,13 +282,17 @@ public class ActionsCommand extends FindCommandImpl {
                 b.append("\n"+acnm+".sendKeys(randomize(\""+v1.trim()+"\"));");
             } else if(action.toLowerCase().matches("movetoelement")) {
                 if(cond!=null && expr1==null) {
+                    b.append(probe(cond.getActionableVar()+".get(0)", true));
                     b.append("\n"+acnm+"."+action+"("+cond.getActionableVar()+".get(0));");
                 } else if(expr1==null) {
+                    b.append(probe("___ce___.get(0)", true));
                     b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
                 } else {
                 	if(expr1.equals("this")) {
+                		b.append(probe(state.currthisat()+".get(0)", true));
                 		b.append("\n"+acnm+"."+action+"("+state.currthisat()+".get(0));");
                 	} else if(expr1.equals("current")) {
+                		b.append(probe("___ce___.get(0)", true));
                 		b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
                 	} else {
 	                    String ck = state.unsanitize(expr1);
@@ -294,6 +307,7 @@ public class ActionsCommand extends FindCommandImpl {
 	                    //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+fc.getErr()+");\n");
 	                    //b.append("}\n");
 	                    //b.append("\n"+fc.javacodeonly(null));
+	                    b.append(probe(fc.getActionableVar()+".get(0)", true));
 	                    b.append("\n"+acnm+"."+action+"("+fc.getActionableVar()+".get(0));");
                 	}
                 }
@@ -384,6 +398,7 @@ public class ActionsCommand extends FindCommandImpl {
             String acnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+acnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
             if(cond!=null) {
+                b.append(probe(cond.getActionableVar()+".get(0)", true));
                 b.append("\n"+acnm+".moveToElement("+cond.getActionableVar()+".get(0));");
             }
             b.append(_javacode(acnm));
@@ -395,6 +410,7 @@ public class ActionsCommand extends FindCommandImpl {
             String acnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+acnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
             if(cond!=null) {
+                b.append(probe(elnm+".get(0)", true));
                 b.append("\n"+acnm+".moveToElement("+elnm+".get(0));");
             }
             b.append(_javacode(acnm));

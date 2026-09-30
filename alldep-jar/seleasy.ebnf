@@ -61,6 +61,7 @@ simple_statement =
     | 'mode ' , arg | 'setting ' , arg | 'layer ' , arg
     | wait_stmt
     | interaction_stmt
+    | 'nowait ' , ( interaction_stmt | wait_stmt )  (* M1 auto-wait opt-out, this line only; not with '!' *)
     | mobile_stmt
     | io_stmt
     | code_ctrl_stmt
@@ -75,12 +76,12 @@ wait_stmt    = ( '??+' | '??-' | '??~' | '??' ) , [ integer ] , ' ' , locator
 
 (* ---- element interactions (operate on a locator) -------------------- *)
 interaction_stmt =
-      type_verb , [ qualifier ] , ' ' , value , [ ' ' , locator ]
-    | 'click' , [ click_qual ] , [ ' ' , locator ]
-    | ( 'doubleclick' | 'dblclick' | 'hover' | 'clear' | 'submit' ) , [ ' ' , locator ]
-    | 'hoverclick ' , locator
-    | 'select ' , locator
-    | 'upload ' , locator , ' ' , path
+      type_verb , [ qualifier ] , [ '!' ] , ' ' , value , [ ' ' , locator ]   (* '!' = nowait (M1) *)
+    | 'click' , [ click_qual ] , [ '!' ] , [ ' ' , locator ]
+    | ( 'doubleclick' | 'dblclick' | 'hover' | 'clear' | 'submit' ) , [ '!' ] , [ ' ' , locator ]
+    | 'hoverclick' , [ '!' ] , ' ' , locator
+    | 'select' , [ '!' ] , ' ' , locator
+    | 'upload' , [ '!' ] , ' ' , locator , ' ' , path
     | 'actions ' , arg
     | 'canvas ' , arg
     | ( 'robot ' , arg | 'scrollup' | 'scrolldown' | 'scrollpageup' | 'scrolldown' )

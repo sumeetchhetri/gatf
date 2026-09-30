@@ -19,11 +19,11 @@ subtest "login"                               // reusable, individually reported
 
 - **Find expression:** `<by>@<selector>` where `<by>` is `id`, `name`, `class`, `css`/`cssselector`, `xpath`, `tag`, `text`, `linkText`, `partialLinkText`, `jq`/`$`/`jquery` (jQuery selector), `active`, `this`/`current`. Optional prefixes scope the search (`eval`, `browser-scope`, `session-scope`, `relative`). See [Find Expression](#find-expression).
 - **Waits:** `??N` waits up to N seconds (default: the global `timeout`) for the element, then applies the action or assertion on the same line; `??+` / `??-` wait for visibility / invisibility.
-- **Auto-wait:** with `autoWait` set in the executor config, element actions (click, type, select, hover, clear, submit, upload, double-click, `actions … draganddrop`) also wait (up to `actionTimeout` ms, default 5000) until the element is visible, enabled, stable and not covered by another element; `type` also needs an editable field (upload and submit only need it attached and enabled). A step that times out fails with the reason, e.g. `covered by <div.modal>`. So an explicit `??10 x` before `click x` is no longer needed.
-- **Web-first assertions:** with `webFirstAssertions` set in the executor config, an assertion whose element is found but whose condition is false (`?? css@h1 text ="Welcome"`, `?? id@count text != "0"`) is retried until `assertTimeout` ms (default 5000). Without the setting the assertion fails at once, as before.
+- **Auto-wait:** with `autoWait` set in the executor config, element actions (click, type, select, hover, clear, submit, upload, double-click, `actions … draganddrop`/`moveto`/`clickandhold`) also wait (up to `actionTimeout` ms, default 5000) until the element is visible, enabled, stable and not covered by another element; An element clipped by a scrolling container is scrolled into view first. `type` fails only on a readonly text field (keys still go to other focusable elements); `clear` needs an editable field (upload and submit only need it attached and enabled). A step that times out fails with the reason, e.g. `covered by <div.modal>`. So an explicit `??10 x` before `click x` is no longer needed.
+- **Web-first assertions:** with `webFirstAssertions` set in the executor config, an assertion whose element is found but whose condition is false (`?? css@h1 text ="Welcome"`, `?? id@count text != "0"`) is retried until `assertTimeout` ms (default 5000). That retry budget applies regardless of `??N`, where N only bounds the search for the element. Without the setting the assertion fails at once, as before.
 - **Soft assertions:** `??~` (optionally `??~N`) asserts like `??` but a failure is recorded instead of stopping the script; the script or subtest fails at the end, listing every soft failure with its file and line.
-- **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`). The opt-out applies to that line only.
-- **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots; role queries skip hidden elements. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates.
+- **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`, `nowait actions draganddrop id@a id@b`). The opt-out applies to that line only.
+- **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots and skip hidden elements (append `[include-hidden]` to any value, e.g. `text@=Saved[include-hidden]`); empty values and invalid regexes fail when the script is compiled. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates (loops `#`/`##` and `#transient-provider` may match many). A semantic locator can also be the anchor: `relative tag@input rightof label@Email`.
 - **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
 - **Comments:** `// line` and `/* block */`.
 
@@ -140,7 +140,7 @@ Examples :-
 	state load .auth/admin.json
 ```
 
-The file is Playwright's `storageState` JSON (plus `sessionStorage`), relative to the test-case directory. `save` writes every cookie of the browser (any domain, HttpOnly included, via CDP or BiDi) and the open page's local/session storage, merged into an existing file. `load` sets the cookies and applies the storage to its origin now and on later navigations (once per tab). Project-wide: `storageState` in the config is loaded by every UI script as its browser opens, and `loginOnce` names a script that runs first and saves it.
+The file is Playwright's `storageState` JSON (plus `sessionStorage`), relative to the test-case directory. `save` writes every cookie of the browser (any domain, HttpOnly included, via CDP or BiDi) and the open page's local/session storage, merged into an existing file. `load` sets the cookies and applies the storage to its origin now and on later navigations (once per tab). Project-wide: `storageState` in the config is loaded by every UI script as its browser opens, and `loginOnce` names a script that runs first and saves it (when it ends, or at a plain `close` of its last window). `browserApiStorageToken` is sent only to the open page's host (plus the hosts in `browserApiStorageTokenHosts`, e.g. `*.api.test` for a sibling API host), never from an https page to http.
 
 ### Mock network requests (route)
 
@@ -150,7 +150,8 @@ The file is Playwright's `storageState` JSON (plus `sessionStorage`), relative t
 	route {METHOD}? {url-glob} continue {header 'Name: value'}*
 	route from har {har-file} {url url-glob}? {notfound abort|fallback}?
 	unroute {url-glob|all}
-	url-glob: ** = anything, * = anything but '/', {a,b} = alternatives; the first matching route wins
+	url-glob: ** = anything, * = anything but '/', {a,b} = alternatives, \ = next char literal; the first matching route wins
+	          the whole URL must match: **/api/users does not match ?page=2 (write **/api/users*)
 Examples :-
 	route **/api/users fulfill 200 users.json
 	route POST **/api/orders fulfill 201 '{"id": 7}'
@@ -160,7 +161,7 @@ Examples :-
 	unroute all
 ```
 
-Routes apply to the current browser session from that line on: a quoted body is sent as-is, an unquoted one is a file next to the script (its Content-Type comes from the extension unless `type` is given). `abort` reasons: failed (default), aborted, timedout, accessdenied, connectionrefused, namenotresolved, internetdisconnected, blockedbyclient, … (under BiDi every abort is a plain network error). `route from har` replays a recording by method + URL (exact URL first, then the URL without its query); unrecorded requests go through, or fail with `notfound abort`. Chromium intercepts over CDP `Fetch`; Firefox and other browsers over WebDriver BiDi (`network.addIntercept`) — a script that uses `route` asks non-Chromium sessions for a BiDi socket automatically.
+Routes apply to the current browser session from that line on: a quoted body is sent as-is, an unquoted one is a file next to the script (its Content-Type comes from the extension unless `type` is given). `abort` reasons: failed (default), aborted, timedout, accessdenied, connectionrefused, namenotresolved, internetdisconnected, blockedbyclient, … (under BiDi every abort is a plain network error). A repeated `header` name (e.g. two `Set-Cookie`) is sent twice; for Content-Type the last one wins. `route from har` replays a recording by method + URL (exact URL first, then the URL without its query, preferring the entry that shares the most query parameters; between otherwise equal entries the one whose recorded POST body equals the request's wins under CDP, else the first), keeping repeated response headers; unrecorded requests go through, or fail with `notfound abort`. Chromium intercepts over CDP `Fetch`; Firefox and other browsers over WebDriver BiDi (`network.addIntercept`) — a script that uses `route` asks non-Chromium sessions for a BiDi socket automatically. CDP intercepts only the page's own target — popups and cross-origin (out-of-process) iframes are not mocked; `-Dgatf.routeProtocol=bidi` (or `traceProtocol: bidi`) routes Chromium over BiDi instead, which covers every browsing context.
 
 ### Scroll [Javascript based]
 
@@ -870,7 +871,7 @@ Examples :-
 	}
 ```
 
-A failing `beforeAll` fails the script; a failing `beforeEach` fails that subtest (its body is not run). When the script or subtest has already failed, a failing `afterEach` / `afterAll` is logged and the first failure is reported. Hooks run like funcs and are defined at the top level, one of each kind per script; an `import`ed file lends its subtests and funcs but not its hooks. Suite-wide setup is `globalSetup` / `globalTeardown` in the config: scripts run once before the UI suite (before `loginOnce`) and once after its last round, also when scripts failed; a failing `globalSetup` stops the run.
+A failing `beforeAll` fails the script; a failing `beforeEach` fails that subtest (its body is not run). When the script or subtest has already failed, a failing `afterEach` / `afterAll` is logged and the first failure is reported. Hooks run like funcs and are defined at the top level, one of each kind per script; an `import`ed file lends its subtests and funcs but not its hooks. Suite-wide setup is `globalSetup` / `globalTeardown` in the config: scripts run once before the UI suite (before `loginOnce`) and once after its last round, also when scripts failed (also after a failing `globalSetup`); a failing `globalSetup` stops the run. With `loginOnce` set, `globalSetup` does not load `storageState` (loginOnce is about to replace it).
 
 ### Subtest markers
 
@@ -890,7 +891,7 @@ Examples :-
 	}
 ```
 
-Skipped subtests pass the script and show as skipped in the console (with the reason), the report and JUnit XML (`<skipped message=…>`); hooks do not run for them. `only` is per script.
+Skipped subtests pass the script and show as skipped in the console (with the reason), the report and JUnit XML (`<skipped message=…>`); hooks do not run for them. `only` is per script; `forbidOnly: true` in the config (or `gatf test --forbid-only`) makes an `only` marker a transpile error.
 
 ### Include other seleasy scripts inline
 

@@ -36,6 +36,8 @@ public final class ContractCheck {
     public static final class Result {
         public final String operation;
         public final List<String> failures = new ArrayList<String>();
+        /** Spec defects that left part of the body unchecked (unresolvable schema $ref) — reported, not failing. */
+        public final List<String> notes = new ArrayList<String>();
 
         Result(String operation) { this.operation = operation; }
 
@@ -43,14 +45,16 @@ public final class ContractCheck {
 
         /** One line for the report / JUnit message. */
         public String summary() {
-            if (ok()) return "contract " + operation + ": ok";
-            return "contract " + operation + ": " + failures.get(0) + (failures.size() > 1 ? " (+" + (failures.size() - 1) + " more)" : "");
+            String n = notes.isEmpty() ? "" : " [note: " + String.join("; ", notes) + "]";
+            if (ok()) return "contract " + operation + ": ok" + n;
+            return "contract " + operation + ": " + failures.get(0) + (failures.size() > 1 ? " (+" + (failures.size() - 1) + " more)" : "") + n;
         }
 
         /** Every failure, one per line. */
         public String detail() {
             StringBuilder b = new StringBuilder("contract " + operation + ":");
             for (String f : failures) b.append("\n  ").append(f);
+            for (String f : notes) b.append("\n  note: ").append(f);
             return b.toString();
         }
     }
@@ -166,12 +170,14 @@ public final class ContractCheck {
             r.failures.add("/: body is not valid JSON (expected JSON, actual " + firstLine(e.getMessage()) + ")");
             return r;
         }
-        for (SchemaValidator.Violation v : new SchemaValidator(spec, true).validate(schema, inst)) r.failures.add(v.toString());
+        SchemaValidator sv = new SchemaValidator(spec, true);
+        for (SchemaValidator.Violation v : sv.validate(schema, inst)) r.failures.add(v.toString());
+        r.notes.addAll(sv.notes());
         return r;
     }
 
     /** exact code, then {@code 4XX}-style range, then {@code default}; null when none is declared. */
-    static String responseKey(JsonNode responses, int status) {
+    public static String responseKey(JsonNode responses, int status) {
         String code = String.valueOf(status);
         if (responses.has(code)) return code;
         for (Iterator<String> it = responses.fieldNames(); it.hasNext();) {

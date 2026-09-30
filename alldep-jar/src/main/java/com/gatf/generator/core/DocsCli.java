@@ -17,31 +17,37 @@ package com.gatf.generator.core;
 
 import java.io.File;
 import java.io.PrintStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.gatf.docs.JiraClient;
+import com.gatf.docs.Sheets;
 import com.gatf.docs.TestDoc;
 import com.gatf.docs.TestDocsGenerator;
+import com.gatf.docs.Traceability;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 
 /**
  * Q11 — {@code gatf docs [config…] [-o dir] [--format xlsx|csv|both] [--requirements file] [--results file]
- * [--req-pattern regex]}: test-case documents, traceability matrix and coverage from the configured tests.
+ * [--req-pattern regex] [--requirements-jql JQL]}: test-case documents, traceability matrix and coverage from the configured tests.
  */
-final class DocsCli {
+public final class DocsCli {
 
     static final String USAGE = "gatf docs [config...] [-o <dir>] [--format xlsx|csv|both] [--requirements <file.csv|xlsx>] "
-            + "[--results <gatf-results.json>] [--req-pattern <regex>]";
+            + "[--results <gatf-results.json>] [--req-pattern <regex>] [--requirements-jql <JQL>]";
 
     private DocsCli() {}
 
     static int run(String[] args, File cwd, PrintStream out, PrintStream err) {
         List<String> configs = new ArrayList<String>();
         TestDocsGenerator.Options o = new TestDocsGenerator.Options();
-        String outDir = null;
+        String outDir = null, jql = null;
         try {
             for (int i = 0; i < args.length; i++) {
                 String a = args[i];
@@ -52,6 +58,7 @@ final class DocsCli {
                         if (!o.format.matches("xlsx|csv|both")) throw new IllegalArgumentException("--format must be xlsx, csv or both");
                         break;
                     case "--requirements": o.requirementsFile = resolve(cwd, value(args, ++i, a)).toPath(); break;
+                    case "--requirements-jql": jql = value(args, ++i, a); break;
                     case "--results": o.resultsFile = resolve(cwd, value(args, ++i, a)).toPath(); break;
                     case "--req-pattern":
                         try {
@@ -74,6 +81,7 @@ final class DocsCli {
             if (o.requirementsFile != null && !o.requirementsFile.toFile().isFile()) throw new IllegalArgumentException("requirements file not found: " + o.requirementsFile);
             if (o.resultsFile != null && !o.resultsFile.toFile().isFile()) throw new IllegalArgumentException("results file not found: " + o.resultsFile);
             o.outDir = resolve(cwd, outDir != null ? outDir : "gatf-docs").toPath();
+            if (jql != null) importJira(jql, o, out);
             return generate(configs, cwd, o, out);
         } catch (IllegalArgumentException e) {
             err.println("gatf docs: " + e.getMessage());
@@ -83,6 +91,22 @@ final class DocsCli {
             err.println("gatf docs: " + (e.getMessage() == null ? e.toString() : e.getMessage()));
             return 1;
         }
+    }
+
+    /** {@code --requirements-jql}: Jira issues (plus any --requirements file rows, which win) → a temp requirements csv. */
+    private static void importJira(String jql, TestDocsGenerator.Options o, PrintStream out) throws Exception {
+        List<Traceability.Req> reqs = o.requirementsFile != null ? Sheets.readRequirements(o.requirementsFile) : new ArrayList<Traceability.Req>();
+        Set<String> ids = new HashSet<String>();
+        for (Traceability.Req r : reqs) ids.add(r.id);
+        List<Traceability.Req> jira = JiraClient.requirements(jql, System.getenv());
+        for (Traceability.Req r : jira) if (ids.add(r.id)) reqs.add(r);
+        List<String[]> rows = new ArrayList<String[]>();
+        for (Traceability.Req r : reqs) rows.add(new String[] { r.id, r.title, r.module });
+        Path tmp = Files.createTempFile("gatf-requirements-", ".csv");
+        tmp.toFile().deleteOnExit();
+        Sheets.writeCsv(tmp, new String[] { "id", "title", "module" }, rows);
+        o.requirementsFile = tmp;
+        out.println("Imported " + jira.size() + " requirement(s) from Jira");
     }
 
     /** Also used by {@code gatf test --reporter …,docs} after the run. */
@@ -115,8 +139,8 @@ final class DocsCli {
         throw new IllegalArgumentException("config must be .xml or .json: " + f);
     }
 
-    /** The run's {@code gatf-results.json}: {@code <outFilesBasePath | config dir | cwd>/<outFilesDir | out>/}, when it exists. */
-    static Path defaultResults(GatfExecutorConfig cfg, File cfgDir) {
+    /** The run's {@code gatf-results.json}: {@code <outFilesBasePath | config dir | cwd>/<outFilesDir | out>/}, when it exists. Also used by the console's /misc?action=testdocs. */
+    public static Path defaultResults(GatfExecutorConfig cfg, File cfgDir) {
         String sub = cfg.getOutFilesDir() != null ? cfg.getOutFilesDir() : "out";
         List<File> bases = new ArrayList<File>();
         if (cfg.getOutFilesBasePath() != null) bases.add(new File(cfg.getOutFilesBasePath()));

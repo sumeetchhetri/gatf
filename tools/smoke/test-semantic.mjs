@@ -185,5 +185,63 @@ eq('recorder change carries candidates', [t2.type, t2.value, t2.cand.map((c) => 
   globalThis.document = document;
 }
 
+// ---- hidden duplicates, more accessible-name sources, strict count (a fresh page) ----
+{
+  const d3 = new JSDOM(`<!doctype html><html><body>
+    <div style="display:none"><button>Save</button><input placeholder="Search"><label>Email <input id="e2"></label></div>
+    <button>Save</button><input id="s1" placeholder="Search"><label>Email <input id="e1"></label>
+    <p hidden>Draft saved</p>
+    <fieldset id="fs"><legend>Shipping</legend><input></fieldset>
+    <table id="tb"><caption>Orders</caption><tr><td>x</td></tr></table>
+    <figure id="fg"><img src="c.png" alt=""><figcaption>Sales chart</figcaption></figure>
+    <div id="hl" hidden><span>Find</span> <span>it</span></div><input id="find" aria-labelledby="hl">
+    <div id="many"></div>
+  </body></html>`, { runScripts: 'outside-only' });
+  globalThis.window = d3.window;
+  const doc3 = d3.window.document;
+  globalThis.document = doc3;
+  eq('text@ skips a hidden duplicate', q({ kind: 'text', mode: 'exact', value: 'Save' }).count, 1);
+  eq('placeholder@ skips a hidden duplicate', ids(q({ kind: 'placeholder', mode: 'full', value: 'Search' })), ['s1']);
+  eq('label@ skips a hidden duplicate', ids(q({ kind: 'label', mode: 'full', value: 'Email' })), ['e1']);
+  eq('text@ [include-hidden] finds hidden text', q({ kind: 'text', mode: 'exact', value: 'Draft saved', includeHidden: true }).count, 1);
+  eq('text@ hidden text excluded by default', q({ kind: 'text', mode: 'exact', value: 'Draft saved' }).count, 0);
+  eq('group named by legend', ids(q({ kind: 'role', role: 'group', mode: 'full', value: 'Shipping' })), ['fs']);
+  eq('table named by caption', ids(q({ kind: 'role', role: 'table', mode: 'full', value: 'Orders' })), ['tb']);
+  eq('figure named by figcaption', ids(q({ kind: 'role', role: 'figure', mode: 'full', value: 'Sales chart' })), ['fg']);
+  eq('hidden aria-labelledby target still names', ids(q({ kind: 'role', role: 'textbox', mode: 'full', value: 'Find it' })), ['find']);
+  doc3.getElementById('many').innerHTML = '<button>Go</button>'.repeat(40);
+  const go = q({ kind: 'role', role: 'button', mode: 'full', value: 'Go' });
+  eq('strict data: real count with capped descriptions', [go.count, go.desc.length], [40, 11]);
+
+  // perf sanity: text@ / role@ over ~2,000 elements stay well under a generous bound (was quadratic)
+  let rows = '';
+  for (let i = 0; i < 290; i++) rows += `<div class="row"><div><span><b>Item ${i}</b></span><div><a href="#">Edit</a><button>Del</button></div></div></div>`;
+  doc3.body.innerHTML = `<main><section aria-label="list"><div>${rows}</div></section></main>`;
+  let t0 = Date.now();
+  const hit = q({ kind: 'text', mode: 'exact', value: 'Item 289' });
+  const textMs = Date.now() - t0;
+  t0 = Date.now();
+  q({ kind: 'role', role: 'button', mode: 'full', value: 'Del' });
+  const roleMs = Date.now() - t0;
+  eq(`perf: text@ on ${doc3.querySelectorAll('*').length} elements (${textMs} ms), role@ (${roleMs} ms) < 4000 ms`,
+    [hit.count, textMs < 4000, roleMs < 4000], [1, true, true]);
+  globalThis.window = window;
+  globalThis.document = document;
+}
+
+// ---- recorder with a project testIdAttribute: RecordSession swaps CAND_CALL's literal for the JSON-quoted attribute ----
+{
+  const call = JSON.parse('"' + recSrc.match(/static final String CAND_CALL = "((?:[^"\\]|\\.)*)";/)[1] + '"');
+  eq('recorder carries the CAND_CALL literal', recorderJs.includes(call), true);
+  const d4 = new JSDOM(`<!doctype html><html><body><button data-qa="go">Go</button><button>Go</button></body></html>`, { runScripts: 'outside-only' });
+  d4.window.eval(recorderJs.replace(call, '__gatfCandidates(el,' + JSON.stringify('data-qa') + ')'));
+  globalThis.window = d4.window;
+  globalThis.document = d4.window.document;
+  d4.window.document.querySelector('button').dispatchEvent(new d4.window.MouseEvent('click', { bubbles: true }));
+  eq('recorder: custom test-id attribute candidate', d4.window.__gatfRecord__[1].cand[0], { s: 'testid', v: 'go', n: 1 });
+  globalThis.window = window;
+  globalThis.document = document;
+}
+
 console.log(`${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

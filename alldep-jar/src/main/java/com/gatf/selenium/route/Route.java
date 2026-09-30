@@ -15,7 +15,9 @@
 */
 package com.gatf.selenium.route;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -34,6 +36,8 @@ public final class Route {
     public byte[] body = new byte[0];
     /** FULFILL: response headers; CONTINUE: request headers to add / override */
     public final Map<String, String> headers = new LinkedHashMap<String, String>();
+    /** repeated header lines ({@code {name, value}}, e.g. a second Set-Cookie), sent after {@link #headers} */
+    public final List<String[]> extraHeaders = new ArrayList<String[]>();
     /** ABORT: a Playwright / CDP error code, e.g. {@code failed}, {@code aborted}, {@code timedout} */
     public String reason = "failed";
     /** where a HAR-replayed decision came from (report / trace detail); null for plain routes */
@@ -52,13 +56,26 @@ public final class Route {
     }
 
     /** A FULFILL decision with the given response (HAR replay builds these per request). */
-    static Route fulfilled(String glob, int status, Map<String, String> headers, byte[] body, String source) {
+    static Route fulfilled(String glob, int status, Map<String, String> headers, List<String[]> extra, byte[] body, String source) {
         Route r = new Route(null, glob, Action.FULFILL);
         r.status = status;
         r.headers.putAll(headers);
+        r.extraHeaders.addAll(extra);
         r.body = body;
         r.source = source;
         return r;
+    }
+
+    /**
+     * Adds a header; a name already set (case-insensitively) is repeated as an extra line, except the single-valued
+     * Content-Type / Content-Length, where the last value wins.
+     */
+    public void addHeader(String name, String value) {
+        String k = null;
+        for (String h : headers.keySet()) if (h.equalsIgnoreCase(name)) k = h;
+        if (k == null) headers.put(name, value);
+        else if (k.equalsIgnoreCase("content-type") || k.equalsIgnoreCase("content-length")) headers.put(k, value);
+        else extraHeaders.add(new String[] { name, value });
     }
 
     public String header(String name) {

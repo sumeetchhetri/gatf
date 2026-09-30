@@ -161,9 +161,10 @@ public class FindCommand extends Command {
 						//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 					}
                 }
-            	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
-            		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
+            	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector|role|label|placeholder|testid|alt|title") || classifier.isEmpty()) {
+            		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector|role|label|placeholder|testid|alt|title}@expr`"));
             	}
+            	checkSemantic(cmdDetails);   // M3: a semantic anchor is validated like a plain find
             	relative = parts[2].trim();
             } else {
 	            if(parts.length>=1) {
@@ -198,14 +199,7 @@ public class FindCommand extends Command {
 	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector|role|label|placeholder|testid|alt|title") || classifier.isEmpty()) {
 	                		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector|role|label|placeholder|testid|alt|title}@expr`"));
 	                	}
-	                	// M3: a semantic locator is checked when the script is compiled (unless it holds a runtime variable)
-	                	if(SemanticLocators.isSemantic(by, classifier) && classifier.indexOf('$')==-1) {
-	                		try {
-	                			SemanticLocators.parse(by, classifier);
-	                		} catch (IllegalArgumentException e) {
-	                			throwError(cmdDetails, new RuntimeException(e.getMessage()));
-	                		}
-	                	}
+	                	checkSemantic(cmdDetails);
 	                } else {
 	                	by = parts[0];
 	                	by = state.unsanitize(by);
@@ -277,6 +271,20 @@ public class FindCommand extends Command {
 	                //excep
 	            }
             }
+        }
+        /** M3: a semantic locator is checked when the script is compiled (unless it holds a runtime variable). */
+        private void checkSemantic(Object[] cmdDetails) {
+        	if(isSemanticFind() && !classifier.contains("${") && !classifier.contains("$v{")) {
+        		try {
+        			SemanticLocators.parse(by, classifier);
+        		} catch (IllegalArgumentException e) {
+        			throwError(cmdDetails, new RuntimeException(e.getMessage()));
+        		}
+        	}
+        }
+        /** M3: true when this find uses a semantic locator (loops then allow many matches under strictLocators). */
+        boolean isSemanticFind() {
+        	return by != null && classifier != null && SemanticLocators.isSemantic(by, classifier);
         }
         String toCmd() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");

@@ -29,7 +29,10 @@ import java.util.function.Function;
  * Checks per mode (in this order: attached, visible, enabled, editable, stable, receives events):
  * <pre>
  *   click, dblclick, hover, drag  attached visible [enabled: not hover/drag] stable hit
- *   type                          attached visible enabled editable (input, textarea, select, contenteditable)
+ *   type                          attached visible enabled editable (a readonly text input/textarea fails;
+ *                                 other elements pass, so keys can go to widgets, checkboxes, range inputs)
+ *   clear                         attached visible enabled editable (strict: text input, textarea, select,
+ *                                 contenteditable)
  *   input (randomize, chord)      attached visible enabled
  *   select                        attached visible enabled
  *   upload, submit                attached enabled
@@ -54,7 +57,7 @@ public final class Actionability {
         var HIT = /^(click|dblclick|hover|drag)$/.test(mode);
         var VIS = !/^(upload|submit)$/.test(mode);
         var ENA = !/^(hover|drag)$/.test(mode);
-        var EDIT = mode === 'type';
+        var EDIT = mode === 'type' || mode === 'clear', STRICT = mode === 'clear';
         function desc(n) {
           if (!n || !n.tagName) return String(n);
           var s = '<' + String(n.tagName).toLowerCase();
@@ -89,10 +92,10 @@ public final class Actionability {
           if (t === 'TEXTAREA') return !n.readOnly;
           if (t === 'INPUT') {
             var ty = String(n.type || 'text').toLowerCase();
-            if (/^(button|submit|reset|image|checkbox|radio|file|hidden|range|color)$/.test(ty)) return false;
+            if (/^(button|submit|reset|image|checkbox|radio|file|hidden|range|color)$/.test(ty)) return !STRICT;
             return !n.readOnly;
           }
-          return false;
+          return !STRICT;
         }
         function box(n) { var r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; }
         function frame(cb) {
@@ -135,8 +138,8 @@ public final class Actionability {
           if (ENA && disabled(el)) return done('disabled');
           if (EDIT && !editable(el)) return done('not editable');
           if (!HIT || opt) return done(null);
-          var b0 = box(el), cx = b0[0] + b0[2] / 2, cy = b0[1] + b0[3] / 2;
-          if (cx < 0 || cy < 0 || cx >= window.innerWidth || cy >= window.innerHeight) {
+          var b0 = box(el);
+          if (hit(b0) !== null) {   // off-screen, or clipped by a scrolling ancestor: scroll it to the centre
             try { el.scrollIntoView({ block: 'center', inline: 'center' }); } catch (e) { el.scrollIntoView(); }
             b0 = box(el);
           }
@@ -159,7 +162,8 @@ public final class Actionability {
     /** Maps a seleasy/elementAction verb to a probe mode. Unknown verbs map to {@code click}. */
     public static String modeFor(String action) {
         String a = action == null ? "" : action.trim().toLowerCase(Locale.ROOT);
-        if (a.matches("^(type|sendkeys)(bl|ch|bk|cl|fo)?$") || a.equals("clear")) return "type";
+        if (a.matches("^(type|sendkeys)(bl|ch|bk|cl|fo)?$")) return "type";
+        if (a.equals("clear")) return "clear";
         if (a.matches("^(chord|randomize)(bl|ch|bk|cl|fo)?$")) return "input";
         if (a.equals("doubleclick") || a.equals("dblclick")) return "dblclick";
         if (a.equals("hover")) return "hover";

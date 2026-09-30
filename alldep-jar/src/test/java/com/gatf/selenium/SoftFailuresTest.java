@@ -48,4 +48,15 @@ class SoftFailuresTest {
         assertThat(s.drain()).containsExactly("a.sel:1: x");
         assertThat(s.drain()).isEmpty();
     }
+
+    @Test
+    void restorePutsTheCallersFailuresFirst() {
+        SoftFailures s = new SoftFailures();
+        s.add("main.sel:3", "before call");
+        List<String> caller = s.drain();          // set aside while a subtest runs
+        s.add("main.sel:9", "after call");
+        s.restore(caller);
+        s.restore(java.util.Collections.<String>emptyList());
+        assertThat(s.drain()).containsExactly("main.sel:3: before call", "main.sel:9: after call");
+    }
 }

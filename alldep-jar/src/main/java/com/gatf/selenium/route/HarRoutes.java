@@ -30,7 +30,9 @@ import com.gatf.imports.HarImporter;
 
 /**
  * M4 — {@code route from har <file> [url <glob>] [notfound abort|fallback]}: replays recorded responses by method +
- * URL (exact URL first, then the same URL without its query string; the first recorded entry wins). A request with
+ * URL (exact URL first, then the same URL without its query string, picking the entry whose query parameters overlap
+ * best: matched pairs minus recorded pairs the request lacks). Among equally good entries the one whose recorded
+ * {@code postData.text} equals the request body wins (when the transport knows the body), else the earliest. A request with
  * no recording is let through ({@code fallback}, the default) or aborted ({@code notfound abort}). Entries without a
  * response (status 0) or with 304 (no body to replay) are skipped. Reads HAR through {@link HarImporter#entries}.
  */
@@ -42,15 +44,32 @@ public final class HarRoutes implements RouteTable.Rule {
     private final String glob;
     private final Pattern regex;
     private final boolean abortMissing;
-    private final Map<String, Route> exact = new LinkedHashMap<String, Route>();
-    private final Map<String, Route> noQuery = new LinkedHashMap<String, Route>();
+    private final Map<String, List<Entry>> exact = new LinkedHashMap<String, List<Entry>>();
+    private final Map<String, List<Entry>> noQuery = new LinkedHashMap<String, List<Entry>>();
+    private final Route notRecorded;
     private int size;
+
+    /** one recorded response with what it is matched on */
+    static final class Entry {
+        final List<String> query;
+        final String postData;
+        final Route route;
+
+        Entry(List<String> query, String postData, Route route) {
+            this.query = query;
+            this.postData = postData;
+            this.route = route;
+        }
+    }
 
     private HarRoutes(String file, String glob, boolean abortMissing) {
         this.file = file;
         this.glob = glob == null ? "**" : glob;
         this.regex = Glob.toRegex(this.glob);
         this.abortMissing = abortMissing;
+        this.notRecorded = new Route(null, this.glob, Route.Action.ABORT);
+        notRecorded.reason = "failed";
+        notRecorded.source = "har " + file + " (not recorded)";
     }
 
     public static HarRoutes parse(String source, String file, String glob, boolean abortMissing) {
@@ -63,29 +82,39 @@ public final class HarRoutes implements RouteTable.Rule {
         } catch (Exception e) {
             throw new IllegalArgumentException("route from har " + file + ": not valid JSON (" + e.getMessage() + ")");
         }
+        int n = -1;
         for (JsonNode e : entries) {
+            n++;
             JsonNode q = e.path("request"), r = e.path("response");
             String method = q.path("method").asText("GET").toUpperCase(Locale.ROOT);
             String url = q.path("url").asText("");
             int status = r.path("status").asInt(0);
             if (url.isEmpty() || status == 0 || status == 304) continue;
-            Map<String, String> headers = new LinkedHashMap<String, String>();
+            Route hr = new Route(null, h.glob, Route.Action.FULFILL);
             for (JsonNode hd : r.path("headers")) {
-                String n = hd.path("name").asText("");
-                if (n.isEmpty() || n.startsWith(":") || DROP.contains(n.toLowerCase(Locale.ROOT))) continue;
-                headers.putIfAbsent(n, hd.path("value").asText(""));
+                String hn = hd.path("name").asText("");
+                if (hn.isEmpty() || hn.startsWith(":") || DROP.contains(hn.toLowerCase(Locale.ROOT))) continue;
+                hr.addHeader(hn, hd.path("value").asText(""));   // repeated names (Set-Cookie) are all kept
             }
+            Map<String, String> headers = hr.headers;
             JsonNode c = r.path("content");
             String mime = c.path("mimeType").asText("");
             boolean hasType = false;
             for (String k : headers.keySet()) hasType |= k.equalsIgnoreCase("content-type");
             if (!hasType && !mime.isEmpty()) headers.put("Content-Type", mime);
             String text = c.path("text").asText("");
-            byte[] body = "base64".equalsIgnoreCase(c.path("encoding").asText("")) ? Base64.getDecoder().decode(text.replaceAll("\\s", ""))
-                    : text.getBytes(StandardCharsets.UTF_8);
-            Route d = Route.fulfilled(h.glob, status, headers, body, "har " + file);
-            h.exact.putIfAbsent(method + " " + url, d);
-            h.noQuery.putIfAbsent(method + " " + stripQuery(url), d);
+            byte[] body;
+            try {
+                body = "base64".equalsIgnoreCase(c.path("encoding").asText("")) ? Base64.getDecoder().decode(text.replaceAll("\\s", ""))
+                        : text.getBytes(StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException bad) {
+                throw new IllegalArgumentException("route from har " + file + ": entry " + n + ": " + bad.getMessage());
+            }
+            Route d = Route.fulfilled(h.glob, status, headers, hr.extraHeaders, body, "har " + file);
+            JsonNode pd = q.path("postData").path("text");
+            Entry en = new Entry(queryPairs(url), pd.isTextual() ? pd.asText() : null, d);
+            h.exact.computeIfAbsent(method + " " + url, k -> new ArrayList<Entry>()).add(en);
+            h.noQuery.computeIfAbsent(method + " " + stripQuery(url), k -> new ArrayList<Entry>()).add(en);
             h.size++;
         }
         return h;
@@ -98,17 +127,50 @@ public final class HarRoutes implements RouteTable.Rule {
         return q >= 0 ? u.substring(0, q) : u;
     }
 
+    /** The query string's {@code name=value} pairs, as written (no decoding). */
+    static List<String> queryPairs(String url) {
+        int i = url.indexOf('#');
+        String u = i >= 0 ? url.substring(0, i) : url;
+        int q = u.indexOf('?');
+        List<String> out = new ArrayList<String>();
+        if (q < 0) return out;
+        for (String p : u.substring(q + 1).split("&")) if (!p.isEmpty()) out.add(p.indexOf('=') < 0 ? p + "=" : p);
+        return out;
+    }
+
+    /**
+     * The best of the candidates for this request: highest query score (pairs the request shares minus recorded pairs
+     * it lacks; {@code byQuery} only), then a recorded POST body equal to {@code body}, then the earliest.
+     */
+    static Route pick(List<Entry> cands, List<String> reqQuery, String body, boolean byQuery) {
+        if (cands == null || cands.isEmpty()) return null;
+        if (cands.size() == 1) return cands.get(0).route;
+        Entry best = null;
+        int bestScore = Integer.MIN_VALUE;
+        for (Entry e : cands) {
+            int score = 0;
+            if (byQuery) for (String p : e.query) score += reqQuery.contains(p) ? 2 : -2;   // matched - missing, x2
+            if (body != null && body.equals(e.postData)) score++;                          // tie-break only
+            if (score > bestScore) {
+                best = e;
+                bestScore = score;
+            }
+        }
+        return best.route;
+    }
+
     public Route decide(String method, String url) {
+        return decide(method, url, null);
+    }
+
+    @Override
+    public Route decide(String method, String url, String body) {
         if (url == null || !regex.matcher(url).matches()) return null;
         String m = method == null ? "GET" : method.toUpperCase(Locale.ROOT);
-        Route d = exact.get(m + " " + url);
-        if (d == null) d = noQuery.get(m + " " + stripQuery(url));
+        Route d = pick(exact.get(m + " " + url), null, body, false);
+        if (d == null) d = pick(noQuery.get(m + " " + stripQuery(url)), queryPairs(url), body, true);
         if (d != null) return d;
-        if (!abortMissing) return null;
-        Route a = new Route(null, glob, Route.Action.ABORT);
-        a.reason = "failed";
-        a.source = "har " + file + " (not recorded)";
-        return a;
+        return abortMissing ? notRecorded : null;
     }
 
     public String glob() {

@@ -299,6 +299,18 @@ export const executorSchema: CfgSchema = {
     "browserApiStorageToken": {
       "type": "string"
     },
+    // E9: extra hosts ("host" or "*.domain") the token may go to; by default only the open page's host
+    "browserApiStorageTokenHosts": {
+      "type": "array",
+      "items": {
+        "nolabel": true,
+        "type": "string"
+      }
+    },
+    // E10: a subtest marked `only` fails the transpile (like Playwright's forbidOnly, for CI)
+    "forbidOnly": {
+      "type": "boolean"
+    },
     // M6: scripts run once before the UI suite (before loginOnce) and once after it, also when scripts failed
     "globalSetup": {
       "type": "string"

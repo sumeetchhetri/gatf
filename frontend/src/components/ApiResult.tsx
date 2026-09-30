@@ -43,6 +43,16 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+// OA2 contract detail (ContractCheck.detail(): "contract <op>:\n  <pointer>: ..."), shown whatever failed first —
+// failureReason stays with the first failure (e.g. InvalidStatusCode), the per-pointer lines are appended to errorText.
+const CONTRACT_DETAIL = /(^|\n)contract [^\n]*:\n {2}/;
+export function contractDetail(r: Pick<TestCaseReport, 'errorText' | 'failureReason'>): string | null {
+  if (!r.errorText) return null;
+  const m = CONTRACT_DETAIL.exec(r.errorText);
+  if (m) return r.errorText.slice(m.index + m[1].length);
+  return r.failureReason === 'ContractViolation' ? r.errorText : null;
+}
+
 // Renders one API test-case result: status line (optional), error, cURL, request/response, server logs.
 // Shared by the report viewer (ApiReportView) and the Play result panel in the test-case editor, so the
 // two show identical detail. The Play/Replay controls are supplied by the caller, not this component.
@@ -50,6 +60,7 @@ export default function ApiResult({ r, showStatus }: { r: TestCaseReport; showSt
   const reqHdr = r.requestHeaders;
   const resHdr = r.responseHeaders || r.resHeaders;
   const time = r.averageExecutionTime ?? r.executionTime;
+  const contract = contractDetail(r);
   return (
     <div className="api-result">
       {showStatus && (
@@ -68,7 +79,7 @@ export default function ApiResult({ r, showStatus }: { r: TestCaseReport; showSt
       {(r.error || r.errorText || r.failureReason) && (
         <div className="view-error" style={{ margin: '0 0 10px' }}>
           {r.failureReason && r.error ? r.failureReason + ': ' + r.error : r.failureReason || r.error || r.errorText}
-          {r.failureReason === 'ContractViolation' && r.errorText && <pre className="body-pre">{r.errorText}</pre>}
+          {contract && <pre className="body-pre">{contract}</pre>}
         </div>
       )}
       {r.curlCmd && (

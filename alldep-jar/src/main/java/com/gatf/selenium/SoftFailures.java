@@ -47,6 +47,11 @@ public final class SoftFailures {
         return out;
     }
 
+    /** Puts back failures set aside by {@link #drain()}, ahead of any recorded since (caller's failures first). */
+    public synchronized void restore(List<String> earlier) {
+        if (earlier != null && !earlier.isEmpty()) items.addAll(0, earlier);
+    }
+
     /** "3 soft assertion(s) failed: a.sel:4: …" with every failure on its own line after the first. */
     public static String message(List<String> failures) {
         StringBuilder b = new StringBuilder().append(failures.size()).append(" soft assertion(s) failed");

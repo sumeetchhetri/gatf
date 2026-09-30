@@ -68,6 +68,21 @@ class TraceChecksTest {
     }
 
     @Test
+    void webVitalBudgetsUseTheWorstPageWhenPerNavigationVitalsExist() throws Exception {
+        Path t = trace();
+        Files.writeString(t.resolve("performance.json"), "{\"samples\":[],\"webVitals\":{\"lcp\":900,\"cls\":0.01,\"fcp\":400},"
+                + "\"webVitalsByPage\":[{\"url\":\"https://a/\",\"ts\":1,\"lcp\":2800,\"cls\":0.3,\"fcp\":500},"
+                + "{\"url\":\"https://a/b\",\"ts\":2,\"lcp\":1200},{\"url\":\"https://a/c\",\"ts\":3,\"lcp\":900,\"cls\":0.01,\"fcp\":400}]}");
+        Map<String, Double> m = PerfBudget.measure(t, new ObjectMapper());
+        assertThat(m).containsEntry("lcp", 2800.0).containsEntry("cls", 0.3).containsEntry("fcp", 500.0).doesNotContainKey("ttfb");
+        assertThat(TraceChecks.run(t, "lcp<2500", List.of(), "off").failure()).startsWith("budget: lcp 2800ms exceeds budget lcp<2500");
+        // a single page reads the same as the final-page webVitals (unchanged behaviour)
+        Files.writeString(t.resolve("performance.json"), "{\"samples\":[],\"webVitals\":{\"lcp\":900},"
+                + "\"webVitalsByPage\":[{\"url\":\"https://a/\",\"ts\":1,\"lcp\":900}]}");
+        assertThat(PerfBudget.measure(t, new ObjectMapper())).containsEntry("lcp", 900.0);
+    }
+
+    @Test
     void securityFindingsPerPage() throws Exception {
         List<SecurityScan.Finding> f = SecurityScan.scan(trace(), new ObjectMapper());
         assertThat(f).extracting(x -> x.rule).contains("mixed-content", "missing-csp", "missing-hsts", "missing-clickjacking-protection",

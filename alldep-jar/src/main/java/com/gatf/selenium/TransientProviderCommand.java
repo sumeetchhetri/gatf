@@ -98,7 +98,10 @@ public class TransientProviderCommand extends Command {
             //b.append("int "+cntvar+" = 0;\n");
             b.append("List<String[]> " + provname + " = null;\n");
             //b.append("\nwhile(true) {\n");
+            boolean multi = cond.isSemanticFind();   // M3: a provider collects every match, even under strictLocators
+            if(multi) b.append("semanticMulti(true);\ntry {\n");
             b.append(cond.javacodetrprovonly(provname));
+            if(multi) b.append("} finally {\nsemanticMulti(false);\n}\n");
             //b.append("if("+provname+"!=null && "+provname+".size()>0) break;\n");
             //b.append("sleep("+state.timeoutSleepGranularity+");\n");
             //b.append("if("+cntvar+"++=="+counter+")throw new RuntimeException("+cond.getErr()+");\n");

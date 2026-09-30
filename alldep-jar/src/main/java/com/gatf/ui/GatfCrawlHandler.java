@@ -82,6 +82,7 @@ public class GatfCrawlHandler extends HttpHandler {
                 for (CrawlSession s : SESSIONS.values()) if (s.isRunning()) running++;
                 if (running >= MAX_RUNNING) { json(response, HttpStatus.SERVICE_UNAVAILABLE_503, err("too many crawls running (max " + MAX_RUNNING + ")")); return; }
                 CrawlSpec spec = specFrom(readBody(request));
+                spec.setTestIdAttribute(testIdAttribute(request));
                 String id = UUID.randomUUID().toString();
                 CrawlSession s = new CrawlSession(id, spec);
                 SESSIONS.put(id, s);
@@ -140,6 +141,16 @@ public class GatfCrawlHandler extends HttpHandler {
             byte[] b = in.readAllBytes();
             if (b.length == 0) return new LinkedHashMap<String, Object>();
             return WorkflowContextHandler.OM.readValue(b, Map.class);
+        }
+    }
+
+    // M3: the project's testIdAttribute for testid@ candidates (null = data-testid); an unreadable config keeps the default
+    private String testIdAttribute(Request request) {
+        try {
+            GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+            return cfg == null ? null : cfg.getTestIdAttribute();
+        } catch (Exception e) {
+            return null;
         }
     }
 

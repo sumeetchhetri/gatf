@@ -28,6 +28,7 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 import org.junit.jupiter.api.Test;
 import org.reflections.Reflections;
@@ -66,7 +67,8 @@ class SeleasyDocsDriftTest {
         List<String> missing = new ArrayList<String>();
         for (JsonNode c : new ObjectMapper().readTree(read("docs/seleasy/commands.json")).get("commands")) {
             String k = c.get("keyword").asText();
-            if (k.matches("[a-z][a-z_]*") && !grammar.contains(k)) missing.add(k);
+            // whole word only (a JSON-escaped \\b counts as a boundary): "type" must not pass because of "typeText"
+            if (k.matches("[a-z][a-z_]*") && !Pattern.compile("(?:(?<![A-Za-z0-9_])|(?<=\\\\b))" + Pattern.quote(k) + "(?![A-Za-z0-9_])").matcher(grammar).find()) missing.add(k);
         }
         assertThat(missing).isEmpty();
     }

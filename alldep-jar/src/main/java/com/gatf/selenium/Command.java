@@ -88,6 +88,8 @@ public class Command {
         boolean modeEnableGlobalTimeouts = true;
         boolean modeEnableConcurrentWebDriver = false;
         boolean hasNetapixCommand = false;
+        // E13: this file is the configured loginOnce script: a plain `close` first saves the storage state
+        boolean isLoginOnceScript = false;
         // M4: the script uses route/unroute: non-Chromium sessions then ask for a BiDi socket (webSocketUrl)
         boolean hasRouteCommand = false;
         // M1: the project's config has autoWait on; codegen then also emits probes for raw Actions drags
@@ -169,10 +171,15 @@ public class Command {
 
         /** M6: true when a subtest of this script (not an imported one) is marked {@code only}. */
         boolean hasOnly() {
+            return firstOnly() != null;
+        }
+
+        /** E10: the first subtest of this script (not an imported one) marked {@code only}, or null. */
+        SubTestCommand firstOnly() {
             for (Command c : allSubTests) {
-                if(c instanceof SubTestCommand && "only".equals(((SubTestCommand)c).marker) && !((SubTestCommand)c).imported) return true;
+                if(c instanceof SubTestCommand && "only".equals(((SubTestCommand)c).marker) && !((SubTestCommand)c).imported) return (SubTestCommand)c;
             }
-            return false;
+            return null;
         }
 
         void addSubtest(SubTestCommand st) {
@@ -376,6 +383,8 @@ public class Command {
     // M6: hook blocks and subtest markers
     static Pattern HOOK_BLOCK = Pattern.compile("(?i)^(beforeall|beforeeach|aftereach|afterall)$");
     static Pattern SUBTEST_MARKER = Pattern.compile("(?i)^(only|skip|fixme)\\s+subtest\\s+");
+    /** E10: the transpile error for an {@code only} marker under forbidOnly. */
+    static final String FORBID_ONLY = "'only' is not allowed (forbidOnly)";
     /** M6: canonical hook name (beforeAll, beforeEach, afterEach, afterAll) of a HOOK_BLOCK line, any case. */
     static String hookName(String line) {
         for (String h : new String[] {"beforeAll", "beforeEach", "afterEach", "afterAll"}) {
@@ -387,7 +396,7 @@ public class Command {
     // M1: auto-wait opt-out forms for element actions: `nowait click id@x`, `nowait ??10 id@x click`, `click! id@x`
     static final String NOWAIT_VERBS = "(?:click(?:fo|nf)?|(?:type|sendkeys|chord|randomize)(?:bl|ch|bk|cl|fo)?|select|hover|hoverclick"
             + "|clear|submit|upload|doubleclick|dblclick)";
-    static Pattern NOWAIT_PREFIX = Pattern.compile("^nowait[\t ]+(?=" + NOWAIT_VERBS + "(?:[\t ]|$)|\\?\\?)", Pattern.CASE_INSENSITIVE);
+    static Pattern NOWAIT_PREFIX = Pattern.compile("^nowait[\t ]+(?=(?:" + NOWAIT_VERBS + "|actions)(?:[\t ]|$)|\\?\\?)", Pattern.CASE_INSENSITIVE);
     static Pattern NOWAIT_BANG = Pattern.compile("^(" + NOWAIT_VERBS + ")!(?=[\t ]|$)", Pattern.CASE_INSENSITIVE);
 
     /** M1: strips an auto-wait opt-out marker; returns null when the statement has none. */
@@ -1708,9 +1717,16 @@ public class Command {
             state.testcaseDir = context.getGatfExecutorConfig().getTestCaseDir();
         }
         state.autoWait = context.getGatfExecutorConfig().autoWaitEnabled();
+        String lo = context.getGatfExecutorConfig().getLoginOnce();
+        state.isLoginOnceScript = lo != null && !lo.trim().isEmpty() && com.gatf.executor.core.SetupScripts.sameFile(file.getPath(), lo.trim(),
+                n -> n.equals(file.getPath()) ? file : context.getResourceFile(n));
         loadPlugins(state, context);
         state.visitedFiles.add(file.getAbsolutePath());
         Command cmd = Command.getAll(commands, file, state);
+        SubTestCommand only = state.firstOnly();
+        if(only!=null && Boolean.TRUE.equals(context.getGatfExecutorConfig().getForbidOnly())) {
+            throwError(only.fileLineDetails, new RuntimeException(FORBID_ONLY));
+        }
         cmd.mp = context.getGatfExecutorConfig().getSelDriverConfigMap();
         return cmd;
     }
@@ -2072,7 +2088,7 @@ public class Command {
         	b.append("SeleniumTestResult ___aar___ = " + aares + ";\n");
         	aares = "___aar___";
         	b.append("if(!___aa___) {\n___aa___ = true;\ntry {\n___invoke_sub_test_dyn___(getClass(), \"" + aah.fName + "\", \"afterAll\", get___d___(), get___d___(), get___d___(), ___lp___);\n"
-        			+ "} catch(Throwable ___hk___) {\n__hook_failed__(\"afterAll\", ___hk___);\n}\n}\n");
+        			+ "} catch(Throwable ___hk___) {\n__hook_failed__(\"afterAll\", ___hk___);\n}\n__hook_soft__(\"afterAll\");\n}\n");
         }
         state.isSTGenPhase = true;
         //b.append("\ntry{");
@@ -3752,7 +3768,8 @@ public class Command {
         		}
         		return b.toString();
         	}
-            return "___cw___.close();";
+            // E13: in the loginOnce script, save the login while the last window is still open (nothing is left at quit)
+            return (state.isLoginOnceScript ? "__loginOnceSave__(___cw___);\n" : "") + "___cw___.close();";
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
@@ -4405,6 +4422,7 @@ public class Command {
             }
             String hvvrnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
+            if(state.autoWait) b.append("\nawaitActionable(___cw___, "+cvarnm+".get(0), \"hover\");");
             b.append("\n"+hvvrnm+".moveToElement("+cvarnm+".get(0)).perform();");
             return b.toString();
         }
@@ -4463,6 +4481,7 @@ public class Command {
             String cevarnm = condCe.topele();
             String hvvrnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
+            if(state.autoWait) b.append("\nawaitActionable(___cw___, "+hevarnm+".get(0), \"hover\");");
             b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).click(((List<WebElement>)"+cevarnm+"[0]).get(0)).perform();");
             return b.toString();
         }
@@ -4572,7 +4591,7 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly());
-                b.append("\nclickAction(___ocw___, ___ce___, "+(name!=null?("\""+name+"\""):null)+");\n");
+                b.append("\nclickAction(___ocw___, ___ce___, "+(name!=null?("\""+name+"\""):null)+", \""+(cond.by!=null?esc(cond.by):"")+(cond.classifier!=null?"@"+esc(cond.classifier):"")+"\");\n");
                 //b.append(cond.getActionable("click", null, null));
             } else {
                 b.append("\nclickAction(___ocw___, "+state.currvarname()+", \""+name+"\");\n");
@@ -4614,6 +4633,7 @@ public class Command {
             }
             String hvvrnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
+            if(state.autoWait) b.append("\nawaitActionable(___cw___, ___ce___.get(0), \"dblclick\");");
             b.append(cond.getActionable("doubleClick", null, hvvrnm));
             return b.toString();
         }
@@ -4649,8 +4669,10 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly());
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, ___ce___.get(0), \"clear\");");
                 b.append(cond.getActionable("clear", null, null));
             } else {
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, "+state.currvarname()+".get(0), \"clear\");");
                 b.append("\n"+state.currvarname()+".get(0).clear();");
             }
             return b.toString();
@@ -4737,8 +4759,10 @@ public class Command {
             StringBuilder b = new StringBuilder();
             if(cond!=null) {
                 b.append(cond.javacodeonly());
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, ___ce___.get(0), \"submit\");");
                 b.append(cond.getActionable("submit", null, null));
             } else {
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, "+state.currvarname()+".get(0), \"submit\");");
                 b.append("\n"+state.currvarname()+".get(0).submit();");
             }
             return b.toString();

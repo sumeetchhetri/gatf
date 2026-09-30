@@ -44,6 +44,9 @@ public final class SelDocs {
         final String name;
         final List<String> body = new ArrayList<String>();
         final List<String> comments = new ArrayList<String>();
+        /** E2: only | skip | fixme marker of a subtest, else null; subtest = not a func or hook. */
+        String marker;
+        boolean subtest;
 
         Block(String name) {
             this.name = name;
@@ -55,6 +58,8 @@ public final class SelDocs {
         final List<String> top = new ArrayList<String>();
         final List<Block> subtests = new ArrayList<Block>();
         final List<Block> funcs = new ArrayList<Block>();
+        /** E2: beforeAll / beforeEach / afterEach / afterAll blocks by canonical name. */
+        final Map<String, Block> hooks = new LinkedHashMap<String, Block>();
     }
 
     private final Pattern req;
@@ -78,7 +83,12 @@ public final class SelDocs {
         String headerText = String.join(" ", p.header);
         List<String> pre = new ArrayList<String>();
         List<String[]> topItems = new ArrayList<String[]>();
+        onlyInFile = false;
+        for (Block b : p.subtests) onlyInFile |= "only".equals(b.marker);
         expand(file, p.top, topItems, pre, 0, null);
+        // E2: beforeAll runs before every case of the script, beforeEach before each subtest: both are preconditions.
+        // afterEach / afterAll are cleanup, not part of what a case verifies: left out (no postcondition column).
+        List<String> beforeAll = hookSteps(file, p.hooks.get("beforeAll"), "Before all"), beforeEach = hookSteps(file, p.hooks.get("beforeEach"), "Before each");
         boolean hasTopSteps = false;
         for (String[] it : topItems) if (it[0].equals("s")) hasTopSteps = true;
 
@@ -86,6 +96,7 @@ public final class SelDocs {
             TestDoc d = doc(source, module, null, title(file, p.header), headerText);
             d.description = description(p.header);
             d.preconditions.addAll(pre);
+            d.preconditions.addAll(beforeAll);
             fill(d, topItems);
             out.add(d);
         }
@@ -93,11 +104,33 @@ public final class SelDocs {
             TestDoc d = doc(source, module, b.name, b.name, headerText + " " + String.join(" ", b.comments));
             if (!b.comments.isEmpty()) d.description = clean(String.join(" ", b.comments));
             d.preconditions.addAll(pre);
+            d.preconditions.addAll(beforeAll);
+            d.preconditions.addAll(beforeEach);
             List<String[]> items = new ArrayList<String[]>();
             expand(file, b.body, items, d.preconditions, 0, null);
             fill(d, items);
+            if ("skip".equals(b.marker) || "fixme".equals(b.marker)) {
+                // E2: reported as skipped by every run (the reason is the marker)
+                d.status = "skipped";
+                d.description = ("Skipped: marked " + b.marker + " in the script." + (d.description.isEmpty() ? "" : " " + d.description));
+            } else if ("only".equals(b.marker)) {
+                d.description = ("Marked only: the script's other subtests are skipped." + (d.description.isEmpty() ? "" : " " + d.description));
+            }
             out.add(d);
         }
+        return out;
+    }
+
+    /** E2: a file of this script has a subtest marked only (its other subtests are skipped when @call'ed). */
+    private boolean onlyInFile;
+
+    /** E2: a hook block's steps and checks as precondition lines ("Before all: Navigate to …"). */
+    private List<String> hookSteps(Path file, Block hook, String label) {
+        List<String> out = new ArrayList<String>();
+        if (hook == null) return out;
+        List<String[]> items = new ArrayList<String[]>();
+        expand(file, hook.body, items, out, 0, null);
+        for (String[] it : items) if (!it[0].equals("d")) out.add(label + ": " + it[1]);
         return out;
     }
 
@@ -158,7 +191,9 @@ public final class SelDocs {
 
     // ---------------------------------------------------------------- parsing
 
-    private static final Pattern SUBTEST = Pattern.compile("(?i)^(subtest|func)\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s*(\\{)?\\s*$");
+    // E2: an optional only / skip / fixme marker before subtest (group 1); hook blocks are their own blocks
+    private static final Pattern SUBTEST = Pattern.compile("(?i)^(?:(only|skip|fixme)\\s+(?=subtest\\s))?(subtest|func)\\s+(?:\"([^\"]*)\"|'([^']*)'|(\\S+))\\s*(\\{)?\\s*$");
+    private static final Pattern HOOK = Pattern.compile("(?i)^(beforeall|beforeeach|aftereach|afterall)\\s*(\\{)?\\s*$");
 
     static Parsed parse(List<String> lines) {
         Parsed p = new Parsed();
@@ -192,13 +227,25 @@ public final class SelDocs {
             if (cur == null) {
                 Matcher m = SUBTEST.matcher(t);
                 if (m.matches()) {
-                    String name = m.group(2) != null ? m.group(2) : m.group(3) != null ? m.group(3) : m.group(4);
+                    String name = m.group(3) != null ? m.group(3) : m.group(4) != null ? m.group(4) : m.group(5);
                     cur = new Block(name);
+                    cur.marker = m.group(1) == null ? null : m.group(1).toLowerCase(Locale.ROOT);
                     cur.comments.addAll(pendingComments);
                     pendingComments.clear();
-                    (m.group(1).equalsIgnoreCase("func") ? p.funcs : p.subtests).add(cur);
-                    depth = m.group(5) != null ? 1 : 0;
-                    awaitOpen = m.group(5) == null;
+                    cur.subtest = !m.group(2).equalsIgnoreCase("func");
+                    (cur.subtest ? p.subtests : p.funcs).add(cur);
+                    depth = m.group(6) != null ? 1 : 0;
+                    awaitOpen = m.group(6) == null;
+                    continue;
+                }
+                Matcher h = HOOK.matcher(t);
+                if (h.matches()) {
+                    String hk = h.group(1).toLowerCase(Locale.ROOT);
+                    cur = new Block(hk.startsWith("before") ? "before" + (hk.endsWith("all") ? "All" : "Each") : "after" + (hk.endsWith("all") ? "All" : "Each"));
+                    pendingComments.clear();
+                    p.hooks.putIfAbsent(cur.name, cur);
+                    depth = h.group(2) != null ? 1 : 0;
+                    awaitOpen = h.group(2) == null;
                     continue;
                 }
                 pendingComments.clear();
@@ -290,6 +337,9 @@ public final class SelDocs {
             if (k.startsWith("@call")) {
                 String name = unquote(t.substring(5).trim().split("\\s+")[0]);
                 Block b = callable.get(name);
+                if (b != null && ("skip".equals(b.marker) || "fixme".equals(b.marker) || (onlyInFile && b.marker == null && b.subtest))) {
+                    continue;   // E2: not run (reported as skipped): its steps are not part of the caller's
+                }
                 if (b != null && depth < 5) {
                     expand(file, b.body, out, pre, depth + 1, name);
                 } else {

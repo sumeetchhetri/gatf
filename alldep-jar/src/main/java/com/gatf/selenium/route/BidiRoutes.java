@@ -20,6 +20,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * M4 — a route decision as the raw WebDriver BiDi command for a request blocked by {@code network.addIntercept}
@@ -41,6 +42,14 @@ public final class BidiRoutes {
 
     /** {@code [method, params]} for the blocked request; {@code d == null} continues it unchanged. */
     public static Object[] command(Route d, String requestId, Map<String, String> requestHeaders) {
+        return command(d, requestId, requestHeaders, Set.of());
+    }
+
+    /**
+     * As above; {@code base64Headers} names the request headers whose value BiDi reported as base64 (non-UTF-8 bytes):
+     * on continue they are passed back unchanged as {@code {type: "base64"}} BytesValues.
+     */
+    public static Object[] command(Route d, String requestId, Map<String, String> requestHeaders, Set<String> base64Headers) {
         Map<String, Object> p = new LinkedHashMap<String, Object>();
         p.put("request", requestId);
         if (d == null) return new Object[] { "network.continueRequest", p };
@@ -48,6 +57,7 @@ public final class BidiRoutes {
             case FULFILL: {
                 p.put("statusCode", d.status);
                 List<Map<String, Object>> hs = headers(d.headers);
+                for (String[] x : d.extraHeaders) hs.add(header(x[0], x[1]));   // repeated names are allowed
                 boolean hasLength = false;
                 for (Map<String, Object> h : hs) hasLength |= "content-length".equalsIgnoreCase(String.valueOf(h.get("name")));
                 if (!hasLength) hs.add(header("Content-Length", String.valueOf(d.body.length)));
@@ -61,7 +71,17 @@ public final class BidiRoutes {
             case ABORT:
                 return new Object[] { "network.failRequest", p };
             default:
-                if (!d.headers.isEmpty()) p.put("headers", headers(CdpRoutes.merge(requestHeaders, d.headers)));
+                if (!d.headers.isEmpty()) {
+                    List<Map<String, Object>> hs = headers(CdpRoutes.merge(requestHeaders, d.headers));
+                    for (Map<String, Object> h : hs) {
+                        if (base64Headers.contains(h.get("name")) && !d.headers.containsKey(h.get("name"))) {
+                            @SuppressWarnings("unchecked") Map<String, Object> v = (Map<String, Object>) h.get("value");
+                            v.put("type", "base64");
+                        }
+                    }
+                    for (String[] x : d.extraHeaders) hs.add(header(x[0], x[1]));
+                    p.put("headers", hs);
+                }
                 return new Object[] { "network.continueRequest", p };
         }
     }

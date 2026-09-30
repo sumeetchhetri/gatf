@@ -48,6 +48,8 @@ import org.openqa.selenium.chromium.HasCdp;
  */
 public class RecordSession {
 
+    // the literal test-id argument inside RECORDER_JS; {@link #recorderJs()} swaps it for the project's testIdAttribute
+    static final String CAND_CALL = "__gatfCandidates(el,'data-testid')";
     // Injected into every document; buffers captured actions on window.__gatfRecord__ for the server to drain.
     static final String RECORDER_JS =
         "(function(){"
@@ -91,19 +93,39 @@ public class RecordSession {
     static final long SLEEP_CAP_MS = 10000;
 
     private final String browser;   // G9: chrome | firefox | edge
+    private final String recorderJs;   // RECORDER_JS for this project's testIdAttribute
 
     public RecordSession(String id, String startUrl) {
         this(id, startUrl, "chrome");
     }
 
     public RecordSession(String id, String startUrl, String browser) {
+        this(id, startUrl, browser, null);
+    }
+
+    /** M3: {@code testIdAttribute} (config {@code testIdAttribute}; blank = data-testid) feeds the testid@ candidates. */
+    public RecordSession(String id, String startUrl, String browser, String testIdAttribute) {
         this.id = id;
+        String tid = testIdAttribute == null || testIdAttribute.trim().isEmpty() ? null : testIdAttribute.trim();
+        this.recorderJs = tid == null ? RECORDER_JS : RECORDER_JS.replace(CAND_CALL, "__gatfCandidates(el," + jsString(tid) + ")");
         this.startUrl = (startUrl == null || startUrl.trim().isEmpty()) ? "about:blank" : startUrl.trim();
         String b = browser == null ? "" : browser.trim().toLowerCase(java.util.Locale.ROOT);
         this.browser = b.equals("firefox") || b.equals("edge") ? b : "chrome";
     }
 
     public String getBrowser() { return browser; }
+
+    String recorderJs() { return recorderJs; }
+
+    static String jsString(String v) {
+        StringBuilder b = new StringBuilder("\"");
+        for (char c : v.toCharArray()) {
+            if (c == '"' || c == '\\') b.append('\\').append(c);
+            else if (c < 0x20 || c == 0x2028 || c == 0x2029 || c == '<') b.append(String.format("\\u%04x", (int) c));
+            else b.append(c);
+        }
+        return b.append('"').toString();
+    }
 
     // visible local browser (Selenium Manager provisions driver + browser); Firefox gets a BiDi socket
     private WebDriver newDriver() {
@@ -124,15 +146,15 @@ public class RecordSession {
         // CDP on Chromium, a BiDi preload script elsewhere; the poll loop re-injects as a universal fallback
         if (driver instanceof HasCdp) {
             ((HasCdp) driver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument",
-                    Collections.<String, Object>singletonMap("source", RECORDER_JS));
+                    Collections.<String, Object>singletonMap("source", recorderJs));
         } else if (com.gatf.selenium.trace.BidiRaw.available(driver)) {
             try {
-                new org.openqa.selenium.bidi.module.Script(driver).addPreloadScript("() => {" + RECORDER_JS + "}");
+                new org.openqa.selenium.bidi.module.Script(driver).addPreloadScript("() => {" + recorderJs + "}");
             } catch (Exception ignore) { /* poll-loop re-injection still covers it */ }
         }
         if (!"about:blank".equals(startUrl)) driver.get(startUrl);
         // belt-and-braces: also inject into the already-loaded document (idempotent via the guard)
-        try { ((JavascriptExecutor) driver).executeScript(RECORDER_JS); } catch (Exception ignore) {}
+        try { ((JavascriptExecutor) driver).executeScript(recorderJs); } catch (Exception ignore) {}
         running = true;
         poller = new Thread(new Runnable() {
             public void run() { pollLoop(); }
@@ -149,7 +171,7 @@ public class RecordSession {
                 if (!running) break;
                 // universal fallback (any WebDriver): (re)install into a document that lacks the recorder —
                 // guarded by __gatfRecInit, so it is a no-op wherever CDP/BiDi preload already did it
-                ((JavascriptExecutor) driver).executeScript(RECORDER_JS);
+                ((JavascriptExecutor) driver).executeScript(recorderJs);
                 Object raw = ((JavascriptExecutor) driver).executeScript(DRAIN_JS);
                 if (raw instanceof List) {
                     for (Object o : (List<Object>) raw) {

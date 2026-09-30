@@ -67,6 +67,15 @@ final class HybridTransport implements BrowserControl {
     @Override public void disableMetrics() { route(Capability.METRICS).disableMetrics(); }
     @Override public Map<String, Number> sampleMetrics() { return route(Capability.METRICS).sampleMetrics(); }
     @Override public String readWebVitals() { return bidi.readWebVitals(); }
+    // Q9: CDP's binding reports pages out-of-band (survives cross-origin navigation); BiDi page buffer otherwise
+    private volatile BrowserControl vitalsSide;
+    @Override public boolean enablePageVitals(java.util.function.Consumer<String> sink) {
+        if (cdp.enablePageVitals(sink)) { vitalsSide = cdp; return true; }
+        if (bidi.enablePageVitals(sink)) { vitalsSide = bidi; return true; }
+        return false;
+    }
+    @Override public String drainPageVitals() { BrowserControl v = vitalsSide; return v == null ? null : v.drainPageVitals(); }
+    @Override public void disablePageVitals() { BrowserControl v = vitalsSide; if (v != null) v.disablePageVitals(); }
 
     @Override public boolean enableRoutes(com.gatf.selenium.route.RouteTable t, boolean keepResponseStage) { return route(Capability.ROUTE).enableRoutes(t, keepResponseStage); }
     @Override public void disableRoutes() { route(Capability.ROUTE).disableRoutes(); }

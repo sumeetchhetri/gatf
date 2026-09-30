@@ -48,15 +48,22 @@ final class BrowserSession implements SessionBridge.Bridge {
     private final WebDriver driver;
     private final boolean sync;
     private final String storageToken;   // M5: browserApiStorageToken, null = none
+    private final String[] tokenHosts;   // E9: browserApiStorageTokenHosts, extra hosts the token may go to
+    private static final java.util.Set<String> REFUSED_HOSTS = java.util.concurrent.ConcurrentHashMap.newKeySet();   // log once per host
 
     BrowserSession(WebDriver driver, String mode) {
         this(driver, mode, null);
     }
 
     BrowserSession(WebDriver driver, String mode, String storageToken) {
+        this(driver, mode, storageToken, null);
+    }
+
+    BrowserSession(WebDriver driver, String mode, String storageToken, String[] tokenHosts) {
         this.driver = driver;
         this.sync = "sync".equals(mode);
         this.storageToken = storageToken == null || storageToken.trim().isEmpty() ? null : storageToken.trim();
+        this.tokenHosts = tokenHosts;
     }
 
     /** Installs a bridge for {@code driver} unless there is no browser or the mode is off; returns the previous one. */
@@ -65,14 +72,34 @@ final class BrowserSession implements SessionBridge.Bridge {
     }
 
     static SessionBridge.Bridge enter(WebDriver driver, String configuredMode, String storageToken) {
+        return enter(driver, configuredMode, storageToken, null);
+    }
+
+    static SessionBridge.Bridge enter(WebDriver driver, String configuredMode, String storageToken, String[] tokenHosts) {
         String mode = SessionBridge.effectiveMode(configuredMode);
         if (driver == null || "off".equals(mode)) return SessionBridge.enter(null);
-        return SessionBridge.enter(new BrowserSession(driver, mode, storageToken));
+        return SessionBridge.enter(new BrowserSession(driver, mode, storageToken, tokenHosts));
     }
 
     @Override
     public String authorization(URI uri) {
-        return storageToken == null ? null : BrowserState.storageToken(driver, storageToken);
+        if (storageToken == null) return null;
+        // E9: the page's token goes only to its own host (or browserApiStorageTokenHosts), never https -> http
+        URI page = null;
+        try {
+            String u = driver.getCurrentUrl();
+            if (u != null) page = URI.create(u);
+        } catch (Exception e) {
+            // no page open
+        }
+        if (!SessionBridge.tokenAllowed(uri, page, tokenHosts)) {
+            String h = uri == null ? null : uri.getHost();
+            if (h != null && REFUSED_HOSTS.add(h)) {
+                LOG.info("browserApiStorageToken not sent to {}: not the open page's host (add it to browserApiStorageTokenHosts)", h);
+            }
+            return null;
+        }
+        return BrowserState.storageToken(driver, storageToken);
     }
 
     @Override

@@ -1,8 +1,8 @@
 {
  "_generator": "tools/gen-commands/gen_commands.py",
  "_source": "alldep-jar/src/main/java/com/gatf/selenium/Command.java",
- "_note": "seleasy statement keywords extracted from the parse() and handleActions() dispatch. match: 'prefix' = keyword begins the line (startsWith); 'exact' = whole-line keyword only; 'regex' = matched via a compiled Pattern (see qualifiers). requiresArg=true means the keyword must be followed by a space+argument and cannot stand alone (e.g. `open `). canBeBare=true means the keyword may appear as a whole line (e.g. `clear`, `submit`). Regenerate with the generator above; do not hand-edit.",
- "count": 138,
+ "_note": "seleasy statement keywords extracted from the parse() and handleActions() dispatch. match: 'prefix' = keyword begins the line (startsWith); 'exact' = whole-line keyword only; 'regex' = matched via a compiled Pattern (see qualifiers). requiresArg=true means the keyword must be followed by a space+argument and cannot stand alone (e.g. `open `). canBeBare=true means the keyword may appear as a whole line (e.g. `clear`, `submit`). bang=true means `<keyword>! ...` is accepted (auto-wait opt-out, like the `nowait` prefix). Regenerate with the generator above; do not hand-edit.",
+ "count": 139,
  "commands": [
   {
    "keyword": "chord",
@@ -16,7 +16,8 @@
     "bk",
     "cl",
     "fo"
-   ]
+   ],
+   "bang": true
   },
   {
    "keyword": "click",
@@ -27,7 +28,8 @@
    "qualifiers": [
     "fo",
     "nf"
-   ]
+   ],
+   "bang": true
   },
   {
    "keyword": "randomize",
@@ -41,7 +43,8 @@
     "bk",
     "cl",
     "fo"
-   ]
+   ],
+   "bang": true
   },
   {
    "keyword": "sendkeys",
@@ -55,7 +58,8 @@
     "bk",
     "cl",
     "fo"
-   ]
+   ],
+   "bang": true
   },
   {
    "keyword": "type",
@@ -69,7 +73,8 @@
     "bk",
     "cl",
     "fo"
-   ]
+   ],
+   "bang": true
   },
   {
    "keyword": "#",
@@ -391,7 +396,8 @@
    "match": "prefix",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "ClearCommand"
+   "class": "ClearCommand",
+   "bang": true
   },
   {
    "keyword": "close",
@@ -433,14 +439,16 @@
    "match": "prefix",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "DoubleClickCommand"
+   "class": "DoubleClickCommand",
+   "bang": true
   },
   {
    "keyword": "doubleclick",
    "match": "prefix",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "DoubleClickCommand"
+   "class": "DoubleClickCommand",
+   "bang": true
   },
   {
    "keyword": "ds query",
@@ -580,14 +588,16 @@
    "match": "prefix",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "HoverCommand"
+   "class": "HoverCommand",
+   "bang": true
   },
   {
    "keyword": "hoverclick",
    "match": "prefix",
    "requiresArg": true,
    "canBeBare": false,
-   "class": "HoverAndClickCommand"
+   "class": "HoverAndClickCommand",
+   "bang": true
   },
   {
    "keyword": "http",
@@ -679,6 +689,13 @@
    "requiresArg": true,
    "canBeBare": false,
    "class": "NetworkAPIInterceptCommand"
+  },
+  {
+   "keyword": "nowait",
+   "match": "prefix",
+   "requiresArg": true,
+   "canBeBare": false,
+   "class": "Command"
   },
   {
    "keyword": "ocr",
@@ -832,7 +849,8 @@
    "match": "prefix",
    "requiresArg": true,
    "canBeBare": false,
-   "class": "SelectCommand"
+   "class": "SelectCommand",
+   "bang": true
   },
   {
    "keyword": "setting",
@@ -874,7 +892,8 @@
    "match": "prefix",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "SubmitCommand"
+   "class": "SubmitCommand",
+   "bang": true
   },
   {
    "keyword": "subtest",
@@ -930,7 +949,8 @@
    "match": "prefix",
    "requiresArg": true,
    "canBeBare": false,
-   "class": "UploadCommand"
+   "class": "UploadCommand",
+   "bang": true
   },
   {
    "keyword": "var",

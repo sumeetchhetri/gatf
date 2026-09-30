@@ -16,7 +16,7 @@
 package com.gatf.executor.core;
 
 /**
- * Q7: per-run overrides from {@code gatf test} (--trace / --retries / --workers), applied to the loaded config just
+ * Q7: per-run overrides from {@code gatf test} (--trace / --retries / --workers / --forbid-only), applied to the loaded config just
  * before the run starts. Unset values leave the config file's settings alone; never used by the UI server.
  */
 public final class RunOverrides {
@@ -24,6 +24,7 @@ public final class RunOverrides {
     private static volatile String traceMode;
     private static volatile Integer retries;
     private static volatile Integer workers;
+    private static volatile Boolean forbidOnly;
 
     private RunOverrides() {}
 
@@ -34,9 +35,16 @@ public final class RunOverrides {
         RunOverrides.workers = workers;
     }
 
+    /** E10: as {@link #set(String, Integer, Integer)}, plus --forbid-only (null = the config's setting). */
+    public static void set(String traceMode, Integer retries, Integer workers, Boolean forbidOnly) {
+        set(traceMode, retries, workers);
+        RunOverrides.forbidOnly = forbidOnly;
+    }
+
     static void apply(GatfExecutorConfig c) {
         if (traceMode != null) c.setTraceMode(traceMode);
         if (retries != null) c.setSeleniumScriptRetryCount(retries);
         if (workers != null) c.setNumConcurrentExecutions(workers);
+        if (forbidOnly != null) c.setForbidOnly(forbidOnly);
     }
 }

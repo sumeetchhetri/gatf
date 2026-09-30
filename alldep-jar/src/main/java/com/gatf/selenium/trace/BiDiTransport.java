@@ -112,7 +112,10 @@ public final class BiDiTransport implements BrowserControl {
     private volatile com.gatf.selenium.route.RouteTable routes;
     private volatile boolean routesOn = false;
     private volatile String interceptId;
-    private Network routeNetwork;          // network data collector (RESPONSE_BODY), null = unsupported
+    private final java.util.Set<String> ownIntercepts = java.util.concurrent.ConcurrentHashMap.newKeySet();   // incl. removed ones
+    private volatile boolean addingIntercept;
+    private Network routeNetwork;          // the beforeRequestSent subscription that answers blocked requests
+    private static final java.util.concurrent.atomic.AtomicBoolean ABORT_REASON_WARNED = new java.util.concurrent.atomic.AtomicBoolean();
     private volatile Thread videoPoller;
 
     BiDiTransport(WebDriver driver) { this(driver, new TraceConfig()); }
@@ -194,27 +197,33 @@ public final class BiDiTransport implements BrowserControl {
 
     /**
      * M4: one {@code network.addIntercept} for every request (beforeRequestSent) and a beforeRequestSent listener that
-     * asks the route table; commands go out raw through BidiRaw (see BidiRoutes). A request is always answered, so a
+     * asks the route table; commands go out raw through BidiRaw (see BidiRoutes). Every BLOCKED request gets exactly
+     * one answer — also after disableRoutes (a request blocked just before removeIntercept is continued) — and a
      * failing command falls back to continueRequest rather than leaving the page hanging.
      */
     @Override
     public synchronized boolean enableRoutes(com.gatf.selenium.route.RouteTable table, boolean keepResponseStage) {
         if (!hasBiDi()) return false;
         this.routes = table;
-        // subscribe first: a request blocked between addIntercept and the subscription would hang (an event for a
-        // request that is not blocked yet only gets a refused command, which is ignored)
+        // subscribe first: a request blocked between addIntercept and the subscription would hang
         this.routesOn = true;
         if (routeNetwork == null) {
             routeNetwork = new Network(driver);
             routeNetwork.onBeforeRequestSent(ev -> {
-                if (!routesOn) return;   // intercept removed: requests are no longer blocked
+                if (!ev.isBlocked() || !ours(ev)) return;   // not blocked by our intercept: nothing to answer
                 String id = null;
                 try {
                     RequestData req = ev.getRequest();
                     id = req.getRequestId();
                     com.gatf.selenium.route.RouteTable t = routes;
-                    com.gatf.selenium.route.Route d = t == null ? null : t.match(req.getMethod(), req.getUrl());
-                    Object[] c = com.gatf.selenium.route.BidiRoutes.command(d, id, headers(req.getHeaders()));
+                    // routes switched off while this request was blocked: plain continue
+                    com.gatf.selenium.route.Route d = !routesOn || t == null ? null : t.match(req.getMethod(), req.getUrl());
+                    if (d != null && d.action == com.gatf.selenium.route.Route.Action.ABORT && !"failed".equals(d.reason)
+                            && ABORT_REASON_WARNED.compareAndSet(false, true)) {
+                        System.out.println("route: WebDriver BiDi has no abort reasons - '" + d.reason + "' is sent as a plain network error");
+                    }
+                    java.util.Set<String> b64 = new java.util.HashSet<>();
+                    Object[] c = com.gatf.selenium.route.BidiRoutes.command(d, id, headers(req.getHeaders(), b64), b64);
                     @SuppressWarnings("unchecked") Map<String, Object> params = (Map<String, Object>) c[1];
                     BidiRaw.send(driver, (String) c[0], params);
                 } catch (Exception e) {
@@ -228,15 +237,36 @@ public final class BiDiTransport implements BrowserControl {
             });
         }
         if (interceptId == null) {
-            Map<String, Object> r = BidiRaw.send(driver, "network.addIntercept", com.gatf.selenium.route.BidiRoutes.interceptParams());
-            Object id = r == null ? null : r.get("intercept");
-            if (id == null) {
-                routesOn = false;
-                return false;
+            // while addIntercept is in flight its id is unknown: a request it blocks meanwhile counts as ours
+            addingIntercept = true;
+            try {
+                Map<String, Object> r = BidiRaw.send(driver, "network.addIntercept", com.gatf.selenium.route.BidiRoutes.interceptParams());
+                Object id = r == null ? null : r.get("intercept");
+                if (id == null) {
+                    routesOn = false;
+                    return false;
+                }
+                interceptId = String.valueOf(id);
+                ownIntercepts.add(interceptId);
+            } finally {
+                addingIntercept = false;
             }
-            interceptId = String.valueOf(id);
         }
         return true;
+    }
+
+    // Blocked by one of this transport's intercepts (a later transport on a reused session answers its own). The
+    // event's intercept list is read reflectively (BaseParameters.getIntercepts); if it cannot be read, assume ours.
+    private boolean ours(Object ev) {
+        if (addingIntercept) return true;
+        try {
+            Object ids = ev.getClass().getMethod("getIntercepts").invoke(ev);
+            if (!(ids instanceof java.util.Collection) || ((java.util.Collection<?>) ids).isEmpty()) return true;
+            for (Object i : (java.util.Collection<?>) ids) if (ownIntercepts.contains(String.valueOf(i))) return true;
+            return false;
+        } catch (Exception | LinkageError e) {
+            return true;
+        }
     }
 
     @Override
@@ -330,6 +360,49 @@ public final class BiDiTransport implements BrowserControl {
         return null;
     }
 
+    // --- Q9: per-navigation vitals via raw script.addPreloadScript. GATF does not subscribe to script.message, so there is
+    // no out-of-band channel: entries buffer in the page's sessionStorage and survive same-origin navigations only
+    // (a page left for another origin is not reported unless the script returns to that origin). ---
+    private volatile String vitalsPreloadId;
+
+    @Override
+    public boolean enablePageVitals(java.util.function.Consumer<String> sink) {
+        if (!hasBiDi() || !(driver instanceof JavascriptExecutor)) return false;
+        try {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("functionDeclaration", "function(){" + WebVitals.PRELOAD_JS + "}");
+            Object id = BidiRaw.send(driver, "script.addPreloadScript", p).get("script");
+            vitalsPreloadId = id == null ? null : String.valueOf(id);
+        } catch (Exception e) {
+            return false;
+        }
+        try { ((JavascriptExecutor) driver).executeScript(WebVitals.PRELOAD_JS); } catch (Exception ignored) {}
+        return true;
+    }
+
+    @Override
+    public String drainPageVitals() {
+        try {
+            if (driver instanceof JavascriptExecutor) {
+                Object r = ((JavascriptExecutor) driver).executeScript(WebVitals.DRAIN_JS);
+                return r == null ? null : String.valueOf(r);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    @Override
+    public void disablePageVitals() {
+        String id = vitalsPreloadId;
+        vitalsPreloadId = null;
+        if (id == null) return;
+        try {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("script", id);
+            BidiRaw.send(driver, "script.removePreloadScript", p);
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public byte[] fetchBody(String requestId) {
         String c = collectorId;
@@ -407,6 +480,7 @@ public final class BiDiTransport implements BrowserControl {
     @Override
     public void close() {
         disableVideo();
+        disableRoutes();   // no intercept may outlive the transport (the session can be kept for reuse)
         String c = collectorId;
         collectorId = null;
         if (c != null) {
@@ -423,11 +497,24 @@ public final class BiDiTransport implements BrowserControl {
     }
 
     private static Map<String, String> headers(List<Header> hs) {
+        return headers(hs, null);
+    }
+
+    /**
+     * Header values as text; a base64 BytesValue (non-UTF-8 bytes) is decoded, or — when {@code base64Names} is given
+     * (route continue) — kept as its base64 text and its name recorded, so it can be sent back unchanged.
+     */
+    private static Map<String, String> headers(List<Header> hs, java.util.Set<String> base64Names) {
         Map<String, String> m = new LinkedHashMap<>();
         if (hs != null) {
             for (Header h : hs) {
                 try {
-                    m.put(h.getName(), h.getValue() != null ? h.getValue().getValue() : "");
+                    String v = h.getValue() != null ? h.getValue().getValue() : "";
+                    if (h.getValue() != null && "base64".equalsIgnoreCase(String.valueOf(h.getValue().getType())) && v != null) {
+                        if (base64Names != null) base64Names.add(h.getName());
+                        else v = new String(java.util.Base64.getDecoder().decode(v), java.nio.charset.StandardCharsets.UTF_8);
+                    }
+                    m.put(h.getName(), v);
                 } catch (Exception ignored) {}
             }
         }

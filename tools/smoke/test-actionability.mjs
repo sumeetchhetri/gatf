@@ -119,8 +119,19 @@ test('type into a text input', async () => { eq(await probe(el('input', { type: 
 test('type into a readonly input', async () => {
   eq(await probe(el('input', { type: 'text', readOnly: true }), 'type'), 'not editable');
 });
-test('type into a checkbox is not editable', async () => {
-  eq(await probe(el('input', { type: 'checkbox' }), 'type'), 'not editable');
+test('type (keys) into a checkbox / range input is fine; clear needs a text control', async () => {
+  eq(await probe(el('input', { type: 'checkbox' }), 'type'), null);
+  eq(await probe(el('input', { type: 'range' }), 'type'), null);
+  eq(await probe(el('input', { type: 'checkbox' }), 'clear'), 'not editable');
+});
+test('type into a readonly textarea is not editable; clear too', async () => {
+  eq(await probe(el('textarea', { readOnly: true }), 'type'), 'not editable');
+  eq(await probe(el('input', { type: 'email', readOnly: true }), 'clear'), 'not editable');
+});
+test('clear on text input, textarea, contenteditable', async () => {
+  eq(await probe(el('input', { type: 'text' }), 'clear'), null);
+  eq(await probe(el('textarea'), 'clear'), null);
+  eq(await probe(el('div', { editable: true }), 'clear'), null);
 });
 test('type into textarea and contenteditable', async () => {
   eq(await probe(el('textarea'), 'type'), null);
@@ -139,7 +150,11 @@ test('SVG className object does not crash the description', async () => {
   const b = el('button'); const p = el('path'); p.className = { baseVal: 'x' }; hitAt = () => p;
   eq(await probe(b, 'click'), 'covered by <path>');
 });
-test('type into a plain div is not editable', async () => { eq(await probe(el('div'), 'type'), 'not editable'); });
+test('type into a div[tabindex] widget is fine; clear on it is not editable', async () => {
+  const w = el('div', { attrs: { tabindex: '0' } });
+  eq(await probe(w, 'type'), null); eq(await probe(w, 'clear'), 'not editable');
+});
+test('clear on a disabled input', async () => { eq(await probe(el('input', { disabled: true }), 'clear'), 'disabled'); });
 test('type does not hit-test (covered input still types)', async () => {
   const i = el('input'); hitAt = () => el('div', { cls: 'mask' }); eq(await probe(i, 'type'), null);
 });
@@ -161,6 +176,20 @@ test('off-screen element is scrolled into view first', async () => {
 test('element that cannot be scrolled into view', async () => {
   const b = el('button', { rect: { left: 10, top: 2000, width: 100, height: 30 } }); hitAt = () => b;
   eq(await probe(b, 'click'), 'outside of the viewport');
+});
+test('element clipped by a scrolling ancestor is scrolled into view, then passes', async () => {
+  const list = el('div', { cls: 'list' });
+  const b = el('li', { parent: list, rect: { left: 10, top: 300, width: 100, height: 30 },
+    onScroll: (e) => { e.rect = { left: 10, top: 120, width: 100, height: 30 }; } });
+  hitAt = () => (b.scrolled ? b : list);
+  eq(await probe(b, 'click'), null); eq(b.scrolled, 1);
+});
+test('genuinely covered element: one scroll attempt, still covered', async () => {
+  const b = el('button'); const modal = el('div', { cls: 'modal' }); hitAt = () => modal;
+  eq(await probe(b, 'click'), 'covered by <div.modal>'); eq(b.scrolled, 1);
+});
+test('uncovered in-view element is not scrolled', async () => {
+  const b = el('button'); hitAt = () => b; eq(await probe(b, 'click'), null); eq(b.scrolled, 0);
 });
 test('upload into a hidden file input is fine', async () => {
   eq(await probe(el('input', { type: 'file', display: 'none' }), 'upload'), null);

@@ -18,6 +18,7 @@ import { api } from '../api';
 import type { ApiReportData, ApiIndexData, TestCaseReport, TestCaseStat, TestSuiteStats } from '../api';
 import { fmtMs } from '../util';
 import ApiResult from '../components/ApiResult';
+import RaiseDefect from '../components/RaiseDefect';
 
 function stClass(s: string): string {
   const u = (s || '').toLowerCase();
@@ -91,6 +92,7 @@ function Detail({
           Replay re-sends the captured request. To run a test as defined, use ▶ Play in Test Files.
         </span>
         {err && <span className="st-badge st-fail" style={{ marginLeft: 8 }}>{err}</span>}
+        {stClass(r.status) === 'st-fail' && <RaiseDefect report={r} />}
       </div>
       <ApiResult r={r} />
     </div>

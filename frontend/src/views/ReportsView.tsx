@@ -72,6 +72,14 @@ export default function ReportsView({
       .finally(() => setLoading(false));
   };
   useEffect(load, []);
+  const [docsMsg, setDocsMsg] = useState<string | null>(null);
+  const downloadDocs = () => {
+    setDocsMsg('Generating…');
+    api
+      .downloadTestDocs('xlsx')
+      .then(() => setDocsMsg(null))
+      .catch((e) => setDocsMsg('Test cases: ' + e.message));
+  };
 
   return (
     <div className="view">
@@ -86,6 +94,14 @@ export default function ReportsView({
           <button className="btn ghost small" onClick={onOpenViewer} title="Open a trace bundle (.zip) to inspect">
             {'\u25EB'} Trace Viewer
           </button>
+          <button
+            className="btn ghost small"
+            onClick={downloadDocs}
+            title="Test-case workbook (Test Cases, Traceability, Coverage sheets), as gatf docs writes it"
+          >
+            {'\u2193'} Test cases (xlsx)
+          </button>
+          {docsMsg && <span className="muted small">{docsMsg}</span>}
           <button className="btn ghost small" onClick={load}>
             Refresh
           </button>

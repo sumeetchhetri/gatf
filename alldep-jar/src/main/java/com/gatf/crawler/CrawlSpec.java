@@ -44,6 +44,7 @@ public class CrawlSpec {
     private long pollMs = 300;      // DOM-stability poll interval
     private boolean headless = true;
     private String browser = "chrome";   // G9: chrome | firefox | edge
+    private String testIdAttribute;      // M3: project testIdAttribute for testid@ candidates (null = data-testid)
 
     public String getExclude() { return exclude; }
     public void setExclude(String exclude) { this.exclude = exclude; }
@@ -56,6 +57,8 @@ public class CrawlSpec {
         String v = b == null ? "" : b.trim().toLowerCase(java.util.Locale.ROOT);
         this.browser = v.equals("firefox") || v.equals("edge") ? v : "chrome";
     }
+    public String getTestIdAttribute() { return testIdAttribute; }
+    public void setTestIdAttribute(String testIdAttribute) { this.testIdAttribute = testIdAttribute; }
     public boolean isHeadless() { return headless; }
     public void setHeadless(boolean headless) { this.headless = headless; }
 

@@ -1,0 +1,45 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M6 hooks + subtest markers: beforeAll/afterAll around the script, beforeEach/afterEach around every subtest,
+// only/skip/fixme report the other subtests as skipped.
+open chrome
+beforeAll
+{
+    goto https://shop.test/
+}
+beforeEach
+{
+    click id@'home'
+}
+afterEach
+{
+    screenshot each.png
+}
+afterAll
+{
+    state save .auth/after.json
+}
+func "fill"
+{
+    type 'a' id@'q'
+}
+subtest "search"
+{
+    @call "fill"
+    ?? id@'results'
+}
+only subtest "cart"
+{
+    click testid@'cart'
+}
+skip subtest "export"
+{
+    click id@'export'
+}
+fixme subtest "checkout"
+{
+    click testid@'pay'
+}
+@call "search"
+@call "cart"
+@call "export"
+@call "checkout"

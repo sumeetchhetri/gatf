@@ -150,7 +150,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						public void run() {
 							GatfPlugin executorMojo = f.apply(pluginType);
     						try {
-    							TestFilter.activate(filter);
+    							TestFilter.activateForThread(filter);   // E12: this run only (this thread), not a concurrent Play
     							if(pluginType.equals("executor-api")) {
     								executorMojo.doExecute(config, files);
     							} else {
@@ -189,7 +189,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 										status = ExceptionUtils.getStackTrace(e);
 								}
 							} finally { 
-								TestFilter.activate(null);
+								TestFilter.activateForThread(null);
 								executorMojo.shutdown();
 							}
     						

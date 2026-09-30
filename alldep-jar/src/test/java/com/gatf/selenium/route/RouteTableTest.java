@@ -45,6 +45,11 @@ class RouteTableTest {
         assertThat(Glob.toRegex("/api/**").matcher("http://localhost:8080/api/x/y").matches()).isTrue();          // any origin
         assertThat(Glob.toRegex("**/a+b(c)").matcher("http://x/a+b(c)").matches()).isTrue();                     // regex chars literal
         assertThatThrownBy(() -> Glob.toRegex("**/{a,b")).hasMessageContaining("unbalanced");
+        assertThat(Glob.toRegex("**/api/users*").matcher("https://shop.test/api/users?page=2").matches()).isTrue();
+        assertThat(Glob.toRegex("**/a\\*b").matcher("http://x/a*b").matches()).isTrue();                          // \ escapes
+        assertThat(Glob.toRegex("**/a\\*b").matcher("http://x/axb").matches()).isFalse();
+        assertThat(Glob.toRegex("**/\\{x,y\\}").matcher("http://x/{x,y}").matches()).isTrue();
+        assertThat(Glob.toRegex("**/a\\\\b").matcher("http://x/a\\b").matches()).isTrue();
     }
 
     @Test
@@ -79,7 +84,9 @@ class RouteTableTest {
         assertThat(c.action).isEqualTo(Route.Action.CONTINUE);
         assertThat(c.headers).containsEntry("Authorization", "Bearer abc");
         assertThat(RouteSpec.parse("route GET **/a abort").route.method).isEqualTo("GET");
-        assertThat(RouteSpec.parse("route get fulfill 200").route.glob).isEqualTo("get");   // a lone method-looking word is the glob
+        assertThatThrownBy(() -> RouteSpec.parse("route get fulfill 200")).hasMessageContaining("missing URL glob after method");
+        assertThatThrownBy(() -> RouteSpec.parse("route GET abort")).hasMessageContaining("missing URL glob after method");
+        assertThat(RouteSpec.parse("route 'GET' fulfill 200").route.glob).isEqualTo("GET");   // quoted: really a glob
         assertThatThrownBy(() -> RouteSpec.parse("route **/a fulfill ok")).hasMessageContaining("status must be a number");
         assertThatThrownBy(() -> RouteSpec.parse("route **/a abort nope")).hasMessageContaining("unknown reason 'nope'");
         assertThatThrownBy(() -> RouteSpec.parse("route **/a redirect x")).hasMessageContaining("unknown action 'redirect'");
@@ -97,6 +104,22 @@ class RouteTableTest {
         assertThat(RouteSpec.contentType(null, "[1,2]".getBytes(StandardCharsets.UTF_8))).isEqualTo("application/json");
         assertThat(RouteSpec.contentType(null, "hello".getBytes(StandardCharsets.UTF_8))).startsWith("text/plain");
         assertThat(RouteSpec.contentType("blob.bin", new byte[] { 1 })).isEqualTo("application/octet-stream");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void repeatedHeaders() {
+        Route r = RouteSpec.parse("route **/x fulfill 200 'a' header 'Set-Cookie: a=1' header 'Set-Cookie: b=2' type text/plain header 'content-type: text/html'").route;
+        assertThat(r.headers).containsEntry("Set-Cookie", "a=1").containsEntry("Content-Type", "text/html").hasSize(2);   // Content-Type: last wins
+        assertThat(r.extraHeaders).extracting(h -> h[0] + "=" + h[1]).containsExactly("Set-Cookie=b=2");
+        Map<String, Object> fp = (Map<String, Object>) CdpRoutes.command(r, "r1", null)[1];
+        assertThat((List<Map<String, Object>>) fp.get("responseHeaders")).extracting(m -> m.get("name") + "=" + m.get("value"))
+                .containsExactly("Set-Cookie=a=1", "Content-Type=text/html", "Set-Cookie=b=2", "Content-Length=1");
+        Map<String, Object> bp = (Map<String, Object>) BidiRoutes.command(r, "b1", null)[1];
+        assertThat((List<Map<String, Object>>) bp.get("headers")).extracting(m -> m.get("name")).containsExactly("Set-Cookie", "Content-Type", "Set-Cookie", "Content-Length");
+        Route c = RouteSpec.parse("route **/x continue header 'X-A: 1' header 'X-A: 2'").route;
+        Map<String, Object> cp = (Map<String, Object>) CdpRoutes.command(c, "r2", Map.of("x-a", "0"))[1];
+        assertThat((List<Map<String, Object>>) cp.get("headers")).extracting(m -> m.get("name") + "=" + m.get("value")).containsExactly("X-A=1", "X-A=2");
     }
 
     @Test

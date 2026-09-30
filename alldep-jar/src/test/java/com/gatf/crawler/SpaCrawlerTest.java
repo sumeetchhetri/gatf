@@ -61,6 +61,7 @@ class SpaCrawlerTest {
         final Map<String, Map<String, Object>> site = new HashMap<String, Map<String, Object>>();
         final List<String> visited = new ArrayList<String>();
         final List<Object[]> sets = new ArrayList<Object[]>();
+        final List<Object> tids = new ArrayList<Object>();   // the test-id argument of every SCAN_JS / LOGIN_FIND_JS call
         String cur = "";
 
         public void get(String url) { cur = url; visited.add(url); }
@@ -68,8 +69,9 @@ class SpaCrawlerTest {
         public void quit() { }
         public Object js(String script, Object... args) {
             if (script == SpaCrawler.SETTLE_JS) return Arrays.asList("complete", 42L);
-            if (script == SpaCrawler.SCAN_JS) return site.get(cur);
+            if (script == SpaCrawler.SCAN_JS) { tids.add(args.length > 0 ? args[0] : "<none>"); return site.get(cur); }
             if (script == SpaCrawler.LOGIN_FIND_JS) {
+                tids.add(args.length > 3 ? args[3] : "<none>");
                 if (!cur.endsWith("/login")) return null;
                 Map<String, Object> m = new LinkedHashMap<String, Object>();
                 m.put("user", sel("id", "email"));
@@ -129,6 +131,23 @@ class SpaCrawlerTest {
         List<Map<String, Object>> plan = SpaCrawler.coveragePlan(pages);
         assertThat(plan.get(0).get("url")).isEqualTo(orders);                               // richest page first
         assertThat(plan.get(0).get("priority")).isEqualTo("high");
+    }
+
+    @Test
+    void passesTheProjectTestIdAttributeToThePageScripts() throws Exception {
+        Fake b = new Fake();
+        String home = "http://app.test/#/home";
+        b.site.put(home, page(home, new ArrayList<String>(), new ArrayList<Map<String, Object>>(), new ArrayList<Map<String, Object>>()));
+        CrawlSpec spec = new CrawlSpec();
+        spec.setSeed(home);
+        spec.setPollMs(1);
+        spec.setLoginUrl("http://app.test/login");
+        spec.setUsername("u");
+        spec.setPassword("p");
+        spec.setTestIdAttribute("data-qa");
+        new SpaCrawler(spec, b, null).crawl();
+        assertThat(b.tids).isNotEmpty().allMatch("data-qa"::equals);
+        assertThat(SpaCrawler.CAND_JS).contains("__gatfCandidates(el,__tid||'data-testid')");
     }
 
     @Test

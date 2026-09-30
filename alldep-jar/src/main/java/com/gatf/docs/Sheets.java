@@ -297,7 +297,7 @@ public final class Sheets {
     private static void line(StringBuilder b, String[] cells) {
         for (int i = 0; i < cells.length; i++) {
             if (i > 0) b.append(',');
-            String v = cells[i] == null ? "" : cells[i];
+            String v = csvSafe(cells[i] == null ? "" : cells[i]);
             if (v.indexOf(',') >= 0 || v.indexOf('"') >= 0 || v.indexOf('\n') >= 0 || v.indexOf('\r') >= 0) {
                 b.append('"').append(v.replace("\"", "\"\"")).append('"');
             } else {
@@ -305,6 +305,14 @@ public final class Sheets {
             }
         }
         b.append("\r\n");
+    }
+
+    /**
+     * E7: CSV injection (OWASP) — a cell starting with = + - @ tab or CR is a formula to Excel (a "@smoke" tag shows
+     * #NAME?), so it is written with a leading ' (csv only; xlsx cells are typed strings).
+     */
+    static String csvSafe(String v) {
+        return !v.isEmpty() && "=+-@\t\r".indexOf(v.charAt(0)) >= 0 ? "'" + v : v;
     }
 
     public static List<String[]> readCsv(Path file) throws IOException {
@@ -336,6 +344,10 @@ public final class Sheets {
             } else { f.append(c); any = true; }
         }
         if (any || f.length() > 0) { cur.add(f.toString()); rows.add(cur.toArray(new String[0])); }
+        for (String[] r : rows) for (int i = 0; i < r.length; i++) {
+            // E7: undo csvSafe's ' prefix
+            if (r[i].length() > 1 && r[i].charAt(0) == '\'' && "=+-@\t\r".indexOf(r[i].charAt(1)) >= 0) r[i] = r[i].substring(1);
+        }
         return rows;
     }
 

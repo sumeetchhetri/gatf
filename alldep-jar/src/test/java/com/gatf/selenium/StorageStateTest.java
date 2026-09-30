@@ -154,6 +154,47 @@ class StorageStateTest {
     }
 
     @Test
+    void oneRejectedCookieDoesNotDropTheOthers() throws Exception {
+        // E3: Chrome fails the whole Network.setCookies batch for one bad cookie: retried one by one, the bad one skipped
+        StorageState s = new StorageState();
+        s.cookies.add(new CookieRules.C("sid", "1", "shop.test", "/"));
+        s.cookies.add(new CookieRules.C("bad", "2", "shop.test", "/"));
+        s.cookies.add(new CookieRules.C("lang", "en", "shop.test", "/"));
+        File f = File.createTempFile("gatf-state", ".json");
+        Files.write(f.toPath(), s.toJson().getBytes(StandardCharsets.UTF_8));
+        List<String> set = new ArrayList<String>();
+        WebDriver d = (WebDriver) Proxy.newProxyInstance(StorageStateTest.class.getClassLoader(),
+                new Class<?>[] { WebDriver.class, HasCdp.class, JavascriptExecutor.class }, (p, m, a) -> {
+                    if (m.getName().equals("executeCdpCommand") && "Network.setCookies".equals(a[0])) throw new RuntimeException("Invalid cookie fields");
+                    if (m.getName().equals("executeCdpCommand") && "Network.setCookie".equals(a[0])) {
+                        Object name = ((Map<?, ?>) a[1]).get("name");
+                        if ("bad".equals(name)) throw new RuntimeException("Invalid cookie fields");
+                        set.add(String.valueOf(name));
+                        return new HashMap<String, Object>();
+                    }
+                    if (m.getName().equals("hashCode")) return 1;
+                    return null;
+                });
+        assertThat(BrowserState.load(d, f)).isEqualTo("state load " + f.getPath() + ": 2/3 cookie(s), 0 origin(s) with storage");
+        assertThat(set).containsExactly("sid", "lang");
+        // no CDP at all (every call fails): not counted as set, so the other transports are tried
+        WebDriver none = (WebDriver) Proxy.newProxyInstance(StorageStateTest.class.getClassLoader(),
+                new Class<?>[] { WebDriver.class, HasCdp.class }, (p, m, a) -> {
+                    if (m.getName().equals("executeCdpCommand")) throw new RuntimeException("no CDP");
+                    if (m.getName().equals("getCurrentUrl")) return "https://other.test/";
+                    if (m.getName().equals("hashCode")) return 1;
+                    return null;
+                });
+        assertThat(BrowserState.setCookies(none, s.cookies)).isEqualTo(0);
+    }
+
+    @Test
+    void tokenScriptUnwrapsAJsonQuotedToken() {
+        // E8: JSON.stringify'd tokens ("\"eyJ…\"") are unwrapped; the page-side behaviour is run on node in the delta check
+        assertThat(StorageState.tokenScript("jwt")).contains("JSON.parse(v)").contains("typeof q==='string'");
+    }
+
+    @Test
     void unknownSameSiteIsWrittenAsLax() throws Exception {
         // Playwright only accepts Strict / Lax / None
         StorageState s = new StorageState();

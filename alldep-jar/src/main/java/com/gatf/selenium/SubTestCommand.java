@@ -234,7 +234,8 @@ public class SubTestCommand extends Command {
             StringBuilder b = new StringBuilder();
             b.append("List<WebElement> " + fName + "(String __sfname__, WebDriver ___cw___, WebDriver ___ocw___, SearchContext "+state.currvarnamesc()+", LoggingPreferences ___lp___) throws Throwable {\n");
             b.append("List<WebElement> ___ce___ = null;\n");
-            if(!children.isEmpty())
+            // E11: an empty subtest still gets the file's each-hooks (so it is reported like the others)
+            if(!children.isEmpty() || (!isAFunc && hook==null && (state.hook("beforeEach")!=null || state.hook("afterEach")!=null)))
             {
             	isSubtestScope = true;
             	b.append(genDebugInfo(this));
@@ -278,7 +279,7 @@ public class SubTestCommand extends Command {
                 	res = state.varnamerandom();
                 	String img = "getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\"";
                 	b.append("SeleniumTestResult "+res+" = new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___, \""+name+"\");\n");
-                	b.append("if(!"+aef+") {\n"+aef+" = true;\ntry {\n"+aeh.hookCall(sc)+"} catch(Throwable ___hk___) {\n__hook_failed__(\"afterEach\", ___hk___);\n}\n}\n");
+                	b.append("if(!"+aef+") {\n"+aef+" = true;\ntry {\n"+aeh.hookCall(sc)+"} catch(Throwable ___hk___) {\n__hook_failed__(\"afterEach\", ___hk___);\n}\n__hook_soft__(\"afterEach\");\n}\n");
                 }
                 if(res!=null) {
                 	b.append("pushResult("+res+");");

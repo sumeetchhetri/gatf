@@ -384,6 +384,7 @@ async function sendReq(
 // must carry a real '/', not %2F. A literal slash is legal in a query string; encode everything else.
 const encPath = (p: string) => encodeURIComponent(p).replace(/%2F/gi, '/');
 const tcf = (p: string) => 'testcaseFileName=' + encPath(p);
+export const ISSUE_TRACKER_FILE = 'gatf-issuetracking-api-int.xml';
 
 // ---- execution (Slice D1) ----
 // Both success (200) and the "in progress"/failure (400) responses carry a JSON body we need, so
@@ -564,6 +565,11 @@ export interface ImportResultDto {
   validation?: string;
   error?: string;
 }
+/** OpenAPI multi-file upload: the other files, by path relative to the main spec (for its relative-file $refs). */
+export interface ImportBundle {
+  mainName?: string;
+  files: Record<string, string>;
+}
 async function importSourceReq(
   type: ImportType,
   fileName: string,
@@ -571,18 +577,21 @@ async function importSourceReq(
   source: string,
   filter?: string,
   negative?: boolean,
+  bundle?: ImportBundle,
 ): Promise<ImportResultDto> {
+  const multi = !!bundle && Object.keys(bundle.files).length > 0;
   const qs =
     '/import?type=' +
     encodeURIComponent(type) +
     (fileName ? '&fileName=' + encodeURIComponent(fileName) : '') +
     (save ? '&save=true' : '') +
     (filter ? '&filter=' + encodeURIComponent(filter) : '') +
-    (negative ? '&negative=true' : '');
+    (negative ? '&negative=true' : '') +
+    (multi ? '&bundle=true' : '');
   const r = await fetch(withTok(qs), {
     method: 'POST',
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' },
-    body: source,
+    headers: { 'Content-Type': multi ? 'application/json' : 'text/plain; charset=utf-8', Accept: 'application/json' },
+    body: multi ? JSON.stringify({ main: source, mainName: bundle!.mainName, files: bundle!.files }) : source,
   });
   const d = (await r.json().catch(() => ({}))) as ImportResultDto;
   if (!r.ok) return { ...d, error: d?.error || 'HTTP ' + r.status } as ImportResultDto;
@@ -812,6 +821,35 @@ export const api = {
     );
     return JSON.parse(t) as TestCaseReport;
   },
+  // ---- test-case documents: GET /misc?action=testdocs&format=xlsx|csv → gatf-testcases.xlsx | gatf-testdocs-csv.zip ----
+  downloadTestDocs: async (format: 'xlsx' | 'csv' = 'xlsx'): Promise<string> => {
+    const r = await fetch(withTok('/misc?action=testdocs&format=' + format));
+    if (!r.ok) throw new Error((await r.text()) || `HTTP ${r.status}`);
+    const m = /filename="([^"]+)"/.exec(r.headers.get('Content-Disposition') || '');
+    const name = m ? m[1] : format === 'csv' ? 'gatf-testdocs-csv.zip' : 'gatf-testcases.xlsx';
+    const href = URL.createObjectURL(await r.blob());
+    const a = document.createElement('a');
+    a.href = href;
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(href), 0);
+    return name;
+  },
+  // ---- raise a defect (classic report viewer): the issue-tracker APIs in gatf-issuetracking-api-int.xml ----
+  issueApis: async (): Promise<string[]> =>
+    (await api.readXmlCases(ISSUE_TRACKER_FILE, 'issuetrackerapi'))
+      .map((c) => String(c.name || ''))
+      .filter((n) => n && n !== 'authapi'),
+  // getContent renders the issue API's url/body templates ($report = the failed report); createIssue sends them.
+  // An issue API without a body template is executed by getContent itself (its report then carries a status).
+  raiseDefect: async (issueApi: string, failed: TestCaseReport): Promise<TestCaseReport> => {
+    const u = (action: string) =>
+      '/reports?action=' + action + '&isExternalLogsApi=true&' + tcf(ISSUE_TRACKER_FILE) + '&testCaseName=' + encodeURIComponent(issueApi);
+    const c = JSON.parse(await sendReq('PUT', u('getContent'), JSON.stringify(failed), 'application/json')) as TestCaseReport;
+    if (c.status) return c;
+    const t = await sendReq('PUT', u('createIssue'), JSON.stringify({ url: c.url, requestContent: c.requestContent }), 'application/json');
+    return JSON.parse(t) as TestCaseReport;
+  },
   // ---- online debugger (Slice D2) — /reports?action=debug protocol ----
   dbg: (lineCode: string, tcf: string, tc: string, sessionId: string, sline?: string) =>
     dbgFetch(lineCode, tcf, tc, sessionId, sline),
@@ -834,8 +872,15 @@ export const api = {
   restartSubtest: () => runPut('restartSubtest'),
   stopRun: () => runPut('stop'),
   // ---- test importers (Phase 11 / Q2) ----
-  importSource: (type: ImportType, fileName: string, save: boolean, source: string, filter?: string, negative?: boolean) =>
-    importSourceReq(type, fileName, save, source, filter, negative),
+  importSource: (
+    type: ImportType,
+    fileName: string,
+    save: boolean,
+    source: string,
+    filter?: string,
+    negative?: boolean,
+    bundle?: ImportBundle,
+  ) => importSourceReq(type, fileName, save, source, filter, negative, bundle),
   // ---- SPA crawler (G3) ----
   crawlStart: (b: CrawlStartBody) => crawlCall<{ sessionId?: string; error?: string }>('/crawl?action=start', 'POST', b),
   crawlStatus: (id: string) => crawlCall<CrawlStatus>('/crawl?action=status&sessionId=' + encodeURIComponent(id), 'GET'),

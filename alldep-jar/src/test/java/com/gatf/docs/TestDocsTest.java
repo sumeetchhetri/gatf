@@ -119,6 +119,69 @@ class TestDocsTest {
     }
 
     @Test
+    void hooksAndSubtestMarkers() throws Exception {
+        // E2: hook blocks are preconditions (before*) or left out (after*); only/skip/fixme subtests are cases of their own
+        List<TestDoc> ds = SelDocs.fromScript(fixture("hooks.sel"), "ui/hooks.sel", "ui", TestDoc.DEFAULT_REQ);
+        assertThat(ds).extracting(d -> d.name).containsExactly(null, "search", "cart", "export", "checkout");
+        TestDoc main = ds.get(0), search = ds.get(1), cart = ds.get(2), export = ds.get(3), checkout = ds.get(4);
+        assertThat(main.steps).containsExactly("Open the chrome browser", "[cart] Click \"cart\" (testid)");   // skipped subtests' steps are not run
+        assertThat(main.preconditions).containsExactly("Before all: Navigate to https://shop.test/");
+        assertThat(search.preconditions).containsExactly("Before all: Navigate to https://shop.test/", "Before each: Click #home");
+        assertThat(search.steps).containsExactly("[fill] Enter \"a\" into #q");
+        assertThat(search.expected).containsExactly("(step 1) #results is present");
+        assertThat(cart.description).startsWith("Marked only");
+        assertThat(cart.status).isEqualTo("not run");
+        assertThat(export.status).isEqualTo("skipped");
+        assertThat(export.description).isEqualTo("Skipped: marked skip in the script.");
+        assertThat(checkout.status).isEqualTo("skipped");
+        assertThat(checkout.description).contains("marked fixme");
+        for (TestDoc d : ds) {
+            assertThat(d.steps).doesNotContain("Take a screenshot");   // afterEach / afterAll: cleanup, not documented
+            assertThat(String.join(" ", d.steps)).doesNotContain("beforeAll", "subtest", "{");
+        }
+    }
+
+    @Test
+    void csvCellsAreNotFormulas() throws Exception {
+        // E7: OWASP CSV injection: = + - @ tab CR at the start get a ' (Excel showed "@smoke" as #NAME?)
+        assertThat(Sheets.csvSafe("@smoke")).isEqualTo("'@smoke");
+        assertThat(Sheets.csvSafe("=1+1")).isEqualTo("'=1+1");
+        assertThat(Sheets.csvSafe("+x")).isEqualTo("'+x");
+        assertThat(Sheets.csvSafe("-x")).isEqualTo("'-x");
+        assertThat(Sheets.csvSafe("\tx")).isEqualTo("'\tx");
+        assertThat(Sheets.csvSafe("1. Open")).isEqualTo("1. Open");
+        assertThat(Sheets.csvSafe("")).isEqualTo("");
+        Path c = dir.resolve("inj.csv");
+        Sheets.writeCsv(c, new String[] { "Tags", "Title" }, List.<String[]>of(new String[] { "@smoke @P1", "=HYPERLINK(\"x\")" }));
+        String raw = new String(Files.readAllBytes(c), java.nio.charset.StandardCharsets.UTF_8);
+        assertThat(raw).contains("'@smoke @P1,\"'=HYPERLINK(\"\"x\"\")\"");
+        assertThat(Sheets.readCsv(c).get(1)).containsExactly("@smoke @P1", "=HYPERLINK(\"x\")");   // read back as written
+    }
+
+    @Test
+    void folderFormAndSetupScripts() throws Exception {
+        // E4: seleniumScript naming a folder documents every script under the test-case dir, minus the setup scripts
+        Path tests = Files.createDirectories(dir.resolve("proj/tests"));
+        Files.createDirectories(tests.resolve("setup"));
+        Files.createDirectories(tests.resolve("ui"));
+        Files.writeString(tests.resolve("setup/login.sel"), "// Login\nopen chrome\ngoto https://shop.test/login\n");
+        Files.writeString(tests.resolve("setup/global.sel"), "// Seed\nopen chrome\n");
+        Files.writeString(tests.resolve("ui/cart.sel"), "// Cart\nopen chrome\nclick id@'cart'\n");
+        com.gatf.executor.core.GatfExecutorConfig cfg = new com.gatf.executor.core.GatfExecutorConfig();
+        cfg.setSeleniumExecutor(true);
+        cfg.setTestCasesBasePath(dir.resolve("proj").toString());
+        cfg.setTestCaseDir("tests");
+        cfg.setSeleniumScript(tests.toString());
+        cfg.setLoginOnce("setup/login.sel");
+        cfg.setGlobalSetup("./setup/global.sel");
+        int[] skipped = { 0 };
+        List<TestDoc> ds = TestDocsGenerator.collect(cfg, dir.toFile(), TestDoc.DEFAULT_REQ, null, skipped);
+        assertThat(ds).extracting(d -> d.source).containsExactly("ui/cart.sel");
+        assertThat(ds.get(0).module).isEqualTo("ui");
+        assertThat(skipped[0]).isEqualTo(0);
+    }
+
+    @Test
     void generatorWritesAllOutputs() throws Exception {
         TestDocsGenerator.Options o = new TestDocsGenerator.Options();
         o.outDir = dir.resolve("out");

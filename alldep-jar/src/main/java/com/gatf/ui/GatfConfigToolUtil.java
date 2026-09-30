@@ -456,6 +456,11 @@ public class GatfConfigToolUtil implements GatfConfigToolMojoInt {
 					new File(mojo.getRootDir(), "gatf-config.json").createNewFile();
 				}
 				GatfExecutorConfig gatfConfig = config==null?new GatfExecutorConfig():(GatfExecutorConfig)config;
+				if(config==null) {
+					// M1/M2: new projects get auto-wait and web-first assertions (existing configs are untouched)
+					gatfConfig.setAutoWait(true);
+					gatfConfig.setWebFirstAssertions(true);
+				}
 				sanitizeAndSaveGatfConfig(gatfConfig, mojo, false);
 			} catch (IOException e) {
 			}

@@ -74,4 +74,40 @@ class SemanticLocatorsTest {
         String m = SemanticLocators.strictViolation("role@button", List.of("<button#a> \"Save\"", "<button> \"Cancel\""));
         assertThat(m).isEqualTo("Strict locator role@button matched 2 elements\n  1) <button#a> \"Save\"\n  2) <button> \"Cancel\"");
     }
+
+    @Test
+    void strictViolationReportsTheRealCount() {
+        List<String> eleven = java.util.Collections.nCopies(11, "<button> \"Go\"");   // the resolver caps descriptions at 11
+        String m = SemanticLocators.strictViolation("role@button", eleven, 40);
+        assertThat(m).startsWith("Strict locator role@button matched 40 elements").endsWith("\n  ...");
+        assertThat(m.split("\n")).hasSize(12);
+    }
+
+    @Test
+    void invalidRegexesFailAtParse() {
+        assertThatThrownBy(() -> SemanticLocators.parse("placeholder", "/(/")).hasMessageContaining("Invalid regex /(/");
+        assertThatThrownBy(() -> SemanticLocators.parse("text", "/a/ii")).hasMessageContaining("duplicate flag 'i'");
+        assertThatThrownBy(() -> SemanticLocators.parse("role", "button[name=/a/uv]")).hasMessageContaining("u and v");
+        assertThat(SemanticLocators.parse("text", "/^a.b$/dimsuy")).containsEntry("flags", "dimsuy");
+        assertThat(SemanticLocators.parse("text", "/[^]x/v")).containsEntry("mode", "regex");          // JS-only syntax accepted
+        assertThat(SemanticLocators.parse("text", "/(?<first_name>\\w+) \\k<first_name>/")).containsEntry("mode", "regex");
+        assertThat(SemanticLocators.parse("text", "/\\u{1F600}/u")).containsEntry("mode", "regex");
+    }
+
+    @Test
+    void testIdEqualsAndEmptyValues() {
+        assertThat(SemanticLocators.parse("testid", "=foo")).containsEntry("mode", "exact").containsEntry("value", "foo");
+        assertThat(SemanticLocators.parse("testid", "'=foo'")).containsEntry("value", "foo");
+        assertThatThrownBy(() -> SemanticLocators.parse("label", "~")).hasMessageContaining("empty value");
+        assertThatThrownBy(() -> SemanticLocators.parse("text", "=  ")).hasMessageContaining("empty value");
+        assertThatThrownBy(() -> SemanticLocators.parse("testid", "=")).hasMessageContaining("empty value");
+        assertThatThrownBy(() -> SemanticLocators.parse("role", "button[name=~]")).hasMessageContaining("empty [name]");
+    }
+
+    @Test
+    void includeHiddenSuffixOnAnyPrefix() {
+        assertThat(SemanticLocators.parse("text", "=Saved[include-hidden]")).containsEntry("value", "Saved").containsEntry("includeHidden", true);
+        assertThat(SemanticLocators.isSemantic("text", "/sav/i[include-hidden]")).isTrue();
+        assertThat(SemanticLocators.parse("placeholder", "Search")).doesNotContainKey("includeHidden");
+    }
 }

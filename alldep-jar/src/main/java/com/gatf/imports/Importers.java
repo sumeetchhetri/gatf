@@ -136,6 +136,12 @@ public final class Importers {
         return new OpenApiImporter(baseDir, specRef, negative).importSource(source, suite);
     }
 
+    /** {@link #importOpenApi} for an uploaded bundle: relative-file {@code $ref}s may not leave {@code confineTo}. */
+    public static ImportResult importOpenApi(String source, String suite, java.io.File baseDir, String specRef, boolean negative,
+            java.io.File confineTo) throws Exception {
+        return new OpenApiImporter(baseDir, specRef, negative).confineRefsTo(confineTo).importSource(source, suite);
+    }
+
     /** OA2 — operation pointer → fingerprint of already generated cases (for the drift list on re-import). */
     public static java.util.Map<String, String> contractIndex(List<TestCase> cases) {
         java.util.Map<String, String> m = new java.util.LinkedHashMap<String, String>();

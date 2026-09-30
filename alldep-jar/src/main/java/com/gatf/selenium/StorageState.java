@@ -249,7 +249,9 @@ public final class StorageState {
             for (String f : field.split("\\.")) b.append("o=o==null?null:o[").append(OM.valueToTree(f).toString()).append("];");
             b.append("if(o==null)return null;v=String(o);");
         }
-        b.append("v=v.trim();return /^[A-Za-z]+ /.test(v)?v:'Bearer '+v;}catch(e){return null;}");
+        // E8: a JSON-encoded string ("\"eyJ…\"", as JSON.stringify stores it) is unwrapped first
+        b.append("v=v.trim();if(/^\".*\"$/.test(v)){try{var q=JSON.parse(v);if(typeof q==='string')v=q.trim();}catch(e){}}");
+        b.append("if(!v)return null;return /^[A-Za-z]+ /.test(v)?v:'Bearer '+v;}catch(e){return null;}");
         return b.toString();
     }
 

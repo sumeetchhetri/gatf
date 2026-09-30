@@ -40,6 +40,17 @@ class TestCommandArgsTest {
         assertThat(a.traceMode).isEqualTo("retain-on-failure");
         assertThat(a.retries).isEqualTo(2);
         assertThat(a.workers).isEqualTo(4);
+        assertThat(a.forbidOnly).isNull();
+    }
+
+    @Test
+    void forbidOnlyIsAFlag() {
+        // E10: no value argument, so the next token is still read (here the config)
+        TestCommandArgs a = TestCommandArgs.parse(new String[] { "--forbid-only", "cfg.xml" }, new File("."));
+        assertThat(a.forbidOnly).isTrue();
+        assertThat(a.config).isEqualTo("cfg.xml");
+        assertThat(TestCommandArgs.parse(new String[] { "cfg.xml", "--forbid-only=false" }, new File(".")).forbidOnly).isFalse();
+        assertThat(TestCommandArgs.USAGE).contains("[--forbid-only]");
     }
 
     @Test

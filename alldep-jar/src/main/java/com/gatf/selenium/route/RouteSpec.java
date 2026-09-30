@@ -90,7 +90,8 @@ public final class RouteSpec {
             method = t.get(i++)[0];
         }
         if (i >= t.size()) throw new IllegalArgumentException("route needs a URL pattern");
-        String glob = t.get(i++)[0];
+        String glob = t.get(i)[0];
+        if (t.get(i++)[1] == null && METHODS.contains(glob.toUpperCase(Locale.ROOT))) throw new IllegalArgumentException("route " + glob + ": missing URL glob after method");
         if (i >= t.size()) throw new IllegalArgumentException("route " + glob + ": fulfill | abort | continue expected");
         String action = t.get(i++)[0].toLowerCase(Locale.ROOT);
         switch (action) {
@@ -144,7 +145,7 @@ public final class RouteSpec {
         while (i < t.size()) {
             String w = t.get(i)[0].toLowerCase(Locale.ROOT);
             if (w.equals("type") && fulfill && t.get(i)[1] == null && i + 1 < t.size()) {
-                r.headers.put("Content-Type", t.get(i + 1)[0]);
+                r.addHeader("Content-Type", t.get(i + 1)[0]);
                 i += 2;
             } else if (w.equals("header") && t.get(i)[1] == null && i + 1 < t.size()) {
                 String h = t.get(i + 1)[0];
@@ -161,7 +162,7 @@ public final class RouteSpec {
                     i += 2;
                 }
                 if (name.trim().isEmpty()) throw new IllegalArgumentException("route " + r.glob + ": empty header name");
-                r.headers.put(name.trim(), value.trim());
+                r.addHeader(name.trim(), value.trim());   // a repeated name is sent twice (e.g. two Set-Cookie)
             } else {
                 throw new IllegalArgumentException("route " + r.glob + ": unexpected '" + t.get(i)[0] + "'"
                         + (fulfill ? " (type <content-type> | header 'Name: value')" : " (header 'Name: value')"));

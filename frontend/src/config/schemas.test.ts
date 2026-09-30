@@ -67,6 +67,12 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     for (const k of ['globalSetup', 'globalTeardown']) expect(executorSchema.properties![k].type).toBe('string');
   });
 
+  it('executor schema exposes the token host allow-list and forbidOnly', () => {
+    expect(executorSchema.properties!.browserApiStorageTokenHosts.type).toBe('array');
+    expect(executorSchema.properties!.browserApiStorageTokenHosts.items!.type).toBe('string');
+    expect(executorSchema.properties!.forbidOnly.type).toBe('boolean');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

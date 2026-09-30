@@ -64,6 +64,19 @@ public interface BrowserControl extends AutoCloseable {
     /** Web-vitals read from the page's Performance Timeline as a JSON object string, or null. */
     default String readWebVitals() { return null; }
 
+    /**
+     * Q9 per-navigation vitals: install {@link WebVitals#PRELOAD_JS} on every new document (and the current one).
+     * Entries the page reports out-of-band as it is left go to {@code sink} as JSON; the rest stay buffered in the page
+     * for {@link #drainPageVitals()}. Returns false when unsupported (only the final page is then measured).
+     */
+    default boolean enablePageVitals(java.util.function.Consumer<String> sink) { return false; }
+
+    /** Page-buffered per-navigation entries (JSON array string) not yet delivered to the sink, or null. */
+    default String drainPageVitals() { return null; }
+
+    /** Remove the per-navigation observer from new documents. Default no-op. */
+    default void disablePageVitals() { }
+
     // --- Phase 2 CPU profile + coverage (retrieved at stop; default no-ops) ---
 
     /** Begin CPU sampling profile (CDP Profiler.start). Default no-op. */

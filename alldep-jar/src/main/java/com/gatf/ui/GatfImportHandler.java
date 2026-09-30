@@ -20,6 +20,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -44,13 +46,16 @@ import com.gatf.selenium.Command;
  * Phase 11 / Q2 — test importer endpoint for the React shell.
  *
  *   POST /import?type=playwright|jmeter|curl|postman|har|openapi[&fileName=<name>][&save=true][&filter=<url regex, har>]
- *               [&negative=true, openapi: also negative cases]
- *     body = the raw Playwright .spec source, JMeter .jmx XML, curl command(s), Postman collection or HAR JSON
+ *               [&negative=true, openapi: also negative cases][&bundle=true, openapi: multi-file spec]
+ *     body = the raw Playwright .spec source, JMeter .jmx XML, curl command(s), Postman collection or HAR JSON;
+ *            bundle=true: {"main": spec text, "mainName"?: its relative path, "files": {relative path: text}} for relative-file $refs
  *     ->   { type, fileName, kind, content, unsupported:[{line,construct,reason}], stats:{...},
  *            loadConfig?, variables?, drift?:{added,removed,changed}, spec?, saved:bool, savedPath?, validation? }
  *
  * OpenAPI (OA2): each case points at the spec (saved beside the .xml as {@code <name>.openapi.json|yaml}) so responses
  * are contract-checked at run time; when the .xml already exists the response lists the operations that drifted.
+ * A bundle is imported from a temp folder and saved as {@code <name>.openapi/} beside the .xml (relative paths kept), so
+ * the run-time contract check resolves the same $refs.
  *
  * With save omitted/false the endpoint only previews (parse + translate). With save=true it also writes
  * the file into the test-case directory (the same location /testcasefiles create uses), so it appears in
@@ -84,8 +89,28 @@ public class GatfImportHandler extends HttpHandler {
         String fileName = request.getParameter("fileName");
         boolean save = "true".equalsIgnoreCase(request.getParameter("save"));
 
+        File bundleDir = null;
         try {
             String source = readBody(request);
+            String bundleMain = null;
+            if ("true".equalsIgnoreCase(request.getParameter("bundle"))) {
+                try {
+                    com.fasterxml.jackson.databind.JsonNode b = WorkflowContextHandler.OM.readTree(source);
+                    source = b.path("main").asText("");
+                    String ext = source.trim().startsWith("{") ? "json" : "yaml";
+                    bundleMain = b.path("mainName").asText("").trim().isEmpty() ? "openapi." + ext : b.path("mainName").asText().trim();
+                    bundleDir = Files.createTempDirectory("gatf-import").toFile();
+                    FileUtils.writeStringToFile(bundleFile(bundleDir, bundleMain), source, "UTF-8");
+                    for (Iterator<Map.Entry<String, com.fasterxml.jackson.databind.JsonNode>> it = b.path("files").fields(); it.hasNext();) {
+                        Map.Entry<String, com.fasterxml.jackson.databind.JsonNode> e = it.next();
+                        File f = bundleFile(bundleDir, e.getKey());
+                        if (!f.exists()) FileUtils.writeStringToFile(f, e.getValue().asText(""), "UTF-8");   // the main file wins
+                    }
+                } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
+                    writeJson(response, HttpStatus.BAD_REQUEST_400, err("bad import bundle: " + e.getMessage()));
+                    return;
+                }
+            }
             if (StringUtils.isBlank(source)) {
                 writeJson(response, HttpStatus.BAD_REQUEST_400, err("empty import source"));
                 return;
@@ -95,11 +120,15 @@ public class GatfImportHandler extends HttpHandler {
             boolean openapi = "openapi".equalsIgnoreCase(type) || "swagger".equalsIgnoreCase(type);
             String xmlName = fileName != null && !fileName.trim().isEmpty() ? ensureExt(fileName.trim(), "xml") : Importers.safeName(suite) + ".xml";
             String specName = new File(xmlName.replaceAll("\\.xml$", "") + ".openapi." + (source.trim().startsWith("{") ? "json" : "yaml")).getName();
+            // bundle: <name>.openapi/<main> — the folder is saved beside the .xml with the relative paths kept
+            String bundleName = new File(xmlName.replaceAll("\\.xml$", "") + ".openapi").getName();
+            if (bundleMain != null) specName = bundleName + "/" + bundleMain.replace('\\', '/');
 
             ImportResult result;
             try {
                 result = openapi
-                        ? Importers.importOpenApi(source, suite, null, specName, "true".equalsIgnoreCase(request.getParameter("negative")))
+                        ? Importers.importOpenApi(source, suite, bundleDir == null ? null : bundleFile(bundleDir, bundleMain).getParentFile(),
+                                specName, "true".equalsIgnoreCase(request.getParameter("negative")), bundleDir)
                         : Importers.importSource(type, source, suite, request.getParameter("filter"));
             } catch (IllegalArgumentException e) {
                 writeJson(response, HttpStatus.BAD_REQUEST_400, err(e.getMessage()));
@@ -142,7 +171,12 @@ public class GatfImportHandler extends HttpHandler {
             if (save) {
                 if (cfg == null) cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
                 String savedPath = writeToTestDir(cfg, result);
-                if (openapi) FileUtils.writeStringToFile(new File(new File(savedPath).getParentFile(), specName), source, "UTF-8");
+                if (openapi && bundleDir != null) {
+                    File dest = new File(new File(savedPath).getParentFile(), bundleName);
+                    FileUtils.deleteDirectory(dest);   // a re-upload replaces the bundle; no stale files from the last one
+                    FileUtils.copyDirectory(bundleDir, dest);
+                }
+                else if (openapi) FileUtils.writeStringToFile(new File(new File(savedPath).getParentFile(), specName), source, "UTF-8");
                 out.put("saved", true);
                 out.put("savedPath", result.fileName);
                 if ("sel".equals(result.kind)) {
@@ -154,7 +188,23 @@ public class GatfImportHandler extends HttpHandler {
             writeJson(response, HttpStatus.OK_200, out);
         } catch (Exception e) {
             writeJson(response, HttpStatus.INTERNAL_SERVER_ERROR_500, err(e.getMessage() == null ? e.toString() : e.getMessage()));
+        } finally {
+            if (bundleDir != null) FileUtils.deleteQuietly(bundleDir);
         }
+    }
+
+    /** A bundle member inside {@code dir}; absolute paths and '..' segments are rejected. */
+    static File bundleFile(File dir, String rel) {
+        String r = rel == null ? "" : rel.replace('\\', '/');
+        if (r.trim().isEmpty() || r.startsWith("/") || r.matches("^[A-Za-z]:.*")) throw new IllegalArgumentException("not a relative path: " + rel);
+        for (String seg : r.split("/")) if ("..".equals(seg)) throw new IllegalArgumentException("'..' not allowed: " + rel);
+        File f = new File(dir, r);
+        try {
+            if (!f.getCanonicalPath().startsWith(dir.getCanonicalPath() + File.separator)) throw new IllegalArgumentException("outside the bundle: " + rel);
+        } catch (java.io.IOException e) {
+            throw new IllegalArgumentException("bad path: " + rel);
+        }
+        return f;
     }
 
     // Write the imported artifact into the test-case dir (mirrors GatfTestCaseFilesHandler's create path).

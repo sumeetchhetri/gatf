@@ -15,12 +15,17 @@
 */
 package com.gatf.ui;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import javax.ws.rs.core.MediaType;
 
@@ -34,6 +39,8 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.docs.TestDoc;
+import com.gatf.docs.TestDocsGenerator;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
@@ -46,6 +53,7 @@ import com.gatf.executor.dataprovider.MongoDBTestDataSource;
 import com.gatf.executor.dataprovider.RandomValueTestDataProvider;
 import com.gatf.executor.dataprovider.SQLDatabaseTestDataSource;
 import com.gatf.executor.dataprovider.StateFulFileTestDataProvider;
+import com.gatf.generator.core.DocsCli;
 
 public class GatfMiscHandler extends HttpHandler {
 
@@ -64,6 +72,10 @@ public class GatfMiscHandler extends HttpHandler {
     	if(request.getMethod().equals(Method.GET)) {
     		try {
     			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+    			if("testdocs".equals(request.getParameter("action"))) {
+    				serveTestDocs(gatfConfig, request, response);
+    				return;
+    			}
     			
     			Map<String, List<String>> miscMap = new HashMap<String, List<String>>();
 				if(gatfConfig.getGatfTestDataConfig()!=null && 
@@ -136,4 +148,49 @@ public class GatfMiscHandler extends HttpHandler {
 			}
     	}
     }
+
+	// `gatf docs` for the selected config as a download: format=xlsx (default) -> gatf-testcases.xlsx,
+	// format=csv -> gatf-testdocs-csv.zip (test cases, traceability, coverage). Status from the default gatf-results.json.
+	private void serveTestDocs(GatfExecutorConfig gatfConfig, Request request, Response response) throws Exception {
+		boolean csv = "csv".equalsIgnoreCase(request.getParameter("format"));
+		File root = new File(mojo.getRootDir());
+		Path tmp = Files.createTempDirectory("gatf-testdocs-");
+		try {
+			TestDocsGenerator.Options o = new TestDocsGenerator.Options();
+			o.format = csv ? "csv" : "xlsx";
+			o.outDir = tmp;
+			List<TestDoc> docs = TestDocsGenerator.collect(gatfConfig, root, o.reqPattern, tmp, new int[1]);
+			if(docs.isEmpty()) {
+				GatfConfigToolUtil.handleError(new RuntimeException("No test cases or scripts found for this config"), response, HttpStatus.BAD_REQUEST_400);
+				return;
+			}
+			o.resultsFile = DocsCli.defaultResults(gatfConfig, root);
+			TestDocsGenerator.write(docs, o);
+			byte[] body;
+			String name;
+			if(!csv) {
+				name = "gatf-testcases.xlsx";
+				body = Files.readAllBytes(tmp.resolve(name));
+				response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+			} else {
+				name = "gatf-testdocs-csv.zip";
+				ByteArrayOutputStream bos = new ByteArrayOutputStream();
+				try(ZipOutputStream zos = new ZipOutputStream(bos)) {
+					for(String n : new String[] {"gatf-testcases.csv", "gatf-traceability.csv", "gatf-coverage.csv"}) {
+						zos.putNextEntry(new ZipEntry(n));
+						zos.write(Files.readAllBytes(tmp.resolve(n)));
+						zos.closeEntry();
+					}
+				}
+				body = bos.toByteArray();
+				response.setContentType("application/zip");
+			}
+			response.setHeader("Content-Disposition", "attachment; filename=\"" + name + "\"");
+			response.setContentLength(body.length);
+			response.getOutputStream().write(body);
+			response.setStatus(HttpStatus.OK_200);
+		} finally {
+			FileUtils.deleteQuietly(tmp.toFile());
+		}
+	}
 }

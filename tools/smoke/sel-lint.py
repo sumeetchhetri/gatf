@@ -96,8 +96,6 @@ class Catalog:
         L = line.strip().lower()
         if not L:
             return True
-        if L.startswith("nowait "):   # M1 auto-wait opt-out prefix (Command.stripNoWait), not a keyword itself
-            L = L[7:].lstrip()
         for kw in self.multiword:
             if L == kw or L.startswith(kw + " "):
                 return True

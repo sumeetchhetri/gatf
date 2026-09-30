@@ -28,7 +28,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
  * Samples runtime metrics on an interval (CDP Performance.getMetrics via the transport) and
  * streams them to {@code performance.ndjson}; at finalize it emits {@code performance.json}
  * (the full metric series + web vitals) and {@code memory.json} (the JS-heap series). Web
- * vitals (FCP/LCP/TTFB/DCL/Load) are read once from the Performance Timeline at stop.
+ * vitals (FCP/LCP/TTFB/DCL/Load) are read once from the Performance Timeline at stop
+ * ({@code webVitals}, the final page); Q9: where the transport supports it, every page left during
+ * the script is reported too, and {@code webVitalsByPage} lists all pages in order.
  *
  * Metric samples are small and one-per-interval, so they are retained in a concurrent list to
  * build the JSON views — the heavy trace data (bodies, snapshots, screencast frames) is what
@@ -54,6 +56,8 @@ public final class MetricsRecorder {
     private final Sampler sampler;
     private final List<Sample> samples = new CopyOnWriteArrayList<>();
     private volatile String vitalsJson;
+    private final PageVitals pages = new PageVitals();     // Q9: vitals of each page left during the script
+    private volatile boolean pageVitalsOn;
 
     public MetricsRecorder(BrowserControl browser, Path traceDir, TraceConfig cfg) throws IOException {
         this.browser = browser;
@@ -65,6 +69,7 @@ public final class MetricsRecorder {
 
     public void start() {
         try { browser.enableMetrics(); } catch (Exception ignored) {}
+        try { if (webVitals) pageVitalsOn = browser.enablePageVitals(pages::add); } catch (Exception ignored) {}
         sample();            // one immediate sample
         sampler.start();
     }
@@ -85,7 +90,9 @@ public final class MetricsRecorder {
     public void stop() {
         sampler.stop();
         sample();            // final sample
+        try { if (pageVitalsOn) pages.add(browser.drainPageVitals()); } catch (Exception ignored) {}
         try { if (webVitals) vitalsJson = browser.readWebVitals(); } catch (Exception ignored) {}
+        try { if (pageVitalsOn) browser.disablePageVitals(); } catch (Exception ignored) {}
         try { browser.disableMetrics(); } catch (Exception ignored) {}
         raw.flush();
         raw.close();
@@ -108,6 +115,8 @@ public final class MetricsRecorder {
         arr.append(']');
         String doc = "{\"samples\":" + arr
                 + (vitalsJson != null && !vitalsJson.isEmpty() ? ",\"webVitals\":" + vitalsJson : "")
+                + (pageVitalsOn || (vitalsJson != null && !vitalsJson.isEmpty())
+                        ? ",\"webVitalsByPage\":" + pages.toJson(vitalsJson, System.currentTimeMillis()) : "")
                 + "}";
         Files.write(traceDir.resolve("performance.json"), doc.getBytes(StandardCharsets.UTF_8));
     }

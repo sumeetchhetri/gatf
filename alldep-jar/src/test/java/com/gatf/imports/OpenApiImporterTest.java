@@ -134,8 +134,8 @@ class OpenApiImporterTest {
         assertThat(TestFilter.tagsIn(missing.getDescription())).contains("@negative");
         TestCase wrong = c.get("addPet [wrong type name]");
         assertThat(wrong.getContent()).contains("\"name\":12345");
-        assertThat(wrong.getExpectedResCode()).isEqualTo(405);                       // the op's only declared 4xx
-        assertThat(wrong.getContract()).isEqualTo(c.get("addPet").getContract());
+        assertThat(wrong.getExpectedResCode()).isEqualTo(400);                       // only 405 declared: not a malformed-request status
+        assertThat(wrong.getContract()).isNull();                                     // 400 undeclared → status-only check
         assertThat(Importers.importSource("openapi", res("petstore-v3.yaml"), "p", null).testCases)
                 .allMatch(t -> t.getContract() == null);                               // no spec reference, no pointer
         // an operation without a declared 4xx: the negative case expects 400 and checks the status only
@@ -153,5 +153,91 @@ class OpenApiImporterTest {
     void rejectsNonSpecs() {
         assertThatThrownBy(() -> Importers.importSource("openapi", "{\"info\":{}}", "x", null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not an OpenAPI/Swagger document");
+    }
+
+    private static final String HEAD = "{\"openapi\":\"3.1.0\",\"info\":{\"title\":\"t\",\"version\":\"1\"},";
+    private static final String Q = "\"parameters\":[{\"name\":\"q\",\"in\":\"query\",\"required\":true,\"schema\":{\"type\":\"string\"}}],";
+
+    private static TestCase missingQ(String responses) throws Exception {
+        String spec = HEAD + "\"paths\":{\"/s\":{\"get\":{\"operationId\":\"s\"," + Q + "\"responses\":{\"200\":{\"description\":\"\"}," + responses + "}}}}}";
+        return byName(Importers.importOpenApi(spec, "s", null, "s.openapi.json", true)).get("s [missing q]");
+    }
+
+    @Test
+    void negativeStatusIsAMalformedRequestStatus() throws Exception {
+        TestCase n = missingQ("\"404\":{\"description\":\"\"},\"401\":{\"description\":\"\"},\"409\":{\"description\":\"\"}");
+        assertThat(n.getExpectedResCode()).isEqualTo(400);
+        assertThat(n.getContract()).isNull();
+        n = missingQ("\"404\":{\"description\":\"\"},\"422\":{\"description\":\"\"}");
+        assertThat(n.getExpectedResCode()).isEqualTo(422);
+        assertThat(n.getContract()).isNotNull();
+        n = missingQ("\"4XX\":{\"description\":\"\"},\"422\":{\"description\":\"\"},\"400\":{\"description\":\"\"}");
+        assertThat(n.getExpectedResCode()).isEqualTo(400);
+        n = missingQ("\"4XX\":{\"description\":\"\"}");
+        assertThat(n.getExpectedResCode()).isEqualTo(400);
+        assertThat(n.getContract()).isNotNull();                                      // 400 falls in the declared 4XX
+    }
+
+    @Test
+    void anchorsEncodedPointersApiKeysAndTags() throws Exception {
+        String spec = HEAD + "\"paths\":{\"/p\":{\"post\":{\"operationId\":\"p\",\"tags\":[\".internal\",\"--x\"],\"security\":[{\"k\":[],\"c\":[]}],"
+                + "\"parameters\":[{\"$ref\":\"#pa\"},{\"name\":\"key\",\"in\":\"query\",\"required\":true,\"schema\":{\"type\":\"string\"}},"
+                + "{\"name\":\"sid\",\"in\":\"cookie\",\"required\":true,\"schema\":{\"type\":\"string\"}},"
+                + "{\"name\":\"theme\",\"in\":\"cookie\",\"required\":true,\"schema\":{\"type\":\"string\",\"example\":\"dark\"}}],"
+                + "\"requestBody\":{\"content\":{\"application/json\":{\"schema\":{\"$ref\":\"#/components/schemas/My%20Pet\"}}}},"
+                + "\"responses\":{\"200\":{\"description\":\"\"}}}}},"
+                + "\"components\":{\"securitySchemes\":{\"k\":{\"type\":\"apiKey\",\"in\":\"query\",\"name\":\"key\"},"
+                + "\"c\":{\"type\":\"apiKey\",\"in\":\"cookie\",\"name\":\"sid\"}},"
+                + "\"schemas\":{\"My Pet\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"example\":\"rex\"}}}}}}";
+        ImportResult r = Importers.importSource("openapi", spec, "p", null);
+        TestCase p = byName(r).get("p");
+        assertThat(r.unsupported).extracting(u -> u.reason).anyMatch(s -> s.startsWith("anchor / non-pointer $ref not supported"));
+        assertThat(p.getContent()).isEqualTo("{\"name\":\"rex\"}");                     // %20 decoded
+        assertThat(p.getUrl()).isEqualTo("/p?key=${k}");                                  // declared 'key' replaced, not duplicated
+        assertThat(p.getHeaders()).containsEntry("Cookie", "theme=dark; sid=${c}");
+        assertThat(TestFilter.tagsIn(p.getDescription())).containsExactly("@internal", "@x");
+    }
+
+    @Test
+    void numericAndPatternSamples() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
+        String[][] ints = { { "{}", "1" }, { "{\"minimum\":5,\"exclusiveMinimum\":true}", "6" }, { "{\"exclusiveMinimum\":5}", "6" },
+                { "{\"maximum\":0,\"exclusiveMaximum\":true}", "-1" }, { "{\"exclusiveMaximum\":0}", "-1" }, { "{\"multipleOf\":5}", "5" },
+                { "{\"minimum\":7,\"multipleOf\":5}", "10" }, { "{\"exclusiveMinimum\":10,\"multipleOf\":5}", "15" },
+                { "{\"maximum\":-3,\"multipleOf\":4}", "-4" }, { "{\"minimum\":2,\"exclusiveMinimum\":1}", "2" } };
+        for (String[] t : ints) assertThat(OpenApiImporter.numberSample(om.readTree(t[0]), true).toPlainString()).isEqualTo(t[1]);
+        String[][] nums = { { "{}", "1.5" }, { "{\"minimum\":2}", "2" }, { "{\"exclusiveMinimum\":2}", "3" },
+                { "{\"minimum\":0,\"maximum\":1,\"exclusiveMaximum\":true}", "0.5" }, { "{\"exclusiveMinimum\":0,\"exclusiveMaximum\":0.1}", "0.05" },
+                { "{\"multipleOf\":0.25,\"minimum\":1.1}", "1.25" }, { "{\"exclusiveMaximum\":1}", "0" } };
+        for (String[] t : nums) assertThat(OpenApiImporter.numberSample(om.readTree(t[0]), false).compareTo(new java.math.BigDecimal(t[1]))).isZero();
+        assertThat(OpenApiImporter.patternSample(om.readTree("{\"pattern\":\"^[A-Z]{3}$\"}"))).isEqualTo("ABC");
+        assertThat(OpenApiImporter.patternSample(om.readTree("{\"pattern\":\"^\\\\d+$\",\"minLength\":6}"))).isEqualTo("123333");
+        assertThat(OpenApiImporter.patternSample(om.readTree("{\"pattern\":\"^[A-Z]\\\\d-[a-z]\\\\d$\"}"))).isEqualTo("A1-b2");
+        assertThat(OpenApiImporter.patternSample(om.readTree("{\"format\":\"email\",\"pattern\":\"@example\\\\.com$\"}"))).isEqualTo("user@example.com");
+        assertThat(OpenApiImporter.patternSample(om.readTree("{\"pattern\":\"^\\\\d{9}$\"}"))).isNull();
+        String spec = HEAD + "\"paths\":{\"/z/{z}\":{\"get\":{\"operationId\":\"z\",\"parameters\":[{\"name\":\"z\",\"in\":\"path\","
+                + "\"required\":true,\"schema\":{\"type\":\"string\",\"pattern\":\"^\\\\d{9}$\"}},{\"name\":\"n\",\"in\":\"query\",\"required\":true,"
+                + "\"schema\":{\"type\":\"integer\",\"minimum\":10,\"multipleOf\":10}}],\"responses\":{\"200\":{\"description\":\"\"}}}}}}";
+        ImportResult r = Importers.importSource("openapi", spec, "z", null);
+        assertThat(byName(r).get("z").getUrl()).isEqualTo("/z/string?n=10");
+        assertThat(r.unsupported).extracting(u -> u.reason).contains("no sample matches pattern — add an example");
+    }
+
+    @Test
+    void uploadedBundleRefsStayInsideTheBundle() throws Exception {
+        java.nio.file.Path tmp = java.nio.file.Files.createTempDirectory("gatf-oa-bundle");
+        java.nio.file.Path bundle = java.nio.file.Files.createDirectories(tmp.resolve("bundle"));
+        java.nio.file.Files.writeString(bundle.resolve("pet.json"), "{\"type\":\"object\",\"example\":{\"in\":1}}");
+        java.nio.file.Files.writeString(tmp.resolve("secret.json"), "{\"type\":\"object\",\"example\":{\"out\":1}}");
+        String spec = HEAD + "\"paths\":{\"/a\":{\"post\":{\"operationId\":\"a\",\"requestBody\":{\"content\":{\"application/json\":"
+                + "{\"schema\":{\"$ref\":\"pet.json\"}}}},\"responses\":{\"200\":{\"description\":\"\"}}}},"
+                + "\"/b\":{\"post\":{\"operationId\":\"b\",\"requestBody\":{\"content\":{\"application/json\":"
+                + "{\"schema\":{\"$ref\":\"../secret.json\"}}}},\"responses\":{\"200\":{\"description\":\"\"}}}}}}";
+        ImportResult r = Importers.importOpenApi(spec, "s", bundle.toFile(), null, false, bundle.toFile());
+        assertThat(byName(r).get("a").getContent()).contains("\"in\"");
+        assertThat(String.valueOf(byName(r).get("b").getContent())).doesNotContain("\"out\"");
+        assertThat(r.unsupported).extracting(u -> u.reason).contains("outside the uploaded files — not followed");
+        ImportResult cli = Importers.importOpenApi(spec, "s", bundle.toFile(), null, false);     // CLI: unrestricted, as before
+        assertThat(byName(cli).get("b").getContent()).contains("\"out\"");
     }
 }

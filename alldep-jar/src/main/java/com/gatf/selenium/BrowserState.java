@@ -136,6 +136,9 @@ final class BrowserState {
                 ((HasCdp) d).executeCdpCommand("Network.setCookies", Collections.<String, Object>singletonMap("cookies", ps));
                 return cs.size();
             } catch (Exception e) {
+                // E3: one cookie Chrome rejects fails the whole batch: set them one by one, skipping the rejected ones
+                int n = cdpEach((HasCdp) d, cs);
+                if (n >= 0) return n;
                 LOG.debug("state: CDP Network.setCookies unavailable ({})", e.toString());
             }
         }
@@ -165,6 +168,27 @@ final class BrowserState {
             d.manage().addCookie(b.build());
             n++;
         }
+        return n;
+    }
+
+    /** E3: Network.setCookie per cookie; the number set, or -1 when none could be sent (no CDP after all). */
+    private static int cdpEach(HasCdp d, List<CookieRules.C> cs) {
+        int n = 0, failed = 0;
+        for (CookieRules.C c : cs) {
+            try {
+                Map<String, Object> r = d.executeCdpCommand("Network.setCookie", StorageState.toCdp(c));
+                if (r != null && Boolean.FALSE.equals(r.get("success"))) {
+                    LOG.warn("state load: cookie '{}' ({}) rejected by the browser, skipped", c.name, c.domain);
+                } else {
+                    n++;
+                }
+            } catch (Exception e) {
+                failed++;
+                LOG.warn("state load: cookie '{}' ({}) rejected by the browser, skipped: {}", c.name, c.domain, e.toString());
+            }
+        }
+        if (failed == cs.size()) return -1;
+        if (n < cs.size()) LOG.warn("state load: {} of {} cookie(s) skipped", cs.size() - n, cs.size());
         return n;
     }
 

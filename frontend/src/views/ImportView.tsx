@@ -14,7 +14,7 @@
     limitations under the License.
 */
 import { useRef, useState } from 'react';
-import { api, type ImportResultDto, type ImportType } from '../api';
+import { api, type ImportBundle, type ImportResultDto, type ImportType } from '../api';
 
 type Kind = ImportType;
 
@@ -53,7 +53,7 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
     label: 'OpenAPI',
     accept: '.json,.yaml,.yml,application/json,application/yaml,text/yaml',
     ext: '.xml',
-    hint: 'A Swagger 2.0 or OpenAPI 3.0/3.1 spec (JSON or YAML). Each operation becomes an API test case; tags become @tags. Set baseUrl and the auth placeholders in gatf-config. Relative-file $refs need gatf import openapi <file>.',
+    hint: 'A Swagger 2.0 or OpenAPI 3.0/3.1 spec (JSON or YAML). Each operation becomes an API test case; tags become @tags. Set baseUrl and the auth placeholders in gatf-config. For relative-file $refs select the spec together with the files it references (multi-select), or use gatf import openapi <file>.',
   },
 };
 
@@ -63,12 +63,31 @@ function fmtStat(v: unknown): string {
   return String(v);
 }
 
+// OpenAPI multi-select: the spec (a top-level openapi:/swagger: key) is the main file; the others go by path relative to it.
+async function readBundle(files: File[]): Promise<{ main: File; text: string; bundle: ImportBundle | null }> {
+  const texts = await Promise.all(files.map((f) => f.text()));
+  let mi = texts.findIndex((t) => /^\s*[{]?\s*["']?(openapi|swagger)["']?\s*:/m.test(t));
+  if (mi < 0) mi = 0;
+  if (files.length < 2) return { main: files[mi], text: texts[mi], bundle: null };
+  const rel = (f: File) => ((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name).replace(/\\/g, '/');
+  const mainRel = rel(files[mi]);
+  const dir = mainRel.includes('/') ? mainRel.slice(0, mainRel.lastIndexOf('/') + 1) : '';
+  const out: Record<string, string> = {};
+  files.forEach((f, i) => {
+    if (i === mi) return;
+    const r = rel(f);
+    out[dir && r.startsWith(dir) ? r.slice(dir.length) : r] = texts[i];
+  });
+  return { main: files[mi], text: texts[mi], bundle: { mainName: mainRel.slice(dir.length), files: out } };
+}
+
 export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () => void }) {
   const [kind, setKind] = useState<Kind>('playwright');
   const [source, setSource] = useState('');
   const [fileName, setFileName] = useState('');
   const [filter, setFilter] = useState('');
   const [negative, setNegative] = useState(false);
+  const [bundle, setBundle] = useState<ImportBundle | null>(null);
   const [busy, setBusy] = useState<'' | 'preview' | 'save'>('');
   const [result, setResult] = useState<ImportResultDto | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -79,16 +98,21 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
 
   const pickKind = (k: Kind) => {
     setKind(k);
+    setBundle(null);
     setResult(null);
     setSaved(null);
     setErr(null);
   };
 
-  const onFile = async (f: File | undefined) => {
-    if (!f) return;
-    const text = await f.text();
+  const onFile = async (list: FileList | File[] | null | undefined) => {
+    const all = list ? Array.from(list) : [];
+    if (!all.length) return;
+    const { main: f, text, bundle: b } = kind === 'openapi' ? await readBundle(all) : { main: all[0], text: await all[0].text(), bundle: null };
     setSource(text);
-    if (!fileName) setFileName(f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|yaml|yml|sh|txt|curl)$/i, '') + meta.ext);
+    setBundle(b);
+    let base = f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|yaml|yml|sh|txt|curl)$/i, '');
+    if (kind === 'openapi') base = base.replace(/\.(openapi|swagger)$/i, ''); // petstore.openapi.json -> petstore.xml (+ petstore.openapi.json spec)
+    if (!fileName) setFileName(base + meta.ext);
     setResult(null);
     setSaved(null);
     setErr(null);
@@ -104,7 +128,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     setSaved(null);
     try {
       const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' ? filter.trim() : undefined,
-        kind === 'openapi' && negative);
+        kind === 'openapi' && negative, kind === 'openapi' && bundle ? bundle : undefined);
       if (r.error) {
         setErr(r.error);
         setResult(null);
@@ -158,15 +182,23 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
         <input
           ref={fileRef}
           type="file"
+          data-testid="import-file"
           accept={meta.accept}
+          multiple={kind === 'openapi'}
           style={{ display: 'none' }}
-          onChange={(e) => onFile(e.target.files?.[0])}
+          onChange={(e) => onFile(e.target.files)}
         />
         <button className="btn ghost small" onClick={() => fileRef.current?.click()}>
           Upload file…
         </button>
       </div>
       <div className="muted small" style={{ marginBottom: 8 }}>{meta.hint}</div>
+      {bundle && (
+        <div className="muted small" style={{ marginBottom: 8 }}>
+          bundle: <code>{bundle.mainName}</code> + {Object.keys(bundle.files).length} referenced file(s):{' '}
+          <code>{Object.keys(bundle.files).join(', ')}</code>
+        </div>
+      )}
 
       <textarea
         className="import-source"
@@ -184,7 +216,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           {busy === 'save' ? 'Saving…' : 'Save to test files'}
         </button>
         {source && (
-          <button className="btn ghost small" disabled={!!busy} onClick={() => { setSource(''); setResult(null); setSaved(null); setErr(null); }}>
+          <button className="btn ghost small" disabled={!!busy} onClick={() => { setSource(''); setBundle(null); setResult(null); setSaved(null); setErr(null); }}>
             Clear
           </button>
         )}

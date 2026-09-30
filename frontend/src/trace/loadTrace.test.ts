@@ -15,7 +15,7 @@
 */
 import { describe, it, expect } from 'vitest';
 import { zipSync } from 'fflate';
-import { parseFiles, loadTraceZip } from './loadTrace';
+import { parseFiles, loadTraceZip, pageVitals } from './loadTrace';
 
 const enc = new TextEncoder();
 const j = (o: unknown) => enc.encode(JSON.stringify(o));
@@ -79,5 +79,22 @@ describe('loadTraceZip', () => {
     const t = loadTraceZip(zipped);
     expect(t.meta.runId).toBe('Z');
     expect(t.events).toHaveLength(1);
+  });
+});
+
+describe('pageVitals', () => {
+  it('returns well-formed per-page rows oldest first, [] for older traces', () => {
+    expect(pageVitals(null)).toEqual([]);
+    expect(pageVitals({ samples: [], webVitals: { lcp: 5 } })).toEqual([]);
+    const rows = pageVitals({
+      samples: [],
+      webVitalsByPage: [
+        { url: 'https://a/2', ts: 20, lcp: 900 },
+        null as never,
+        { url: 'https://a/1', ts: 10, lcp: 2600, cls: 0.2 },
+        { url: 'bad' } as never,
+      ],
+    });
+    expect(rows.map((r) => r.url)).toEqual(['https://a/1', 'https://a/2']);
   });
 });

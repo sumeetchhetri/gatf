@@ -20,7 +20,9 @@ import java.util.regex.Pattern;
 /**
  * M4 — URL globs for {@code route}, matched against the full request URL (Playwright semantics): {@code **} = any
  * characters, {@code *} = any characters except '/', {@code {a,b}} = alternatives; everything else, including
- * {@code ?}, is literal. A glob starting with '/' is matched against the path and query of any origin.
+ * {@code ?}, is literal; a backslash makes the next character literal ({@code \*}, {@code \{}). The whole URL must
+ * match, so {@code **}{@code /api/users} does not match {@code /api/users?page=2} (write {@code **}{@code /api/users*}).
+ * A glob starting with '/' is matched against the path and query of any origin.
  */
 public final class Glob {
 
@@ -33,7 +35,11 @@ public final class Glob {
         int depth = 0;
         for (int i = 0; i < glob.length(); i++) {
             char c = glob.charAt(i);
-            if (c == '*') {
+            if (c == '\\' && i + 1 < glob.length()) {
+                c = glob.charAt(++i);
+                if (!Character.isLetterOrDigit(c)) b.append('\\');
+                b.append(c);
+            } else if (c == '*') {
                 if (i + 1 < glob.length() && glob.charAt(i + 1) == '*') {
                     b.append(".*");
                     i++;

@@ -108,4 +108,17 @@ class SchemaValidatorTest {
                 + "\"name\":{\"type\":\"string\"}}}}}";
         assertThat(run(schema, "{\"kids\":[{\"kids\":[{\"name\":1}]}]}")).extracting(x -> x.pointer).containsExactly("/kids/0/kids/0/name");
     }
+
+    @Test
+    void typeArrayNullStillAppliesEnumAndUnresolvableRefIsNoted() throws Exception {
+        assertThat(run("{\"type\":[\"string\",\"null\"],\"enum\":[\"a\"]}", "null")).extracting(x -> x.message).containsExactly("not in enum");
+        assertThat(run("{\"type\":[\"string\",\"null\"],\"enum\":[\"a\",null]}", "null")).isEmpty();
+        assertThat(run("{\"type\":\"string\",\"nullable\":true,\"enum\":[\"a\"]}", "null")).isEmpty();   // OAS 3.0 nullable
+        JsonNode s = OM.readTree("{\"properties\":{\"a\":{\"$ref\":\"#/$defs/Missing\"},\"b\":{\"$ref\":\"#/$defs/My%20Pet\"}},"
+                + "\"$defs\":{\"My Pet\":{\"type\":\"integer\"}}}");
+        SpecDoc d = new SpecDoc(s, null);
+        SchemaValidator sv = new SchemaValidator(d, true);
+        assertThat(sv.validate(d.node(s, ""), OM.readTree("{\"a\":1,\"b\":\"x\"}"))).extracting(x -> x.pointer).containsExactly("/b");   // %20 decoded
+        assertThat(sv.notes()).containsExactly("schema $ref #/$defs/Missing unresolvable — not validated");
+    }
 }

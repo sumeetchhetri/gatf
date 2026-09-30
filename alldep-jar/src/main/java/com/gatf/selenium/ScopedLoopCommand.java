@@ -87,7 +87,11 @@ public class ScopedLoopCommand extends Command {
             StringBuilder b = new StringBuilder();
             if(!children.isEmpty())
             {
+                // M3: a strict semantic locator may match many here (the loop iterates them); legacy finds emit nothing extra
+                boolean multi = cond.isSemanticFind();
+                if(multi) b.append("semanticMulti(true);\ntry {\n");
                 b.append(cond.javacodeonly());
+                if(multi) b.append("\n} finally {\nsemanticMulti(false);\n}\n");
                 String cvarname = cond.getActionableVar();
                 //pushSc();
                 state.pushParc();

@@ -34,8 +34,9 @@ import java.util.regex.Pattern;
  *
  * <p>Resolution runs in the page ({@link #RESOLVER_JS}): it walks the document and every open shadow root, computes
  * implicit ARIA roles and a subset of the accessible-name algorithm (aria-labelledby, aria-label, label[for] /
- * wrapping label, alt, button value, text content, title, placeholder). Role queries skip hidden elements unless
- * {@code [include-hidden]}. With {@code strictLocators} a semantic locator matching more than one element fails and
+ * wrapping label, fieldset legend / table caption / figure figcaption, alt, button value, text content, title,
+ * placeholder). Every query skips hidden elements unless {@code [include-hidden]} (a role attribute, or a trailing
+ * {@code [include-hidden]} on any other value). With {@code strictLocators} a semantic locator matching more than one element fails and
  * lists the candidates. Pure: the Selenium call lives in {@code SeleniumTest.semanticElements}.
  */
 public final class SemanticLocators {
@@ -50,14 +51,17 @@ public final class SemanticLocators {
         if (by == null) return false;
         String b = by.trim().toLowerCase(Locale.ROOT);
         if (PREFIXES.contains(b)) return true;
-        return b.equals("text") && classifier != null && (classifier.startsWith("=") || isRegex(classifier));
+        if (!b.equals("text") || classifier == null) return false;
+        String c = classifier.endsWith(INCLUDE_HIDDEN) ? classifier.substring(0, classifier.length() - INCLUDE_HIDDEN.length()).trim() : classifier;
+        return c.startsWith("=") || isRegex(c);
     }
 
     static boolean isRegex(String v) {
         return v != null && REGEX.matcher(v).matches();
     }
 
-    private static final Pattern REGEX = Pattern.compile("^/(.+)/([dgimsuy]*)$", Pattern.DOTALL);
+    private static final Pattern REGEX = Pattern.compile("^/(.+)/([dgimsuvy]*)$", Pattern.DOTALL);
+    private static final String INCLUDE_HIDDEN = "[include-hidden]";
     private static final Pattern ROLE = Pattern.compile("^([A-Za-z][A-Za-z0-9-]*)((?:\\[[^\\]]*\\])*)$", Pattern.DOTALL);
     private static final Pattern ATTR = Pattern.compile("\\[\\s*([A-Za-z-]+)\\s*(?:=\\s*(.*?))?\\s*\\]", Pattern.DOTALL);
 
@@ -82,6 +86,7 @@ public final class SemanticLocators {
                     case "name":
                         if (v == null) throw new IllegalArgumentException("role@" + c + ": [name] needs a value");
                         value(spec, v, false);
+                        if (String.valueOf(spec.get("value")).trim().isEmpty()) throw new IllegalArgumentException("role@" + c + ": empty [name] would match everything");
                         break;
                     case "level":
                         try {
@@ -103,8 +108,15 @@ public final class SemanticLocators {
             return spec;
         }
         if (!PREFIXES.contains(kind) && !kind.equals("text")) throw new IllegalArgumentException("not a semantic locator: " + by + "@");
+        if (c.endsWith(INCLUDE_HIDDEN)) {
+            spec.put("includeHidden", true);
+            c = c.substring(0, c.length() - INCLUDE_HIDDEN.length()).trim();
+        }
         if (c.isEmpty()) throw new IllegalArgumentException(kind + "@ needs a value");
-        value(spec, kind.equals("testid") ? "=" + unquote(c) : unquote(c), kind.equals("text"));
+        String u = unquote(c);
+        if (kind.equals("testid") && u.startsWith("=")) u = u.substring(1);   // testid is always exact: testid@=x means x
+        value(spec, kind.equals("testid") ? "=" + u : u, kind.equals("text"));
+        if (String.valueOf(spec.get("value")).trim().isEmpty()) throw new IllegalArgumentException(kind + "@" + c + ": empty value would match everything");
         return spec;
     }
 
@@ -113,7 +125,7 @@ public final class SemanticLocators {
         if (r.matches()) {
             spec.put("mode", "regex");
             spec.put("value", r.group(1));
-            spec.put("flags", r.group(2).replace("g", ""));
+            spec.put("flags", checkRegex(r.group(1), r.group(2)).replace("g", ""));
         } else if (v.startsWith("=")) {
             spec.put("mode", "exact");
             spec.put("value", unquote(v.substring(1)));
@@ -124,6 +136,33 @@ public final class SemanticLocators {
             spec.put("mode", "full");
             spec.put("value", v);
         }
+    }
+
+    /**
+     * Compile-time check of a JavaScript regex: flags must be distinct JS flags (u and v exclusive) and the pattern must
+     * compile — approximated with java.util.regex after mapping the common JS-only syntax ({@code [^]}, u{hex} escapes,
+     * group names with _ or $). Returns the flags; throws a readable error instead of a later in-page "not found".
+     */
+    static String checkRegex(String pattern, String flags) {
+        int f = 0;
+        for (int i = 0; i < flags.length(); i++) {
+            char ch = flags.charAt(i);
+            if (flags.indexOf(ch) != i) throw new IllegalArgumentException("Invalid regex /" + pattern + "/" + flags + ": duplicate flag '" + ch + "'");
+            if (ch == 'i') f |= Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE;
+            else if (ch == 'm') f |= Pattern.MULTILINE;
+            else if (ch == 's') f |= Pattern.DOTALL;
+            else if (ch == 'u' || ch == 'v') f |= Pattern.UNICODE_CASE;
+        }
+        if (flags.indexOf('u') >= 0 && flags.indexOf('v') >= 0) throw new IllegalArgumentException("Invalid regex /" + pattern + "/" + flags + ": flags u and v cannot be combined");
+        // JS-only syntax Java rejects: [^] (any char), u{hex} escapes (u/v), group names with _ or $ (names are dropped)
+        String j = pattern.replace("[^]", "[\\s\\S]").replace("\\u{", "\\x{")
+                .replaceAll("\\(\\?<[A-Za-z_$][\\w$]*>", "(").replaceAll("\\\\k<[A-Za-z_$][\\w$]*>", "\\\\1");
+        try {
+            Pattern.compile(j, f);
+        } catch (java.util.regex.PatternSyntaxException e) {
+            throw new IllegalArgumentException("Invalid regex /" + pattern + "/" + flags + ": " + e.getDescription());
+        }
+        return flags;
     }
 
     static String unquote(String s) {
@@ -139,11 +178,16 @@ public final class SemanticLocators {
         public StrictViolation(String message) { super(message); }
     }
 
-    /** The strict-mode failure: the locator matched {@code count} elements (first few described). */
+    /** The strict-mode failure: the locator matched {@code candidates.size()} elements (first few described). */
     public static String strictViolation(String locator, List<String> candidates) {
-        StringBuilder b = new StringBuilder("Strict locator " + locator + " matched " + candidates.size() + " elements");
+        return strictViolation(locator, candidates, candidates.size());
+    }
+
+    /** The strict-mode failure: the locator matched {@code count} elements, of which {@code candidates} (capped) are described. */
+    public static String strictViolation(String locator, List<String> candidates, int count) {
+        StringBuilder b = new StringBuilder("Strict locator " + locator + " matched " + count + " elements");
         for (int i = 0; i < candidates.size() && i < 10; i++) b.append("\n  ").append(i + 1).append(") ").append(candidates.get(i));
-        if (candidates.size() > 10) b.append("\n  ...");
+        if (count > 10 || candidates.size() > 10) b.append("\n  ...");
         return b.toString();
     }
 
@@ -157,7 +201,7 @@ public final class SemanticLocators {
     /**
      * Defines {@code __gatfSemantic(root, spec, testIdAttribute[, target])} → {@code {els, desc, count}}; with
      * {@code spec.kind == 'info'} it describes {@code target} instead ({@code {role, name, label, placeholder, testid,
-     * alt, title}}), for the recorder / crawler locator ranking. Plain ES5 so it runs through {@code executeScript} on
+     * alt, title}}), for the recorder / crawler locator ranking. Plain ES5 (Map caches only where present) so it runs through {@code executeScript} on
      * every driver. Keep backslashes doubled: this is a Java text block.
      */
     public static final String RESOLVER_FN = """
@@ -189,15 +233,28 @@ public final class SemanticLocators {
           }
           function tag(e) { return (e.localName || e.tagName || '').toLowerCase(); }
           function attr(e, n) { return e.getAttribute ? e.getAttribute(n) : null; }
-          function style(e) { try { return win.getComputedStyle(e); } catch (x) { return null; } }
+          // per-call caches (computed style, hidden subtree, text content): keeps text@ / role@ linear on big pages
+          var SC = typeof Map === 'function' ? new Map() : null, HC = SC && new Map(), TC = SC && new Map();
+          function style(e) {
+            if (SC && SC.has(e)) return SC.get(e);
+            var v; try { v = win.getComputedStyle(e); } catch (x) { v = null; }
+            if (SC) SC.set(e, v);
+            return v;
+          }
+          // hidden attribute / aria-hidden / display:none on n or any ancestor (shadow hosts included)
+          function hiddenTree(n) {
+            if (!n || n.nodeType !== 1) return false;
+            if (HC && HC.has(n)) return HC.get(n);
+            var cs = style(n);
+            var h = !!(n.hidden || attr(n, 'aria-hidden') === 'true' || (cs && cs.display === 'none'))
+              || hiddenTree(n.parentElement || (n.parentNode && n.parentNode.host) || null);
+            if (HC) HC.set(n, h);
+            return h;
+          }
           function hidden(e) {
-            for (var n = e; n && n.nodeType === 1; n = n.parentElement || (n.parentNode && n.parentNode.host) || null) {
-              if (n.hidden || attr(n, 'aria-hidden') === 'true') return true;
-              var cs = style(n);
-              if (cs && cs.display === 'none') return true;
-              if (n === e && cs && (cs.visibility === 'hidden' || cs.visibility === 'collapse')) return true;
-            }
-            return false;
+            if (hiddenTree(e)) return true;
+            var cs = style(e);
+            return !!(cs && (cs.visibility === 'hidden' || cs.visibility === 'collapse'));
           }
           function inputType(e) { return (attr(e, 'type') || 'text').toLowerCase(); }
           function role(e) {
@@ -225,6 +282,7 @@ public final class SemanticLocators {
               case 'td': return 'cell';
               case 'th': return 'columnheader';
               case 'fieldset': return 'group';
+              case 'figure': return 'figure';
               case 'hr': return 'separator';
               case 'p': return 'paragraph';
               case 'progress': return 'progressbar';
@@ -248,7 +306,10 @@ public final class SemanticLocators {
           }
           var FROM_CONTENT = { button: 1, cell: 1, checkbox: 1, columnheader: 1, gridcell: 1, heading: 1, link: 1, menuitem: 1,
             menuitemcheckbox: 1, menuitemradio: 1, option: 1, radio: 1, row: 1, rowheader: 1, 'switch': 1, tab: 1, tooltip: 1, treeitem: 1 };
-          function text(n, skipControls) {
+          // allHidden: a hidden node referenced by aria-labelledby contributes all its text (accname 2A)
+          function text(n, skipControls, allHidden) {
+            var memo = TC && !skipControls && !allHidden;
+            if (memo && TC.has(n)) return TC.get(n);
             var s = '';
             for (var c = n.firstChild; c; c = c.nextSibling) {
               if (c.nodeType === 3) s += c.nodeValue;
@@ -257,15 +318,16 @@ public final class SemanticLocators {
                 if (t === 'script' || t === 'style' || t === 'template') continue;
                 // a label's own text only: the control it wraps (and a select's options) is not part of the label
                 if (skipControls && (t === 'select' || t === 'textarea' || t === 'input')) continue;
-                if (hidden(c)) continue;
+                if (!allHidden && hidden(c)) continue;
                 var l = attr(c, 'aria-label');
                 if (l) { s += ' ' + l + ' '; continue; }
                 if (t === 'img' && attr(c, 'alt')) { s += ' ' + attr(c, 'alt') + ' '; continue; }
                 if (t === 'br') { s += ' '; continue; }
-                s += ' ' + text(c, skipControls) + ' ';
+                s += ' ' + text(c, skipControls, allHidden) + ' ';
               }
             }
-            if (n.shadowRoot) s += ' ' + text(n.shadowRoot, skipControls);
+            if (n.shadowRoot) s += ' ' + text(n.shadowRoot, skipControls, allHidden);
+            if (memo) TC.set(n, s);
             return s;
           }
           var LABELABLE = { button: 1, input: 1, meter: 1, output: 1, progress: 1, select: 1, textarea: 1 };
@@ -301,7 +363,7 @@ public final class SemanticLocators {
             var lb = attr(e, 'aria-labelledby');
             if (lb) {
               var parts = [], ids = lb.trim().split(/\\s+/);
-              for (var i = 0; i < ids.length; i++) { var t = byIdIn(e, ids[i]); if (t) parts.push(text(t)); }
+              for (var i = 0; i < ids.length; i++) { var t = byIdIn(e, ids[i]); if (t) parts.push(text(t, false, hidden(t))); }
               var joined = norm(parts.join(' '));
               if (joined) return joined;
             }
@@ -319,6 +381,10 @@ public final class SemanticLocators {
             var t = tag(e);
             var n = labelText(e);
             if (n) return n;
+            var cap = t === 'fieldset' ? 'legend' : t === 'table' ? 'caption' : t === 'figure' ? 'figcaption' : null;
+            if (cap) for (var ch = e.firstElementChild; ch; ch = ch.nextElementSibling) {
+              if (tag(ch) === cap) { var cn = norm(text(ch)); if (cn) return cn; break; }
+            }
             if ((t === 'img' || t === 'area' || (t === 'input' && inputType(e) === 'image')) && attr(e, 'alt')) return norm(attr(e, 'alt'));
             if (t === 'input') {
               var it = inputType(e);
@@ -388,6 +454,7 @@ public final class SemanticLocators {
               var v = (tg === 'input' && /^(button|submit|reset)$/.test(inputType(e))) ? (e.value || attr(e, 'value')) : text(e);
               ok = matches(v, spec);
             }
+            if (ok && k !== 'role' && !spec.includeHidden && hidden(e)) ok = false;   // role checked hidden above
             if (ok) els.push(e);
           }
           if (k === 'text') {   // innermost matches only: drop an element whose descendant (shadow included) also matched

@@ -16,6 +16,8 @@
 package com.gatf.imports;
 
 import java.io.File;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -30,6 +32,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -62,6 +65,8 @@ public final class OpenApiImporter {
     private final boolean negative;
     private SpecDoc specDoc;
     private Loc bodySchema;
+    /** canonical folder relative-file {@code $ref}s must stay inside (uploaded bundles); null = unrestricted (CLI). */
+    private String confineTo;
 
     private final Map<String, JsonNode> docs = new HashMap<String, JsonNode>();
     private ImportResult res;
@@ -76,6 +81,16 @@ public final class OpenApiImporter {
         this.baseDir = baseDir;
         this.specRef = specRef;
         this.negative = negative;
+    }
+
+    /** Only follow relative-file {@code $ref}s that resolve inside {@code dir} (an uploaded bundle's temp folder). */
+    public OpenApiImporter confineRefsTo(File dir) {
+        try {
+            this.confineTo = dir == null ? null : dir.getCanonicalPath();
+        } catch (java.io.IOException e) {
+            this.confineTo = dir.getAbsolutePath();
+        }
+        return this;
     }
 
     /** A schema/parameter/body node together with the document it lives in (for nested relative refs). */
@@ -242,7 +257,7 @@ public final class OpenApiImporter {
         if (summary.isEmpty()) summary = firstLine(op.path("description").asText(""));
         if (!summary.isEmpty()) d.append(summary);
         for (JsonNode t : op.path("tags")) {
-            String tag = t.asText("").trim().replaceAll("[^A-Za-z0-9_.:-]+", "-").replaceAll("^-+|-+$", "");
+            String tag = t.asText("").trim().replaceAll("[^A-Za-z0-9_.:-]+", "-").replaceAll("^[^A-Za-z0-9_]+|-+$", "");   // TestFilter: @[A-Za-z0-9_]...
             if (tag.isEmpty()) continue;
             if (d.length() > 0) d.append(' ');
             d.append('@').append(tag);
@@ -357,8 +372,8 @@ public final class OpenApiImporter {
     private void negatives(ApiRequest q, JsonNode op, String doc, String pathUrl, List<String> query, String missing,
             String missingQuery, String missingHeader, List<ApiRequest> out) {
         int bad = badStatus(op.path("responses"));
-        // the contract check requires a declared status: without a declared 4xx / default the negative case checks the status only
-        boolean keepContract = declaresClientError(op.path("responses"));
+        // the contract check requires a declared status: when the chosen one isn't declared the negative case checks the status only
+        boolean keepContract = com.gatf.contract.ContractCheck.responseKey(op.path("responses"), bad) != null;
         if (missing != null) {
             ApiRequest n = negative(q, "missing " + missing, bad, keepContract);
             if (missingQuery != null) {
@@ -406,23 +421,9 @@ public final class OpenApiImporter {
         return n;
     }
 
-    /** True when the operation declares a 4xx (or 4XX / default) response. */
-    static boolean declaresClientError(JsonNode responses) {
-        for (Iterator<String> it = responses.fieldNames(); it.hasNext();) {
-            String c = it.next();
-            if (c.matches("4(\\d\\d|XX|xx)") || "default".equals(c)) return true;
-        }
-        return false;
-    }
-
-    /** 400 when declared, else the first declared 4xx, else 400. */
+    /** 400 when declared, else 422 when declared, else 400 (a declared 404/401/409 is not what a malformed request gets). */
     static int badStatus(JsonNode responses) {
-        if (responses.has("400")) return 400;
-        for (Iterator<String> it = responses.fieldNames(); it.hasNext();) {
-            String c = it.next();
-            if (c.matches("4\\d\\d")) return Integer.parseInt(c);
-        }
-        return 400;
+        return !responses.has("400") && responses.has("422") ? 422 : 400;
     }
 
     private void collectParams(JsonNode list, String doc, Map<String, Loc> into) {
@@ -625,9 +626,21 @@ public final class OpenApiImporter {
                 String v = varName(name);
                 String kn = s.path("name").asText(name);
                 String in = s.path("in").asText("header");
-                if ("query".equals(in)) query.add(enc(kn) + "=${" + v + "}");
-                else if ("cookie".equals(in)) q.appendHeader("Cookie", kn + "=${" + v + "}", "; ");
-                else q.putHeader(kn, "${" + v + "}");
+                if ("query".equals(in)) {   // replaces a declared parameter of the same name
+                    query.removeIf(e -> e.startsWith(enc(kn) + "="));
+                    query.add(enc(kn) + "=${" + v + "}");
+                } else if ("cookie".equals(in)) {
+                    String c = q.header("Cookie");
+                    if (c != null) {
+                        List<String> keep = new ArrayList<String>();
+                        for (String part : c.split(";\\s*")) if (!part.startsWith(kn + "=") && !part.isEmpty()) keep.add(part);
+                        if (keep.isEmpty()) q.removeHeader("Cookie");
+                        else q.putHeader("Cookie", String.join("; ", keep));
+                    }
+                    q.appendHeader("Cookie", kn + "=${" + v + "}", "; ");
+                } else {
+                    q.putHeader(kn, "${" + v + "}");
+                }
                 vars.put(v, "");
             } else if ("mutualTLS".equals(type)) {
                 reportOnce("mtls", "security scheme '" + name + "' (mutualTLS)", "client certificates are configured on the executor, not per test case");
@@ -645,7 +658,7 @@ public final class OpenApiImporter {
 
     // ---------------------------------------------------------------- $ref
 
-    /** Follows a {@code $ref} chain (local pointers, relative files) with a cycle guard; null when unresolvable. */
+    /** Follows a {@code $ref} chain (local pointers, %-encoded or not, relative files) with a cycle guard; null when unresolvable. */
     Loc deref(Loc l) {
         Loc cur = l;
         Set<String> seen = new LinkedHashSet<String>();
@@ -667,6 +680,10 @@ public final class OpenApiImporter {
                 File f = new File(base, file);
                 try {
                     doc = f.getCanonicalPath();
+                    if (confineTo != null && !doc.equals(confineTo) && !doc.startsWith(confineTo + File.separator)) {
+                        reportOnce("ref:" + ref, "$ref " + ref, "outside the uploaded files — not followed");
+                        return null;
+                    }
                     if (!docs.containsKey(doc)) {
                         if (!f.isFile()) {
                             reportOnce("ref:" + doc, "$ref " + ref, "file not found: " + f.getPath());
@@ -684,7 +701,11 @@ public final class OpenApiImporter {
                 reportOnce("loop:" + key, "$ref " + ref, "reference loop — ignored");
                 return null;
             }
-            JsonNode target = pointer.isEmpty() ? docs.get(doc) : docs.get(doc).at(pointer);
+            if (!pointer.isEmpty() && !pointer.startsWith("/")) {
+                reportOnce("anchor", "$ref " + ref, "anchor / non-pointer $ref not supported — use a JSON pointer (#/components/...)");
+                return null;
+            }
+            JsonNode target = SpecDoc.resolve(docs.get(doc), pointer);
             if (target == null || target.isMissingNode()) {
                 reportOnce("ref:" + key, "$ref " + ref, "target not found");
                 return null;
@@ -749,22 +770,18 @@ public final class OpenApiImporter {
                     }
                     return a;
                 }
-                case "integer": {
-                    long v = 1;
-                    if (n.has("minimum")) v = Math.max(v, n.get("minimum").asLong() + (n.path("exclusiveMinimum").asBoolean(false) ? 1 : 0));
-                    if (n.path("exclusiveMinimum").isNumber()) v = Math.max(v, n.get("exclusiveMinimum").asLong() + 1);
-                    if (n.has("maximum") && v > n.get("maximum").asLong()) v = n.get("maximum").asLong();
-                    return NF.numberNode(v);
-                }
-                case "number": {
-                    double v = 1.5;
-                    if (n.has("minimum")) v = Math.max(v, n.get("minimum").asDouble());
-                    if (n.has("maximum") && v > n.get("maximum").asDouble()) v = n.get("maximum").asDouble();
-                    return NF.numberNode(v);
-                }
+                case "integer": return NF.numberNode(numberSample(n, true).longValue());
+                case "number": return NF.numberNode(numberSample(n, false).doubleValue());
                 case "boolean": return NF.booleanNode(true);
                 case "null": return NF.nullNode();
-                case "string": return NF.textNode(stringSample(n));
+                case "string": {
+                    String v = patternSample(n);
+                    if (v == null) {
+                        reportOnce("pattern:" + n.path("pattern").asText(), "pattern " + n.path("pattern").asText(), "no sample matches pattern — add an example");
+                        v = stringSample(n);
+                    }
+                    return NF.textNode(v);
+                }
                 case "file": return NF.textNode("file");
                 default: return NF.textNode("string");
             }
@@ -832,6 +849,72 @@ public final class OpenApiImporter {
         StringBuilder b = new StringBuilder(v);
         while (b.length() < min) b.append('x');
         return b.length() > max ? b.substring(0, Math.max(max, 0)) : b.toString();
+    }
+
+    /**
+     * A value within minimum / maximum (3.0 boolean and 3.1 numeric exclusive* forms) and a multiple of multipleOf:
+     * 1 (integer) / 1.5 (number) when that fits, else the nearest fitting bound; best effort when infeasible.
+     */
+    static BigDecimal numberSample(JsonNode n, boolean integer) {
+        BigDecimal lo = null, hi = null;
+        boolean loEx = false, hiEx = false;
+        if (n.path("minimum").isNumber()) { lo = n.get("minimum").decimalValue(); loEx = n.path("exclusiveMinimum").isBoolean() && n.get("exclusiveMinimum").asBoolean(); }
+        if (n.path("exclusiveMinimum").isNumber() && (lo == null || n.get("exclusiveMinimum").decimalValue().compareTo(lo) >= 0)) {
+            lo = n.get("exclusiveMinimum").decimalValue(); loEx = true;
+        }
+        if (n.path("maximum").isNumber()) { hi = n.get("maximum").decimalValue(); hiEx = n.path("exclusiveMaximum").isBoolean() && n.get("exclusiveMaximum").asBoolean(); }
+        if (n.path("exclusiveMaximum").isNumber() && (hi == null || n.get("exclusiveMaximum").decimalValue().compareTo(hi) <= 0)) {
+            hi = n.get("exclusiveMaximum").decimalValue(); hiEx = true;
+        }
+        BigDecimal m = n.path("multipleOf").isNumber() && n.get("multipleOf").decimalValue().signum() > 0 ? n.get("multipleOf").decimalValue() : null;
+        if (integer && (m == null || m.stripTrailingZeros().scale() > 0)) m = BigDecimal.ONE;   // fractional multipleOf on an integer: ignored
+        if (m == null) {   // continuous number
+            BigDecimal v = new BigDecimal("1.5");
+            if (lo != null && (loEx ? v.compareTo(lo) <= 0 : v.compareTo(lo) < 0)) v = loEx ? lo.add(BigDecimal.ONE) : lo;
+            if (hi != null && (hiEx ? v.compareTo(hi) >= 0 : v.compareTo(hi) > 0)) {
+                v = lo != null ? lo.add(hi).divide(BigDecimal.valueOf(2)) : hiEx ? hi.subtract(BigDecimal.ONE) : hi;
+            }
+            return v;
+        }
+        BigDecimal k = BigDecimal.ONE.divide(m, 0, RoundingMode.CEILING);   // smallest multiple >= 1
+        if (lo != null) {
+            BigDecimal kl = lo.divide(m, 0, RoundingMode.CEILING);
+            if (loEx && kl.multiply(m).compareTo(lo) == 0) kl = kl.add(BigDecimal.ONE);
+            if (k.compareTo(kl) < 0) k = kl;
+        }
+        if (hi != null) {
+            BigDecimal kh = hi.divide(m, 0, RoundingMode.FLOOR);
+            if (hiEx && kh.multiply(m).compareTo(hi) == 0) kh = kh.subtract(BigDecimal.ONE);
+            if (k.compareTo(kh) > 0) k = kh;
+        }
+        return k.multiply(m);
+    }
+
+    private static final String[] PATTERN_CANDIDATES = { "string", "abc", "ABC", "123", "12345", "a1", "A1-b2", "abc123", "ABC123",
+            "a_b", "a-b", "a.b", "a", "A", "0", "1", "user@example.com", "2026-01-01", "https://example.com", "" };
+
+    /** No pattern: the format sample. With one: the first candidate (padded / truncated to the length bounds) it finds; null when none does. */
+    static String patternSample(JsonNode n) {
+        String base = stringSample(n);
+        if (!n.path("pattern").isTextual()) return base;
+        Pattern p;
+        try {
+            p = Pattern.compile(n.get("pattern").asText());
+        } catch (PatternSyntaxException e) {
+            return base;   // an ECMA-only pattern Java cannot compile: not honoured
+        }
+        int min = n.path("minLength").asInt(0);
+        int max = n.path("maxLength").asInt(Integer.MAX_VALUE);
+        List<String> cands = new ArrayList<String>();
+        cands.add(base);
+        for (String c : PATTERN_CANDIDATES) cands.add(c);
+        for (String c : cands) {
+            StringBuilder b = new StringBuilder(c);
+            while (b.length() < min) b.append(c.isEmpty() ? 'x' : c.charAt(c.length() - 1));
+            String v = b.length() > max ? b.substring(0, Math.max(max, 0)) : b.toString();
+            if (p.matcher(v).find()) return v;
+        }
+        return null;
     }
 
     private static boolean isBinary(Loc s) {

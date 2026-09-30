@@ -44,6 +44,7 @@ public final class CdpRoutes {
             case FULFILL: {
                 p.put("responseCode", d.status);
                 List<Map<String, Object>> hs = entries(d.headers);
+                for (String[] x : d.extraHeaders) hs.add(entry(x[0], x[1]));   // CDP takes repeated names
                 boolean hasLength = false;
                 for (Map<String, Object> h : hs) hasLength |= "content-length".equalsIgnoreCase(String.valueOf(h.get("name")));
                 if (!hasLength) hs.add(entry("Content-Length", String.valueOf(d.body.length)));
@@ -55,7 +56,11 @@ public final class CdpRoutes {
                 p.put("errorReason", errorReason(d.reason));
                 return new Object[] { "Fetch.failRequest", p };
             default: {
-                if (!d.headers.isEmpty()) p.put("headers", entries(merge(requestHeaders, d.headers)));
+                if (!d.headers.isEmpty()) {
+                    List<Map<String, Object>> hs = entries(merge(requestHeaders, d.headers));
+                    for (String[] x : d.extraHeaders) hs.add(entry(x[0], x[1]));
+                    p.put("headers", hs);
+                }
                 return new Object[] { "Fetch.continueRequest", p };
             }
         }

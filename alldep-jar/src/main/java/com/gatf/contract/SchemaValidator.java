@@ -18,6 +18,7 @@ package com.gatf.contract;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -59,6 +60,8 @@ public final class SchemaValidator {
     private static final int MAX_VIOLATIONS = 50;
     private final SpecDoc spec;
     private final boolean response;
+    /** Schema defects met while validating (an unresolvable $ref): reported, never failing the instance. */
+    private final LinkedHashSet<String> notes = new LinkedHashSet<String>();
 
     /** @param response true: writeOnly properties are not required and readOnly ones are allowed (response bodies) */
     public SchemaValidator(SpecDoc spec, boolean response) {
@@ -70,6 +73,11 @@ public final class SchemaValidator {
         List<Violation> out = new ArrayList<Violation>();
         check(schema, instance, "", out, 0);
         return out;
+    }
+
+    /** Notes from the last {@link #validate} calls, e.g. "schema $ref X unresolvable — not validated". */
+    public List<String> notes() {
+        return new ArrayList<String>(notes);
     }
 
     private void check(SpecDoc.Node sn, JsonNode v, String ptr, List<Violation> out, int depth) {
@@ -84,7 +92,10 @@ public final class SchemaValidator {
         if (raw.has("$ref")) {
             if (v.isNull() && nullable(raw)) return;   // OAS 3.0 {$ref, nullable: true}
             s = spec.deref(sn);
-            if (s == null) return;   // unresolvable ref: nothing to assert
+            if (s == null) {   // unresolvable ref: a spec defect, noted (not a response violation)
+                notes.add("schema $ref " + raw.get("$ref").asText("") + " unresolvable — not validated");
+                return;
+            }
             // 3.1 allows keywords beside $ref; validate them too (3.0 tools ignore them, harmlessly)
             if (raw.size() > 1) checkKeywords(new SpecDoc.Node(withoutRef(raw), sn.doc, null), v, ptr, out, depth);
             if (s.json.isBoolean() || !s.json.isObject()) { check(s, v, ptr, out, depth + 1); return; }
@@ -102,7 +113,7 @@ public final class SchemaValidator {
         JsonNode n = s.json;
         if (n.has("$ref")) { check(s, v, ptr, out, depth + 1); return; }
 
-        if (v.isNull() && nullable(n)) return;
+        if (v.isNull() && nullable(n)) return;   // a 3.1 type array with "null" still applies enum / const
 
         // combinators
         for (JsonNode sub : n.path("allOf")) check(child(sub, s), v, ptr, out, depth + 1);
@@ -328,11 +339,9 @@ public final class SchemaValidator {
         return out;
     }
 
+    /** OAS {@code nullable} / {@code x-nullable} (a 3.1 {@code type: [.., "null"]} is handled as a plain type). */
     private static boolean nullable(JsonNode n) {
-        if (n.path("nullable").asBoolean(false) || n.path("x-nullable").asBoolean(false)) return true;
-        JsonNode t = n.get("type");
-        if (t != null && t.isArray()) for (JsonNode e : t) if ("null".equals(e.asText())) return true;
-        return false;
+        return n.path("nullable").asBoolean(false) || n.path("x-nullable").asBoolean(false);
     }
 
     static boolean isType(JsonNode v, String t) {

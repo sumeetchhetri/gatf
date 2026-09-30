@@ -909,6 +909,8 @@ public class TestCaseExecutorUtil {
 						com.gatf.contract.ContractCheck.pointer(contract), gresp.code(), ct, testCaseReport.getResponseContent());
 				if(!cr.ok()) {
 					failContract(cr.summary(), cr.detail());
+				} else if(!cr.notes.isEmpty()) {
+					LogManager.getLogger(TestCaseExecutorUtil.class.getSimpleName()).warn(cr.summary());
 				}
 			} catch (Exception e) {
 				failContract("contract spec " + spec + " unreadable: " + e.getMessage(), null);

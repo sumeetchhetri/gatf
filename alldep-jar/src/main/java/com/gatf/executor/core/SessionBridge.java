@@ -82,4 +82,34 @@ public final class SessionBridge {
             return "sync";
         }
     }
+
+    /**
+     * E9: may the page's web-storage token ({@code browserApiStorageToken}) go to {@code request}? Only to the open
+     * page's own host (any port), or to a host listed in {@code extraHosts} ("host", or "*.domain" / ".domain" for the
+     * domain and its subdomains). No implicit same-site widening: shared-suffix hosts (a.github.io / b.github.io,
+     * *.herokuapp.com, *.gov.in) belong to different owners, so a sibling API host must be listed. Never from an https
+     * page to plain http.
+     */
+    public static boolean tokenAllowed(URI request, URI page, String[] extraHosts) {
+        String rh = request == null ? null : lowerHost(request);
+        if (rh == null) return false;
+        if (page != null && "https".equalsIgnoreCase(page.getScheme()) && "http".equalsIgnoreCase(request.getScheme())) return false;
+        if (extraHosts != null) {
+            for (String e : extraHosts) {
+                String x = e == null ? "" : e.trim().toLowerCase(java.util.Locale.ROOT);
+                if (x.startsWith("*.")) x = x.substring(1);
+                if (x.isEmpty()) continue;
+                if (x.startsWith(".") ? (rh.endsWith(x) || rh.equals(x.substring(1))) : rh.equals(x)) return true;
+            }
+        }
+        String ph = page == null ? null : lowerHost(page);
+        return ph != null && rh.equals(ph);
+    }
+
+    private static String lowerHost(URI u) {
+        String h = u.getHost();
+        if (h == null || h.isEmpty()) return null;
+        h = h.toLowerCase(java.util.Locale.ROOT);
+        return h.endsWith(".") ? h.substring(0, h.length() - 1) : h;
+    }
 }

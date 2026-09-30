@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gatf.executor.core.GatfExecutorConfig;
+import com.gatf.executor.core.SetupScripts;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.finder.CSVFamilyTestCaseFinder.CSVTestCaseFinder;
 import com.gatf.executor.finder.CSVFamilyTestCaseFinder.XLSTestCaseFinder;
@@ -65,15 +66,34 @@ public final class TestDocsGenerator {
         File testDir = cfg.getTestCaseDir() != null ? new File(base, cfg.getTestCaseDir()) : base;
         List<TestDoc> docs = new ArrayList<TestDoc>();
         if (cfg.isSeleniumExecutor()) {
-            if (cfg.getSeleniumScripts() == null) return docs;
-            for (String s : cfg.getSeleniumScripts()) {
+            String[] scripts = cfg.getSeleniumScripts();
+            if (cfg.getSeleniumScript() != null && !cfg.getSeleniumScript().trim().isEmpty()) {
+                // E4: the folder / list-file form, expanded as the executor does (it replaces seleniumScripts there too)
+                try {
+                    List<String> l = SetupScripts.expandSeleniumScript(cfg.getSeleniumScript(), testDir);
+                    scripts = l.toArray(new String[l.size()]);
+                } catch (java.io.IOException e) {
+                    // as in the executor: an unreadable seleniumScript leaves seleniumScripts
+                }
+            }
+            if (scripts == null) return docs;
+            // E4: loginOnce / globalSetup / globalTeardown are run around the suite, not test cases
+            scripts = SetupScripts.excludeResolved(scripts, n -> {
+                File f = firstFile(new File(testDir, n), new File(base, n), new File(n));
+                return f != null ? f : new File(testDir, n);
+            }, cfg.getLoginOnce(), cfg.getGlobalSetup(), cfg.getGlobalTeardown());
+            for (String s : scripts) {
                 File f = firstFile(new File(s), new File(testDir, s), new File(base, s));
                 if (f == null) {
                     skipped[0]++;
                     continue;
                 }
+                String rel = s;
+                if (new File(s).isAbsolute() && f.toPath().toAbsolutePath().normalize().startsWith(testDir.toPath().toAbsolutePath().normalize())) {
+                    rel = testDir.toPath().toAbsolutePath().normalize().relativize(f.toPath().toAbsolutePath().normalize()).toString().replace('\\', '/');   // folder form
+                }
                 try {
-                    docs.addAll(SelDocs.fromScript(f.toPath(), s, module(s), reqPattern));
+                    docs.addAll(SelDocs.fromScript(f.toPath(), rel, module(rel), reqPattern));
                 } catch (Exception e) {
                     skipped[0]++;
                 }

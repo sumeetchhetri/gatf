@@ -620,7 +620,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     /** M6: sessionId, path, context, lp of the current round, for a globalTeardown after a crash. */
     private Object[] setupArgs;
 
+    /** E5: nesting of doSeleniumTest (a retry round calls it again); 0 = no run in progress. */
+    private int seleniumRunDepth;
+
     public void doSeleniumTest(GatfExecutorConfig configuration, List<String> files) throws Exception {
+        // E5: retry rounds narrow the scripts and advance retryCounter on the config; the console reuses one config, so
+        // the outermost call restores them and the next run starts again at round 1 (globalSetup / loginOnce included)
+        Object[] runStart = seleniumRunDepth++ > 0 ? null : new Object[] {configuration.getRetryCounter(), configuration.getSeleniumScriptRetryCount(),
+                configuration.getSeleniumScripts(), configuration.getSeleniumScript()};
         try {
             doSeleniumTestRound(configuration, files);
         } catch (Exception e) {
@@ -628,6 +635,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             RuntimeException te = runGlobalTeardown(configuration);
             if (te != null) System.out.println(te.getMessage());
             throw e;
+        } finally {
+            seleniumRunDepth--;
+            if (runStart != null) {
+                configuration.setRetryCounter((Integer) runStart[0]);
+                configuration.setSeleniumScriptRetryCount((Integer) runStart[1]);
+                configuration.setSeleniumScripts((String[]) runStart[2]);
+                configuration.setSeleniumScript((String) runStart[3]);
+            }
         }
     }
 
@@ -698,24 +713,18 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         
         if(StringUtils.isNotBlank(configuration.getSeleniumScript())) {
         	try {
-        		List<String> sfiles = new ArrayList<>();
-        		if(new File(configuration.getSeleniumScript()).exists()) {
-        			File testCaseDirectory = context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir());
-        			Iterator<File> iter = FileUtils.iterateFiles(testCaseDirectory, WildcardFileFilter.builder().setWildcards("*.sel").get(), TrueFileFilter.INSTANCE);
-        	    	while(iter.hasNext()) {
-        	    		sfiles.add(iter.next().getAbsolutePath());
-        	    	}
-        		} else {
-					sfiles = FileUtils.readLines(new File(configuration.getSeleniumScript()), "UTF-8");
-        		}
+        		// E4: shared with `gatf docs`: a folder (every *.sel under it), one .sel, or a list file (one script per line)
+        		List<String> sfiles = SetupScripts.expandSeleniumScript(configuration.getSeleniumScript(),
+        				context.getResourceFile(context.getGatfExecutorConfig().getTestCaseDir()));
         		configuration.setSeleniumScripts(sfiles.toArray(new String[sfiles.size()]));
 			} catch (IOException e) {
+				System.out.println("seleniumScript ignored: " + e.getMessage());
 			}
         }
         
         // M5/M6: loginOnce / globalSetup / globalTeardown run on their own around the suite, never as one of its scripts
         if (configuration.getSeleniumScripts() != null) {
-            configuration.setSeleniumScripts(SetupScripts.exclude(configuration.getSeleniumScripts(),
+            configuration.setSeleniumScripts(SetupScripts.excludeResolved(configuration.getSeleniumScripts(), context::getResourceFile,
                     configuration.getLoginOnce(), configuration.getGlobalSetup(), configuration.getGlobalTeardown()));
         }
 
@@ -2238,6 +2247,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         System.out.println("Running " + kind + " script " + script);
         List<String> failed = Collections.synchronizedList(new ArrayList<String>());
         if (loginOnce) SeleniumTest.LOGIN_ONCE_RUN.set(Boolean.TRUE);
+        // E14: globalSetup runs before loginOnce replaces storageState: it must not start from the previous run's login
+        boolean skipState = "globalSetup".equals(kind) && StringUtils.isNotBlank(configuration.getLoginOnce());
+        if (skipState) SeleniumTest.SKIP_STATE_LOAD.set(Boolean.TRUE);
         try {
             List<SeleniumTest> one = new ArrayList<SeleniumTest>();
             one.add(dyn);
@@ -2248,6 +2260,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             throw new RuntimeException(kind + " script " + script + " failed: " + e.getMessage(), e);
         } finally {
             if (loginOnce) SeleniumTest.LOGIN_ONCE_RUN.remove();
+            SeleniumTest.clearSemanticOpts();
+            if (skipState) SeleniumTest.SKIP_STATE_LOAD.remove();
         }
         if (!failed.isEmpty()) throw new RuntimeException(kind + " script " + script + " failed" + ("globalTeardown".equals(kind) ? "" : " - the UI suite was not run"));
     }

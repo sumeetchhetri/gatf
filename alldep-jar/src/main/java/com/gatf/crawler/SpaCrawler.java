@@ -110,9 +110,9 @@ public class SpaCrawler {
 
     // M3: semantic candidates (testid / role+name / label with match counts) for LocatorRanking
     static final String CAND_JS = com.gatf.selenium.SemanticLocators.RESOLVER_FN + com.gatf.selenium.SemanticLocators.CANDIDATES_FN
-        + "function __cand(el){return el?__gatfCandidates(el,'data-testid'):[];}";
+        + "function __cand(el){return el?__gatfCandidates(el,__tid||'data-testid'):[];}";   // __tid: the script's test-id argument
 
-    static final String SCAN_JS = "return (function(){" + HELPERS_JS + CAND_JS
+    static final String SCAN_JS = "return (function(__tid){" + HELPERS_JS + CAND_JS
         + "var FIELDS='input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]):not([type=file]),select,textarea';"
         + "function lbl(el){if(el.id){var l=document.querySelector('label[for=\"'+CSS.escape(el.id)+'\"]');if(l)return l.textContent.trim().slice(0,60);}"
         + "return (el.getAttribute('aria-label')||el.getAttribute('placeholder')||'').slice(0,60);}"
@@ -128,10 +128,10 @@ public class SpaCrawler {
         + "var loose=[];document.querySelectorAll(FIELDS).forEach(function(el){if(!el.closest('form')&&__vis(el)&&!el.disabled)loose.push(fld(el));});"
         + "var buttons=[];document.querySelectorAll('button,[role=button],input[type=button]').forEach(function(b){"
         + "if(__vis(b)&&!b.closest('form'))buttons.push({sel:__sel(b),cand:__cand(b),text:(b.textContent||b.value||'').trim().slice(0,40)});});"
-        + "return{url:location.href,title:document.title,links:links,forms:forms,loose:loose,buttons:buttons};})();";
+        + "return{url:location.href,title:document.title,links:links,forms:forms,loose:loose,buttons:buttons};})(arguments[0]);";
 
     // Find the login controls: explicit selectors ({s,v} or null) else discovery via the password field.
-    static final String LOGIN_FIND_JS = "return (function(us,ps,ss){" + HELPERS_JS + CAND_JS
+    static final String LOGIN_FIND_JS = "return (function(us,ps,ss,__tid){" + HELPERS_JS + CAND_JS
         + "var p=ps?__find(ps.s,ps.v):Array.prototype.find.call(document.querySelectorAll('input[type=password]'),__vis);"
         + "if(!p)return null;var scope=p.closest('form')||document;"
         + "var u=us?__find(us.s,us.v):null;if(!u){var c=scope.querySelectorAll('input[type=email],input[type=text],input:not([type])');"
@@ -139,7 +139,7 @@ public class SpaCrawler {
         + "var s=ss?__find(ss.s,ss.v):null;if(!s){s=scope.querySelector('button[type=submit],input[type=submit]');}"
         + "if(!s){s=Array.prototype.find.call(document.querySelectorAll('button,[role=button],input[type=button]'),function(b){"
         + "return __vis(b)&&/log\\s*in|sign\\s*in|submit|continue/i.test(b.textContent||b.value||'');});}"
-        + "return{user:u?__sel(u):null,pass:__sel(p),submit:s?__sel(s):null,userCand:__cand(u),passCand:__cand(p),submitCand:__cand(s)};})(arguments[0],arguments[1],arguments[2]);";
+        + "return{user:u?__sel(u):null,pass:__sel(p),submit:s?__sel(s):null,userCand:__cand(u),passCand:__cand(p),submitCand:__cand(s)};})(arguments[0],arguments[1],arguments[2],arguments[3]);";
 
     // Set a value the way frameworks observe it (native setter + input/change events), or click.
     static final String SET_JS = "return (function(s,v,val){" + HELPERS_JS
@@ -218,7 +218,7 @@ public class SpaCrawler {
         try {
             browser.get(url);
             settle();
-            Map<String, Object> scan = map(browser.js(SCAN_JS));
+            Map<String, Object> scan = map(browser.js(SCAN_JS, spec.getTestIdAttribute()));
             pi.title = str(scan.get("title"));
             pi.forms = list(scan.get("forms"));
             pi.loose = list(scan.get("loose"));
@@ -253,7 +253,7 @@ public class SpaCrawler {
         log.accept("login: " + spec.getLoginUrl());
         browser.get(spec.getLoginUrl());
         settle();
-        loginSel = map(browser.js(LOGIN_FIND_JS, selArg(spec.getUserSel()), selArg(spec.getPassSel()), selArg(spec.getSubmitSel())));
+        loginSel = map(browser.js(LOGIN_FIND_JS, selArg(spec.getUserSel()), selArg(spec.getPassSel()), selArg(spec.getSubmitSel()), spec.getTestIdAttribute()));
         if (loginSel.isEmpty() || loginSel.get("pass") == null) {
             loginWarning = "no password field found on the login page — crawling unauthenticated";
             log.accept("  WARN " + loginWarning);
@@ -266,7 +266,7 @@ public class SpaCrawler {
         if (!s.isEmpty()) browser.js(SET_JS, s.get("s"), s.get("v"), null);
         settle();
         // still showing a visible password field on the same URL → the login most likely failed
-        Map<String, Object> after = map(browser.js(LOGIN_FIND_JS, null, null, null));
+        Map<String, Object> after = map(browser.js(LOGIN_FIND_JS, null, null, null, spec.getTestIdAttribute()));
         if (!after.isEmpty() && after.get("pass") != null && norm(browser.currentUrl()).equals(norm(spec.getLoginUrl()))) {
             loginWarning = "still on the login page after submit — check credentials/selectors (crawl continues)";
             log.accept("  WARN " + loginWarning);

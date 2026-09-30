@@ -127,7 +127,7 @@ class ActionabilityTest {
         assertEquals("click", Actionability.modeFor("clickfo"));
         assertEquals("type", Actionability.modeFor("type"));
         assertEquals("type", Actionability.modeFor("sendkeysbl"));
-        assertEquals("type", Actionability.modeFor("clear"));
+        assertEquals("clear", Actionability.modeFor("clear"));
         assertEquals("input", Actionability.modeFor("randomize"));
         assertEquals("input", Actionability.modeFor("chord"));
         assertEquals("dblclick", Actionability.modeFor("dblclick"));

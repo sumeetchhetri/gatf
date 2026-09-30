@@ -223,6 +223,7 @@ public final class CdpTransport implements BrowserControl {
 
     @Override
     public void close() {
+        if (routesOn) disableRoutes();   // no Fetch interception may outlive the transport (the session can be kept for reuse)
         this.networkOn = false;
         this.consoleOn = false;
         this.netListener = null;
@@ -269,6 +270,70 @@ public final class CdpTransport implements BrowserControl {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    // --- Q9: per-navigation vitals. Runtime.addBinding gives the page an out-of-band sink (bindingCalled events on
+    // this DevTools session), so a page's entry arrives as it is left, cross-origin navigations included. ---
+    private volatile java.util.function.Consumer<String> vitalsSink;
+    private volatile Object vitalsScriptId;
+    private boolean vitalsListenerAdded = false;
+
+    @Override
+    public synchronized boolean enablePageVitals(java.util.function.Consumer<String> sink) {
+        if (devTools == null || !(driver instanceof HasCdp) || !(driver instanceof JavascriptExecutor)) return false;
+        try {
+            try { devTools.send(Runtime.enable()); } catch (Exception ignored) {}
+            Map<String, Object> b = new HashMap<>();
+            b.put("name", WebVitals.SINK);
+            devTools.send(new Command<Void>("Runtime.addBinding", b));
+            if (!vitalsListenerAdded) {
+                vitalsListenerAdded = true;
+                devTools.addListener(Runtime.bindingCalled(), ev -> {
+                    java.util.function.Consumer<String> s = vitalsSink;
+                    if (s == null || !WebVitals.SINK.equals(ev.getName())) return;
+                    try { s.accept(ev.getPayload()); } catch (Exception ignored) {}
+                });
+            }
+            vitalsSink = sink;
+            Map<String, Object> a = new HashMap<>();
+            a.put("source", WebVitals.PRELOAD_JS);
+            vitalsScriptId = ((HasCdp) driver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", a).get("identifier");
+        } catch (Exception e) {
+            vitalsSink = null;
+            return false;
+        }
+        try { ((JavascriptExecutor) driver).executeScript(WebVitals.PRELOAD_JS); } catch (Exception ignored) {}
+        return true;
+    }
+
+    @Override
+    public String drainPageVitals() {
+        try {
+            if (driver instanceof JavascriptExecutor) {
+                Object r = ((JavascriptExecutor) driver).executeScript(WebVitals.DRAIN_JS);
+                return r == null ? null : String.valueOf(r);
+            }
+        } catch (Exception ignored) {}
+        return null;
+    }
+
+    @Override
+    public synchronized void disablePageVitals() {
+        vitalsSink = null;
+        Object id = vitalsScriptId;
+        vitalsScriptId = null;
+        try {
+            if (id != null) {
+                Map<String, Object> a = new HashMap<>();
+                a.put("identifier", id);
+                ((HasCdp) driver).executeCdpCommand("Page.removeScriptToEvaluateOnNewDocument", a);
+            }
+        } catch (Exception ignored) {}
+        try {
+            Map<String, Object> b = new HashMap<>();
+            b.put("name", WebVitals.SINK);
+            if (devTools != null) devTools.send(new Command<Void>("Runtime.removeBinding", b));
+        } catch (Exception ignored) {}
     }
 
     // --- G10: print-to-PDF via raw CDP Page.printToPDF, falling back to the W3C classic print command ---
@@ -427,7 +492,7 @@ public final class CdpTransport implements BrowserControl {
                 com.gatf.selenium.route.Route d = null;
                 try {
                     com.gatf.selenium.route.RouteTable t = routes;
-                    if (routesOn && t != null) d = t.match(ev.getRequest().getMethod(), ev.getRequest().getUrl());
+                    if (routesOn && t != null) d = t.match(ev.getRequest().getMethod(), ev.getRequest().getUrl(), postData(ev.getRequest()));
                     Object[] c = com.gatf.selenium.route.CdpRoutes.command(d, id, toMap(ev.getRequest().getHeaders()));
                     @SuppressWarnings("unchecked") Map<String, Object> params = (Map<String, Object>) c[1];
                     devTools.send(new Command<Void>((String) c[0], params));
@@ -462,6 +527,18 @@ public final class CdpTransport implements BrowserControl {
                 devTools.send(new Command<Void>("Fetch.disable", new HashMap<>()));
             }
         } catch (Exception ignored) {}
+    }
+
+    // Request.postData, read reflectively: CDP marks it deprecated (postDataEntries), so a later devtools.vNNN may drop
+    // the getter; the body only breaks ties between HAR entries, so losing it degrades quietly. Absent for large bodies.
+    static String postData(Object request) {
+        try {
+            Object o = request.getClass().getMethod("getPostData").invoke(request);
+            if (o instanceof Optional) o = ((Optional<?>) o).orElse(null);
+            return o == null ? null : String.valueOf(o);
+        } catch (Exception | LinkageError e) {
+            return null;
+        }
     }
 
     private static Map<String, String> toMap(Headers headers) {

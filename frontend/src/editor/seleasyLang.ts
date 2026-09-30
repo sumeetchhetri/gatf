@@ -57,6 +57,8 @@ export const SELEASY: Record<string, Style> = {
   yes: 3, cancel: 3, no: 3, enabled: 3, className: 3,
   // M6: hook blocks + subtest markers
   beforeall: 1, beforeeach: 1, aftereach: 1, afterall: 1, only: 1, skip: 1, fixme: 1,
+  // M1: auto-wait opt-out prefix (`nowait click id@x`)
+  nowait: 1,
 };
 
 interface SelState {

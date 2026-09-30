@@ -78,6 +78,70 @@ class HarRoutesTest {
                 .hasMessageContaining("not valid JSON");
     }
 
+    private static String entry(String method, String url, String postData, String text) {
+        return "{\"request\":{\"method\":\"" + method + "\",\"url\":\"" + url + "\"" + (postData == null ? "" : ",\"postData\":{\"text\":\"" + postData.replace("\"", "\\\"") + "\"}")
+                + "},\"response\":{\"status\":200,\"headers\":[],\"content\":{\"text\":\"" + text + "\"}}}";
+    }
+
+    private static RouteTable inline(String... entries) {
+        String har = "{\"log\":{\"version\":\"1.2\",\"entries\":[" + String.join(",", entries) + "]}}";
+        RouteTable t = new RouteTable();
+        RouteSpec.apply(RouteSpec.parse("route from har x.har notfound abort"), t, f -> har.getBytes(StandardCharsets.UTF_8));
+        return t;
+    }
+
+    private static String body(Route r) {
+        return new String(r.body, StandardCharsets.UTF_8);
+    }
+
+    @Test
+    void queryOverlapPicksTheFallback() {
+        RouteTable t = inline(entry("GET", "https://s.test/s", null, "C"), entry("GET", "https://s.test/s?q=a&page=1", null, "A"),
+                entry("GET", "https://s.test/s?q=b&page=2", null, "B"));
+        assertThat(body(t.match("GET", "https://s.test/s?q=b&page=2"))).isEqualTo("B");        // exact
+        assertThat(body(t.match("GET", "https://s.test/s?q=b&page=2&z=1"))).isEqualTo("B");    // 2 matched, 0 missing
+        assertThat(body(t.match("GET", "https://s.test/s?page=1&q=a"))).isEqualTo("A");        // order does not matter
+        assertThat(body(t.match("GET", "https://s.test/s?q=zz"))).isEqualTo("C");              // nothing shared: no recorded params wins
+        assertThat(body(t.match("GET", "https://s.test/s?page=1"))).isEqualTo("C");            // A: 1 matched - 1 missing = 0, tie -> earliest
+        assertThat(t.match("GET", "https://s.test/other")).isSameAs(t.match("GET", "https://s.test/other2"));   // one prebuilt abort
+    }
+
+    @Test
+    void postBodyPicksBetweenSameUrlEntries() {
+        RouteTable t = inline(entry("POST", "https://s.test/login", "{\"u\":\"a\"}", "A"), entry("POST", "https://s.test/login", "{\"u\":\"b\"}", "B"),
+                entry("POST", "https://s.test/one", "{\"u\":\"a\"}", "ONE"));
+        assertThat(body(t.match("POST", "https://s.test/login", "{\"u\":\"b\"}"))).isEqualTo("B");
+        assertThat(body(t.match("POST", "https://s.test/login", "{\"u\":\"zz\"}"))).isEqualTo("A");   // no equal body: first
+        assertThat(body(t.match("POST", "https://s.test/login"))).isEqualTo("A");                     // body unknown: first
+        assertThat(body(t.match("POST", "https://s.test/one", "other"))).isEqualTo("ONE");             // one candidate: as before
+    }
+
+    @Test
+    void repeatedSetCookieAndBadBase64() {
+        String har = "{\"log\":{\"entries\":[{\"request\":{\"method\":\"GET\",\"url\":\"https://s.test/\"},\"response\":{\"status\":200,"
+                + "\"headers\":[{\"name\":\"Set-Cookie\",\"value\":\"a=1\"},{\"name\":\"set-cookie\",\"value\":\"b=2\"}],\"content\":{\"text\":\"x\"}}}]}}";
+        RouteTable t = new RouteTable();
+        RouteSpec.apply(RouteSpec.parse("route from har c.har"), t, f -> har.getBytes(StandardCharsets.UTF_8));
+        Route r = t.match("GET", "https://s.test/");
+        assertThat(r.header("Set-Cookie")).isEqualTo("a=1");
+        assertThat(r.extraHeaders).extracting(h -> h[0] + ": " + h[1]).containsExactly("set-cookie: b=2");
+        String bad = "{\"log\":{\"entries\":[" + entry("GET", "https://s.test/a", null, "x") + ",{\"request\":{\"method\":\"GET\",\"url\":\"https://s.test/b\"},"
+                + "\"response\":{\"status\":200,\"headers\":[],\"content\":{\"text\":\"@@\",\"encoding\":\"base64\"}}}]}}";
+        assertThatThrownBy(() -> RouteSpec.apply(RouteSpec.parse("route from har bad.har"), new RouteTable(), f -> bad.getBytes(StandardCharsets.UTF_8)))
+                .hasMessageContaining("route from har bad.har: entry 1: Illegal base64");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void bidiBase64RequestHeadersPassThrough() {
+        Map<String, String> req = new LinkedHashMap<String, String>();
+        req.put("X-Bin", "gA==");
+        req.put("Accept", "*/*");
+        Route c = RouteSpec.parse("route **/x continue header 'Accept: text/html'").route;
+        List<Map<String, Object>> hs = (List<Map<String, Object>>) ((Map<String, Object>) BidiRoutes.command(c, "b1", req, java.util.Set.of("X-Bin"))[1]).get("headers");
+        assertThat(hs).extracting(h -> h.get("name") + "=" + h.get("value")).containsExactly("X-Bin={type=base64, value=gA==}", "Accept={type=string, value=text/html}");
+    }
+
     @Test
     @SuppressWarnings("unchecked")
     void bidiCommands() {

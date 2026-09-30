@@ -289,11 +289,11 @@ public abstract class SeleniumTest {
 				throw new RuntimeException("Invalid browser name specified for browser");
 		}
 		// M4: route on Firefox/Safari needs WebDriver BiDi. Chromium intercepts over CDP, except where it has none:
-		// a Grid session (a plain RemoteWebDriver) or traceProtocol bidi, which then need the BiDi socket too.
+		// a Grid session (a plain RemoteWebDriver), traceProtocol bidi or -Dgatf.routeProtocol=bidi, which then need the BiDi socket too.
 		boolean chromium = browserName.equals("chrome") || browserName.equals("edge") || browserName.equals("opera");
 		GatfExecutorConfig rcfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
 		boolean chromiumNeedsBidi = System.getenv("SELENIUM_REMOTE_URL") != null || System.getProperty("gatf.selenium.remoteUrl") != null
-				|| (rcfg != null && "bidi".equalsIgnoreCase(rcfg.getTraceProtocol()));
+				|| "bidi".equalsIgnoreCase(__routeProtocol__(rcfg));
 		if(__routeBidi__ && (!chromium || chromiumNeedsBidi)
 				&& capabilities instanceof org.openqa.selenium.MutableCapabilities) {
 			((org.openqa.selenium.MutableCapabilities) capabilities).setCapability("webSocketUrl", true);
@@ -872,12 +872,18 @@ public abstract class SeleniumTest {
 			}
 		}
 		getSession().__subtestexecutiontime__ = System.nanoTime();
+		String prior = getSession().__subtestname__;
 		getSession().__subtestname__ = __subtestname__;
+		// M2: soft failures recorded before the call belong to the caller, not to this subtest
+		__softStack__.push(new java.util.AbstractMap.SimpleEntry<String, List<String>>(prior, __soft__.drain()));
 	}
 	
 	protected void reset__subtestname__(String __subtestname__)
 	{
 		getSession().__subtestname__ = __subtestname__;
+		// pops only the entry its set__subtestname__ pushed (a set that threw pushed nothing)
+		Entry<String, List<String>> top = __softStack__.peek();
+		if(top != null && java.util.Objects.equals(top.getKey(), __subtestname__)) __soft__.restore(__softStack__.pop().getValue());
 	}
 	
 	protected String get__subtestname__() {
@@ -998,7 +1004,7 @@ public abstract class SeleniumTest {
 		// M5: the loginOnce script leaves its authenticated state for the suite
 		GatfExecutorConfig __scfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
 		if(Boolean.TRUE.equals(LOGIN_ONCE_RUN.get()) && __scfg != null && StringUtils.isNotBlank(__scfg.getStorageState()) && sess.___d___.size() > 0
-				&& !sess.___dqs___.get(0)) {
+				&& !sess.___dqs___.get(0) && !__loginOnceSaved__) {
 			try {
 				System.out.println(BrowserState.save(sess.___d___.get(0), stateFile(__scfg.getStorageState().trim())));
 			} catch (Exception e) {
@@ -1010,6 +1016,13 @@ public abstract class SeleniumTest {
 			for (WebDriver d : sess.___d___)
 			{
 				if(sess.___dqs___.get(indx)) continue;
+				// M4: no route may outlive the script (a driver kept in wdmSessions is reused with its interception).
+				// disableRoutes only, not close(): the transport may share its DevTools/BiDi session with the tracer, and its
+				// listener then answers only its own (removed) intercepts.
+				Object[] __rs = __routes__.remove(d);
+				if(__rs != null && Boolean.TRUE.equals(__rs[2])) {
+					try { ((com.gatf.selenium.trace.BrowserControl) __rs[1]).disableRoutes(); } catch (Exception e) {}
+				}
 				String sessionId = null;
 				try {
 					sessionId = ((RemoteWebDriver)d).getSessionId().toString();
@@ -1050,6 +1063,7 @@ public abstract class SeleniumTest {
 		for (SeleniumTestSession s : state.sessions) {
 			quit(s);
 		}
+		clearSemanticOpts();
 	}
 
 	public abstract void close();
@@ -1057,6 +1071,7 @@ public abstract class SeleniumTest {
 	public abstract SeleniumTest copy(AcceptanceTestContext ctx, int index);
 
 	protected void setOutPath(String path) {
+		setSemanticOpts();   // M3: the executing thread sees this test's semantic options on every find path
 		state.outPath = path;
 	}
 
@@ -1852,7 +1867,8 @@ public abstract class SeleniumTest {
 			}
 			com.gatf.executor.core.SessionBridge.Bridge prevBridge = BrowserSession.enter(bridgeDriver,
 					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiSession() : null,
-					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageToken() : null);
+					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageToken() : null,
+					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageTokenHosts() : null);
 			try {
 				return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
 			} finally {
@@ -1972,6 +1988,24 @@ public abstract class SeleniumTest {
 	
 	/** M3: {testIdAttribute, strict ("true"/"false")} for this thread's script; refreshed on every element search. */
 	private static final ThreadLocal<String[]> SEMANTIC_OPTS = new ThreadLocal<String[]>();
+	/** M3: set around a loop's / transient provider's find: a strict semantic locator may match many there. */
+	private static final ThreadLocal<Boolean> SEMANTIC_MULTI = new ThreadLocal<Boolean>();
+
+	private void setSemanticOpts() {
+		GatfExecutorConfig c = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		SEMANTIC_OPTS.set(new String[] { c == null ? null : c.getTestIdAttribute(), String.valueOf(c != null && c.strictLocatorsEnabled()) });
+	}
+
+	/** M3: drops this thread's semantic options (end of a run / setup script). */
+	public static void clearSemanticOpts() {
+		SEMANTIC_OPTS.remove();
+		SEMANTIC_MULTI.remove();
+	}
+
+	/** M3: generated code brackets a loop's find with {@code semanticMulti(true)} / {@code semanticMulti(false)}. */
+	protected static void semanticMulti(boolean on) {
+		if (on) SEMANTIC_MULTI.set(Boolean.TRUE); else SEMANTIC_MULTI.remove();
+	}
 
 	/** M3: resolve a semantic locator in the page (see {@link SemanticLocators}); strict mode fails on more than one match. */
 	@SuppressWarnings("unchecked")
@@ -1987,8 +2021,9 @@ public abstract class SeleniumTest {
 		if(!(r instanceof Map)) return new ArrayList<WebElement>();
 		Map<String, Object> m = (Map<String, Object>)r;
 		List<WebElement> els = m.get("els") instanceof List ? new ArrayList<WebElement>((List<WebElement>)m.get("els")) : new ArrayList<WebElement>();
-		if(strict && els.size() > 1) {
-			throw new SemanticLocators.StrictViolation(SemanticLocators.strictViolation(by + "@" + classifier, SemanticLocators.strings(m.get("desc"))));
+		if(strict && els.size() > 1 && !Boolean.TRUE.equals(SEMANTIC_MULTI.get())) {
+			int count = m.get("count") instanceof Number ? ((Number)m.get("count")).intValue() : els.size();
+			throw new SemanticLocators.StrictViolation(SemanticLocators.strictViolation(by + "@" + classifier, SemanticLocators.strings(m.get("desc")), count));
 		}
 		return els;
 	}
@@ -2307,6 +2342,25 @@ public abstract class SeleniumTest {
 	/** M5: this loginOnce run already cleared the previous state file. */
 	private boolean __stateFresh__;
 
+	/** E14: set by the executor while globalSetup runs before loginOnce: the storage state (about to be replaced) is not loaded. */
+	public static final ThreadLocal<Boolean> SKIP_STATE_LOAD = new ThreadLocal<Boolean>();
+
+	/** E13: the loginOnce script saved its state before closing its last window (nothing left to save at quit). */
+	private boolean __loginOnceSaved__;
+
+	/** E13: emitted before {@code close} in the configured loginOnce script only: saves while the last window is still open. */
+	protected void __loginOnceSave__(WebDriver d) {
+		GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		if(!Boolean.TRUE.equals(LOGIN_ONCE_RUN.get()) || cfg == null || StringUtils.isBlank(cfg.getStorageState())) return;
+		try {
+			if(d.getWindowHandles().size() > 1) return;   // other windows stay open: the save at quit still finds a page
+			System.out.println(BrowserState.save(d, stateFile(cfg.getStorageState().trim())));
+			__loginOnceSaved__ = true;
+		} catch (Exception e) {
+			System.out.println("loginOnce: could not save the storage state before close (" + e.getMessage() + ")");
+		}
+	}
+
 	/** M5: emitted for {@code state save|load <file>}. */
 	protected void __state__(WebDriver d, String op, String file) throws Exception {
 		File f = stateFile(file);
@@ -2332,6 +2386,13 @@ public abstract class SeleniumTest {
 		__routeBidi__ = true;
 	}
 
+	/** M4: the protocol that intercepts for {@code route}: -Dgatf.routeProtocol=cdp|bidi, else traceProtocol, else cdp. */
+	private static String __routeProtocol__(GatfExecutorConfig cfg) {
+		String rp = System.getProperty("gatf.routeProtocol");
+		if(StringUtils.isNotBlank(rp)) return rp.trim().toLowerCase(java.util.Locale.ROOT);
+		return cfg != null && cfg.getTraceProtocol() != null ? cfg.getTraceProtocol() : "cdp";
+	}
+
 	/** M4: per browser session, {route table, the transport intercepting for it}. */
 	private final Map<WebDriver, Object[]> __routes__ = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<WebDriver, Object[]>());
 
@@ -2347,7 +2408,7 @@ public abstract class SeleniumTest {
 			com.gatf.selenium.route.RouteTable table = new com.gatf.selenium.route.RouteTable();
 			GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
 			com.gatf.selenium.trace.TraceConfig tc = new com.gatf.selenium.trace.TraceConfig()
-					.setProtocol(cfg != null && cfg.getTraceProtocol() != null ? cfg.getTraceProtocol() : "cdp");
+					.setProtocol(__routeProtocol__(cfg));
 			com.gatf.selenium.trace.BrowserControl bc = com.gatf.selenium.trace.Transports.create(d, tc);
 			if(bc == null || !bc.supports(com.gatf.selenium.trace.Capability.ROUTE) || !bc.enableRoutes(table, state.hasNetapixCommand)) {
 				throw new RuntimeException("route: this browser session cannot intercept requests (needs CDP on Chromium, or a BiDi session: webSocketUrl)");
@@ -2386,6 +2447,8 @@ public abstract class SeleniumTest {
 
 	/** M2: soft ({@code ??~}) assertion failures, drained into the next pushed result. */
 	final SoftFailures __soft__ = new SoftFailures();
+	/** The caller's pending soft failures, set aside while a subtest runs (key: the caller's subtest name). */
+	final java.util.Deque<Entry<String, List<String>>> __softStack__ = new java.util.ArrayDeque<Entry<String, List<String>>>();
 
 	/** M2: emitted by codegen around a {@code ??~} statement: record the failure and let the script continue. */
 	protected void __soft_fail__(RuntimeException e) {
@@ -2417,6 +2480,11 @@ public abstract class SeleniumTest {
 	protected void __hook_failed__(String hook, Throwable t) {
 		System.out.println(hook + " hook failed: " + t.getMessage());
 		__traceAction__("hookfail", hook + ": " + t.getMessage());
+	}
+
+	/** E6: soft failures an afterEach / afterAll hook recorded after the failure's result was taken: logged, not charged to the next test. */
+	protected void __hook_soft__(String hook) {
+		for (String s : __soft__.drain()) System.out.println(hook + " hook soft assertion failed: " + s);
 	}
 
 	/** M1: file:line of a statement marked {@code nowait}/{@code <action>!}; its actions skip the auto-wait. */
@@ -2469,6 +2537,15 @@ public abstract class SeleniumTest {
 		}
 	}
 
+	/** Raw (global timeouts off) click codegen: as above, an auto-wait failure names the locator. */
+	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier, String locator) {
+		try {
+			clickAction(wd, ret, qualifier);
+		} catch (Actionability.NotActionableException e) {
+			throw e.withLocator(locator);
+		}
+	}
+
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
 		if(!action.toLowerCase().matches(Command.clickExStr)) __traceAction__(action, selValue);
 		if(action.toLowerCase().matches(Command.clickExStr)) {
@@ -2492,7 +2569,7 @@ public abstract class SeleniumTest {
 			}
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
-				awaitActionable(wd, we, "type");
+				awaitActionable(wd, we, "clear");
 				jsEvent(wd, we, "fo");
 				we.clear();
 				jsChange(wd, we);
@@ -2738,6 +2815,9 @@ public abstract class SeleniumTest {
 				if(assertBudget == null) assertBudget = webFirstBudget();
 				if(assertBudget == null || !assertBudget.retry()) throw se;
 				sleep(Math.min(WebFirst.POLL_MS, Math.max(1, timeoutGranularity)));
+				if(___cxt___.isStopExecSet()) {
+					throw new RuntimeException("Stopped Execution");
+				}
 				continue;
 			}
 			if(!isVisible) {
@@ -2820,9 +2900,7 @@ public abstract class SeleniumTest {
 		final WebDriver wsc = (WebDriver) sc;
 		final Object[] o = new Object[2];
 		long timeoutRemaining = 0;
-		GatfExecutorConfig __semcfg__ = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;   // M3 semantic locator options
-		SEMANTIC_OPTS.set(new String[] { __semcfg__ == null ? null : __semcfg__.getTestIdAttribute(),
-				String.valueOf(__semcfg__ != null && __semcfg__.strictLocatorsEnabled()) });
+		setSemanticOpts();   // M3 semantic locator options
 		initJs(driver);
 		System.out.println("Searching element => " + by[0]+"@"+classifier[0]);
 		if(timeOutInSeconds<=0) {
@@ -3777,7 +3855,7 @@ public abstract class SeleniumTest {
 		state.hasNetapixCommand = hasNetapixCommand;
 		// M5: every UI script starts from the project's saved login state (not the loginOnce run that produces it)
 		GatfExecutorConfig __lcfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
-		if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && !Boolean.TRUE.equals(LOGIN_ONCE_RUN.get())) {
+		if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && !Boolean.TRUE.equals(LOGIN_ONCE_RUN.get()) && !Boolean.TRUE.equals(SKIP_STATE_LOAD.get())) {
 			File __sf = stateFile(__lcfg.getStorageState().trim());
 			if(__sf.isFile()) {
 				try {
@@ -3786,7 +3864,7 @@ public abstract class SeleniumTest {
 					System.out.println("storageState: not loaded (" + e.getMessage() + ")");
 				}
 			}
-		} else if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && !__stateFresh__) {
+		} else if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && Boolean.TRUE.equals(LOGIN_ONCE_RUN.get()) && !__stateFresh__) {
 			// M5: the loginOnce run replaces the state file (a merge would keep an old login's cookies / origins)
 			__stateFresh__ = true;
 			File __sf = stateFile(__lcfg.getStorageState().trim());

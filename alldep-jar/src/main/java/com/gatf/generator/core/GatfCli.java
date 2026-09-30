@@ -90,7 +90,7 @@ public final class GatfCli {
     			try {
     				t = TestCommandArgs.parse(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")));
     				TestFilter f = new TestFilter(t.grep, t.grepInvert, t.tags);   // invalid regex -> IllegalArgumentException
-    				RunOverrides.set(t.traceMode, t.retries, t.workers);          // invalid --trace -> IllegalArgumentException
+    				RunOverrides.set(t.traceMode, t.retries, t.workers, t.forbidOnly);          // invalid --trace -> IllegalArgumentException
     				TestFilter.activate(f);
     				RunConsole.setFilterNote(f.isEmpty() ? null : f.describe());
     				if (t.reporters != null) {
@@ -118,7 +118,7 @@ public final class GatfCli {
     		}
     		else if(args[0].equals("import"))
     		{
-    			// Q2: `gatf import <playwright|jmeter|curl|postman|har> <file|-> [-o out] [--name ..] [--filter ..] [--force]`
+    			// Q2: `gatf import <playwright|jmeter|curl|postman|har|openapi> <file|-> [-o out] [--name ..] [--filter ..] [--force]`
     			exitCode = ImportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 

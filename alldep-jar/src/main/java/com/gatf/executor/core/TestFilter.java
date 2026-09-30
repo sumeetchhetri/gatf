@@ -96,10 +96,15 @@ public final class TestFilter {
         return g.isEmpty() && gi.isEmpty() && t.isEmpty() ? null : new TestFilter(g, gi, t);
     }
 
+    /** E12: the Execute view's filter for the run on this (executor) thread; wins over the CLI's static one. */
+    private static final ThreadLocal<TestFilter> THREAD = new ThreadLocal<TestFilter>();
+
     public static void activate(TestFilter f) { active = f; }
-    public static TestFilter active() { return active; }
-    /** True when a CLI filter with at least one pattern is in force. */
-    public static boolean isActive() { TestFilter f = active; return f != null && !f.isEmpty(); }
+    /** E12: sets (null clears) this thread's filter, so a concurrent run on another thread is not filtered. */
+    public static void activateForThread(TestFilter f) { if (f == null) THREAD.remove(); else THREAD.set(f); }
+    public static TestFilter active() { TestFilter t = THREAD.get(); return t != null ? t : active; }
+    /** True when a CLI filter (or this thread's Execute-view filter) with at least one pattern is in force. */
+    public static boolean isActive() { TestFilter f = active(); return f != null && !f.isEmpty(); }
 
     public boolean isEmpty() { return include.isEmpty() && exclude.isEmpty(); }
     public String describe() { return description; }

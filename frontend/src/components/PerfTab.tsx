@@ -14,7 +14,8 @@
     limitations under the License.
 */
 import { useMemo, useState } from 'react';
-import type { Trace } from '../trace/types';
+import type { PageVitals, Trace } from '../trace/types';
+import { pageVitals } from '../trace/loadTrace';
 import { Sparkline } from './Sparkline';
 import { fmtBytes, fmtMs } from '../util';
 
@@ -25,6 +26,16 @@ const VITAL_LABELS: Array<[string, string]> = [
   ['ttfb', 'Time to First Byte'],
   ['domInteractive', 'DOM Interactive'],
   ['domContentLoaded', 'DOMContentLoaded'],
+  ['load', 'Load'],
+];
+
+// Q9 per-page table columns (cls is unitless, the rest ms)
+const PAGE_COLS: Array<[keyof PageVitals, string]> = [
+  ['lcp', 'LCP'],
+  ['cls', 'CLS'],
+  ['fcp', 'FCP'],
+  ['ttfb', 'TTFB'],
+  ['domContentLoaded', 'DCL'],
   ['load', 'Load'],
 ];
 
@@ -47,6 +58,9 @@ export function PerfTab({ trace, currentTime }: { trace: Trace; currentTime: num
 
   const vitals = perf?.webVitals ?? {};
   const hasVitals = Object.keys(vitals).length > 0;
+  const pages = pageVitals(perf);
+  const worst = (k: keyof PageVitals) =>
+    Math.max(...pages.map((p) => (typeof p[k] === 'number' ? (p[k] as number) : -Infinity)));
 
   const metricPoints =
     perf?.samples
@@ -75,6 +89,52 @@ export function PerfTab({ trace, currentTime }: { trace: Trace; currentTime: num
             ))}
           </div>
         </>
+      )}
+
+      {pages.length > 0 && (
+        <div className="perf-chart">
+          <div className="chart-head">
+            <span className="hdr-title">Web Vitals by page</span>
+            <span className="muted small">
+              {pages.length} page{pages.length === 1 ? '' : 's'} · worst value per column in bold (budgets use it)
+            </span>
+          </div>
+          <table className="grid-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Page</th>
+                {PAGE_COLS.map(([k, l]) => (
+                  <th key={k}>{l}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pages.map((p, i) => (
+                <tr key={i}>
+                  <td className="mono">{i + 1}</td>
+                  <td
+                    className="mono"
+                    title={p.url ?? ''}
+                    style={{ maxWidth: 360, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  >
+                    {p.url ?? '-'}
+                  </td>
+                  {PAGE_COLS.map(([k]) => {
+                    const v = p[k];
+                    if (typeof v !== 'number') return <td key={k} className="mono muted">-</td>;
+                    const isWorst = pages.length > 1 && v === worst(k);
+                    return (
+                      <td key={k} className="mono" style={isWorst ? { fontWeight: 600 } : undefined}>
+                        {k === 'cls' ? v.toFixed(3) : fmtMs(v)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
 
       {metricKeys.length > 0 && (

@@ -23,7 +23,7 @@ import java.util.List;
  * Q7: arguments of {@code gatf test} (the one documented entry point for CLI runs):
  * <pre>
  *   gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]
- *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N]
+ *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N] [--forbid-only]
  * </pre>
  * The config defaults to gatf-config.json, else gatf-config.xml, in the working directory. Whether the suite is
  * API or UI comes from the config's isSeleniumExecutor, exactly as for -executor / -selenium. Pure parsing; no side
@@ -39,10 +39,12 @@ public final class TestCommandArgs {
     public String traceMode;
     public Integer retries;
     public Integer workers;
+    /** E10: --forbid-only: a subtest marked {@code only} fails the run (null = the config's forbidOnly). */
+    public Boolean forbidOnly;
 
     public static final String USAGE =
             "gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]\n"
-          + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N]";
+          + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N] [--forbid-only]";
 
     /** Parses {@code args} (everything after "test"). Throws IllegalArgumentException with a usage message on error. */
     public static TestCommandArgs parse(String[] args, File cwd) {
@@ -63,6 +65,7 @@ public final class TestCommandArgs {
                 case "--trace":                    a.traceMode = val(args, i, s, v); break;
                 case "--retries":                  a.retries = num(val(args, i, s, v), s); break;
                 case "--workers": case "-j":       a.workers = num(val(args, i, s, v), s); break;
+                case "--forbid-only":              a.forbidOnly = v == null || Boolean.parseBoolean(v.trim()); continue;   // a flag: no value argument
                 default:
                     if (s.startsWith("-")) throw new IllegalArgumentException("Unknown option " + s + "\n" + USAGE);
                     if (a.config != null) throw new IllegalArgumentException("Only one config file may be given (got " + a.config + " and " + s + ")\n" + USAGE);

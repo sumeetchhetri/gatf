@@ -118,9 +118,23 @@ export interface WebVitals {
   lcp?: number;
   [k: string]: number | undefined;
 }
+/** Q9: vitals of one top-level document the script visited (performance.json webVitalsByPage). */
+export interface PageVitals {
+  url: string | null;
+  ts: number;
+  lcp?: number;
+  cls?: number;
+  fcp?: number;
+  ttfb?: number;
+  domContentLoaded?: number;
+  load?: number;
+}
 export interface Performance {
   samples: PerfSample[];
+  /** the page open when the trace stopped */
   webVitals?: WebVitals;
+  /** every page, oldest first (newer traces) */
+  webVitalsByPage?: PageVitals[];
 }
 
 // memory.json

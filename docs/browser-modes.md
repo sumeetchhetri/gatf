@@ -47,7 +47,7 @@ Use Mode C only when you actually need a Grid; Modes A/B cover single-machine ru
 | Trace — response bodies | ✅ | ✅ if the browser supports BiDi data collection | as above |
 | Trace — CPU profile, coverage | ✅ (CDP / hybrid) | ❌ (no BiDi equivalent) | ❌ |
 | Trace — video | ✅ CDP screencast | opt-in polled (`-Dgatf.trace.videoPollFps=N`) | opt-in polled |
-| Network mocking (`route`) | ✅ CDP `Fetch` (BiDi on a Grid or with `traceProtocol: bidi`) | ✅ BiDi `network.addIntercept` | where safaridriver supports BiDi interception |
+| Network mocking (`route`) | ✅ CDP `Fetch`, page target only (BiDi — every context incl. popups and cross-origin iframes — on a Grid, with `traceProtocol: bidi` or `-Dgatf.routeProtocol=bidi`) | ✅ BiDi `network.addIntercept` | where safaridriver supports BiDi interception |
 | Record (Record view) | ✅ | ✅ (BiDi preload script) | — |
 | Crawl (Crawl view) | ✅ | ✅ | — |
 

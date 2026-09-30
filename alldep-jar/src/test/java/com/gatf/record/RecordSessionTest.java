@@ -85,4 +85,14 @@ class RecordSessionTest {
         r.ingest(amb);
         assertThat(r.currentLines()).containsExactly("click role@button[name='Save draft']", "type \"me@x.test\" testid@email-input", "click id@go");
     }
+
+    @Test
+    void recorderUsesTheProjectTestIdAttribute() {
+        assertThat(RecordSession.RECORDER_JS).contains(RecordSession.CAND_CALL);
+        assertThat(new RecordSession("t", null, "chrome").recorderJs()).isEqualTo(RecordSession.RECORDER_JS);
+        assertThat(new RecordSession("t", null, "chrome", " ").recorderJs()).isEqualTo(RecordSession.RECORDER_JS);
+        String js = new RecordSession("t", null, "chrome", "data-qa").recorderJs();
+        assertThat(js).contains("__gatfCandidates(el,\"data-qa\")").doesNotContain(RecordSession.CAND_CALL);
+        assertThat(RecordSession.jsString("a\"b\\c</")).isEqualTo("\"a\\\"b\\\\c\\u003c/\"");
+    }
 }

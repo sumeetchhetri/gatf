@@ -82,6 +82,32 @@ class TestFilterTest {
     }
 
     @Test
+    void executeViewFilterIsPerThread() throws Exception {
+        // E12: the Execute view's filter applies to its executor thread only; the CLI's static one stays the fallback
+        TestFilter view = TestFilter.fromQuery("login", null, null), cli = TestFilter.fromQuery("cart", null, null);
+        try {
+            TestFilter.activateForThread(view);
+            assertThat(TestFilter.active()).isSameAs(view);
+            assertThat(TestFilter.isActive()).isTrue();
+            TestFilter[] other = new TestFilter[1];
+            boolean[] otherActive = new boolean[1];
+            Thread t = new Thread(() -> { other[0] = TestFilter.active(); otherActive[0] = TestFilter.isActive(); });
+            t.start();
+            t.join();
+            assertThat(other[0]).isNull();                 // a concurrent Play from Reports is not filtered
+            assertThat(otherActive[0]).isFalse();
+            TestFilter.activate(cli);
+            assertThat(TestFilter.active()).isSameAs(view);   // this thread's filter wins
+            TestFilter.activateForThread(null);
+            assertThat(TestFilter.active()).isSameAs(cli);
+        } finally {
+            TestFilter.activateForThread(null);
+            TestFilter.activate(null);
+        }
+        assertThat(TestFilter.isActive()).isFalse();
+    }
+
+    @Test
     void invalidRegexIsAUsageError() {
         assertThatThrownBy(() -> new TestFilter(List.of("("), null, null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("invalid --grep regex '('");

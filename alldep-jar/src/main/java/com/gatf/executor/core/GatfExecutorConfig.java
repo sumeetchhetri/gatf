@@ -123,6 +123,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// Q8/M5: web-storage key holding a bearer token for api/curl calls from UI scripts:
 	// [localStorage:|sessionStorage:]key[#json.field]; null = none
 	private String browserApiStorageToken;
+	// E9: extra hosts ("host" or "*.domain") browserApiStorageToken may be sent to besides the open page's site
+	private String[] browserApiStorageTokenHosts;
+	// E10: a subtest marked `only` is a transpile error (CI: `gatf test --forbid-only`); null/false = allowed
+	private Boolean forbidOnly;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -559,6 +563,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	/** M2: retrying (web-first) assertions on? Absent (null) keeps the legacy fail-at-once behaviour. Not a bean property. */
 	public boolean webFirstAssertionsEnabled() { return Boolean.TRUE.equals(webFirstAssertions); }
 	/** M2: per-assertion retry budget in ms (default 5000). Not a bean property. */
+	public long effectiveAssertTimeoutMs() { return assertTimeout != null && assertTimeout > 0 ? assertTimeout : com.gatf.selenium.WebFirst.DEFAULT_ASSERT_TIMEOUT_MS; }
 	public String getTestIdAttribute() { return testIdAttribute; }
 	public void setTestIdAttribute(String testIdAttribute) { this.testIdAttribute = testIdAttribute; }
 	public Boolean getStrictLocators() { return strictLocators; }
@@ -573,9 +578,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setGlobalTeardown(String globalTeardown) { this.globalTeardown = globalTeardown; }
 	public String getBrowserApiStorageToken() { return browserApiStorageToken; }
 	public void setBrowserApiStorageToken(String browserApiStorageToken) { this.browserApiStorageToken = browserApiStorageToken; }
+	public String[] getBrowserApiStorageTokenHosts() { return browserApiStorageTokenHosts; }
+	public void setBrowserApiStorageTokenHosts(String[] browserApiStorageTokenHosts) { this.browserApiStorageTokenHosts = browserApiStorageTokenHosts; }
+	public Boolean getForbidOnly() { return forbidOnly; }
+	public void setForbidOnly(Boolean forbidOnly) { this.forbidOnly = forbidOnly; }
 	/** M3: strict semantic locators on? Not a bean property. */
 	public boolean strictLocatorsEnabled() { return Boolean.TRUE.equals(strictLocators); }
-	public long effectiveAssertTimeoutMs() { return assertTimeout != null && assertTimeout > 0 ? assertTimeout : com.gatf.selenium.WebFirst.DEFAULT_ASSERT_TIMEOUT_MS; }
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
 	public boolean isTraceNetwork() { return traceNetwork; }

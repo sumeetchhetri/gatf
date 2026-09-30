@@ -23,6 +23,7 @@ import type {
   Har,
   HarEntry,
   Performance,
+  PageVitals,
   Memory,
   Coverage,
 } from './types';
@@ -79,6 +80,15 @@ export function fileUrl(files: Record<string, Uint8Array>, path: string): string
   const type = MIME[ext] ?? 'application/octet-stream';
   // copy into a fresh ArrayBuffer so the Blob owns its bytes
   return URL.createObjectURL(new Blob([b.slice()], { type }));
+}
+
+/** Q9: the per-page vitals rows (well-formed only, oldest first); empty for traces that predate them. */
+export function pageVitals(perf: Performance | null | undefined): PageVitals[] {
+  const rows = Array.isArray(perf?.webVitalsByPage) ? perf!.webVitalsByPage : [];
+  return rows
+    .filter((r): r is PageVitals => !!r && typeof r === 'object' && typeof r.ts === 'number')
+    .slice()
+    .sort((a, b) => a.ts - b.ts);
 }
 
 /** Parse an already-unzipped file map into a Trace. */

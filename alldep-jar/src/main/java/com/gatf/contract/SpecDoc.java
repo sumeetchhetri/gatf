@@ -16,6 +16,7 @@
 package com.gatf.contract;
 
 import java.io.File;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.HashMap;
@@ -70,7 +71,8 @@ public final class SpecDoc {
     }
 
     public Node at(String pointer) {
-        JsonNode n = pointer == null || pointer.isEmpty() ? root : root.at(pointer);
+        JsonNode n = pointer == null || pointer.isEmpty() ? root
+                : pointer.startsWith("/") ? root.at(pointer) : com.fasterxml.jackson.databind.node.MissingNode.getInstance();
         return new Node(n, "", null);
     }
 
@@ -106,10 +108,28 @@ public final class SpecDoc {
             String key = doc + "#" + pointer;
             if (!seen.add(key)) return null;
             JsonNode d = docs.get(doc);
-            JsonNode t = pointer.isEmpty() ? d : d.at(pointer);
+            JsonNode t = resolve(d, pointer);
             if (t == null || t.isMissingNode()) return null;
             cur = new Node(t, doc, key);
         }
         return cur;
+    }
+
+    /**
+     * The {@code $ref} fragment's target in {@code doc}: "" = the document, else a percent-decoded RFC 6901 pointer
+     * ('+' kept literal). Null for a non-pointer fragment (a 3.1 {@code $anchor} such as {@code #pet}) — not supported.
+     */
+    public static JsonNode resolve(JsonNode doc, String fragment) {
+        if (fragment.isEmpty()) return doc;
+        if (!fragment.startsWith("/")) return null;
+        String p = fragment;
+        if (p.indexOf('%') >= 0) {
+            try {
+                p = URLDecoder.decode(p.replace("+", "%2B"), StandardCharsets.UTF_8);
+            } catch (IllegalArgumentException e) {
+                // malformed %-escape: used as written
+            }
+        }
+        return doc.at(p);
     }
 }

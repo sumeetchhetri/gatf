@@ -13,7 +13,8 @@ can be XML (`gatf-config.xml`) or JSON (`gatf-config.json`, preferred when both 
 
 The executor runs API suites (`-executor`) and seleasy suites (`-selenium`). A fully commented sample follows;
 every element is optional unless noted, and the smallest useful config is just `baseUrl`, `testCaseDir` and
-`outFilesDir` (plus `isSeleniumExecutor` + `seleniumScripts` for UI runs). The runnable
+`outFilesDir` (plus `isSeleniumExecutor` + `seleniumScripts` for UI runs; or `seleniumScript`: a folder under the
+test-case dir whose *.sel all run, a single .sel, or a list file with one script per line). The runnable
 [`sample-project/`](../sample-project/) configs are a better starting point than this exhaustive list.
 
 <details>
@@ -272,7 +273,7 @@ CSV rows. GATF discovers every file under `testCaseDir` (ordered by file name wh
 | `executeOnCondition` | Velocity expression; when false the case is skipped (the condition is recorded as the reason) |
 | `preWaitMs`, `postWaitMs` | Delays around the call |
 | `preExecutionDataSourceHookName`, `postExecutionDataSourceHookName` | Run a data-source hook (e.g. SQL setup/cleanup) around the call |
-| `abortOnInvalidStatusCode`, `abortOnInvalidContentType` | Stop the suite on a hard failure |
+| `abortOnInvalidStatusCode`, `abortOnInvalidContentType` | On a status-code (vs `expectedResCode`) / content-type (vs `expectedResContentType`) mismatch, fail this case at once and skip the rest of its response handling (body capture, response validation); the suite continues. Without `abortOnInvalidStatusCode` a status mismatch still fails the case, after the other validations have run |
 | `secure` | Apply the configured auto-authentication token |
 | `soapBase`, `wsdlKey`, `operationName` | SOAP test cases |
 | `skipTest`, `detailedLog`, `sequence` | Control flags |
