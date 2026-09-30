@@ -186,7 +186,7 @@
       "patterns": [
         {
           "name": "keyword.control.seleasy",
-          "match": "(?<![\\w-])(wait\\s+till\\s+visible|else\\s+ifnot|loop\\s+over|wait\\s+for|ds\\s+query|else\\s+if)(?![\\w-])"
+          "match": "(?<![\\w-])(screenshot\\s+compare|wait\\s+till\\s+visible|else\\s+ifnot|loop\\s+over|ds\\s+query|wait\\s+for|else\\s+if)(?![\\w-])"
         }
       ]
     },
@@ -194,7 +194,7 @@
       "patterns": [
         {
           "name": "keyword.control.seleasy",
-          "match": "(?<![\\w-])(beforeEach|beforeeach|beforeAll|beforeall|afterEach|aftereach|afterAll|afterall|scrollpagedown|capability_set|scrollpageup|doubleclick|readimgtext|screenshot|hoverclick|scrolldown|hidekeypad|execjsfile|waitready|randomize|readqrbar|wopensave|dynprops|dblclick|variable|sendkeys|maximize|scrollup|readfile|provider|continue|printpdf|setting|timeout|filevar|forward|actions|counter|confirm|require|refresh|unroute|imgsave|include|barcode|subtest|netapix|nowait|import|upload|window|config|scroll|submit|route|state|fixme|qrcode|unless|plugin|canvas|rotate|execjs|select|substr|mongo|elsif|sleep|clear|layer|jsvar|robot|ifnot|hover|touch|close|pinch|chord|shake|while|frame|index|query|click|break|swipe|alert|till|over|only|skip|http|goto|eval|mode|file|loop|zoom|mail|pass|func|join|else|exit|open|type|fail|warn|curl|back|exec|ocr|sql|for|int|dsq|var|api|tap|tab|if|ds)(?![\\w-])"
+          "match": "(?<![\\w-])(scrollpagedown|capability_set|scrollpageup|doubleclick|readimgtext|screenshot|hidekeypad|beforeeach|hoverclick|beforeEach|execjsfile|scrolldown|aftereach|wopensave|beforeAll|beforeall|afterEach|waitready|readqrbar|randomize|provider|continue|scrollup|printpdf|dynprops|dblclick|afterall|variable|readfile|sendkeys|maximize|afterAll|imgsave|counter|include|refresh|require|setting|subtest|confirm|actions|barcode|unroute|netapix|filevar|forward|timeout|substr|import|plugin|window|canvas|qrcode|rotate|upload|execjs|select|config|submit|unless|scroll|nowait|break|frame|index|layer|touch|swipe|fixme|sleep|query|alert|pinch|while|route|close|mongo|elsif|shake|robot|state|chord|ifnot|hover|jsvar|clear|click|loop|else|warn|func|file|mode|eval|open|over|pass|back|join|fail|till|mail|zoom|http|goto|only|skip|exec|curl|type|exit|ocr|dsq|int|var|sql|tab|for|tap|api|ds|if)(?![\\w-])"
         }
       ]
     },
@@ -202,7 +202,7 @@
       "patterns": [
         {
           "name": "constant.language.seleasy",
-          "match": "(?<![\\w-])(partiallinktext|alphanumericuc|alphanumericlc|movetoelement|movebyoffset|contextclick|draganddrop1|alphanumeric|clickandhold|draganddrop|integration|cssselector|chrome-rec|pagesource|chrome-hdl|rightclick|currenturl|chrome-dkr|jsonwrite|fuzzyanuc|clk_focus|prefixed_|dragdrop1|alerttext|className|clickhold|fuzzyanlc|cssvalue|linktext|relative|jsonread|selected|jsonpath|xmlwrite|fuzzyauc|fuzzyalc|sendKeys|dragdrop|prefixed|enabled|alphalc|tagname|current|visible|fuzzyan|keydown|firefox|release|xmlpath|rightof|xmlread|alphauc|numeric|status|jquery|fuzzyn|chrome|parent|leftof|moveby|others|height|normal|header|fuzzya|safari|active|moveto|delete|cancel|title|range|false|alpha|width|xpath|above|opera|value|keyup|below|class|main|edge|posy|name|true|text|post|ypos|near|xpos|attr|this|lazy|posx|json|get|tag|off|put|css|yes|on|id|ie|jq|no|ok)(?![\\w-])"
+          "match": "(?<![\\w-])(partiallinktext|alphanumericlc|alphanumericuc|movetoelement|clickandhold|draganddrop1|movebyoffset|contextclick|alphanumeric|cssselector|placeholder|integration|draganddrop|chrome-hdl|chrome-rec|pagesource|rightclick|chrome-dkr|currenturl|prefixed_|jsonwrite|clk_focus|fuzzyanuc|fuzzyanlc|clickhold|alerttext|className|dragdrop1|dragdrop|fuzzyalc|jsonpath|selected|fuzzyauc|jsonread|relative|prefixed|linktext|sendKeys|cssvalue|xmlwrite|firefox|current|fuzzyan|alphauc|alphalc|xmlpath|numeric|rightof|keydown|release|tagname|xmlread|visible|enabled|parent|chrome|safari|others|leftof|testid|normal|moveby|delete|jquery|fuzzyn|height|status|header|active|cancel|moveto|fuzzya|opera|above|value|range|width|label|below|false|alpha|class|title|xpath|keyup|this|role|attr|name|near|true|lazy|main|post|ypos|posx|edge|text|posy|xpos|json|tag|get|yes|alt|css|put|off|id|jq|ok|ie|on|no)(?![\\w-])"
         }
       ]
     },

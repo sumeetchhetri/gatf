@@ -1012,6 +1012,9 @@ public class Command {
             comd = new ConfigPropsCommand(cmd.substring(7).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("dynprops ")) {
             comd = new DynPropsCommand(cmd.substring(9).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("screenshot compare ") || cmd.toLowerCase().matches("screenshot\\s+compare(\\s.*)?")) {
+            // M9 visual regression (the bare / tab-separated form reaches the command's own "needs a name" error, not `screenshot`)
+            comd = new ScreenshotCompareCommand(cmd.replaceFirst("(?i)^screenshot\\s+compare", "").trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("screenshot")) {
             comd = new ScreenshotCommand(cmd.substring(10).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("ele-screenshot ")) {

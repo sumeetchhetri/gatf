@@ -127,6 +127,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private String[] browserApiStorageTokenHosts;
 	// E10: a subtest marked `only` is a transpile error (CI: `gatf test --forbid-only`); null/false = allowed
 	private Boolean forbidOnly;
+	// M9: `screenshot compare` rewrites its baselines instead of comparing (CI: `gatf test --update-snapshots`)
+	private Boolean updateSnapshots;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -582,6 +584,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setBrowserApiStorageTokenHosts(String[] browserApiStorageTokenHosts) { this.browserApiStorageTokenHosts = browserApiStorageTokenHosts; }
 	public Boolean getForbidOnly() { return forbidOnly; }
 	public void setForbidOnly(Boolean forbidOnly) { this.forbidOnly = forbidOnly; }
+	public Boolean getUpdateSnapshots() { return updateSnapshots; }
+	public void setUpdateSnapshots(Boolean updateSnapshots) { this.updateSnapshots = updateSnapshots; }
 	/** M3: strict semantic locators on? Not a bean property. */
 	public boolean strictLocatorsEnabled() { return Boolean.TRUE.equals(strictLocators); }
 	public String getTraceProtocol() { return traceProtocol; }

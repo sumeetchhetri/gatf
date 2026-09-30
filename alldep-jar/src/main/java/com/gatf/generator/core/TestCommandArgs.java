@@ -23,7 +23,7 @@ import java.util.List;
  * Q7: arguments of {@code gatf test} (the one documented entry point for CLI runs):
  * <pre>
  *   gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]
- *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only]
+ *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only] [--update-snapshots]
  * </pre>
  * The config defaults to gatf-config.json, else gatf-config.xml, in the working directory. Whether the suite is
  * API or UI comes from the config's isSeleniumExecutor, exactly as for -executor / -selenium. Pure parsing; no side
@@ -43,10 +43,13 @@ public final class TestCommandArgs {
     public Boolean forbidOnly;
     /** M7: --shard i/n (1-based); null = run every file. */
     public String shard;
+    /** M9: --update-snapshots: rewrite `screenshot compare` baselines (null = the config's updateSnapshots). */
+    public Boolean updateSnapshots;
 
     public static final String USAGE =
             "gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]\n"
-          + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only]";
+          + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only]\n"
+          + "          [--update-snapshots]";
 
     /** Parses {@code args} (everything after "test"). Throws IllegalArgumentException with a usage message on error. */
     public static TestCommandArgs parse(String[] args, File cwd) {
@@ -68,6 +71,7 @@ public final class TestCommandArgs {
                 case "--retries":                  a.retries = num(val(args, i, s, v), s); break;
                 case "--workers": case "-j":       a.workers = com.gatf.executor.core.ShardSplitter.resolveWorkers(val(args, i, s, v), Runtime.getRuntime().availableProcessors()); break;   // M7: N or N%
                 case "--shard":                    a.shard = val(args, i, s, v); com.gatf.executor.core.ShardSplitter.parse(a.shard); break;   // M7: validated here
+                case "--update-snapshots": case "-u": a.updateSnapshots = v == null || Boolean.parseBoolean(v.trim()); continue;   // M9: a flag
                 case "--forbid-only":              a.forbidOnly = v == null || Boolean.parseBoolean(v.trim()); continue;   // a flag: no value argument
                 default:
                     if (s.startsWith("-")) throw new IllegalArgumentException("Unknown option " + s + "\n" + USAGE);

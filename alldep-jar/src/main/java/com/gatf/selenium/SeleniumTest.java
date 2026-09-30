@@ -1189,6 +1189,11 @@ public abstract class SeleniumTest {
 		public Map<String, Object> getChecks() {
 			return checks;
 		}
+		/** M9/M10: files attached by steps (visual diff, accessibility results), absolute paths. */
+		private transient List<String> attachments = new ArrayList<String>();
+		public List<String> getAttachments() {
+			return attachments == null ? new ArrayList<String>() : attachments;
+		}
 		public void setChecks(Map<String, Object> checks) {
 			this.checks = checks;
 		}
@@ -1234,6 +1239,7 @@ public abstract class SeleniumTest {
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, LoggingPreferences ___lp___)
 		{
+			this.attachments = test.drainAttachments();
 			this.stName = test.get__subtestname__();
 			this.status = true;
 			this.internalTestRes = test.getSession().internalTestRs;
@@ -1247,6 +1253,7 @@ public abstract class SeleniumTest {
 			}
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable exc, String img, LoggingPreferences ___lp___, String subTestName) {
+			this.attachments = test.drainAttachments();
 			this.cause = exc;
 			this.status = false;
 			// M2: soft failures recorded before this result (a hard failure / pass / warn after soft ones): still counted.
@@ -3700,6 +3707,80 @@ public abstract class SeleniumTest {
 	
 	protected String getOutDir() {
 		return ___cxt___.getOutDirPath() + File.separator + state.outPath;
+	}
+
+	/** M9/M10: files produced by a step (visual diff, accessibility results), drained into the next pushed result. */
+	final List<String> __attachments__ = java.util.Collections.synchronizedList(new ArrayList<String>());
+
+	protected void __attach__(String absPath) {
+		if (absPath != null) __attachments__.add(absPath);
+	}
+
+	List<String> drainAttachments() {
+		synchronized (__attachments__) {
+			List<String> out = new ArrayList<String>(__attachments__);
+			__attachments__.clear();
+			return out;
+		}
+	}
+
+	/** M9/M10: the running .sel file's path under the test-case dir, without {@code .sel} ({@code ui/login}); "" if unknown. */
+	protected String scriptKey() {
+		if (state == null || state.cfileName == null) return "";
+		String rel = state.basePath != null ? state.cfileName.replace(state.basePath, "") : new File(state.cfileName).getName();
+		rel = rel.replace('\\', '/');
+		while (rel.startsWith("/")) rel = rel.substring(1);
+		return rel.toLowerCase(java.util.Locale.ROOT).endsWith(".sel") ? rel.substring(0, rel.length() - 4) : rel;
+	}
+
+	/** M9: {@code gatf test --update-snapshots} (config updateSnapshots, or -Dgatf.updateSnapshots=true). */
+	protected boolean updateSnapshots() {
+		GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		return (cfg != null && Boolean.TRUE.equals(cfg.getUpdateSnapshots())) || Boolean.getBoolean("gatf.updateSnapshots");
+	}
+
+	/** The whole page in CSS pixels (AShot viewport pasting, scaled by devicePixelRatio), as element rects are. */
+	protected BufferedImage fullPageImage(WebDriver webDriver) throws IOException {
+		if (webDriver instanceof AppiumDriver) {
+			byte[] png = ((TakesScreenshot) new Augmenter().augment(webDriver)).getScreenshotAs(OutputType.BYTES);
+			return ImageIO.read(new java.io.ByteArrayInputStream(png));
+		}
+		float dpr = 1f;
+		if (webDriver instanceof JavascriptExecutor) {
+			Object output = ((JavascriptExecutor) webDriver).executeScript("return window.devicePixelRatio");
+			try { dpr = Float.parseFloat(String.valueOf(output)); } catch (NumberFormatException e) { dpr = 1f; }
+		}
+		return new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(dpr), 100)).takeScreenshot(webDriver).getImage();
+	}
+
+	/**
+	 * M9: {@code screenshot compare <name> [threshold] [maxdiff N|N%] [mask <locator>]...}: compares the page with its
+	 * baseline in {@code <testCaseDir>/__screenshots__/<browser>/}; a mismatch fails the step and attaches the diff.
+	 */
+	protected void __screenshotCompare__(WebDriver d, String name, double threshold, String maxDiff, List<WebElement> masks) {
+		com.gatf.selenium.visual.ImageDiff.Options o = new com.gatf.selenium.visual.ImageDiff.Options().threshold(threshold).maxDiff(maxDiff);
+		if (masks != null) {
+			for (WebElement m : masks) {
+				try {
+					Rectangle r = m.getRect();
+					o.mask(new java.awt.Rectangle(r.getX(), r.getY(), r.getWidth(), r.getHeight()));
+				} catch (RuntimeException e) {
+					// a mask element that went stale / has no box masks nothing
+				}
+			}
+		}
+		com.gatf.selenium.visual.VisualSnapshots.Outcome out;
+		try {
+			File tcDir = new File(state.basePath != null ? state.basePath : ".");
+			out = com.gatf.selenium.visual.VisualSnapshots.check(tcDir, getBrowserName(), scriptKey(), name, fullPageImage(d), o, updateSnapshots(),
+					"true".equalsIgnoreCase(System.getenv("CI")), new File(getOutDir()));
+		} catch (IOException e) {
+			throw new RuntimeException("screenshot compare '" + name + "': " + e.getMessage(), e);
+		}
+		for (String a : out.attachments) __attach__(a);
+		__traceAction__("screenshot-compare", out.message);
+		System.out.println(out.message);
+		if (!out.passed) throw new RuntimeException(out.message);
 	}
 	
 	public static void main(String[] args) throws Exception {

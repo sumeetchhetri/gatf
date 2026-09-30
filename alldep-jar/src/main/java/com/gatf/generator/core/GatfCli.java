@@ -92,6 +92,7 @@ public final class GatfCli {
     				TestFilter f = new TestFilter(t.grep, t.grepInvert, t.tags);   // invalid regex -> IllegalArgumentException
     				RunOverrides.set(t.traceMode, t.retries, t.workers, t.forbidOnly);          // invalid --trace -> IllegalArgumentException
     				RunOverrides.setShard(t.shard);                                              // M7: --shard i/n
+    				RunOverrides.setUpdateSnapshots(t.updateSnapshots);                          // M9
     				TestFilter.activate(f);
     				String note = f.isEmpty() ? null : f.describe();
     				if (RunOverrides.shard() != null) note = (note == null ? "" : note + ", ") + RunOverrides.shard().describe();

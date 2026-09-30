@@ -1108,6 +1108,21 @@ Examples :-
 	ele-screenshot id@'eleid' '/path/to/image/file/file.png'
 ```
 
+### Compare the page with its baseline screenshot (visual regression)
+
+```
+	screenshot compare {name} {optional threshold 0..1} {optional maxdiff N|N%} {optional mask {locator}}...
+Examples :-
+	screenshot compare home
+	screenshot compare "checkout step 2" 0.1 maxdiff 0.5%
+	screenshot compare dashboard mask id@clock mask css@'.ad-banner'
+```
+- **Baseline:** `<testCaseDir>/__screenshots__/<browser>/<script>/<name>.png` (`<script>` = the .sel path without `.sel`, e.g. `ui/login`), a full-page capture in CSS pixels. Commit the baselines. Take it from the top-level document (not inside `frame …`): capture size and mask positions are page coordinates.
+- **First run:** with no baseline, the capture becomes the baseline and the step passes. Under `CI=true` it fails instead and writes `<out>/<browser>-<script>-<name>-actual.png`, so a forgotten baseline never passes in CI.
+- **Comparison:** `threshold` is the per-pixel colour tolerance (perceptual YIQ distance; default 0.2). Anti-aliased pixels are not counted. `maxdiff` is the number (`25`) or share (`0.5%`) of differing pixels allowed (default none). `mask` elements (repeatable) are ignored; a mask that is not on the page masks nothing.
+- **Mismatch:** the step fails and writes `-expected.png`, `-actual.png` and `-diff.png` (red = changed pixels) to the run's out dir. They are attached to the test in the report and in `gatf-results.json`.
+- **Accepting changes:** `gatf test --update-snapshots` (or config `updateSnapshots`) rewrites every compared baseline.
+
 ## Mail & HTTP simulator checks
 
 ### Check whether an http request was received from a given sender, for a given receiver and matching the given content with timeout period

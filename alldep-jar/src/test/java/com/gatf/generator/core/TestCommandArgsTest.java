@@ -60,6 +60,12 @@ class TestCommandArgsTest {
         assertThat(a.shard).isEqualTo("2/4");
         assertThat(a.workers).isEqualTo(Runtime.getRuntime().availableProcessors());
         assertThat(TestCommandArgs.USAGE).contains("[--shard i/n]");
+        // M9: --update-snapshots is a flag like --forbid-only
+        TestCommandArgs u = TestCommandArgs.parse(new String[] { "--update-snapshots", "cfg.xml" }, new File("."));
+        assertThat(u.updateSnapshots).isTrue();
+        assertThat(u.config).isEqualTo("cfg.xml");
+        assertThat(TestCommandArgs.parse(new String[] { "cfg.xml" }, new File(".")).updateSnapshots).isNull();
+        assertThat(TestCommandArgs.USAGE).contains("[--update-snapshots]");
     }
 
     @Test

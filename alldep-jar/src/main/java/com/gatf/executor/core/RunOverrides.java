@@ -26,6 +26,7 @@ public final class RunOverrides {
     private static volatile Integer workers;
     private static volatile Boolean forbidOnly;
     private static volatile ShardSplitter shard;
+    private static volatile Boolean updateSnapshots;
 
     private RunOverrides() {}
 
@@ -40,6 +41,11 @@ public final class RunOverrides {
     public static void set(String traceMode, Integer retries, Integer workers, Boolean forbidOnly) {
         set(traceMode, retries, workers);
         RunOverrides.forbidOnly = forbidOnly;
+    }
+
+    /** M9: --update-snapshots (null = the config's setting). */
+    public static void setUpdateSnapshots(Boolean b) {
+        RunOverrides.updateSnapshots = b;
     }
 
     /** M7: --shard i/n (null = every file). Throws IllegalArgumentException for a malformed spec. */
@@ -58,5 +64,6 @@ public final class RunOverrides {
         if (retries != null) c.setSeleniumScriptRetryCount(retries);
         if (workers != null) c.setNumConcurrentExecutions(workers);
         if (forbidOnly != null) c.setForbidOnly(forbidOnly);
+        if (updateSnapshots != null) c.setUpdateSnapshots(updateSnapshots);
     }
 }

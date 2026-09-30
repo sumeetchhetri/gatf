@@ -311,6 +311,10 @@ export const executorSchema: CfgSchema = {
     "forbidOnly": {
       "type": "boolean"
     },
+    // M9: `screenshot compare` rewrites its baselines instead of comparing (gatf test --update-snapshots)
+    "updateSnapshots": {
+      "type": "boolean"
+    },
     // M6: scripts run once before the UI suite (before loginOnce) and once after it, also when scripts failed
     "globalSetup": {
       "type": "string"

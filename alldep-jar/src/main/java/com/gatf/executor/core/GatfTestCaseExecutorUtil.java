@@ -2346,6 +2346,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if (!res.isStatus() && res.getSubtestImg() != null && new File(res.getSubtestImg()).isFile()) {
             att.add(new File(res.getSubtestImg()).getAbsolutePath());   // failure screenshot (taken by the step's failure path)
         }
+        att.addAll(res.getAttachments());   // M9/M10: visual diff / accessibility files
         if (tracePath != null) att.add(tracePath);
         com.gatf.log.RunConsole.result(selFile, tname, title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
                 res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail, att, res.getSoftFailures());

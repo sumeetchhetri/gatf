@@ -1,0 +1,7 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M9 visual regression: screenshot compare with threshold, maxdiff and masks.
+open chrome
+goto https://shop.test/
+screenshot compare home
+screenshot compare "checkout step 2" 0.1 maxdiff 0.5%
+screenshot compare dashboard mask id@clock mask css@'.ad-banner'
