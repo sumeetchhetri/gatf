@@ -107,6 +107,20 @@ class TraceChecksTest {
     }
 
     @Test
+    @SuppressWarnings("unchecked")
+    void a11yResultsInTheTraceJoinChecksJson() throws Exception {
+        Path t = dir;
+        Files.writeString(t.resolve("a11y-10.json"), "{\"url\":\"u2\",\"violations\":[]}");
+        Files.writeString(t.resolve("a11y-2.json"), "{\"url\":\"u1\",\"violations\":[]}");
+        TraceChecks.Report rep = TraceChecks.run(t, null, List.of(), "off");   // nothing else to check, but a11y results exist
+        assertThat(rep).isNotNull();
+        List<Map<String, Object>> a = (List<Map<String, Object>>) rep.toMap().get("a11y");
+        assertThat(a).extracting(m -> m.get("url")).containsExactly("u1", "u2");   // step order, not name order
+        Map<String, Object> written = new ObjectMapper().readValue(t.resolve("checks.json").toFile(), Map.class);
+        assertThat(written.containsKey("a11y")).isTrue();
+    }
+
+    @Test
     void unmeasuredMetricWarnsButDoesNotFail() {
         TraceChecks.Report rep = TraceChecks.run(dir, "lcp<1", List.of(), "off");
         assertThat(rep.budgets.get(0).outcome).isEqualTo(PerfBudget.Outcome.NOT_MEASURED);

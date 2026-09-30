@@ -1123,6 +1123,21 @@ Examples :-
 - **Mismatch:** the step fails and writes `-expected.png`, `-actual.png` and `-diff.png` (red = changed pixels) to the run's out dir. They are attached to the test in the report and in `gatf-results.json`.
 - **Accepting changes:** `gatf test --update-snapshots` (or config `updateSnapshots`) rewrites every compared baseline.
 
+### Check the page for accessibility violations (axe-core)
+
+```
+	a11y check {optional include {css@…|id@…}}... {optional exclude {css@…|id@…}}... {optional impact>=minor|moderate|serious|critical} {optional report}
+Examples :-
+	a11y check
+	a11y check impact>=serious
+	a11y check include id@main exclude css@'.ad-banner' impact>=critical
+	a11y check report
+```
+- **Engine:** runs the bundled [axe-core](https://github.com/dequelabs/axe-core) 4.13.0 (unmodified, MPL-2.0) in the current page. It is injected into the page and its frames (up to 3 levels deep), replacing any other axe version the page ships; frame results come back with ` >>> ` joined selectors (best effort: a frame that refuses scripts shows under "need review"). The async-script timeout is raised to 120 s for the check.
+- **Scope:** `include` / `exclude` (repeatable) take CSS (`css@…`, `id@…` or a plain selector); by default the whole document is checked.
+- **Result:** violations at or above `impact>=` (default: every violation) fail the step. The message lists each rule with its first selector, e.g. `[critical] image-alt: Images must have alternative text at img.logo (+1)`. `report` records them without failing.
+- **Where results go:** `<out>/<browser>-<script>-<n>-a11y.json` (attached to the test), the report's **Checks** tab (every violation with its selectors, HTML and fix summary), the trace's `checks.json` and a trace event.
+
 ## Mail & HTTP simulator checks
 
 ### Check whether an http request was received from a given sender, for a given receiver and matching the given content with timeout period

@@ -90,6 +90,33 @@ export interface TraceChecks {
   budgets: BudgetResult[];
   security: SecurityFinding[] | null; // null = security checks off
   failure: string | null;
+  // M10: one report per `a11y check` step
+  a11y?: A11yResult[];
+}
+// ---- M10: accessibility (axe-core via `a11y check`), as A11yReport maps it ----
+export interface A11yNode {
+  target: string; // CSS selector; iframe / shadow hops joined with " >>> "
+  html: string | null;
+  summary: string | null;
+}
+export interface A11yViolation {
+  id: string;
+  impact: 'minor' | 'moderate' | 'serious' | 'critical' | string;
+  help: string;
+  description?: string;
+  helpUrl?: string;
+  tags?: string[];
+  nodes: A11yNode[];
+}
+export interface A11yResult {
+  url: string | null;
+  browser?: string | null;
+  minImpact: string;
+  failed: boolean;
+  counts: Record<string, number>;
+  passes: number;
+  incomplete: number;
+  violations: A11yViolation[];
 }
 export interface SeleniumFinalData {
   type: 'selenium-final';
@@ -742,6 +769,8 @@ export const api = {
   reportData: (url: string) => getJson<ReportData>(url),
   // M12: a run's gatf-results.json (CLI runs write it to the out dir root; merge-reports to the merged dir)
   runResults: (url: string) => getJson<import('./report/results').RunResults>(url),
+  // M10: one `a11y check` result file (attachment)
+  a11yResult: (url: string) => getJson<A11yResult>(url),
   // M12: archived runs for the trend chart, newest first
   history: (limit = 10) => getJson<import('./report/history').HistoryIndex>('/api/history?limit=' + limit),
   // ---- config editor (Slice B) — authoritative round-trip via the legacy /configure handler ----

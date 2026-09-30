@@ -41,6 +41,8 @@ public final class TraceChecks {
         public final List<SecurityScan.Finding> findings = new ArrayList<SecurityScan.Finding>();
         public final List<String> failures = new ArrayList<String>();
         public boolean securityScanned;
+        /** M10: {@code a11y check} results the script left in the trace dir ({@code a11y-<n>.json}). */
+        public final List<Map<String, Object>> a11y = new ArrayList<Map<String, Object>>();
 
         /** null when nothing fails the script. */
         public String failure() {
@@ -56,6 +58,7 @@ public final class TraceChecks {
             m.put("budgets", b);
             m.put("security", securityScanned ? f : null);
             m.put("failure", failure());
+            if (!a11y.isEmpty()) m.put("a11y", a11y);
             return m;
         }
 
@@ -80,6 +83,23 @@ public final class TraceChecks {
     }
 
     private TraceChecks() {}
+
+    /** M10: the {@code a11y-<n>.json} files in the trace dir, in step order. */
+    @SuppressWarnings("unchecked")
+    static List<Map<String, Object>> a11yResults(Path traceDir) {
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        java.io.File[] fs = traceDir == null ? null : traceDir.toFile().listFiles((d, n) -> n.matches("a11y-\\d+\\.json"));
+        if (fs == null) return out;
+        java.util.Arrays.sort(fs, java.util.Comparator.comparingInt(f -> Integer.parseInt(f.getName().substring(5, f.getName().length() - 5))));
+        for (java.io.File f : fs) {
+            try {
+                out.add(OM.readValue(f, Map.class));
+            } catch (Exception e) {
+                // unreadable: the report sidecar still has the result from the session
+            }
+        }
+        return out;
+    }
 
     /** Validates/normalises a securityChecks value; blank → null (= report). */
     public static String normalizeSecurityMode(String v) {
@@ -106,7 +126,8 @@ public final class TraceChecks {
             rules = List.of();
             rep.failures.add("invalid @budget: " + e.getMessage());
         }
-        if (rules.isEmpty() && "off".equals(mode) && rep.failures.isEmpty()) return null;
+        rep.a11y.addAll(a11yResults(traceDir));
+        if (rules.isEmpty() && "off".equals(mode) && rep.failures.isEmpty() && rep.a11y.isEmpty()) return null;
         if (!rules.isEmpty()) {
             rep.budgets.addAll(PerfBudget.evaluate(rules, PerfBudget.measure(traceDir, OM)));
             for (PerfBudget.Result r : rep.budgets) {

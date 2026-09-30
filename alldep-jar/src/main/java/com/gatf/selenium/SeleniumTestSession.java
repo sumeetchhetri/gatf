@@ -61,6 +61,9 @@ public class SeleniumTestSession implements Serializable {
     
     /** Streaming trace recorder for this session (functional UI runs only); zipped + linked in the report. */
     public transient com.gatf.selenium.trace.TraceRecorder __trace__;
+
+    /** M10: accessibility reports ({@code a11y check}) of this session, for the report's checks tab. */
+    public final transient List<Map<String, Object>> __a11y__ = java.util.Collections.synchronizedList(new ArrayList<Map<String, Object>>());
     
     public String getSessionName() {
         return sessionName;

@@ -3753,6 +3753,117 @@ public abstract class SeleniumTest {
 		return new AShot().shootingStrategy(ShootingStrategies.viewportPasting(ShootingStrategies.scaling(dpr), 100)).takeScreenshot(webDriver).getImage();
 	}
 
+	private static volatile String AXE_JS;
+
+	/** The bundled axe-core (unmodified, MPL-2.0: resources/gatf-axe/), read once. */
+	static String axeSource() {
+		String s = AXE_JS;
+		if (s == null) {
+			try (java.io.InputStream in = SeleniumTest.class.getResourceAsStream("/gatf-axe/axe.min.js")) {
+				if (in == null) throw new IllegalStateException("gatf-axe/axe.min.js is missing from the classpath");
+				AXE_JS = s = IOUtils.toString(in, "UTF-8");
+			} catch (IOException e) {
+				throw new IllegalStateException("cannot read gatf-axe/axe.min.js: " + e.getMessage(), e);
+			}
+		}
+		return s;
+	}
+
+	/**
+	 * M10: {@code a11y check [include <css>]... [exclude <css>]... [impact>=<level>] [report]}: runs axe-core in the page;
+	 * violations at or above the level fail the step (unless {@code report}), listed with their selectors. The mapped
+	 * result goes to {@code <out>/<browser>-<n>-a11y.json} (attached), the report's checks tab and the trace.
+	 */
+	/** M10: numbering of a11y result files across the run (scripts share the out dir). */
+	private static final java.util.concurrent.atomic.AtomicInteger A11Y_SEQ = new java.util.concurrent.atomic.AtomicInteger();
+
+	/** Injects the bundled axe (unless this exact version is there) into the current document and, recursively, its frames. */
+	private void injectAxe(WebDriver d, int depth) {
+		JavascriptExecutor js = (JavascriptExecutor) d;
+		Object ver = js.executeScript("return window.axe && window.axe.run ? String(window.axe.version) : null;");
+		if (!com.gatf.selenium.checks.A11yReport.AXE_VERSION.equals(ver)) js.executeScript(axeSource());
+		js.executeScript(com.gatf.selenium.checks.A11yReport.CONFIGURE_JS);
+		if (depth >= 3) return;
+		List<WebElement> frames;
+		try {
+			frames = d.findElements(org.openqa.selenium.By.cssSelector("iframe, frame"));
+		} catch (RuntimeException e) {
+			return;
+		}
+		for (WebElement f : frames) {
+			try {
+				d.switchTo().frame(f);
+			} catch (RuntimeException e) {
+				continue;   // detached / not switchable: axe reports it as "incomplete"
+			}
+			try {
+				injectAxe(d, depth + 1);
+			} catch (RuntimeException e) {
+				// a frame that refuses scripts is left to axe's own frame handling
+			} finally {
+				d.switchTo().parentFrame();
+			}
+		}
+	}
+
+	/**
+	 * M10: {@code a11y check [include <css>]... [exclude <css>]... [impact>=<level>] [report]}: runs axe-core in the page
+	 * (and its frames); violations at or above the level fail the step (unless {@code report}), listed with their
+	 * selectors. The mapped result goes to {@code <out>/<browser>-<script>-<n>-a11y.json} (attached), the report's
+	 * checks tab, the trace ({@code checks.json}) and a trace event.
+	 */
+	@SuppressWarnings("unchecked")
+	protected void __a11yCheck__(WebDriver d, List<String> include, List<String> exclude, String minImpact, boolean reportOnly) {
+		if (!(d instanceof JavascriptExecutor)) throw new RuntimeException("a11y check needs a browser that runs JavaScript");
+		JavascriptExecutor js = (JavascriptExecutor) d;
+		injectAxe(d, 0);
+		// axe on a large page can outrun the driver's default 30 s async-script timeout
+		java.time.Duration prev = null;
+		try {
+			prev = d.manage().timeouts().getScriptTimeout();
+			if (prev == null || prev.compareTo(java.time.Duration.ofSeconds(120)) < 0) d.manage().timeouts().scriptTimeout(java.time.Duration.ofSeconds(120));
+		} catch (RuntimeException e) {
+			prev = null;
+		}
+		Object raw;
+		try {
+			raw = js.executeAsyncScript(com.gatf.selenium.checks.A11yReport.RUN_JS, include, exclude);
+		} finally {
+			if (prev != null) {
+				try { d.manage().timeouts().scriptTimeout(prev); } catch (RuntimeException e) { /* keep going */ }
+			}
+		}
+		Map<String, Object> rep;
+		try {
+			rep = com.gatf.selenium.checks.A11yReport.map(WorkflowContextHandler.OM.readValue(String.valueOf(raw), Map.class), minImpact, getBrowserName());
+		} catch (IOException e) {
+			throw new RuntimeException("a11y check: unreadable axe result: " + e.getMessage(), e);
+		}
+		int n = A11Y_SEQ.incrementAndGet();
+		String file = null;
+		try {
+			String b = getBrowserName() == null ? "" : getBrowserName().replaceAll("[^A-Za-z0-9._-]+", "_") + "-";
+			String sc = scriptKey().replaceAll("[^A-Za-z0-9._-]+", "-");
+			File f = new File(getOutDir(), b + (sc.isEmpty() ? "" : sc + "-") + n + "-a11y.json");
+			f.getParentFile().mkdirs();
+			WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValue(f, rep);
+			file = f.getAbsolutePath();
+			__attach__(file);
+			if (getSession().__trace__ != null) {   // picked up by TraceChecks into the trace's checks.json
+				WorkflowContextHandler.OM.writerWithDefaultPrettyPrinter().writeValue(getSession().__trace__.workDir().resolve("a11y-" + n + ".json").toFile(), rep);
+			}
+		} catch (IOException | RuntimeException e) {
+			System.out.println("a11y check: result not written: " + e.getMessage());
+		}
+		getSession().__a11y__.add(rep);
+		String summary = com.gatf.selenium.checks.A11yReport.summary(rep);
+		__traceAction__("a11y", summary);
+		System.out.println(summary);
+		if (!reportOnly && Boolean.TRUE.equals(rep.get("failed"))) {
+			throw new RuntimeException(com.gatf.selenium.checks.A11yReport.failureMessage(rep, file));
+		}
+	}
+
 	/**
 	 * M9: {@code screenshot compare <name> [threshold] [maxdiff N|N%] [mask <locator>]...}: compares the page with its
 	 * baseline in {@code <testCaseDir>/__screenshots__/<browser>/}; a mismatch fails the step and attaches the diff.

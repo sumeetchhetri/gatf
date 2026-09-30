@@ -13,9 +13,41 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { api } from '../api';
+import type { A11yResult } from '../api';
 import type { AttachmentKind } from '../report/attachments';
-import { KIND_LABEL, gallery } from '../report/attachments';
+import { KIND_LABEL, diffSets, gallery } from '../report/attachments';
+import DiffSlider from './DiffSlider';
+import A11yPanel from './A11yPanel';
+
+/** M10: an a11y result file, loaded and shown inline on demand. */
+function A11yAttachment({ url, name, test }: { url: string; name?: string; test: string }) {
+  const [res, setRes] = useState<A11yResult | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  return (
+    <div className="ag-a11y">
+      <button
+        className="btn ghost small"
+        title={test}
+        onClick={() => {
+          setErr(null);
+          if (res) setRes(null);
+          else
+            api
+              .a11yResult(url)
+              .then(setRes)
+              .catch((e) => setErr(e.message));
+        }}
+      >
+        {res ? 'Hide ' : 'Show '}
+        {name}
+      </button>
+      {err && <span className="small muted"> {err}</span>}
+      {res && <A11yPanel result={res} />}
+    </div>
+  );
+}
 
 const ORDER: AttachmentKind[] = ['screenshot', 'diff', 'trace', 'checks', 'a11y', 'other'];
 
@@ -43,7 +75,23 @@ export default function AttachmentsGallery({
           <h4>
             {KIND_LABEL[k]} <span className="muted small">({groups.get(k)!.length})</span>
           </h4>
-          <div className={k === 'screenshot' || k === 'diff' ? 'ag-thumbs' : 'ag-list'}>
+          {k === 'diff' && (
+            <div className="ag-diffs">
+              {diffSets(groups.get(k)!).map((s) => (
+                <DiffSlider key={s.key} set={s} />
+              ))}
+              {groups
+                .get(k)!
+                .filter((a) => !a.url)
+                .map((a, i) => (
+                  <div key={'p' + i} className="small muted mono" title={a.test}>
+                    {a.path}
+                  </div>
+                ))}
+            </div>
+          )}
+          {k !== 'diff' && (
+          <div className={k === 'screenshot' ? 'ag-thumbs' : 'ag-list'}>
             {groups.get(k)!.map((a, i) => {
               const name = a.path.replace(/\\/g, '/').split('/').pop();
               if (!a.url)
@@ -52,11 +100,12 @@ export default function AttachmentsGallery({
                     {a.path}
                   </div>
                 );
-              if (k === 'screenshot' || k === 'diff')
+              if (k === 'a11y') return <A11yAttachment key={i} url={a.url} name={name} test={a.test} />;
+              if (k === 'screenshot')
                 return (
                   <figure key={i} className="ag-thumb" title={a.test}>
                     <a href={a.url} target="_blank" rel="noreferrer">
-                      <img src={a.url} alt={(k === 'diff' ? 'Visual diff: ' : 'Screenshot: ') + a.test} loading="lazy" />
+                      <img src={a.url} alt={'Screenshot: ' + a.test} loading="lazy" />
                     </a>
                     <figcaption className="small ellipsis">{a.test}</figcaption>
                   </figure>
@@ -74,6 +123,7 @@ export default function AttachmentsGallery({
               );
             })}
           </div>
+          )}
         </section>
       ))}
     </div>

@@ -386,6 +386,23 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .ag-thumb { margin: 0; width: 180px; }
 .ag-thumb img { display: block; width: 180px; height: 110px; object-fit: cover; border: 1px solid var(--border); border-radius: 4px; }
 .ag-list { display: flex; flex-wrap: wrap; gap: 6px; }
+/* M9 diff slider + M10 accessibility */
+.ag-diffs { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; }
+.ds { margin: 0; border: 1px solid var(--border); border-radius: 6px; padding: 8px; background: var(--panel); }
+.ds-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }
+.ds-modes .btn.active { outline: 1px solid var(--fg); }
+.ds-stage { position: relative; line-height: 0; overflow: hidden; }
+.ds-stage img, .ds-single { display: block; width: 100%; }
+.ds-over { position: absolute; inset: 0; }
+.ds-over img { display: block; width: 100%; }  /* same width as the expected image, so the halves line up */
+.ds-bar { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--red); transform: translateX(-1px); pointer-events: none; }
+.ds-legend { display: flex; justify-content: space-between; }
+.ds-side { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ds-side img { max-width: 100%; }
+.a11y { margin: 6px 0 12px; }
+.a11y-nodes { margin: 4px 0 0; padding-left: 16px; }
+.a11y-sel { font-size: 11px; }
+.ag-a11y { width: 100%; }
 
 /* ---------- API report viewer (Slice A cont.) ---------- */
 .ar-detail-row > td { background: var(--panel3); padding: 12px; }

@@ -98,6 +98,14 @@ else
   note "semantic locator resolver test skipped (node/jsdom not present)"
 fi
 
+# M10 a11y check runner with the bundled axe-core against jsdom — needs node + the frontend dev deps.
+if command -v node >/dev/null 2>&1 && [ -d frontend/node_modules/jsdom ]; then
+  node tools/smoke/test-a11y.mjs >/dev/null
+  note "a11y check runner test passed"
+else
+  note "a11y check runner test skipped (node/jsdom not present)"
+fi
+
 if [ "${LINT_ONLY}" = "1" ]; then
   log "done (--lint-only)"; exit 0
 fi

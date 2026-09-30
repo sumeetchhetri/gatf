@@ -20,6 +20,9 @@ describe('attachments', () => {
   it('classifies by name', () => {
     expect(kindOf('/o/s/fail-1.png')).toBe('screenshot');
     expect(kindOf('/o/s/home-diff.png')).toBe('diff');
+    expect(kindOf('/o/s/chrome-home-expected.png')).toBe('diff');
+    expect(kindOf('/o/s/chrome-home-actual.png')).toBe('diff');
+    expect(kindOf('/o/s/chrome-2-a11y.json')).toBe('a11y');
     expect(kindOf('C:\\o\\s\\run-trace.zip')).toBe('trace');
     expect(kindOf('/o/s/checks.json')).toBe('checks');
     expect(kindOf('/o/s/a11y-home.json')).toBe('a11y');

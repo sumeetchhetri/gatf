@@ -14,6 +14,7 @@
     limitations under the License.
 */
 import type { SecurityFinding, TraceChecks } from '../api';
+import A11yPanel from './A11yPanel';
 
 const SEV_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 };
 
@@ -94,6 +95,14 @@ export default function TraceChecksPanel({ checks }: { checks: TraceChecks }) {
                 </tbody>
               </table>
             </div>
+          ))}
+        </>
+      )}
+      {checks.a11y && checks.a11y.length > 0 && (
+        <>
+          <h3 className="rv-code-title">Accessibility</h3>
+          {checks.a11y.map((r, i) => (
+            <A11yPanel key={i} result={r} />
           ))}
         </>
       )}

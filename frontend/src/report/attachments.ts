@@ -29,7 +29,7 @@ export const KIND_LABEL: Record<AttachmentKind, string> = {
 export function kindOf(path: string): AttachmentKind {
   const p = path.toLowerCase().replace(/\\/g, '/');
   const base = p.slice(p.lastIndexOf('/') + 1);
-  if (/-diff\.png$/.test(base)) return 'diff';
+  if (/-(diff|expected|actual)\.png$/.test(base)) return 'diff';
   if (/^a11y.*\.json$/.test(base) || /-a11y\.json$/.test(base)) return 'a11y';
   if (/checks\.json$/.test(base)) return 'checks';
   if (/\.(png|jpe?g|webp|gif)$/.test(base)) return 'screenshot';
@@ -58,6 +58,29 @@ export function attachmentUrl(path: string, runDir: string | undefined, baseDir:
     if (p.startsWith(d)) return baseDir + p.slice(d.length);
   }
   return null;
+}
+
+/** M9: a visual comparison: the files `<p>-diff.png`, `<p>-expected.png`, `<p>-actual.png` (any may be missing). */
+export interface DiffSet {
+  key: string;
+  test: string;
+  diff?: string;
+  expected?: string;
+  actual?: string;
+}
+
+/** Groups the 'diff' attachments of a gallery into comparisons by their common prefix. */
+export function diffSets(items: Attachment[]): DiffSet[] {
+  const m = new Map<string, DiffSet>();
+  for (const a of items) {
+    if (!a.url) continue;
+    const mm = /^(.*)-(diff|expected|actual)\.png$/i.exec(a.path.replace(/\\/g, '/'));
+    if (!mm) continue;
+    const s = m.get(mm[1]) ?? { key: mm[1], test: a.test };
+    s[mm[2].toLowerCase() as 'diff' | 'expected' | 'actual'] = a.url;
+    m.set(mm[1], s);
+  }
+  return [...m.values()];
 }
 
 export interface Attachment {

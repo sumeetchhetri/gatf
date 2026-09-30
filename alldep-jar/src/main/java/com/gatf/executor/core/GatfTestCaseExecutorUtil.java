@@ -1289,6 +1289,18 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                 org.apache.logging.log4j.LogManager.getLogger(GatfTestCaseExecutorUtil.class)
                                         .warn("perfBudgets are set but no trace was captured for {} - budgets need traceMode on or retain-on-failure (Chromium or BiDi browsers)", retvals[0]);
                             }
+                            if (dorep && !sess.__a11y__.isEmpty()) {
+                                // M10: a11y check results join the report's checks tab (budgets / security) under "a11y"
+                                Map<String, Object> __chk = res.getResult().getChecks() != null
+                                        ? new LinkedHashMap<String, Object>(res.getResult().getChecks()) : new LinkedHashMap<String, Object>();
+                                __chk.putIfAbsent("budgets", new ArrayList<Object>());
+                                __chk.putIfAbsent("security", null);
+                                __chk.putIfAbsent("failure", null);
+                                synchronized (sess.__a11y__) {
+                                    __chk.put("a11y", new ArrayList<Map<String, Object>>(sess.__a11y__));
+                                }
+                                res.getResult().setChecks(__chk);
+                            }
                             String msg = "";
                             if(res.getResult().getLogs()!=null && res.getResult().getLogs().get("gatf")!=null && res.getResult().getLogs().get("gatf").getAll().size()>0) {
                             	msg = res.getResult().getLogs().get("gatf").getAll().get(0).getMessage();
