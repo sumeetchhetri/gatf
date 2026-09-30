@@ -154,7 +154,7 @@ public class GatfCrawlHandler extends HttpHandler {
         }
     }
 
-    static CrawlSpec specFrom(Map<String, Object> b) {
+    public static CrawlSpec specFrom(Map<String, Object> b) {   // M14: public for the MCP crawl tool
         CrawlSpec s = new CrawlSpec();
         String seed = str(b.get("seed"));
         if (seed == null || !seed.matches("(?i)https?://.+")) throw new IllegalArgumentException("seed must be an http(s) URL");

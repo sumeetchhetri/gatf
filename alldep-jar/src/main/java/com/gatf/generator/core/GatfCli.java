@@ -131,6 +131,11 @@ public final class GatfCli {
     			// M7: `gatf merge-reports <dir>... [-o out]` joins the out dirs of a sharded run into one report
     			exitCode = com.gatf.log.ReportMerger.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
+    		else if(args[0].equals("mcp"))
+    		{
+    			// M14: `gatf mcp [--root dir]` — MCP stdio server for coding agents (stdout is the protocol channel)
+    			exitCode = com.gatf.mcp.McpCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.in, System.out, System.err);
+    		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
     		{
@@ -158,6 +163,7 @@ public final class GatfCli {
 					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + DocsCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + com.gatf.log.ReportMerger.USAGE.substring("gatf ".length()) + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + com.gatf.mcp.McpCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +

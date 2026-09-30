@@ -123,6 +123,7 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 ### Debugging
 - A **step debugger** for seleasy, in the web console and in VS Code: breakpoints, step over and into, continue, and live line highlighting.
 - `-validate-sel` compiles a script without running it.
+- **Coding agents (MCP):** `gatf mcp` is a Model Context Protocol server over stdio. An agent (Claude Code, Claude Desktop, IDE agents) can list the tests, lint a script, run the suite (`gatf test` with grep/tag/trace/retries), read the failed tests from the last run, condense a trace zip (last actions, console errors, failed and slow requests, checks, web vitals), and record or crawl new scripts. Register it with, for example, `claude mcp add gatf -- java -jar gatf-alldep-jar-<version>.jar mcp --root /path/to/project`.
 
 ### Traces and the Trace Viewer
 Each UI run can produce a `trace.zip` containing:
@@ -239,6 +240,7 @@ goto https://example.com/login
 | `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--negative] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
 | `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--requirements-jql JQL] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
 | `gatf merge-reports <dir>… [-o out]` | Join the out dirs of a sharded run (`--shard i/n` on several machines) into one report: `gatf-results.json`, `gatf-junit.xml`, each shard's reports copied under `shard-<i>-of-<n>/`, and an `index.html` that opens the merged summary (totals, shards, failures, flaky) in the console (merge under the out dir, e.g. `-o out/merged`, so `gatf ui` lists and serves it). Default out dir `merged-report`; exit code 1 when any test failed |
+| `gatf mcp [--root dir]` | MCP stdio server for coding agents: `list_tests`, `lint`, `run`, `get_report`, `summarise_trace`, `record`, `crawl`. stdout carries only the protocol; logs and run output go to stderr |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
