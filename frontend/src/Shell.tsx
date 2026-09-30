@@ -110,6 +110,8 @@ export default function Shell() {
   }, []);
 
   const [pendingTestFile, setPendingTestFile] = useState<string | undefined>(undefined);
+  // M17: a load test created from a trace — Execute opens with it selected and starts it
+  const [pendingRun, setPendingRun] = useState<string | undefined>(undefined);
   const navigate = (v: ViewKey) => {
     if (window.location.hash !== TO_HASH[v]) window.location.hash = TO_HASH[v];
     setView(v);
@@ -153,7 +155,13 @@ export default function Shell() {
               <span className="muted small">Trace Viewer</span>
             </div>
           )}
-          <App traceUrl={pendingTrace} />
+          <App
+            traceUrl={pendingTrace}
+            onLoadRun={(path) => {
+              setPendingRun(path);
+              navigate('execute');
+            }}
+          />
         </div>
         {view === 'reports' && (
           <ReportsView key={cfg} onOpenTrace={openTrace} onOpenReport={openReport} onOpenViewer={openViewer} />
@@ -168,7 +176,14 @@ export default function Shell() {
         )}
         {view === 'config' && <ConfigView key={cfg} />}
         {view === 'testfiles' && <TestFilesView key={cfg} pendingOpen={pendingTestFile} onConsumePending={() => setPendingTestFile(undefined)} />}
-        {view === 'execute' && <ExecuteView key={cfg} onOpenReports={() => navigate('reports')} />}
+        {view === 'execute' && (
+          <ExecuteView
+            key={cfg}
+            onOpenReports={() => navigate('reports')}
+            autoRun={pendingRun}
+            onConsumeAutoRun={() => setPendingRun(undefined)}
+          />
+        )}
         {view === 'datasources' && <DataSourceStats key={cfg} />}
         {view === 'integrations' && <ExtApiConfig />}
         {view === 'import' && <ImportView key={cfg} onOpenTestFiles={() => navigate('testfiles')} />}

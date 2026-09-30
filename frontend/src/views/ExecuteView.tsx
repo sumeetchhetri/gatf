@@ -215,7 +215,16 @@ function LiveLoadPanel({ live }: { live: LiveState }) {
   );
 }
 
-export default function ExecuteView({ onOpenReports }: { onOpenReports: () => void }) {
+export default function ExecuteView({
+  onOpenReports,
+  autoRun,
+  onConsumeAutoRun,
+}: {
+  onOpenReports: () => void;
+  /** M17: a test file to select and start at once (the Trace Viewer's "Load test this flow") */
+  autoRun?: string;
+  onConsumeAutoRun?: () => void;
+}) {
   const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -246,6 +255,29 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
     return () => stopPolling();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // M17: auto-run — select once the file list is in, then start on the next render (run() reads mode/selection)
+  const [autoPending, setAutoPending] = useState<string | null>(null);
+  useEffect(() => {
+    if (!autoRun || loading) return;
+    onConsumeAutoRun?.();
+    const hit = files.find((f) => f.path === autoRun) ?? files.find((f) => f.path.endsWith('/' + autoRun));
+    if (!hit) {
+      setRunState('failed');
+      setStatusMsg('Load test ' + autoRun + ' was saved but is not in the test files list — refresh and run it from here.');
+      return;
+    }
+    setMode(kindOf(hit.path) === 'xml' ? 'api' : 'sel');
+    setSelected(new Set([hit.path]));
+    setAutoPending(hit.path);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRun, loading, files]);
+  useEffect(() => {
+    if (!autoPending || !selected.has(autoPending) || mode !== (kindOf(autoPending) === 'xml' ? 'api' : 'sel')) return;
+    setAutoPending(null);
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPending, selected, mode]);
 
   const visible = useMemo(
     () => files.filter((f) => kindOf(f.path) === (mode === 'api' ? 'xml' : 'sel')).sort((a, b) => a.path.localeCompare(b.path)),

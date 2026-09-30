@@ -27,6 +27,7 @@ import { PerfTab } from './components/PerfTab';
 import { CoverageTab } from './components/CoverageTab';
 import { CpuTab } from './components/CpuTab';
 import { EventsTab } from './components/EventsTab';
+import { api, flowLoadFileName } from './api';
 
 type TabId = 'events' | 'network' | 'console' | 'perf' | 'coverage' | 'cpu';
 
@@ -39,8 +40,11 @@ function activeSnapshot(snaps: SnapshotRef[], t: number): SnapshotRef | null {
   return found ?? (snaps.length ? snaps[0] : null);
 }
 
-export default function App({ traceUrl }: { traceUrl?: string }) {
+export default function App({ traceUrl, onLoadRun }: { traceUrl?: string; onLoadRun?: (savedPath: string) => void }) {
   const [trace, setTrace] = useState<Trace | null>(null);
+  // M17: "Load test this flow" — the trace's network.har becomes a saved load test, then runs
+  const [loadBusy, setLoadBusy] = useState(false);
+  const [loadMsg, setLoadMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState<string | null>(null);
 
@@ -185,7 +189,24 @@ export default function App({ traceUrl }: { traceUrl?: string }) {
 
   return (
     <div className="app">
-      <Header trace={trace} onClose={() => { setTrace(null); setError(null); }} />
+      <Header
+        trace={trace}
+        onClose={() => { setTrace(null); setError(null); setLoadMsg(null); }}
+        onLoadTest={trace.files['network.har'] && (trace.har?.log?.entries?.length ?? 0) > 0 ? () => {
+          setLoadBusy(true);
+          setLoadMsg(null);
+          api
+            .flowToLoad(new TextDecoder().decode(trace.files['network.har']), flowLoadFileName(trace.meta.selFile, trace.meta.runId))
+            .then((r) => {
+              if (onLoadRun && r.savedPath) onLoadRun(r.savedPath);
+              else setLoadMsg('Saved ' + r.savedPath + ' — run it from Execute (API).');
+            })
+            .catch((e: Error) => setLoadMsg('Load test not created: ' + e.message))
+            .finally(() => setLoadBusy(false));
+        } : undefined}
+        loadBusy={loadBusy}
+        loadMsg={loadMsg}
+      />
       <div className="main">
         <div className="left">
           <div className="tabbar">

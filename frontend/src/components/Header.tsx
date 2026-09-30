@@ -16,7 +16,20 @@
 import type { Trace } from '../trace/types';
 import { fmtBytes, fmtOffset } from '../util';
 
-export function Header({ trace, onClose }: { trace: Trace; onClose: () => void }) {
+export function Header({
+  trace,
+  onClose,
+  onLoadTest,
+  loadBusy = false,
+  loadMsg = null,
+}: {
+  trace: Trace;
+  onClose: () => void;
+  /** M17: turn this run's network.har into a load test and run it (absent when the trace has no network) */
+  onLoadTest?: () => void;
+  loadBusy?: boolean;
+  loadMsg?: string | null;
+}) {
   const m = trace.meta;
   const dur = trace.t1 - trace.t0;
   const recs: Array<[string, boolean]> = [
@@ -65,6 +78,17 @@ export function Header({ trace, onClose }: { trace: Trace; onClose: () => void }
             </span>
           ))}
         </div>
+        {onLoadTest && (
+          <button
+            className="btn"
+            disabled={loadBusy}
+            onClick={onLoadTest}
+            title="Save this run's API/document requests as a load test (one case per step, vegeta, 10 users × 30 s) and run it"
+          >
+            {loadBusy ? 'Creating load test…' : '⚡ Load test this flow'}
+          </button>
+        )}
+        {loadMsg && <span className="small muted">{loadMsg}</span>}
         <button className="btn ghost" onClick={onClose} title="Load a different trace">
           Close
         </button>

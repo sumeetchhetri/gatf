@@ -32,12 +32,14 @@ import com.gatf.imports.Importers;
 final class ImportCli {
 
     static final String USAGE = "gatf import <" + String.join("|", Importers.TYPES) + "> <file|-> [-o <out-file>] "
-            + "[--name <suite>] [--filter <url-regex>] [--negative] [--force]";
+            + "[--name <suite>] [--filter <url-regex>] [--negative] [--force]\n"
+            + "          flow (a run's network.har → load test): [--users N] [--duration S] [--rate R] [--engine vegeta|autocannon|wrk|wrk2|wperfk]";
 
     private ImportCli() {}
 
     static int run(String[] args, File cwd, PrintStream out, PrintStream err) {
         String type = null, in = null, outFile = null, name = null, filter = null;
+        String users = null, duration = null, rate = null, engine = null;   // M17: flow → load
         File baseDir = null, specFile = null;
         boolean force = false, negative = false;
         try {
@@ -49,6 +51,10 @@ final class ImportCli {
                     case "--filter": filter = value(args, ++i, a); break;
                     case "-f": case "--force": force = true; break;
                     case "--negative": negative = true; break;
+                    case "--users": users = value(args, ++i, a); break;
+                    case "--duration": duration = value(args, ++i, a); break;
+                    case "--rate": rate = value(args, ++i, a); break;
+                    case "--engine": engine = value(args, ++i, a); break;
                     default:
                         if (a.startsWith("-") && !a.equals("-")) throw new IllegalArgumentException("unknown option " + a);
                         if (type == null) type = a;
@@ -90,6 +96,8 @@ final class ImportCli {
                     }
                 }
                 if (specRef == null) r.unsupported(0, "contract checks", "spec read from stdin — cases carry no contract pointer");
+            } else if (com.gatf.imports.FlowToLoad.TYPE.equalsIgnoreCase(type)) {
+                r = com.gatf.imports.FlowToLoad.convert(source, name, filter, com.gatf.imports.FlowToLoad.Options.of(users, duration, rate, engine));
             } else {
                 r = Importers.importSource(type, source, name, filter, baseDir);
             }
@@ -100,10 +108,18 @@ final class ImportCli {
             File target = resolve(cwd, outFile != null ? outFile : r.fileName);
             if (target.exists() && !force) throw new IllegalArgumentException(target.getPath() + " exists (use --force to overwrite)");
             if (target.getParentFile() != null) target.getParentFile().mkdirs();
+            java.util.Map<File, String> side = new java.util.LinkedHashMap<File, String>();
+            for (java.util.Map.Entry<String, String> e : r.sideFiles.entrySet()) {
+                File sf = new File(target.getAbsoluteFile().getParentFile(), ImportResult.sideFileName(target.getName(), e.getKey()));
+                if (sf.exists() && !force) throw new IllegalArgumentException(sf.getPath() + " exists (use --force to overwrite)");
+                side.put(sf, e.getValue());
+            }
             Files.writeString(target.toPath(), r.content, StandardCharsets.UTF_8);
+            for (java.util.Map.Entry<File, String> e : side.entrySet()) Files.writeString(e.getKey().toPath(), e.getValue(), StandardCharsets.UTF_8);
 
             int n = r.testCases != null ? r.testCases.size() : -1;
             out.println("Imported " + (n >= 0 ? n + " test case(s)" : "script") + " → " + target.getPath() + "  " + r.stats);
+            for (File sf : side.keySet()) out.println("  also wrote " + sf.getPath());
             if (r.loadConfig != null) out.println("  load settings for gatf-config: " + r.loadConfig);
             if (r.variables != null) out.println("  variables for gatf-config globalVariables: " + r.variables);
             if (!r.unsupported.isEmpty()) {

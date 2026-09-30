@@ -31,12 +31,12 @@ import com.gatf.executor.core.TestCase;
  */
 public final class Importers {
 
-    public static final List<String> TYPES = List.of("playwright", "jmeter", "curl", "postman", "har", "openapi");
+    public static final List<String> TYPES = List.of("playwright", "jmeter", "curl", "postman", "har", "openapi", "flow");
 
     private Importers() {}
 
     /**
-     * @param filter har only: optional regex on the request URL
+     * @param filter har / flow only: optional regex on the request URL
      * @throws IllegalArgumentException unknown type, unreadable source, or nothing importable
      */
     public static ImportResult importSource(String type, String source, String suite, String filter) throws Exception {
@@ -53,6 +53,8 @@ public final class Importers {
                 return new JMeterImporter().importSource(source, suite);
             case "openapi": case "swagger":
                 return new OpenApiImporter(baseDir).importSource(source, suite);
+            case FlowToLoad.TYPE:   // M17: a run's network.har → a load test of the same flow (default load settings)
+                return FlowToLoad.convert(source, suite, filter, null);
             case "curl": case "postman": case "har": {
                 ImportResult res = new ImportResult();
                 res.type = t;

@@ -129,8 +129,13 @@ public class GatfImportHandler extends HttpHandler {
                 result = openapi
                         ? Importers.importOpenApi(source, suite, bundleDir == null ? null : bundleFile(bundleDir, bundleMain).getParentFile(),
                                 specName, "true".equalsIgnoreCase(request.getParameter("negative")), bundleDir)
+                        : com.gatf.imports.FlowToLoad.TYPE.equalsIgnoreCase(type)
+                        ? com.gatf.imports.FlowToLoad.convert(source, suite, request.getParameter("filter"),   // M17: flow → load test
+                                com.gatf.imports.FlowToLoad.Options.of(request.getParameter("users"), request.getParameter("duration"),
+                                        request.getParameter("rate"), request.getParameter("engine")))
                         : Importers.importSource(type, source, suite, request.getParameter("filter"));
-            } catch (IllegalArgumentException e) {
+            } catch (IllegalArgumentException | com.fasterxml.jackson.core.JsonProcessingException e) {
+                // bad options, nothing importable, or a malformed source: the caller's input, not a server fault
                 writeJson(response, HttpStatus.BAD_REQUEST_400, err(e.getMessage()));
                 return;
             }
@@ -140,6 +145,17 @@ public class GatfImportHandler extends HttpHandler {
             }
             if (fileName != null && !fileName.trim().isEmpty()) {
                 result.fileName = ensureExt(fileName.trim(), result.kind);
+            }
+            if (save && com.gatf.imports.FlowToLoad.TYPE.equalsIgnoreCase(type) && !"true".equalsIgnoreCase(request.getParameter("overwrite"))) {
+                // M17: never overwrite a saved load test (it may have been tuned): x-load.xml, x-load-2.xml, …
+                final GatfExecutorConfig fcfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+                String old = result.fileName;
+                result.fileName = com.gatf.imports.FlowToLoad.freeName(old, n -> targetFile(fcfg, n).exists());
+                if (!old.equals(result.fileName) && result.stats.get("vegetaCommand") != null) {
+                    result.stats.put("vegetaCommand", String.valueOf(result.stats.get("vegetaCommand")).replace(
+                            ImportResult.sideFileName(old, com.gatf.imports.FlowToLoad.TARGETS_SUFFIX),
+                            ImportResult.sideFileName(result.fileName, com.gatf.imports.FlowToLoad.TARGETS_SUFFIX)));
+                }
             }
 
             Map<String, Object> out = new LinkedHashMap<String, Object>();
@@ -151,6 +167,11 @@ public class GatfImportHandler extends HttpHandler {
             out.put("stats", result.stats);
             if (result.loadConfig != null) out.put("loadConfig", result.loadConfig);
             if (result.variables != null) out.put("variables", result.variables);
+            if (!result.sideFiles.isEmpty()) {
+                java.util.List<String> side = new java.util.ArrayList<String>();
+                for (String suffix : result.sideFiles.keySet()) side.add(ImportResult.sideFileName(result.fileName, suffix));
+                out.put("sideFiles", side);   // M17: e.g. the flow's vegeta targets, saved beside the test file
+            }
             GatfExecutorConfig cfg = null;
             if (openapi) {
                 out.put("spec", specName);
@@ -177,6 +198,10 @@ public class GatfImportHandler extends HttpHandler {
                     FileUtils.copyDirectory(bundleDir, dest);
                 }
                 else if (openapi) FileUtils.writeStringToFile(new File(new File(savedPath).getParentFile(), specName), source, "UTF-8");
+                for (Map.Entry<String, String> e : result.sideFiles.entrySet()) {
+                    FileUtils.writeStringToFile(new File(new File(savedPath).getParentFile(), ImportResult.sideFileName(result.fileName, e.getKey())),
+                            e.getValue(), "UTF-8");
+                }
                 out.put("saved", true);
                 out.put("savedPath", result.fileName);
                 if ("sel".equals(result.kind)) {

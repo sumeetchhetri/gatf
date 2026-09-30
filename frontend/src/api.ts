@@ -629,7 +629,7 @@ export function debugLinesFor(l: unknown, file: string): Set<number> {
 }
 
 // ---- test importers (Phase 11 Playwright/JMeter, Q2 cURL/Postman/HAR) — POST source to /import, preview or save ----
-export type ImportType = 'playwright' | 'jmeter' | 'curl' | 'postman' | 'har' | 'openapi';
+export type ImportType = 'playwright' | 'jmeter' | 'curl' | 'postman' | 'har' | 'openapi' | 'flow';
 export interface ImportUnsupported {
   line: number;
   construct: string;
@@ -646,6 +646,7 @@ export interface ImportResultDto {
   variables?: Record<string, string>; // Postman collection variables / OpenAPI auth placeholders for gatf-config globalVariables
   drift?: { added: string[]; removed: string[]; changed: string[] }; // OpenAPI re-import vs the existing .xml
   spec?: string; // OpenAPI: spec file the cases' contract pointers reference (saved beside the .xml)
+  sideFiles?: string[]; // M17 flow: files saved beside the .xml (the vegeta targets)
   saved?: boolean;
   savedPath?: string;
   validation?: string;
@@ -656,6 +657,38 @@ export interface ImportBundle {
   mainName?: string;
   files: Record<string, string>;
 }
+// M17: a run's network.har → a saved load test of the same flow (POST /import?type=flow&save=true)
+export interface FlowLoadOptions {
+  users?: number;
+  durationSeconds?: number;
+  rate?: number;
+  engine?: string;
+}
+async function flowToLoadReq(har: string, fileName: string, o: FlowLoadOptions = {}): Promise<ImportResultDto> {
+  const qs =
+    '/import?type=flow&save=true&fileName=' +
+    encodeURIComponent(fileName) +
+    (o.users ? '&users=' + o.users : '') +
+    (o.durationSeconds ? '&duration=' + o.durationSeconds : '') +
+    (o.rate ? '&rate=' + o.rate : '') +
+    (o.engine ? '&engine=' + encodeURIComponent(o.engine) : '');
+  const r = await fetch(withTok(qs), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: har,
+  });
+  const d = (await r.json().catch(() => ({ error: 'HTTP ' + r.status }))) as ImportResultDto;
+  if (!r.ok || d.error) throw new Error(d.error || 'HTTP ' + r.status);
+  return d;
+}
+
+/** M17: the load-test file name for a trace's script: `tests/ui/login.sel` → `login-load.xml`. */
+export function flowLoadFileName(selFile: string | null | undefined, runId: string): string {
+  const base = (selFile || runId || 'flow').replace(/\\/g, '/').split('/').pop()!.replace(/\.[A-Za-z0-9]+$/, '');
+  const safe = base.replace(/[^A-Za-z0-9_.-]+/g, '_') || 'flow';
+  return (safe.endsWith('-load') ? safe : safe + '-load') + '.xml';
+}
+
 async function importSourceReq(
   type: ImportType,
   fileName: string,
@@ -977,6 +1010,7 @@ export const api = {
     negative?: boolean,
     bundle?: ImportBundle,
   ) => importSourceReq(type, fileName, save, source, filter, negative, bundle),
+  flowToLoad: (har: string, fileName: string, o?: FlowLoadOptions) => flowToLoadReq(har, fileName, o),
   // ---- SPA crawler (G3) ----
   crawlStart: (b: CrawlStartBody) => crawlCall<{ sessionId?: string; error?: string }>('/crawl?action=start', 'POST', b),
   crawlStatus: (id: string) => crawlCall<CrawlStatus>('/crawl?action=status&sessionId=' + encodeURIComponent(id), 'GET'),

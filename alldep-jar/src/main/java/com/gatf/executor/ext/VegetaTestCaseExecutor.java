@@ -93,6 +93,10 @@ public class VegetaTestCaseExecutor {
 			notice = fallbackNotice(fallbackFrom, StringUtils.isNotBlank(pc.getFilePath()));
 			System.err.println("[gatf] " + notice);
 		}
+		if(fallbackFrom==null && VegetaRunner.closedLoopWorkers(pc.getExtras(), rate, c)>0) {
+			maxWorkers = VegetaRunner.closedLoopWorkers(pc.getExtras(), rate, c);   // M17: extras closed=1 → N concurrent users
+			rate = 0;
+		}
 		boolean isPlot = StringUtils.isNotBlank(pc.getExtras()) && pc.getExtras().indexOf("plot=1")!=-1;
 
 		// request body: perfConfig.filePath (native vegeta only — for wrk it is a Lua script), else contentFile, else content

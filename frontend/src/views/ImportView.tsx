@@ -55,6 +55,12 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
     ext: '.xml',
     hint: 'A Swagger 2.0 or OpenAPI 3.0/3.1 spec (JSON or YAML). Each operation becomes an API test case; tags become @tags. Set baseUrl and the auth placeholders in gatf-config. For relative-file $refs select the spec together with the files it references (multi-select), or use gatf import openapi <file>.',
   },
+  flow: {
+    label: 'Flow → load',
+    accept: '.har,.json,application/json',
+    ext: '.xml',
+    hint: "A UI run's network.har (inside its trace zip). Each API/document request becomes a load-test case (vegeta, 10 users, 30 s; change them in the file or with gatf import flow --users/--duration), and <name>.targets.jsonl holds the whole flow for vegeta. Faster: Load test this flow in the Trace Viewer.",
+  },
 };
 
 // stats values may be nested counts (HAR skipped / origins)
@@ -127,7 +133,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     setErr(null);
     setSaved(null);
     try {
-      const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' ? filter.trim() : undefined,
+      const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' || kind === 'flow' ? filter.trim() : undefined,
         kind === 'openapi' && negative, kind === 'openapi' && bundle ? bundle : undefined);
       if (r.error) {
         setErr(r.error);
@@ -165,7 +171,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           onChange={(e) => setFileName(e.target.value)}
           style={{ minWidth: 260 }}
         />
-        {kind === 'har' && (
+        {(kind === 'har' || kind === 'flow') && (
           <input
             className="inp"
             placeholder="URL filter regex (optional, e.g. api\.example\.com)"

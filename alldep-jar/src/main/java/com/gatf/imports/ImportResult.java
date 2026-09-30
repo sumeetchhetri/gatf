@@ -46,7 +46,7 @@ public class ImportResult {
         }
     }
 
-    public String type;                 // playwright | jmeter | curl | postman | har | openapi
+    public String type;                 // playwright | jmeter | curl | postman | har | openapi | flow
     public String fileName;             // suggested output test-file name
     public String kind;                 // sel | xml
     public String content;              // generated seleasy or XML (filled by the importer/handler)
@@ -56,6 +56,16 @@ public class ImportResult {
     public Map<String, Object> loadConfig;
     // Postman collection variables / OpenAPI auth placeholders, as gatf-config globalVariables (null if none)
     public Map<String, Object> variables;
+
+    // M17: extra files written beside the saved test file, keyed by suffix: "<test file base><suffix>" (e.g. ".targets.jsonl")
+    public Map<String, String> sideFiles = new LinkedHashMap<String, String>();
+
+    /** M17: the name a side file gets beside {@code testFile}: its base name without the extension, plus {@code suffix}. */
+    public static String sideFileName(String testFile, String suffix) {
+        String n = testFile == null ? "imported" : testFile.replace('\\', '/');
+        n = n.substring(n.lastIndexOf('/') + 1);
+        return n.replaceAll("\\.[A-Za-z0-9]+$", "") + suffix;
+    }
 
     // API importers: the built cases; the handler serializes via WorkflowContextHandler.XOM for exact fidelity.
     @JsonIgnore

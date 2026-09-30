@@ -54,6 +54,16 @@ public final class VegetaRunner {
         return b.append('\n').toString();
     }
 
+    /**
+     * M17: {@code perfConfig.extras} {@code closed=1} with no rate = a closed loop of {@code connections} workers
+     * ({@code -rate=0 -max-workers=N}), i.e. N concurrent users, instead of vegeta's default 50 req/s. Returns the
+     * max-workers to use, or 0 to keep the open-loop default. Opt-in, so existing perf configs run unchanged.
+     */
+    static int closedLoopWorkers(String extras, int rate, int connections) {
+        if (rate > 0 || extras == null || !extras.matches("(?s).*(^|[\\s,;&])closed=1([\\s,;&]|$).*")) return 0;
+        return connections > 0 ? connections : 10;
+    }
+
     /** attack argv after the vegeta prefix. rate>0 → constant rate; else maxWorkers>0 → -rate=0 (max throughput). */
     static List<String> attackArgs(File targets, File out, int connections, int workers, int rate, int maxWorkers,
             int durationSecs, int timeoutSecs) {
