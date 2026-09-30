@@ -136,6 +136,7 @@ Examples :-
 	route {METHOD}? {url-glob} fulfill {status} {'body'|body-file}? {type content-type}? {header 'Name: value'}*
 	route {METHOD}? {url-glob} abort {reason}?
 	route {METHOD}? {url-glob} continue {header 'Name: value'}*
+	route from har {har-file} {url url-glob}? {notfound abort|fallback}?
 	unroute {url-glob|all}
 	url-glob: ** = anything, * = anything but '/', {a,b} = alternatives; the first matching route wins
 Examples :-
@@ -143,10 +144,11 @@ Examples :-
 	route POST **/api/orders fulfill 201 '{"id": 7}'
 	route **/*.{png,jpg} abort
 	route **/api/** continue header 'X-Env: test'
+	route from har checkout.har url **/api/** notfound abort
 	unroute all
 ```
 
-Routes apply to the current browser session from that line on: a quoted body is sent as-is, an unquoted one is a file next to the script (its Content-Type comes from the extension unless `type` is given). `abort` reasons: failed (default), aborted, timedout, accessdenied, connectionrefused, namenotresolved, internetdisconnected, blockedbyclient, … Chromium uses CDP `Fetch`; other browsers need a BiDi session.
+Routes apply to the current browser session from that line on: a quoted body is sent as-is, an unquoted one is a file next to the script (its Content-Type comes from the extension unless `type` is given). `abort` reasons: failed (default), aborted, timedout, accessdenied, connectionrefused, namenotresolved, internetdisconnected, blockedbyclient, … (under BiDi every abort is a plain network error). `route from har` replays a recording by method + URL (exact URL first, then the URL without its query); unrecorded requests go through, or fail with `notfound abort`. Chromium intercepts over CDP `Fetch`; Firefox and other browsers over WebDriver BiDi (`network.addIntercept`) — a script that uses `route` asks non-Chromium sessions for a BiDi socket automatically.
 
 ### Scroll [Javascript based]
 

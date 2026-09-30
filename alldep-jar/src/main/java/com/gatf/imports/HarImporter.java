@@ -61,10 +61,16 @@ public class HarImporter {
         this.filter = filter == null || filter.isBlank() ? null : Pattern.compile(filter);
     }
 
-    public List<ApiRequest> read(String source, ImportResult res) throws Exception {
+    /** The {@code log.entries} array of a HAR document (shared with M4's {@code route from har}). */
+    public static JsonNode entries(String source) throws Exception {
         JsonNode root = OM.readTree(source);
         JsonNode entries = root == null ? null : root.path("log").get("entries");
         if (entries == null || !entries.isArray()) throw new IllegalArgumentException("not a HAR file (no log.entries)");
+        return entries;
+    }
+
+    public List<ApiRequest> read(String source, ImportResult res) throws Exception {
+        JsonNode entries = entries(source);
 
         List<ApiRequest> out = new ArrayList<ApiRequest>();
         Map<String, Integer> skipped = new LinkedHashMap<String, Integer>();

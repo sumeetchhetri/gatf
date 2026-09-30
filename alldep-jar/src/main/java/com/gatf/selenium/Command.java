@@ -88,6 +88,8 @@ public class Command {
         boolean modeEnableGlobalTimeouts = true;
         boolean modeEnableConcurrentWebDriver = false;
         boolean hasNetapixCommand = false;
+        // M4: the script uses route/unroute: non-Chromium sessions then ask for a BiDi socket (webSocketUrl)
+        boolean hasRouteCommand = false;
         // M1: the project's config has autoWait on; codegen then also emits probes for raw Actions drags
         boolean autoWait = false;
 
@@ -900,6 +902,7 @@ public class Command {
             state.hasNetapixCommand = true;
         } else if (cmd.toLowerCase().startsWith("route ") || cmd.toLowerCase().equals("unroute") || cmd.toLowerCase().startsWith("unroute ")) {
             comd = new RouteCommand(state.unsanitize(cmd), cmdDetails, state);   // M4 network mocking
+            state.hasRouteCommand = true;
         } else if (cmd.toLowerCase().startsWith("sleep ")) {
             comd = new SleepCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().matches(typeSwStr) || cmd.toLowerCase().matches(typeExStr) ||cmd.toLowerCase().startsWith("select ") 
@@ -3427,6 +3430,7 @@ public class Command {
                 config.getProperties().remove("class");
                 config.getProperties().remove("property");
             }
+            if(state.hasRouteCommand) b.append("__route_bidi__();\n");   // M4: before the driver is created
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             DriverInitCodegen.append(b, config, rUrl, fileLineDetails);   // G8: per-browser driver-options codegen
             b.append("initBrowser(get___d___(), logconsole, logdebug, lognw, "+state.hasNetapixCommand+");\n");

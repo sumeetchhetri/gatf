@@ -107,7 +107,12 @@ public final class BiDiTransport implements BrowserControl {
         "}catch(e){}return o;})();";
 
     private final TraceConfig cfg;
-    private volatile String collectorId;          // network data collector (RESPONSE_BODY), null = unsupported
+    private volatile String collectorId;
+    // M4: network interception
+    private volatile com.gatf.selenium.route.RouteTable routes;
+    private volatile boolean routesOn = false;
+    private volatile String interceptId;
+    private Network routeNetwork;          // network data collector (RESPONSE_BODY), null = unsupported
     private volatile Thread videoPoller;
 
     BiDiTransport(WebDriver driver) { this(driver, new TraceConfig()); }
@@ -131,6 +136,7 @@ public final class BiDiTransport implements BrowserControl {
             case METRICS:      return driver instanceof JavascriptExecutor;   // performance/memory via read-only JS (in-band; see class doc)
             case RESPONSE_BODY: return collectorId != null;                   // runtime: browser accepted network.addDataCollector
             case PRINT_PDF:    return hasBiDi() || driver instanceof PrintsPage;
+            case ROUTE:        return hasBiDi();                                // M4: network.addIntercept
             case SCREENCAST:   return cfg.getVideoPollFps() > 0 && hasBiDi(); // opt-in polled approximation
             default:           return false;   // CPU_PROFILE / COVERAGE: CDP-only (protocol=hybrid on Chromium)
         }
@@ -185,6 +191,66 @@ public final class BiDiTransport implements BrowserControl {
 
     @Override
     public void disableNetwork() { this.networkOn = false; }
+
+    /**
+     * M4: one {@code network.addIntercept} for every request (beforeRequestSent) and a beforeRequestSent listener that
+     * asks the route table; commands go out raw through BidiRaw (see BidiRoutes). A request is always answered, so a
+     * failing command falls back to continueRequest rather than leaving the page hanging.
+     */
+    @Override
+    public synchronized boolean enableRoutes(com.gatf.selenium.route.RouteTable table, boolean keepResponseStage) {
+        if (!hasBiDi()) return false;
+        this.routes = table;
+        // subscribe first: a request blocked between addIntercept and the subscription would hang (an event for a
+        // request that is not blocked yet only gets a refused command, which is ignored)
+        this.routesOn = true;
+        if (routeNetwork == null) {
+            routeNetwork = new Network(driver);
+            routeNetwork.onBeforeRequestSent(ev -> {
+                if (!routesOn) return;   // intercept removed: requests are no longer blocked
+                String id = null;
+                try {
+                    RequestData req = ev.getRequest();
+                    id = req.getRequestId();
+                    com.gatf.selenium.route.RouteTable t = routes;
+                    com.gatf.selenium.route.Route d = t == null ? null : t.match(req.getMethod(), req.getUrl());
+                    Object[] c = com.gatf.selenium.route.BidiRoutes.command(d, id, headers(req.getHeaders()));
+                    @SuppressWarnings("unchecked") Map<String, Object> params = (Map<String, Object>) c[1];
+                    BidiRaw.send(driver, (String) c[0], params);
+                } catch (Exception e) {
+                    if (id == null) return;
+                    try {
+                        Map<String, Object> cp = new LinkedHashMap<>();
+                        cp.put("request", id);
+                        BidiRaw.send(driver, "network.continueRequest", cp);
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
+        if (interceptId == null) {
+            Map<String, Object> r = BidiRaw.send(driver, "network.addIntercept", com.gatf.selenium.route.BidiRoutes.interceptParams());
+            Object id = r == null ? null : r.get("intercept");
+            if (id == null) {
+                routesOn = false;
+                return false;
+            }
+            interceptId = String.valueOf(id);
+        }
+        return true;
+    }
+
+    @Override
+    public synchronized void disableRoutes() {
+        routesOn = false;
+        String id = interceptId;
+        interceptId = null;
+        if (id == null) return;
+        try {
+            Map<String, Object> p = new LinkedHashMap<>();
+            p.put("intercept", id);
+            BidiRaw.send(driver, "network.removeIntercept", p);
+        } catch (Exception ignored) {}
+    }
 
     @Override
     public void enableConsole(ConsoleListener l) {

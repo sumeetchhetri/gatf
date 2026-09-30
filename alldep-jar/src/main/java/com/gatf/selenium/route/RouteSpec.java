@@ -27,6 +27,7 @@ import java.util.function.Function;
  *   route [METHOD] &lt;glob&gt; fulfill &lt;status&gt; ['body' | file] [type &lt;content-type&gt;] [header 'Name: value']...
  *   route [METHOD] &lt;glob&gt; abort [reason]
  *   route [METHOD] &lt;glob&gt; continue [header 'Name: value']...
+ *   route from har &lt;file&gt; [url &lt;glob&gt;] [notfound abort|fallback]
  *   unroute &lt;glob&gt; | unroute all
  * </pre>
  * A quoted fulfill body is literal text; an unquoted one is a file (resolved by the caller, relative to the script).
@@ -177,8 +178,11 @@ public final class RouteSpec {
         switch (p.kind) {
             case "unroute":
                 return "unroute " + (p.glob == null ? "all" : p.glob) + ": " + table.remove(p.glob) + " rule(s) removed";
-            case "har":
-                throw new UnsupportedOperationException("route from har is not available in this build");
+            case "har": {
+                HarRoutes har = HarRoutes.parse(new String(files.apply(p.harFile), StandardCharsets.UTF_8), p.harFile, p.harGlob, p.harAbortMissing);
+                table.add(har);
+                return "route from har " + p.harFile + ": " + har.size() + " response(s)";
+            }
             default: {
                 Route r = p.route;
                 if (p.bodyFile != null) r.body = files.apply(p.bodyFile);

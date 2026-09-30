@@ -52,6 +52,7 @@ public class RouteCommand extends Command {
             "\troute {METHOD}? {url-glob} fulfill {status} {'body'|body-file}? {type content-type}? {header 'Name: value'}*",
             "\troute {METHOD}? {url-glob} abort {reason}?",
             "\troute {METHOD}? {url-glob} continue {header 'Name: value'}*",
+            "\troute from har {har-file} {url url-glob}? {notfound abort|fallback}?",
             "\tunroute {url-glob|all}",
             "\turl-glob: ** = anything, * = anything but '/', {a,b} = alternatives; the first matching route wins",
             "Examples :-",
@@ -59,6 +60,7 @@ public class RouteCommand extends Command {
             "\troute POST **/api/orders fulfill 201 '{\"id\": 7}'",
             "\troute **/*.{png,jpg} abort",
             "\troute **/api/** continue header 'X-Env: test'",
+            "\troute from har checkout.har url **/api/** notfound abort",
             "\tunroute all",
         };
     }

@@ -1,0 +1,11 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M4 network mocking: route fulfill / abort / continue, HAR replay, unroute.
+open chrome
+route **/api/users fulfill 200 users.json
+route POST **/api/orders fulfill 201 '{"id": 7}' header 'X-Mock: yes'
+route **/*.{png,jpg} abort blockedbyclient
+route **/api/** continue header 'X-Env: test'
+route from har checkout.har url **/api/** notfound abort
+goto https://shop.test/
+unroute **/api/users
+unroute all

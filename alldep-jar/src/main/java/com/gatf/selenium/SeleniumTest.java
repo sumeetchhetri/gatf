@@ -288,6 +288,16 @@ public abstract class SeleniumTest {
 			default:
 				throw new RuntimeException("Invalid browser name specified for browser");
 		}
+		// M4: route on Firefox/Safari needs WebDriver BiDi. Chromium intercepts over CDP, except where it has none:
+		// a Grid session (a plain RemoteWebDriver) or traceProtocol bidi, which then need the BiDi socket too.
+		boolean chromium = browserName.equals("chrome") || browserName.equals("edge") || browserName.equals("opera");
+		GatfExecutorConfig rcfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		boolean chromiumNeedsBidi = System.getenv("SELENIUM_REMOTE_URL") != null || System.getProperty("gatf.selenium.remoteUrl") != null
+				|| (rcfg != null && "bidi".equalsIgnoreCase(rcfg.getTraceProtocol()));
+		if(__routeBidi__ && (!chromium || chromiumNeedsBidi)
+				&& capabilities instanceof org.openqa.selenium.MutableCapabilities) {
+			((org.openqa.selenium.MutableCapabilities) capabilities).setCapability("webSocketUrl", true);
+		}
 		// Store the built capabilities; the driver is created in getDockerDriver -- a Grid
 		// RemoteWebDriver when SELENIUM_REMOTE_URL is set, else a local driver whose driver AND browser
 		// (Chrome for Testing) Selenium Manager provisions on demand -- no docker, no manual setup.
@@ -2248,6 +2258,13 @@ public abstract class SeleniumTest {
 			SeleniumTestSession s = getSession();
 			if (s != null && s.__trace__ != null) s.__trace__.event("action", type, detail);
 		} catch (Exception e) {}
+	}
+
+	/** M4: set by codegen when the script uses route/unroute (see addWdm). */
+	private boolean __routeBidi__;
+
+	protected void __route_bidi__() {
+		__routeBidi__ = true;
 	}
 
 	/** M4: per browser session, {route table, the transport intercepting for it}. */
