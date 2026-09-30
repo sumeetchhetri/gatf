@@ -864,6 +864,10 @@ public class TestCaseExecutorUtil {
 				if(statusError!=null) {
 					failStatus(statusError);
 				}
+				// OA2: the response must honour the OpenAPI operation the case was generated from
+				if(testCase.getContract()!=null && !testCase.getContract().trim().isEmpty()) {
+					applyContract(gresp);
+				}
 				
 				if(!testCase.isExternalApi() && !testCase.isDisablePostHooks() && testCase.getPostWaitMs()!=null 
 						&& testCase.getPostWaitMs()>0) {
@@ -878,6 +882,57 @@ public class TestCaseExecutorUtil {
 			} catch (Throwable ex) {
 				future.completeExceptionally(ex);
 			}
+		}
+		
+		/** OA2: status / Content-Type / JSON body against the case's {@code contract} (spec#operation). */
+		private void applyContract(GatfResponse gresp) {
+			String contract = testCase.getContract().trim();
+			String spec = com.gatf.contract.ContractCheck.specFile(contract);
+			if(spec.isEmpty()) {
+				failContract("contract " + contract + ": no spec file (expected <spec>#<operation>)", null);
+				return;
+			}
+			File f = contractSpecFile(spec);
+			if(f==null || !f.isFile()) {
+				failContract("contract spec not found: " + spec, null);
+				return;
+			}
+			List<String> cts = gresp.headers(HttpHeaders.CONTENT_TYPE);
+			String ct = cts!=null && !cts.isEmpty() ? cts.get(0) : null;
+			try {
+				com.gatf.contract.ContractCheck.Result cr = com.gatf.contract.ContractCheck.check(com.gatf.contract.SpecDoc.load(f),
+						com.gatf.contract.ContractCheck.pointer(contract), gresp.code(), ct, testCaseReport.getResponseContent());
+				if(!cr.ok()) {
+					failContract(cr.summary(), cr.detail());
+				}
+			} catch (Exception e) {
+				failContract("contract spec " + spec + " unreadable: " + e.getMessage(), null);
+			}
+		}
+		
+		/** The spec next to the case's .xml, else resolved like any test resource. */
+		private File contractSpecFile(String spec) {
+			if(testCase.getSourcefileName()!=null) {
+				File src = context.getResourceFile(testCase.getSourcefileName());
+				if(src!=null && src.getParentFile()!=null && new File(src.getParentFile(), spec).isFile()) {
+					return new File(src.getParentFile(), spec);
+				}
+			}
+			return context.getResourceFile(spec);
+		}
+		
+		private void failContract(String message, String detail) {
+			if(!TestStatus.Failed.status.equals(testCaseReport.getStatus())) {
+				testCaseReport.setFailureReason(TestFailureReason.ContractViolation.status);
+			}
+			testCaseReport.setStatus(TestStatus.Failed.status);
+			String prev = testCaseReport.getError();
+			testCaseReport.setError(prev==null || prev.trim().isEmpty() ? message : prev + "; " + message);
+			if(detail!=null) {
+				String et = testCaseReport.getErrorText();
+				testCaseReport.setErrorText(et==null || et.trim().isEmpty() ? detail : et + "\n" + detail);
+			}
+			testCase.setFailed(true);
 		}
 		
 		private void failStatus(String message) {

@@ -67,7 +67,8 @@ export default function ApiResult({ r, showStatus }: { r: TestCaseReport; showSt
       )}
       {(r.error || r.errorText || r.failureReason) && (
         <div className="view-error" style={{ margin: '0 0 10px' }}>
-          {r.failureReason || r.error || r.errorText}
+          {r.failureReason && r.error ? r.failureReason + ': ' + r.error : r.failureReason || r.error || r.errorText}
+          {r.failureReason === 'ContractViolation' && r.errorText && <pre className="body-pre">{r.errorText}</pre>}
         </div>
       )}
       {r.curlCmd && (

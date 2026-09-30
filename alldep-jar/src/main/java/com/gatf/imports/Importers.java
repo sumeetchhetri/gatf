@@ -118,6 +118,8 @@ public final class Importers {
             if (!r.formParts.isEmpty()) tc.setMultipartContent(new ArrayList<String>(r.formParts));
             if (r.expectedStatus > 0) tc.setExpectedResCode(r.expectedStatus);
             if (r.expectedContentType != null) tc.setExpectedResContentType(r.expectedContentType);
+            if (r.contract != null) tc.setContract(r.contract);
+            if (r.contractHash != null) tc.setContractHash(r.contractHash);
             tc.setSequence(cases.size() + 1);
             cases.add(tc);
         }
@@ -125,7 +127,27 @@ public final class Importers {
         return cases;
     }
 
-    static String safeName(String s) {
+    /**
+     * OA2 — OpenAPI import with contract pointers.
+     * @param specRef  the spec file as the generated .xml will reference it (relative to the .xml's folder)
+     * @param negative also generate negative cases (missing required parameter / wrong body type → expect 4xx)
+     */
+    public static ImportResult importOpenApi(String source, String suite, java.io.File baseDir, String specRef, boolean negative) throws Exception {
+        return new OpenApiImporter(baseDir, specRef, negative).importSource(source, suite);
+    }
+
+    /** OA2 — operation pointer → fingerprint of already generated cases (for the drift list on re-import). */
+    public static java.util.Map<String, String> contractIndex(List<TestCase> cases) {
+        java.util.Map<String, String> m = new java.util.LinkedHashMap<String, String>();
+        if (cases == null) return m;
+        for (TestCase tc : cases) {
+            if (tc.getContract() == null || tc.getContract().indexOf('#') < 0) continue;
+            m.putIfAbsent(tc.getContract().substring(tc.getContract().indexOf('#') + 1), tc.getContractHash());
+        }
+        return m;
+    }
+
+    public static String safeName(String s) {
         if (s == null || s.trim().isEmpty()) return "imported";
         return s.trim().replaceAll("\\.(sel|xml)$", "").replaceAll("[^A-Za-z0-9_-]", "_");
     }

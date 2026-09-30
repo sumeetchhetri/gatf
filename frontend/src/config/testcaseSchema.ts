@@ -141,6 +141,12 @@ export const testcaseSchema: CfgSchema = {
     "expectedResContentType": {
       "type": "string"
     },
+    "contract": {
+      "type": "string"
+    },
+    "contractHash": {
+      "type": "string"
+    },
     "expectedResContent": {
       "type": "string",
       "ui": "textarea"

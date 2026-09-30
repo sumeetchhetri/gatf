@@ -68,6 +68,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
   const [source, setSource] = useState('');
   const [fileName, setFileName] = useState('');
   const [filter, setFilter] = useState('');
+  const [negative, setNegative] = useState(false);
   const [busy, setBusy] = useState<'' | 'preview' | 'save'>('');
   const [result, setResult] = useState<ImportResultDto | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
@@ -102,7 +103,8 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     setErr(null);
     setSaved(null);
     try {
-      const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' ? filter.trim() : undefined);
+      const r = await api.importSource(kind, fileName.trim(), save, source, kind === 'har' ? filter.trim() : undefined,
+        kind === 'openapi' && negative);
       if (r.error) {
         setErr(r.error);
         setResult(null);
@@ -121,7 +123,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     <div className="view import-view">
       <div className="view-head">
         <h2>Import tests</h2>
-        <span className="muted small">Convert Playwright, JMeter, cURL, Postman or HAR into GATF test cases (best-effort).</span>
+        <span className="muted small">Convert Playwright, JMeter, cURL, Postman, HAR or OpenAPI into GATF test cases (best-effort).</span>
       </div>
 
       <div className="import-controls">
@@ -147,6 +149,11 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
             onChange={(e) => setFilter(e.target.value)}
             style={{ minWidth: 240 }}
           />
+        )}
+        {kind === 'openapi' && (
+          <label className="small" title="Also generate cases that leave out a required parameter or send a wrong-typed body property, expecting the spec's 4xx">
+            <input type="checkbox" checked={negative} onChange={(e) => setNegative(e.target.checked)} /> negative cases
+          </label>
         )}
         <input
           ref={fileRef}
@@ -214,6 +221,27 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
           {result.variables && (
             <div className="muted small" style={{ marginBottom: 6 }}>
               variables for gatf-config globalVariables: <code>{JSON.stringify(result.variables)}</code>
+            </div>
+          )}
+
+          {result.spec && (
+            <div className="muted small" style={{ marginBottom: 6 }}>
+              responses are contract-checked against <code>{result.spec}</code> (saved beside the test file)
+            </div>
+          )}
+
+          {result.drift && (
+            <div className="import-drift small" style={{ marginBottom: 6 }}>
+              {result.drift.added.length + result.drift.removed.length + result.drift.changed.length === 0 ? (
+                <span className="muted">no drift from the existing {result.fileName}</span>
+              ) : (
+                <>
+                  <div className="import-unsupported-title">drift from the existing {result.fileName}</div>
+                  {result.drift.added.map((o) => <div key={'a' + o}><code>+ {o}</code> added</div>)}
+                  {result.drift.removed.map((o) => <div key={'r' + o}><code>- {o}</code> removed</div>)}
+                  {result.drift.changed.map((o) => <div key={'c' + o}><code>~ {o}</code> changed</div>)}
+                </>
+              )}
             </div>
           )}
 

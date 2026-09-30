@@ -32,14 +32,14 @@ import com.gatf.imports.Importers;
 final class ImportCli {
 
     static final String USAGE = "gatf import <" + String.join("|", Importers.TYPES) + "> <file|-> [-o <out-file>] "
-            + "[--name <suite>] [--filter <url-regex>] [--force]";
+            + "[--name <suite>] [--filter <url-regex>] [--negative] [--force]";
 
     private ImportCli() {}
 
     static int run(String[] args, File cwd, PrintStream out, PrintStream err) {
         String type = null, in = null, outFile = null, name = null, filter = null;
-        File baseDir = null;
-        boolean force = false;
+        File baseDir = null, specFile = null;
+        boolean force = false, negative = false;
         try {
             for (int i = 0; i < args.length; i++) {
                 String a = args[i];
@@ -48,6 +48,7 @@ final class ImportCli {
                     case "--name": name = value(args, ++i, a); break;
                     case "--filter": filter = value(args, ++i, a); break;
                     case "-f": case "--force": force = true; break;
+                    case "--negative": negative = true; break;
                     default:
                         if (a.startsWith("-") && !a.equals("-")) throw new IllegalArgumentException("unknown option " + a);
                         if (type == null) type = a;
@@ -64,13 +65,35 @@ final class ImportCli {
                 File f = resolve(cwd, in);
                 if (!f.isFile()) throw new IllegalArgumentException("input not found: " + in);
                 baseDir = f.getAbsoluteFile().getParentFile();
+                specFile = f.getAbsoluteFile();
                 source = Files.readString(f.toPath(), StandardCharsets.UTF_8);
                 if (name == null) name = f.getName().replaceAll("(\\.spec)?\\.[A-Za-z0-9]+$", "");
             }
             if (source.isBlank()) throw new IllegalArgumentException("input is empty");
             if (name == null) name = "imported-" + type.toLowerCase();
 
-            ImportResult r = Importers.importSource(type, source, name, filter, baseDir);
+            boolean openapi = type.equalsIgnoreCase("openapi") || type.equalsIgnoreCase("swagger");
+            ImportResult r;
+            String drift = null;
+            if (openapi) {
+                // OA2: cases point at the spec (relative to the .xml) so responses are contract-checked at run time
+                File xml = resolve(cwd, outFile != null ? outFile : Importers.safeName(name) + ".xml").getAbsoluteFile();
+                String specRef = specFile == null ? null : relative(xml.getParentFile(), specFile);
+                r = Importers.importOpenApi(source, name, baseDir, specRef, negative);
+                if (xml.isFile()) {
+                    try {
+                        java.util.List<com.gatf.executor.core.TestCase> old = WorkflowContextHandler.XOM.readValue(xml,
+                                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<com.gatf.executor.core.TestCase>>() {});
+                        drift = com.gatf.contract.ContractDrift.diff(Importers.contractIndex(old), Importers.contractIndex(r.testCases)).toString();
+                    } catch (Exception e) {
+                        drift = "(existing " + xml.getName() + " unreadable: " + e.getMessage() + ")";
+                    }
+                }
+                if (specRef == null) r.unsupported(0, "contract checks", "spec read from stdin — cases carry no contract pointer");
+            } else {
+                r = Importers.importSource(type, source, name, filter, baseDir);
+            }
+            if (drift != null) out.println("drift vs the existing file:" + (drift.startsWith("   ") ? "\n" + drift : " " + drift));
             if ("xml".equals(r.kind) && r.testCases != null) {
                 r.content = WorkflowContextHandler.XOM.writerWithDefaultPrettyPrinter().writeValueAsString(r.testCases);
             }
@@ -103,6 +126,15 @@ final class ImportCli {
     private static String value(String[] args, int i, String opt) {
         if (i >= args.length) throw new IllegalArgumentException(opt + " needs a value");
         return args[i];
+    }
+
+    /** {@code from} → {@code to} as a '/'-separated relative path (absolute when there is none, e.g. another drive). */
+    static String relative(File from, File to) {
+        try {
+            return from.toPath().relativize(to.toPath()).toString().replace('\\', '/');
+        } catch (IllegalArgumentException e) {
+            return to.getPath().replace('\\', '/');
+        }
     }
 
     private static File resolve(File cwd, String p) {

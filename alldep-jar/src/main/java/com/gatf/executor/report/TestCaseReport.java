@@ -464,7 +464,8 @@ public class TestCaseReport implements Serializable {
 		Exception("Exception"),
 		NodeValidationFailed("NodeValidationFailed"),
 		InvalidContentType("InvalidContentType"),
-		ExecuteConditionFailed("ExecConditionFailed");
+		ExecuteConditionFailed("ExecConditionFailed"),
+		ContractViolation("ContractViolation");
 		
 		public String status;
 		private TestFailureReason(String status) {

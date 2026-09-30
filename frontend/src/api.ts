@@ -556,6 +556,8 @@ export interface ImportResultDto {
   stats: Record<string, number | string | Record<string, number>>;
   loadConfig?: Record<string, number | boolean>; // JMeter: first ThreadGroup as gatf-config load keys
   variables?: Record<string, string>; // Postman collection variables / OpenAPI auth placeholders for gatf-config globalVariables
+  drift?: { added: string[]; removed: string[]; changed: string[] }; // OpenAPI re-import vs the existing .xml
+  spec?: string; // OpenAPI: spec file the cases' contract pointers reference (saved beside the .xml)
   saved?: boolean;
   savedPath?: string;
   validation?: string;
@@ -567,13 +569,15 @@ async function importSourceReq(
   save: boolean,
   source: string,
   filter?: string,
+  negative?: boolean,
 ): Promise<ImportResultDto> {
   const qs =
     '/import?type=' +
     encodeURIComponent(type) +
     (fileName ? '&fileName=' + encodeURIComponent(fileName) : '') +
     (save ? '&save=true' : '') +
-    (filter ? '&filter=' + encodeURIComponent(filter) : '');
+    (filter ? '&filter=' + encodeURIComponent(filter) : '') +
+    (negative ? '&negative=true' : '');
   const r = await fetch(withTok(qs), {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' },
@@ -828,8 +832,8 @@ export const api = {
   restartSubtest: () => runPut('restartSubtest'),
   stopRun: () => runPut('stop'),
   // ---- test importers (Phase 11 / Q2) ----
-  importSource: (type: ImportType, fileName: string, save: boolean, source: string, filter?: string) =>
-    importSourceReq(type, fileName, save, source, filter),
+  importSource: (type: ImportType, fileName: string, save: boolean, source: string, filter?: string, negative?: boolean) =>
+    importSourceReq(type, fileName, save, source, filter, negative),
   // ---- SPA crawler (G3) ----
   crawlStart: (b: CrawlStartBody) => crawlCall<{ sessionId?: string; error?: string }>('/crawl?action=start', 'POST', b),
   crawlStatus: (id: string) => crawlCall<CrawlStatus>('/crawl?action=status&sessionId=' + encodeURIComponent(id), 'GET'),

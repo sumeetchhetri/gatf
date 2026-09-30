@@ -123,6 +123,33 @@ class OpenApiImporterTest {
     }
 
     @Test
+    void contractPointersAndNegativeCases() throws Exception {
+        ImportResult r = Importers.importOpenApi(res("petstore-v3.yaml"), "petstore3", null, "petstore3.openapi.yaml", true);
+        Map<String, TestCase> c = byName(r);
+        assertThat(c.get("getPetById").getContract()).isEqualTo("petstore3.openapi.yaml#/paths/~1pet~1{petId}/get");
+        assertThat(c.get("getPetById").getContractHash()).matches("[0-9a-f]{12}");
+        TestCase missing = c.get("loginUser [missing username]");
+        assertThat(missing.getUrl()).isEqualTo("/api/v3/user/login?password=password");
+        assertThat(missing.getExpectedResCode()).isEqualTo(400);
+        assertThat(TestFilter.tagsIn(missing.getDescription())).contains("@negative");
+        TestCase wrong = c.get("addPet [wrong type name]");
+        assertThat(wrong.getContent()).contains("\"name\":12345");
+        assertThat(wrong.getExpectedResCode()).isEqualTo(405);                       // the op's only declared 4xx
+        assertThat(wrong.getContract()).isEqualTo(c.get("addPet").getContract());
+        assertThat(Importers.importSource("openapi", res("petstore-v3.yaml"), "p", null).testCases)
+                .allMatch(t -> t.getContract() == null);                               // no spec reference, no pointer
+        // an operation without a declared 4xx: the negative case expects 400 and checks the status only
+        String spec = "{\"openapi\":\"3.0.0\",\"info\":{\"title\":\"t\",\"version\":\"1\"},\"paths\":{\"/s\":{\"get\":{\"operationId\":\"search\","
+                + "\"parameters\":[{\"name\":\"q\",\"in\":\"query\",\"required\":true,\"schema\":{\"type\":\"string\"}}],"
+                + "\"responses\":{\"200\":{\"description\":\"ok\",\"content\":{\"application/json\":{\"schema\":{\"type\":\"array\"}}}}}}}}}";
+        Map<String, TestCase> s = byName(Importers.importOpenApi(spec, "s", null, "s.openapi.json", true));
+        assertThat(s.get("search").getContract()).isNotNull();
+        assertThat(s.get("search").getHeaders()).containsEntry("Accept", "application/json");
+        assertThat(s.get("search [missing q]").getExpectedResCode()).isEqualTo(400);
+        assertThat(s.get("search [missing q]").getContract()).isNull();
+    }
+
+    @Test
     void rejectsNonSpecs() {
         assertThatThrownBy(() -> Importers.importSource("openapi", "{\"info\":{}}", "x", null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("not an OpenAPI/Swagger document");

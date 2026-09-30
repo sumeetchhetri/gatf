@@ -36,13 +36,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.gatf.contract.ContractDrift;
+import com.gatf.contract.SpecDoc;
 
 /**
  * OA1 — Swagger 2.0 / OpenAPI 3.0 / 3.1 (JSON or YAML) → one {@link ApiRequest} per operation, turned into GATF API
  * test cases by {@link Importers#toTestCases}. Parameters and bodies come from {@code example}/{@code examples}/
  * {@code default}, else a value synthesised from the schema; the expected status is the first 2xx. Security schemes
  * become {@code ${authToken}}/API-key placeholders (never secrets); tags become GATF {@code @tags} in the description.
- * Pure: Jackson only (YAML through jackson-dataformat-yaml, loaded lazily).
+ * OA2: with a spec reference each case carries a {@code contract} pointer (spec#operation) and an operation fingerprint,
+ * and optional negative cases expect the spec's 4xx. Pure: Jackson only (YAML through jackson-dataformat-yaml, loaded lazily).
  */
 public final class OpenApiImporter {
 
@@ -53,6 +56,12 @@ public final class OpenApiImporter {
 
     /** folder of the spec file, for relative-file {@code $ref}s; null = relative refs are reported, not followed. */
     private final File baseDir;
+    /** OA2: the spec as the generated cases reference it (relative to the .xml); null = no contract pointer. */
+    private final String specRef;
+    /** OA2: also emit negative cases (a required parameter left out, a body property of the wrong type) → expect 4xx. */
+    private final boolean negative;
+    private SpecDoc specDoc;
+    private Loc bodySchema;
 
     private final Map<String, JsonNode> docs = new HashMap<String, JsonNode>();
     private ImportResult res;
@@ -61,8 +70,12 @@ public final class OpenApiImporter {
 
     public OpenApiImporter() { this(null); }
 
-    public OpenApiImporter(File baseDir) {
+    public OpenApiImporter(File baseDir) { this(baseDir, null, false); }
+
+    public OpenApiImporter(File baseDir, String specRef, boolean negative) {
         this.baseDir = baseDir;
+        this.specRef = specRef;
+        this.negative = negative;
     }
 
     /** A schema/parameter/body node together with the document it lives in (for nested relative refs). */
@@ -121,6 +134,7 @@ public final class OpenApiImporter {
             throw new IllegalArgumentException("not an OpenAPI/Swagger document: no 'swagger: 2.0' or 'openapi: 3.x' field");
         }
         docs.put("", root);
+        specDoc = new SpecDoc(root, baseDir);
         r.stat("format", version);
         String title = root.path("info").path("title").asText("");
         if (!title.isEmpty()) r.stat("title", title);
@@ -150,11 +164,9 @@ public final class OpenApiImporter {
                 String[] opBase = base;
                 if (!v2 && op.path("servers").size() > 0) opBase = serverBase(op.path("servers"), root);
                 else if (!v2 && item.node.path("servers").size() > 0) opBase = serverBase(item.node.path("servers"), root);
-                ApiRequest q = operation(root, pe.getKey(), m, item, op, opBase, vars, label);
-                if (q != null) {
-                    q.line = ops;
-                    out.add(q);
-                }
+                int from = out.size();
+                operation(root, pe.getKey(), m, item, op, opBase, vars, label, out);
+                for (int i = from; i < out.size(); i++) out.get(i).line = ops;
             }
         }
         if (!v2) {
@@ -217,8 +229,8 @@ public final class OpenApiImporter {
 
     // ---------------------------------------------------------------- operations
 
-    private ApiRequest operation(JsonNode root, String path, String method, Loc item, JsonNode op, String[] base,
-            Map<String, String> vars, String label) {
+    private void operation(JsonNode root, String path, String method, Loc item, JsonNode op, String[] base,
+            Map<String, String> vars, String label, List<ApiRequest> out) {
         ApiRequest q = new ApiRequest();
         q.method = method.toUpperCase(Locale.ROOT);
         String opId = op.path("operationId").asText("").trim();
@@ -254,6 +266,8 @@ public final class OpenApiImporter {
         Map<String, String> formFields = new LinkedHashMap<String, String>();
         boolean formHasFile = false;
         Loc v2Body = null;
+        String missing = null, missingQuery = null, missingHeader = null;   // OA2 negative case: first required query/header param
+        bodySchema = null;
         for (Loc pl : params.values()) {
             JsonNode pn = pl.node;
             String in = pn.path("in").asText("");
@@ -279,10 +293,12 @@ public final class OpenApiImporter {
                     } else {
                         query.add(enc(name) + "=" + enc(scalar(v)));
                     }
+                    if (required && missing == null) { missing = name; missingQuery = enc(name) + "="; }
                     break;
                 case "header":
                     if (!name.equalsIgnoreCase("Accept") && !name.equalsIgnoreCase("Content-Type") && !name.equalsIgnoreCase("Authorization")) {
                         q.putHeader(name, scalar(v));
+                        if (required && missing == null) { missing = name; missingHeader = name; }
                     }
                     break;
                 case "cookie":
@@ -303,6 +319,7 @@ public final class OpenApiImporter {
                 Loc schema = new Loc(v2Body.node.path("schema"), v2Body.doc, null);
                 JsonNode sample = firstNonNull(v2Body.node.path("x-example"), exampleOf(schema), sample(schema, true));
                 setBody(q, ct, sample, label, false);
+                bodySchema = schema;
             } else if (!formFields.isEmpty()) {
                 boolean multipart = formHasFile || consumes.contains("multipart/form-data");
                 formBody(q, formFields, multipart, label);
@@ -318,13 +335,94 @@ public final class OpenApiImporter {
         // expected response
         responses(root, op, item.doc, q, label);
 
-        String url = (base[1] == null ? "" : base[1].replaceAll("/+$", "")) + (p.startsWith("/") ? p : "/" + p);
-        if (!query.isEmpty()) url += "?" + String.join("&", query);
+        String pathUrl = (base[1] == null ? "" : base[1].replaceAll("/+$", "")) + (p.startsWith("/") ? p : "/" + p);
         // the spec's origin is reported (stats.baseUrl), never written per case: a case baseUrl overrides gatf-config's
         q.baseUrl = null;
-        q.url = url;
-        q.fullUrl = (base[0] == null ? "" : base[0]) + url;
-        return q;
+        q.setUrl(pathUrl, query);
+        if (specRef != null) {
+            q.contract = specRef + "#/paths/" + esc(path) + "/" + method;
+            q.contractHash = ContractDrift.fingerprint(specDoc, specDoc.node(op, item.doc), specDoc.node(item.node.path("parameters"), item.doc));
+        }
+        out.add(q);
+        if (negative) negatives(q, op, item.doc, pathUrl, query, missing, missingQuery, missingHeader, out);
+    }
+
+    /** RFC 6901 token escaping. */
+    static String esc(String token) {
+        return token.replace("~", "~0").replace("/", "~1");
+    }
+
+    // ---------------------------------------------------------------- OA2 negative cases
+
+    private void negatives(ApiRequest q, JsonNode op, String doc, String pathUrl, List<String> query, String missing,
+            String missingQuery, String missingHeader, List<ApiRequest> out) {
+        int bad = badStatus(op.path("responses"));
+        // the contract check requires a declared status: without a declared 4xx / default the negative case checks the status only
+        boolean keepContract = declaresClientError(op.path("responses"));
+        if (missing != null) {
+            ApiRequest n = negative(q, "missing " + missing, bad, keepContract);
+            if (missingQuery != null) {
+                List<String> rest = new ArrayList<String>();
+                for (String e : query) if (!e.startsWith(missingQuery)) rest.add(e);
+                n.setUrl(pathUrl, rest);
+            } else {
+                n.removeHeader(missingHeader);
+            }
+            out.add(n);
+        }
+        Loc schema = bodySchema == null ? null : deref(bodySchema);
+        if (schema == null || q.body == null || !schema.node.isObject()) return;
+        JsonNode body;
+        try {
+            body = OM.readTree(q.body);
+        } catch (Exception e) {
+            return;
+        }
+        if (!body.isObject()) return;
+        for (JsonNode rq : schema.node.path("required")) {
+            String prop = rq.asText();
+            Loc ps = deref(new Loc(schema.node.path("properties").path(prop), schema.doc, null));
+            String t = ps == null ? "" : typeOf(ps.node);
+            if (t.isEmpty() || "null".equals(t)) continue;
+            ObjectNode wrong = ((ObjectNode) body).deepCopy();
+            wrong.set(prop, "string".equals(t) ? NF.numberNode(12345) : NF.textNode("not-a-" + t));
+            ApiRequest n = negative(q, "wrong type " + prop, bad, keepContract);
+            n.body = wrong.toString();
+            out.add(n);
+            return;
+        }
+    }
+
+    private static ApiRequest negative(ApiRequest q, String what, int status, boolean keepContract) {
+        ApiRequest n = q.copy();
+        if (!keepContract) {
+            n.contract = null;
+            n.contractHash = null;
+        }
+        n.name = q.name + " [" + what + "]";
+        n.description = (q.description == null ? "" : q.description + " ") + "@negative";
+        n.expectedStatus = status;
+        n.expectedContentType = null;
+        return n;
+    }
+
+    /** True when the operation declares a 4xx (or 4XX / default) response. */
+    static boolean declaresClientError(JsonNode responses) {
+        for (Iterator<String> it = responses.fieldNames(); it.hasNext();) {
+            String c = it.next();
+            if (c.matches("4(\\d\\d|XX|xx)") || "default".equals(c)) return true;
+        }
+        return false;
+    }
+
+    /** 400 when declared, else the first declared 4xx, else 400. */
+    static int badStatus(JsonNode responses) {
+        if (responses.has("400")) return 400;
+        for (Iterator<String> it = responses.fieldNames(); it.hasNext();) {
+            String c = it.next();
+            if (c.matches("4\\d\\d")) return Integer.parseInt(c);
+        }
+        return 400;
     }
 
     private void collectParams(JsonNode list, String doc, Map<String, Loc> into) {
@@ -418,6 +516,7 @@ public final class OpenApiImporter {
         }
         JsonNode sample = firstNonNull(mt.get("example"), firstExample(mt.path("examples"), body.doc), exampleOf(schema), sample(schema, true));
         setBody(q, ct, sample, label, true);
+        bodySchema = schema;
     }
 
     private void setBody(ApiRequest q, String ct, JsonNode sample, String label, boolean v3) {

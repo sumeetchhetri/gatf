@@ -240,6 +240,28 @@ public class TestCase implements Serializable {
 	
 	private PerformanceConfig perfConfig;
 	
+	/** OA2: {@code <spec file>#<operation pointer>}; the response is validated against that OpenAPI operation. */
+	private String contract;
+	
+	/** OA2: fingerprint of the operation when the case was generated (drift on re-import). */
+	private String contractHash;
+	
+	public String getContract() {
+		return contract;
+	}
+
+	public void setContract(String contract) {
+		this.contract = contract;
+	}
+
+	public String getContractHash() {
+		return contractHash;
+	}
+
+	public void setContractHash(String contractHash) {
+		this.contractHash = contractHash;
+	}
+
 	public String getBaseUrl() {
 		return baseUrl;
 	}
@@ -1188,6 +1210,8 @@ public class TestCase implements Serializable {
 		this.isServerApiTarget = other.isServerApiTarget;
 		this.isExternalApi = other.isExternalApi;
 		this.perfConfig = other.perfConfig;
+		this.contract = other.contract;
+		this.contractHash = other.contractHash;
 	}
 
 	@Override

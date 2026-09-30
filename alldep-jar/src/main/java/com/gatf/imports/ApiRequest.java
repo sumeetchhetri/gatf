@@ -51,6 +51,10 @@ public class ApiRequest {
     public int expectedStatus;
     /** expected response Content-Type (OpenAPI); null = not asserted. */
     public String expectedContentType;
+    /** OA2: {@code <spec file>#<operation pointer>} the response is validated against; null = none. */
+    public String contract;
+    /** OA2: fingerprint of the operation at import time (drift detection on re-import). */
+    public String contractHash;
     /** source line (cURL) or entry index (HAR), for the unsupported report. */
     public int line;
 
@@ -98,6 +102,33 @@ public class ApiRequest {
     /** True when {@link #gatfVars} left a Postman dynamic variable such as {@code {{$randomInt}}}. */
     public static boolean hasDynamicVar(String s) {
         return s != null && s.matches("(?s).*\\{\\{\\s*\\$.*\\}\\}.*");
+    }
+
+    /** Sets {@link #url} from a path and query parts (joined with '&'). */
+    public void setUrl(String path, List<String> query) {
+        url = query == null || query.isEmpty() ? path : path + "?" + String.join("&", query);
+        fullUrl = (baseUrl == null ? "" : baseUrl) + url;
+    }
+
+    /** A field-by-field copy (headers and form parts are copied, not shared). */
+    public ApiRequest copy() {
+        ApiRequest c = new ApiRequest();
+        c.name = name;
+        c.description = description;
+        c.method = method;
+        c.baseUrl = baseUrl;
+        c.url = url;
+        c.fullUrl = fullUrl;
+        c.headers = new LinkedHashMap<String, String>(headers);
+        c.body = body;
+        c.contentFile = contentFile;
+        c.formParts = new ArrayList<String>(formParts);
+        c.expectedStatus = expectedStatus;
+        c.expectedContentType = expectedContentType;
+        c.contract = contract;
+        c.contractHash = contractHash;
+        c.line = line;
+        return c;
     }
 
     public String header(String name) {

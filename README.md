@@ -100,6 +100,11 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
   OpenAPI 3.0/3.1 and Swagger 2.0 specs (JSON or YAML) become one API test per operation: parameters and bodies from the
   spec's examples/defaults or a value built from the schema, the first 2xx as the expected status, `$ref`s (local and
   relative files) resolved, security schemes as `${authToken}`/API-key placeholders, and operation tags as `@tags`.
+  Each imported case also keeps a `contract` pointer (`<spec>#<operation>`, the spec is saved beside the .xml), so a run
+  fails a response whose status or Content-Type the operation does not declare, or whose JSON body breaks the response
+  schema; the failure names the operation and the JSON pointer (`/photoUrls: required property missing`). `--negative`
+  (or the Import view checkbox) adds cases that drop a required parameter or send a wrong-typed body property and expect
+  the spec's 4xx. Re-importing over an existing file lists the operations added, removed or changed since.
 - **Test generator:** creates API test cases from JAX-RS or Spring controllers and SOAP WSDLs, and can also produce a Postman collection.
 - **VS Code extension:** language server (completion, diagnostics, navigation) and a debugger.
 
@@ -217,7 +222,7 @@ goto https://example.com/login
 | `gatf ui [port] [dir]` | Web console: config, test files, editor, recorder, crawler, importer, execution, reports, traces, debugger. Default port 9080; bind host via `GATF_UI_HOST` |
 | `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
-| `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
+| `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--negative] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
 | `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |

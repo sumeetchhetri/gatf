@@ -43,10 +43,14 @@ import com.gatf.selenium.Command;
 /**
  * Phase 11 / Q2 — test importer endpoint for the React shell.
  *
- *   POST /import?type=playwright|jmeter|curl|postman|har[&fileName=<name>][&save=true][&filter=<url regex, har>]
+ *   POST /import?type=playwright|jmeter|curl|postman|har|openapi[&fileName=<name>][&save=true][&filter=<url regex, har>]
+ *               [&negative=true, openapi: also negative cases]
  *     body = the raw Playwright .spec source, JMeter .jmx XML, curl command(s), Postman collection or HAR JSON
  *     ->   { type, fileName, kind, content, unsupported:[{line,construct,reason}], stats:{...},
- *            loadConfig?, variables?, saved:bool, savedPath?, validation? }
+ *            loadConfig?, variables?, drift?:{added,removed,changed}, spec?, saved:bool, savedPath?, validation? }
+ *
+ * OpenAPI (OA2): each case points at the spec (saved beside the .xml as {@code <name>.openapi.json|yaml}) so responses
+ * are contract-checked at run time; when the .xml already exists the response lists the operations that drifted.
  *
  * With save omitted/false the endpoint only previews (parse + translate). With save=true it also writes
  * the file into the test-case directory (the same location /testcasefiles create uses), so it appears in
@@ -88,9 +92,15 @@ public class GatfImportHandler extends HttpHandler {
             }
             String suite = deriveSuiteName(fileName, source, type);
 
+            boolean openapi = "openapi".equalsIgnoreCase(type) || "swagger".equalsIgnoreCase(type);
+            String xmlName = fileName != null && !fileName.trim().isEmpty() ? ensureExt(fileName.trim(), "xml") : Importers.safeName(suite) + ".xml";
+            String specName = new File(xmlName.replaceAll("\\.xml$", "") + ".openapi." + (source.trim().startsWith("{") ? "json" : "yaml")).getName();
+
             ImportResult result;
             try {
-                result = Importers.importSource(type, source, suite, request.getParameter("filter"));
+                result = openapi
+                        ? Importers.importOpenApi(source, suite, null, specName, "true".equalsIgnoreCase(request.getParameter("negative")))
+                        : Importers.importSource(type, source, suite, request.getParameter("filter"));
             } catch (IllegalArgumentException e) {
                 writeJson(response, HttpStatus.BAD_REQUEST_400, err(e.getMessage()));
                 return;
@@ -112,10 +122,27 @@ public class GatfImportHandler extends HttpHandler {
             out.put("stats", result.stats);
             if (result.loadConfig != null) out.put("loadConfig", result.loadConfig);
             if (result.variables != null) out.put("variables", result.variables);
+            GatfExecutorConfig cfg = null;
+            if (openapi) {
+                out.put("spec", specName);
+                cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+                File existing = targetFile(cfg, result.fileName);
+                if (existing.isFile()) {
+                    try {
+                        java.util.List<com.gatf.executor.core.TestCase> old = WorkflowContextHandler.XOM.readValue(existing,
+                                new com.fasterxml.jackson.core.type.TypeReference<java.util.List<com.gatf.executor.core.TestCase>>() {});
+                        out.put("drift", com.gatf.contract.ContractDrift.diff(Importers.contractIndex(old),
+                                Importers.contractIndex(result.testCases)).toMap());
+                    } catch (Exception e) {
+                        // an unreadable previous file: no drift list
+                    }
+                }
+            }
 
             if (save) {
-                GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+                if (cfg == null) cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
                 String savedPath = writeToTestDir(cfg, result);
+                if (openapi) FileUtils.writeStringToFile(new File(new File(savedPath).getParentFile(), specName), source, "UTF-8");
                 out.put("saved", true);
                 out.put("savedPath", result.fileName);
                 if ("sel".equals(result.kind)) {
@@ -132,17 +159,9 @@ public class GatfImportHandler extends HttpHandler {
 
     // Write the imported artifact into the test-case dir (mirrors GatfTestCaseFilesHandler's create path).
     private String writeToTestDir(GatfExecutorConfig cfg, ImportResult result) throws Exception {
-        String basepath = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
-        String filePath;
-        if (cfg.getTestCaseDir() != null) {
-            String dirPath = basepath + File.separator + cfg.getTestCaseDir();
-            File d = new File(dirPath);
-            if (!d.exists()) d.mkdirs();
-            filePath = dirPath + File.separator + result.fileName;
-        } else {
-            filePath = basepath + File.separator + result.fileName;
-        }
-        File f = new File(filePath);
+        File f = targetFile(cfg, result.fileName);
+        if (f.getParentFile() != null && !f.getParentFile().exists()) f.getParentFile().mkdirs();
+        String filePath = f.getPath();
         if ("xml".equals(result.kind) && result.testCases != null) {
             FileOutputStream fos = new FileOutputStream(f);
             try {
@@ -154,6 +173,13 @@ public class GatfImportHandler extends HttpHandler {
             FileUtils.writeStringToFile(f, result.content, "UTF-8");
         }
         return filePath;
+    }
+
+    /** Where an imported file lands: the test-case dir (or the base path). */
+    private File targetFile(GatfExecutorConfig cfg, String name) {
+        String basepath = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
+        if (cfg.getTestCaseDir() != null) return new File(basepath + File.separator + cfg.getTestCaseDir() + File.separator + name);
+        return new File(basepath + File.separator + name);
     }
 
     // Parse-validate an imported .sel via the static validator (no plugin context needed).
