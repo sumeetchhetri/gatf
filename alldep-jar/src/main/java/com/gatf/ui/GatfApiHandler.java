@@ -343,6 +343,7 @@ public class GatfApiHandler extends HttpHandler {
         }
         if (t != null) {
             String lt = t.toLowerCase();
+            if (lt.startsWith("merged")) return "Merged";   // M7: gatf merge-reports index
             if (lt.startsWith("api")) return "API";
             if (lt.startsWith("load")) return "Load";
             if (lt.startsWith("ta") || lt.startsWith("selenium")) return "Selenium";

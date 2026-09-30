@@ -19,6 +19,7 @@ import TraceChecksPanel from '../components/TraceChecksPanel';
 import RaiseDefect from '../components/RaiseDefect';
 import { reportHtmlUrl, reportSidecarUrl } from '../util';
 import type {
+  MergedIndexData,
   ReportData,
   SeleniumSummaryData,
   SeleniumTestData,
@@ -34,6 +35,7 @@ import ApiReportView from './ApiReportView';
 import LoadReportView from './LoadReportView';
 import DistributedLoadView from './DistributedLoadView';
 import TAReportView from './TAReportView';
+import MergedReportView from './MergedReportView';
 
 function statusClass(s: string): string {
   const u = (s || '').toUpperCase();
@@ -271,7 +273,9 @@ export default function ReportViewer({
                   ? 'Distributed load report'
                   : data?.type === 'ta-report'
                     ? 'Test analysis'
-                    : 'Report';
+                    : data?.type === 'merged-index'
+                      ? 'Merged report'
+                      : 'Report';
 
   return (
     <div className="view">
@@ -315,6 +319,9 @@ export default function ReportViewer({
             <DistributedLoadView data={data as DistributedLoadData} baseDir={baseDir} onOpenReport={onOpenReport} />
           )}
           {data.type === 'ta-report' && <TAReportView data={data as TAReportData} />}
+          {data.type === 'merged-index' && (
+            <MergedReportView data={data as MergedIndexData} baseDir={baseDir} onOpenReport={onOpenReport} />
+          )}
           {![
             'selenium-summary',
             'selenium-test',
@@ -324,6 +331,7 @@ export default function ReportViewer({
             'load-report',
             'load-distributed',
             'ta-report',
+            'merged-index',
           ].includes(data.type) && (
             <>
               <div className="view-note muted small">

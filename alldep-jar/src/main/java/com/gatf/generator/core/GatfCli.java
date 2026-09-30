@@ -125,6 +125,11 @@ public final class GatfCli {
     			// Q2: `gatf import <playwright|jmeter|curl|postman|har|openapi> <file|-> [-o out] [--name ..] [--filter ..] [--force]`
     			exitCode = ImportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
+    		else if(args[0].equals("merge-reports"))
+    		{
+    			// M7: `gatf merge-reports <dir>... [-o out]` joins the out dirs of a sharded run into one report
+    			exitCode = com.gatf.log.ReportMerger.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
+    		}
     		else if(args.length>3 && args[0].equals("-configtool") && !args[1].trim().isEmpty() 
     				&& !args[2].trim().isEmpty() && !args[3].trim().isEmpty())
     		{
@@ -151,6 +156,7 @@ public final class GatfCli {
 					"java -jar gatf-plugin-{version}.jar " + TestCommandArgs.USAGE.substring("gatf ".length()).replace("\n", "\n    ") + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + DocsCli.USAGE.substring("gatf ".length()) + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + com.gatf.log.ReportMerger.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +

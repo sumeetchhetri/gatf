@@ -231,6 +231,7 @@ goto https://example.com/login
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
 | `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--negative] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
 | `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--requirements-jql JQL] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
+| `gatf merge-reports <dir>… [-o out]` | Join the out dirs of a sharded run (`--shard i/n` on several machines) into one report: `gatf-results.json`, `gatf-junit.xml`, each shard's reports copied under `shard-<i>-of-<n>/`, and an `index.html` that opens the merged summary (totals, shards, failures, flaky) in the console (merge under the out dir, e.g. `-o out/merged`, so `gatf ui` lists and serves it). Default out dir `merged-report`; exit code 1 when any test failed |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
@@ -351,6 +352,15 @@ Sharded across machines (each job writes its own `out/`; `gatf-results.json` rec
     strategy: { matrix: { shard: [1, 2, 3, 4] } }
     steps:
       - run: java -jar gatf-alldep-jar-<version>.jar test gatf-config.xml --shard ${{ matrix.shard }}/4 --workers 50% --reporter junit,json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: 'out-${{ matrix.shard }}', path: out/ }
+  merge:
+    needs: ui-tests
+    if: always()
+    steps:
+      - uses: actions/download-artifact@v4          # out-1 … out-4
+      - run: java -jar gatf-alldep-jar-<version>.jar merge-reports out-1 out-2 out-3 out-4 -o merged-report
 ```
 
 ## Documentation

@@ -367,6 +367,15 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .rv-shot img { display: block; max-width: 100%; max-height: 480px; border: 1px solid var(--border); border-radius: var(--r-2, 6px); }
 .rv-details summary { cursor: pointer; color: var(--muted); margin: 10px 0 6px; }
 .rv-final-list { margin: 6px 0 0; padding-left: 18px; line-height: 1.8; }
+.rv-merged h3 { font-size: 13px; margin: 16px 0 6px; }
+/* M7 merged report + M12 run insights: summary tiles */
+.mr-tiles { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+.mr-tile { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 8px 12px; min-width: 88px; }
+.mr-tile-v { font-size: 18px; font-weight: 600; }
+.mr-tile.st-pass .mr-tile-v { color: var(--green); }
+.mr-tile.st-fail .mr-tile-v { color: var(--red); }
+.mr-tile.st-warn .mr-tile-v { color: var(--amber, #d97706); }
+.mr-list { margin: 4px 0 0; padding-left: 18px; line-height: 1.7; }
 
 /* ---------- API report viewer (Slice A cont.) ---------- */
 .ar-detail-row > td { background: var(--panel3); padding: 12px; }

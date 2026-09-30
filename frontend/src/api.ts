@@ -194,7 +194,37 @@ export interface TAReportData {
   testcaseTAReports: Record<string, number[]>;
   runTAReports: Record<string, number[]>;
 }
+// ---- merged report (gatf merge-reports, M7) ----
+export interface RunSummary {
+  total: number;
+  passed: number;
+  failed: number;
+  flaky: number;
+  skipped: number;
+  softFailures?: number;
+  durationMs: number;
+  workers?: number;
+  shard?: string | null;
+  shards?: number;
+}
+export interface MergedShard {
+  name: string;
+  source: string;
+  summary: RunSummary | null;
+  // dataUrl is relative to the merged report's folder
+  reports: { label: string; dataUrl: string; reportType?: string | null }[];
+}
+export interface MergedIndexData {
+  type: 'merged-index';
+  generated: number;
+  summary: RunSummary;
+  results: string;
+  shards: MergedShard[];
+  flaky: string[];
+  failures: { title: string; error: string | null; shard: string }[];
+}
 export type ReportData =
+  | MergedIndexData
   | SeleniumSummaryData
   | SeleniumTestData
   | SeleniumFinalData

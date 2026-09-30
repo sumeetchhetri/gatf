@@ -28,6 +28,7 @@ const TYPE_COLOR: Record<string, string> = {
   API: '#2563eb',
   Selenium: '#16a34a',
   Load: '#d97706',
+  Merged: '#7c3aed',
 };
 function typeBadge(type?: string) {
   const label = type ?? '\u2014';
