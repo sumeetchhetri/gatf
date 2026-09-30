@@ -49,6 +49,8 @@ public class ApiRequest {
     public List<String> formParts = new ArrayList<String>();
     /** 0 = not asserted. */
     public int expectedStatus;
+    /** expected response Content-Type (OpenAPI); null = not asserted. */
+    public String expectedContentType;
     /** source line (cURL) or entry index (HAR), for the unsupported report. */
     public int line;
 

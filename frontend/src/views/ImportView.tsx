@@ -49,6 +49,12 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
     ext: '.xml',
     hint: 'A HAR recording (browser dev tools "Save all as HAR"). XHR/fetch calls become API test cases with the recorded status.',
   },
+  openapi: {
+    label: 'OpenAPI',
+    accept: '.json,.yaml,.yml,application/json,application/yaml,text/yaml',
+    ext: '.xml',
+    hint: 'A Swagger 2.0 or OpenAPI 3.0/3.1 spec (JSON or YAML). Each operation becomes an API test case; tags become @tags. Set baseUrl and the auth placeholders in gatf-config. Relative-file $refs need gatf import openapi <file>.',
+  },
 };
 
 // stats values may be nested counts (HAR skipped / origins)
@@ -81,7 +87,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
     if (!f) return;
     const text = await f.text();
     setSource(text);
-    if (!fileName) setFileName(f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|sh|txt|curl)$/i, '') + meta.ext);
+    if (!fileName) setFileName(f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|yaml|yml|sh|txt|curl)$/i, '') + meta.ext);
     setResult(null);
     setSaved(null);
     setErr(null);
@@ -207,7 +213,7 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
 
           {result.variables && (
             <div className="muted small" style={{ marginBottom: 6 }}>
-              collection variables for gatf-config globalVariables: <code>{JSON.stringify(result.variables)}</code>
+              variables for gatf-config globalVariables: <code>{JSON.stringify(result.variables)}</code>
             </div>
           )}
 

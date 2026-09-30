@@ -46,7 +46,7 @@ public class ImportResult {
         }
     }
 
-    public String type;                 // playwright | jmeter | curl | postman | har
+    public String type;                 // playwright | jmeter | curl | postman | har | openapi
     public String fileName;             // suggested output test-file name
     public String kind;                 // sel | xml
     public String content;              // generated seleasy or XML (filled by the importer/handler)
@@ -54,7 +54,7 @@ public class ImportResult {
     public Map<String, Object> stats = new LinkedHashMap<String, Object>();
     // JMeter only: load settings from the first ThreadGroup, as GatfExecutorConfig keys (null if none)
     public Map<String, Object> loadConfig;
-    // Q2 Postman only: collection variables, as gatf-config globalVariables (null if none)
+    // Postman collection variables / OpenAPI auth placeholders, as gatf-config globalVariables (null if none)
     public Map<String, Object> variables;
 
     // API importers: the built cases; the handler serializes via WorkflowContextHandler.XOM for exact fidelity.

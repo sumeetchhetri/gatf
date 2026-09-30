@@ -1,0 +1,7 @@
+{
+  "$defs": {
+    "Person": { "type": "object", "properties": { "email": { "type": "string", "format": "email" }, "manager": { "$ref": "#/$defs/Person" },
+      "home": { "$ref": "tree-v31.json#/components/schemas/Node" } } },
+    "NodePatch": { "type": "object", "properties": { "label": { "type": "string" }, "owner": { "$ref": "#/$defs/Person" } } }
+  }
+}

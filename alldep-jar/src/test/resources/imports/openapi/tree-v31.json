@@ -1,0 +1,54 @@
+{
+  "openapi": "3.1.0",
+  "info": { "title": "Org tree", "version": "1" },
+  "servers": [{ "url": "/api" }],
+  "security": [{ "bearer": [] }],
+  "paths": {
+    "/nodes/{id}": {
+      "get": {
+        "operationId": "getNode", "tags": ["tree", "read only"],
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" } },
+                       { "name": "depth", "in": "query", "schema": { "type": ["integer", "null"], "examples": [2] } },
+                       { "name": "trace", "in": "cookie", "required": true, "schema": { "type": "string", "const": "on" } }],
+        "responses": { "200": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Node" } } } } }
+      },
+      "patch": {
+        "operationId": "patchNode",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "string" } }],
+        "requestBody": { "content": { "application/merge-patch+json": { "schema": { "$ref": "common.json#/$defs/NodePatch" } } } },
+        "responses": { "2XX": { "description": "ok", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Node" } } } } }
+      }
+    },
+    "/nodes": {
+      "post": {
+        "operationId": "createNode", "security": [{ "key": [] }],
+        "requestBody": { "required": true, "content": { "multipart/form-data": { "schema": { "type": "object",
+          "properties": { "meta": { "$ref": "#/components/schemas/Node" }, "label": { "type": "string" }, "icon": { "type": "string", "contentMediaType": "image/png" } } } } } },
+        "responses": { "201": { "description": "created" }, "200": { "description": "ok" } }
+      },
+      "options": { "responses": { "204": { "description": "cors" } } }
+    },
+    "/loop": { "$ref": "#/paths/~1loop" }
+  },
+  "webhooks": { "nodeChanged": { "post": { "responses": { "200": { "description": "ok" } } } } },
+  "components": {
+    "securitySchemes": {
+      "bearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT" },
+      "key": { "type": "apiKey", "in": "query", "name": "api-key" }
+    },
+    "schemas": {
+      "Node": {
+        "type": "object", "required": ["id", "label"],
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "label": { "type": "string", "minLength": 3 },
+          "kind": { "oneOf": [{ "type": "null" }, { "$ref": "#/components/schemas/Kind" }] },
+          "parent": { "$ref": "#/components/schemas/Node" },
+          "children": { "type": "array", "items": { "$ref": "#/components/schemas/Node" } },
+          "owner": { "$ref": "common.json#/$defs/Person" }
+        }
+      },
+      "Kind": { "type": "string", "enum": ["team", "unit"] }
+    }
+  }
+}

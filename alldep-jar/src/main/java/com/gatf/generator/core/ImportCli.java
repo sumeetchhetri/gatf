@@ -38,6 +38,7 @@ final class ImportCli {
 
     static int run(String[] args, File cwd, PrintStream out, PrintStream err) {
         String type = null, in = null, outFile = null, name = null, filter = null;
+        File baseDir = null;
         boolean force = false;
         try {
             for (int i = 0; i < args.length; i++) {
@@ -62,13 +63,14 @@ final class ImportCli {
             } else {
                 File f = resolve(cwd, in);
                 if (!f.isFile()) throw new IllegalArgumentException("input not found: " + in);
+                baseDir = f.getAbsoluteFile().getParentFile();
                 source = Files.readString(f.toPath(), StandardCharsets.UTF_8);
                 if (name == null) name = f.getName().replaceAll("(\\.spec)?\\.[A-Za-z0-9]+$", "");
             }
             if (source.isBlank()) throw new IllegalArgumentException("input is empty");
             if (name == null) name = "imported-" + type.toLowerCase();
 
-            ImportResult r = Importers.importSource(type, source, name, filter);
+            ImportResult r = Importers.importSource(type, source, name, filter, baseDir);
             if ("xml".equals(r.kind) && r.testCases != null) {
                 r.content = WorkflowContextHandler.XOM.writerWithDefaultPrettyPrinter().writeValueAsString(r.testCases);
             }
@@ -80,7 +82,7 @@ final class ImportCli {
             int n = r.testCases != null ? r.testCases.size() : -1;
             out.println("Imported " + (n >= 0 ? n + " test case(s)" : "script") + " → " + target.getPath() + "  " + r.stats);
             if (r.loadConfig != null) out.println("  load settings for gatf-config: " + r.loadConfig);
-            if (r.variables != null) out.println("  collection variables for gatf-config globalVariables: " + r.variables);
+            if (r.variables != null) out.println("  variables for gatf-config globalVariables: " + r.variables);
             if (!r.unsupported.isEmpty()) {
                 out.println("  " + r.unsupported.size() + " item(s) need review:");
                 for (ImportResult.Unsupported u : r.unsupported) {

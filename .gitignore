@@ -34,3 +34,18 @@ frontend/coverage/
 !alldep-jar/src/test/resources/codegen-golden/**/*.java.txt
 # per-run detailed logs (com.gatf.log.GatfLogging)
 logs/
+plugin/.*
+commit.csv
+BOARD-TIER2-3.md
+GATF_REVIEW_AND_ROADMAP.md
+HANDOFF-2026-09-17.md
+HANDOFF-TIER2-3.md
+alldep-jar/.settings/org.eclipse.jdt.apt.core.prefs
+alldep-jar/dependency-reduced-pom.xml
+alldep-jar/gatf.ctrl
+alldep-jar/upload_id.png
+apply-dates.sh
+cmds
+commits.csv
+export-dates.sh
+gatf.ctrl

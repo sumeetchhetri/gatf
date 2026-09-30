@@ -97,6 +97,9 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
   recordings become GATF API tests: headers, bodies (raw, urlencoded, multipart, GraphQL), auth, Postman variables
   (`{{x}}` → `${x}`) and recorded/asserted status codes carry over. What cannot be converted is listed, never dropped
   silently. In the console (**Import**) or `gatf import`.
+  OpenAPI 3.0/3.1 and Swagger 2.0 specs (JSON or YAML) become one API test per operation: parameters and bodies from the
+  spec's examples/defaults or a value built from the schema, the first 2xx as the expected status, `$ref`s (local and
+  relative files) resolved, security schemes as `${authToken}`/API-key placeholders, and operation tags as `@tags`.
 - **Test generator:** creates API test cases from JAX-RS or Spring controllers and SOAP WSDLs, and can also produce a Postman collection.
 - **VS Code extension:** language server (completion, diagnostics, navigation) and a debugger.
 
@@ -214,7 +217,7 @@ goto https://example.com/login
 | `gatf ui [port] [dir]` | Web console: config, test files, editor, recorder, crawler, importer, execution, reports, traces, debugger. Default port 9080; bind host via `GATF_UI_HOST` |
 | `gatf test [config] [options]` | Run the suite (API or UI, per the config's `isSeleniumExecutor`). The config defaults to `gatf-config.json`, else `gatf-config.xml`. Options below |
 | `gatf -executor <config>` / `-selenium <config>` | Older form of `gatf test <config>`: same run, no options |
-| `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman` or `har` input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
+| `gatf import <type> <file\|-> [-o out] [--name suite] [--filter regex] [--force]` | Convert `playwright`, `jmeter`, `curl`, `postman`, `har` or `openapi` (alias `swagger`) input into a GATF test file; prints what needs review. `--filter` keeps matching HAR URLs |
 | `gatf docs [config…] [-o dir] [--format xlsx\|csv\|both] [--requirements file] [--results file]` | Test-case documents (steps and expected results), a requirement traceability matrix and coverage, as `gatf-testcases.xlsx` (sheets Test Cases, Traceability, Coverage) and/or CSVs. See below |
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |

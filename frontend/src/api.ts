@@ -541,7 +541,7 @@ export function debugLinesFor(l: unknown, file: string): Set<number> {
 }
 
 // ---- test importers (Phase 11 Playwright/JMeter, Q2 cURL/Postman/HAR) — POST source to /import, preview or save ----
-export type ImportType = 'playwright' | 'jmeter' | 'curl' | 'postman' | 'har';
+export type ImportType = 'playwright' | 'jmeter' | 'curl' | 'postman' | 'har' | 'openapi';
 export interface ImportUnsupported {
   line: number;
   construct: string;
@@ -555,7 +555,7 @@ export interface ImportResultDto {
   unsupported: ImportUnsupported[];
   stats: Record<string, number | string | Record<string, number>>;
   loadConfig?: Record<string, number | boolean>; // JMeter: first ThreadGroup as gatf-config load keys
-  variables?: Record<string, string>; // Postman: collection variables for gatf-config globalVariables
+  variables?: Record<string, string>; // Postman collection variables / OpenAPI auth placeholders for gatf-config globalVariables
   saved?: boolean;
   savedPath?: string;
   validation?: string;

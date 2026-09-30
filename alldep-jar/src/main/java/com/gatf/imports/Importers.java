@@ -26,12 +26,12 @@ import com.gatf.executor.core.TestCase;
 
 /**
  * Single entry point for every importer, shared by the /import endpoint and {@code gatf import}.
- * API importers (jmeter, curl, postman, har) return {@link ImportResult#testCases} with kind "xml"; the caller
+ * API importers (jmeter, curl, postman, har, openapi) return {@link ImportResult#testCases} with kind "xml"; the caller
  * serializes them with GATF's XmlMapper. Playwright returns seleasy {@link ImportResult#content} (kind "sel").
  */
 public final class Importers {
 
-    public static final List<String> TYPES = List.of("playwright", "jmeter", "curl", "postman", "har");
+    public static final List<String> TYPES = List.of("playwright", "jmeter", "curl", "postman", "har", "openapi");
 
     private Importers() {}
 
@@ -40,12 +40,19 @@ public final class Importers {
      * @throws IllegalArgumentException unknown type, unreadable source, or nothing importable
      */
     public static ImportResult importSource(String type, String source, String suite, String filter) throws Exception {
+        return importSource(type, source, suite, filter, null);
+    }
+
+    /** @param baseDir openapi only: the spec's folder, so relative-file {@code $ref}s resolve (null = reported) */
+    public static ImportResult importSource(String type, String source, String suite, String filter, java.io.File baseDir) throws Exception {
         String t = type == null ? "" : type.trim().toLowerCase(Locale.ROOT);
         switch (t) {
             case "playwright":
                 return new PlaywrightImporter().importSource(source, suite);
             case "jmeter":
                 return new JMeterImporter().importSource(source, suite);
+            case "openapi": case "swagger":
+                return new OpenApiImporter(baseDir).importSource(source, suite);
             case "curl": case "postman": case "har": {
                 ImportResult res = new ImportResult();
                 res.type = t;
@@ -110,6 +117,7 @@ public final class Importers {
             if (r.contentFile != null) tc.setContentFile(r.contentFile);
             if (!r.formParts.isEmpty()) tc.setMultipartContent(new ArrayList<String>(r.formParts));
             if (r.expectedStatus > 0) tc.setExpectedResCode(r.expectedStatus);
+            if (r.expectedContentType != null) tc.setExpectedResContentType(r.expectedContentType);
             tc.setSequence(cases.size() + 1);
             cases.add(tc);
         }
