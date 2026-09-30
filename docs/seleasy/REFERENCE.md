@@ -993,6 +993,8 @@ Examples :-
 	<<<(java|js|ruby|groovy|python) a,b,c
 	{code}
 	>>>
+Arguments: a bare name (`a`) passes that script variable into the block (for js as a page-script argument); `a=expr`
+binds `a` to a Java expression (for js, a JavaScript expression evaluated in the page).
 Available variables in context -
 	1. @driver - WebDriver instance (Java only)
 	2. @window - WebDriver instance (Java only)

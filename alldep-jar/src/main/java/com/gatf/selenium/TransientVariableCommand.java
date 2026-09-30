@@ -69,7 +69,7 @@ public class TransientVariableCommand extends Command {
         TransientVariableCommand(String val, Object[] cmdDetails, CommandState state, boolean isSuiteLevel) {
             super(cmdDetails, state);
             String[] parts = val.trim().split("[\t ]+");
-            if(parts.length>=4) {
+            if(parts.length>=3) {
                 parts[0] = parts[0].trim();
                 varname = parts[0];
                 varname = unSantizedUnQuoted(varname, state);

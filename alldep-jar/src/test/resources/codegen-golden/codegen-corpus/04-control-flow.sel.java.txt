@@ -1,0 +1,175 @@
+package com.gatf.selenium;
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
+import java.util.List;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.Util;
+import com.gatf.selenium.SeleniumTestSession;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
+import java.util.function.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.jruby.embed.LocalVariableBehavior;
+import org.jruby.embed.ScriptingContainer;
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import java.util.Map;
+import org.junit.Assert;
+import org.openqa.selenium.Keys;
+import ru.yandex.qatools.ashot.AShot;
+import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
+
+@SuppressWarnings({"unused", "unchecked", "serial"})
+/*GATF_ST_CLASS_START_*/public class STC_<N> extends SeleniumTest implements Serializable {
+public STC_<N>(AcceptanceTestContext ___cxt___, int index) {
+/*GATF_ST_CLASS_INIT_*/super("<ROOT>/tests/04-control-flow.sel", ___cxt___, index);
+}
+public void close() {
+/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();
+}
+public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+return new STC_<N>(ctx, index);}
+public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+boolean logconsole = false, logdebug = false, lognw = false;
+/*GATF_ST_DRIVER_INIT_CHROME*/org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
+___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);
+___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".trim());
+Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
+___dc___.setExperimentalOption("prefs", __prefs);
+String __bkey__ = addWdm("chrome", ___dc___);
+set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+initBrowser(get___d___(), logconsole, logdebug, lognw, false);
+
+}
+public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception {
+this.setOutPath(outPath);
+/*GATF_ST_START_*/addTest(null, "chrome");
+
+
+setSession(null, 0, true);
+quit();
+/*GATF_OP_LINE@<ROOT>/tests/04-control-flow.sel:3*/__set__cln__("<ROOT>/tests/04-control-flow.sel:3");setupDriverchrome(___lp___);
+_execute(___lp___);
+return get__sessions__();
+}
+public int concurrentExecutionNum() {
+return 0;
+}
+public void _execute(LoggingPreferences ___lp___) throws Exception {
+WebDriver ___ocw___ = null;
+try {
+addPossInvXpath("ddd-@index", "    click xpath@\"ddd-@index\"", "24", "<ROOT>/tests/04-control-flow.sel");SearchContext ___sc___1 = get___d___();
+WebDriver ___cw___ = get___d___();
+___ocw___ = ___cw___;
+List<WebElement> ___ce___ = null;
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:4*/__set__cln__("<ROOT>/tests/04-control-flow.sel:4");
+String bvar = "a";
+
+___add_var__("bvar", bvar);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:5*/__set__cln__("<ROOT>/tests/04-control-flow.sel:5");boolean ___ifcnt___1 = false;try{
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("ddd"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/04-control-flow.sel", 5 ,"");
+___ifcnt___1 = ___ce___!=null && !___ce___.isEmpty();
+Assert.assertTrue("Element not found by selector xpath@'ddd' at line number 5 ", ___ifcnt___1);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:7*/__set__cln__("<ROOT>/tests/04-control-flow.sel:7");System.out.println("if");
+
+}
+catch(AssertionError ___e___2){}
+catch(Exception ___e___1){
+System.out.println(___e___1.getMessage());throw ___e___1;}
+if(!___ifcnt___1){/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:9*/__set__cln__("<ROOT>/tests/04-control-flow.sel:9");try{
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("eee"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/04-control-flow.sel", 9 ,"");
+___ifcnt___1 = ___ce___!=null && !___ce___.isEmpty();
+Assert.assertTrue("Element not found by selector xpath@'eee' at line number 9 ", ___ifcnt___1);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:11*/__set__cln__("<ROOT>/tests/04-control-flow.sel:11");System.out.println("else-if");
+
+}
+catch(AssertionError ___e___4){}
+catch(Exception ___e___3){
+System.out.println(___e___3.getMessage());throw ___e___3;}
+}if(!___ifcnt___1){/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:13*/__set__cln__("<ROOT>/tests/04-control-flow.sel:13");
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:15*/__set__cln__("<ROOT>/tests/04-control-flow.sel:15");System.out.println("else");
+
+}
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:17*/__set__cln__("<ROOT>/tests/04-control-flow.sel:17");boolean ___ifcnt___2 = false;try{
+___ifcnt___2 = doEvalIf("\"a\"==\"a\"");
+Assert.assertTrue("Evaluation condition is invalid at line number 17 ", ___ifcnt___2);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:19*/__set__cln__("<ROOT>/tests/04-control-flow.sel:19");System.out.println("eval");
+
+}
+catch(AssertionError ___e___6){}
+catch(Exception ___e___5){
+System.out.println(___e___5.getMessage());throw ___e___5;}
+
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:21*/__set__cln__("<ROOT>/tests/04-control-flow.sel:21");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ddd"), evaluate("")}, new String[]{"class", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector class@'ddd' at line number 21 ", false, 1000, false, "<ROOT>/tests/04-control-flow.sel", 21 ,"");
+
+Assert.assertTrue("Element not found by selector class@'ddd' at line number 21 ", ___ce___!=null && !___ce___.isEmpty());Map<String, Object> ___w___1 = get__loopcontext__();
+
+set__loopcontext__("");
+
+if(true) {
+
+int ___itr___1 = 0;
+for(final WebElement ___w___2 : ___ce___) {
+
+add__loopcontext__arg("i",___itr___1);
+final SearchContext ___pc___1 = ___w___2;
+List<WebElement> ___th___1 = new java.util.ArrayList<WebElement>(){{add(___w___2);}};/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:23*/__set__cln__("<ROOT>/tests/04-control-flow.sel:23");System.out.println(get__loopcontext__indx());
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:24*/__set__cln__("<ROOT>/tests/04-control-flow.sel:24");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ddd-@index"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector xpath@'ddd-@index' at line number 24 ", false, 1000, false, "<ROOT>/tests/04-control-flow.sel", 24 ,"");
+
+___itr___1++;
+}
+}
+set__loopcontext__(___w___1);
+
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:26*/__set__cln__("<ROOT>/tests/04-control-flow.sel:26");Map<String, Object> ___w___3 = get__loopcontext__();
+
+set__loopcontext__("");
+
+for(int ___itr___2=0;___itr___2<5;___itr___2++) {
+
+add__loopcontext__arg("a1",___itr___2);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:28*/__set__cln__("<ROOT>/tests/04-control-flow.sel:28");System.out.println(get__loopcontext__indx());
+}
+set__loopcontext__(___w___3);
+
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:30*/__set__cln__("<ROOT>/tests/04-control-flow.sel:30");Map<String, Object> ___w___4 = get__loopcontext__();
+
+set__loopcontext__("");
+
+for(int ___itr___3=0;___itr___3<3;___itr___3++) {
+
+add__loopcontext__arg("a1",___itr___3);
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:32*/__set__cln__("<ROOT>/tests/04-control-flow.sel:32");System.out.println(get__loopcontext__indx());
+}
+set__loopcontext__(___w___4);
+
+/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:34*/__set__cln__("<ROOT>/tests/04-control-flow.sel:34");if(1==1) {} else {}
+pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+}
+catch(Throwable ___e___7)
+{pushResult(new SeleniumTestResult(get___d___(), this, ___e___7, getOutDir() + java.io.File.separator + "<UUID>.png", ___lp___, null));
+}}
+}

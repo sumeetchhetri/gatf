@@ -327,7 +327,7 @@ public class FindCommand extends Command {
                         } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
-                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        	value = scc.value!=null?"evaluate(\"" + esc(scc.value) + "\")":null;   // first|last carry no value
                         } else if(c instanceof ClickCommand) {
                         	ClickCommand typ = (ClickCommand)c;
                             if(StringUtils.isNotBlank(typ.name)) {
@@ -392,7 +392,7 @@ public class FindCommand extends Command {
                         } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
-                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        	value = scc.value!=null?"evaluate(\"" + esc(scc.value) + "\")":null;   // first|last carry no value
                         } else if(c instanceof ClickCommand) {
                         	ClickCommand typ = (ClickCommand)c;
                             if(StringUtils.isNotBlank(typ.name)) {
@@ -480,7 +480,7 @@ public class FindCommand extends Command {
                         } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
-                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        	value = scc.value!=null?"evaluate(\"" + esc(scc.value) + "\")":null;   // first|last carry no value
                         } else if(c instanceof ClickCommand) {
                         	ClickCommand typ = (ClickCommand)c;
                             if(StringUtils.isNotBlank(typ.name)) {
@@ -613,7 +613,7 @@ public class FindCommand extends Command {
                         } else if(c instanceof SelectCommand) {
                         	SelectCommand scc = (SelectCommand)c;
                         	ssubselector = scc.by;
-                        	value = "evaluate(\"" + esc(scc.value) + "\")";
+                        	value = scc.value!=null?"evaluate(\"" + esc(scc.value) + "\")":null;   // first|last carry no value
                         } else if(c instanceof ClickCommand) {
                         	ClickCommand typ = (ClickCommand)c;
                             if(StringUtils.isNotBlank(typ.name)) {

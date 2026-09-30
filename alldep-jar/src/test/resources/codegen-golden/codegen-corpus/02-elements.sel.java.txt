@@ -1,0 +1,152 @@
+package com.gatf.selenium;
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
+import java.util.List;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.Util;
+import com.gatf.selenium.SeleniumTestSession;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
+import java.util.function.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.jruby.embed.LocalVariableBehavior;
+import org.jruby.embed.ScriptingContainer;
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import java.util.Map;
+import org.junit.Assert;
+import org.openqa.selenium.Keys;
+import ru.yandex.qatools.ashot.AShot;
+import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
+
+@SuppressWarnings({"unused", "unchecked", "serial"})
+/*GATF_ST_CLASS_START_*/public class STC_<N> extends SeleniumTest implements Serializable {
+public STC_<N>(AcceptanceTestContext ___cxt___, int index) {
+/*GATF_ST_CLASS_INIT_*/super("<ROOT>/tests/02-elements.sel", ___cxt___, index);
+}
+public void close() {
+/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();
+}
+public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+return new STC_<N>(ctx, index);}
+public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+boolean logconsole = false, logdebug = false, lognw = false;
+/*GATF_ST_DRIVER_INIT_CHROME*/org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
+___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);
+___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".trim());
+Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
+___dc___.setExperimentalOption("prefs", __prefs);
+String __bkey__ = addWdm("chrome", ___dc___);
+set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+initBrowser(get___d___(), logconsole, logdebug, lognw, false);
+
+}
+public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception {
+this.setOutPath(outPath);
+/*GATF_ST_START_*/addTest(null, "chrome");
+
+
+setSession(null, 0, true);
+quit();
+/*GATF_OP_LINE@<ROOT>/tests/02-elements.sel:3*/__set__cln__("<ROOT>/tests/02-elements.sel:3");setupDriverchrome(___lp___);
+_execute(___lp___);
+return get__sessions__();
+}
+public int concurrentExecutionNum() {
+return 0;
+}
+public void _execute(LoggingPreferences ___lp___) throws Exception {
+WebDriver ___ocw___ = null;
+try {
+SearchContext ___sc___1 = get___d___();
+WebDriver ___cw___ = get___d___();
+___ocw___ = ___cw___;
+List<WebElement> ___ce___ = null;
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Statements are the reference examples (docs/seleasy/REFERENCE.md); one category per file.
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:4*/__set__cln__("<ROOT>/tests/02-elements.sel:4");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 4 ", false, 1000, true, "<ROOT>/tests/02-elements.sel", 4 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:5*/__set__cln__("<ROOT>/tests/02-elements.sel:5");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 5 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 5 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:6*/__set__cln__("<ROOT>/tests/02-elements.sel:6");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 10, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'ele1' at line number 6 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 6 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:7*/__set__cln__("<ROOT>/tests/02-elements.sel:7");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("h1"), evaluate("")}, new String[]{"css", ""}, evaluate("text"), false, evaluate("Welcome"), new String[]{}, null, "=", null, "Element not found by selector css@'h1' at line number 7 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 7 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:8*/__set__cln__("<ROOT>/tests/02-elements.sel:8");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'ele1' at line number 8 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 8 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:9*/__set__cln__("<ROOT>/tests/02-elements.sel:9");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "clickfo", null, null, "Element not found by selector id@'ele1' at line number 9 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 9 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:10*/__set__cln__("<ROOT>/tests/02-elements.sel:10");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "clicknf", null, null, "Element not found by selector id@'ele1' at line number 10 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 10 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:11*/__set__cln__("<ROOT>/tests/02-elements.sel:11");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele1' at line number 11 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 11 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:12*/__set__cln__("<ROOT>/tests/02-elements.sel:12");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "submit", null, null, "Element not found by selector id@'ele1' at line number 12 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 12 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:13*/__set__cln__("<ROOT>/tests/02-elements.sel:13");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "type", null, evaluate("abc"), "Element not found by selector id@'ele1' at line number 13 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 13 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:14*/__set__cln__("<ROOT>/tests/02-elements.sel:14");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "sendkeys", null, evaluate("abc"), "Element not found by selector id@'ele1' at line number 14 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 14 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:15*/__set__cln__("<ROOT>/tests/02-elements.sel:15");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "typebl", null, evaluate("abc"), "Element not found by selector id@'ele1' at line number 15 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 15 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:16*/__set__cln__("<ROOT>/tests/02-elements.sel:16");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "sendkeyscl", null, evaluate("abc"), "Element not found by selector id@'ele1' at line number 16 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 16 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:17*/__set__cln__("<ROOT>/tests/02-elements.sel:17");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "chord", null, Keys.chord("\u0048\u0065\u006c\u006c\u006f"), "Element not found by selector id@'abc' at line number 17 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 17 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:18*/__set__cln__("<ROOT>/tests/02-elements.sel:18");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "randomize", null, evaluate("alphanumeric")+ " " + evaluate("12") + " ", "Element not found by selector id@'ele1' at line number 18 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 18 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:19*/__set__cln__("<ROOT>/tests/02-elements.sel:19");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "randomize", null, evaluate("numeric")+ " " + evaluate("5") + " ", "Element not found by selector id@'ele1' at line number 19 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 19 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:20*/__set__cln__("<ROOT>/tests/02-elements.sel:20");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "randomize", null, evaluate("range")+ " " + evaluate("9999") + " " + evaluate("99999"), "Element not found by selector id@'ele1' at line number 20 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 20 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:21*/__set__cln__("<ROOT>/tests/02-elements.sel:21");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "randomize", null, evaluate("value")+ " " + evaluate("abcd") + " ", "Element not found by selector id@'ele1' at line number 21 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 21 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:22*/__set__cln__("<ROOT>/tests/02-elements.sel:22");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "clear", null, null, "Element not found by selector id@'ele1' at line number 22 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 22 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:23*/__set__cln__("<ROOT>/tests/02-elements.sel:23");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, evaluate("text"), false, evaluate("first"), new String[]{}, "select", null, null, "Element not found by selector id@'abc' at line number 23 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 23 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:24*/__set__cln__("<ROOT>/tests/02-elements.sel:24");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, evaluate("index"), false, evaluate("2"), new String[]{}, "select", null, null, "Element not found by selector id@'abc' at line number 24 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 24 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:25*/__set__cln__("<ROOT>/tests/02-elements.sel:25");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, evaluate("value"), false, evaluate("second"), new String[]{}, "select", null, null, "Element not found by selector id@'abc' at line number 25 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 25 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:26*/__set__cln__("<ROOT>/tests/02-elements.sel:26");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, evaluate("first"), false, null, new String[]{}, "select", null, null, "Element not found by selector id@'abc' at line number 26 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 26 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:27*/__set__cln__("<ROOT>/tests/02-elements.sel:27");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, evaluate("last"), false, null, new String[]{}, "select", null, null, "Element not found by selector id@'abc' at line number 27 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 27 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:28*/__set__cln__("<ROOT>/tests/02-elements.sel:28");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "hover", null, null, "Element not found by selector id@'abc' at line number 28 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 28 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:29*/__set__cln__("<ROOT>/tests/02-elements.sel:29");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("hoverele"), evaluate("")}, new String[]{"id", ""}, evaluate("id@'clickele'"), false, null, new String[]{}, null, null, null, "Element not found by selector id@'hoverele' at line number 29 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 29 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:30*/__set__cln__("<ROOT>/tests/02-elements.sel:30");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "upload", null, evaluate("/path/to/file.txt"), "Element not found by selector id@'ele1' at line number 30 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 30 ,"");
+
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:31*/__set__cln__("<ROOT>/tests/02-elements.sel:31");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("asds"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector xpath@'asds' at line number 31 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 31 ,"");
+
+Assert.assertTrue("Element not found by selector xpath@'asds' at line number 31 ", ___ce___!=null && !___ce___.isEmpty());if (___ocw___ instanceof JavascriptExecutor) {((JavascriptExecutor)___ocw___).executeScript("var c = arguments[0];var ctx = c.getContext(\"2d\");ctx.beginPath();ctx.arc(30, 30, 10, 0, 2 * Math.PI);ctx.stroke();", ___ce___.get(0));}
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:32*/__set__cln__("<ROOT>/tests/02-elements.sel:32");sleep(100);
+
+pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+}
+catch(Throwable ___e___1)
+{pushResult(new SeleniumTestResult(get___d___(), this, ___e___1, getOutDir() + java.io.File.separator + "<UUID>.png", ___lp___, null));
+}}
+}

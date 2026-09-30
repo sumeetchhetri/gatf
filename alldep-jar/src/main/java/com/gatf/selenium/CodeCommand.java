@@ -139,9 +139,9 @@ public class CodeCommand extends Command {
                             vn = m.group(2);
                         }
                         args += "Object "+vn+" = getProviderDataValueO(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+");\n";
-                    } else {
+                    } else if(!vn.trim().equals(arg.trim())) {
                     	args += "Object "+vn+" = " + state.unsanitize(arg) + ";\n";
-                    }
+                    }   // a bare name (`<<<(java) a`) is already a local of the generated method: no self-assignment
                 }
                 code = args + code;
                 return state.unsanitize(code);
@@ -198,6 +198,7 @@ public class CodeCommand extends Command {
             } else if(lang.equals("js")) {
                 String jscode = "";
                 String args = "";
+                List<String> jsargs = new ArrayList<String>();
                 for (String arg : arglist)
                 {
                 	String vn = arg;
@@ -212,13 +213,18 @@ public class CodeCommand extends Command {
                             vn = m.group(2);
                         }
                         args += "var " + vn + " = \\\"\"+getProviderDataValue(\""+esc(m.group(2))+"\", "+(m.group(1).toLowerCase().trim().equals("v")?"true":"false")+")+\"\\\";";
+                    } else if(vn.trim().equals(arg.trim())) {
+                    	// a bare name (`<<<(js) a`): pass the script variable's value into the page, as the other languages do
+                    	args += "var " + vn + " = arguments[" + jsargs.size() + "];";
+                    	jsargs.add(state.unsanitize(arg).trim());
                     } else {
                     	arg = arg.replace("@index", "get__loopcontext__indx()");
                     	args += "var " + vn + " = " + esc(state.unsanitize(arg)) + ";";
                     }
                 }
                 jscode += "if (___ocw___ instanceof JavascriptExecutor) {\n";
-                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+args+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\");\n}\n";
+                jscode += "((JavascriptExecutor)___ocw___).executeScript(\""+args+esc(state.unsanitize(code)).replaceAll("\n", "\\\\n")+"\""
+                		+ (jsargs.isEmpty() ? "" : ", " + String.join(", ", jsargs)) + ");\n}\n";
                 return jscode;
             } else if(lang.equals("ruby")) {
                 String rcode = "";

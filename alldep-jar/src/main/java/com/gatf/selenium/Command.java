@@ -821,6 +821,10 @@ public class Command {
             	throwParseErrorS(cmdDetails, new RuntimeException("Provider details required"));
             }
             comd = new TransientProviderCommand(cmd.trim(), cmdDetails, state);
+        } else if (cmd.startsWith("#transient-variable ")) {
+            comd = new TransientVariableCommand(cmd.substring(20).trim(), cmdDetails, state, false);
+        } else if (cmd.startsWith("#tv ")) {
+            comd = new TransientVariableCommand(cmd.substring(4).trim(), cmdDetails, state, false);
         } else if (cmd.startsWith("#tp ")) {
             cmd = cmd.substring(4).trim();
             if(cmd.isEmpty()) {
@@ -929,8 +933,8 @@ public class Command {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("tab ")) {
             comd = new TabCommand(cmd.substring(4).trim(), cmdDetails, state);
-        } else if (cmd.toLowerCase().startsWith("window ")) {
-            comd = new WindowCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (cmd.toLowerCase().startsWith("window ") || cmd.equalsIgnoreCase("window")) {
+            comd = new WindowCommand(cmd.length()>6?cmd.substring(7).trim():"", cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("frame ")) {
             comd = new FrameCommand(cmd.substring(6).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("printpdf ")) {
@@ -1239,12 +1243,24 @@ public class Command {
                         || tmp instanceof ProviderLoopCommand || tmp instanceof SubTestCommand || tmp instanceof ScopedLoopCommand
                         || tmp instanceof ReadFileCommand || tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
                         || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand) {
+                	if(!iter.hasNext()) {   // last statement of the file: no block can follow it
+                		if(tmp instanceof VarCommand || tmp instanceof FrameCommand || tmp instanceof PluginCommand || tmp instanceof TabCommand
+                				|| tmp instanceof WindowCommand || tmp instanceof TransientProviderCommand) {
+                			parent.children.add(tmp);
+                			if(tmp instanceof PluginCommand) {
+                				((PluginCommand)tmp).reconcile();
+                			} else if(tmp instanceof VarCommand) {
+                				((VarCommand)tmp).reconcile();
+                			}
+                			continue;
+                		}
+                		throwParseErrorS(o, new RuntimeException(tmp.getClass().getSimpleName() + " should have a proceeding block"));
+                	}
                 	ImmutablePair<Command, Object[]> ipn = nextCommand(tmp, iter, state);
                     Command tmpn = ipn.left;
                     Object[] on = ipn.right;
                 	if(!(tmpn instanceof StartCommand) && !(tmp instanceof VarCommand) && !(tmp instanceof FrameCommand) && !(tmp instanceof PluginCommand) 
-                			&& !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand) && (!(tmp instanceof TransientProviderCommand) 
-                			|| (tmp instanceof TransientProviderCommand && !((TransientProviderCommand)tmp).isLazy))) {
+                			&& !(tmp instanceof TabCommand) && !(tmp instanceof WindowCommand) && !(tmp instanceof TransientProviderCommand)) {
                 		boolean err = true;
                     	if(tmp instanceof IfCommand || tmp instanceof ElseCommand) {
                     		if(tmpn instanceof ValueListCommand) {
