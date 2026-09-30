@@ -36,7 +36,7 @@ import java.util.regex.Pattern;
  *  <li>API dependencies ({@code relatedTestName}) of a selected test are pulled in automatically, so filtering
  *      can't silently break a chain.</li>
  * </ul>
- * Only active when the CLI activates it, so the UI server and Maven mojo never filter.
+ * Only active when the CLI activates it, or for one Execute-view run ({@link #fromQuery}); the Maven mojo never filters.
  */
 public final class TestFilter {
 
@@ -79,6 +79,21 @@ public final class TestFilter {
         } catch (java.util.regex.PatternSyntaxException e) {
             throw new IllegalArgumentException("invalid " + opt + " regex '" + re + "': " + e.getDescription());
         }
+    }
+
+    /**
+     * Execute view: a filter from the {@code /execute} query — one {@code grep} and one {@code grepInvert} regex, and
+     * {@code tag} as comma / space separated tags. Null when all are blank.
+     * @throws IllegalArgumentException for an invalid regex
+     */
+    public static TestFilter fromQuery(String grep, String grepInvert, String tags) {
+        List<String> g = new ArrayList<String>(), gi = new ArrayList<String>(), t = new ArrayList<String>();
+        if (grep != null && !grep.trim().isEmpty()) g.add(grep.trim());
+        if (grepInvert != null && !grepInvert.trim().isEmpty()) gi.add(grepInvert.trim());
+        if (tags != null) {
+            for (String s : tags.split("[,\\s]+")) if (!s.isEmpty() && !s.equals("@")) t.add(s);
+        }
+        return g.isEmpty() && gi.isEmpty() && t.isEmpty() ? null : new TestFilter(g, gi, t);
     }
 
     public static void activate(TestFilter f) { active = f; }

@@ -81,7 +81,7 @@ public class ExecSubTestCommand extends Command {
             name = unSantizedUnQuoted(parts[0].trim(), state);
             for (Command c : state.allSubTests) {
             	SubTestCommand st = (SubTestCommand)c;
-				if(st.name.equalsIgnoreCase(name)) {
+				if(st.hook==null && st.name.equalsIgnoreCase(name)) {
 					subt = st;
 					if(StringUtils.isBlank(sessionName)) {
 						sessionName = subt.sessionName;
@@ -227,7 +227,7 @@ public class ExecSubTestCommand extends Command {
         	if(lazyState!=null) {
         		for (Command c : state.allSubTests) {
                 	SubTestCommand st = (SubTestCommand)c;
-    				if(st.name.equalsIgnoreCase(name)) {
+    				if(st.hook==null && st.name.equalsIgnoreCase(name)) {
     					subt = st;
     					if(StringUtils.isBlank(sessionName)) {
     						sessionName = subt.sessionName;
@@ -267,7 +267,13 @@ public class ExecSubTestCommand extends Command {
             b.append(genDebugInfo(this));
             subt.calls += 1;
             String name_ = subt.name + " (" + subt.calls + ")" + (args.trim().isEmpty()?"":(" (" + args.trim() + ")"));
-            b.append("___ce___ = ___invoke_sub_test_dyn___(getClass(), \"" + subt.fName+"\", \""+esc(name_)+"\", ___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            String skip = subt.isAFunc ? null : skipReason(subt, state.hasOnly());
+            if(skip!=null) {
+            	// M6: skip / fixme / not-only: the subtest is reported as skipped without running (hooks included)
+            	b.append("__skip_subtest__(\""+esc(subt.name)+"\", \""+esc(name_)+"\", \""+skip+"\");\n");
+            } else {
+            	b.append("___ce___ = ___invoke_sub_test_dyn___(getClass(), \"" + subt.fName+"\", \""+esc(name_)+"\", ___cw___, ___ocw___, "+state.currvarnamesc()+", ___lp___);\n");
+            }
             for (String pn : params.keySet()) {
 				b.append("___del_var__(\""+pn+"\");\n");
 			}
@@ -275,6 +281,12 @@ public class ExecSubTestCommand extends Command {
                 b.append("}\n");
             }
             return b.toString();
+        }
+        /** M6: why a subtest call is skipped — its skip/fixme marker, "only" when another subtest is marked only — or null. */
+        static String skipReason(SubTestCommand st, boolean fileHasOnly) {
+        	if("skip".equals(st.marker) || "fixme".equals(st.marker)) return st.marker;
+        	if(fileHasOnly && !"only".equals(st.marker)) return "only";
+        	return null;
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {

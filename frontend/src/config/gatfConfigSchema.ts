@@ -299,6 +299,13 @@ export const executorSchema: CfgSchema = {
     "browserApiStorageToken": {
       "type": "string"
     },
+    // M6: scripts run once before the UI suite (before loginOnce) and once after it, also when scripts failed
+    "globalSetup": {
+      "type": "string"
+    },
+    "globalTeardown": {
+      "type": "string"
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

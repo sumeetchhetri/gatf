@@ -17,7 +17,8 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
 import type { TestcaseFileEntry, ExecStatus, LoadStatEntry, LiveGStats } from '../api';
 import { fmtMs } from '../util';
-import { buildExecRows, visibleRows, dirState } from './execTree';
+import { buildExecRows, visibleRows, dirState, execFilterError, execFilterQuery, describeExecFilter } from './execTree';
+import type { ExecFilter } from './execTree';
 
 type Mode = 'api' | 'sel';
 type RunState = 'idle' | 'starting' | 'running' | 'paused' | 'done' | 'failed';
@@ -227,6 +228,10 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
   const [errored, setErrored] = useState<RunError[]>([]);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [live, setLive] = useState<LiveState>(emptyLive);
+  // grep / tag selection inside the chosen files (the CLI's --grep / --grep-invert / --tag)
+  const [filter, setFilter] = useState<ExecFilter>({ grep: '', grepInvert: '', tags: '' });
+  const filterError = execFilterError(filter);
+  const filterDesc = describeExecFilter(filter);
 
   const pollRef = useRef<number | null>(null);
   const selectedRef = useRef(selected);
@@ -322,7 +327,7 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
 
   const run = () => {
     const sel = [...selected].filter((p) => kindOf(p) === (mode === 'api' ? 'xml' : 'sel'));
-    if (sel.length === 0) return;
+    if (sel.length === 0 || filterError) return;
     setErrored([]);
     setFileStatus({});
     setLive(emptyLive());
@@ -331,7 +336,7 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
     setRunState('starting');
     setStatusMsg('Starting…');
     api
-      .execStart(pluginOf(mode), sel)
+      .execStart(pluginOf(mode), sel, execFilterQuery(filter))
       .then(({ data }) => {
         if (data.loadTestingEnabled) setLiveEnabled(true);
         interpret(data);
@@ -423,7 +428,7 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
       {!loading && !error && (
         <>
           <div className="cfg-bar">
-            <button className="btn primary" disabled={busy || selCount === 0} onClick={run}>
+            <button className="btn primary" disabled={busy || selCount === 0 || !!filterError} onClick={run}>
               ▶ Run {selCount > 0 ? `(${selCount})` : ''}
             </button>
             <button className="btn" disabled={!busy} onClick={stop}>
@@ -438,6 +443,40 @@ export default function ExecuteView({ onOpenReports }: { onOpenReports: () => vo
               {busy && <span className="spinner" />}
               {statusMsg || 'Idle'}
             </span>
+          </div>
+
+          <div className="cfg-bar exec-filter">
+            <input
+              className="inp"
+              placeholder="grep (regex on title)"
+              aria-label="grep"
+              value={filter.grep}
+              disabled={busy}
+              onChange={(e) => setFilter({ ...filter, grep: e.target.value })}
+            />
+            <input
+              className="inp"
+              placeholder="tags, e.g. @smoke"
+              aria-label="tags"
+              value={filter.tags}
+              disabled={busy}
+              onChange={(e) => setFilter({ ...filter, tags: e.target.value })}
+            />
+            <input
+              className="inp"
+              placeholder="grep-invert (exclude)"
+              aria-label="grep-invert"
+              value={filter.grepInvert}
+              disabled={busy}
+              onChange={(e) => setFilter({ ...filter, grepInvert: e.target.value })}
+            />
+            {filterError ? (
+              <span className="view-error small">{filterError}</span>
+            ) : filterDesc ? (
+              <span className="muted small mono" title={mode === 'sel' ? 'UI: script path + the @tags in its leading // comments' : 'API: file, test name and description'}>
+                {filterDesc}
+              </span>
+            ) : null}
           </div>
 
           {errored.length > 0 && (

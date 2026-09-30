@@ -1141,6 +1141,36 @@ public abstract class SeleniumTest {
 			return softFailures;
 		}
 
+		/** M6: skip | fixme | only when this subtest was not run (reported as skipped), else null. */
+		private String skipReason;
+
+		public String getSkipReason() {
+			return skipReason;
+		}
+
+		/** M6: a subtest that was not run: passes the script, reported as skipped with its reason. */
+		static SeleniumTestResult skipped(SeleniumTest test, String reason) {
+			SeleniumTestResult r = new SeleniumTestResult(test.getSession(), test);
+			r.skipReason = reason;
+			List<LogEntry> entries = new ArrayList<LogEntry>();
+			entries.add(new LogEntry(Level.ALL, new Date().getTime(), skipMessage(reason)));
+			r.logs.put("gatf", new SerializableLogEntries(entries));
+			return r;
+		}
+
+		/** M6: report text for a skipped subtest. */
+		public static String skipMessage(String reason) {
+			return "fixme".equals(reason) ? "Skipped (fixme)" : "only".equals(reason) ? "Skipped (another subtest is marked only)" : "Skipped";
+		}
+
+		private SeleniumTestResult(SeleniumTestSession s, SeleniumTest test) {
+			this.status = true;
+			this.isContinue = true;
+			this.stName = test.get__subtestname__();
+			this.line = test.state.line;
+			this.internalTestRes = s.internalTestRs;
+		}
+
 		public Map<String, Object> getChecks() {
 			return checks;
 		}
@@ -2369,6 +2399,24 @@ public abstract class SeleniumTest {
 		__soft__.add(where, e.getMessage());
 		__traceAction__("softfail", e.getMessage());
 		System.out.println("Soft assertion failed" + (where.isEmpty() ? "" : " at " + where) + ": " + e.getMessage());
+	}
+
+	/** M6: emitted for a subtest call that must not run (skip / fixme marker, or another subtest is marked only). */
+	protected void __skip_subtest__(String stname, String sfname, String reason) {
+		String prev = get__subtestname__();
+		set__subtestname__(stname, sfname);   // clears the not-run placeholder, adds provider details to the name
+		try {
+			pushResult(SeleniumTestResult.skipped(this, reason));
+			System.out.println("Skipped subtest " + get__subtestname__() + " (" + reason + ")");
+		} finally {
+			reset__subtestname__(prev);
+		}
+	}
+
+	/** M6: an afterEach / afterAll hook failed after the script had already failed: logged, the first failure is reported. */
+	protected void __hook_failed__(String hook, Throwable t) {
+		System.out.println(hook + " hook failed: " + t.getMessage());
+		__traceAction__("hookfail", hook + ": " + t.getMessage());
 	}
 
 	/** M1: file:line of a statement marked {@code nowait}/{@code <action>!}; its actions skip the auto-wait. */

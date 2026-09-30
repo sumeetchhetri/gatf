@@ -61,6 +61,7 @@ Replay the same suite against several base URLs (`compareEnvBaseUrls`) to compar
 - **Semantic locators:** `role@button[name=Save]`, `label@'Email address'`, `placeholder@Search`, `testid@save-btn` (attribute set by `testIdAttribute`, default `data-testid`), `alt@`, `title@`, and exact / regex text (`text@'=Order placed'`, `text@'/placed|shipped/i'`). They resolve in the page with implicit ARIA roles and accessible names, pierce open shadow roots, and with `strictLocators` fail when more than one element matches, listing the candidates.
 - **Network mocking:** `route **/api/users fulfill 200 users.json`, `route **/*.png abort`, `route **/api/** continue header 'X-Env: test'` and `unroute` intercept the browser's own requests (the first matching route wins; optional method filter); `route from har checkout.har` replays a recording by method + URL. Chromium via CDP `Fetch`, Firefox via WebDriver BiDi.
 - **Auth state:** `state save .auth/admin.json` / `state load …` keep cookies (every domain, via CDP or BiDi) and local/session storage in Playwright's `storageState` format. Set `loginOnce` (a script run once before the UI suite) and `storageState` (the file it leaves) in the config and every script starts logged in. `browserApiStorageToken` (e.g. `localStorage:auth#access_token`) sends a token the app keeps in web storage as a bearer header on `api` / `curl` calls from UI scripts.
+- **Hooks and markers:** `beforeAll` / `beforeEach` / `afterEach` / `afterAll` blocks run around the script and each subtest (afterEach/afterAll also after a failure); `skip subtest …` / `fixme subtest …` skip that subtest and `only subtest …` skips the others in the script, reported as skipped with the reason in the console, report and JUnit XML. `globalSetup` / `globalTeardown` in the config run once before and after the UI suite.
 - **Actions:**
   - type (including random data), click, double-click, right-click, hover;
   - **drag and drop**, click-and-hold/release, move-by-offset and key chords, chained with `actions`;
@@ -260,6 +261,7 @@ Both `--opt value` and `--opt=value` work. If nothing matches, the run stops wit
   ```
   A script's subtests always run together.
 - **Dependencies:** an API test's `relatedTestName` dependency is included automatically. For chains that capture values (e.g. a login token), tag the whole chain, or select it with `--grep <file>`.
+- **In the console:** the Execute view has the same grep / tag / grep-invert fields; they apply within the files selected for the run.
 
 ### Test-case documents, traceability and coverage
 

@@ -849,6 +849,49 @@ Examples :-
 	}
 ```
 
+### Hooks
+
+```
+	beforeAll|beforeEach|afterEach|afterAll
+	{
+		code
+	}
+where
+	beforeAll - runs once before the script's first statement, afterAll once at its end (also when it failed)
+	beforeEach / afterEach - run around every subtest; afterEach also runs when the subtest failed
+Examples :-
+	beforeEach
+	{
+		goto ${baseUrl}/login
+	}
+	afterAll
+	{
+		state save .auth/after.json
+	}
+```
+
+A failing `beforeAll` fails the script; a failing `beforeEach` fails that subtest (its body is not run). When the script or subtest has already failed, a failing `afterEach` / `afterAll` is logged and the first failure is reported. Hooks run like funcs and are defined at the top level, one of each kind per script; an `import`ed file lends its subtests and funcs but not its hooks. Suite-wide setup is `globalSetup` / `globalTeardown` in the config: scripts run once before the UI suite (before `loginOnce`) and once after its last round, also when scripts failed; a failing `globalSetup` stops the run.
+
+### Subtest markers
+
+```
+	only|skip|fixme subtest "name" ...
+where
+	skip / fixme - the subtest is not run and is reported as skipped
+	only - when any subtest in the file is marked only, the others are reported as skipped
+Examples :-
+	skip subtest "export"
+	{
+		click id@export
+	}
+	fixme subtest "checkout"
+	{
+		click testid@pay
+	}
+```
+
+Skipped subtests pass the script and show as skipped in the console (with the reason), the report and JUnit XML (`<skipped message=…>`); hooks do not run for them. `only` is per script.
+
 ### Include other seleasy scripts inline
 
 ```

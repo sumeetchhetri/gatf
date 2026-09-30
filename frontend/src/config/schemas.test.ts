@@ -63,6 +63,10 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     for (const k of ['storageState', 'loginOnce', 'browserApiStorageToken']) expect(executorSchema.properties![k].type).toBe('string');
   });
 
+  it('executor schema exposes the M6 global setup / teardown scripts', () => {
+    for (const k of ['globalSetup', 'globalTeardown']) expect(executorSchema.properties![k].type).toBe('string');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

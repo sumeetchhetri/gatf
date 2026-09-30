@@ -58,3 +58,57 @@ export function dirState(files: string[], selected: Set<string>): 'all' | 'some'
   for (const f of files) if (selected.has(f)) n++;
   return n === 0 ? 'none' : n === files.length ? 'all' : 'some';
 }
+
+// Execute view filter: the CLI's --grep / --grep-invert / --tag for one run, applied server-side to test titles
+// (UI: script path + the @tags in its leading // comments; API: file, test name and description).
+export interface ExecFilter {
+  grep: string;
+  grepInvert: string;
+  tags: string;
+}
+
+/** '@smoke, checkout  @smoke' → ['@smoke', '@checkout'] (comma / space separated, '@' optional, de-duplicated). */
+export function normTags(tags: string): string[] {
+  const out: string[] = [];
+  for (const t of tags.split(/[,\s]+/)) {
+    if (!t || t === '@') continue;
+    const tag = t.startsWith('@') ? t : '@' + t;
+    if (!out.includes(tag)) out.push(tag);
+  }
+  return out;
+}
+
+/** First invalid regex as a message, else null (the server re-checks with Java's regex syntax). */
+export function execFilterError(f: ExecFilter): string | null {
+  for (const [k, v] of [
+    ['grep', f.grep],
+    ['grep-invert', f.grepInvert],
+  ] as const) {
+    if (!v.trim()) continue;
+    try {
+      new RegExp(v.trim());
+    } catch (e) {
+      return `invalid ${k} regex: ${(e as Error).message}`;
+    }
+  }
+  return null;
+}
+
+/** Query suffix for PUT /execute ('' when the filter is empty). */
+export function execFilterQuery(f: ExecFilter): string {
+  let q = '';
+  if (f.grep.trim()) q += '&grep=' + encodeURIComponent(f.grep.trim());
+  if (f.grepInvert.trim()) q += '&grepInvert=' + encodeURIComponent(f.grepInvert.trim());
+  const tags = normTags(f.tags);
+  if (tags.length) q += '&tag=' + encodeURIComponent(tags.join(','));
+  return q;
+}
+
+/** The same filter as `gatf test` options, for display. */
+export function describeExecFilter(f: ExecFilter): string {
+  const d: string[] = [];
+  if (f.grep.trim()) d.push('--grep ' + f.grep.trim());
+  for (const t of normTags(f.tags)) d.push('--tag ' + t);
+  if (f.grepInvert.trim()) d.push('--grep-invert ' + f.grepInvert.trim());
+  return d.join(' ');
+}

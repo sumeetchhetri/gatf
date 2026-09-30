@@ -97,7 +97,11 @@ final class CiReports {
                 }
                 b.append(">\n");
                 if (st == Status.SKIPPED) {
-                    b.append("      <skipped/>\n");
+                    if (r.error != null && !r.error.trim().isEmpty()) {   // M6: skip / fixme / only reason
+                        b.append("      <skipped message=\"").append(xml(first(r.error))).append("\"/>\n");
+                    } else {
+                        b.append("      <skipped/>\n");
+                    }
                 } else if (st == Status.FAILED) {
                     if (r.soft > 0) {   // M2: soft-failure count as a testcase property (Jenkins/GitLab show properties)
                         b.append("      <properties><property name=\"softFailures\" value=\"").append(r.soft).append("\"/></properties>\n");

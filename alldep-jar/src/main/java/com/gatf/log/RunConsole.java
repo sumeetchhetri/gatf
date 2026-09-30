@@ -185,7 +185,8 @@ public final class RunConsole {
         String mark = status == Status.PASSED ? green(unicode ? "\u2713" : "ok")
                 : status == Status.FAILED ? red(unicode ? "\u2718" : "x") : yellow("-");
         String line = "  " + mark + "  " + dim(String.valueOf(n)) + " " + title
-                + (status == Status.SKIPPED ? "" : " " + dim("(" + dur(millis) + ")"))
+                + (status == Status.SKIPPED ? (error != null && !error.trim().isEmpty() ? " " + dim(firstLine(error)) : "")   // M6: skip / fixme / only
+                        : " " + dim("(" + dur(millis) + ")"))
                 + (retry ? " " + yellow("retry #" + (r.attempts.size() - 1)) : "");
         o.println(line);
         if (status == Status.FAILED && error != null && !error.trim().isEmpty()) {

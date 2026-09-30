@@ -59,6 +59,16 @@ REGEX_KEYWORDS = [
      "qualifiers": ["fo", "nf"]},
 ]
 
+# M6: statements matched by Command's HOOK_BLOCK (whole line) and SUBTEST_MARKER (`only|skip|fixme subtest ...`)
+# Pattern constants; kept in sync by hand like the list above.
+PATTERN_KEYWORDS = [
+    {"keyword": k, "match": "exact", "requiresArg": False, "canBeBare": True, "class": "SubTestCommand"}
+    for k in ("beforeAll", "beforeEach", "afterEach", "afterAll")
+] + [
+    {"keyword": k, "match": "prefix", "requiresArg": True, "canBeBare": False, "class": "SubTestCommand"}
+    for k in ("only", "skip", "fixme")
+]
+
 # Verbs whose authoritative class comes from handleActions(): when the same
 # keyword is also seen in the main chain (routed via the global-timeout wrapper
 # to WaitTill...), the handleActions class wins.
@@ -273,6 +283,10 @@ def main():
             "class": e["class"],
             "qualifiers": e["qualifiers"],
         }
+
+    # M6: hook blocks + subtest markers are matched by Pattern constants (HOOK_BLOCK / SUBTEST_MARKER)
+    for e in PATTERN_KEYWORDS:
+        merged[e["keyword"].lower()] = dict(e)
 
     entries = sorted(merged.values(),
                      key=lambda e: (e["match"] != "regex", e["keyword"]))

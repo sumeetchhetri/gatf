@@ -116,6 +116,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// script run once before the UI suite to produce it (its state is saved to storageState when it finishes).
 	private String storageState;
 	private String loginOnce;
+	// M6: scripts run once before the UI suite (after nothing else, before loginOnce) and once after it (also when
+	// it failed); like loginOnce they are never run as suite scripts, and a failing globalSetup stops the run.
+	private String globalSetup;
+	private String globalTeardown;
 	// Q8/M5: web-storage key holding a bearer token for api/curl calls from UI scripts:
 	// [localStorage:|sessionStorage:]key[#json.field]; null = none
 	private String browserApiStorageToken;
@@ -563,6 +567,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setStorageState(String storageState) { this.storageState = storageState; }
 	public String getLoginOnce() { return loginOnce; }
 	public void setLoginOnce(String loginOnce) { this.loginOnce = loginOnce; }
+	public String getGlobalSetup() { return globalSetup; }
+	public void setGlobalSetup(String globalSetup) { this.globalSetup = globalSetup; }
+	public String getGlobalTeardown() { return globalTeardown; }
+	public void setGlobalTeardown(String globalTeardown) { this.globalTeardown = globalTeardown; }
 	public String getBrowserApiStorageToken() { return browserApiStorageToken; }
 	public void setBrowserApiStorageToken(String browserApiStorageToken) { this.browserApiStorageToken = browserApiStorageToken; }
 	/** M3: strict semantic locators on? Not a bean property. */

@@ -159,7 +159,32 @@ public class Command {
             return layerStr;
         }
         
+        /** M6: the file's hook block of this kind, or null. */
+        SubTestCommand hook(String kind) {
+            for (Command c : allSubTests) {
+                if(c instanceof SubTestCommand && kind.equals(((SubTestCommand)c).hook)) return (SubTestCommand)c;
+            }
+            return null;
+        }
+
+        /** M6: true when a subtest of this script (not an imported one) is marked {@code only}. */
+        boolean hasOnly() {
+            for (Command c : allSubTests) {
+                if(c instanceof SubTestCommand && "only".equals(((SubTestCommand)c).marker) && !((SubTestCommand)c).imported) return true;
+            }
+            return false;
+        }
+
         void addSubtest(SubTestCommand st) {
+            if(st.hook!=null) {
+                if(isImportedFile) return;   // M6: hooks belong to their own script; an imported file lends subtests/funcs only
+                if(hook(st.hook)!=null) {
+                    throwError(st.fileLineDetails, new RuntimeException("Duplicate " + st.hook + " hook defined"));
+                }
+                allSubTests.add(st);
+                return;
+            }
+            st.imported = isImportedFile;
             if(subtestDups.contains(st.name)) {
                 throwError(st.fileLineDetails, new RuntimeException("Duplicate "+(st.isAFunc?"func":"subtest")+" defined"));
             }
@@ -348,6 +373,16 @@ public class Command {
     static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
     static Pattern WAIT_SOFT = Pattern.compile("^\\?\\?~([0-9]*)");
+    // M6: hook blocks and subtest markers
+    static Pattern HOOK_BLOCK = Pattern.compile("(?i)^(beforeall|beforeeach|aftereach|afterall)$");
+    static Pattern SUBTEST_MARKER = Pattern.compile("(?i)^(only|skip|fixme)\\s+subtest\\s+");
+    /** M6: canonical hook name (beforeAll, beforeEach, afterEach, afterAll) of a HOOK_BLOCK line, any case. */
+    static String hookName(String line) {
+        for (String h : new String[] {"beforeAll", "beforeEach", "afterEach", "afterAll"}) {
+            if (h.equalsIgnoreCase(line)) return h;
+        }
+        return null;
+    }
     static Pattern CONCNUM = Pattern.compile("^\\^[\t ]*([0-9]+)");
     // M1: auto-wait opt-out forms for element actions: `nowait click id@x`, `nowait ??10 id@x click`, `click! id@x`
     static final String NOWAIT_VERBS = "(?:click(?:fo|nf)?|(?:type|sendkeys|chord|randomize)(?:bl|ch|bk|cl|fo)?|select|hover|hoverclick"
@@ -411,7 +446,7 @@ public class Command {
     		CommandState state = new CommandState();
     		state.allSubTests = allcmds.state.allSubTests;
     		for(Command cmd: allcmds.state.allSubTests) {
-    			if(cmd instanceof SubTestCommand) {
+    			if(cmd instanceof SubTestCommand && ((SubTestCommand)cmd).hook==null) {
     				SubTestCommand scmd = (SubTestCommand)cmd;
     				subtests.add("@call \"" + scmd.name.replace('"', '\"') + "\"");
     			}
@@ -937,6 +972,15 @@ public class Command {
             comd = new ExecJsFileCommand(cmd.substring(11).trim(), cmdDetails, state);
         } else if (cmd.toLowerCase().startsWith("canvas ")) {
             comd = new CanvasCommand(cmd.substring(7).trim(), cmdDetails, state);
+        } else if (HOOK_BLOCK.matcher(cmd.trim()).matches()) {
+            // M6: beforeAll / beforeEach / afterEach / afterAll block, generated like a func and called around subtests
+            String hk = hookName(cmd.trim());
+            comd = new SubTestCommand("\"" + hk + "\"", cmdDetails, state, true, hk, null);
+        } else if (SUBTEST_MARKER.matcher(cmd).find()) {
+            // M6: only | skip | fixme subtest ...
+            Matcher sm = SUBTEST_MARKER.matcher(cmd);
+            sm.find();
+            comd = new SubTestCommand(cmd.substring(sm.end()).trim(), cmdDetails, state, false, null, sm.group(1).toLowerCase());
         } else if (cmd.toLowerCase().startsWith("subtest ")) {
             comd = new SubTestCommand(cmd.substring(8).trim(), cmdDetails, state, false);
         } else if (cmd.toLowerCase().startsWith("func ")) {
@@ -1347,7 +1391,7 @@ public class Command {
                     state.isImportedFile = true;
                     Command imported = Command.read(f.getAbsolutePath(), state);
                     for (Command cmd : imported.children) {
-    					if(cmd instanceof SubTestCommand) {
+    					if(cmd instanceof SubTestCommand && ((SubTestCommand)cmd).hook==null) {
     						parent.children.add(cmd);
     						//SubTestCommand st = (SubTestCommand)cmd;
     						//st.state = state;
@@ -1979,12 +2023,20 @@ public class Command {
         b.append("}\n");
         b.append("public void _execute(LoggingPreferences ___lp___) throws Exception {\n");
         b.append("WebDriver ___ocw___ = null;\n");
+        // M6: beforeAll runs before the first top-level statement, afterAll after the last (and on failure)
+        SubTestCommand bah = state.hook("beforeAll"), aah = state.hook("afterAll");
+        if(aah!=null) {
+        	b.append("boolean ___aa___ = false;\n");
+        }
         b.append("try {\n<<<<---->>>>");
         state.pushSc();
         b.append("SearchContext "+state.currvarnamesc()+" = get___d___();\n");
         b.append("WebDriver ___cw___ = get___d___();\n");
         b.append("___ocw___ = ___cw___;\n");
         b.append("List<WebElement> ___ce___ = null;\n");
+        if(bah!=null) {
+        	b.append(bah.hookCall(state.currvarnamesc()));
+        }
         int subtestcount = 0;
         state.isSTGenPhase = false;
         for (Command c : children) {
@@ -2007,9 +2059,21 @@ public class Command {
                 b.append("\n");
             }
         }
+        if(aah!=null) {
+        	b.append("___aa___ = true;\n");
+        	b.append(aah.hookCall(state.currvarnamesc()));
+        }
         b.append("pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));\n");
         String ex = state.evarname();
         b.append("}\ncatch(Throwable "+ex+")\n{");
+        String aares = "new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\", ___lp___, null)";
+        if(aah!=null) {
+        	// the script's failure result (line, screenshot) is taken before afterAll changes the page
+        	b.append("SeleniumTestResult ___aar___ = " + aares + ";\n");
+        	aares = "___aar___";
+        	b.append("if(!___aa___) {\n___aa___ = true;\ntry {\n___invoke_sub_test_dyn___(getClass(), \"" + aah.fName + "\", \"afterAll\", get___d___(), get___d___(), get___d___(), ___lp___);\n"
+        			+ "} catch(Throwable ___hk___) {\n__hook_failed__(\"afterAll\", ___hk___);\n}\n}\n");
+        }
         state.isSTGenPhase = true;
         //b.append("\ntry{");
         //b.append(ex+".printStackTrace();\n");
@@ -2020,7 +2084,7 @@ public class Command {
         //b.append("if("+ex+" instanceof XPathException) {}\n");
         //b.append("else if("+ex+" instanceof FailSubTestException) "+ex+" = new RuntimeException("+ex+");\n");
     	//b.append("else if("+ex+" instanceof SubTestException) "+ex+" = new RuntimeException("+ex+");\n");
-        b.append("pushResult(new SeleniumTestResult(get___d___(), this, "+ex+", getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\", ___lp___, null));\n}");
+        b.append("pushResult(" + aares + ");\n}");
         b.append("}\n");
         for (Command c : state.allSubTests) {
             if(c instanceof SubTestCommand) {
@@ -2236,7 +2300,7 @@ public class Command {
 	            outer: while(true) {
 	            	for (Command c : state.allSubTests) {
 	                	SubTestCommand st = (SubTestCommand)c;
-	    				if(st.name.equalsIgnoreCase(trialname)) {
+	    				if(st.hook==null && st.name.equalsIgnoreCase(trialname)) {
 	    					subt = st;
 	    					break outer;
 	    				}
@@ -2252,7 +2316,7 @@ public class Command {
             name = name==null?unSantizedUnQuoted(parts[0].trim(), state):name;
             for (Command c : state.allSubTests) {
             	SubTestCommand st = (SubTestCommand)c;
-				if(st.name.equalsIgnoreCase(name)) {
+				if(st.hook==null && st.name.equalsIgnoreCase(name)) {
 					subt = st;
 					if(StringUtils.isBlank(sessionName)) {
 						sessionName = subt.sessionName;

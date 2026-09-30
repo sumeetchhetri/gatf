@@ -69,6 +69,19 @@ class TestFilterTest {
     }
 
     @Test
+    void executeViewQuery() {
+        // Execute view: one grep, one grep-invert, tags comma/space separated; all blank = no filter
+        assertThat(TestFilter.fromQuery(null, " ", "")).isNull();
+        TestFilter f = TestFilter.fromQuery("login", "slow", "smoke, @checkout");
+        assertThat(f.describe()).isEqualTo("--grep login --tag @smoke --tag @checkout --grep-invert slow");
+        assertThat(f.matches("ui/login.sel")).isTrue();
+        assertThat(f.matches("ui/cart.sel @checkout")).isTrue();
+        assertThat(f.matches("ui/login-slow.sel")).isFalse();
+        assertThat(f.matches("ui/cart.sel")).isFalse();
+        assertThatThrownBy(() -> TestFilter.fromQuery("(", null, null)).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
     void invalidRegexIsAUsageError() {
         assertThatThrownBy(() -> new TestFilter(List.of("("), null, null))
                 .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("invalid --grep regex '('");

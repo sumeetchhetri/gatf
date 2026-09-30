@@ -70,10 +70,22 @@ public class SubTestCommand extends Command {
         Long calls = 0L;
         boolean isAFunc = false;
         boolean hasName = true;
+        /** M6: beforeAll | beforeEach | afterEach | afterAll for a hook block (run like a func), else null. */
+        String hook;
+        /** M6: only | skip | fixme marker on a subtest, else null. */
+        String marker;
+        /** M6: defined in an imported file (its {@code only} does not narrow the importing script). */
+        boolean imported;
         String fName = "__st__" + state.NUMBER_ST++;
         SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAFunc) {
+            this(val, cmdDetails, state, isAFunc, null, null);
+        }
+        /** M6: {@code hook} names a hook block; {@code marker} is a subtest's only/skip/fixme prefix. */
+        SubTestCommand(String val, Object[] cmdDetails, CommandState state, boolean isAFunc, String hook, String marker) {
             super(cmdDetails, state);
             this.isAFunc = isAFunc;
+            this.hook = hook;
+            this.marker = marker;
             String[] parts = val.trim().split("[\t ]+");
             if(parts.length>=1) {
                 name = unSantizedUnQuoted(parts[0].trim(), state);
@@ -167,9 +179,13 @@ public class SubTestCommand extends Command {
             }
             state.addSubtest(this);
         }
+        /** M6: the statement that runs this hook block from generated code ({@code sc} = the caller's search context). */
+        String hookCall(String sc) {
+            return "___ce___ = ___invoke_sub_test_dyn___(getClass(), \"" + fName + "\", \"" + hook + "\", ___cw___, ___ocw___, " + sc + ", ___lp___);\n";
+        }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append(isAFunc?"func":"subtest");
+            b.append(hook!=null?hook:((marker!=null?marker+" ":"")+(isAFunc?"func":"subtest")));
             if(!children.isEmpty())
             {
                 b.append("\n{\n");
@@ -225,7 +241,17 @@ public class SubTestCommand extends Command {
             	String pstn = state.varnamerandom();
                 b.append("String "+pstn+" = get__"+(!isAFunc?"subtest":"func")+"name__();\n");
             	b.append("set__"+(!isAFunc?"subtest":"func")+"name__(\""+name+"\", __sfname__);\n");
+            	// M6: beforeEach / afterEach wrap every subtest (not funcs or hooks); only emitted when the file has them
+            	SubTestCommand beh = isAFunc ? null : state.hook("beforeEach"), aeh = isAFunc ? null : state.hook("afterEach");
+            	String sc = state.currvarnamesc(), aef = null;
+            	if(aeh!=null) {
+            		aef = state.varnamerandom();
+            		b.append("boolean "+aef+" = false;\n");
+            	}
                 b.append("\ntry {\n");
+                if(beh!=null) {
+                	b.append(beh.hookCall(sc));
+                }
                 for (Command c : children) {
                 	b.append(genDebugInfo(c));
                     try {
@@ -236,12 +262,28 @@ public class SubTestCommand extends Command {
 					}
                     b.append("\n");
                 }
+                if(aeh!=null) {
+                	b.append(aef+" = true;\n");
+                	b.append(aeh.hookCall(sc));
+                }
                 if(!isAFunc) {
                 	b.append("\npushResult(new SeleniumTestResult(get___d___(), this, ___lp___));");
                 }
                 String ex = state.evarname();
                 b.append("\n}\ncatch(Throwable "+ex+")\n{");
-                if(!isAFunc) {
+                String res = null;
+                if(aeh!=null) {
+                	// the subtest (or beforeEach) failed: its result (line, screenshot) is taken first, then afterEach
+                	// still runs; afterEach's own failure is logged and the first one reported
+                	res = state.varnamerandom();
+                	String img = "getOutDir() + java.io.File.separator + \""+UUID.randomUUID().toString()+".png\"";
+                	b.append("SeleniumTestResult "+res+" = new SeleniumTestResult(get___d___(), this, "+ex+", "+img+", ___lp___, \""+name+"\");\n");
+                	b.append("if(!"+aef+") {\n"+aef+" = true;\ntry {\n"+aeh.hookCall(sc)+"} catch(Throwable ___hk___) {\n__hook_failed__(\"afterEach\", ___hk___);\n}\n}\n");
+                }
+                if(res!=null) {
+                	b.append("pushResult("+res+");");
+                	b.append("if(!("+ex+" instanceof WarnSubTestException) && !("+ex+" instanceof PassSubTestException)) throw "+ex+";\n");
+                } else if(!isAFunc) {
                 	//String oex = state.evarname();
 	                /*b.append("\ntry{");
 	                b.append(ex+".printStackTrace();\n");*/
@@ -284,6 +326,22 @@ public class SubTestCommand extends Command {
 				"Examples :-",
 				"\tfunc \"cmd1\"\n\t{\n\t\tselect index@4 id@\"Location\"\n\t}",
 				"\tfunc \"cmd2\" @1 (arg1 arg2)\n\t{\n\t\tselect index@$v{arg1} id@\"$v{arg2}\"\n\t}\n\n",
+				"Hooks",
+				"\tbeforeAll|beforeEach|afterEach|afterAll\n\t{\n\t\tcode\n\t}",
+				"where",
+				"\tbeforeAll - runs once before the script's first statement, afterAll once at its end (also when it failed)",
+				"\tbeforeEach / afterEach - run around every subtest; afterEach also runs when the subtest failed",
+				"Examples :-",
+				"\tbeforeEach\n\t{\n\t\tgoto ${baseUrl}/login\n\t}",
+				"\tafterAll\n\t{\n\t\tstate save .auth/after.json\n\t}\n\n",
+				"Subtest markers",
+				"\tonly|skip|fixme subtest \"name\" ...",
+				"where",
+				"\tskip / fixme - the subtest is not run and is reported as skipped",
+				"\tonly - when any subtest in the file is marked only, the others are reported as skipped",
+				"Examples :-",
+				"\tskip subtest \"export\"\n\t{\n\t\tclick id@export\n\t}",
+				"\tfixme subtest \"checkout\"\n\t{\n\t\tclick testid@pay\n\t}\n\n",
         	};
         }
     }

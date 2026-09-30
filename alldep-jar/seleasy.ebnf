@@ -39,7 +39,9 @@ if_stmt      = ( '?' | '?!' | 'if ' | 'ifnot ' ) , condition ;
 else_stmt    = ( ':?' | ':?!' | 'else if ' | 'else ifnot ' ) , condition
              | ':' | 'else' ;
 scope_stmt   = ( 'frame ' | 'tab ' | 'window ' ) , arg ;   (* inline stmt allowed *)
-subtest_stmt = ( 'subtest ' | 'func ' ) , string ;
+subtest_stmt = [ ( 'only' | 'skip' | 'fixme' ) , ' ' ] , 'subtest ' , string   (* M6 markers *)
+             | 'func ' , string
+             | 'beforeAll' | 'beforeEach' | 'afterEach' | 'afterAll' ;             (* M6 hooks *)
 loop_stmt    = ( '#' , ' ' | '##' , ' ' | 'loop over ' ) , condition ;  (* scoped loop *)
 var_stmt     = ( 'var ' | 'jsvar ' ) , arg ;               (* inline stmt allowed *)
 plugin_stmt  = ident , arg ;                               (* api/json/xml/curl.. *)

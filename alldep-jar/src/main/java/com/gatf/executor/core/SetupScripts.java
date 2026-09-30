@@ -25,6 +25,17 @@ public final class SetupScripts {
         return a != null && b != null && norm(a).equals(norm(b));
     }
 
+    /** The suite's scripts without the setup ones (blank setup entries are ignored); order kept. */
+    public static String[] exclude(String[] scripts, String... setup) {
+        java.util.List<String> out = new java.util.ArrayList<String>();
+        for (String s : scripts) {
+            boolean isSetup = false;
+            for (String x : setup) isSetup |= x != null && !x.trim().isEmpty() && sameScript(s, x);
+            if (!isSetup) out.add(s);
+        }
+        return out.toArray(new String[out.size()]);
+    }
+
     static String norm(String p) {
         String s = p.trim().replace('\\', '/');
         while (s.startsWith("./")) s = s.substring(2);

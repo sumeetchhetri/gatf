@@ -426,8 +426,9 @@ async function execFetch(
   method: string,
   pluginType: string,
   files?: string[],
+  query = '',
 ): Promise<{ ok: boolean; data: ExecStatus }> {
-  const r = await fetch(withTok('/execute?pluginType=' + encodeURIComponent(pluginType)), {
+  const r = await fetch(withTok('/execute?pluginType=' + encodeURIComponent(pluginType) + query), {
     method,
     headers: files ? { 'Content-Type': 'application/json', Accept: 'application/json' } : { Accept: 'application/json' },
     body: files ? JSON.stringify(files) : undefined,
@@ -783,7 +784,8 @@ export const api = {
       { testcasename: name },
     ),
   // ---- execution (Slice D1) — async start-then-poll over /execute ----
-  execStart: (pluginType: string, files: string[]) => execFetch('PUT', pluginType, files),
+  // query: the Execute view's grep / tag filter (execFilterQuery), '' = run everything in the selected files
+  execStart: (pluginType: string, files: string[], query = '') => execFetch('PUT', pluginType, files, query),
   execPoll: (pluginType: string) => execFetch('GET', pluginType),
   execStop: (pluginType: string) => execFetch('DELETE', pluginType),
   // ---- API test Play / Replay (delta-064) ----

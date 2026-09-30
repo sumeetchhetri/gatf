@@ -77,4 +77,19 @@ class CommandTest {
         assertThat(Command.WAIT_SOFT.matcher("?? css@h1").find()).isFalse();
         assertThat(Command.stripNoWait("nowait ??~ id@x text ='a'")).isEqualTo("??~ id@x text ='a'");
     }
+
+    @Test
+    void hookBlocksAndSubtestMarkers() {
+        // M6: whole-line hook keywords in any case; only/skip/fixme prefix a subtest definition
+        assertThat(Command.HOOK_BLOCK.matcher("beforeEach").matches()).isTrue();
+        assertThat(Command.HOOK_BLOCK.matcher("AFTERALL").matches()).isTrue();
+        assertThat(Command.HOOK_BLOCK.matcher("beforeEach x").matches()).isFalse();
+        assertThat(Command.hookName("aftereach")).isEqualTo("afterEach");
+        assertThat(Command.hookName("before")).isNull();
+        java.util.regex.Matcher m = Command.SUBTEST_MARKER.matcher("fixme subtest \"checkout\"");
+        assertThat(m.find()).isTrue();
+        assertThat(m.group(1)).isEqualTo("fixme");
+        assertThat(Command.SUBTEST_MARKER.matcher("skip func \"x\"").find()).isFalse();
+        assertThat(Command.SUBTEST_MARKER.matcher("subtest \"x\"").find()).isFalse();
+    }
 }

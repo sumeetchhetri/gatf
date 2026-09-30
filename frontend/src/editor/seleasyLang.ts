@@ -55,6 +55,8 @@ export const SELEASY: Record<string, Style> = {
   status: 3, header: 3, json: 3, select: 3, clickandhold: 3, contextclick: 3, rightclick: 3,
   movetoelement: 3, draganddrop: 3, dragdrop: 3, dragdrop1: 3, draganddrop1: 3, movebyoffset: 3, ok: 3,
   yes: 3, cancel: 3, no: 3, enabled: 3, className: 3,
+  // M6: hook blocks + subtest markers
+  beforeall: 1, beforeeach: 1, aftereach: 1, afterall: 1, only: 1, skip: 1, fixme: 1,
 };
 
 interface SelState {

@@ -40,6 +40,7 @@ import com.gatf.GatfPluginConfig;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfTestCaseExecutorUtil;
+import com.gatf.executor.core.TestFilter;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
@@ -128,6 +129,14 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 			else if(request.getMethod().equals(Method.PUT)) {
 				final List<String> files = WorkflowContextHandler.OM.readValue(request.getInputStream(), 
 						TypeFactory.defaultInstance().constructCollectionType(List.class, String.class));
+				// Execute view: the CLI's --grep / --grep-invert / --tag selection for this run (null = everything)
+				final TestFilter filter;
+				try {
+					filter = TestFilter.fromQuery(request.getParameter("grep"), request.getParameter("grepInvert"), request.getParameter("tag"));
+				} catch (IllegalArgumentException e) {
+					out.put("error", "Execution failed with Error - " + e.getMessage());
+					throw new RuntimeException(WorkflowContextHandler.OM.writeValueAsString(out));
+				}
 				
 				if(!isStarted.get() && !isDone.get()) {
 					leftOver.set(null);
@@ -141,6 +150,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 						public void run() {
 							GatfPlugin executorMojo = f.apply(pluginType);
     						try {
+    							TestFilter.activate(filter);
     							if(pluginType.equals("executor-api")) {
     								executorMojo.doExecute(config, files);
     							} else {
@@ -179,6 +189,7 @@ public class GatfPluginExecutionHandler extends HttpHandler {
 										status = ExceptionUtils.getStackTrace(e);
 								}
 							} finally { 
+								TestFilter.activate(null);
 								executorMojo.shutdown();
 							}
     						

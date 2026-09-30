@@ -118,4 +118,18 @@ class CiReportsTest {
         assertThat((Map<String, Object>) j.get("summary")).containsEntry("softFailures", 3);
         assertThat(((List<Map<String, Object>>) j.get("tests")).get(0)).containsEntry("softFailures", 3);
     }
+
+    @Test
+    void skippedSubtestKeepsItsReason() throws Exception {
+        // M6: skip / fixme / only reason as <skipped message>; a plain skip stays <skipped/>
+        List<Rec> recs = List.of(rec("ui/hooks.sel", "[chrome] checkout", "Skipped (fixme)", Status.SKIPPED),
+                rec("ui/hooks.sel", "[chrome] export", null, Status.SKIPPED));
+        String xml = CiReports.junitXml(recs, 1000);
+        Document d = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        assertThat(d.getElementsByTagName("skipped").getLength()).isEqualTo(2);
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("skipped").item(0)).getAttribute("message")).isEqualTo("Skipped (fixme)");
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("skipped").item(1)).hasAttribute("message")).isFalse();
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("testsuites").item(0)).getAttribute("skipped")).isEqualTo("2");
+    }
 }
