@@ -16,6 +16,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import type { ReportsIndex, ReportArtifact } from '../api';
+import type { RunResults } from '../report/results';
 import { fmtBytes } from '../util';
 
 function fmtDate(ms: number): string {
@@ -72,7 +73,18 @@ export default function ReportsView({
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
-  useEffect(load, []);
+  // M12: the last CLI run's gatf-results.json in the out dir root (absent for console-only runs); Refresh reloads it
+  const [latest, setLatest] = useState<RunResults | null>(null);
+  const loadLatest = () => {
+    api
+      .runResults('/reports/gatf-results.json')
+      .then(setLatest)
+      .catch(() => setLatest(null));
+  };
+  useEffect(() => {
+    load();
+    loadLatest();
+  }, []);
   const [docsMsg, setDocsMsg] = useState<string | null>(null);
   const downloadDocs = () => {
     setDocsMsg('Generating…');
@@ -103,7 +115,13 @@ export default function ReportsView({
             {'\u2193'} Test cases (xlsx)
           </button>
           {docsMsg && <span className="muted small">{docsMsg}</span>}
-          <button className="btn ghost small" onClick={load}>
+          <button
+            className="btn ghost small"
+            onClick={() => {
+              load();
+              loadLatest();
+            }}
+          >
             Refresh
           </button>
         </div>
@@ -115,6 +133,21 @@ export default function ReportsView({
           Could not reach the reports API ({error}). This shell needs the Phase-3.x <code>/api</code>{' '}
           handler — rebuild the JAR from this delta.
         </div>
+      )}
+
+      {latest && (
+        <section className="view-section">
+          <h3>Latest CLI run</h3>
+          <div className="row-actions">
+            <span className="small">
+              {latest.summary.total} tests: {latest.summary.passed} passed, {latest.summary.failed} failed,{' '}
+              {latest.summary.flaky} flaky, {latest.summary.skipped} skipped
+            </span>
+            <button className="btn small" onClick={() => onOpenReport('/reports/gatf-results.json')}>
+              Insights
+            </button>
+          </div>
+        </section>
       )}
 
       {data && !loading && (

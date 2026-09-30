@@ -758,6 +758,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
         	throw new RuntimeException("Please provide Selenium scripts for execution");
         }
+        if (com.gatf.log.RunConsole.isActive()) {
+            // M12: header-comment @tags per script, so gatf-results.json (and the report's tag filter) carries them
+            for (String s : configuration.getSeleniumScripts()) {
+                com.gatf.log.RunConsole.suiteTags(s, TestFilter.selHeaderTags(selHeaderLines(context, configuration, s)));
+            }
+        }
         
         String roundInfo = "";
         int retryCnter = 0;
@@ -2299,6 +2305,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         com.gatf.log.RunConsole.Status st = TestStatus.Success.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.PASSED
                 : TestStatus.Skipped.status.equals(r.getStatus()) ? com.gatf.log.RunConsole.Status.SKIPPED : com.gatf.log.RunConsole.Status.FAILED;
         String tname = tc.getName() != null ? tc.getName() : String.valueOf(tc.getIdentifier());
+        com.gatf.log.RunConsole.testTags(file, title, TestFilter.tagsIn(tname + " " + (tc.getDescription() != null ? tc.getDescription() : "")));   // M12
         if (!com.gatf.log.RunConsole.wantsDetail()) { com.gatf.log.RunConsole.result(file, tname, title, st, 0L, null, null); return; }
         String err = r.getError() != null && !r.getError().trim().isEmpty() ? r.getError() : r.getErrorText();
         String detail = (r.getMethod() != null ? r.getMethod() : tc.getMethod()) + " " + (r.getActualUrl() != null ? r.getActualUrl() : tc.getUrl())

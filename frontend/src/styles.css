@@ -376,6 +376,10 @@ tr.st-fail td { background: rgba(248,113,113,.06); }
 .mr-tile.st-fail .mr-tile-v { color: var(--red); }
 .mr-tile.st-warn .mr-tile-v { color: var(--amber, #d97706); }
 .mr-list { margin: 4px 0 0; padding-left: 18px; line-height: 1.7; }
+.ri h3 { font-size: 13px; margin: 16px 0 6px; }
+.ri-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 10px 0; }
+.ri-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.ri-timeline svg { display: block; margin-top: 4px; }
 
 /* ---------- API report viewer (Slice A cont.) ---------- */
 .ar-detail-row > td { background: var(--panel3); padding: 12px; }

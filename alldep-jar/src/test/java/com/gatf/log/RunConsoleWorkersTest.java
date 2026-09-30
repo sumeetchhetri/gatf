@@ -126,6 +126,24 @@ class RunConsoleWorkersTest {
         RunConsole.finish();
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void fileAndTestTagsReachTheResults() throws Exception {
+        RunConsole.sink = new PrintStream(new ByteArrayOutputStream(), true, "UTF-8");
+        RunConsole.activate();
+        RunConsole.suiteTags("ui/login.sel", List.of("@smoke", "@auth"));
+        RunConsole.testTags("api/u.xml", "api/u.xml \u203a List @crud", List.of("@crud", "@smoke"));
+        RunConsole.result("ui/login.sel", "[chrome]", "[chrome] \u203a ui/login.sel", Status.PASSED, 5, null, null);
+        RunConsole.result("api/u.xml", "List @crud", "api/u.xml \u203a List @crud", Status.PASSED, 5, null, null);
+        RunConsole.result("api/u.xml", "Other", "api/u.xml \u203a Other", Status.PASSED, 5, null, null);
+        Map<String, Object> root = new ObjectMapper().readValue(CiReports.json(new ArrayList<RunConsole.Rec>(recsSnapshot()), 5), Map.class);
+        List<Map<String, Object>> tests = (List<Map<String, Object>>) root.get("tests");
+        assertThat((List<Object>) tests.get(0).get("tags")).containsExactly("@smoke", "@auth");
+        assertThat((List<Object>) tests.get(1).get("tags")).containsExactly("@crud", "@smoke");
+        assertThat((List<Object>) tests.get(2).get("tags")).isEmpty();
+        RunConsole.finish();
+    }
+
     private static java.util.Collection<RunConsole.Rec> recsSnapshot() throws Exception {
         java.lang.reflect.Field f = RunConsole.class.getDeclaredField("recs");
         f.setAccessible(true);

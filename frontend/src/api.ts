@@ -740,6 +740,8 @@ export const api = {
   testfiles: () => getJson<TestFilesIndex>('/api/testfiles'),
   testfile: (path: string) => getJson<TestFileContent>('/api/testfile?path=' + encodeURIComponent(path)),
   reportData: (url: string) => getJson<ReportData>(url),
+  // M12: a run's gatf-results.json (CLI runs write it to the out dir root; merge-reports to the merged dir)
+  runResults: (url: string) => getJson<import('./report/results').RunResults>(url),
   // ---- config editor (Slice B) — authoritative round-trip via the legacy /configure handler ----
   misc: () => getJson<Record<string, unknown>>('/misc'),
   // ---- auth (Slice E) ----

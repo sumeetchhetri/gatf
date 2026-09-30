@@ -36,6 +36,8 @@ import LoadReportView from './LoadReportView';
 import DistributedLoadView from './DistributedLoadView';
 import TAReportView from './TAReportView';
 import MergedReportView from './MergedReportView';
+import RunInsights from '../components/RunInsights';
+import { isRunResults } from '../report/results';
 
 function statusClass(s: string): string {
   const u = (s || '').toUpperCase();
@@ -275,7 +277,9 @@ export default function ReportViewer({
                     ? 'Test analysis'
                     : data?.type === 'merged-index'
                       ? 'Merged report'
-                      : 'Report';
+                      : isRunResults(data)
+                        ? 'Run results'
+                        : 'Report';
 
   return (
     <div className="view">
@@ -286,9 +290,11 @@ export default function ReportViewer({
           </button>
           <h2>{title}</h2>
         </div>
-        <a className="btn ghost small" href={dataUrl.replace(/\.data\.json$/, '.html')} target="_blank" rel="noopener">
-          Legacy HTML &#8599;
-        </a>
+        {/\.data\.json$/.test(dataUrl) && (
+          <a className="btn ghost small" href={dataUrl.replace(/\.data\.json$/, '.html')} target="_blank" rel="noopener">
+            Legacy HTML &#8599;
+          </a>
+        )}
       </div>
 
       {loading && <div className="view-note">Loading…</div>}
@@ -299,7 +305,8 @@ export default function ReportViewer({
         </div>
       )}
 
-      {data && !loading && (
+      {data && !loading && isRunResults(data) && <RunInsights data={data} />}
+      {data && !loading && !isRunResults(data) && (
         <>
           {data.type === 'selenium-summary' && (
             <SummaryView data={data as SeleniumSummaryData} baseDir={baseDir} onOpenReport={onOpenReport} />

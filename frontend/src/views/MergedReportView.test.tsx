@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import MergedReportView from './MergedReportView';
 import type { MergedIndexData } from '../api';
@@ -34,6 +34,25 @@ const data: MergedIndexData = {
 };
 
 describe('MergedReportView', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('not found', { status: 404 })));
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('renders run insights from the merged gatf-results.json', async () => {
+    const results = {
+      summary: { total: 1, passed: 0, failed: 0, flaky: 1, skipped: 0, durationMs: 10 },
+      tests: [{ suite: 'c.sel', name: '[chrome]', title: 'c.sel › [chrome]', status: 'flaky', attempts: 2, durationMs: 10, shard: 'shard-2-of-4' }],
+    };
+    const f = vi.fn(async () => new Response(JSON.stringify(results), { status: 200 }));
+    vi.stubGlobal('fetch', f);
+    render(<MergedReportView data={data} baseDir="/reports/merged/" onOpenReport={() => {}} />);
+    expect(await screen.findByText('Run insights')).toBeInTheDocument();
+    expect(String((f.mock.calls[0] as unknown[])[0])).toContain('/reports/merged/gatf-results.json');
+  });
+
   it('shows totals, all four shards, failures and flaky', () => {
     render(<MergedReportView data={data} baseDir="/reports/merged/" onOpenReport={() => {}} />);
     expect(screen.getByText('4 shard(s) merged', { exact: false })).toBeInTheDocument();

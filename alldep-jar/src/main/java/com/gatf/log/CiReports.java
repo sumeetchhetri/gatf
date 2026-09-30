@@ -153,6 +153,7 @@ final class CiReports {
                     .append(", \"startMs\": ").append(r.startMs).append(", \"worker\": ").append(r.worker)
                     .append(", \"error\": ").append(r.last() == Status.FAILED ? js(r.error) : "null")
                     .append(", \"softFailures\": ").append(r.soft)
+                    .append(", \"tags\": ").append(jsArr(r.tags))
                     .append(", \"attachments\": ").append(jsArr(r.attachments)).append("}");
         }
         return b.append(recs.isEmpty() ? "]\n}\n" : "\n  ]\n}\n").toString();

@@ -58,6 +58,9 @@ public final class RunConsole {
     static volatile PrintStream sink;
     // M7: worker lanes (thread -> 0-based lane, first-seen order) for the report timeline
     private static final Map<String, Integer> lanes = new LinkedHashMap<String, Integer>();
+    // M12: @tags per test file (a .sel file's header comments) and per test (an API case's name / description)
+    private static final Map<String, List<String>> suiteTags = new java.util.concurrent.ConcurrentHashMap<String, List<String>>();
+    private static final Map<String, List<String>> testTags = new java.util.concurrent.ConcurrentHashMap<String, List<String>>();
     private static volatile boolean perTest = true;
     private static String reportDir = null;
     private static long startNanos;
@@ -83,6 +86,8 @@ public final class RunConsole {
         // M7: start of the LAST attempt, ms since the run started, and the worker lane that ran it (timeline)
         long startMs;
         int worker;
+        // M12: the test's @tags (file header tags + its own), for the report's tag filter
+        final List<String> tags = new ArrayList<String>();
         Rec(String suite, String name, String title) { this.suite = suite; this.name = name; this.title = title; }
         Status last() { return attempts.get(attempts.size() - 1); }
         boolean flaky() { return last() == Status.PASSED && attempts.contains(Status.FAILED); }
@@ -103,6 +108,8 @@ public final class RunConsole {
         skipped.reset();
         recs.clear();
         lanes.clear();
+        suiteTags.clear();
+        testTags.clear();
         workers = 1;
         color = detectColor();
         unicode = detectUnicode();
@@ -120,6 +127,16 @@ public final class RunConsole {
     public static void setShard(String s) { shard = s; }
 
     static String shard() { return shard; }
+
+    /** M12: the @tags of a whole test file (e.g. a .sel script's header comment tags); empty/null = none. */
+    public static void suiteTags(String suite, List<String> tags) {
+        if (suite != null && tags != null && !tags.isEmpty()) suiteTags.put(suite, new ArrayList<String>(tags));
+    }
+
+    /** M12: the @tags of one test (e.g. an API case's name + description tags), keyed like its result. */
+    public static void testTags(String suite, String title, List<String> tags) {
+        if (title != null && tags != null && !tags.isEmpty()) testTags.put((suite == null ? "" : suite) + '\u0000' + title, new ArrayList<String>(tags));
+    }
 
     /** M7: the worker-pool size actually used (the configured workers, capped at the script count). */
     public static void setWorkers(int n) { workers = Math.max(1, n); }
@@ -205,6 +222,10 @@ public final class RunConsole {
         r.soft = Math.max(0, softFailures);
         r.startMs = Math.max(0, (System.nanoTime() - startNanos) / 1_000_000L - Math.max(0, millis));
         r.worker = lanes.computeIfAbsent(Thread.currentThread().getName(), k -> lanes.size());
+        r.tags.clear();
+        for (List<String> src : java.util.Arrays.asList(suiteTags.get(r.suite), testTags.get(key))) {
+            if (src != null) for (String t : src) if (!r.tags.contains(t)) r.tags.add(t);
+        }
         if (!unicode) title = title.replace('\u203a', '>');
         int n = ++seq;
         if (status == Status.FAILED) {

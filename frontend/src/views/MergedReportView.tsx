@@ -13,7 +13,11 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
+import { useEffect, useState } from 'react';
+import { api } from '../api';
 import type { MergedIndexData, RunSummary } from '../api';
+import type { RunResults } from '../report/results';
+import RunInsights from '../components/RunInsights';
 import { fmtMs } from '../util';
 
 export function SummaryTiles({ s }: { s: RunSummary }) {
@@ -47,6 +51,19 @@ export default function MergedReportView({
   baseDir: string;
   onOpenReport: (dataUrl: string) => void;
 }) {
+  // M12: the merged gatf-results.json drives the timeline / slowest / flaky analysis
+  const [results, setResults] = useState<RunResults | null>(null);
+  useEffect(() => {
+    if (!data.results) return;
+    let live = true;
+    api
+      .runResults(baseDir + data.results)
+      .then((r) => live && setResults(r))
+      .catch(() => live && setResults(null));
+    return () => {
+      live = false;
+    };
+  }, [baseDir, data.results]);
   return (
     <div className="rv-merged">
       <SummaryTiles s={data.summary} />
@@ -101,7 +118,13 @@ export default function MergedReportView({
           </ul>
         </>
       )}
-      {data.flaky.length > 0 && (
+      {results && (
+        <>
+          <h3>Run insights</h3>
+          <RunInsights data={results} showSummary={false} />
+        </>
+      )}
+      {!results && data.flaky.length > 0 && (
         <>
           <h3>Flaky ({data.flaky.length})</h3>
           <ul className="mr-list">
