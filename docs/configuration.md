@@ -67,7 +67,8 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
   
     <!-- The number of concurrent users to simulate, default 0 -->
     <concurrentUserSimulationNum>1</concurrentUserSimulationNum>
-    <!-- The number of concurrent connections to the Base environment HTTP Server, default 1 -->
+    <!-- The number of concurrent connections to the Base environment HTTP Server, default 1.
+         UI suites: the number of scripts run in parallel (file-level workers, no fixed cap); `gatf test --workers` overrides it -->
     <numConcurrentExecutions>1</numConcurrentExecutions>
   
     <!-- The provider name that will be used to fetch user/password details for user credentials -->

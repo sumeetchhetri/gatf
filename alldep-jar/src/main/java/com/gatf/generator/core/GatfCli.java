@@ -91,8 +91,12 @@ public final class GatfCli {
     				t = TestCommandArgs.parse(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")));
     				TestFilter f = new TestFilter(t.grep, t.grepInvert, t.tags);   // invalid regex -> IllegalArgumentException
     				RunOverrides.set(t.traceMode, t.retries, t.workers, t.forbidOnly);          // invalid --trace -> IllegalArgumentException
+    				RunOverrides.setShard(t.shard);                                              // M7: --shard i/n
     				TestFilter.activate(f);
-    				RunConsole.setFilterNote(f.isEmpty() ? null : f.describe());
+    				String note = f.isEmpty() ? null : f.describe();
+    				if (RunOverrides.shard() != null) note = (note == null ? "" : note + ", ") + RunOverrides.shard().describe();
+    				RunConsole.setFilterNote(note);
+    				RunConsole.setShard(RunOverrides.shard() == null ? null : RunOverrides.shard().toString());
     				if (t.reporters != null) {
     					// Q11: the docs reporter needs the JSON results
     					String rep = t.reporters.toLowerCase();
@@ -188,6 +192,14 @@ public final class GatfCli {
     		// Throwable, not Exception: execute() wraps every failure in an AssertionError, so a UI run whose scripts
     		// failed (GatfRunTimeErrors) used to escape here with no summary and no CI reports.
     		Throwable cause = (e instanceof AssertionError && e.getCause() != null) ? e.getCause() : e;
+    		for (Throwable c = cause; c != null; c = c.getCause()) {
+    			if (c instanceof com.gatf.executor.core.ShardSplitter.EmptyShardException) {
+    				// M7: more shards than files: this shard has nothing to run, which is not a failure
+    				GatfLogging.out().println("  " + c.getMessage());
+    				return RunConsole.finish() > 0 ? 1 : 0;
+    			}
+    			if (c.getCause() == c) break;
+    		}
     		// Failed tests explain the exception: print the summary, not "aborted". Nothing ran (e.g. no test matched the
     		// filter, or the config failed to load): just the reason.
     		if (!RunConsole.hasResults() || RunConsole.finish() == 0) RunConsole.abort(cause);

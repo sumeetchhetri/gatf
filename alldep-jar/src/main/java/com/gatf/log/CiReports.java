@@ -141,13 +141,16 @@ final class CiReports {
         b.append("\"total\": ").append(recs.size()).append(", \"passed\": ").append(passed).append(", \"failed\": ").append(failed)
                 .append(", \"flaky\": ").append(flaky).append(", \"skipped\": ").append(skipped)
                 .append(", \"softFailures\": ").append(soft)
-                .append(", \"durationMs\": ").append(totalMs).append("},\n  \"tests\": [");
+                .append(", \"durationMs\": ").append(totalMs)
+                .append(", \"workers\": ").append(RunConsole.workers())
+                .append(", \"shard\": ").append(js(RunConsole.shard())).append("},\n  \"tests\": [");
         for (int i = 0; i < recs.size(); i++) {
             Rec r = recs.get(i);
             String st = r.flaky() ? "flaky" : r.last().name().toLowerCase(Locale.ROOT);
             b.append(i == 0 ? "\n" : ",\n").append("    {\"suite\": ").append(js(r.suite)).append(", \"name\": ").append(js(r.name))
                     .append(", \"title\": ").append(js(r.title)).append(", \"status\": ").append(js(st))
                     .append(", \"attempts\": ").append(r.attempts.size()).append(", \"durationMs\": ").append(r.millis)
+                    .append(", \"startMs\": ").append(r.startMs).append(", \"worker\": ").append(r.worker)
                     .append(", \"error\": ").append(r.last() == Status.FAILED ? js(r.error) : "null")
                     .append(", \"softFailures\": ").append(r.soft)
                     .append(", \"attachments\": ").append(jsArr(r.attachments)).append("}");

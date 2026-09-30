@@ -52,6 +52,12 @@ public final class RunConsole {
 
     private static volatile boolean active = false;
     private static volatile String filterNote;   // Q5: e.g. "--tag @smoke", shown in the run header
+    private static volatile String shard;        // M7: "2/4" for `gatf test --shard 2/4`, else null
+    private static volatile int workers = 1;     // M7: worker-pool size of the suite (recorded in gatf-results.json)
+    /** Test hook: when set, console output goes here instead of GatfLogging.out(). */
+    static volatile PrintStream sink;
+    // M7: worker lanes (thread -> 0-based lane, first-seen order) for the report timeline
+    private static final Map<String, Integer> lanes = new LinkedHashMap<String, Integer>();
     private static volatile boolean perTest = true;
     private static String reportDir = null;
     private static long startNanos;
@@ -74,10 +80,15 @@ public final class RunConsole {
         final List<String> attachments = new ArrayList<String>();
         // M2: soft (??~) assertion failures in the LAST attempt
         int soft;
+        // M7: start of the LAST attempt, ms since the run started, and the worker lane that ran it (timeline)
+        long startMs;
+        int worker;
         Rec(String suite, String name, String title) { this.suite = suite; this.name = name; this.title = title; }
         Status last() { return attempts.get(attempts.size() - 1); }
         boolean flaky() { return last() == Status.PASSED && attempts.contains(Status.FAILED); }
     }
+
+    private static final String NL = System.lineSeparator();
 
     private RunConsole() {}
 
@@ -91,6 +102,8 @@ public final class RunConsole {
         failed.reset();
         skipped.reset();
         recs.clear();
+        lanes.clear();
+        workers = 1;
         color = detectColor();
         unicode = detectUnicode();
     }
@@ -103,6 +116,21 @@ public final class RunConsole {
     /** Q5: the active test filter, shown in the run header (null = none). */
     public static void setFilterNote(String note) { filterNote = note; }
 
+    /** M7: the shard this run executes ("2/4"), or null; recorded in gatf-results.json for merge-reports. */
+    public static void setShard(String s) { shard = s; }
+
+    static String shard() { return shard; }
+
+    /** M7: the worker-pool size actually used (the configured workers, capped at the script count). */
+    public static void setWorkers(int n) { workers = Math.max(1, n); }
+
+    static int workers() { return workers; }
+
+    private static PrintStream out() {
+        PrintStream s = sink;
+        return s != null ? s : GatfLogging.out();
+    }
+
     /** Q11: the run's report dir (where gatf-results.json is written); null before a suite started. */
     public static String reportDir() { return reportDir; }
 
@@ -114,7 +142,8 @@ public final class RunConsole {
         if (!active) return;
         perTest = perTestLines;
         reportDir = outDir;
-        PrintStream o = GatfLogging.out();
+        RunConsole.workers = Math.max(1, workers);
+        PrintStream o = out();
         o.println();
         o.println(dim("Running GATF " + kind + (workers > 1 ? " tests using " + workers + " workers" : " tests")
                 + (perTestLines ? "" : " (load / multi-user run: per-test lines suppressed, see the report)")
@@ -174,6 +203,8 @@ public final class RunConsole {
         r.attachments.clear();
         if (attachments != null) r.attachments.addAll(attachments);
         r.soft = Math.max(0, softFailures);
+        r.startMs = Math.max(0, (System.nanoTime() - startNanos) / 1_000_000L - Math.max(0, millis));
+        r.worker = lanes.computeIfAbsent(Thread.currentThread().getName(), k -> lanes.size());
         if (!unicode) title = title.replace('\u203a', '>');
         int n = ++seq;
         if (status == Status.FAILED) {
@@ -181,33 +212,39 @@ public final class RunConsole {
         } else {
             LOG.info("{} {} ({}ms){}", status, title, millis, detail != null ? "\n" + detail : "");
         }
-        PrintStream o = GatfLogging.out();
+        // M7: the whole block (result line + error/soft/attachment lines) goes out in ONE write, so lines from
+        // parallel workers never interleave, even with other writers on the same stream
+        StringBuilder o = new StringBuilder(256);
         String mark = status == Status.PASSED ? green(unicode ? "\u2713" : "ok")
                 : status == Status.FAILED ? red(unicode ? "\u2718" : "x") : yellow("-");
         String line = "  " + mark + "  " + dim(String.valueOf(n)) + " " + title
                 + (status == Status.SKIPPED ? (error != null && !error.trim().isEmpty() ? " " + dim(firstLine(error)) : "")   // M6: skip / fixme / only
                         : " " + dim("(" + dur(millis) + ")"))
                 + (retry ? " " + yellow("retry #" + (r.attempts.size() - 1)) : "");
-        o.println(line);
+        o.append(line).append(NL);
         if (status == Status.FAILED && error != null && !error.trim().isEmpty()) {
-            o.println("       " + red(firstLine(error)));
+            o.append("       ").append(red(firstLine(error))).append(NL);
         }
         if (r.soft > 0 && error != null && error.indexOf('\n') > 0) {
-            for (String s : error.substring(error.indexOf('\n') + 1).split("\n")) o.println("       " + red(s.trim()));
+            for (String s : error.substring(error.indexOf('\n') + 1).split("\n")) o.append("       ").append(red(s.trim())).append(NL);
         }
         if (status == Status.FAILED) {
             for (String a : r.attachments) {
-                o.println("       " + dim((a.endsWith(".zip") ? "trace:      " : "screenshot: ") + a));
+                o.append("       ").append(dim((a.endsWith(".zip") ? "trace:      " : "screenshot: ") + a)).append(NL);
             }
         }
+        PrintStream ps = out();
+        ps.print(o);
+        ps.flush();
         if (!r.attachments.isEmpty()) LOG.info("  attachments: {}", r.attachments);
     }
 
     /** A selenium retry round is starting (seleniumScriptRetryCount). */
     public static synchronized void retrying(int scripts, int round) {
         if (!active || !perTest) return;
-        GatfLogging.out().println();
-        GatfLogging.out().println(yellow("  Retrying " + scripts + " failed script(s), round " + round));
+        lanes.clear();   // M7: a retry round runs on a fresh pool: its threads reuse lanes 0..n-1
+        out().println();
+        out().println(yellow("  Retrying " + scripts + " failed script(s), round " + round));
         LOG.info("retry round {}: {} script(s)", round, scripts);
     }
 
@@ -215,7 +252,7 @@ public final class RunConsole {
     public static synchronized int finish() {
         if (!active) return 0;
         active = false;
-        PrintStream o = GatfLogging.out();
+        PrintStream o = out();
         long ms = (System.nanoTime() - startNanos) / 1_000_000L;
         long passed, failed, skipped, flaky = 0, soft = 0;
         List<String> failures = new ArrayList<String>(), flakies = new ArrayList<String>();
@@ -268,7 +305,7 @@ public final class RunConsole {
     public static synchronized void abort(Throwable t) {
         active = false;
         LOG.error("run aborted", t);
-        PrintStream o = GatfLogging.out();
+        PrintStream o = out();
         o.println();
         o.println(red("  Run aborted: " + (t.getMessage() != null ? firstLine(t.getMessage()) : t.getClass().getName())));
         o.println(dim("  Details: " + GatfLogging.logFile()));

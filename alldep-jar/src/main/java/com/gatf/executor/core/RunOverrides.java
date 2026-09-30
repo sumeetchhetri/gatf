@@ -16,7 +16,7 @@
 package com.gatf.executor.core;
 
 /**
- * Q7: per-run overrides from {@code gatf test} (--trace / --retries / --workers / --forbid-only), applied to the loaded config just
+ * Q7: per-run overrides from {@code gatf test} (--trace / --retries / --workers / --forbid-only / --shard), applied to the loaded config just
  * before the run starts. Unset values leave the config file's settings alone; never used by the UI server.
  */
 public final class RunOverrides {
@@ -25,6 +25,7 @@ public final class RunOverrides {
     private static volatile Integer retries;
     private static volatile Integer workers;
     private static volatile Boolean forbidOnly;
+    private static volatile ShardSplitter shard;
 
     private RunOverrides() {}
 
@@ -39,6 +40,17 @@ public final class RunOverrides {
     public static void set(String traceMode, Integer retries, Integer workers, Boolean forbidOnly) {
         set(traceMode, retries, workers);
         RunOverrides.forbidOnly = forbidOnly;
+    }
+
+    /** M7: --shard i/n (null = every file). Throws IllegalArgumentException for a malformed spec. */
+    public static void setShard(String spec) {
+        RunOverrides.shard = ShardSplitter.parse(spec);
+    }
+
+    /** M7: this run's shard, or null when the run is not sharded (or is 1/1). */
+    public static ShardSplitter shard() {
+        ShardSplitter s = shard;
+        return s == null || s.total == 1 ? null : s;
     }
 
     static void apply(GatfExecutorConfig c) {

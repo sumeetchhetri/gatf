@@ -417,9 +417,7 @@ class DistributedExecution {
             gtcu.context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
         } else if(gtcu.context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
         	//Parallel selenium execution of multiple scripts
-        	int threadNum = gtcu.context.getGatfExecutorConfig().getNumConcurrentExecutions();
-        	if (threadNum > 10)
-                threadNum = 10;
+        	int threadNum = ShardSplitter.poolSize(gtcu.context.getGatfExecutorConfig().getNumConcurrentExecutions(), tests.size());   // M7: no cap of 10
         	threadPool = Executors.newFixedThreadPool(threadNum);
         	numberOfRuns = 1;
         	concExec = true;

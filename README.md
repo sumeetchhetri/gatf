@@ -249,7 +249,8 @@ JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=
 | `--reporter junit,json,github,docs` | CI reports to write (`none` to disable). `docs` also writes the test-case documents, traceability matrix and coverage, with this run's status, to `<out>/docs` |
 | `--trace MODE` | Override `traceMode`: `off`, `on`, `retain-on-failure`, `on-first-retry` |
 | `--retries N` | Override `seleniumScriptRetryCount` |
-| `--workers N` / `-j N` | Override `numConcurrentExecutions` |
+| `--workers N` / `-j N` | Override `numConcurrentExecutions`: UI scripts run file-parallel on N workers (no fixed cap; never more than the script count). `N%` = that share of the CPU cores |
+| `--shard i/n` | Run only shard i of n (1-based): files are split deterministically by a path hash, so every machine gets the same split. `relatedTestName` prerequisites come along. An empty shard exits 0 |
 
 Both `--opt value` and `--opt=value` work. If nothing matches, the run stops with `No API tests match …` or `No UI scripts match …` and exit code 1.
 
@@ -343,6 +344,13 @@ jobs:
           path: |
             out/
             logs/
+```
+
+Sharded across machines (each job writes its own `out/`; `gatf-results.json` records the shard):
+```yaml
+    strategy: { matrix: { shard: [1, 2, 3, 4] } }
+    steps:
+      - run: java -jar gatf-alldep-jar-<version>.jar test gatf-config.xml --shard ${{ matrix.shard }}/4 --workers 50% --reporter junit,json
 ```
 
 ## Documentation

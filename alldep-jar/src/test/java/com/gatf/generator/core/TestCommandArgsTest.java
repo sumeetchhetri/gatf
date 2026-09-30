@@ -54,6 +54,15 @@ class TestCommandArgsTest {
     }
 
     @Test
+    void shardAndPercentWorkers() {
+        // M7: --shard i/n is kept as given (validated on parse); --workers N% resolves against the processor count
+        TestCommandArgs a = TestCommandArgs.parse(new String[] { "cfg.xml", "--shard=2/4", "--workers", "100%" }, new File("."));
+        assertThat(a.shard).isEqualTo("2/4");
+        assertThat(a.workers).isEqualTo(Runtime.getRuntime().availableProcessors());
+        assertThat(TestCommandArgs.USAGE).contains("[--shard i/n]");
+    }
+
+    @Test
     void defaultsToTheConfigInTheWorkingDirectory(@TempDir Path dir) throws Exception {
         Files.writeString(dir.resolve("gatf-config.xml"), "<gatf-execute-config/>");
         assertThat(TestCommandArgs.parse(new String[0], dir.toFile()).config).isEqualTo("gatf-config.xml");
@@ -64,7 +73,10 @@ class TestCommandArgsTest {
     @Test
     void rejectsBadInput(@TempDir Path empty) {
         assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "--grep" }, new File("."))).hasMessageContaining("--grep needs a value");
-        assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--shard", "1/2" }, new File("."))).hasMessageContaining("Unknown option --shard");
+        assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--shards", "1/2" }, new File("."))).hasMessageContaining("Unknown option --shards");
+        assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--shard", "3/2" }, new File("."))).hasMessageContaining("1..2");
+        assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--shard", "2" }, new File("."))).hasMessageContaining("i/n");
+        assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--workers", "many" }, new File("."))).hasMessageContaining("N or N%");
         assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "a.xml", "b.xml" }, new File("."))).hasMessageContaining("Only one config");
         assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--retries", "two" }, new File("."))).hasMessageContaining("expects a number");
         assertThatThrownBy(() -> TestCommandArgs.parse(new String[] { "x.xml", "--workers", "0" }, new File("."))).hasMessageContaining(">= 1");

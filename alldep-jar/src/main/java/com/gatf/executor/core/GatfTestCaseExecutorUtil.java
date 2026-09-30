@@ -742,6 +742,19 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             configuration.setSeleniumScripts(keep.toArray(new String[keep.size()]));
         }
 
+        ShardSplitter shard = RunOverrides.shard();
+        if (shard != null && configuration.getRetryCounter() <= 1 && configuration.getSeleniumScripts() != null
+                && configuration.getSeleniumScripts().length > 0) {
+            // M7: `gatf test --shard i/n`: this machine runs its deterministic share of the scripts (first round only;
+            // retry rounds re-run this shard's own failures)
+            String tcDir = configuration.getTestCaseDir() == null ? null : context.getResourceFile(configuration.getTestCaseDir()).getAbsolutePath();
+            List<String> mine = shard.select(java.util.Arrays.asList(configuration.getSeleniumScripts()), p -> ShardSplitter.relativeTo(p, tcDir));
+            if (mine.isEmpty()) {
+                throw new ShardSplitter.EmptyShardException("No UI scripts in " + shard.describe() + " (" + configuration.getSeleniumScripts().length + " script(s) over " + shard.total + " shards)");
+            }
+            configuration.setSeleniumScripts(mine.toArray(new String[mine.size()]));
+        }
+
         if(configuration.getSeleniumScripts()==null || configuration.getSeleniumScripts().length==0) {
         	throw new RuntimeException("Please provide Selenium scripts for execution");
         }
@@ -915,10 +928,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             threadPool = Executors.newFixedThreadPool(threadNum);
             context.getWorkflowContextHandler().initializeSuiteContext(numberOfRuns);
         } else if(context.getGatfExecutorConfig().getNumConcurrentExecutions()>1 && tests.size()>1) {
-        	//Parallel selenium execution of multiple scripts
-        	int threadNum = context.getGatfExecutorConfig().getNumConcurrentExecutions();
-        	if (threadNum > 10)
-                threadNum = 10;
+        	//Parallel selenium execution of multiple scripts (M7: no fixed cap of 10; never more workers than scripts)
+        	int threadNum = ShardSplitter.poolSize(context.getGatfExecutorConfig().getNumConcurrentExecutions(), tests.size());
+        	com.gatf.log.RunConsole.setWorkers(threadNum);   // the pool actually used, for gatf-results.json
         	threadPool = Executors.newFixedThreadPool(threadNum);
         	numberOfRuns = 1;
         	concExec = true;
@@ -1511,6 +1523,17 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             Set<String> keptFiles = new HashSet<String>();
             for (TestCase tc : allTestCases) keptFiles.add(tc.getSourcefileName());
             relativeFileNames.retainAll(keptFiles);   // no empty groups in the report
+        }
+        if (RunOverrides.shard() != null && !allTestCases.isEmpty()) {
+            // M7: `gatf test --shard i/n` splits by test file; relatedTestName prerequisites in other files come along
+            ShardSplitter shard = RunOverrides.shard();
+            allTestCases = shard.selectWithDependencies(allTestCases, TestCase::getSourcefileName, TestCase::getName, TestCase::getRelatedTestName);
+            if (allTestCases.isEmpty()) {
+                throw new ShardSplitter.EmptyShardException("No API test files in " + shard.describe());
+            }
+            Set<String> keptFiles = new HashSet<String>();
+            for (TestCase tc : allTestCases) keptFiles.add(tc.getSourcefileName());
+            relativeFileNames.retainAll(keptFiles);
         }
 
         List<TestCase> tempTestCases = new ArrayList<TestCase>(allTestCases);
