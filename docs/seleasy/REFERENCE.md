@@ -130,6 +130,24 @@ Examples :-
 	netapix off json $.store.book[0].title --> creates context parameter by name ${apiJson}=some-value
 ```
 
+### Mock network requests (route)
+
+```
+	route {METHOD}? {url-glob} fulfill {status} {'body'|body-file}? {type content-type}? {header 'Name: value'}*
+	route {METHOD}? {url-glob} abort {reason}?
+	route {METHOD}? {url-glob} continue {header 'Name: value'}*
+	unroute {url-glob|all}
+	url-glob: ** = anything, * = anything but '/', {a,b} = alternatives; the first matching route wins
+Examples :-
+	route **/api/users fulfill 200 users.json
+	route POST **/api/orders fulfill 201 '{"id": 7}'
+	route **/*.{png,jpg} abort
+	route **/api/** continue header 'X-Env: test'
+	unroute all
+```
+
+Routes apply to the current browser session from that line on: a quoted body is sent as-is, an unquoted one is a file next to the script (its Content-Type comes from the extension unless `type` is given). `abort` reasons: failed (default), aborted, timedout, accessdenied, connectionrefused, namenotresolved, internetdisconnected, blockedbyclient, … Chromium uses CDP `Fetch`; other browsers need a BiDi session.
+
 ### Scroll [Javascript based]
 
 ```

@@ -32,5 +32,6 @@ public enum Capability {
     METRICS,        // Phase 2 (performance/memory)
     CPU_PROFILE,    // Profiler.start/stop -> .cpuprofile
     COVERAGE,       // Phase 2
-    PRINT_PDF       // G10: CDP Page.printToPDF / BiDi browsingContext.print / W3C print
+    PRINT_PDF,      // G10: CDP Page.printToPDF / BiDi browsingContext.print / W3C print
+    ROUTE           // M4: request interception (CDP Fetch.* / BiDi network.addIntercept)
 }

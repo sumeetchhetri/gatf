@@ -45,6 +45,8 @@ final class HybridTransport implements BrowserControl {
                 return cdp;
             case SCREENCAST:
                 return cdp.supports(c) ? cdp : bidi;
+            case ROUTE:   // M4: CDP Fetch on Chromium, BiDi interception otherwise
+                return cdp.supports(c) ? cdp : bidi;
             default:
                 return bidi.supports(c) ? bidi : cdp;
         }
@@ -65,6 +67,9 @@ final class HybridTransport implements BrowserControl {
     @Override public void disableMetrics() { route(Capability.METRICS).disableMetrics(); }
     @Override public Map<String, Number> sampleMetrics() { return route(Capability.METRICS).sampleMetrics(); }
     @Override public String readWebVitals() { return bidi.readWebVitals(); }
+
+    @Override public boolean enableRoutes(com.gatf.selenium.route.RouteTable t, boolean keepResponseStage) { return route(Capability.ROUTE).enableRoutes(t, keepResponseStage); }
+    @Override public void disableRoutes() { route(Capability.ROUTE).disableRoutes(); }
 
     @Override public void startCpu() { cdp.startCpu(); }
     @Override public String stopCpu() { return cdp.stopCpu(); }

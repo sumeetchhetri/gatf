@@ -85,6 +85,17 @@ public interface BrowserControl extends AutoCloseable {
 
     /** Stop the screencast. Default no-op. */
     default void disableVideo() { }
+    // --- M4: network mocking (default unsupported) ---
+    /**
+     * Intercept every request and let {@code routes} decide (fulfill / abort / continue with headers); a request no
+     * rule matches continues untouched. {@code keepResponseStage}: GATF's netapix capture also pauses responses on
+     * this session, so the interception must keep that stage. Returns false when this transport cannot intercept.
+     */
+    default boolean enableRoutes(com.gatf.selenium.route.RouteTable routes, boolean keepResponseStage) { return false; }
+
+    /** Stop intercepting (pending requests are released). Default no-op. */
+    default void disableRoutes() { }
+
     // --- G10: print-to-PDF (default unsupported) ---
     /** Current page as PDF bytes, or null (PRINT_PDF). */
     default byte[] printPdf() { return null; }

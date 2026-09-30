@@ -2250,6 +2250,58 @@ public abstract class SeleniumTest {
 		} catch (Exception e) {}
 	}
 
+	/** M4: per browser session, {route table, the transport intercepting for it}. */
+	private final Map<WebDriver, Object[]> __routes__ = java.util.Collections.synchronizedMap(new java.util.IdentityHashMap<WebDriver, Object[]>());
+
+	/** M4: emitted for {@code route ...} / {@code unroute ...} statements (variables already substituted). */
+	protected void __route__(WebDriver d, String statement) {
+		com.gatf.selenium.route.RouteSpec.Parsed p = com.gatf.selenium.route.RouteSpec.parse(statement);
+		Object[] rs = __routes__.get(d);
+		if(rs == null) {
+			if("unroute".equals(p.kind)) {
+				__traceAction__("route", "unroute: no routes on this session");
+				return;
+			}
+			com.gatf.selenium.route.RouteTable table = new com.gatf.selenium.route.RouteTable();
+			GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+			com.gatf.selenium.trace.TraceConfig tc = new com.gatf.selenium.trace.TraceConfig()
+					.setProtocol(cfg != null && cfg.getTraceProtocol() != null ? cfg.getTraceProtocol() : "cdp");
+			com.gatf.selenium.trace.BrowserControl bc = com.gatf.selenium.trace.Transports.create(d, tc);
+			if(bc == null || !bc.supports(com.gatf.selenium.trace.Capability.ROUTE) || !bc.enableRoutes(table, state.hasNetapixCommand)) {
+				throw new RuntimeException("route: this browser session cannot intercept requests (needs CDP on Chromium, or a BiDi session: webSocketUrl)");
+			}
+			rs = new Object[] { table, bc, Boolean.TRUE };
+			__routes__.put(d, rs);
+		} else if(!"unroute".equals(p.kind) && !Boolean.TRUE.equals(rs[2])) {
+			// routes were switched off by `unroute all`: intercept again
+			if(!((com.gatf.selenium.trace.BrowserControl) rs[1]).enableRoutes((com.gatf.selenium.route.RouteTable) rs[0], state.hasNetapixCommand)) {
+				throw new RuntimeException("route: this browser session cannot intercept requests any more");
+			}
+			rs[2] = Boolean.TRUE;
+		}
+		String msg = com.gatf.selenium.route.RouteSpec.apply(p, (com.gatf.selenium.route.RouteTable) rs[0], this::__routeFile__);
+		if("unroute".equals(p.kind) && ((com.gatf.selenium.route.RouteTable) rs[0]).size() == 0 && Boolean.TRUE.equals(rs[2])) {
+			// no rules left: stop pausing every request
+			((com.gatf.selenium.trace.BrowserControl) rs[1]).disableRoutes();
+			rs[2] = Boolean.FALSE;
+		}
+		__traceAction__("route", msg);
+		System.out.println(msg);
+	}
+
+	/** M4: a file named by a route statement: next to the script, else a test resource. */
+	private byte[] __routeFile__(String name) {
+		File f = new File(name);
+		if(!f.isAbsolute() && state != null && state.cfileName != null) f = new File(new File(state.cfileName).getParentFile(), name);
+		if(!f.isFile() && ___cxt___ != null) f = ___cxt___.getResourceFile(name);
+		if(f == null || !f.isFile()) throw new IllegalArgumentException("route: file not found: " + name);
+		try {
+			return java.nio.file.Files.readAllBytes(f.toPath());
+		} catch (IOException e) {
+			throw new IllegalArgumentException("route: cannot read " + f.getPath() + ": " + e.getMessage());
+		}
+	}
+
 	/** M2: soft ({@code ??~}) assertion failures, drained into the next pushed result. */
 	final SoftFailures __soft__ = new SoftFailures();
 
@@ -3668,6 +3720,8 @@ public abstract class SeleniumTest {
 				lrp.add(new RequestPattern(Optional.of("*"), Optional.empty(), Optional.of(RequestStage.RESPONSE)));
 				devTools.send(Fetch.enable(Optional.of(lrp), Optional.empty()));
 				devTools.addListener(Fetch.requestPaused(), requestPaused -> {
+					// M4: request-stage pauses belong to route (CdpTransport answers them); netapix handles responses only
+					if(!requestPaused.getResponseStatusCode().isPresent() && !requestPaused.getResponseErrorReason().isPresent()) return;
 					if(state.NETWORK_INSPECTION.containsKey(sessionId)) {
 						String url = state.NETWORK_INSPECTION.get(sessionId)[1].toString();
 						String murl = url.indexOf("?")!=-1?url.substring(0, url.indexOf("?")):url;

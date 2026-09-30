@@ -69,6 +69,10 @@ public final class CdpTransport implements BrowserControl {
     private volatile boolean consoleOn = false;
     private volatile boolean videoOn = false;
     private volatile NetworkListener netListener;
+    private volatile com.gatf.selenium.route.RouteTable routes;   // M4
+    private volatile boolean routesOn = false;
+    private boolean routeListenerAdded = false;
+    private boolean routesKeepResponseStage = false;
     private volatile ConsoleListener conListener;
     private volatile VideoListener videoListener;
 
@@ -101,6 +105,7 @@ public final class CdpTransport implements BrowserControl {
             case COVERAGE:      return driver instanceof HasCdp;
             case SCREENCAST:    return devTools != null && driver instanceof HasCdp;
             case PRINT_PDF:     return driver instanceof HasCdp || driver instanceof org.openqa.selenium.PrintsPage;
+            case ROUTE:         return devTools != null;
             default:            return false;
         }
     }
@@ -384,6 +389,78 @@ public final class CdpTransport implements BrowserControl {
         this.videoOn = false;
         try {
             if (devTools != null) devTools.send(new Command<Void>("Page.stopScreencast", new HashMap<>()));
+        } catch (Exception ignored) {}
+    }
+
+    /**
+     * M4: Fetch.enable on the request stage (plus the response stage when netapix shares the session) and one
+     * requestPaused listener that asks the route table. Commands are raw CDP (see CdpRoutes), so only the paused
+     * event uses the pinned devtools.v150 type — the same one SeleniumTest's netapix already listens to.
+     */
+    @Override
+    public synchronized boolean enableRoutes(com.gatf.selenium.route.RouteTable table, boolean keepResponseStage) {
+        if (devTools == null) return false;
+        this.routes = table;
+        this.routesOn = true;
+        this.routesKeepResponseStage = keepResponseStage;
+        devTools.createSessionIfThereIsNotOne();
+        java.util.List<Map<String, Object>> patterns = new java.util.ArrayList<>();
+        Map<String, Object> req = new LinkedHashMap<>();
+        req.put("urlPattern", "*");
+        req.put("requestStage", "Request");
+        patterns.add(req);
+        if (keepResponseStage) {
+            Map<String, Object> res = new LinkedHashMap<>();
+            res.put("urlPattern", "*");
+            res.put("requestStage", "Response");
+            patterns.add(res);
+        }
+        Map<String, Object> p = new LinkedHashMap<>();
+        p.put("patterns", patterns);
+        // the listener goes first: a request paused between Fetch.enable and addListener would hang
+        if (!routeListenerAdded) {
+            routeListenerAdded = true;
+            devTools.addListener(org.openqa.selenium.devtools.v150.fetch.Fetch.requestPaused(), ev -> {
+                // response-stage pauses belong to netapix (it continues them itself)
+                if (ev.getResponseStatusCode().isPresent() || ev.getResponseErrorReason().isPresent()) return;
+                String id = ev.getRequestId().toString();
+                com.gatf.selenium.route.Route d = null;
+                try {
+                    com.gatf.selenium.route.RouteTable t = routes;
+                    if (routesOn && t != null) d = t.match(ev.getRequest().getMethod(), ev.getRequest().getUrl());
+                    Object[] c = com.gatf.selenium.route.CdpRoutes.command(d, id, toMap(ev.getRequest().getHeaders()));
+                    @SuppressWarnings("unchecked") Map<String, Object> params = (Map<String, Object>) c[1];
+                    devTools.send(new Command<Void>((String) c[0], params));
+                } catch (Exception e) {
+                    // never leave a request paused: fall back to letting it through (said out loud: the real backend answers)
+                    System.out.println("route: " + (d == null ? "continue" : d.toString()) + " failed (" + e.getMessage() + "); request sent to the network");
+                    try {
+                        Map<String, Object> cp = new LinkedHashMap<>();
+                        cp.put("requestId", id);
+                        devTools.send(new Command<Void>("Fetch.continueRequest", cp));
+                    } catch (Exception ignored) {}
+                }
+            });
+        }
+        devTools.send(new Command<Void>("Fetch.enable", p));
+        return true;
+    }
+
+    @Override
+    public synchronized void disableRoutes() {
+        routesOn = false;
+        try {
+            if (devTools == null) return;
+            if (routesKeepResponseStage) {   // netapix still needs its response-stage pauses
+                Map<String, Object> res = new LinkedHashMap<>();
+                res.put("urlPattern", "*");
+                res.put("requestStage", "Response");
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("patterns", java.util.Collections.singletonList(res));
+                devTools.send(new Command<Void>("Fetch.enable", p));
+            } else {
+                devTools.send(new Command<Void>("Fetch.disable", new HashMap<>()));
+            }
         } catch (Exception ignored) {}
     }
 
