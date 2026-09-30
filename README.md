@@ -387,7 +387,7 @@ Sharded across machines (each job writes its own `out/`; `gatf-results.json` rec
 | [Windows support](docs/WINDOWS-SUPPORT.md) | Windows-specific notes |
 | [VS Code extension](vscode-extension/README.md) | Language server and debugger |
 | [End-to-end tests](e2e/README.md) | How GATF tests itself |
-| [Roadmap](GATF_REVIEW_AND_ROADMAP.md) | Engineering review and Phase 13, Playwright parity+ |
+| [Roadmap](GATF_REVIEW_AND_ROADMAP.md) | Engineering review and Phase 13, Playwright parity+. Status: Tiers 0–2 delivered (auto-wait and web-first assertions, semantic locators, network mocking, auth state and hooks, workers/sharding, report parity, visual and accessibility checks, emulation and clock, plugin and perf-engine SPIs, MCP server, watch mode, GatfAssert, flow → load); Tier 3 next |
 
 Related: [test-html-generator-plugin](https://github.com/sumeetchhetri/test-html-generator-plugin) generates HTML pages for your REST endpoints.
 
