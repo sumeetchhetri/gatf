@@ -326,6 +326,7 @@ public class ActionsCommand extends FindCommandImpl {
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm1 = state.currvarname();
                 
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, "+cvarnm+".get(0), \"drag\");");
                 b.append("\n"+acnm+".dragAndDrop("+cvarnm+".get(0), "+cvarnm1+".get(0));");
             } else if(action.toLowerCase().matches("draganddrop")) {
                 String ck = state.unsanitize(expr1);
@@ -356,6 +357,7 @@ public class ActionsCommand extends FindCommandImpl {
                 b.append("List<WebElement> " + state.varname() + " = ___ce___;\n");
                 String cvarnm1 = state.currvarname();
                 
+                if(state.autoWait) b.append("\nawaitActionable(___cw___, "+cvarnm+".get(0), \"drag\");");
                 b.append("\n"+acnm+".clickAndHold("+cvarnm+".get(0)).moveToElement("+cvarnm1+".get(0)).release("+cvarnm1+".get(0));");
             } else if(action.toLowerCase().matches("movebyoffset")) {
                 try {

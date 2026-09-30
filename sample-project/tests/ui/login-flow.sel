@@ -10,7 +10,7 @@ import lib/nav.sel           // openAppointments
 @call "openAppointments"
 
 // New walk-in with randomized demographics
-??+ css@"input.patient-fname"
+
 ??- css@"input.patient-fname" randomize alphauc 6
 ??- css@"input.patient-lname" randomize alphauc 8
 ??- css@"input.patient-mobile" randomize range 7000000000 9999999999

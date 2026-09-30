@@ -19,6 +19,8 @@ subtest "login"                               // reusable, individually reported
 
 - **Find expression:** `<by>@<selector>` where `<by>` is `id`, `name`, `class`, `css`/`cssselector`, `xpath`, `tag`, `text`, `linkText`, `partialLinkText`, `jq`/`$`/`jquery` (jQuery selector), `active`, `this`/`current`. Optional prefixes scope the search (`eval`, `browser-scope`, `session-scope`, `relative`). See [Find Expression](#find-expression).
 - **Waits:** `??N` waits up to N seconds (default: the global `timeout`) for the element, then applies the action or assertion on the same line; `??+` / `??-` wait for visibility / invisibility.
+- **Auto-wait:** with `autoWait` set in the executor config, element actions (click, type, select, hover, clear, submit, upload, double-click, `actions … draganddrop`) also wait (up to `actionTimeout` ms, default 5000) until the element is visible, enabled, stable and not covered by another element; `type` also needs an editable field (upload and submit only need it attached and enabled). A step that times out fails with the reason, e.g. `covered by <div.modal>`. So an explicit `??10 x` before `click x` is no longer needed.
+- **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`). The opt-out applies to that line only.
 - **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
 - **Comments:** `// line` and `/* block */`.
 

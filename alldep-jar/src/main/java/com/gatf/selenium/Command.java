@@ -88,6 +88,8 @@ public class Command {
         boolean modeEnableGlobalTimeouts = true;
         boolean modeEnableConcurrentWebDriver = false;
         boolean hasNetapixCommand = false;
+        // M1: the project's config has autoWait on; codegen then also emits probes for raw Actions drags
+        boolean autoWait = false;
 
         int NUMBER = 1;
         int NUMBER_COND = 1;
@@ -337,11 +339,27 @@ public class Command {
     protected String className = "STC_" + System.nanoTime() + "";
     protected List<Command> children = new ArrayList<Command>();
     protected static boolean isSubtestScope = false;
+    // M1: statement written as `nowait <action> ...` or `<action>! ...`: its actions skip the auto-wait
+    protected boolean noWait = false;
 
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
     static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
     static Pattern CONCNUM = Pattern.compile("^\\^[\t ]*([0-9]+)");
+    // M1: auto-wait opt-out forms for element actions: `nowait click id@x`, `nowait ??10 id@x click`, `click! id@x`
+    static final String NOWAIT_VERBS = "(?:click(?:fo|nf)?|(?:type|sendkeys|chord|randomize)(?:bl|ch|bk|cl|fo)?|select|hover|hoverclick"
+            + "|clear|submit|upload|doubleclick|dblclick)";
+    static Pattern NOWAIT_PREFIX = Pattern.compile("^nowait[\t ]+(?=" + NOWAIT_VERBS + "(?:[\t ]|$)|\\?\\?)", Pattern.CASE_INSENSITIVE);
+    static Pattern NOWAIT_BANG = Pattern.compile("^(" + NOWAIT_VERBS + ")!(?=[\t ]|$)", Pattern.CASE_INSENSITIVE);
+
+    /** M1: strips an auto-wait opt-out marker; returns null when the statement has none. */
+    static String stripNoWait(String cmd) {
+        Matcher m = NOWAIT_PREFIX.matcher(cmd);
+        if(m.find()) return cmd.substring(m.end());
+        m = NOWAIT_BANG.matcher(cmd);
+        if(m.find()) return m.group(1) + cmd.substring(m.end());
+        return null;
+    }
 
     Command(Object[] fileLineDetails, CommandState state) {
         this.fileLineDetails = fileLineDetails;
@@ -522,6 +540,14 @@ public class Command {
         	} else {
         		return new NoopCommand(cmdDetails, state);
         	}
+        }
+        boolean noWait = false;
+        if(!state.commentStart && !state.codeStart && !(parent instanceof ValueListCommand)) {
+            String nw = stripNoWait(cmd);
+            if(nw!=null) {
+                cmd = nw;
+                noWait = true;
+            }
         }
         if(parent instanceof ValueListCommand && !cmd.trim().equals("]")) {
     		comd = new ValueCommand(cmdDetails, state);
@@ -993,6 +1019,9 @@ public class Command {
 	            }
 	        }
 	    }*/
+        if(noWait && comd!=null) {
+            comd.noWait = true;
+        }
         return comd;
     }
 
@@ -1614,6 +1643,7 @@ public class Command {
         if(context.getGatfExecutorConfig().getTestCaseDir()!=null) {
             state.testcaseDir = context.getGatfExecutorConfig().getTestCaseDir();
         }
+        state.autoWait = context.getGatfExecutorConfig().autoWaitEnabled();
         loadPlugins(state, context);
         state.visitedFiles.add(file.getAbsolutePath());
         Command cmd = Command.getAll(commands, file, state);
@@ -1985,6 +2015,11 @@ public class Command {
     }
     
     public static String genDebugInfo(Command c) {
+    	String dbg = genDebugInfo_(c);
+    	return c.noWait && !dbg.isEmpty() ? dbg + "__nowait__();" : dbg;
+    }
+
+    private static String genDebugInfo_(Command c) {
     	if(c.fileLineDetails!=null && c.fileLineDetails.length>0) {
     		if(c instanceof CommentCommand || c instanceof MultiCommentCommand || c instanceof NoopCommand) return "";
     		if(isSubtestScope || c instanceof SubTestCommand) {

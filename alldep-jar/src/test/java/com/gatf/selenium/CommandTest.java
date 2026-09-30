@@ -43,4 +43,26 @@ class CommandTest {
         assertThat(Command.stripTrailingLineComment("ab")).isEqualTo("ab");
         assertThat(Command.stripTrailingLineComment(null)).isNull();
     }
+
+    @Test
+    void autoWaitOptOutForms() {
+        assertThat(Command.stripNoWait("click! css@#fast-btn")).isEqualTo("click css@#fast-btn");
+        assertThat(Command.stripNoWait("clickfo! id@x")).isEqualTo("clickfo id@x");
+        assertThat(Command.stripNoWait("type! 'abc' id@x")).isEqualTo("type 'abc' id@x");
+        assertThat(Command.stripNoWait("hoverclick! id@a id@b")).isEqualTo("hoverclick id@a id@b");
+        assertThat(Command.stripNoWait("dblclick!")).isEqualTo("dblclick");
+        assertThat(Command.stripNoWait("nowait select text@'x' id@s")).isEqualTo("select text@'x' id@s");
+        assertThat(Command.stripNoWait("NoWait click id@x")).isEqualTo("click id@x");
+        assertThat(Command.stripNoWait("nowait ??10 id@x click")).isEqualTo("??10 id@x click");
+    }
+
+    @Test
+    void autoWaitOptOutLeavesOtherStatementsAlone() {
+        assertThat(Command.stripNoWait("click id@x")).isNull();
+        assertThat(Command.stripNoWait("clickety! id@x")).isNull();
+        assertThat(Command.stripNoWait("nowait goto https://x")).isNull();
+        assertThat(Command.stripNoWait("nowaiting click id@x")).isNull();
+        assertThat(Command.stripNoWait("??10 id@x click!")).isNull();
+        assertThat(Command.stripNoWait("var click! 1")).isNull();
+    }
 }

@@ -92,9 +92,7 @@ List<WebElement> ___ce___ = null;
 /*GATF_LINE@<ROOT>/tests/app-console.sel:7*/__set__cln__("<ROOT>/tests/app-console.sel:7");___cw___.manage().window().maximize();
 /*GATF_LINE@<ROOT>/tests/app-console.sel:10*/__set__cln__("<ROOT>/tests/app-console.sel:10");navigateTo(___cw___, evaluate("${appUrl}"));
 
-// the console shell has loaded
-/*GATF_LINE@<ROOT>/tests/app-console.sel:13*/__set__cln__("<ROOT>/tests/app-console.sel:13");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 10, "", new String[] {evaluate(".nav-brand"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector css@'.nav-brand' at line number 13 ", false, 1000, false, "<ROOT>/tests/app-console.sel", 13 ,"");
-
+// no explicit wait for the shell: the first click below auto-waits for it
 // Config tab -> the schema-driven config form renders
 /*GATF_LINE@<ROOT>/tests/app-console.sel:16*/__set__cln__("<ROOT>/tests/app-console.sel:16");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("//button[normalize-space()='Config']"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector xpath@'//button[normalize-space()='Config']' at line number 16 ", false, 1000, false, "<ROOT>/tests/app-console.sel", 16 ,"");
 

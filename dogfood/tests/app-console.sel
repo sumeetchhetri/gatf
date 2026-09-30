@@ -9,8 +9,8 @@ maximize
 config app.props             // -> ${appUrl}
 goto ${appUrl}
 
-// the console shell has loaded
-??10 css@".nav-brand"
+// no explicit wait for the shell: the first click below auto-waits for it
+
 
 // Config tab -> the schema-driven config form renders
 ??- xpath@"//button[normalize-space()='Config']" click

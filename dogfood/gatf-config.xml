@@ -11,6 +11,8 @@
   <traceNetwork>true</traceNetwork>
   <traceConsole>true</traceConsole>
   <traceSnapshots>true</traceSnapshots>
+  <autoWait>true</autoWait>
+  <actionTimeout>5000</actionTimeout>
   <gatfTestDataConfig>
     <globalVariables/>
   </gatfTestDataConfig>

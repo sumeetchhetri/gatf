@@ -74,6 +74,14 @@ else
   note "nav-wiring test skipped (node/esbuild not present)"
 fi
 
+# M1 auto-wait probe (injected JS) against a mocked DOM — needs node only.
+if command -v node >/dev/null 2>&1; then
+  node tools/smoke/test-actionability.mjs >/dev/null
+  note "actionability probe test passed"
+else
+  note "actionability probe test skipped (node not present)"
+fi
+
 if [ "${LINT_ONLY}" = "1" ]; then
   log "done (--lint-only)"; exit 0
 fi

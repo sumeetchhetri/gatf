@@ -55,6 +55,7 @@ Replay the same suite against several base URLs (`compareEnvBaseUrls`) to compar
 ### UI automation and RPA with seleasy
 - **Multi-browser:** multiple browser sessions per script (Chrome, Firefox, Edge, Safari, IE, and Appium Android/iOS). Local (Selenium Manager downloads the driver and Chrome for Testing), the lean chrome-headless-shell, or any Selenium Grid ([browser modes](docs/browser-modes.md)).
 - **Locating elements:** id, name, class, CSS, XPath, text, link text and jQuery selectors, with smart waits (`??10`, `??+`, `??-`) and assertions on text, attributes, CSS values and state.
+- **Auto-wait** (`autoWait` config, on in the sample and dogfood configs): before every element action (click, type, select, hover, clear, submit, upload, double-click, drag) GATF waits until the element is attached, visible, enabled, stable (same box over two animation frames) and not covered (the click point hits it); `type` also needs an editable field. The wait is bounded by `actionTimeout` (ms, default 5000), and a failure names the unmet condition, e.g. `covered by <div.modal>`. Opt a single step out with `click! …` or `nowait …`. Configs without `autoWait` behave as before.
 - **Actions:**
   - type (including random data), click, double-click, right-click, hover;
   - **drag and drop**, click-and-hold/release, move-by-offset and key chords, chained with `actions`;

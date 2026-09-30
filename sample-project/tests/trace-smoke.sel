@@ -1,6 +1,6 @@
 open chrome
 require "org.openqa.selenium.WebDriver"
 goto https://example.com
-??10 css@"a"
+
 click css@"a"
 ??5 tagname@"body"

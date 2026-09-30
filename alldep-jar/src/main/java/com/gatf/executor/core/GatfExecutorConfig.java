@@ -100,6 +100,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private String perfBudgets;
 	// Q10: passive security checks over each UI script's trace: report (default) | fail | off
 	private String securityChecks;
+	// M1: wait for each UI action's element to be actionable (attached, visible, enabled, stable, hit-testable).
+	// null = legacy behaviour (off); new configs set it true. actionTimeout = ms per action (null/<=0 = 5000).
+	private Boolean autoWait;
+	private Long actionTimeout;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -521,6 +525,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setSecurityChecks(String securityChecks) { this.securityChecks = com.gatf.selenium.checks.TraceChecks.normalizeSecurityMode(securityChecks); }
 	public String getBrowserApiSession() { return browserApiSession; }
 	public void setBrowserApiSession(String browserApiSession) { this.browserApiSession = SessionBridge.normalizeMode(browserApiSession); }
+	public Boolean getAutoWait() { return autoWait; }
+	public void setAutoWait(Boolean autoWait) { this.autoWait = autoWait; }
+	public Long getActionTimeout() { return actionTimeout; }
+	public void setActionTimeout(Long actionTimeout) { this.actionTimeout = actionTimeout; }
+	/** M1: auto-wait on? Absent (null) keeps the legacy behaviour. Not a bean property. */
+	public boolean autoWaitEnabled() { return Boolean.TRUE.equals(autoWait); }
+	/** M1: per-action auto-wait budget in ms (default 5000). Not a bean property. */
+	public long effectiveActionTimeoutMs() { return actionTimeout != null && actionTimeout > 0 ? actionTimeout : com.gatf.selenium.Actionability.DEFAULT_TIMEOUT_MS; }
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
 	public boolean isTraceNetwork() { return traceNetwork; }

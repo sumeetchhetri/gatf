@@ -42,6 +42,12 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.securityChecks.options).toEqual(['report', 'fail', 'off']);
   });
 
+  it('executor schema exposes the M1 auto-wait settings', () => {
+    // GatfExecutorConfig.autoWait (Boolean) + actionTimeout (Long, ms)
+    expect(executorSchema.properties!.autoWait.type).toBe('boolean');
+    expect(executorSchema.properties!.actionTimeout.type).toBe('integer');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

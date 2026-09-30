@@ -4,7 +4,7 @@
 subtest "doLogin"
 {
   goto ${baseUrl}/login
-  ??10 id@"username"
+
   type "${username}" id@"username"
   type "${password}" id@"password"
   click text@"Sign In"
@@ -14,7 +14,7 @@ subtest "doLogin"
 
 subtest "doLogout"
 {
-  ??+ css@"a.logout"
+
   ??- css@"a.logout" click
   ??10 id@"username"
   ?? id@"username" visible

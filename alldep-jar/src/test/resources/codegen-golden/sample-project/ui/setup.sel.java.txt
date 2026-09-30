@@ -113,7 +113,6 @@ set__subtestname__("doLogin", __sfname__);
 try {
 /*GATF_ST_LINE@<ROOT>/tests/ui/lib/auth.sel:6*/__set__cln__("<ROOT>/tests/ui/lib/auth.sel:6");navigateTo(___cw___, evaluate("${baseUrl}/login"));
 
-/*GATF_ST_LINE@<ROOT>/tests/ui/lib/auth.sel:7*/__set__cln__("<ROOT>/tests/ui/lib/auth.sel:7");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 10, "", new String[] {evaluate("username"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'username' at line number 7 ", false, 1000, false, "<ROOT>/tests/ui/lib/auth.sel", 7 ,"");
 
 /*GATF_ST_LINE@<ROOT>/tests/ui/lib/auth.sel:8*/__set__cln__("<ROOT>/tests/ui/lib/auth.sel:8");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("username"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "type", null, evaluate("${username}"), "Element not found by selector id@'username' at line number 8 ", false, 1000, false, "<ROOT>/tests/ui/lib/auth.sel", 8 ,"");
 
@@ -144,7 +143,6 @@ List<WebElement> ___ce___ = null;
 set__subtestname__("doLogout", __sfname__);
 
 try {
-/*GATF_ST_LINE@<ROOT>/tests/ui/lib/auth.sel:17*/__set__cln__("<ROOT>/tests/ui/lib/auth.sel:17");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("a.logout"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector css@'a.logout' at line number 17 ", false, 1000, true, "<ROOT>/tests/ui/lib/auth.sel", 17 ,"");
 
 /*GATF_ST_LINE@<ROOT>/tests/ui/lib/auth.sel:18*/__set__cln__("<ROOT>/tests/ui/lib/auth.sel:18");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("a.logout"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector css@'a.logout' at line number 18 ", false, 1000, false, "<ROOT>/tests/ui/lib/auth.sel", 18 ,"");
 

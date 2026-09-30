@@ -1342,6 +1342,7 @@ public abstract class SeleniumTest {
 	}
 	
 	protected void sendKeys(WebDriver driver, WebElement le, String type, String qualifier, String tvalue) {
+		awaitActionable(driver, le, Actionability.modeFor(type, tvalue));
 		sendKeys(type, qualifier, driver, le, tvalue, ___cxt___, state.name);
 	}
 	
@@ -2080,6 +2081,7 @@ public abstract class SeleniumTest {
 	}
 
 	protected void uploadFile(WebDriver wd, List<WebElement> ret, String filePath, int count) {
+		if(ret!=null && !ret.isEmpty()) awaitActionable(wd, ret.get(0), "upload");
 		initJs(wd);
 		jsFocus(wd, ret.get(0));
 		filePath = resolveFile(filePath, ___cxt___, state.name);
@@ -2187,8 +2189,37 @@ public abstract class SeleniumTest {
 		} catch (Exception e) {}
 	}
 
+	/** M1: file:line of a statement marked {@code nowait}/{@code <action>!}; its actions skip the auto-wait. */
+	private String __nowaitAt__;
+
+	/** M1: emitted by codegen right after __set__cln__ for an opted-out statement. */
+	protected void __nowait__() {
+		__nowaitAt__ = state == null ? null : state.cfileName + ":" + state.line;
+	}
+
+	/** M1: wait until {@code we} is actionable for {@code mode} (see {@link Actionability}). No-op unless the
+	 *  config sets autoWait, for a {@code nowait} statement, or on a driver that cannot run scripts. */
+	protected void awaitActionable(WebDriver wd, WebElement we, String mode) {
+		GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		if (cfg == null || !cfg.autoWaitEnabled() || we == null || !(wd instanceof JavascriptExecutor)) return;
+		if (__nowaitAt__ != null && state != null && __nowaitAt__.equals(state.cfileName + ":" + state.line)) return;
+		final JavascriptExecutor js = (JavascriptExecutor) wd;
+		long waited = Actionability.await(mode, cfg.effectiveActionTimeoutMs(), m -> {
+			try {
+				Object r = js.executeAsyncScript(Actionability.PROBE_JS, we, m);
+				return r == null ? null : String.valueOf(r);
+			} catch (org.openqa.selenium.StaleElementReferenceException e) {
+				return Actionability.DETACHED;
+			} catch (WebDriverException e) {
+				return null;   // the probe itself could not run: fall back to the legacy behaviour
+			}
+		}, Actionability.SYSTEM_CLOCK);
+		if (waited > 0) __traceAction__("autowait", mode + " " + waited + "ms");
+	}
+
 	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier) {
 		__traceAction__("click", qualifier);
+		if(ret!=null && !ret.isEmpty()) awaitActionable(wd, ret.get(0), "click");
 		for(final WebElement we: ret) {
 			String sessionId = getSessionId(wd);
 			if(isSettingEnabled(sessionId, "clk_focus") || "fo".equalsIgnoreCase(qualifier)) {
@@ -2208,18 +2239,21 @@ public abstract class SeleniumTest {
 			clickAction(wd, ret, qualifier);
 		} else if(action.equalsIgnoreCase("hover")) {
 			for(final WebElement we: ret) {
+				awaitActionable(wd, we, "hover");
 				Actions ac = new Actions(wd);
 				ac.moveToElement(we).perform();
 				break;
 			}
 		} else if(action.equalsIgnoreCase("hoverandclick")) {
 			for(final WebElement we: ret) {
+				awaitActionable(wd, we, "click");
 				Actions ac = new Actions(wd);
 				ac.moveToElement(we).click().perform();
 				break;
 			}
 		} else if(action.equalsIgnoreCase("clear")) {
 			for(final WebElement we: ret) {
+				awaitActionable(wd, we, "type");
 				jsEvent(wd, we, "fo");
 				we.clear();
 				jsChange(wd, we);
@@ -2227,6 +2261,7 @@ public abstract class SeleniumTest {
 			}
 		} else if(action.equalsIgnoreCase("submit")) {
 			for(final WebElement we: ret) {
+				awaitActionable(wd, we, "submit");
 				jsEvent(wd, we, "fo");
 				we.submit();
 				break;
@@ -2237,6 +2272,7 @@ public abstract class SeleniumTest {
         	String type = m.group(1);
         	String qualifier = m.group(2);
 			for(final WebElement we: ret) {
+				awaitActionable(wd, we, Actionability.modeFor(type, tvalue));
 				jsEvent(wd, we, "fo");
 				System.out.println(type + " => " + tvalue);
 				sendKeys(type, qualifier, wd, we, tvalue, ___cxt___, state.name);
@@ -2258,6 +2294,7 @@ public abstract class SeleniumTest {
 			uploadFile(wd, ret, tvalue, 1);
 		} else if(action.equalsIgnoreCase("select")) {
 			//jsEvent(wd, ret.get(0), "fo");
+			awaitActionable(wd, ret.get(0), "select");
 			Select s = new Select(ret.get(0));
 			if(selSubsel.equalsIgnoreCase("text")) {
 				s.selectByVisibleText(selValue);
@@ -2286,6 +2323,7 @@ public abstract class SeleniumTest {
 		}*/ else if(action.equalsIgnoreCase("dblclick") || action.equalsIgnoreCase("doubleclick")) {
 			for(final WebElement we: ret) {
 				//jsEvent(wd, we, "fo");
+				awaitActionable(wd, we, "dblclick");
 				Actions ac = new Actions(wd);
 				ac.moveToElement(we).doubleClick().perform();
 				break;
@@ -2867,6 +2905,10 @@ public abstract class SeleniumTest {
 			} else if(action!=null) {
 				try {
 					elementAction(driver, ret, action, tvalue, value, subselector);
+				} catch (Actionability.NotActionableException e) {
+					// M1: auto-wait gave up. A detached element is searched for again by the caller's wait loop (WL path).
+					if(e.isDetached() && !isVisible && timeOutInSeconds<=0) return null;
+					throw e.withLocator(by[0]+"@"+classifier[0]);
 				} catch (WebDriverException e) {
 					String exMsg = ExceptionUtils.getStackTrace(e);
 					boolean isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
@@ -2892,6 +2934,7 @@ public abstract class SeleniumTest {
 								lastException = null;
 								break;
 							} catch (Exception e1) {
+								if(e1 instanceof Actionability.NotActionableException) throw ((Actionability.NotActionableException)e1).withLocator(by[0]+"@"+classifier[0]);
 								lastException = e1;
 								exMsg = ExceptionUtils.getStackTrace(e1);
 								isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 
@@ -2941,6 +2984,7 @@ public abstract class SeleniumTest {
 								lastException = null;
 								break;
 							} catch (Exception e1) {
+								if(e1 instanceof Actionability.NotActionableException) throw ((Actionability.NotActionableException)e1).withLocator(by[0]+"@"+classifier[0]);
 								lastException = e1;
 								exMsg = ExceptionUtils.getStackTrace(e1);
 								isInvClk = exMsg.contains("org.openqa.selenium.ElementClickInterceptedException") 

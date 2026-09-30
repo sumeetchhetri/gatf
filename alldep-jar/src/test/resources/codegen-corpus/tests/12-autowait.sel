@@ -1,0 +1,13 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M1 auto-wait opt-out forms: `<action>!` and `nowait <statement>` skip the actionability wait for that line.
+open chrome
+click! css@#fast-btn
+clickfo! id@'ele1'
+type! 'abc' id@'ele1'
+select! text@'first' id@'abc'
+hover! id@'abc'
+clear! id@'ele1'
+dblclick! id@'ele1'
+nowait click id@'ele2'
+nowait ??10 id@'ele3' click
+click id@'ele4'

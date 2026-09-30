@@ -260,6 +260,18 @@ export const executorSchema: CfgSchema = {
       "type": "string",
       "options": ["report", "fail", "off"]
     },
+    // M1: wait before each UI action until its element is visible, enabled, stable and not covered.
+    // Unset = legacy (no wait); new configs set it on. actionTimeout = ms per action (blank = 5000).
+    "autoWait": {
+      "label": {
+        "type": "section",
+        "value": "Auto-wait (UI runs)"
+      },
+      "type": "boolean"
+    },
+    "actionTimeout": {
+      "type": "integer"
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

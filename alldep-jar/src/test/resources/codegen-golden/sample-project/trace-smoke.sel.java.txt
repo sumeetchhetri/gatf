@@ -87,8 +87,6 @@ ___ocw___ = ___cw___;
 List<WebElement> ___ce___ = null;
 /*GATF_LINE@<ROOT>/tests/trace-smoke.sel:3*/__set__cln__("<ROOT>/tests/trace-smoke.sel:3");navigateTo(___cw___, evaluate("https://example.com"));
 
-/*GATF_LINE@<ROOT>/tests/trace-smoke.sel:4*/__set__cln__("<ROOT>/tests/trace-smoke.sel:4");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 10, "", new String[] {evaluate("a"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector css@'a' at line number 4 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 4 ,"");
-
 /*GATF_LINE@<ROOT>/tests/trace-smoke.sel:5*/__set__cln__("<ROOT>/tests/trace-smoke.sel:5");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("a"), evaluate("")}, new String[]{"css", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector css@'a' at line number 5 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 5 ,"");
 
 /*GATF_LINE@<ROOT>/tests/trace-smoke.sel:6*/__set__cln__("<ROOT>/tests/trace-smoke.sel:6");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 5, "", new String[] {evaluate("body"), evaluate("")}, new String[]{"tagname", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector tagname@'body' at line number 6 ", false, 1000, false, "<ROOT>/tests/trace-smoke.sel", 6 ,"");
