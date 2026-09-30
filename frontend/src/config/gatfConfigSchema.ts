@@ -287,6 +287,18 @@ export const executorSchema: CfgSchema = {
     "strictLocators": {
       "type": "boolean"
     },
+    // M5: storage-state file every UI script loads after its browser opens; loginOnce = the script run once first
+    // to produce it. browserApiStorageToken = [localStorage:|sessionStorage:]key[#field] sent as a bearer token by
+    // api/curl calls from UI scripts.
+    "storageState": {
+      "type": "string"
+    },
+    "loginOnce": {
+      "type": "string"
+    },
+    "browserApiStorageToken": {
+      "type": "string"
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

@@ -38,6 +38,9 @@ public final class SessionBridge {
 
         /** Store response Set-Cookie headers from {@code uri} in the browser (no-op in {@code send} mode). */
         void onSetCookies(URI uri, List<String> setCookies);
+
+        /** M5: an Authorization value taken from the page's web storage ({@code browserApiStorageToken}), or null. */
+        default String authorization(URI uri) { return null; }
     }
 
     private static final ThreadLocal<Bridge> CURRENT = new ThreadLocal<Bridge>();

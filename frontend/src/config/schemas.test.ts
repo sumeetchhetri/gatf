@@ -59,6 +59,10 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.strictLocators.type).toBe('boolean');
   });
 
+  it('executor schema exposes the M5 auth-state settings', () => {
+    for (const k of ['storageState', 'loginOnce', 'browserApiStorageToken']) expect(executorSchema.properties![k].type).toBe('string');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

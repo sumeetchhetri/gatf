@@ -697,6 +697,15 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 			}
         }
         
+        // M5: the loginOnce script runs on its own before the suite, never as one of its scripts
+        if (StringUtils.isNotBlank(configuration.getLoginOnce()) && configuration.getSeleniumScripts() != null) {
+            List<String> rest = new ArrayList<String>();
+            for (String s : configuration.getSeleniumScripts()) {
+                if (!SetupScripts.sameScript(s, configuration.getLoginOnce())) rest.add(s);
+            }
+            configuration.setSeleniumScripts(rest.toArray(new String[rest.size()]));
+        }
+
         if (TestFilter.isActive() && configuration.getSeleniumScripts() != null && configuration.getSeleniumScripts().length > 0) {
             // Q5: `gatf test --grep/--tag` selects whole scripts by path + the @tags in their leading // comments
             List<String> keep = new ArrayList<String>();
@@ -780,6 +789,14 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         
         if(allErrors.size()>0 && tests.size()==0) {
         	throw new GatfRunTimeErrors(allErrors);
+        }
+
+        // M5: log in once (first round only); every UI script then loads the saved storage state as its browser opens
+        if (StringUtils.isNotBlank(configuration.getLoginOnce()) && configuration.getRetryCounter() <= 1) {
+        	if (StringUtils.isBlank(configuration.getStorageState())) {
+        		System.out.println("loginOnce is set but storageState is not: the login is not saved, so scripts do not start logged in");
+        	}
+        	runSetupScript(configuration.getLoginOnce().trim(), "loginOnce", true, sessionId, path, context, configuration, lp);
         }
 
         String runPrefix = "LRun-1";
@@ -2155,6 +2172,37 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
             }
         }
         return java.util.Collections.emptyList();
+    }
+
+    /**
+     * M5/M6: runs one setup script (loginOnce / globalSetup / globalTeardown) on its own, reported like any script; a
+     * failure aborts the run with a clear message (the suite would only fail without it).
+     */
+    private void runSetupScript(String script, String kind, boolean loginOnce, Long sessionId, String path, AcceptanceTestContext context,
+            GatfExecutorConfig configuration, LoggingPreferences lp) {
+        Object[] retvals = new Object[4];
+        SeleniumTest dyn;
+        try {
+            dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(context.getWorkflowContextHandler().templatize(script), fcl.apply(null), context,
+                    retvals, configuration, false, null, null);
+        } catch (Exception e) {
+            throw new RuntimeException(kind + " script " + script + " could not be compiled: " + e.getMessage(), e);
+        }
+        System.out.println("Running " + kind + " script " + script);
+        List<String> failed = Collections.synchronizedList(new ArrayList<String>());
+        if (loginOnce) SeleniumTest.LOGIN_ONCE_RUN.set(Boolean.TRUE);
+        try {
+            List<SeleniumTest> one = new ArrayList<SeleniumTest>();
+            one.add(dyn);
+            List<Object[]> data = new ArrayList<Object[]>();
+            data.add(retvals);
+            new ConcSeleniumTest(sessionId, path, 0, -1, context, one, data, lp, true, false, 1, SetupScripts.runPrefix(kind), "local", failed).call();
+        } catch (Exception e) {
+            throw new RuntimeException(kind + " script " + script + " failed: " + e.getMessage(), e);
+        } finally {
+            if (loginOnce) SeleniumTest.LOGIN_ONCE_RUN.remove();
+        }
+        if (!failed.isEmpty()) throw new RuntimeException(kind + " script " + script + " failed - the UI suite was not run");
     }
 
     // ---- CLI reporter hooks (no-ops unless GatfCli activated RunConsole) --------------------------------------------

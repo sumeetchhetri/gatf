@@ -652,6 +652,11 @@ public class TestCaseExecutorUtil {
 			if(browserCookies!=null) {
 				addHeaderSafe(builder, "Cookie", browserCookies);
 			}
+			// M5: a bearer token the UI keeps in web storage (browserApiStorageToken), unless the case sets Authorization
+			String browserAuth = browserAuthorization(testCase);
+			if(browserAuth!=null) {
+				addHeaderSafe(builder, "Authorization", browserAuth);
+			}
 			// httpCompressionEnabled: ask for gzip (OkHttp did this implicitly); JdkGatfResponse decodes it
 			if(!hasAcceptEncoding && context.getGatfExecutorConfig().isHttpCompressionEnabled()) {
 				addHeaderSafe(builder, "Accept-Encoding", "gzip");
@@ -956,6 +961,23 @@ public class TestCaseExecutorUtil {
 		try {
 			String h = bridge.cookieHeader(URI.create(testCase.getAurl()));
 			return h==null || h.isEmpty() ? null : h;
+		} catch (IllegalArgumentException e) {
+			return null;
+		}
+	}
+
+	/** M5: Authorization from the page's web storage when running inside a UI script and the case sets none. */
+	private static String browserAuthorization(TestCase testCase) {
+		SessionBridge.Bridge bridge = SessionBridge.current();
+		if(bridge==null || testCase.isSoapBase() || testCase.getAurl()==null) return null;
+		if(testCase.getHeaders()!=null) {
+			for (String k : testCase.getHeaders().keySet()) {
+				if(k.equalsIgnoreCase("Authorization")) return null;
+			}
+		}
+		try {
+			String a = bridge.authorization(URI.create(testCase.getAurl()));
+			return a==null || a.isEmpty() ? null : a;
 		} catch (IllegalArgumentException e) {
 			return null;
 		}

@@ -1,0 +1,7 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M5 auth state: save / load cookies + web storage (Playwright storageState format).
+open chrome
+goto https://shop.test/login
+state save .auth/admin.json
+state load .auth/admin.json
+state load "${stateFile}"

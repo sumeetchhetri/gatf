@@ -130,6 +130,18 @@ Examples :-
 	netapix off json $.store.book[0].title --> creates context parameter by name ${apiJson}=some-value
 ```
 
+### Save / load the browser's authenticated state (cookies + local/session storage)
+
+```
+	state save {file}
+	state load {file}
+Examples :-
+	state save .auth/admin.json
+	state load .auth/admin.json
+```
+
+The file is Playwright's `storageState` JSON (plus `sessionStorage`), relative to the test-case directory. `save` writes every cookie of the browser (any domain, HttpOnly included, via CDP or BiDi) and the open page's local/session storage, merged into an existing file. `load` sets the cookies and applies the storage to its origin now and on later navigations (once per tab). Project-wide: `storageState` in the config is loaded by every UI script as its browser opens, and `loginOnce` names a script that runs first and saves it.
+
 ### Mock network requests (route)
 
 ```

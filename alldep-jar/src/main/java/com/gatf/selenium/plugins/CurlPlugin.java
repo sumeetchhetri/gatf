@@ -97,6 +97,7 @@ public class CurlPlugin {
 
         List<List<Object>> lst = (List<List<Object>>)args[args.length-3];
         String explicitCookie = null;
+        boolean explicitAuth = false;
 
         if(CollectionUtils.isNotEmpty(lst))
         {
@@ -113,6 +114,7 @@ public class CurlPlugin {
                             explicitCookie = explicitCookie==null ? nv[1] : explicitCookie + "; " + nv[1];
                             continue;   // sent below, merged with the browser's cookies
                         }
+                        if(nv[0].equalsIgnoreCase("Authorization")) explicitAuth = true;
                         hdr(rbuilder, nv[0], nv[1]);
                     }
                 }
@@ -148,6 +150,11 @@ public class CurlPlugin {
         }
         if(cookieHeader!=null) {
             hdr(rbuilder, "Cookie", cookieHeader);
+        }
+        // M5: a bearer token kept in the page's web storage (browserApiStorageToken), unless the call sets Authorization
+        if(bridge!=null && !explicitAuth) {
+            String auth = bridge.authorization(uri);
+            if(auth!=null && !auth.isEmpty()) hdr(rbuilder, "Authorization", auth);
         }
         rbuilder.method(method.toUpperCase(), body!=null ? HttpRequest.BodyPublishers.ofByteArray(body) : HttpRequest.BodyPublishers.noBody());
         HttpResponse<byte[]> response = client.send(rbuilder.build(), HttpResponse.BodyHandlers.ofByteArray());

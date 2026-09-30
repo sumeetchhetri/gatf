@@ -38,7 +38,8 @@ import com.gatf.executor.core.SessionBridge;
  * <p>Chromium (local, or any driver exposing CDP): {@code Network.getCookies(urls)} / {@code Network.setCookie}, so
  * cookies of any domain work, HttpOnly included. Other drivers (Firefox, remote without CDP): WebDriver's cookie API,
  * which only sees and sets cookies for the domain of the page currently open; cookies for other domains are skipped
- * with a log line.
+ * with a log line. M5: Firefox and other BiDi sessions read / write cookies of any domain through {@code storage.*}; with
+ * {@code browserApiStorageToken} set, a bearer token kept in the page's web storage is sent as Authorization.
  */
 final class BrowserSession implements SessionBridge.Bridge {
 
@@ -46,17 +47,32 @@ final class BrowserSession implements SessionBridge.Bridge {
 
     private final WebDriver driver;
     private final boolean sync;
+    private final String storageToken;   // M5: browserApiStorageToken, null = none
 
     BrowserSession(WebDriver driver, String mode) {
+        this(driver, mode, null);
+    }
+
+    BrowserSession(WebDriver driver, String mode, String storageToken) {
         this.driver = driver;
         this.sync = "sync".equals(mode);
+        this.storageToken = storageToken == null || storageToken.trim().isEmpty() ? null : storageToken.trim();
     }
 
     /** Installs a bridge for {@code driver} unless there is no browser or the mode is off; returns the previous one. */
     static SessionBridge.Bridge enter(WebDriver driver, String configuredMode) {
+        return enter(driver, configuredMode, null);
+    }
+
+    static SessionBridge.Bridge enter(WebDriver driver, String configuredMode, String storageToken) {
         String mode = SessionBridge.effectiveMode(configuredMode);
         if (driver == null || "off".equals(mode)) return SessionBridge.enter(null);
-        return SessionBridge.enter(new BrowserSession(driver, mode));
+        return SessionBridge.enter(new BrowserSession(driver, mode, storageToken));
+    }
+
+    @Override
+    public String authorization(URI uri) {
+        return storageToken == null ? null : BrowserState.storageToken(driver, storageToken);
     }
 
     @Override
@@ -64,6 +80,7 @@ final class BrowserSession implements SessionBridge.Bridge {
         long now = System.currentTimeMillis() / 1000;
         try {
             List<CookieRules.C> cs = cdpCookies(uri);
+            if (cs == null) cs = bidiCookies();
             if (cs == null) cs = webDriverCookies();
             String h = CookieRules.header(cs, uri, now);
             return h.isEmpty() ? null : h;
@@ -79,7 +96,7 @@ final class BrowserSession implements SessionBridge.Bridge {
         long now = System.currentTimeMillis() / 1000;
         for (CookieRules.C c : CookieRules.fromSetCookie(setCookies, uri, now)) {
             try {
-                if (!cdpSet(c, uri) && !webDriverSet(c)) {
+                if (!cdpSet(c, uri) && !bidiSet(c) && !webDriverSet(c)) {
                     LOG.warn("browser session: cookie '{}' for {} not stored in the browser - it can only set cookies for "
                             + "the open page's domain; open a page on {} first", c.name, c.domain, c.domain);
                 }
@@ -149,6 +166,43 @@ final class BrowserSession implements SessionBridge.Bridge {
             return r == null || !Boolean.FALSE.equals(r.get("success"));
         } catch (Exception e) {
             LOG.debug("browser session: CDP Network.setCookie unavailable ({}), using WebDriver cookies", e.toString());
+            return false;
+        }
+    }
+
+    // ---------------------------------------------------------------- M5: WebDriver BiDi (Firefox), any domain
+
+    /** Every cookie in the browser (CookieRules.header then picks the ones for the URL); null without a BiDi socket. */
+    @SuppressWarnings("unchecked")
+    private List<CookieRules.C> bidiCookies() {
+        if (driver instanceof HasCdp || !com.gatf.selenium.trace.BidiRaw.available(driver)) return null;
+        try {
+            Map<String, Object> r = com.gatf.selenium.trace.BidiRaw.send(driver, "storage.getCookies", new HashMap<String, Object>());
+            List<CookieRules.C> out = new ArrayList<CookieRules.C>();
+            if (r != null && r.get("cookies") instanceof List) {
+                for (Object o : (List<Object>) r.get("cookies")) if (o instanceof Map) out.add(StorageState.fromBidi((Map<?, ?>) o));
+            }
+            return out;
+        } catch (Exception e) {
+            LOG.debug("browser session: BiDi storage.getCookies unavailable ({}), using WebDriver cookies", e.toString());
+            return null;
+        }
+    }
+
+    private boolean bidiSet(CookieRules.C c) {
+        if (driver instanceof HasCdp || !com.gatf.selenium.trace.BidiRaw.available(driver)) return false;
+        try {
+            if (c.deleted) {
+                Map<String, Object> filter = new HashMap<String, Object>();
+                filter.put("name", c.name);
+                filter.put("domain", (c.hostOnly ? "" : ".") + c.domain);
+                com.gatf.selenium.trace.BidiRaw.send(driver, "storage.deleteCookies", java.util.Collections.<String, Object>singletonMap("filter", filter));
+                return true;
+            }
+            com.gatf.selenium.trace.BidiRaw.send(driver, "storage.setCookie", StorageState.toBidi(c));
+            return true;
+        } catch (Exception e) {
+            LOG.debug("browser session: BiDi storage.setCookie unavailable ({}), using WebDriver cookies", e.toString());
             return false;
         }
     }

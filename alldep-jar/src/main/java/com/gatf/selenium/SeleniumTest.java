@@ -995,6 +995,16 @@ public abstract class SeleniumTest {
 	
 	public void quit(SeleniumTestSession sess) {
 		if(sess.__trace__!=null) { try { sess.__trace__.stop(); } catch (Exception e) {} }
+		// M5: the loginOnce script leaves its authenticated state for the suite
+		GatfExecutorConfig __scfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		if(Boolean.TRUE.equals(LOGIN_ONCE_RUN.get()) && __scfg != null && StringUtils.isNotBlank(__scfg.getStorageState()) && sess.___d___.size() > 0
+				&& !sess.___dqs___.get(0)) {
+			try {
+				System.out.println(BrowserState.save(sess.___d___.get(0), stateFile(__scfg.getStorageState().trim())));
+			} catch (Exception e) {
+				System.out.println("loginOnce: could not save the storage state (" + e.getMessage() + ") - end the script with 'state save <file>' while the page is still open");
+			}
+		}
 		if(sess.___d___.size()>0) {
 			int indx = 0;
 			for (WebDriver d : sess.___d___)
@@ -1811,7 +1821,8 @@ public abstract class SeleniumTest {
 				// no browser session open yet
 			}
 			com.gatf.executor.core.SessionBridge.Bridge prevBridge = BrowserSession.enter(bridgeDriver,
-					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiSession() : null);
+					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiSession() : null,
+					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageToken() : null);
 			try {
 				return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
 			} finally {
@@ -2258,6 +2269,30 @@ public abstract class SeleniumTest {
 			SeleniumTestSession s = getSession();
 			if (s != null && s.__trace__ != null) s.__trace__.event("action", type, detail);
 		} catch (Exception e) {}
+	}
+
+	/** M5: set by the executor while the loginOnce script runs: no storage-state load, and the state is saved at quit. */
+	public static final ThreadLocal<Boolean> LOGIN_ONCE_RUN = new ThreadLocal<Boolean>();
+
+	/** M5: this loginOnce run already cleared the previous state file. */
+	private boolean __stateFresh__;
+
+	/** M5: emitted for {@code state save|load <file>}. */
+	protected void __state__(WebDriver d, String op, String file) throws Exception {
+		File f = stateFile(file);
+		String msg = "save".equals(op) ? BrowserState.save(d, f) : BrowserState.load(d, f);
+		__traceAction__("state", msg);
+		System.out.println(msg);
+	}
+
+	/** M5: a state file: absolute as given, else under the test-case directory (so every script finds the same file). */
+	protected File stateFile(String name) {
+		File f = new File(name);
+		if(f.isAbsolute() || ___cxt___ == null) return f;
+		GatfExecutorConfig cfg = ___cxt___.getGatfExecutorConfig();
+		File base = new File(cfg.getTestCasesBasePath() == null ? "." : cfg.getTestCasesBasePath());
+		if(StringUtils.isNotBlank(cfg.getTestCaseDir())) base = new File(base, cfg.getTestCaseDir());
+		return new File(base, name);
 	}
 
 	/** M4: set by codegen when the script uses route/unroute (see addWdm). */
@@ -3692,6 +3727,23 @@ public abstract class SeleniumTest {
 		state.logdebug = logdebug;
 		state.lognw = lognw;
 		state.hasNetapixCommand = hasNetapixCommand;
+		// M5: every UI script starts from the project's saved login state (not the loginOnce run that produces it)
+		GatfExecutorConfig __lcfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && !Boolean.TRUE.equals(LOGIN_ONCE_RUN.get())) {
+			File __sf = stateFile(__lcfg.getStorageState().trim());
+			if(__sf.isFile()) {
+				try {
+					System.out.println(BrowserState.load(driver, __sf));
+				} catch (Exception e) {
+					System.out.println("storageState: not loaded (" + e.getMessage() + ")");
+				}
+			}
+		} else if(__lcfg != null && StringUtils.isNotBlank(__lcfg.getStorageState()) && !__stateFresh__) {
+			// M5: the loginOnce run replaces the state file (a merge would keep an old login's cookies / origins)
+			__stateFresh__ = true;
+			File __sf = stateFile(__lcfg.getStorageState().trim());
+			if(__sf.isFile() && __sf.delete()) System.out.println("loginOnce: previous " + __sf.getPath() + " removed");
+		}
 		String sessionId = ((RemoteWebDriver)driver).getSessionId().toString();
 		if(driver instanceof HasDevTools) {
 			DevTools devTools = ((HasDevTools)driver).getDevTools();

@@ -900,6 +900,8 @@ public class Command {
         } else if (cmd.toLowerCase().startsWith("netapix ")) {
             comd = new NetworkAPIInterceptCommand(cmd.substring(8).trim(), cmdDetails, state);
             state.hasNetapixCommand = true;
+        } else if (cmd.toLowerCase().startsWith("state ")) {
+            comd = new StateCommand(cmd.substring(6).trim(), cmdDetails, state);   // M5 auth state
         } else if (cmd.toLowerCase().startsWith("route ") || cmd.toLowerCase().equals("unroute") || cmd.toLowerCase().startsWith("unroute ")) {
             comd = new RouteCommand(state.unsanitize(cmd), cmdDetails, state);   // M4 network mocking
             state.hasRouteCommand = true;

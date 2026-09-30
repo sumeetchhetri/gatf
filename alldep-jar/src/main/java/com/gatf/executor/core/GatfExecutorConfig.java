@@ -112,6 +112,13 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// more than one element fails and lists the candidates (null/false = first match, as before).
 	private String testIdAttribute;
 	private Boolean strictLocators;
+	// M5: storage-state file (cookies + web storage) every UI script loads right after its browser opens, and the
+	// script run once before the UI suite to produce it (its state is saved to storageState when it finishes).
+	private String storageState;
+	private String loginOnce;
+	// Q8/M5: web-storage key holding a bearer token for api/curl calls from UI scripts:
+	// [localStorage:|sessionStorage:]key[#json.field]; null = none
+	private String browserApiStorageToken;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -552,6 +559,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setTestIdAttribute(String testIdAttribute) { this.testIdAttribute = testIdAttribute; }
 	public Boolean getStrictLocators() { return strictLocators; }
 	public void setStrictLocators(Boolean strictLocators) { this.strictLocators = strictLocators; }
+	public String getStorageState() { return storageState; }
+	public void setStorageState(String storageState) { this.storageState = storageState; }
+	public String getLoginOnce() { return loginOnce; }
+	public void setLoginOnce(String loginOnce) { this.loginOnce = loginOnce; }
+	public String getBrowserApiStorageToken() { return browserApiStorageToken; }
+	public void setBrowserApiStorageToken(String browserApiStorageToken) { this.browserApiStorageToken = browserApiStorageToken; }
 	/** M3: strict semantic locators on? Not a bean property. */
 	public boolean strictLocatorsEnabled() { return Boolean.TRUE.equals(strictLocators); }
 	public long effectiveAssertTimeoutMs() { return assertTimeout != null && assertTimeout > 0 ? assertTimeout : com.gatf.selenium.WebFirst.DEFAULT_ASSERT_TIMEOUT_MS; }
