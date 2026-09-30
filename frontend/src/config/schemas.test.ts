@@ -48,6 +48,12 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.actionTimeout.type).toBe('integer');
   });
 
+  it('executor schema exposes the M2 web-first assertion settings', () => {
+    // GatfExecutorConfig.webFirstAssertions (Boolean) + assertTimeout (Long, ms)
+    expect(executorSchema.properties!.webFirstAssertions.type).toBe('boolean');
+    expect(executorSchema.properties!.assertTimeout.type).toBe('integer');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

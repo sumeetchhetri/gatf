@@ -60,6 +60,7 @@ cat > "${CONFIG}" <<XML
   <traceConsole>true</traceConsole>
   <traceSnapshots>true</traceSnapshots>
   <autoWait>true</autoWait>
+  <webFirstAssertions>true</webFirstAssertions>
   <seleniumScripts>
     <string>app-console.sel</string>
   </seleniumScripts>

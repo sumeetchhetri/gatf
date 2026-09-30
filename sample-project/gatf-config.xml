@@ -16,6 +16,8 @@
   <traceSnapshots>true</traceSnapshots>
   <autoWait>true</autoWait>
   <actionTimeout>5000</actionTimeout>
+  <webFirstAssertions>true</webFirstAssertions>
+  <assertTimeout>5000</assertTimeout>
   <traceMaxBodyKb>512</traceMaxBodyKb>
   <traceMaxTotalMb>64</traceMaxTotalMb>
   <traceMetrics>true</traceMetrics>

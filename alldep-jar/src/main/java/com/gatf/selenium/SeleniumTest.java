@@ -2197,6 +2197,15 @@ public abstract class SeleniumTest {
 		__nowaitAt__ = state == null ? null : state.cfileName + ":" + state.line;
 	}
 
+	/** M2: the retry budget for a value assertion, or null when web-first assertions are off (legacy: fail at once)
+	 *  or the statement is opted out with {@code nowait}. */
+	protected WebFirst.Budget webFirstBudget() {
+		GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		if (cfg == null || !cfg.webFirstAssertionsEnabled()) return null;
+		if (__nowaitAt__ != null && state != null && __nowaitAt__.equals(state.cfileName + ":" + state.line)) return null;
+		return new WebFirst.Budget(cfg.effectiveAssertTimeoutMs(), Actionability.SYSTEM_CLOCK);
+	}
+
 	/** M1: wait until {@code we} is actionable for {@code mode} (see {@link Actionability}). No-op unless the
 	 *  config sets autoWait, for a {@code nowait} statement, or on a driver that cannot run scripts. */
 	protected void awaitActionable(WebDriver wd, WebElement we, String mode) {
@@ -2402,6 +2411,7 @@ public abstract class SeleniumTest {
 	protected List<WebElement> handleWaitFuncWL(WebDriver driver, final SearchContext sc, final List<WebElement> ce, int timeOutCounter, String relative, String[] classifier, String[] by, String subselector, 
 			boolean byselsame, String value, String[] values, String action, String oper, String tvalue, String exmsg, boolean noExcep, int timeoutGranularity, boolean isVisible, String testFile, int lineNo, String ... layers) {
 		int counter = 0;
+		WebFirst.Budget assertBudget = null;   // M2: created at the first value mismatch when web-first assertions are on
 		//timeOutCounter = 10;
 		while(true) {
 			boolean wasPaused = false;
@@ -2480,7 +2490,26 @@ public abstract class SeleniumTest {
 				}
 				___cxt___.setPausedLineNo(null, -1);
 			}
-			List<WebElement> el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
+			List<WebElement> el;
+			try {
+				el = (List<WebElement>)handleWaitOrTransientProv(driver, sc, ce, 0L, relative, classifier, by, subselector, byselsame, value, values, action, oper, tvalue, exmsg, noExcep, timeoutGranularity, isVisible, layers);
+			} catch (WebFirst.Mismatch mm) {
+				// M2: element found, condition false: retry until assertTimeout (web-first) instead of failing at once
+				if(assertBudget == null) assertBudget = webFirstBudget();
+				if(assertBudget == null) throw mm;
+				if(!assertBudget.retry()) throw mm.after(assertBudget.elapsed());
+				sleep(Math.min(WebFirst.POLL_MS, Math.max(1, timeoutGranularity)));
+				if(___cxt___.isStopExecSet()) {
+					throw new RuntimeException("Stopped Execution");
+				}
+				continue;
+			} catch (org.openqa.selenium.StaleElementReferenceException se) {
+				// M2: the element re-rendered between find and read: web-first retries it like a false condition
+				if(assertBudget == null) assertBudget = webFirstBudget();
+				if(assertBudget == null || !assertBudget.retry()) throw se;
+				sleep(Math.min(WebFirst.POLL_MS, Math.max(1, timeoutGranularity)));
+				continue;
+			}
 			if(!isVisible) {
 				if (el != null) return el;
 			} else {
@@ -3060,7 +3089,7 @@ public abstract class SeleniumTest {
 			}
 		}
 		if(!noExcep && !flag) {
-			throw new RuntimeException(exmsg);
+			throw new WebFirst.Mismatch(exmsg, WebFirst.describe(subselector, oper, value, values));
 		} else if(noExcep) {
 			//resp = null;
 		}

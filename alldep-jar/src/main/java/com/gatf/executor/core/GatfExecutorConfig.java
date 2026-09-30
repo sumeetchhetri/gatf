@@ -104,6 +104,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// null = legacy behaviour (off); new configs set it true. actionTimeout = ms per action (null/<=0 = 5000).
 	private Boolean autoWait;
 	private Long actionTimeout;
+	// M2: ?? value assertions retry until assertTimeout ms (null/<=0 = 5000) instead of failing at once.
+	// null = legacy behaviour (off); new configs set it true.
+	private Boolean webFirstAssertions;
+	private Long assertTimeout;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -533,6 +537,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public boolean autoWaitEnabled() { return Boolean.TRUE.equals(autoWait); }
 	/** M1: per-action auto-wait budget in ms (default 5000). Not a bean property. */
 	public long effectiveActionTimeoutMs() { return actionTimeout != null && actionTimeout > 0 ? actionTimeout : com.gatf.selenium.Actionability.DEFAULT_TIMEOUT_MS; }
+	public Boolean getWebFirstAssertions() { return webFirstAssertions; }
+	public void setWebFirstAssertions(Boolean webFirstAssertions) { this.webFirstAssertions = webFirstAssertions; }
+	public Long getAssertTimeout() { return assertTimeout; }
+	public void setAssertTimeout(Long assertTimeout) { this.assertTimeout = assertTimeout; }
+	/** M2: retrying (web-first) assertions on? Absent (null) keeps the legacy fail-at-once behaviour. Not a bean property. */
+	public boolean webFirstAssertionsEnabled() { return Boolean.TRUE.equals(webFirstAssertions); }
+	/** M2: per-assertion retry budget in ms (default 5000). Not a bean property. */
+	public long effectiveAssertTimeoutMs() { return assertTimeout != null && assertTimeout > 0 ? assertTimeout : com.gatf.selenium.WebFirst.DEFAULT_ASSERT_TIMEOUT_MS; }
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
 	public boolean isTraceNetwork() { return traceNetwork; }

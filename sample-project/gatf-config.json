@@ -17,6 +17,8 @@
   "traceSnapshots" : true,
   "autoWait" : true,
   "actionTimeout" : 5000,
+  "webFirstAssertions" : true,
+  "assertTimeout" : 5000,
   "traceMaxBodyKb" : 512,
   "traceMaxTotalMb" : 64,
   "traceMetrics" : true,

@@ -272,6 +272,13 @@ export const executorSchema: CfgSchema = {
     "actionTimeout": {
       "type": "integer"
     },
+    // M2: ?? value assertions retry until assertTimeout ms (blank = 5000). Unset = legacy (fail at once).
+    "webFirstAssertions": {
+      "type": "boolean"
+    },
+    "assertTimeout": {
+      "type": "integer"
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

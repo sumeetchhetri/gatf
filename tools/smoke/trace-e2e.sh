@@ -99,6 +99,7 @@ cat > "${CONFIG}" <<EOF
   <traceConsole>true</traceConsole>
   <traceSnapshots>true</traceSnapshots>
   <autoWait>true</autoWait>
+  <webFirstAssertions>true</webFirstAssertions>
   <traceMetrics>true</traceMetrics>
   <traceWebVitals>true</traceWebVitals>
   <traceCpu>true</traceCpu>
