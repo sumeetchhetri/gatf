@@ -98,6 +98,14 @@ else
   note "semantic locator resolver test skipped (node/jsdom not present)"
 fi
 
+# M11 fake clock (injected JS) in a node vm — needs node only.
+if command -v node >/dev/null 2>&1; then
+  node tools/smoke/test-clock.mjs >/dev/null
+  note "fake clock test passed"
+else
+  note "fake clock test skipped (node not present)"
+fi
+
 # M10 a11y check runner with the bundled axe-core against jsdom — needs node + the frontend dev deps.
 if command -v node >/dev/null 2>&1 && [ -d frontend/node_modules/jsdom ]; then
   node tools/smoke/test-a11y.mjs >/dev/null

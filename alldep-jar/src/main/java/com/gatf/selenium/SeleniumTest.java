@@ -2440,6 +2440,99 @@ public abstract class SeleniumTest {
 		System.out.println(msg);
 	}
 
+	/** M11: the per-document clock registration of each driver (to replace / remove it). */
+	private final Map<WebDriver, Object[]> __clockPreload__ = new java.util.IdentityHashMap<WebDriver, Object[]>();
+
+	/** M11: {@code clock install [time] | set <time> | fastforward <duration> | uninstall} (see FakeClock). */
+	protected void __clock__(WebDriver d, String spec) {
+		com.gatf.selenium.emulation.FakeClock c = com.gatf.selenium.emulation.FakeClock.parse(spec);
+		if (!(d instanceof JavascriptExecutor)) throw new RuntimeException("clock needs a browser that runs JavaScript");
+		JavascriptExecutor js = (JavascriptExecutor) d;
+		String msg;
+		switch (c.op) {
+			case "install": {
+				long epoch = c.value != null ? c.value : System.currentTimeMillis();
+				String gen = Long.toString(System.nanoTime(), 36);   // tells this installation's carried time from a stale one
+				js.executeScript(com.gatf.selenium.emulation.FakeClock.JS + "return window.__gatfClock.install(arguments[0], arguments[1]);", epoch, gen);
+				msg = "clock installed at " + java.time.Instant.ofEpochMilli(epoch) + " (paused; due 0 ms timers still run)";
+				clockUnregister(d);
+				try {
+					com.gatf.selenium.emulation.Emulation.Channel ch = protocolChannel(d, "clock");
+					com.gatf.selenium.emulation.Emulation.Call call = com.gatf.selenium.emulation.FakeClock.registerPreload(ch.cdp(), epoch, gen, ch.context());
+					String id = com.gatf.selenium.emulation.FakeClock.preloadId(ch.cdp(), ch.send(call.method, call.params));
+					if (id != null) __clockPreload__.put(d, new Object[] { ch, id });
+				} catch (RuntimeException e) {
+					msg += " (this document only: " + e.getMessage() + ")";
+				}
+				break;
+			}
+			case "uninstall":
+				js.executeScript("if (window.__gatfClock) window.__gatfClock.uninstall();");
+				clockUnregister(d);
+				msg = "clock uninstalled";
+				break;
+			default: {
+				Object on = js.executeScript("return !!(window.__gatfClock && window.__gatfClock.installed());");
+				if (!Boolean.TRUE.equals(on)) throw new RuntimeException("clock " + c.op + ": the page has no fake clock (clock install first)");
+				if (c.op.equals("set")) {
+					js.executeScript("return window.__gatfClock.setSystemTime(arguments[0]);", c.value);
+					msg = "clock set to " + java.time.Instant.ofEpochMilli(c.value);
+				} else if (c.op.equals("pause") || c.op.equals("resume")) {
+					js.executeScript("window.__gatfClock." + c.op + "();");
+					msg = c.op.equals("pause") ? "clock paused" : "clock resumed (time follows the real clock)";
+				} else {
+					// async: promise reactions (await / then) run between timers, as in the real event loop
+					java.time.Duration prevTo = null;
+					Object ran;
+					try {
+						try {
+							prevTo = d.manage().timeouts().getScriptTimeout();
+							if (prevTo == null || prevTo.compareTo(java.time.Duration.ofMinutes(5)) < 0) d.manage().timeouts().scriptTimeout(java.time.Duration.ofMinutes(5));
+						} catch (RuntimeException e) {
+							prevTo = null;
+						}
+						ran = js.executeAsyncScript("window.__gatfClock.tickAsync(arguments[0], arguments[arguments.length - 1]);", c.value);
+					} catch (org.openqa.selenium.WebDriverException e) {
+						if (e instanceof org.openqa.selenium.ScriptTimeoutException) {
+							// stop the in-page loop, or it keeps running (and blocks the pump) after the step failed
+							try { js.executeScript("if (window.__gatfClock && window.__gatfClock.abort) window.__gatfClock.abort();"); } catch (RuntimeException x) { /* page gone */ }
+							throw e;
+						}
+						String m = String.valueOf(e.getMessage()).toLowerCase(java.util.Locale.ROOT);
+						if (!(m.contains("unload") || m.contains("navigat") || m.contains("no such window") || m.contains("detached"))) throw e;
+						// a timer navigated away (e.g. a session-timeout redirect): the new page boots at the time reached
+						msg = "clock fastforward " + c.value + " ms: a timer navigated away; the next page continues at the time reached";
+						__traceAction__("clock", msg);
+						System.out.println(msg);
+						return;
+					} finally {
+						if (prevTo != null) {
+							try { d.manage().timeouts().scriptTimeout(prevTo); } catch (RuntimeException e) { /* keep going */ }
+						}
+					}
+					if (ran instanceof Map && ((Map<?, ?>) ran).get("error") != null) throw new RuntimeException(String.valueOf(((Map<?, ?>) ran).get("error")));
+					Object errs = js.executeScript("return window.__gatfClock.errors();");
+					msg = "clock fastforward " + c.value + " ms: " + ran + " timer(s) ran";
+					if (errs instanceof List && !((List<?>) errs).isEmpty()) msg += "; timer errors: " + errs;
+				}
+			}
+		}
+		__traceAction__("clock", msg);
+		System.out.println(msg);
+	}
+
+	private void clockUnregister(WebDriver d) {
+		Object[] prev = __clockPreload__.remove(d);
+		if (prev == null) return;
+		com.gatf.selenium.emulation.Emulation.Channel ch = (com.gatf.selenium.emulation.Emulation.Channel) prev[0];
+		com.gatf.selenium.emulation.Emulation.Call call = com.gatf.selenium.emulation.FakeClock.unregisterPreload(ch.cdp(), (String) prev[1]);
+		try {
+			ch.send(call.method, call.params);
+		} catch (RuntimeException e) {
+			// the tab / session is gone: nothing left to remove
+		}
+	}
+
 	/** M4: set by codegen when the script uses route/unroute (see addWdm). */
 	private boolean __routeBidi__;
 

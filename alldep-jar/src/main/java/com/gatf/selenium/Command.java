@@ -952,6 +952,9 @@ public class Command {
             state.hasNetapixCommand = true;
         } else if (cmd.toLowerCase().startsWith("a11y ")) {
             comd = new A11yCommand(state.unsanitize(cmd.substring(5).trim()), cmdDetails, state);   // M10 accessibility
+        } else if (cmd.toLowerCase().startsWith("clock ")) {
+            comd = new ClockCommand(state.unsanitize(cmd.substring(6).trim()), cmdDetails, state);   // M11 clock control
+            state.hasEmulateCommand = true;   // the per-document clock needs CDP or the BiDi socket
         } else if (cmd.toLowerCase().startsWith("emulate ")) {
             comd = new EmulateCommand(state.unsanitize(cmd.substring(8).trim()), cmdDetails, state);   // M8 emulation
             state.hasEmulateCommand = true;

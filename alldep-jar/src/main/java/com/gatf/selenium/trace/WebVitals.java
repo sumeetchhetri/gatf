@@ -41,7 +41,7 @@ public final class WebVitals {
         "if(e.length)o.lcp=e[e.length-1].startTime;}).observe({type:'largest-contentful-paint',buffered:true});}}catch(e){}" +
         "try{if(types.indexOf('layout-shift')>=0){o.cls=0;new PerformanceObserver(function(l){l.getEntries().forEach(function(x){" +
         "if(!x.hadRecentInput)o.cls+=x.value;});}).observe({type:'layout-shift',buffered:true});}}catch(e){}" +
-        "setTimeout(function(){done(JSON.stringify(o));},100);";
+        "((window.__gatfClock&&window.__gatfClock.real&&window.__gatfClock.real.setTimeout)||setTimeout).call(window,function(){done(JSON.stringify(o));},100);";   // M11: real timer
 
     /**
      * Per-navigation observer, installed on every new document (CDP Page.addScriptToEvaluateOnNewDocument / BiDi

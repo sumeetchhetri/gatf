@@ -138,6 +138,31 @@ Examples :-
 - **Settings:** `geolocation` also grants the geolocation permission. The names `permissions` accepts are `geolocation`, `notifications`, `camera`, `microphone`, `clipboard-read`, `clipboard-write`, `midi`, `midi-sysex`, `background-sync`, `persistent-storage`, `sensors`, `idle-detection` and `storage-access`. Grants accumulate until `permissions clear` or `reset`. `network` presets follow Chrome DevTools: `slow3g`, `slow4g` (DevTools' former "Fast 3G", also accepted as `fast3g`) and `fast4g`. Custom values are kbit/s down, kbit/s up and ms latency. `online` also ends throttling.
 - **Browsers:** Chromium uses CDP and supports everything. Firefox and Grid sessions use WebDriver BiDi, which covers viewport, user agent, geolocation, locale, time zone, permission grants and offline. Colour scheme, throttling and `permissions clear` need CDP and fail with a message saying so. Touch / mobile flags on BiDi are applied as viewport + user agent, with a note. A BiDi command the browser does not implement yet fails naming it. Scripts that use `emulate` ask for the BiDi socket (`webSocketUrl`) automatically.
 
+### Control the page's clock (fake Date, timers and animation frames)
+
+```
+	clock install {optional time: ISO date-time, date or epoch ms}
+	clock set {time}
+	clock fastforward {duration: ms, 30s, 5m, 1h30m or mm:ss}
+	clock pause|resume
+	clock uninstall
+Examples :-
+	clock install 2026-01-01T09:00:00Z
+	clock set 2026-12-31T23:59:50Z
+	clock fastforward 10s
+	clock fastforward 01:30
+	clock resume
+	clock pause
+	clock uninstall
+```
+- **`install`:** replaces `Date`, `performance.now`, `setTimeout` / `setInterval` (and their clears) and `requestAnimationFrame` in the page. Time then stands still (paused) at the given time (default: now) until the script moves it, so countdowns, session timeouts, carousels and "x minutes ago" labels are testable deterministically. Timers that are already due (0 ms deferrals such as ready handlers) still run on their own, so pages keep initialising.
+- **`fastforward`:** advances time and runs every timer that falls due, in order. Promise reactions (`await`, `.then`) run between timers as in the real event loop, so `await sleep(1000)` loops advance once per second of fake time. Intervals repeat, animation frames fire every 16 ms, and timers scheduled by timers run if they fall due too. A throwing timer is reported, not fatal. A timer that re-arms itself at 0 ms more than 10,000 times without time moving fails the step as a runaway. If a timer navigates away (a session-timeout redirect, say), the step ends there and the next page continues at the time reached.
+- **`resume` / `pause`:** `resume` lets fake time follow the real clock (like Playwright's default) and `pause` freezes it again.
+- **`set`:** jumps the wall clock (`Date`) without running timers.
+- **`uninstall`:** restores the real clock.
+- **Navigation:** the clock is installed on every new document of the tab (CDP / WebDriver BiDi preload script) and keeps its time across same-origin navigations. A cross-origin navigation restarts it at the install time. Without CDP or a BiDi socket it covers the current document only, and the step says so.
+- **Not covered:** iframes get their own paused clock that `fastforward` does not move; CSS animations, `Event.timeStamp`, Web Workers and new windows are not covered either. GATF's own injected scripts (auto-wait, web vitals) keep using the real timers. `a11y check` on a page whose frames do not answer axe may wait for the script timeout while the clock is installed.
+
 ## Navigation, windows, tabs & frames
 
 ### Open URL in window

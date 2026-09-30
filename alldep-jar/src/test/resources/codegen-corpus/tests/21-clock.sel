@@ -1,0 +1,11 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M11 clock control: install, set, fastforward (durations), uninstall.
+open chrome
+clock install 2026-01-01T09:00:00Z
+goto https://shop.test/
+clock fastforward 10s
+clock fastforward 01:30
+clock set 2026-12-31T23:59:50Z
+clock resume
+clock pause
+clock uninstall

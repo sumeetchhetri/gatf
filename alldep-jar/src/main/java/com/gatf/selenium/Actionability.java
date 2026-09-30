@@ -99,9 +99,12 @@ public final class Actionability {
         }
         function box(n) { var r = n.getBoundingClientRect(); return [r.left, r.top, r.width, r.height]; }
         function frame(cb) {
+          // M11: the page's real timers even under `clock install` (a paused fake clock would never fire them)
+          var C = window.__gatfClock && window.__gatfClock.real;
+          var ST = C ? C.setTimeout : setTimeout, CT = C ? C.clearTimeout : clearTimeout, RAF = C ? C.requestAnimationFrame : window.requestAnimationFrame;
           var fired = false;
-          var t = setTimeout(function () { if (!fired) { fired = true; cb(); } }, 100);
-          if (window.requestAnimationFrame) window.requestAnimationFrame(function () { if (!fired) { fired = true; clearTimeout(t); cb(); } });
+          var t = ST.call(window, function () { if (!fired) { fired = true; cb(); } }, 100);
+          if (RAF) RAF.call(window, function () { if (!fired) { fired = true; CT.call(window, t); cb(); } });
         }
         function isTarget(h) {
           for (var n = h; n; n = n.parentNode || n.host) {
