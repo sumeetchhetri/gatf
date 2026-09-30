@@ -25,7 +25,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
@@ -93,7 +93,7 @@ public class SOAPResponseValidator extends ResponseValidator {
 			String expression = createXPathExpression(entry.getKey(), envelope, body, requestBody);
 			XPath xPath = XPathFactory.newInstance().newXPath();
 			NodeList nodelist = (NodeList) xPath.compile(expression).evaluate(soapMessage, XPathConstants.NODESET);
-			Assert.assertNotNull("Cannot find soap parameter " + entry.getKey(), 
+			GatfAssert.assertNotNull("Cannot find soap parameter " + entry.getKey(), 
 					nodelist!=null && nodelist.getLength()>0);
 			nodelist.item(0).getFirstChild().setNodeValue(entry.getValue());
 		}
@@ -150,7 +150,7 @@ public class SOAPResponseValidator extends ResponseValidator {
 		
 		XPath xPath =  XPathFactory.newInstance().newXPath();
 		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)nodeLst, XPathConstants.NODESET);
-		Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+		GatfAssert.assertTrue("Workflow soap variable " + expression +" is null",  
 				xmlNodeList!=null && xmlNodeList.getLength()>0);
 		
 		List<Map<String, String>> soapValues = WorkflowContextHandler.getNodeValueMapList(propNames, xmlNodeList);
@@ -173,11 +173,11 @@ public class SOAPResponseValidator extends ResponseValidator {
 		
 		XPath xPath =  XPathFactory.newInstance().newXPath();
 		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)nodeLst, XPathConstants.NODESET);
-		Assert.assertTrue("Workflow soap variable " + expression +" is null",  
+		GatfAssert.assertTrue("Workflow soap variable " + expression +" is null",  
 				xmlNodeList!=null && xmlNodeList.getLength()>0);
 
 		String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
-		Assert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
+		GatfAssert.assertNotNull("Workflow soap variable " + expression +" is null", xmlValue);
 		
 		int responseCount = -1;
 		try {

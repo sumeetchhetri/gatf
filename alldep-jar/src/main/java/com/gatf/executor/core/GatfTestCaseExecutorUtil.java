@@ -2357,6 +2357,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         java.util.List<String> att = new java.util.ArrayList<String>(2);
         if (!res.isStatus() && res.getSubtestImg() != null && new File(res.getSubtestImg()).isFile()) {
             att.add(new File(res.getSubtestImg()).getAbsolutePath());   // failure screenshot (taken by the step's failure path)
+            if (msg != null) msg = msg + " [screenshot: " + new File(res.getSubtestImg()).getAbsolutePath() + "]";   // M16
         }
         att.addAll(res.getAttachments());   // M9/M10: visual diff / accessibility files
         if (tracePath != null) att.add(tracePath);

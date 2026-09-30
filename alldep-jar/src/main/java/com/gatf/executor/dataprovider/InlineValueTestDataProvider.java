@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 
@@ -38,7 +38,7 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 			throw new AssertionError("Insufficient arguments passed, need variable values");
 		}
 		
-		Assert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
+		GatfAssert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
 		String variableNames = provider.getProviderProperties().trim();
 		
 		List<String> variableNamesArr = new ArrayList<String>();
@@ -47,7 +47,7 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 				variableNamesArr.add(varName);
 			}
 		}
-		Assert.assertTrue("need to define at-least a single variable name", 
+		GatfAssert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
 		
 		boolean quoted = false;
@@ -60,7 +60,7 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 		}
 		
 		for (int j = start; j < provider.getArgs().length; j++) {
-			Assert.assertNotNull("variable value cannot be empty", provider.getArgs()[j]);
+			GatfAssert.assertNotNull("variable value cannot be empty", provider.getArgs()[j]);
 			String[] values = null;
 			if(quoted) {
 				values = provider.getArgs()[j].trim().substring(1, provider.getArgs()[j].length()-1).split(splitStr);
@@ -68,7 +68,7 @@ public class InlineValueTestDataProvider implements TestDataProvider {
 				values = provider.getArgs()[j].trim().split(splitStr);
 			}
 			
-			Assert.assertNotNull(String.format("need %d values for variables defined", variableNamesArr.size()), 
+			GatfAssert.assertNotNull(String.format("need %d values for variables defined", variableNamesArr.size()), 
 					provider.getArgs()[j]);
 			
 			Map<String, String> row = new HashMap<String, String>();

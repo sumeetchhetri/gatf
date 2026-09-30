@@ -27,7 +27,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.bson.Document;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.mongodb.client.MongoClient;
@@ -59,22 +59,22 @@ public class MongoDBTestDataSource extends TestDataSource {
 					" mandatory for MongoDBTestDataProvider");
 		}
 		
-		Assert.assertNotNull("mongodb-host cannot be empty", args[0]);
-		Assert.assertNotNull("mongodb-port cannot be empty", args[1]);
-		Assert.assertNotNull("mongodb-database cannot be empty", args[2]);
+		GatfAssert.assertNotNull("mongodb-host cannot be empty", args[0]);
+		GatfAssert.assertNotNull("mongodb-port cannot be empty", args[1]);
+		GatfAssert.assertNotNull("mongodb-database cannot be empty", args[2]);
 		
 		String host = args[0].trim();
 		String port = args[1].trim();
 		String dbName = args[2].trim();
 		
-		Assert.assertFalse("mongodb-host cannot be empty", host.isEmpty());
-		Assert.assertFalse("mongodb-port cannot be empty", port.isEmpty());
-		Assert.assertFalse("mongodb-database cannot be empty", dbName.isEmpty());
+		GatfAssert.assertFalse("mongodb-host cannot be empty", host.isEmpty());
+		GatfAssert.assertFalse("mongodb-port cannot be empty", port.isEmpty());
+		GatfAssert.assertFalse("mongodb-database cannot be empty", dbName.isEmpty());
 		
 		String username = null, password = "";
 		if(args.length>3) {
-			Assert.assertNotNull("mongodb-user cannot be empty", args[3]);
-			Assert.assertFalse("mongodb-user cannot be empty", args[3].isEmpty());
+			GatfAssert.assertNotNull("mongodb-user cannot be empty", args[3]);
+			GatfAssert.assertFalse("mongodb-user cannot be empty", args[3].isEmpty());
 			
 			username = args[3].trim();
 			if(args.length>4 && args[4]!=null)
@@ -97,9 +97,9 @@ public class MongoDBTestDataSource extends TestDataSource {
 			String[] ports = port.split(",");
 			
 			if(hosts.length>ports.length) {
-				Assert.assertEquals(String.format("Port missing for host %s", hosts[ports.length-1]), hosts.length, ports.length);
+				GatfAssert.assertEquals(String.format("Port missing for host %s", hosts[ports.length-1]), hosts.length, ports.length);
 			} else {
-				Assert.assertEquals(String.format("Host missing for port %s", ports[hosts.length-1]), hosts.length, ports.length);
+				GatfAssert.assertEquals(String.format("Host missing for port %s", ports[hosts.length-1]), hosts.length, ports.length);
 			}
 			
 			for (String portVal : ports) {
@@ -166,12 +166,12 @@ public class MongoDBTestDataSource extends TestDataSource {
 	public List<Map<String, String>> provide(GatfTestDataProvider provider, AcceptanceTestContext context) {
 		List<Map<String, String>> result = new ArrayList<Map<String,String>>();
 		
-		Assert.assertNotNull("provider cannot be null", provider);
-		Assert.assertTrue("provider cannot be null", provider.getArgs()!=null && provider.getArgs().length>0);
-		Assert.assertNotNull("mongodb-collection cannot be empty", provider.getArgs()[0]);
-		Assert.assertNotNull("queryString cannot be empty", provider.getQueryStr());
-		Assert.assertNotNull("variableNames cannot be empty", provider.getSourceProperties());
-		Assert.assertNotNull("propertyNames cannot be empty", provider.getProviderProperties());
+		GatfAssert.assertNotNull("provider cannot be null", provider);
+		GatfAssert.assertTrue("provider cannot be null", provider.getArgs()!=null && provider.getArgs().length>0);
+		GatfAssert.assertNotNull("mongodb-collection cannot be empty", provider.getArgs()[0]);
+		GatfAssert.assertNotNull("queryString cannot be empty", provider.getQueryStr());
+		GatfAssert.assertNotNull("variableNames cannot be empty", provider.getSourceProperties());
+		GatfAssert.assertNotNull("propertyNames cannot be empty", provider.getProviderProperties());
 		
 		String dbName = args[2].trim();
 		String collName = provider.getArgs()[0].trim();
@@ -179,8 +179,8 @@ public class MongoDBTestDataSource extends TestDataSource {
 		String variableNames = provider.getProviderProperties();
 		String propertyNames = provider.getSourceProperties();
 		
-		Assert.assertNotNull("mongodb-collection cannot be empty", collName.isEmpty());
-		Assert.assertFalse("queryString cannot be empty", queryString.isEmpty());
+		GatfAssert.assertNotNull("mongodb-collection cannot be empty", collName.isEmpty());
+		GatfAssert.assertFalse("queryString cannot be empty", queryString.isEmpty());
 		
 		List<String> variableNamesArr = new ArrayList<String>();
 		for (String varName : variableNames.split(",")) {
@@ -188,7 +188,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 				variableNamesArr.add(varName);
 			}
 		}
-		Assert.assertTrue("need to define at-least a single variable name", 
+		GatfAssert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
 		
 		List<String> propertyNamesArr = new ArrayList<String>();
@@ -197,10 +197,10 @@ public class MongoDBTestDataSource extends TestDataSource {
 				propertyNamesArr.add(varName);
 			}
 		}
-		Assert.assertTrue("need to define at-least a single property name", 
+		GatfAssert.assertTrue("need to define at-least a single property name", 
 				!propertyNames.isEmpty() && propertyNames.split(",").length>0 && propertyNamesArr.size()>0);
 		
-		Assert.assertTrue("property name and variable name sizes don't match", 
+		GatfAssert.assertTrue("property name and variable name sizes don't match", 
 				propertyNamesArr.size()==variableNamesArr.size());
 		
 		StringBuilder build = new StringBuilder();
@@ -223,13 +223,13 @@ public class MongoDBTestDataSource extends TestDataSource {
 				db = mongoClient.getDatabase(dbName);
 				
 				MongoCollection<Document> coll = db.getCollection(collName);
-				Assert.assertNotNull(String.format("Mongodb collection %s not found", collName), coll);
+				GatfAssert.assertNotNull(String.format("Mongodb collection %s not found", collName), coll);
 				
 				Document queryObject = null;
 				try {
 					queryObject = Document.parse(queryString);
 				} catch (Exception e) {
-					Assert.assertNotNull("queryString passed is invalid");
+					GatfAssert.assertNotNull("queryString passed is invalid");
 				}
 				
 				MongoCursor<Document> cursor = null;
@@ -280,7 +280,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 		
 		boolean result = false;
 		
-		Assert.assertNotNull("queryString cannot be empty", queryStr);
+		GatfAssert.assertNotNull("queryString cannot be empty", queryStr);
 		
 		queryStr = queryStr.trim();
 		
@@ -309,13 +309,13 @@ public class MongoDBTestDataSource extends TestDataSource {
 			}
 		}
 		
-		Assert.assertTrue("Only remove/insert/save queries allowed", found);
-		Assert.assertTrue("collectionName not found in query", StringUtils.isNotBlank(collName));
+		GatfAssert.assertTrue("Only remove/insert/save queries allowed", found);
+		GatfAssert.assertTrue("collectionName not found in query", StringUtils.isNotBlank(collName));
 		
 		String dbName = args[2].trim();
 		String queryString = queryStr.trim();
 		
-		Assert.assertFalse("queryString cannot be empty", queryString.isEmpty());
+		GatfAssert.assertFalse("queryString cannot be empty", queryString.isEmpty());
 
 		StringBuilder build = new StringBuilder();
 		build.append("DataSourceHook configuration [\n");
@@ -335,7 +335,7 @@ public class MongoDBTestDataSource extends TestDataSource {
 
 				try {
 					MongoCollection<Document> coll = db.getCollection(collName);
-					Assert.assertNotNull("collection not found", coll);
+					GatfAssert.assertNotNull("collection not found", coll);
 					
 					Document dbObj = new Document();
 					if(StringUtils.isNotBlank(paramData))

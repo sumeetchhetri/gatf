@@ -21,7 +21,7 @@ import java.util.Map;
 
 import javax.xml.bind.annotation.XmlTransient;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -977,36 +977,36 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void validate()
 	{
 		if(getTestCaseDir()!=null) {
-			Assert.assertTrue("Testcase directory name is blank...", 
+			GatfAssert.assertTrue("Testcase directory name is blank...", 
 					getTestCaseDir()!=null && !getTestCaseDir().trim().isEmpty());
 		}
 		
 		if(isAuthEnabled()) {
-			Assert.assertTrue("Invalid auth extract params", getAuthExtractAuthParams().length==4);
-			Assert.assertTrue("Invalid auth extract token name", !getAuthExtractAuthParams()[0].isEmpty());
-			Assert.assertTrue("Invalid auth extract mode specified, should be one of (xml,json,header,plain,cookie)", 
+			GatfAssert.assertTrue("Invalid auth extract params", getAuthExtractAuthParams().length==4);
+			GatfAssert.assertTrue("Invalid auth extract token name", !getAuthExtractAuthParams()[0].isEmpty());
+			GatfAssert.assertTrue("Invalid auth extract mode specified, should be one of (xml,json,header,plain,cookie)", 
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("json") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("xml") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("header") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("plain") ||
 					getAuthExtractAuthParams()[1].equalsIgnoreCase("cookie"));
-			Assert.assertTrue("Invalid auth name specified", !getAuthExtractAuthParams()[2].isEmpty());
-			Assert.assertTrue("Invalid auth mode specified, should be one of (queryparam,header,cookie)", 
+			GatfAssert.assertTrue("Invalid auth name specified", !getAuthExtractAuthParams()[2].isEmpty());
+			GatfAssert.assertTrue("Invalid auth mode specified, should be one of (queryparam,header,cookie)", 
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("queryparam") ||
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("cookie") ||
 					getAuthExtractAuthParams()[3].equalsIgnoreCase("header"));
-			Assert.assertTrue("Invalid auth url", getAuthUrl()!=null && !getAuthUrl().isEmpty());
+			GatfAssert.assertTrue("Invalid auth url", getAuthUrl()!=null && !getAuthUrl().isEmpty());
 			
-			Assert.assertNotNull("Invalid auth param details",getAuthParamsDetails());
-			Assert.assertTrue("Invalid auth param details", getAuthParamDetails().length==4);
-			Assert.assertTrue("Invalid auth user param name", !getAuthParamDetails()[0].isEmpty());
-			Assert.assertTrue("Invalid auth user param name mode specified, should be one of (header,postparam,queryparam)", 
+			GatfAssert.assertNotNull("Invalid auth param details",getAuthParamsDetails());
+			GatfAssert.assertTrue("Invalid auth param details", getAuthParamDetails().length==4);
+			GatfAssert.assertTrue("Invalid auth user param name", !getAuthParamDetails()[0].isEmpty());
+			GatfAssert.assertTrue("Invalid auth user param name mode specified, should be one of (header,postparam,queryparam)", 
 					getAuthParamDetails()[1].equalsIgnoreCase("header") ||
 					getAuthParamDetails()[1].equalsIgnoreCase("postparam") ||
 					getAuthParamDetails()[1].equalsIgnoreCase("queryparam") ||
 					getAuthParamDetails()[1].equalsIgnoreCase("content"));
-			Assert.assertTrue("Invalid auth password param name", !getAuthParamDetails()[2].isEmpty());
-			Assert.assertTrue("Invalid auth password param name mode specified, should be one of (header,queryparam,header)", 
+			GatfAssert.assertTrue("Invalid auth password param name", !getAuthParamDetails()[2].isEmpty());
+			GatfAssert.assertTrue("Invalid auth password param name mode specified, should be one of (header,queryparam,header)", 
 					getAuthParamDetails()[3].equalsIgnoreCase("queryparam") ||
 					getAuthParamDetails()[3].equalsIgnoreCase("postparam") ||
 					getAuthParamDetails()[3].equalsIgnoreCase("header") ||
@@ -1014,14 +1014,14 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		}
 		
 		if(isSoapAuthEnabled()) {
-			Assert.assertTrue("Invalid auth soap wsdl key", getSoapAuthWsdlKey()!=null && !getSoapAuthWsdlKey().isEmpty());
-			Assert.assertTrue("Invalid auth soap wsdl operation", getSoapAuthOperation()!=null && !getSoapAuthOperation().isEmpty());
+			GatfAssert.assertTrue("Invalid auth soap wsdl key", getSoapAuthWsdlKey()!=null && !getSoapAuthWsdlKey().isEmpty());
+			GatfAssert.assertTrue("Invalid auth soap wsdl operation", getSoapAuthOperation()!=null && !getSoapAuthOperation().isEmpty());
 			
-			Assert.assertTrue("Invalid auth soap extract params", getSoapAuthExtractAuthParams().length==3);
-			Assert.assertTrue("Invalid auth soap extract token name", !getSoapAuthExtractAuthParams()[0].isEmpty());
-			Assert.assertTrue("Invalid auth soap name specified", !getSoapAuthExtractAuthParams()[1].isEmpty());
-			Assert.assertTrue("Invalid auth soap name", !getSoapAuthExtractAuthParams()[2].isEmpty());
-			Assert.assertTrue("Invalid auth soap name", getSoapAuthExtractAuthParams()[2].equalsIgnoreCase("queryparam"));
+			GatfAssert.assertTrue("Invalid auth soap extract params", getSoapAuthExtractAuthParams().length==3);
+			GatfAssert.assertTrue("Invalid auth soap extract token name", !getSoapAuthExtractAuthParams()[0].isEmpty());
+			GatfAssert.assertTrue("Invalid auth soap name specified", !getSoapAuthExtractAuthParams()[1].isEmpty());
+			GatfAssert.assertTrue("Invalid auth soap name", !getSoapAuthExtractAuthParams()[2].isEmpty());
+			GatfAssert.assertTrue("Invalid auth soap name", getSoapAuthExtractAuthParams()[2].equalsIgnoreCase("queryparam"));
 		}
 	}
 }

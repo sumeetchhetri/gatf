@@ -1930,7 +1930,7 @@ public class Command {
         b.append("import org.python.util.PythonInterpreter;\n");
         b.append("import org.python.core.*;\n");
         b.append("import java.util.Map;\n");
-        b.append("import org.junit.Assert;\n");
+        b.append("import com.gatf.GatfAssert;\nimport com.gatf.GatfAssert.Assert;\n");   // M16: no junit at runtime; Assert = alias for inline #j code
         b.append("import org.openqa.selenium.Keys;\n");
         b.append("import ru.yandex.qatools.ashot.AShot;\n");
         b.append("import ru.yandex.qatools.ashot.shooting.ShootingStrategies;\n\n@SuppressWarnings({\"unused\", \"unchecked\", \"serial\"})\n");
@@ -4840,13 +4840,13 @@ public class Command {
         }
         String javacode() {
             if(value!=null && !value.isEmpty()) {
-            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, \""+esc(value)+"\"));\n";
+            	return "\nGatfAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, \""+esc(value)+"\"));\n";
                 /*String avn = state.alvarname();
                 String c = "Alert "+avn+" = ___cw___.switchTo().alert();\n";
                 c += "\nAssert.assertEquals(\""+esc(value)+"\", "+avn+".getText());\n"+avn+".accept();\n";
                 return c;*/
             } else {
-            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, null));\n";
+            	return "\nGatfAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, false, null));\n";
                 //return "___cw___.switchTo().alert().accept();";
             }
         }
@@ -4873,13 +4873,13 @@ public class Command {
         }
         String javacode() {
             if(value!=null && !value.isEmpty()) {
-            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", \""+esc(value)+"\"));\n";
+            	return "\nGatfAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", \""+esc(value)+"\"));\n";
                 /*String avn = state.alvarname();
                 String c = "Alert "+avn+" = ___cw___.switchTo().alert();\n";
                 c += "\nAssert.assertEquals(\""+esc(value)+"\", "+avn+".getText());\n"+avn+"."+(isOk?"accept":"dismiss")+"();\n";
                 return c;*/
             } else {
-            	return "\nAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", null));\n";
+            	return "\nGatfAssert.assertTrue(\"\", handleAlertConfirm(___cw___, true, "+isOk+", null));\n";
                 //return "___cw___.switchTo().alert()."+(isOk?"accept":"dismiss")+"();";
             }
         }

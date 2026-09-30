@@ -25,7 +25,7 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathFactory;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
@@ -77,7 +77,7 @@ public class XMLResponseValidator extends ResponseValidator {
 		
 		XPath xPath =  XPathFactory.newInstance().newXPath();
 		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)initObj, XPathConstants.NODESET);
-		Assert.assertTrue("Workflow xml variable " + expression +" is null",  
+		GatfAssert.assertTrue("Workflow xml variable " + expression +" is null",  
 				xmlNodeList!=null && xmlNodeList.getLength()>0);
 		
 		List<Map<String, String>> xmlValues = WorkflowContextHandler.getNodeValueMapList(propNames, xmlNodeList);
@@ -91,11 +91,11 @@ public class XMLResponseValidator extends ResponseValidator {
 		
 		XPath xPath =  XPathFactory.newInstance().newXPath();
 		NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate((Document)initObj, XPathConstants.NODESET);
-		Assert.assertTrue("Workflow xml variable " + expression +" is null", 
+		GatfAssert.assertTrue("Workflow xml variable " + expression +" is null", 
 				xmlNodeList!=null && xmlNodeList.getLength()>0);
 
 		String xmlValue = XMLResponseValidator.getXMLNodeValue(xmlNodeList.item(0));
-		Assert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
+		GatfAssert.assertNotNull("Workflow xml variable " + expression +" is null", xmlValue);
 		
 		int responseCount = -1;
 		try {

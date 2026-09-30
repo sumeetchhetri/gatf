@@ -34,7 +34,8 @@ import org.jruby.embed.ScriptingContainer;
 import org.python.util.PythonInterpreter;
 import org.python.core.*;
 import java.util.Map;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
+import com.gatf.GatfAssert.Assert;
 import org.openqa.selenium.Keys;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -92,7 +93,7 @@ ___add_var__("bvar", bvar);
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:5*/__set__cln__("<ROOT>/tests/04-control-flow.sel:5");boolean ___ifcnt___1 = false;try{
 ___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("ddd"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/04-control-flow.sel", 5 ,"");
 ___ifcnt___1 = ___ce___!=null && !___ce___.isEmpty();
-Assert.assertTrue("Element not found by selector xpath@'ddd' at line number 5 ", ___ifcnt___1);
+GatfAssert.assertTrue("Element not found by selector xpath@'ddd' at line number 5 ", ___ifcnt___1);
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:7*/__set__cln__("<ROOT>/tests/04-control-flow.sel:7");System.out.println("if");
 
 }
@@ -102,7 +103,7 @@ System.out.println(___e___1.getMessage());throw ___e___1;}
 if(!___ifcnt___1){/*GATF_LINE@<ROOT>/tests/04-control-flow.sel:9*/__set__cln__("<ROOT>/tests/04-control-flow.sel:9");try{
 ___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("eee"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/04-control-flow.sel", 9 ,"");
 ___ifcnt___1 = ___ce___!=null && !___ce___.isEmpty();
-Assert.assertTrue("Element not found by selector xpath@'eee' at line number 9 ", ___ifcnt___1);
+GatfAssert.assertTrue("Element not found by selector xpath@'eee' at line number 9 ", ___ifcnt___1);
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:11*/__set__cln__("<ROOT>/tests/04-control-flow.sel:11");System.out.println("else-if");
 
 }
@@ -115,7 +116,7 @@ System.out.println(___e___3.getMessage());throw ___e___3;}
 }
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:17*/__set__cln__("<ROOT>/tests/04-control-flow.sel:17");boolean ___ifcnt___2 = false;try{
 ___ifcnt___2 = doEvalIf("\"a\"==\"a\"");
-Assert.assertTrue("Evaluation condition is invalid at line number 17 ", ___ifcnt___2);
+GatfAssert.assertTrue("Evaluation condition is invalid at line number 17 ", ___ifcnt___2);
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:19*/__set__cln__("<ROOT>/tests/04-control-flow.sel:19");System.out.println("eval");
 
 }
@@ -125,7 +126,7 @@ System.out.println(___e___5.getMessage());throw ___e___5;}
 
 /*GATF_LINE@<ROOT>/tests/04-control-flow.sel:21*/__set__cln__("<ROOT>/tests/04-control-flow.sel:21");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ddd"), evaluate("")}, new String[]{"class", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector class@'ddd' at line number 21 ", false, 1000, false, "<ROOT>/tests/04-control-flow.sel", 21 ,"");
 
-Assert.assertTrue("Element not found by selector class@'ddd' at line number 21 ", ___ce___!=null && !___ce___.isEmpty());Map<String, Object> ___w___1 = get__loopcontext__();
+GatfAssert.assertTrue("Element not found by selector class@'ddd' at line number 21 ", ___ce___!=null && !___ce___.isEmpty());Map<String, Object> ___w___1 = get__loopcontext__();
 
 set__loopcontext__("");
 

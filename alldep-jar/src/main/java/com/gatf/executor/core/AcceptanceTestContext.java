@@ -45,7 +45,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.reficio.ws.builder.SoapBuilder;
 import org.reficio.ws.builder.SoapOperation;
 import org.reficio.ws.builder.core.Wsdl;
@@ -562,7 +562,7 @@ public class AcceptanceTestContext {
 		if(gatfExecutorConfig.getOutFilesBasePath()!=null)
 		{
 			File basePath = new File(gatfExecutorConfig.getOutFilesBasePath().trim());
-			Assert.assertTrue("Invalid out files base path..", basePath.exists());
+			GatfAssert.assertTrue("Invalid out files base path..", basePath.exists());
 			gatfExecutorConfig.setOutFilesBasePath(basePath.getAbsolutePath());
 		}
 		else
@@ -574,7 +574,7 @@ public class AcceptanceTestContext {
 		if(gatfExecutorConfig.getTestCasesBasePath()!=null)
 		{
 			File basePath = new File(gatfExecutorConfig.getTestCasesBasePath().trim());
-			Assert.assertTrue("Invalid test cases base path..", basePath.exists());
+			GatfAssert.assertTrue("Invalid test cases base path..", basePath.exists());
 			gatfExecutorConfig.setTestCasesBasePath(basePath.getAbsolutePath());
 		}
 		else
@@ -584,12 +584,12 @@ public class AcceptanceTestContext {
 		}
 		
 		if(gatfExecutorConfig.getTestCaseDir()!=null) {
-			Assert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
+			GatfAssert.assertEquals("Testcase directory not found...", getResourceFile(gatfExecutorConfig.getTestCaseDir()).exists(), true);
 		}
 		
 		if(StringUtils.isNotBlank(gatfExecutorConfig.getBaseUrl()))
 		{
-			Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(gatfExecutorConfig.getBaseUrl()));
+			GatfAssert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(gatfExecutorConfig.getBaseUrl()));
 		}
 		
 		if(gatfExecutorConfig.getOutFilesDir()!=null && !gatfExecutorConfig.getOutFilesDir().trim().isEmpty())
@@ -610,7 +610,7 @@ public class AcceptanceTestContext {
 							nresource.mkdirs();
 							nresource.setReadable(true, false);
 							nresource.setWritable(true, false);
-							Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+							GatfAssert.assertTrue("Out files directory could not be created...", nresource.exists());
 						} else {
 							String[] dirs = resource.list(new FilenameFilter() {
 					            @Override
@@ -640,7 +640,7 @@ public class AcceptanceTestContext {
 							nresource.mkdir();
 							nresource.setReadable(true, false);
 							nresource.setWritable(true, false);
-							Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+							GatfAssert.assertTrue("Out files directory could not be created...", nresource.exists());
 						}
 					} else {
 						String[] dirs = resource.list(new FilenameFilter() {
@@ -659,7 +659,7 @@ public class AcceptanceTestContext {
 			} catch (Exception e) {
 				gatfExecutorConfig.setOutFilesDir(null);
 			}
-			Assert.assertNotNull("Testcase out file directory not found...", gatfExecutorConfig.getOutFilesDir());
+			GatfAssert.assertNotNull("Testcase out file directory not found...", gatfExecutorConfig.getOutFilesDir());
 		}
 		else
 		{
@@ -675,7 +675,7 @@ public class AcceptanceTestContext {
 					nresource.mkdir();
 					nresource.setReadable(true, false);
 					nresource.setWritable(true, false);
-					Assert.assertTrue("Out files directory could not be created...", nresource.exists());
+					GatfAssert.assertTrue("Out files directory could not be created...", nresource.exists());
 				}
 			} else {
 				String[] dirs = resource.list(new FilenameFilter() {
@@ -706,10 +706,10 @@ public class AcceptanceTestContext {
 
     	MailSimulatorConfig msc = gatfExecutorConfig.getMailSimulator();
         if(msc!=null && msc.isEnabled()) {
-        	Assert.assertTrue("Mail simulator login name is mandatory", StringUtils.isNotBlank(msc.getLogin()));
-        	Assert.assertTrue("Mail simulator password is mandatory", StringUtils.isNotBlank(msc.getPassword()));
-        	Assert.assertTrue("Mail simulator smtp port is mandatory", msc.getSmtpPort()>100);
-        	Assert.assertTrue("Mail simulator imap port is mandatory", msc.getImapPort()>100);
+        	GatfAssert.assertTrue("Mail simulator login name is mandatory", StringUtils.isNotBlank(msc.getLogin()));
+        	GatfAssert.assertTrue("Mail simulator password is mandatory", StringUtils.isNotBlank(msc.getPassword()));
+        	GatfAssert.assertTrue("Mail simulator smtp port is mandatory", msc.getSmtpPort()>100);
+        	GatfAssert.assertTrue("Mail simulator imap port is mandatory", msc.getImapPort()>100);
         	Object[] args = new Object[] {msc.getLogin(), msc.getPassword(), msc.isSecure(), msc.getSmtpPort(), msc.getImapPort()};
         	EmailGateway email = new EmailGateway();
         	System.out.println("Starting Embedded Mail Simulator..........................");
@@ -719,12 +719,12 @@ public class AcceptanceTestContext {
         
         HttpServerSimulatorConfig hsc = gatfExecutorConfig.getHtttpServerSimulator();
         if(hsc!=null && hsc.isEnabled()) {
-        	Assert.assertTrue("Http simulator port is mandatory", hsc.getPort()>=80);
-        	Assert.assertTrue("Http simulator body is mandatory", StringUtils.isNotBlank(hsc.getBody()));
+        	GatfAssert.assertTrue("Http simulator port is mandatory", hsc.getPort()>=80);
+        	GatfAssert.assertTrue("Http simulator body is mandatory", StringUtils.isNotBlank(hsc.getBody()));
         	try {
         		WorkflowContextHandler.OM.writeValueAsString(hsc.getHeaders());
 			} catch (Exception e) {
-				Assert.assertTrue("Http simulator headers are invalid", false);
+				GatfAssert.assertTrue("Http simulator headers are invalid", false);
 			}
         	Object[] args = new Object[] {hsc.getPort(), WorkflowContextHandler.OM.writeValueAsString(hsc.getHeaders()), hsc.getBody()};
         	EmbHttpServer http = new EmbHttpServer();
@@ -766,8 +766,8 @@ public class AcceptanceTestContext {
 		GatfTestDataConfig gatfTestDataConfig = null;
 		if(gatfExecutorConfig.getTestDataConfigFile()!=null) {
 			File file = getResourceFile(gatfExecutorConfig.getTestDataConfigFile());
-			Assert.assertNotNull("Testdata configuration file not found...", file);
-			Assert.assertEquals("Testdata configuration file not found...", file.exists(), true);
+			GatfAssert.assertNotNull("Testdata configuration file not found...", file);
+			GatfAssert.assertEquals("Testdata configuration file not found...", file.exists(), true);
 			
 			if(gatfExecutorConfig.getTestDataConfigFile().trim().endsWith(".xml")) {
 				gatfTestDataConfig = WorkflowContextHandler.XOM.readValue(file, GatfTestDataConfig.class);
@@ -882,7 +882,7 @@ public class AcceptanceTestContext {
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooksMap.values()) {
 			TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
 			
-			Assert.assertNotNull("No DataSource found", dataSource);
+			GatfAssert.assertNotNull("No DataSource found", dataSource);
 			
 			if(dataSourceHook.isExecuteOnShutdown() && dataSourceHook.getQueryStrs()!=null) {
 				for (String query : dataSourceHook.getQueryStrs()) {
@@ -902,7 +902,7 @@ public class AcceptanceTestContext {
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooksMap.values()) {
 			TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
 			
-			Assert.assertNotNull("No DataSource found", dataSource);
+			GatfAssert.assertNotNull("No DataSource found", dataSource);
 			
 			dataSource.destroy();
 		}
@@ -910,15 +910,15 @@ public class AcceptanceTestContext {
 	
 	public void executeDataSourceHook(String hookName) {
 		GatfTestDataSourceHook dataSourceHook = dataSourceHooksMap.get(hookName);
-		Assert.assertNotNull("No DataSourceHook found", dataSourceHook);
+		GatfAssert.assertNotNull("No DataSourceHook found", dataSourceHook);
 		
 		TestDataSource dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
-		Assert.assertNotNull("No DataSource found", dataSource);
+		GatfAssert.assertNotNull("No DataSource found", dataSource);
 		
 		for (String query : dataSourceHook.getQueryStrs()) {
 			boolean flag = dataSource.execute(query);
 			if(!flag) {
-				Assert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
+				GatfAssert.assertNotNull("DataSourceHook execution for " + dataSourceHook.getHookName()
 						+ " failed...", null);
 			}
 		}
@@ -928,11 +928,11 @@ public class AcceptanceTestContext {
 	private void handleDataSources(List<GatfTestDataSource> dataSourceList, boolean forProfiling)
 	{
 		for (GatfTestDataSource dataSource : dataSourceList) {
-			Assert.assertNotNull("DataSource name is not defined", dataSource.getDataSourceName());
-			Assert.assertNotNull("DataSource class is not defined", dataSource.getDataSourceClass());
-			Assert.assertNotNull("DataSource args not defined", dataSource.getArgs());
-			Assert.assertTrue("DataSource args empty", dataSource.getArgs().length>0);
-			Assert.assertNull("Duplicate DataSource name found", dataSourceMap.get(dataSource.getDataSourceName()));
+			GatfAssert.assertNotNull("DataSource name is not defined", dataSource.getDataSourceName());
+			GatfAssert.assertNotNull("DataSource class is not defined", dataSource.getDataSourceClass());
+			GatfAssert.assertNotNull("DataSource args not defined", dataSource.getArgs());
+			GatfAssert.assertTrue("DataSource args empty", dataSource.getArgs().length>0);
+			GatfAssert.assertNull("Duplicate DataSource name found", dataSourceMap.get(dataSource.getDataSourceName()));
 			
 			TestDataSource testDataSource = null;
 			if(SQLDatabaseTestDataSource.class.getCanonicalName().equals(dataSource.getDataSourceClass())) {
@@ -952,7 +952,7 @@ public class AcceptanceTestContext {
 							}
 						}
 					}
-					Assert.assertTrue("DataSource class should extend the TestDataSource class", validProvider);
+					GatfAssert.assertTrue("DataSource class should extend the TestDataSource class", validProvider);
 					@SuppressWarnings("unchecked")
 					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataSource = (TestDataSource)providerInstance;
@@ -1016,23 +1016,23 @@ public class AcceptanceTestContext {
 	private void handleHooks(List<GatfTestDataSourceHook> dataSourceHooks)
 	{
 		for (GatfTestDataSourceHook dataSourceHook : dataSourceHooks) {
-			Assert.assertNotNull("DataSourceHook name is not defined", dataSourceHook.getHookName());
-			Assert.assertNotNull("DataSourceHook query string is not defined", dataSourceHook.getQueryStrs());
-			Assert.assertNull("Duplicate DataSourceHook name found", dataSourceHooksMap.get(dataSourceHook.getHookName()));
+			GatfAssert.assertNotNull("DataSourceHook name is not defined", dataSourceHook.getHookName());
+			GatfAssert.assertNotNull("DataSourceHook query string is not defined", dataSourceHook.getQueryStrs());
+			GatfAssert.assertNull("Duplicate DataSourceHook name found", dataSourceHooksMap.get(dataSourceHook.getHookName()));
 			
 			TestDataSource dataSource = null;
 			if(dataSourceHook.getDataSourceName()!=null && dataSourceHook.getHookClass()==null)
 			{
 				dataSource = dataSourceMap.get(dataSourceHook.getDataSourceName());
-				Assert.assertNotNull("No DataSource found", dataSource);
+				GatfAssert.assertNotNull("No DataSource found", dataSource);
 			}
 			else if(dataSourceHook.getDataSourceName()!=null && dataSourceHook.getHookClass()!=null)
 			{
-				Assert.assertNotNull("Specify either hookClass or dataSourceName", null);
+				GatfAssert.assertNotNull("Specify either hookClass or dataSourceName", null);
 			}
 			else if(dataSourceHook.getDataSourceName()==null && dataSourceHook.getHookClass()==null)
 			{
-				Assert.assertNotNull("Specify any one of hookClass or dataSourceName", null);
+				GatfAssert.assertNotNull("Specify any one of hookClass or dataSourceName", null);
 			}
 			
 			dataSourceHooksMap.put(dataSourceHook.getHookName(), dataSourceHook);
@@ -1051,7 +1051,7 @@ public class AcceptanceTestContext {
 							}
 						}
 					}
-					Assert.assertTrue("Hook class should implement the TestDataHook class", validProvider);
+					GatfAssert.assertTrue("Hook class should implement the TestDataHook class", validProvider);
 					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataHook = (TestDataHook)providerInstance;
 				} catch (Throwable e) {
@@ -1080,38 +1080,38 @@ public class AcceptanceTestContext {
 	private void handleProviders(List<GatfTestDataProvider> providerTestDataList)
 	{
 		for (GatfTestDataProvider provider : providerTestDataList) {
-			Assert.assertNotNull("Provider name is not defined", provider.getProviderName());
+			GatfAssert.assertNotNull("Provider name is not defined", provider.getProviderName());
 			
-			Assert.assertNotNull("Provider properties is not defined", provider.getProviderProperties());
+			GatfAssert.assertNotNull("Provider properties is not defined", provider.getProviderProperties());
 			
-			Assert.assertFalse("Duplicate Provider name found", providerMetaDataMap.containsKey(provider.getProviderName()));
+			GatfAssert.assertFalse("Duplicate Provider name found", providerMetaDataMap.containsKey(provider.getProviderName()));
 			
 			TestDataSource dataSource = null;
 			if(provider.getDataSourceName()!=null && provider.getProviderClass()==null)
 			{	
-				Assert.assertNotNull("Provider DataSource name is not defined", provider.getDataSourceName());
+				GatfAssert.assertNotNull("Provider DataSource name is not defined", provider.getDataSourceName());
 				dataSource = dataSourceMap.get(provider.getDataSourceName());
 				
-				Assert.assertNotNull("No DataSource found", dataSource);
+				GatfAssert.assertNotNull("No DataSource found", dataSource);
 				
 				if(dataSource instanceof MongoDBTestDataSource)
 				{
-					Assert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
-					Assert.assertNotNull("Provider source properties not defined", provider.getSourceProperties());
+					GatfAssert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
+					GatfAssert.assertNotNull("Provider source properties not defined", provider.getSourceProperties());
 				}
 				
 				if(dataSource instanceof SQLDatabaseTestDataSource)
 				{
-					Assert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
+					GatfAssert.assertNotNull("Provider query string is not defined", provider.getQueryStr());
 				}
 			}
 			else if(provider.getDataSourceName()!=null && provider.getProviderClass()!=null)
 			{
-				Assert.assertNotNull("Specify either providerClass or dataSourceName", null);
+				GatfAssert.assertNotNull("Specify either providerClass or dataSourceName", null);
 			}
 			else if(provider.getDataSourceName()==null && provider.getProviderClass()==null)
 			{
-				Assert.assertNotNull("Specify any one of providerClass or dataSourceName", null);
+				GatfAssert.assertNotNull("Specify any one of providerClass or dataSourceName", null);
 			}
 			
 			
@@ -1190,7 +1190,7 @@ public class AcceptanceTestContext {
 							}
 						}
 					}
-					Assert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
+					GatfAssert.assertTrue("Provider class should implement the TestDataProvider class", validProvider);
 					Object providerInstance = claz.getDeclaredConstructor().newInstance();
 					testDataProvider = (TestDataProvider)providerInstance;
 				} catch (Throwable e) {

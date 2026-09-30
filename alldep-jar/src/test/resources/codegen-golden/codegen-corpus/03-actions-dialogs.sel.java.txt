@@ -34,7 +34,8 @@ import org.jruby.embed.ScriptingContainer;
 import org.python.util.PythonInterpreter;
 import org.python.core.*;
 import java.util.Map;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
+import com.gatf.GatfAssert.Assert;
 import org.openqa.selenium.Keys;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -88,15 +89,15 @@ List<WebElement> ___ce___ = null;
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:4*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:4");
 org.openqa.selenium.interactions.Actions ___w___1 = new org.openqa.selenium.interactions.Actions(___cw___);___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele' at line number 4 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 4 ,"");
 
-Assert.assertTrue("Element not found by selector id@'ele' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'ele' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
 ___w___1.moveToElement(___ce___.get(0));
 ___w___1.click();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele2"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele2' at line number 4 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 4 ,"");
 
-Assert.assertTrue("Element not found by selector id@'ele2' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'ele2' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
 ___w___1.moveToElement(___ce___.get(0));
 ___w___1.clickAndHold();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele3"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele3' at line number 4 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 4 ,"");
 
-Assert.assertTrue("Element not found by selector id@'ele3' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'ele3' at line number 4 ", ___ce___!=null && !___ce___.isEmpty());
 ___w___1.moveToElement(___ce___.get(0));
 ___w___1.release();
 ___w___1.sendKeys(evaluate("123"));
@@ -104,24 +105,24 @@ ___w___1.perform();
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:5*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:5");
 org.openqa.selenium.interactions.Actions ___w___2 = new org.openqa.selenium.interactions.Actions(___cw___);___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele' at line number 5 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 5 ,"");
 
-Assert.assertTrue("Element not found by selector id@'ele' at line number 5 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'ele' at line number 5 ", ___ce___!=null && !___ce___.isEmpty());
 ___w___2.moveToElement(___ce___.get(0));
 ___w___2.sendKeys(evaluate("abc"));
 ___w___2.perform();
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:6*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:6");
 org.openqa.selenium.interactions.Actions ___w___3 = new org.openqa.selenium.interactions.Actions(___cw___);___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("source"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'source' at line number 6 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 6 ,"");
 
-Assert.assertTrue("Element not found by selector id@'source' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());List<WebElement> ___w___4 = ___ce___;
+GatfAssert.assertTrue("Element not found by selector id@'source' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());List<WebElement> ___w___4 = ___ce___;
 ___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("target"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'target' at line number 6 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 6 ,"");
 
-Assert.assertTrue("Element not found by selector id@'target' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());List<WebElement> ___w___5 = ___ce___;
+GatfAssert.assertTrue("Element not found by selector id@'target' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());List<WebElement> ___w___5 = ___ce___;
 
 ___w___3.clickAndHold(___w___4.get(0)).moveToElement(___w___5.get(0)).release(___w___5.get(0));
 ___w___3.perform();
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:7*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:7");
 org.openqa.selenium.interactions.Actions ___w___6 = new org.openqa.selenium.interactions.Actions(___cw___);___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("handle"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'handle' at line number 7 ", false, 1000, false, "<ROOT>/tests/03-actions-dialogs.sel", 7 ,"");
 
-Assert.assertTrue("Element not found by selector id@'handle' at line number 7 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'handle' at line number 7 ", ___ce___!=null && !___ce___.isEmpty());
 ___w___6.moveToElement(___ce___.get(0));
 ___w___6.clickAndHold();
 ___w___6.moveByOffset(120, 0);
@@ -152,19 +153,19 @@ sleep(100);
 throw new RuntimeException(e);}
 
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:11*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:11");
-Assert.assertTrue("", handleAlertConfirm(___cw___, true, false, null));
+GatfAssert.assertTrue("", handleAlertConfirm(___cw___, true, false, null));
 
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:12*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:12");
-Assert.assertTrue("", handleAlertConfirm(___cw___, true, false, "Hello"));
+GatfAssert.assertTrue("", handleAlertConfirm(___cw___, true, false, "Hello"));
 
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:13*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:13");
-Assert.assertTrue("", handleAlertConfirm(___cw___, true, true, null));
+GatfAssert.assertTrue("", handleAlertConfirm(___cw___, true, true, null));
 
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:14*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:14");
-Assert.assertTrue("", handleAlertConfirm(___cw___, true, false, null));
+GatfAssert.assertTrue("", handleAlertConfirm(___cw___, true, false, null));
 
 /*GATF_LINE@<ROOT>/tests/03-actions-dialogs.sel:15*/__set__cln__("<ROOT>/tests/03-actions-dialogs.sel:15");
-Assert.assertTrue("", handleAlertConfirm(___cw___, true, true, "Confirm"));
+GatfAssert.assertTrue("", handleAlertConfirm(___cw___, true, true, "Confirm"));
 
 pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
 }

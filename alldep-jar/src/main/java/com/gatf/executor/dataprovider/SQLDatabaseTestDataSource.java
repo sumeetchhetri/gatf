@@ -29,7 +29,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.CustomDriverManager;
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -58,19 +58,19 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 						"dbPassword are mandatory for DatabaseProvider");
 			}
 			
-			Assert.assertNotNull("jdbcUrl cannot be empty", args[0]);
-			Assert.assertNotNull("jdbcDriver cannot be empty", args[1]);
-			Assert.assertNotNull("dbUserName cannot be empty", args[2]);
-			Assert.assertNotNull("dbPassword cannot be empty", args[3]);
+			GatfAssert.assertNotNull("jdbcUrl cannot be empty", args[0]);
+			GatfAssert.assertNotNull("jdbcDriver cannot be empty", args[1]);
+			GatfAssert.assertNotNull("dbUserName cannot be empty", args[2]);
+			GatfAssert.assertNotNull("dbPassword cannot be empty", args[3]);
 			
 			jdbcUrl = args[0].trim();
 			String jdbcDriver = args[1].trim();
 			dbUserName = args[2].trim();
 			dbPassword = args[3].trim();
 			
-			Assert.assertFalse("jdbcUrl cannot be empty", jdbcUrl.isEmpty());
-			Assert.assertFalse("jdbcDriver cannot be empty", jdbcDriver.isEmpty());
-			Assert.assertFalse("dbUserName cannot be empty", dbUserName.isEmpty());
+			GatfAssert.assertFalse("jdbcUrl cannot be empty", jdbcUrl.isEmpty());
+			GatfAssert.assertFalse("jdbcDriver cannot be empty", jdbcDriver.isEmpty());
+			GatfAssert.assertFalse("dbUserName cannot be empty", dbUserName.isEmpty());
 			
 			StringBuilder build = new StringBuilder();
 			build.append("DatabaseTestDataSource configuration [\n");
@@ -132,14 +132,14 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 		Resource res = null;
 		
 		try {
-			Assert.assertNotNull("queryString cannot be empty", provider.getQueryStr());
-			Assert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
+			GatfAssert.assertNotNull("queryString cannot be empty", provider.getQueryStr());
+			GatfAssert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
 			
 			String queryStr = provider.getQueryStr();
 			String providerProperties = provider.getProviderProperties();
 			
-			Assert.assertFalse("queryString cannot be empty", queryStr.isEmpty());
-			Assert.assertTrue("only select queries allowed", queryStr.toLowerCase().indexOf("select ")==0);
+			GatfAssert.assertFalse("queryString cannot be empty", queryStr.isEmpty());
+			GatfAssert.assertTrue("only select queries allowed", queryStr.toLowerCase().indexOf("select ")==0);
 			
 			List<String> variableNamesArr = new ArrayList<String>();
 			for (String varName : providerProperties.split(",")) {
@@ -147,7 +147,7 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 					variableNamesArr.add(varName);
 				}
 			}
-			Assert.assertTrue("need to define at-least a single variable name", 
+			GatfAssert.assertTrue("need to define at-least a single variable name", 
 					!providerProperties.isEmpty() && providerProperties.split(",").length>0 && variableNamesArr.size()>0);
 			
 			StringBuilder build = new StringBuilder();
@@ -169,7 +169,7 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 				if(resultSet.getMetaData().getColumnCount()!=variableNamesArr.size())
 					throw new AssertionError("The number of columns from the query does not match the variable Names provided");
 				for (int i = 0; i < variableNamesArr.size(); i++) {
-					Assert.assertTrue(String.format("Invalid variable/sql type, only strings,boolean,numbers allowed for %s", variableNamesArr.get(i)), 
+					GatfAssert.assertTrue(String.format("Invalid variable/sql type, only strings,boolean,numbers allowed for %s", variableNamesArr.get(i)), 
 							isValidDataType(resultSet.getMetaData().getColumnType(i+1)));
 				}
 				while (resultSet.next()) {
@@ -216,8 +216,8 @@ public class SQLDatabaseTestDataSource extends TestDataSource {
 		Resource res = null;
 		
 		try {
-			Assert.assertNotNull("queryString cannot be empty", queryStr);
-			Assert.assertFalse("queryString cannot be empty", queryStr.isEmpty());
+			GatfAssert.assertNotNull("queryString cannot be empty", queryStr);
+			GatfAssert.assertFalse("queryString cannot be empty", queryStr.isEmpty());
 			
 			StringBuilder build = new StringBuilder();
 			build.append("DataSourceHook configuration [\n");

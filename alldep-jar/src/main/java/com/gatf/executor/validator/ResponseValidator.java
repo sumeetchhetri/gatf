@@ -26,7 +26,7 @@ import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.w3c.dom.Attr;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -71,14 +71,14 @@ public abstract class ResponseValidator {
 			String path = lhs.substring(lhs.indexOf("[")+1, lhs.length()-1);
 			if(isResponseHeader)
 			{
-				Assert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
+				GatfAssert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
 						&& testCaseReport.getResHeaders().containsKey(path));
 				lhsv = testCaseReport.getResHeaders().get(path).get(0);
 			}
 			else if(isResponseCookie)
 			{
 				Map<String, String> cookieMap = context.getWorkflowContextHandler().getCookies(testCase);
-				Assert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null
+				GatfAssert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null
 						&& cookieMap.containsKey(path));
 				lhsv = cookieMap.get(path);
 			}
@@ -94,18 +94,18 @@ public abstract class ResponseValidator {
 					provData = context.getLiveProviderData(pathelements[0], testCase);
 				else
 					provData = context.getProviderTestDataMap(pathelements[0]);
-				Assert.assertNotNull("Provider not found - " + pathelements[0], provData);
+				GatfAssert.assertNotNull("Provider not found - " + pathelements[0], provData);
 				int index = -1;
 				try {
 					index = Integer.parseInt(pathelements[1]);
 				} catch (Exception e) {
-					Assert.assertNotNull("Provider index has to be a number - " + pathelements[1], null);
+					GatfAssert.assertNotNull("Provider index has to be a number - " + pathelements[1], null);
 				}
-				Assert.assertTrue("Specified index is outside provider data range - "+pathelements[1], 
+				GatfAssert.assertTrue("Specified index is outside provider data range - "+pathelements[1], 
 						index>=0 && index<provData.size());
 				Map<String, String> row = provData.get(index);
-				Assert.assertNotNull("Provider row not found - " + index, row);
-				Assert.assertTrue("Specified provider property not found - "+pathelements[2], row.containsKey(pathelements[2]));
+				GatfAssert.assertNotNull("Provider row not found - " + index, row);
+				GatfAssert.assertTrue("Specified provider property not found - "+pathelements[2], row.containsKey(pathelements[2]));
 				lhsv = row.get(pathelements[2]);
 			}
 		}
@@ -115,25 +115,25 @@ public abstract class ResponseValidator {
 	private void compare(String lhsv, String oper, String rhsv, String lhs)
 	{
 		if(oper.equals("==")) {
-			Assert.assertEquals("Node validation failed for " + lhs, lhsv, rhsv);
+			GatfAssert.assertEquals("Node validation failed for " + lhs, lhsv, rhsv);
 		} else if(oper.equals("<")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==-1);
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==-1);
 		} else if(oper.equals(">")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==1);
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==1);
 		} else if(oper.equals("<=")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==-1 || lhsv.compareTo(rhsv)==0);
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==-1 || lhsv.compareTo(rhsv)==0);
 		} else if(oper.equals(">=")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==1 || lhsv.compareTo(rhsv)==0);
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.compareTo(rhsv)==1 || lhsv.compareTo(rhsv)==0);
 		} else if(oper.equals("!=")) {
-			Assert.assertTrue("Node validation failed for " + lhs, !lhsv.equals(rhsv));
+			GatfAssert.assertTrue("Node validation failed for " + lhs, !lhsv.equals(rhsv));
 		} else if(oper.equals("regex")) {
-			Assert.assertTrue("Regex validation failed for " + lhs, lhsv.matches(rhsv));
+			GatfAssert.assertTrue("Regex validation failed for " + lhs, lhsv.matches(rhsv));
 		} else if(oper.equals("startswith")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.startsWith(rhsv));
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.startsWith(rhsv));
 		} else if(oper.equals("endswith")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.endsWith(rhsv));
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.endsWith(rhsv));
 		} else if(oper.equals("contains")) {
-			Assert.assertTrue("Node validation failed for " + lhs, lhsv.contains(rhsv));
+			GatfAssert.assertTrue("Node validation failed for " + lhs, lhsv.contains(rhsv));
 		}
 	}
 	
@@ -164,15 +164,15 @@ public abstract class ResponseValidator {
 			nodeProps.add(node);//The attributeName
 		}
 		
-		Assert.assertTrue("Invalid node properties specified", nodeProps.size()<=3);
+		GatfAssert.assertTrue("Invalid node properties specified", nodeProps.size()<=3);
 		if(nodeProps.size()==3)
 		{
-			Assert.assertTrue("Invalid comparison operator specified, only one of (<, >, <=, >= , ==, !=, " +
+			GatfAssert.assertTrue("Invalid comparison operator specified, only one of (<, >, <=, >= , ==, !=, " +
 					"regex, startswith, endswith, contains) allowed", isValidOperator(nodeProps.get(1)));
 		}
 		if(nodeProps.size()==2)
         {
-            Assert.assertTrue("Invalid comparison operator specified isnull, isnotnull isblank or isnotblank allowed", isValidOperator(nodeProps.get(1)));
+            GatfAssert.assertTrue("Invalid comparison operator specified isnull, isnotnull isblank or isnotblank allowed", isValidOperator(nodeProps.get(1)));
         }
 		return nodeProps;
 	}
@@ -235,16 +235,16 @@ public abstract class ResponseValidator {
 					
 					String nodeVal = null;
 					if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnull")) {
-                        Assert.assertNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal); 
+                        GatfAssert.assertNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal); 
                     } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isblank")) {
-                        Assert.assertTrue("Expected Node value for " + nodeProps.get(0) + " is blank", nodeVal!=null && nodeVal.trim().isEmpty());
+                        GatfAssert.assertTrue("Expected Node value for " + nodeProps.get(0) + " is blank", nodeVal!=null && nodeVal.trim().isEmpty());
                     } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnotnull")) {
-                        Assert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is not null", nodeVal); 
+                        GatfAssert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is not null", nodeVal); 
                     } else if(nodeProps.size()==2 && nodeProps.get(1).equalsIgnoreCase("isnotblank")) {
-                        Assert.assertFalse("Expected Node value for " + nodeProps.get(0) + " is not blank", nodeVal!=null && nodeVal.trim().isEmpty());
+                        GatfAssert.assertFalse("Expected Node value for " + nodeProps.get(0) + " is not blank", nodeVal!=null && nodeVal.trim().isEmpty());
                     } else if(nodeProps.size()==1 || !hasValidationFunction(nodeProps.get(0))) {
 						nodeVal = getNodeValue(intObj, nodeProps.get(0));
-						Assert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal);
+						GatfAssert.assertNotNull("Expected Node value for " + nodeProps.get(0) + " is null", nodeVal);
 					}  else if(nodeProps.size()>1) {
 						String lhs = nodeProps.get(0);
 						String lhsv = nodeVal;
@@ -289,10 +289,10 @@ public abstract class ResponseValidator {
 					authext = "response-content ";
 					identifier = getNodeValue(intObj, authExtractAuthParams[0]);
 				}
-				Assert.assertNotNull("Authentication token not found for "+ authext + "(" + authExtractAuthParams[0] + ")", identifier);
+				GatfAssert.assertNotNull("Authentication token not found for "+ authext + "(" + authExtractAuthParams[0] + ")", identifier);
 				context.setSessionIdentifier(identifier, testCase);
 				context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(authExtractAuthParams[2], identifier);
-				Assert.assertNotNull("Authentication token is null", context.getSessionIdentifier(testCase));
+				GatfAssert.assertNotNull("Authentication token is null", context.getSessionIdentifier(testCase));
 			}
 			testCaseReport.setStatus(TestStatus.Success.status);
 		} catch (AssertionError e) {
@@ -322,7 +322,7 @@ public abstract class ResponseValidator {
 		{
 			for (String node : testCase.getLogicalValidations()) {
 				boolean validationResult = context.getWorkflowContextHandler().velocityValidate(testCase, node, smap, context);
-				Assert.assertTrue("Logical Validation failed for (" + node + ")", validationResult);
+				GatfAssert.assertTrue("Logical Validation failed for (" + node + ")", validationResult);
 			}
 		}
 	}
@@ -343,17 +343,17 @@ public abstract class ResponseValidator {
 				if(nodeName.startsWith("#responseHeader[") && nodeName.endsWith("]"))
 				{
 					String path = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
-					Assert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
+					GatfAssert.assertTrue("Specified header not found - "+path, testCaseReport.getResHeaders()!=null
 							&& testCaseReport.getResHeaders().containsKey(path));
 					String nodeValue = testCaseReport.getResHeaders().get(path).get(0);
-					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					GatfAssert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
 					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
 				} else if(nodeName.startsWith("#responseCookie[") && nodeName.endsWith("]")) {
 					String path = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
 					Map<String, String> cookieMap = context.getWorkflowContextHandler().getCookies(testCase);
-					Assert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null && cookieMap.containsKey(path));
+					GatfAssert.assertTrue("Specified Cookie not found - "+path, cookieMap!=null && cookieMap.containsKey(path));
 					String nodeValue = cookieMap.get(path);
-					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					GatfAssert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
 					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
 				} else if(nodeName.startsWith("#responseMappedValue[") && nodeName.endsWith("]")) {
 					nodeName = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
@@ -374,7 +374,7 @@ public abstract class ResponseValidator {
 						}
 					}
 					context.getWorkflowContextHandler().getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), nodeValues);
-					Assert.assertNotNull("Workflow json mapping variable " + nodeName +" is null", nodeValues);
+					GatfAssert.assertNotNull("Workflow json mapping variable " + nodeName +" is null", nodeValues);
 				} else if(nodeName.startsWith("#responseMappedCount[") && nodeName.endsWith("]")) {
 					nodeName = nodeName.substring(nodeName.indexOf("[")+1, nodeName.length()-1);
 
@@ -386,10 +386,10 @@ public abstract class ResponseValidator {
 						jsonValues.add(row);
 					}
 					context.getWorkflowContextHandler().getSuiteWorkflowScnearioContext(testCase).put(entry.getKey(), jsonValues);
-					Assert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
+					GatfAssert.assertNotNull("Workflow json mapping variable " + entry.getValue() +" is null", jsonValues);
 				} else if(nodeName.startsWith("#")) {
 					String jsonValue = GatfFunctionHandler.handleFunction(nodeName.substring(1));
-					Assert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
+					GatfAssert.assertNotNull("Workflow function " + entry.getValue() +" is not valid, only " +
 							"one of alpha, alphanum, number, boolean, float" +
 							" -number, +number, date(format) and date(format (-|+) value(unit)) allowed", jsonValue);
 					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), jsonValue);
@@ -400,7 +400,7 @@ public abstract class ResponseValidator {
 					} catch (Exception e) {
 						throw new AssertionError("Workflow json variable " + nodeName + " not found");
 					}
-					Assert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
+					GatfAssert.assertNotNull("Workflow json variable " + entry.getValue() +" is null", nodeValue);
 					context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).put(entry.getKey(), nodeValue);
 				}
 			}

@@ -59,13 +59,14 @@
 			<version>2.1.1</version>
 		</dependency>
 
-		<!-- T0-3: JUnit 4 is a RUNTIME dependency: validators, data providers, TestCaseExecutorUtil and every
-		     generated seleasy class use org.junit.Assert. It used to arrive only transitively; pinned here so a
-		     dependency bump cannot silently drop it (replaced by GatfAssert in roadmap M16). -->
+		<!-- M16: runtime code and generated seleasy classes use com.gatf.GatfAssert, not JUnit 4. JUnit 4 still arrives
+		     transitively, so it is declared here at TEST scope: the direct declaration wins Maven's mediation, which
+		     keeps junit (and hamcrest) out of the runtime classpath and the shaded jar. -->
 		<dependency>
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 			<version>4.13.2</version>
+			<scope>test</scope>
 		</dependency>
 
 		<!-- Test harness (test-scope; NOT shaded into the fat jar) -->

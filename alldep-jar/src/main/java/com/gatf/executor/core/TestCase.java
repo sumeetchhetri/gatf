@@ -40,7 +40,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.StringEscapeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.JsonAutoDetect.Visibility;
@@ -1042,7 +1042,7 @@ public class TestCase implements Serializable {
 				throw new RuntimeException("No Base URL specified");
 				
 			if(StringUtils.isNotBlank(getBaseUrl()))
-				Assert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(getBaseUrl()));
+				GatfAssert.assertTrue("Base URL is not valid", AcceptanceTestContext.isValidUrl(getBaseUrl()));
 			
 			String fullUrl = StringUtils.isBlank(getBaseUrl())?baseUrl:getBaseUrl();
 			fullUrl = fullUrl.trim() + "/" + getUrl().trim();
@@ -1133,7 +1133,7 @@ public class TestCase implements Serializable {
 		}
 		
 		if(getRepeatScenarios()!=null && !getRepeatScenarios().isEmpty()) {
-			Assert.assertNull("Only one of repeatScenarios or repeatScenarioProviderName allowed", getRepeatScenarioProviderName());
+			GatfAssert.assertNull("Only one of repeatScenarios or repeatScenarioProviderName allowed", getRepeatScenarioProviderName());
 		}
 	}
 

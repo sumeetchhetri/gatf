@@ -34,7 +34,8 @@ import org.jruby.embed.ScriptingContainer;
 import org.python.util.PythonInterpreter;
 import org.python.core.*;
 import java.util.Map;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
+import com.gatf.GatfAssert.Assert;
 import org.openqa.selenium.Keys;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -96,7 +97,7 @@ List<WebElement> ___ce___ = null;
 
 /*GATF_LINE@<ROOT>/tests/01-navigation.sel:10*/__set__cln__("<ROOT>/tests/01-navigation.sel:10");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("dsdsd"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'dsdsd' at line number 10 ", false, 1000, false, "<ROOT>/tests/01-navigation.sel", 10 ,"");
 
-Assert.assertTrue("Element not found by selector id@'dsdsd' at line number 10 ", ___ce___!=null && !___ce___.isEmpty());if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript("arguments[0].scrollIntoView(true)", ___ce___.get(0));
+GatfAssert.assertTrue("Element not found by selector id@'dsdsd' at line number 10 ", ___ce___!=null && !___ce___.isEmpty());if (___ocw___ instanceof JavascriptExecutor) ((JavascriptExecutor)___ocw___).executeScript("arguments[0].scrollIntoView(true)", ___ce___.get(0));
 sleep(1000);
 
 /*GATF_LINE@<ROOT>/tests/01-navigation.sel:11*/__set__cln__("<ROOT>/tests/01-navigation.sel:11");

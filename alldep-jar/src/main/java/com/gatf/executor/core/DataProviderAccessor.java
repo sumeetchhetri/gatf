@@ -18,7 +18,7 @@ package com.gatf.executor.core;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 /**
  * @author Sumeet Chhetri
@@ -75,7 +75,7 @@ public class DataProviderAccessor {
 		}
 		
 		List<Map<String, String>> provData = acontext.getAnyProviderData(name, testCase);
-		Assert.assertNotNull("Provider not found - " + name, provData);
+		GatfAssert.assertNotNull("Provider not found - " + name, provData);
 		if(index<0)
 		{
 			if(!func.matches(GatfFunctionHandler.NUMBER_RANGE_REGEX))
@@ -88,7 +88,7 @@ public class DataProviderAccessor {
 			} catch (Exception e) {
 			}
 		}
-		Assert.assertNotNull("Index out of range for Provider - " + name, provData.size()<=index);
+		GatfAssert.assertNotNull("Index out of range for Provider - " + name, provData.size()<=index);
 		return provData.get(index).get(propertyName);
 	}
 	

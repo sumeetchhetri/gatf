@@ -50,7 +50,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.w3c.dom.Document;
 
 import com.gatf.executor.core.AcceptanceTestContext;
@@ -445,7 +445,7 @@ public class TestCaseExecutorUtil {
 					sessIdentifier = context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm);
 				}
 				
-				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
+				GatfAssert.assertNotNull("Authentication Token is null", sessIdentifier);
 				
 				if(authExtractAuthParams[3].equalsIgnoreCase("queryparam"))
 				{
@@ -498,13 +498,13 @@ public class TestCaseExecutorUtil {
 			try {
 			    builder.uri(URI.create(testCase.getAurl()));
             } catch (IllegalArgumentException e) {
-                Assert.assertTrue("Invalid URL, please check the url provided ("+ completeUrl + ")", false);
+                GatfAssert.assertTrue("Invalid URL, please check the url provided ("+ completeUrl + ")", false);
             }
 			
 		} else {
 			
-			Assert.assertNotNull("No wsdlKey specified for SOAP test", testCase.getWsdlKey());
-			Assert.assertNotNull("No operation specified for SOAP test", testCase.getOperationName());
+			GatfAssert.assertNotNull("No wsdlKey specified for SOAP test", testCase.getWsdlKey());
+			GatfAssert.assertNotNull("No operation specified for SOAP test", testCase.getOperationName());
 			
 			String request = testCase.getAcontent();
 			
@@ -524,7 +524,7 @@ public class TestCaseExecutorUtil {
             }
 			
 			String endpoint = context.getSoapEndpoints().get(testCase.getWsdlKey());
-			Assert.assertNotNull("No endpoints found for " + testCase.getWsdlKey()
+			GatfAssert.assertNotNull("No endpoints found for " + testCase.getWsdlKey()
 					 + ", please define the wsdlLocFile in your config", endpoint);
 			if(testCase.isSecure() && context.getGatfExecutorConfig().isSoapAuthEnabled() 
 					&& !context.getGatfExecutorConfig().isSoapAuthTestCase(testCase)) {
@@ -536,7 +536,7 @@ public class TestCaseExecutorUtil {
 					sessIdentifier = context.getWorkflowContextHandler().getSuiteWorkflowContext(testCase).get(tokenNm);
 				}
 				
-				Assert.assertNotNull("Authentication Token is null", sessIdentifier);
+				GatfAssert.assertNotNull("Authentication Token is null", sessIdentifier);
 				if(endpoint.indexOf("?")!=-1) {
 					endpoint += "&" + context.getGatfExecutorConfig().getSoapAuthExtractAuthParams()[1] + "=" + sessIdentifier;
 				} else {
@@ -563,7 +563,7 @@ public class TestCaseExecutorUtil {
 			try {
 			    builder.uri(URI.create(testCase.getAurl()));
             } catch (IllegalArgumentException e) {
-                Assert.assertTrue("Invalid URL, please check the url provided ("+ testCase.getAurl() + ")", false);
+                GatfAssert.assertTrue("Invalid URL, please check the url provided ("+ testCase.getAurl() + ")", false);
             }
 		}
 		
@@ -749,10 +749,10 @@ public class TestCaseExecutorUtil {
 		{
 			this.testCase = testCase;
 			this.testCaseReport = testCaseReport;
-			Assert.assertNotNull("Testcase cannot be null", testCase);
-			Assert.assertNotNull("TestCaseReport cannot be null", testCaseReport);
+			GatfAssert.assertNotNull("Testcase cannot be null", testCase);
+			GatfAssert.assertNotNull("TestCaseReport cannot be null", testCaseReport);
 			this.context = context;
-			Assert.assertNotNull("Context cannot be null", context);
+			GatfAssert.assertNotNull("Context cannot be null", context);
 			this.start = start;
 			this.testCaseReport.setResponseContentType(testCase.getExpectedResContentType());
 		}
@@ -990,7 +990,7 @@ public class TestCaseExecutorUtil {
 		fullUrl = fullUrl.trim() + "/" + urlPart.trim();
 		String parturl = fullUrl.substring(fullUrl.indexOf("://")+3);
 		fullUrl = fullUrl.substring(0, fullUrl.indexOf("://")+3) + parturl.replace("//", "/");
-		Assert.assertTrue("Testcase URL is not valid " + fullUrl,AcceptanceTestContext.isValidUrl(fullUrl));
+		GatfAssert.assertTrue("Testcase URL is not valid " + fullUrl,AcceptanceTestContext.isValidUrl(fullUrl));
 		return fullUrl;
 	}
 	

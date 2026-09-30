@@ -422,20 +422,20 @@ public class FindCommand extends Command {
         String javacodeonly() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return javacodeonlyNoAssert(null, false, state.timeoutNum, false)
-                    + "\nAssert.assertTrue(\"Element not found by selector " + logbc
+                    + "\nGatfAssert.assertTrue(\"Element not found by selector " + logbc
                     + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
         }
         String javacodeifonly(List<Command> children, String vrd) {
         	if(StringUtils.isNotBlank(eval)) {
-        		return vrd + " = doEvalIf(\""+esc1(state.unsanitize(eval))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = doEvalIf(\""+esc1(state.unsanitize(eval))+"\");\nGatfAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(browserScope)) {
-        		return vrd + " = isBrowserName(\""+esc(unSantizedUnQuoted(browserScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = isBrowserName(\""+esc(unSantizedUnQuoted(browserScope, state))+"\");\nGatfAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	} else if(StringUtils.isNotBlank(sessionScope)) {
-        		return vrd + " = isSessionName(\""+esc(unSantizedUnQuoted(sessionScope, state))+"\");\nAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
+        		return vrd + " = isSessionName(\""+esc(unSantizedUnQuoted(sessionScope, state))+"\");\nGatfAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
             return javacodeonlyNoAssert(children, true, state.ifTimeoutNum, false)
-                    + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nAssert.assertTrue(\"Element not found by selector " + logbc 
+                    + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nGatfAssert.assertTrue(\"Element not found by selector " + logbc 
                     + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
         }
         String javacodeonlyNoAssert(List<Command> children, boolean noexcep, int counter, boolean isVisible) {
@@ -637,7 +637,7 @@ public class FindCommand extends Command {
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", "+soper+", "+tvalue+", \"Element not found by selector " 
                     + by + "@'" + esc(classifier) + "' at line number "+fileLineDetails[1]+" \", false, "+state.getLayers()+");\n"
-                    + "\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
+                    + "\nGatfAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
                     + "' at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
             if(children!=null && children.size()>0) {
                 Command c = children.get(0);
@@ -696,7 +696,7 @@ public class FindCommand extends Command {
                     return b.toString();
                 }
 
-                b.append("\nAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
+                b.append("\nGatfAssert.assertTrue(\"Element not found by selector " + by + "@'" + esc(classifier) 
                     + "' at line number "+fileLineDetails[1]+" \", "+topele+"!=null && !"+topele+".isEmpty());");
                 b.append("___ce___ = "+topele+";");
 

@@ -34,7 +34,8 @@ import org.jruby.embed.ScriptingContainer;
 import org.python.util.PythonInterpreter;
 import org.python.core.*;
 import java.util.Map;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
+import com.gatf.GatfAssert.Assert;
 import org.openqa.selenium.Keys;
 import ru.yandex.qatools.ashot.AShot;
 import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
@@ -91,30 +92,30 @@ List<WebElement> ___ce___ = null;
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:6*/__set__cln__("<ROOT>/tests/07-capture.sel:6");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 6 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 6 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());elementScreenshotAsFile(get___d___(), ___ce___.get(0), evaluate("<N>.png"));
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 6 ", ___ce___!=null && !___ce___.isEmpty());elementScreenshotAsFile(get___d___(), ___ce___.get(0), evaluate("<N>.png"));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:7*/__set__cln__("<ROOT>/tests/07-capture.sel:7");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 7 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 7 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 7 ", ___ce___!=null && !___ce___.isEmpty());saveImageToFile(get___d___(), ___ce___.get(0), evaluate("/path/to/image/file/file.png"));
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 7 ", ___ce___!=null && !___ce___.isEmpty());saveImageToFile(get___d___(), ___ce___.get(0), evaluate("/path/to/image/file/file.png"));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:8*/__set__cln__("<ROOT>/tests/07-capture.sel:8");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 8 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 8 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 8 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 8 ", ___ce___!=null && !___ce___.isEmpty());
 ___add_var__("somevar", readImageText(get___d___(), ___ce___.get(0), evaluate("<N>.png")));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:9*/__set__cln__("<ROOT>/tests/07-capture.sel:9");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 9 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 9 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 9 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 9 ", ___ce___!=null && !___ce___.isEmpty());
 ___add_var__("captchatext", readImageText(get___d___(), ___ce___.get(0), evaluate("/path/to/image/file/file.png")));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:10*/__set__cln__("<ROOT>/tests/07-capture.sel:10");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 10 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 10 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 10 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 10 ", ___ce___!=null && !___ce___.isEmpty());
 ___add_var__("somevar", readQrBarCode(get___d___(), ___ce___.get(0), evaluate("<N>.png")));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:11*/__set__cln__("<ROOT>/tests/07-capture.sel:11");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("eleid"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'eleid' at line number 11 ", false, 1000, false, "<ROOT>/tests/07-capture.sel", 11 ,"");
 
-Assert.assertTrue("Element not found by selector id@'eleid' at line number 11 ", ___ce___!=null && !___ce___.isEmpty());
+GatfAssert.assertTrue("Element not found by selector id@'eleid' at line number 11 ", ___ce___!=null && !___ce___.isEmpty());
 ___add_var__("somevar", readQrBarCode(get___d___(), ___ce___.get(0), evaluate("<N>.png")));
 
 /*GATF_LINE@<ROOT>/tests/07-capture.sel:12*/__set__cln__("<ROOT>/tests/07-capture.sel:12");

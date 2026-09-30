@@ -1079,6 +1079,8 @@ Examples :-
 	>>>
 ```
 
+Java blocks and `#j` statements assert with `GatfAssert` (JUnit 4's method names and messages: `GatfAssert.assertTrue("msg", cond)`, `assertEquals`, `assertNotNull`, `fail`, …). `Assert.` still works as an alias, so older scripts compile unchanged. `GatfAssert` also has `assertArrayEquals` (object, primitive and nested arrays), `assertNotEquals`, `assertSame`, `assertThrows`, and float/double `assertEquals` with a delta. JUnit itself is no longer on the runtime classpath, so `org.junit.*` imports and Hamcrest `assertThat` are not available in scripts.
+
 ### Execute javascript code from file in the browser
 
 ```

@@ -20,7 +20,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfFunctionHandler;
@@ -44,13 +44,13 @@ public class RandomValueTestDataProvider implements TestDataProvider {
 					" variableTypes and count");
 		}
 		
-		Assert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
-		Assert.assertNotNull("variableTypes cannot be empty", provider.getArgs()[0]);
+		GatfAssert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
+		GatfAssert.assertNotNull("variableTypes cannot be empty", provider.getArgs()[0]);
 		
 		String variableNames = provider.getProviderProperties().trim();
 		String variableTypes = provider.getArgs()[0].trim();
 		
-		Assert.assertFalse("count not defined", provider.getArgs()[1]==null || provider.getArgs()[1].trim().isEmpty());
+		GatfAssert.assertFalse("count not defined", provider.getArgs()[1]==null || provider.getArgs()[1].trim().isEmpty());
 		
 		int varCount = 0;
 		try {
@@ -65,7 +65,7 @@ public class RandomValueTestDataProvider implements TestDataProvider {
 				variableNamesArr.add(varName);
 			}
 		}
-		Assert.assertTrue("need to define at-least a single variable name", 
+		GatfAssert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
 		
 		List<String> variableTypesArr = new ArrayList<String>();
@@ -80,7 +80,7 @@ public class RandomValueTestDataProvider implements TestDataProvider {
 				variableTypesArr.add(varType);
 			}
 		}
-		Assert.assertTrue("the variable names don't match the variables types defined", 
+		GatfAssert.assertTrue("the variable names don't match the variables types defined", 
 				variableNamesArr.size()==variableTypesArr.size());
 		
 		for (int j = 0; j < varCount; j++) {

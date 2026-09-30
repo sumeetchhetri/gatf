@@ -59,7 +59,6 @@ import org.apache.velocity.VelocityContext;
 import org.apache.velocity.app.VelocityEngine;
 import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.resource.loader.ClasspathResourceLoader;
-import org.custommonkey.xmlunit.XMLAssert;
 import org.joda.time.DateTime;
 import org.skyscreamer.jsonassert.JSONAssert;
 
@@ -582,8 +581,8 @@ public class ReportHandler {
 		        || TestCaseResponseHandler.isMatchesContentType(MediaType.TEXT_XML_TYPE, type))
 		{
 			try {
-				XMLAssert.assertXMLEqual(lhs, rhs);
-				return true;
+				// M16: what XMLAssert.assertXMLEqual checks, without XMLAssert (it extends JUnit 3's Assert, now test-only)
+				return new org.custommonkey.xmlunit.Diff(lhs, rhs).similar();
 			} catch (Exception e) {
 			} catch (AssertionError e) {
 			}

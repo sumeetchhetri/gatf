@@ -45,7 +45,7 @@ import org.apache.poi.ss.usermodel.Row.MissingCellPolicy;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.junit.Assert;
+import com.gatf.GatfAssert;
 import org.w3c.dom.Document;
 import org.w3c.dom.NodeList;
 
@@ -85,16 +85,16 @@ public class FileTestDataProvider implements TestDataProvider {
 			throw new AssertionError("FileProvider needs 2 arguments, namely filePath and fileType");
 		}
 		
-		Assert.assertNotNull("filePath cannot be empty", provider.getArgs()[0]);
-		Assert.assertNotNull("fileType cannot be empty", provider.getArgs()[1]);
-		Assert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
+		GatfAssert.assertNotNull("filePath cannot be empty", provider.getArgs()[0]);
+		GatfAssert.assertNotNull("fileType cannot be empty", provider.getArgs()[1]);
+		GatfAssert.assertNotNull("variableNames cannot be empty", provider.getProviderProperties());
 		
 		String filePath = provider.getArgs()[0].trim();
 		String fileType = provider.getArgs()[1].trim();
 		String variableNames = provider.getProviderProperties().trim();
 		
-		Assert.assertFalse("filePath cannot be empty", filePath.isEmpty());
-		Assert.assertFalse("fileType cannot be empty", fileType.isEmpty());
+		GatfAssert.assertFalse("filePath cannot be empty", filePath.isEmpty());
+		GatfAssert.assertFalse("fileType cannot be empty", fileType.isEmpty());
 		
 		List<String> variableNamesArr = new ArrayList<String>();
 		for (String varName : variableNames.split(",")) {
@@ -102,7 +102,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				variableNamesArr.add(varName);
 			}
 		}
-		Assert.assertTrue("need to define at-least a single variable name", 
+		GatfAssert.assertTrue("need to define at-least a single variable name", 
 				!variableNames.isEmpty() && variableNames.split(",").length>0 && variableNamesArr.size()>0);
 		
 		StringBuilder build = new StringBuilder();
@@ -116,7 +116,7 @@ public class FileTestDataProvider implements TestDataProvider {
 		File provFile = null;
 		try {
 			provFile = context.getResourceFile(filePath);
-			Assert.assertTrue(String.format("Unable to find %s", filePath), provFile!=null && provFile.exists());
+			GatfAssert.assertTrue(String.format("Unable to find %s", filePath), provFile!=null && provFile.exists());
 		} catch (Exception e) {
 			throw new AssertionError(String.format("Unable to find %s", filePath));
 		}
@@ -249,12 +249,12 @@ public class FileTestDataProvider implements TestDataProvider {
 						expression = "/" + expression;
 					XPath xPath =  XPathFactory.newInstance().newXPath();
 					NodeList xmlNodeList = (NodeList) xPath.compile(expression).evaluate(xmlDocument, XPathConstants.NODESET);
-					Assert.assertTrue("Expected Node " + variableNamesArr.get(i) + " is null", 
+					GatfAssert.assertTrue("Expected Node " + variableNamesArr.get(i) + " is null", 
 							xmlNodeList!=null && xmlNodeList.getLength()>0);
 					
 					nodes.add(xmlNodeList);
 					String xmlValue = xmlNodeList.item(0).getNodeValue();
-					Assert.assertNotNull("Expected Node " + variableNamesArr.get(i) + " is null", xmlValue);
+					GatfAssert.assertNotNull("Expected Node " + variableNamesArr.get(i) + " is null", xmlValue);
 					
 				}
 				
@@ -291,7 +291,7 @@ public class FileTestDataProvider implements TestDataProvider {
 				List<List<String>> varValues = new ArrayList<List<String>>();
 				for (int i = 0; i < variableNamesArr.size(); i++) {
 					List<String> values = JsonPath.read(content, variableNamesArr.get(i));
-					Assert.assertNotNull(String.format("No values found for %s", variableNamesArr.get(i)), values);
+					GatfAssert.assertNotNull(String.format("No values found for %s", variableNamesArr.get(i)), values);
 					varValues.add(values);
 				}
 				
