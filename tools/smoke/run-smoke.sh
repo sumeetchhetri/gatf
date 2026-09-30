@@ -82,6 +82,14 @@ else
   note "actionability probe test skipped (node not present)"
 fi
 
+# M3 semantic-locator resolver (injected JS) against jsdom — needs node + the frontend dev deps.
+if command -v node >/dev/null 2>&1 && [ -d frontend/node_modules/jsdom ]; then
+  node tools/smoke/test-semantic.mjs >/dev/null
+  note "semantic locator resolver test passed"
+else
+  note "semantic locator resolver test skipped (node/jsdom not present)"
+fi
+
 if [ "${LINT_ONLY}" = "1" ]; then
   log "done (--lint-only)"; exit 0
 fi
