@@ -118,7 +118,7 @@ public class PerfToolProvisioner {
             }
             if (resolved != null) RESOLVED.put(key, resolved);
         }
-        if (resolved == null && !"wrk".equals(key) && !"wrk2".equals(key)) { // wrk/wrk2 → docker / vegeta (see command())
+        if (resolved == null && !"wrk".equals(key) && !"wrk2".equals(key) && !"wperfk".equals(key)) { // wrk/wrk2/wperfk → docker / vegeta (see command())
             System.err.println("[gatf] '" + key + "' is unavailable — falling back to the bare command name (PATH lookup at run time).");
         }
         // fall back to the bare tool name — lets ProcessBuilder find it on PATH even if our probe missed,
@@ -139,7 +139,7 @@ public class PerfToolProvisioner {
         if ("vegeta".equals(key)) return provisionVegeta();
         if ("autocannon".equals(key)) return null; // node-hosted: use command("autocannon")
         if ("node".equals(key)) return provisionNode();
-        return null; // wrk / wrk2: host install or Docker only (see command())
+        return null; // wrk / wrk2: host install or Docker only; wperfk: host install (see command())
     }
 
     // ---------------------------------------------------------------- vegeta
@@ -235,6 +235,7 @@ public class PerfToolProvisioner {
      *   vegeta     → [vegeta]
      *   autocannon → [autocannonPath] | [node, &lt;cache&gt;/autocannon/node_modules/autocannon/autocannon.js]
      *   wrk, wrk2  → [path] (configured / cache / PATH) | [docker, exec, -i, &lt;container&gt;, wrk] | null
+     *   wperfk     → [path] (wperfkPath / cache / PATH) | null
      */
     public static List<String> command(String tool, GatfExecutorConfig cfg) {
         String key = tool == null ? "" : tool.trim().toLowerCase(Locale.ROOT);
@@ -251,6 +252,10 @@ public class PerfToolProvisioner {
                 System.err.println("[gatf] autocannon unavailable: " + e.getMessage());
                 return null;
             }
+        }
+        if ("wperfk".equals(key)) {
+            String p = resolve(key, cfg); // configured → cache → PATH; no download yet, no Docker image
+            return isRunnableFile(p) ? Arrays.asList(p) : null;
         }
         if ("wrk".equals(key) || "wrk2".equals(key)) {
             String p = resolve(key, cfg); // configured → cache → PATH (never downloads/builds)
@@ -380,6 +385,7 @@ public class PerfToolProvisioner {
         if ("wrk2".equals(key)) return cfg.getWrk2Path();
         if ("vegeta".equals(key)) return cfg.getVegetaPath();
         if ("autocannon".equals(key)) return cfg.getAutocannonPath();
+        if ("wperfk".equals(key)) return cfg.getWperfkPath();
         if ("node".equals(key)) return cfg.getNodePath();
         return null;
     }
@@ -550,7 +556,7 @@ public class PerfToolProvisioner {
     public static void main(String[] args) {
         String[] tools = (args != null && args.length > 0)
                 ? args
-                : new String[] { "vegeta", "autocannon", "wrk", "wrk2" };
+                : new String[] { "vegeta", "autocannon", "wrk", "wrk2", "wperfk" };
         Map<String, String> results = new LinkedHashMap<String, String>();
         for (String t : tools) {
             List<String> c = command(t, null);

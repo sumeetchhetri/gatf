@@ -60,9 +60,10 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.core.CookieRules;
 import com.gatf.executor.core.SessionBridge;
 import com.gatf.imports.CurlCommand;
-import com.gatf.executor.ext.AutocannonTestCaseExecutor;
-import com.gatf.executor.ext.VegetaTestCaseExecutor;
-import com.gatf.executor.ext.WrkTestCaseExecutor;
+import com.gatf.executor.perf.PerfEngine;
+import com.gatf.executor.perf.PerfEngineRegistry;
+import com.gatf.executor.perf.PerfEngines;
+import com.gatf.executor.perf.PerfSummary;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestFailureReason;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
@@ -682,14 +683,10 @@ public class TestCaseExecutorUtil {
 			if(testCase.getPerfConfig()!=null && testCase.getPerfConfig().getType()!=null && !testCase.getPerfConfig().getType().trim().isEmpty()
 					&& !testCase.getPerfConfig().getType().trim().equals("none")) {
 				CompletableFuture<TestCaseReport> future = new CompletableFuture<TestCaseReport>();
-				String perfType = perfToolType(testCase.getPerfConfig().getType());   // Q1: unknown type fails the case
-				if(perfType.startsWith("wrk")) {
-					WrkTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
-				} else if(perfType.equals("vegeta")) {
-					VegetaTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
-				} else {
-					AutocannonTestCaseExecutor.execute(context, testCase, testCaseReport, isSingleExecutionContext());
-				}
+				// M13: engine registry (built-ins + plugins/ jars); Q1: an unknown type fails the case
+				PerfEngine engine = PerfEngines.forType(context, testCase.getPerfConfig().getType());
+				engine.execute(context, testCase, testCaseReport, isSingleExecutionContext());
+				PerfSummary.normalizeAll(engine.name(), testCaseReport.getPerfResult());   // common keys on every tool's result
 				future.complete(testCaseReport);
 				return future;
 			} else {
@@ -716,14 +713,10 @@ public class TestCaseExecutorUtil {
 	/**
 	 * Q1: validates perfConfig.type. It used to fall through to autocannon for ANY unrecognised value, so a typo such as
 	 * "vegata" silently ran a different tool. Now an unknown type throws, and the enclosing catch fails the test case
-	 * with this message.
+	 * with this message. M13: the valid names come from the perf-engine registry (built-ins + plugins/ jars).
 	 */
 	static String perfToolType(String type) {
-		// exact match: the tool executors compare the raw value case-sensitively
-		if("wrk".equals(type) || "wrk2".equals(type) || "vegeta".equals(type) || "autocannon".equals(type)) {
-			return type;
-		}
-		throw new IllegalArgumentException("Unknown perfConfig.type '" + type + "' - expected one of: vegeta, autocannon, wrk, wrk2 (or none)");
+		return PerfEngineRegistry.resolve(type, PerfEngines.current()).name();
 	}
 
 	private File getResourceFile(String baseFolder, String filename) {

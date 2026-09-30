@@ -43,20 +43,25 @@ public class VegetaTestCaseExecutor {
 	}
 
 	/**
-	 * wrk / wrk2 test on a machine with no wrk binary and no Docker: run it on vegeta and say so.
-	 * wrk → max-throughput attack (-rate=0, -max-workers=connections); wrk2 → constant rate (-rate=R).
+	 * wrk / wrk2 / wperfk test on a machine with no such binary (and, for wrk/wrk2, no Docker): run it on vegeta and say so.
+	 * wrk → max-throughput attack (-rate=0, -max-workers=connections); wrk2 → constant rate (-rate=R);
+	 * wperfk → constant rate when rate is set, else like wrk.
 	 */
 	public static void executeAsFallback(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext, String from) throws Exception {
 		run(context, tc, tcr, isSingleExecutionContext, from);
 	}
 
 	static String fallbackNotice(String from, boolean hadScript) {
-		return "NOTICE: " + from + " is not available here (no configured/PATH binary, no Docker for the gatf-loadgen container) — "
+		return "NOTICE: " + from + " is not available here (no configured/PATH binary" + ("wperfk".equals(from) ? "" : ", no Docker for the gatf-loadgen container") + ") — "
 				+ "this test ran on vegeta instead. Reduced capabilities: no Lua scripting"
 				+ (hadScript ? " (perfConfig.filePath was ignored)" : "")
 				+ "; vegeta's report format/percentiles instead of wrk's; "
-				+ ("wrk2".equals(from) ? "constant-rate open-loop attack (same model as wrk2 -R)." : "open-loop max-rate attack approximates wrk's closed-loop max throughput.")
-				+ " For native " + from + ": install it (brew/apt), set " + from + "Path, or run Docker (see docs/load-tools.md).";
+				+ ("wrk2".equals(from) ? "constant-rate open-loop attack (same model as wrk2 -R)."
+						: "wperfk".equals(from) ? "constant-rate attack when perfConfig.rate is set (as wperfk -R), else an open-loop max-rate attack."
+						: "open-loop max-rate attack approximates wrk's closed-loop max throughput.")
+				+ ("wperfk".equals(from)
+						? " For native wperfk: download a release from github.com/sumeetchhetri/wperfk and set wperfkPath, or put it on PATH (see docs/load-tools.md)."
+						: " For native " + from + ": install it (brew/apt), set " + from + "Path, or run Docker (see docs/load-tools.md).");
 	}
 
 	private static void run(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext, String fallbackFrom) throws Exception {
@@ -77,7 +82,9 @@ public class VegetaTestCaseExecutor {
 		String notice = null;
 		if(fallbackFrom!=null) {
 			if("wrk2".equals(fallbackFrom)) {
-				rate = rate>0 ? rate : 1000;               // wrk2's default in WrkTestCaseExecutor
+				rate = rate>0 ? rate : 1000;               // wrk2's default in PerfArgs.wrk
+			} else if("wperfk".equals(fallbackFrom) && rate>0) {
+				maxWorkers = 0;                            // wperfk -R: constant rate
 			} else {
 				rate = 0;
 				maxWorkers = c>0 ? c : 10;                 // wrk's connection count as the concurrency cap

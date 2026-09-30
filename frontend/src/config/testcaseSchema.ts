@@ -291,7 +291,8 @@ export const testcaseSchema: CfgSchema = {
             "wrk",
             "wrk2",
             "vegeta",
-            "autocannon"
+            "autocannon",
+            "wperfk"
           ]
         },
         "connections": {

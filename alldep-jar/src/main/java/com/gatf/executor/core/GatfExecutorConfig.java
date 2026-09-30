@@ -216,6 +216,8 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private String autocannonPath;
     
+    private String wperfkPath;
+    
     private String nodePath;
     
     private String perfToolContainer;
@@ -887,6 +889,15 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 
 	public void setAutocannonPath(String autocannonPath) {
 		this.autocannonPath = autocannonPath;
+	}
+
+	/** M13: host path to the wperfk binary (github.com/sumeetchhetri/wperfk); else the tools cache, else PATH. */
+	public String getWperfkPath() {
+		return wperfkPath;
+	}
+
+	public void setWperfkPath(String wperfkPath) {
+		this.wperfkPath = wperfkPath;
 	}
 
 	/** Host path to the node binary used for autocannon (else PATH, else a portable download). */

@@ -28,32 +28,16 @@ import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.PerformanceConfig;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.executor.perf.PerfArgs;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
 public class AutocannonTestCaseExecutor {
 
-	/** autocannon argv after the launch prefix (no shell — header values/URLs are passed verbatim). */
+	/** autocannon argv after the launch prefix (M13: moved to {@link PerfArgs#autocannon}). */
 	static List<String> args(String method, String url, Map<String, String> headers, File body, int connections,
 			int workers, int rate, int durationSecs, int timeoutSecs) {
-		List<String> a = new ArrayList<>();
-		a.add("--json");
-		a.add("--no-progress");
-		if(connections>0) { a.add("-c"); a.add(String.valueOf(connections)); }
-		if(workers>0) { a.add("-w"); a.add(String.valueOf(workers)); }
-		if(rate>0) { a.add("-R"); a.add(String.valueOf(rate)); }          // was: the connection count
-		a.add("-d"); a.add(String.valueOf(durationSecs));
-		if(timeoutSecs>0) { a.add("-t"); a.add(String.valueOf(timeoutSecs)); }
-		if(StringUtils.isNotBlank(method)) { a.add("-m"); a.add(method.trim().toUpperCase()); }  // was: never sent → always GET
-		if(body!=null) { a.add("-i"); a.add(body.getAbsolutePath()); }     // was: -b <path> → sent the PATH as the body
-		if(headers!=null) {
-			for (Map.Entry<String, String> h : headers.entrySet()) {
-				a.add("-H");
-				a.add(h.getKey() + "=" + (h.getValue()==null ? "" : h.getValue()));
-			}
-		}
-		a.add(url);
-		return a;
+		return PerfArgs.autocannon(method, url, headers, body, connections, workers, rate, durationSecs, timeoutSecs);
 	}
 
 	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {

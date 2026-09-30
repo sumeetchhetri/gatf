@@ -25,7 +25,7 @@ class PerfToolTypeTest {
 
     @Test
     void knownTypesPassThrough() {
-        for (String t : new String[] { "wrk", "wrk2", "vegeta", "autocannon" }) {
+        for (String t : new String[] { "wrk", "wrk2", "vegeta", "autocannon", "wperfk" }) {
             assertThat(TestCaseExecutorUtil.perfToolType(t)).isEqualTo(t);
         }
     }
@@ -35,7 +35,7 @@ class PerfToolTypeTest {
         for (String t : new String[] { "vegata", "Vegeta", "wrk3", "jmeter" }) {
             assertThatThrownBy(() -> TestCaseExecutorUtil.perfToolType(t))
                     .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining(t).hasMessageContaining("vegeta, autocannon, wrk, wrk2");
+                    .hasMessageContaining(t).hasMessageContaining("vegeta, autocannon, wrk, wrk2, wperfk");
         }
     }
 }

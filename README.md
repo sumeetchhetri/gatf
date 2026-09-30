@@ -45,7 +45,7 @@ Java 21 jar with a web console, a trace viewer, a step debugger and a VS Code ex
 ### Performance, concurrent users, load and distributed testing
 - **Performance mode:** run a case N times (`numberOfExecutions`) with timing statistics and percentile ("TA") reports.
 - **Concurrent-user simulation:** N users with ramp-up, optionally each with its own credentials from a data provider (`authDataProvider`). Runs on virtual threads.
-- **Load testing:** time-boxed suite replay on the embedded engine, with live charts. A test case can instead delegate to **vegeta**, **autocannon** or **wrk/wrk2** (`perfConfig`); the tools are auto-provisioned and checksum-verified, with a Docker fallback for wrk ([details](docs/load-tools.md)).
+- **Load testing:** time-boxed suite replay on the embedded engine, with live charts. A test case can instead delegate to **vegeta**, **autocannon**, **wrk/wrk2** or **wperfk** (`perfConfig`), or to your own engine from `plugins/`; the tools are auto-provisioned and checksum-verified, with a Docker fallback for wrk ([details](docs/load-tools.md)).
 - **UI load:** the same concurrency applies to seleasy suites.
 - **Distributed load:** `gatf -listener` agents on other machines, over a TLS, shared-secret-authenticated transport. The console shows aggregated live results per node.
 

@@ -649,6 +649,9 @@ export const executorSchema: CfgSchema = {
     "autocannonPath": {
       "type": "string"
     },
+    "wperfkPath": {
+      "type": "string"
+    },
     "nodePath": {
       "type": "string"
     },

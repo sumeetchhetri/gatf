@@ -35,6 +35,7 @@ import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.GatfFunctionHandler;
 import com.gatf.executor.core.TestCase;
+import com.gatf.executor.perf.PerfArgs;
 import com.gatf.executor.report.TestCaseReport;
 import com.gatf.executor.report.TestCaseReport.TestStatus;
 
@@ -269,12 +270,19 @@ public class WrkTestCaseExecutor {
 	    return retval;
 	}
 
+	/** perfConfig.type wrk / wrk2 (the pre-SPI entry point). */
 	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext) throws Exception {
+		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("wrk")) {
+			execute(context, tc, tcr, isSingleExecutionContext, tc.getPerfConfig().getType().equals("wrk")?"wrk":"wrk2");
+		}
+	}
+
+	/** M13: the wrk-family engines (wrk, wrk2, wperfk) — same flags, same output format, same Lua scripts. */
+	public static void execute(AcceptanceTestContext context, TestCase tc, TestCaseReport tcr, boolean isSingleExecutionContext, String wrkType) throws Exception {
 		GatfExecutorConfig config = context.getGatfExecutorConfig();
 
-		if(tc.getPerfConfig()!=null && tc.getPerfConfig().getType()!=null && tc.getPerfConfig().getType().startsWith("wrk")) {
-			// host binary (configured / cache / PATH) → docker exec into gatf-loadgen → else run on vegeta with a notice
-			String wrkType = tc.getPerfConfig().getType().equals("wrk")?"wrk":"wrk2";
+		if(tc.getPerfConfig()!=null) {
+			// host binary (configured / cache / PATH) → docker exec into gatf-loadgen (wrk/wrk2) → else run on vegeta with a notice
 			List<String> wrkCmd = PerfToolProvisioner.command(wrkType, config);
 			if(wrkCmd==null) {
 				VegetaTestCaseExecutor.executeAsFallback(context, tc, tcr, isSingleExecutionContext, wrkType);
@@ -283,50 +291,7 @@ public class WrkTestCaseExecutor {
 			boolean inDocker = DockerLoadgen.isDockerCommand(wrkCmd);
 			List<String> staged = new ArrayList<>();
 			List<String> builderList = new ArrayList<>(wrkCmd);
-			
-			Integer c = tc.getPerfConfig().getConnections();
-			if(c<=0) {
-				c = 10; 
-			}
-			builderList.add("-c");
-			builderList.add(c.toString());
-			
-			Integer r = tc.getPerfConfig().getRate();
-			if(tc.getPerfConfig().getType().equals("wrk2")) {
-				if(r<=0) {
-					r = 1000;
-				}
-				builderList.add("-R");
-				builderList.add(r.toString());
-			}
-			
-			Integer d = tc.getPerfConfig().getDurationSeconds();
-			if(d<=0) {
-				d = 10;
-			}
-			builderList.add("-d");
-			builderList.add(d+"s");
-			
-			Integer t = tc.getPerfConfig().getThreads();
-			if(t<=0) {
-				t = 10;
-			}
-			builderList.add("-t");
-			builderList.add(t.toString());
-			
-			Integer to = tc.getPerfConfig().getTimeout();
-			if(to>0) {
-				builderList.add("--timeout");
-				builderList.add(to+"s");
-			}
-			
-			if(tc.getPerfConfig().isLatency()) {
-				builderList.add("--latency");
-			}
-			
-			if(tc.getPerfConfig().getType().equals("wrk2")) {
-				builderList.add("--u_latency");
-			}
+			builderList.addAll(PerfArgs.wrk(wrkType, tc.getPerfConfig()));   // M13: one mapping for the family (PerfEngineTest)
 			
 			File script = null;
 			boolean tempScript = false;
@@ -338,31 +303,20 @@ public class WrkTestCaseExecutor {
 			}
 			
 			if(script==null) {
-				if(tc.getHeaders()!=null && tc.getHeaders().size()>0) {
-					StringBuilder prog = new StringBuilder();
-					prog.append("wrk.method = \"");
-					prog.append(tc.getMethod().toUpperCase());
-					prog.append("\"\n");
-					for (String hdr : tc.getHeaders().keySet()) {
-						prog.append("wrk.headers[\""+hdr+"] = \"");
-						prog.append(tc.getHeaders().get(hdr));
-						prog.append("\"\n");
+				String content = tc.getContent();
+				if(StringUtils.isBlank(content) && tc.getContentFile()!=null) {
+					if(context.getResourceFile(tc.getContentFile().trim()).exists()) {
+						content = FileUtils.readFileToString(context.getResourceFile(tc.getContentFile().trim()), "UTF-8");
 					}
-					prog.append("wrk.body = [====================[\n");
-					String content = tc.getContent();
-					if(StringUtils.isBlank(content) && tc.getContentFile()!=null) {
-						if(context.getResourceFile(tc.getContentFile().trim()).exists()) {
-							content = FileUtils.readFileToString(context.getResourceFile(tc.getContentFile().trim()), "UTF-8");
-						}
-					}
-					if(content==null) {
-						content = "";
-					}
-					prog.append(content);
-					prog.append("\n]====================]\n");
+				}
+				// M13: also for a non-GET method or a body without headers (was: headers only → a bare POST ran as GET)
+				if((tc.getHeaders()!=null && tc.getHeaders().size()>0) || StringUtils.isNotBlank(content)
+						|| (StringUtils.isNotBlank(tc.getMethod()) && !"GET".equalsIgnoreCase(tc.getMethod().trim()))) {
+					// was: wrk.headers["Name] = ... (missing quote → every generated script was a Lua syntax error)
+					String prog = PerfArgs.lua(tc.getMethod(), tc.getHeaders(), content);
 					
 					script = File.createTempFile(UUID.randomUUID().toString(), ".lua");
-					FileUtils.write(script, prog.toString(), "UTF-8");
+					FileUtils.write(script, prog, "UTF-8");
 					tempScript = true;
 					
 					builderList.add("-s");
@@ -380,14 +334,14 @@ public class WrkTestCaseExecutor {
 			StringBuilder err = new StringBuilder();
 			
 			long start = System.currentTimeMillis();
-			executeInt(builderList, out, err, tcr, tc.getBaseUrl());
+			executeInt(builderList, out, err, tcr, tc.getBaseUrl(), wrkType);
 			
 			if(isSingleExecutionContext) {
 				if(config.getGatfTestDataConfig()!=null && config.isCompareEnabled() && config.getGatfTestDataConfig().getCompareEnvBaseUrls()!=null) {
 					for (String burl : config.getGatfTestDataConfig().getCompareEnvBaseUrls()) {
 						String aurl = tc.getAurl().replaceFirst(config.getBaseUrl(), burl);
 						builderList.set(builderList.size()-1, inDocker ? DockerLoadgen.rewriteUrl(aurl, wrkCmd) : aurl);
-						executeInt(builderList, out, err, tcr, burl);
+						executeInt(builderList, out, err, tcr, burl, wrkType);
 					}
 				}
 			}
@@ -422,11 +376,16 @@ public class WrkTestCaseExecutor {
 	}
 
 	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl) {
+		executeInt(builderList, out, err, tcr, baseUrl, null);
+	}
+
+	public static void executeInt(List<String> builderList, StringBuilder out, StringBuilder err, TestCaseReport tcr, String baseUrl, String tool) {
 		StringBuilder out1 = new StringBuilder();
 		StringBuilder err1 = new StringBuilder();
 		GatfFunctionHandler.executeCmd(builderList, out1, err1, false);
 		if(out1.length()>0) {
 			Map<String, Object> retval = parse_wrk_output(out1);
+			if(tool!=null) retval.put("tool", tool);
 			tcr.getPerfResult().add(retval);
 			out.append(String.join(" ", builderList)+"\n\n");
 			out.append("Result for ");
