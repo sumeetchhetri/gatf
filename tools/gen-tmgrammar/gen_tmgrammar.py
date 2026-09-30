@@ -36,7 +36,7 @@ BUNDLED = EXT / "src/commands.json"
 # tokens with a dedicated rule below — excluded from the generated keyword/atom alternations
 STRUCTURAL = {
     "//", "/*", "*/", "<<<", "<<<(", ">>>", "{", "}", "[", "]", "#j", "@call",
-    ":", ":?", ":?!", "?", "?!", "??", "??+", "??-", "^", "#", "##",
+    ":", ":?", ":?!", "?", "?!", "??", "??+", "??-", "??~", "^", "#", "##",
     "#c", "#counter", "#file", "#mongo", "#o", "#optional", "#p", "#p-sf",
     "#provider", "#provider-sf", "#sql", "#tp", "#transient-provider",
     "begin code in", "end code",
@@ -196,7 +196,7 @@ def build_grammar(cmds):
         },
         "conditionals": {
             "patterns": [
-                {"name": "keyword.control.conditional.seleasy", "match": r"(?<![\w-])(\?\?[+-]?|:\?!?|\?!|\?|:)(?![\w-])"},
+                {"name": "keyword.control.conditional.seleasy", "match": r"(?<![\w-])(\?\?[+~-]?|:\?!?|\?!|\?|:)(?![\w-])"},
                 {"name": "keyword.control.skip.seleasy", "match": r"^\s*\^"},
             ]
         },

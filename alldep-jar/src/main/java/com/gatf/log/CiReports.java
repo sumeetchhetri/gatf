@@ -99,7 +99,11 @@ final class CiReports {
                 if (st == Status.SKIPPED) {
                     b.append("      <skipped/>\n");
                 } else if (st == Status.FAILED) {
-                    b.append("      <failure message=\"").append(xml(first(r.error))).append("\">")
+                    if (r.soft > 0) {   // M2: soft-failure count as a testcase property (Jenkins/GitLab show properties)
+                        b.append("      <properties><property name=\"softFailures\" value=\"").append(r.soft).append("\"/></properties>\n");
+                    }
+                    b.append("      <failure message=\"").append(xml(first(r.error))).append("\"")
+                            .append(r.soft > 0 ? " type=\"SoftAssertionError\"" : "").append(">")
                             .append(xml(r.detail != null ? r.detail : nz(r.error))).append("</failure>\n");
                 } else {   // flaky: passed on retry
                     b.append("      <flakyFailure message=\"failed ").append(r.attempts.size() - 1)
@@ -121,8 +125,9 @@ final class CiReports {
     // ---- JSON ------------------------------------------------------------------------------------------------
 
     static String json(List<Rec> recs, long totalMs) {
-        int passed = 0, failed = 0, skipped = 0, flaky = 0;
+        int passed = 0, failed = 0, skipped = 0, flaky = 0, soft = 0;
         for (Rec r : recs) {
+            soft += r.soft;
             if (r.flaky()) flaky++;
             else if (r.last() == Status.PASSED) passed++;
             else if (r.last() == Status.FAILED) failed++;
@@ -131,6 +136,7 @@ final class CiReports {
         StringBuilder b = new StringBuilder("{\n  \"summary\": {");
         b.append("\"total\": ").append(recs.size()).append(", \"passed\": ").append(passed).append(", \"failed\": ").append(failed)
                 .append(", \"flaky\": ").append(flaky).append(", \"skipped\": ").append(skipped)
+                .append(", \"softFailures\": ").append(soft)
                 .append(", \"durationMs\": ").append(totalMs).append("},\n  \"tests\": [");
         for (int i = 0; i < recs.size(); i++) {
             Rec r = recs.get(i);
@@ -139,6 +145,7 @@ final class CiReports {
                     .append(", \"title\": ").append(js(r.title)).append(", \"status\": ").append(js(st))
                     .append(", \"attempts\": ").append(r.attempts.size()).append(", \"durationMs\": ").append(r.millis)
                     .append(", \"error\": ").append(r.last() == Status.FAILED ? js(r.error) : "null")
+                    .append(", \"softFailures\": ").append(r.soft)
                     .append(", \"attachments\": ").append(jsArr(r.attachments)).append("}");
         }
         return b.append(recs.isEmpty() ? "]\n}\n" : "\n  ]\n}\n").toString();

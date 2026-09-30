@@ -2204,7 +2204,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
         if (tracePath != null) att.add(tracePath);
         com.gatf.log.RunConsole.result(selFile, tname, title, res.isStatus() ? com.gatf.log.RunConsole.Status.PASSED : com.gatf.log.RunConsole.Status.FAILED,
-                res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail, att);
+                res.getExecutionTime() / 1_000_000L, res.isStatus() ? null : msg, res.isStatus() ? null : detail, att, res.getSoftFailures());
     }
 
     public static void main(String[] args) throws Exception {

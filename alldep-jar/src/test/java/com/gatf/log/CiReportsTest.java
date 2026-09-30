@@ -100,4 +100,22 @@ class CiReportsTest {
         assertThat(a.get(0)).startsWith("::error title=GATF failed%3A api/users.xml").contains("500%0Asecond line");
         assertThat(a.get(1)).startsWith("::warning title=GATF flaky%3A ui/login.sel");
     }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void softFailureCountInJunitAndJson() throws Exception {
+        Rec r = rec("ui/soft.sel", "[chrome]", "3 soft assertion(s) failed: ui/soft.sel:4: a\n  ui/soft.sel:5: b\n  ui/soft.sel:6: c", Status.FAILED);
+        r.soft = 3;
+        List<Rec> recs = List.of(r, rec("api/users.xml", "List users", null, Status.PASSED));
+        String xml = CiReports.junitXml(recs, 1000);
+        Document d = DocumentBuilderFactory.newInstance().newDocumentBuilder()
+                .parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
+        assertThat(d.getElementsByTagName("property").getLength()).isEqualTo(1);
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("property").item(0)).getAttribute("value")).isEqualTo("3");
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("failure").item(0)).getAttribute("type")).isEqualTo("SoftAssertionError");
+        assertThat(((org.w3c.dom.Element) d.getElementsByTagName("failure").item(0)).getAttribute("message")).isEqualTo("3 soft assertion(s) failed: ui/soft.sel:4: a");
+        Map<String, Object> j = new ObjectMapper().readValue(CiReports.json(recs, 1000), Map.class);
+        assertThat((Map<String, Object>) j.get("summary")).containsEntry("softFailures", 3);
+        assertThat(((List<Map<String, Object>>) j.get("tests")).get(0)).containsEntry("softFailures", 3);
+    }
 }

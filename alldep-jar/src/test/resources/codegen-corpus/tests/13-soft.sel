@@ -1,0 +1,8 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M2 soft assertions: `??~` records a failed assertion and continues; the script fails at the end listing every one.
+open chrome
+??~ css@'h1' text ='Welcome'
+??~5 id@'count' text !='0'
+??~ id@'banner'
+?? css@'h1' text ='Welcome'
+nowait ??~ id@'status' text %'ok'

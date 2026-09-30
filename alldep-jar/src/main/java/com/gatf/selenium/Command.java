@@ -345,6 +345,7 @@ public class Command {
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
     static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
+    static Pattern WAIT_SOFT = Pattern.compile("^\\?\\?~([0-9]*)");
     static Pattern CONCNUM = Pattern.compile("^\\^[\t ]*([0-9]+)");
     // M1: auto-wait opt-out forms for element actions: `nowait click id@x`, `nowait ??10 id@x click`, `click! id@x`
     static final String NOWAIT_VERBS = "(?:click(?:fo|nf)?|(?:type|sendkeys|chord|randomize)(?:bl|ch|bk|cl|fo)?|select|hover|hoverclick"
@@ -603,6 +604,18 @@ public class Command {
             }*/
             cmd = cmd.substring(9).trim();
             comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false, false);
+        } else if(cmd.startsWith("??~")) {
+        	// M2: soft assertion — record the failure and continue; the script fails at the end listing them all
+        	String time = state.timeoutNum+"";
+        	Matcher m = WAIT_SOFT.matcher(cmd);
+        	int start = 3;
+        	if(m.find() && !m.group(1).isEmpty()) {
+        		time = m.group(1);
+        		start = m.end(1);
+        	}
+        	cmd = cmd.substring(start).trim();
+        	comd = new WaitTillElementVisibleOrInvisibleCommand(time, cmd, cmdDetails, state, false, false);
+        	((WaitTillElementVisibleOrInvisibleCommand)comd).soft = true;
         } else if(cmd.startsWith("??")) {
         	String time = state.timeoutNum+"";
         	Matcher m = WAIT.matcher(cmd);

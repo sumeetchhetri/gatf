@@ -67,7 +67,7 @@ simple_statement =
     | @call_nlp ;                                (* bare NLP subtest invoke *)
 
 (* ---- waits ----------------------------------------------------------- *)
-wait_stmt    = ( '??+' | '??-' | '??' ) , [ integer ] , ' ' , locator
+wait_stmt    = ( '??+' | '??-' | '??~' | '??' ) , [ integer ] , ' ' , locator
              | 'wait till visible ' , locator
              | 'wait for ' , locator ;
 

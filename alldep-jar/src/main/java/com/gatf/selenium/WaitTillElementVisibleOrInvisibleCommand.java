@@ -65,6 +65,8 @@ import com.gatf.selenium.Command.FindCommandImpl;   // nested supertype: resolve
 @SuppressWarnings("unused")
 public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         boolean isVisible;
+        /** M2: {@code ??~} — a failure is recorded (SeleniumTest.__soft_fail__) and the script continues. */
+        boolean soft;
         int counter = state.timeoutNum;
         WaitTillElementVisibleOrInvisibleCommand(String time, String val, Object[] cmdDetails, CommandState state, boolean isVisible, boolean forced) {
             super(cmdDetails, state);
@@ -164,7 +166,7 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append("??"+(isVisible?"+":"-"));
+            b.append(soft?"??~":"??"+(isVisible?"+":"-"));
             b.append(cond.toCmd());
             return b.toString();
         }
@@ -198,6 +200,9 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
                     b.append(c.javacode());
                 }
             }
+            if(soft) {
+            	return "try {\n" + b + "} catch (RuntimeException ___sf___) {\n__soft_fail__(___sf___);\n}\n";
+            }
             /*for (Command command : children) {
                 if(command instanceof RandomizeCommand) {
                     b.append(((RandomizeCommand)command).javacodeonly(cond.getActionableVar()));
@@ -222,9 +227,11 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
 				"\t??(+|-) {find-expr}",
 				"\t'+' - wait till element is visible",
 				"\t'-' - wait till element is not visible",
+				"\t??~ {find-expr} {assertion} - soft assertion: a failure is recorded, the script continues and fails at the end",
 				"Examples :-",
 	    		"\t??+ id@'eleid'",
 	    		"\t??- id@'eleid'",
+	    		"\t??~ css@'h1' text ='Welcome'",
             };
         }
     }

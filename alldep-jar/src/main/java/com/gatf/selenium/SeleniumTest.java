@@ -1114,6 +1114,13 @@ public abstract class SeleniumTest {
 		/** Q9/Q10: budget + security results from the trace (report sidecar); null when not checked. */
 		private transient Map<String, Object> checks;
 
+		/** M2: soft ({@code ??~}) failures recorded while this script / subtest ran. */
+		private int softFailures;
+
+		public int getSoftFailures() {
+			return softFailures;
+		}
+
 		public Map<String, Object> getChecks() {
 			return checks;
 		}
@@ -1166,10 +1173,22 @@ public abstract class SeleniumTest {
 			this.status = true;
 			this.internalTestRes = test.getSession().internalTestRs;
 			this.line = test.state.line;
+			// M2: a script / subtest that recorded soft failures ends failed, listing every one
+			List<String> soft = test.__soft__.drain();
+			if(!soft.isEmpty()) {
+				this.softFailures = soft.size();
+				this.status = false;
+				this.cause = new SoftFailures.SoftAssertionError(soft);
+			}
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable exc, String img, LoggingPreferences ___lp___, String subTestName) {
 			this.cause = exc;
 			this.status = false;
+			// M2: soft failures recorded before this result (a hard failure / pass / warn after soft ones): still counted.
+			// A script that ended with soft failures reaches here as FailureException(SoftAssertionError): keep its count.
+			List<String> soft = test.__soft__.drain();
+			Throwable root = exc instanceof FailureException ? ((FailureException)exc).err : exc;
+			this.softFailures = root instanceof SoftFailures.SoftAssertionError ? ((SoftFailures.SoftAssertionError)root).getFailures().size() : soft.size();
 			this.isContinue = false;
 			this.line = test.state.line;
 			this.internalTestRes = test.getSession().internalTestRs;
@@ -1314,10 +1333,27 @@ public abstract class SeleniumTest {
 				}
 				this.logs.put("gatf", new SerializableLogEntries(entries));
 			}
+			if(!soft.isEmpty()) {
+				if(cause instanceof PassSubTestException || cause instanceof WarnSubTestException) {
+					// M2: pass / warn cannot clear earlier soft failures: the (sub)test fails listing them
+					this.status = false;
+					this.isContinue = false;
+					this.cause = new SoftFailures.SoftAssertionError(soft);
+					failWith(cause.getMessage());
+				} else {
+					// M2: a hard failure after soft ones: the soft messages follow the hard error in the logs
+					SerializableLogEntries prev = this.logs.get("gatf");
+					List<LogEntry> entries = new ArrayList<LogEntry>();
+					if(prev != null) for (SerializableLogEntry e : prev.getAll()) entries.add(new LogEntry(e.getLevel(), e.getTimestamp(), e.getMessage()));
+					entries.add(new LogEntry(Level.ALL, new Date().getTime(), SoftFailures.message(soft)));
+					this.logs.put("gatf", new SerializableLogEntries(entries));
+				}
+			}
 		}
 		public SeleniumTestResult(SeleniumTest test, Throwable cause) {
 			this.cause = cause;
 			this.status = false;
+			this.softFailures = test.__soft__.drain().size();
 			this.stName = test.get__subtestname__();
 			this.line = test.state.line;
 			this.internalTestRes = test.getSession().internalTestRs;
@@ -2187,6 +2223,23 @@ public abstract class SeleniumTest {
 			SeleniumTestSession s = getSession();
 			if (s != null && s.__trace__ != null) s.__trace__.event("action", type, detail);
 		} catch (Exception e) {}
+	}
+
+	/** M2: soft ({@code ??~}) assertion failures, drained into the next pushed result. */
+	final SoftFailures __soft__ = new SoftFailures();
+
+	/** M2: emitted by codegen around a {@code ??~} statement: record the failure and let the script continue. */
+	protected void __soft_fail__(RuntimeException e) {
+		if("Stopped Execution".equals(e.getMessage())) throw e;
+		String where = "";
+		if(state != null && state.cfileName != null) {
+			where = state.cfileName.replace(state.basePath == null ? "" : state.basePath, "");
+			if(where.startsWith(File.separator)) where = where.substring(1);
+			where += ":" + state.line;
+		}
+		__soft__.add(where, e.getMessage());
+		__traceAction__("softfail", e.getMessage());
+		System.out.println("Soft assertion failed" + (where.isEmpty() ? "" : " at " + where) + ": " + e.getMessage());
 	}
 
 	/** M1: file:line of a statement marked {@code nowait}/{@code <action>!}; its actions skip the auto-wait. */

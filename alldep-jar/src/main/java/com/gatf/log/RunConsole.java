@@ -72,6 +72,8 @@ public final class RunConsole {
         String error, detail;
         // Q3: files for this test's LAST attempt (failure screenshot, kept trace.zip); absolute paths
         final List<String> attachments = new ArrayList<String>();
+        // M2: soft (??~) assertion failures in the LAST attempt
+        int soft;
         Rec(String suite, String name, String title) { this.suite = suite; this.name = name; this.title = title; }
         Status last() { return attempts.get(attempts.size() - 1); }
         boolean flaky() { return last() == Status.PASSED && attempts.contains(Status.FAILED); }
@@ -142,14 +144,20 @@ public final class RunConsole {
     /** As above, plus {@code attachments}: files for this attempt (failure screenshot, trace.zip), absolute paths. */
     public static void result(String suite, String name, String title, Status status, long millis, String error, String detail,
             List<String> attachments) {
+        result(suite, name, title, status, millis, error, detail, attachments, 0);
+    }
+
+    /** As above, plus {@code softFailures}: M2 soft ({@code ??~}) assertion failures in this attempt. */
+    public static void result(String suite, String name, String title, Status status, long millis, String error, String detail,
+            List<String> attachments, int softFailures) {
         if (!active) return;
         (status == Status.PASSED ? passed : status == Status.FAILED ? failed : skipped).increment();
         if (!perTest) return;
-        line(suite, name, title, status, millis, error, detail, attachments);
+        line(suite, name, title, status, millis, error, detail, attachments, softFailures);
     }
 
     private static synchronized void line(String suite, String name, String title, Status status, long millis, String error, String detail,
-            List<String> attachments) {
+            List<String> attachments, int softFailures) {
         String key = (suite == null ? "" : suite) + '\u0000' + title;
         Rec r = recs.get(key);
         boolean retry = r != null;
@@ -165,6 +173,7 @@ public final class RunConsole {
         r.detail = detail;
         r.attachments.clear();
         if (attachments != null) r.attachments.addAll(attachments);
+        r.soft = Math.max(0, softFailures);
         if (!unicode) title = title.replace('\u203a', '>');
         int n = ++seq;
         if (status == Status.FAILED) {
@@ -181,6 +190,9 @@ public final class RunConsole {
         o.println(line);
         if (status == Status.FAILED && error != null && !error.trim().isEmpty()) {
             o.println("       " + red(firstLine(error)));
+        }
+        if (r.soft > 0 && error != null && error.indexOf('\n') > 0) {
+            for (String s : error.substring(error.indexOf('\n') + 1).split("\n")) o.println("       " + red(s.trim()));
         }
         if (status == Status.FAILED) {
             for (String a : r.attachments) {
@@ -204,11 +216,12 @@ public final class RunConsole {
         active = false;
         PrintStream o = GatfLogging.out();
         long ms = (System.nanoTime() - startNanos) / 1_000_000L;
-        long passed, failed, skipped, flaky = 0;
+        long passed, failed, skipped, flaky = 0, soft = 0;
         List<String> failures = new ArrayList<String>(), flakies = new ArrayList<String>();
         if (!recs.isEmpty()) {   // functional run: final status per test (last attempt)
             passed = failed = skipped = 0;
             for (Rec r : recs.values()) {
+                soft += r.soft;
                 if (r.flaky()) { flaky++; flakies.add(r.title); }
                 else if (r.last() == Status.PASSED) passed++;
                 else if (r.last() == Status.FAILED) { failed++; failures.add(r.title); }
@@ -235,6 +248,7 @@ public final class RunConsole {
             o.println(yellow("  " + flaky + " flaky"));
             for (String f : flakies) o.println(yellow("    " + (unicode ? f : f.replace('\u203a', '>'))));
         }
+        if (soft > 0) o.println(red("  " + soft + " soft assertion failure(s)"));
         if (skipped > 0) o.println(yellow("  " + skipped + " skipped"));
         if (passed > 0) o.println(green("  " + passed + " passed") + dim(" (" + dur(ms) + ")"));
         else if (total > 0) o.println(dim("  (" + dur(ms) + ")"));

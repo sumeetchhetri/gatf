@@ -25,7 +25,7 @@ export const SELEASY: Record<string, Style> = {
   '->': 4, '++': 4, '--': 4, '**': 4, '=~': 4, '!~': 4, '*': 4, '/': 4, '%': 4, x: 4, '+': 4, '.': 4,
   '<<': 4, '>>': 4, '<': 4, '>': 4, '<=': 4, '>=': 4, lt: 4, gt: 4, le: 4, ge: 4, '==': 4, '!=': 4,
   '<=>': 4, eq: 4, ne: 4, cmp: 4, '~~': 4, '&': 4, '|': 4, '^': 4, '&&': 4, '||': 4, '//': 4, '..': 4,
-  '...': 4, '??': 1, '??-': 1, '??+': 1, ':?': 1, '?': 4, ':': 4, '=': 4, '+=': 4, '-=': 4, '*=': 4,
+  '...': 4, '??': 1, '??-': 1, '??+': 1, '??~': 1, ':?': 1, '?': 4, ':': 4, '=': 4, '+=': 4, '-=': 4, '*=': 4,
   ',': 4, '=>': 4, '::': 4, not: 4, and: 4, or: 4, xor: 4,
   if: [1, 1], elsif: [1, 1], else: [1, 1], while: [1, 1], unless: [1, 1], for: [1, 1], break: 1,
   close: 1, continue: [1, 1], eval: 1, exec: 1, exit: 1, goto: 1, import: 1, index: 1, int: 1, join: 1,
@@ -143,7 +143,7 @@ function tokenSOMETHING(stream: StringStream, state: SelState, string: string): 
 }
 
 // literal keyword prefixes that consume to the next space (or EOL)
-const TO_SPACE_KW = ['ele-screenshot', 'browser-scope', 'session-scope', '??-', '??+', '??', '?!', ':?!', ':?', '#'];
+const TO_SPACE_KW = ['ele-screenshot', 'browser-scope', 'session-scope', '??-', '??+', '??~', '??', '?!', ':?!', ':?', '#'];
 // literal keyword prefixes that consume a fixed number of chars
 const FIXED_KW: [string, number][] = [
   ['<<<(java)', 9], ['<<<(js)', 7], ['<<<(python)', 11], ['<<<(ruby)', 9], ['<<<(groovy)', 11], ['<<<', 3],

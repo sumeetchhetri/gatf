@@ -65,4 +65,16 @@ class CommandTest {
         assertThat(Command.stripNoWait("??10 id@x click!")).isNull();
         assertThat(Command.stripNoWait("var click! 1")).isNull();
     }
+
+    @Test
+    void softAssertionPrefix() {
+        java.util.regex.Matcher m = Command.WAIT_SOFT.matcher("??~10 id@x text ='a'");
+        assertThat(m.find()).isTrue();
+        assertThat(m.group(1)).isEqualTo("10");
+        m = Command.WAIT_SOFT.matcher("??~ css@h1");
+        assertThat(m.find()).isTrue();
+        assertThat(m.group(1)).isEmpty();
+        assertThat(Command.WAIT_SOFT.matcher("?? css@h1").find()).isFalse();
+        assertThat(Command.stripNoWait("nowait ??~ id@x text ='a'")).isEqualTo("??~ id@x text ='a'");
+    }
 }
