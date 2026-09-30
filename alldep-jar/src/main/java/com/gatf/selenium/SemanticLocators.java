@@ -155,11 +155,13 @@ public final class SemanticLocators {
     }
 
     /**
-     * {@code (root, spec, testIdAttribute)} → {@code {els: Element[], desc: string[]}}. Plain ES5 so it runs through
-     * {@code executeScript} on every driver. Keep backslashes doubled: this is a Java text block.
+     * Defines {@code __gatfSemantic(root, spec, testIdAttribute[, target])} → {@code {els, desc, count}}; with
+     * {@code spec.kind == 'info'} it describes {@code target} instead ({@code {role, name, label, placeholder, testid,
+     * alt, title}}), for the recorder / crawler locator ranking. Plain ES5 so it runs through {@code executeScript} on
+     * every driver. Keep backslashes doubled: this is a Java text block.
      */
-    public static final String RESOLVER_JS = """
-        var __gatfSemantic = function (root, spec, tidAttr) {
+    public static final String RESOLVER_FN = """
+        var __gatfSemantic = function (root, spec, tidAttr, target) {
           var doc = root && root.ownerDocument ? root.ownerDocument : document;
           var win = doc.defaultView || window;
           var start = root || doc;
@@ -351,6 +353,11 @@ public final class SemanticLocators {
             if (n) d += ' "' + (n.length > 40 ? n.substring(0, 37) + '...' : n) + '"';
             return d;
           }
+          if (spec.kind === 'info') {
+            var ir = role(target), il = labelText(target);
+            return { role: ir, name: ir ? accName(target, ir) : '', label: il, placeholder: norm(attr(target, 'placeholder')),
+              testid: attr(target, tidAttr || 'data-testid'), alt: norm(attr(target, 'alt')), title: norm(attr(target, 'title')) };
+          }
           var els = [], k = spec.kind, cand = all(start);
           for (var i = 0; i < cand.length; i++) {
             var e = cand[i], ok = false;
@@ -397,6 +404,29 @@ public final class SemanticLocators {
           for (var d = 0; d < els.length && d < 11; d++) desc.push(describe(els[d]));
           return { els: els, desc: desc, count: els.length };
         };
-        return __gatfSemantic(arguments[0], arguments[1], arguments[2]);
+        """;
+
+    /** {@code (root, spec, testIdAttribute)} → {@code {els: Element[], desc: string[], count}}. */
+    public static final String RESOLVER_JS = RESOLVER_FN + "return __gatfSemantic(arguments[0], arguments[1], arguments[2]);\n";
+
+    /**
+     * M3 (recorder / crawler): defines {@code __gatfCandidates(el, testIdAttribute)} → the semantic locators that
+     * would find {@code el}, each with its match count {@code n} ({@code {s:'testid'|'role'|'label', v, role, name, n}}),
+     * for {@link LocatorRanking}. Needs {@link #RESOLVER_FN} defined first.
+     */
+    public static final String CANDIDATES_FN = """
+        var __gatfCandidates = function (el, tidAttr) {
+          var out = [];
+          try {
+            var info = __gatfSemantic(null, { kind: 'info' }, tidAttr, el);
+            var n = function (spec) { return __gatfSemantic(null, spec, tidAttr).count; };
+            if (info.testid) out.push({ s: 'testid', v: info.testid, n: n({ kind: 'testid', mode: 'exact', value: info.testid }) });
+            if (info.role && info.name && info.role !== 'presentation' && info.role !== 'generic') {
+              out.push({ s: 'role', role: info.role, name: info.name, n: n({ kind: 'role', role: info.role, mode: 'full', value: info.name }) });
+            }
+            if (info.label) out.push({ s: 'label', v: info.label, n: n({ kind: 'label', mode: 'full', value: info.label }) });
+          } catch (e) { }
+          return out;
+        };
         """;
 }

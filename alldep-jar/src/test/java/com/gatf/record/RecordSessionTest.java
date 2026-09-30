@@ -59,4 +59,30 @@ class RecordSessionTest {
         r.ingest(act("click", "id", "b", 5000));
         assertThat(r.currentLines()).containsExactly("click id@a", "click id@b");
     }
+
+    @Test
+    void prefersAUniqueSemanticLocator() {
+        RecordSession r = new RecordSession("t", null);
+        Map<String, Object> a = act("click", "xpath", "/html/body[1]/div[1]/button[2]", 0);
+        a.remove("t");
+        Map<String, Object> role = new HashMap<String, Object>();
+        role.put("s", "role"); role.put("role", "button"); role.put("name", "Save draft"); role.put("n", 1L);
+        Map<String, Object> label = new HashMap<String, Object>();
+        label.put("s", "label"); label.put("v", "Draft"); label.put("n", 2L);
+        a.put("cand", java.util.Arrays.asList(label, role));
+        r.ingest(a);
+        Map<String, Object> ty = act("type", "id", "email", 0);
+        ty.remove("t");
+        ty.put("value", "me@x.test");
+        Map<String, Object> tid = new HashMap<String, Object>();
+        tid.put("s", "testid"); tid.put("v", "email-input"); tid.put("n", 1L);
+        ty.put("cand", java.util.Arrays.asList(tid));
+        r.ingest(ty);
+        Map<String, Object> amb = act("click", "id", "go", 0);
+        amb.remove("t");
+        role.put("n", 3L);
+        amb.put("cand", java.util.Arrays.asList(role));
+        r.ingest(amb);
+        assertThat(r.currentLines()).containsExactly("click role@button[name='Save draft']", "type \"me@x.test\" testid@email-input", "click id@go");
+    }
 }

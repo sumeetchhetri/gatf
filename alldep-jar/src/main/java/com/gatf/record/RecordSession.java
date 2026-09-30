@@ -36,7 +36,8 @@ import org.openqa.selenium.chromium.HasCdp;
  * classes and free of any page→server networking (no CORS / mixed-content concerns).
  *
  * The recorder JS captures click / submit / change(select,input,checkbox) and page navigations, computing
- * a robust selector (id → name → css → xpath) that maps straight onto seleasy's selector prefixes.
+ * a robust selector: a unique semantic one first (testid → role+name → label, see LocatorRanking), else
+ * id → name → css → xpath, mapped straight onto seleasy's selector prefixes.
  *
  * Pacing: every captured action carries a wall-clock stamp {@code t}; when the gap since the previous
  * emitted action exceeds {@link #SLEEP_THRESHOLD_MS} a {@code sleep <ms>} line is emitted before it
@@ -51,6 +52,9 @@ public class RecordSession {
     static final String RECORDER_JS =
         "(function(){"
         + "if(window.__gatfRecInit)return;window.__gatfRecInit=true;window.__gatfRecord__=[];"
+        // M3: semantic candidates (testid / role+name / label, each with its match count) for LocatorRanking
+        + com.gatf.selenium.SemanticLocators.RESOLVER_FN + com.gatf.selenium.SemanticLocators.CANDIDATES_FN
+        + "function cand(el){return el&&el.nodeType===1?__gatfCandidates(el,'data-testid'):[];}"
         + "function uniq(id){try{return document.querySelectorAll('#'+CSS.escape(id)).length===1;}catch(e){return !!id;}}"
         + "function sel(el){"
         + "  if(!el||el.nodeType!==1)return null;"
@@ -63,9 +67,9 @@ public class RecordSession {
         + "function xp(el){var p=[];while(el&&el.nodeType===1&&el!==document.documentElement){var i=1,s=el.previousElementSibling;while(s){if(s.tagName===el.tagName)i++;s=s.previousElementSibling;}p.unshift(el.tagName.toLowerCase()+'['+i+']');el=el.parentElement;}return'/html/'+p.join('/');}"
         + "function push(a){try{a.t=Date.now();window.__gatfRecord__.push(a);}catch(e){}}"
         + "push({type:'goto',url:location.href});"
-        + "document.addEventListener('click',function(e){var t=(e.target.closest&&e.target.closest('a,button,input[type=button],input[type=submit],[role=button],[onclick]'))||e.target;var sub=(t.type==='submit')||(t.tagName==='BUTTON'&&(!t.type||t.type==='submit'));if(sub&&t.form)return;var s=sel(t);if(s)push({type:'click',sel:s});},true);"
-        + "document.addEventListener('submit',function(e){var s=sel(e.target);if(s)push({type:'submit',sel:s});},true);"
-        + "document.addEventListener('change',function(e){var el=e.target,s=sel(el);if(!s)return;var tag=el.tagName.toLowerCase();if(tag==='select')push({type:'select',sel:s,value:el.value});else if(el.type==='checkbox'||el.type==='radio')push({type:'check',sel:s});else push({type:'type',sel:s,value:(el.value==null?'':el.value)});},true);"
+        + "document.addEventListener('click',function(e){var t=(e.target.closest&&e.target.closest('a,button,input[type=button],input[type=submit],[role=button],[onclick]'))||e.target;var sub=(t.type==='submit')||(t.tagName==='BUTTON'&&(!t.type||t.type==='submit'));if(sub&&t.form)return;var s=sel(t);if(s)push({type:'click',sel:s,cand:cand(t)});},true);"
+        + "document.addEventListener('submit',function(e){var s=sel(e.target);if(s)push({type:'submit',sel:s,cand:cand(e.target)});},true);"
+        + "document.addEventListener('change',function(e){var el=e.target,s=sel(el);if(!s)return;var c=cand(el),tag=el.tagName.toLowerCase();if(tag==='select')push({type:'select',sel:s,cand:c,value:el.value});else if(el.type==='checkbox'||el.type==='radio')push({type:'check',sel:s,cand:c});else push({type:'type',sel:s,cand:c,value:(el.value==null?'':el.value)});},true);"
         + "})();";
 
     private static final String DRAIN_JS =
@@ -201,7 +205,8 @@ public class RecordSession {
             return url.isEmpty() || "about:blank".equals(url) ? null : "goto " + url;
         }
         Map<String, Object> sel = a.get("sel") instanceof Map ? (Map<String, Object>) a.get("sel") : null;
-        String selector = selector(sel);
+        // M3: testid → role → label when unique in the page, else the legacy id → name → css → xpath
+        String selector = com.gatf.selenium.LocatorRanking.choose(a.get("cand") instanceof List ? (List<Object>) a.get("cand") : null, selector(sel));
         if (selector == null) return null;
         if ("click".equals(type)) return "click " + selector;
         if ("submit".equals(type)) return "submit " + selector;

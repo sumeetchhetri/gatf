@@ -140,4 +140,15 @@ class SpaCrawlerTest {
         assertThat(SpaCrawler.selArg("id@user").get("v")).isEqualTo("user");
         assertThat(SpaCrawler.selArg("xpath@\"//a[1]\"").get("v")).isEqualTo("//a[1]");
     }
+
+    @Test
+    void emittedFieldsPreferUniqueSemanticLocators() {
+        Map<String, Object> f = field(sel("xpath", "//form/input[1]"), "input", "email", true);
+        Map<String, Object> lab = new LinkedHashMap<String, Object>();
+        lab.put("s", "label"); lab.put("v", "Work email"); lab.put("n", 1);
+        f.put("cand", Arrays.asList(lab));
+        assertThat(SpaCrawler.fillLine(f)).isEqualTo("type \"user@example.com\" label@'Work email'");
+        lab.put("n", 2);
+        assertThat(SpaCrawler.fillLine(f)).isEqualTo("type \"user@example.com\" xpath@\"//form/input[1]\"");
+    }
 }

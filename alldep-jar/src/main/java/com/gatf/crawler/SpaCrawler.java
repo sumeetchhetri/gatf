@@ -36,7 +36,8 @@ import java.util.regex.Pattern;
  *
  * The browser is used only through {@link Browser} (navigate + execute script), so the crawl logic is
  * unit-testable with a fake and works over any WebDriver (Classic or BiDi). Everything page-side —
- * DOM settle, element discovery, selector choice (id → name → css → xpath), SPA-safe value setting —
+ * DOM settle, element discovery, selector choice (semantic testid → role → label when unique, else id → name → css →
+ * xpath), SPA-safe value setting —
  * runs as injected JavaScript.
  *
  * Safety defaults: links matching {@link CrawlSpec#getExclude()} (logout/delete-style) are never
@@ -107,11 +108,15 @@ public class SpaCrawler {
         + "if(s==='css')return document.querySelector(v);"
         + "return document.evaluate(v,document,null,XPathResult.FIRST_ORDERED_NODE_TYPE,null).singleNodeValue;}";
 
-    static final String SCAN_JS = "return (function(){" + HELPERS_JS
+    // M3: semantic candidates (testid / role+name / label with match counts) for LocatorRanking
+    static final String CAND_JS = com.gatf.selenium.SemanticLocators.RESOLVER_FN + com.gatf.selenium.SemanticLocators.CANDIDATES_FN
+        + "function __cand(el){return el?__gatfCandidates(el,'data-testid'):[];}";
+
+    static final String SCAN_JS = "return (function(){" + HELPERS_JS + CAND_JS
         + "var FIELDS='input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=reset]):not([type=image]):not([type=file]),select,textarea';"
         + "function lbl(el){if(el.id){var l=document.querySelector('label[for=\"'+CSS.escape(el.id)+'\"]');if(l)return l.textContent.trim().slice(0,60);}"
         + "return (el.getAttribute('aria-label')||el.getAttribute('placeholder')||'').slice(0,60);}"
-        + "function fld(el){return{sel:__sel(el),tag:el.tagName.toLowerCase(),type:(el.getAttribute('type')||'').toLowerCase(),"
+        + "function fld(el){return{sel:__sel(el),cand:__cand(el),tag:el.tagName.toLowerCase(),type:(el.getAttribute('type')||'').toLowerCase(),"
         + "name:el.getAttribute('name')||'',required:!!el.required,label:lbl(el),options:el.tagName==='SELECT'?el.options.length:0};}"
         + "var links=[];document.querySelectorAll('a[href],[routerlink],[ng-reflect-router-link],[data-href]').forEach(function(a){"
         + "var h=a.getAttribute('href')||a.getAttribute('routerlink')||a.getAttribute('ng-reflect-router-link')||a.getAttribute('data-href');"
@@ -119,14 +124,14 @@ public class SpaCrawler {
         + "var forms=[];document.querySelectorAll('form').forEach(function(f){var fs=[];"
         + "f.querySelectorAll(FIELDS).forEach(function(el){if(__vis(el)&&!el.disabled)fs.push(fld(el));});"
         + "var sb=f.querySelector('button[type=submit],input[type=submit],button:not([type])');"
-        + "forms.push({sel:__sel(f),method:(f.getAttribute('method')||'get').toLowerCase(),fields:fs,submit:(sb&&__vis(sb))?__sel(sb):null});});"
+        + "forms.push({sel:__sel(f),method:(f.getAttribute('method')||'get').toLowerCase(),fields:fs,submit:(sb&&__vis(sb))?__sel(sb):null,submitCand:(sb&&__vis(sb))?__cand(sb):[]});});"
         + "var loose=[];document.querySelectorAll(FIELDS).forEach(function(el){if(!el.closest('form')&&__vis(el)&&!el.disabled)loose.push(fld(el));});"
         + "var buttons=[];document.querySelectorAll('button,[role=button],input[type=button]').forEach(function(b){"
-        + "if(__vis(b)&&!b.closest('form'))buttons.push({sel:__sel(b),text:(b.textContent||b.value||'').trim().slice(0,40)});});"
+        + "if(__vis(b)&&!b.closest('form'))buttons.push({sel:__sel(b),cand:__cand(b),text:(b.textContent||b.value||'').trim().slice(0,40)});});"
         + "return{url:location.href,title:document.title,links:links,forms:forms,loose:loose,buttons:buttons};})();";
 
     // Find the login controls: explicit selectors ({s,v} or null) else discovery via the password field.
-    static final String LOGIN_FIND_JS = "return (function(us,ps,ss){" + HELPERS_JS
+    static final String LOGIN_FIND_JS = "return (function(us,ps,ss){" + HELPERS_JS + CAND_JS
         + "var p=ps?__find(ps.s,ps.v):Array.prototype.find.call(document.querySelectorAll('input[type=password]'),__vis);"
         + "if(!p)return null;var scope=p.closest('form')||document;"
         + "var u=us?__find(us.s,us.v):null;if(!u){var c=scope.querySelectorAll('input[type=email],input[type=text],input:not([type])');"
@@ -134,7 +139,7 @@ public class SpaCrawler {
         + "var s=ss?__find(ss.s,ss.v):null;if(!s){s=scope.querySelector('button[type=submit],input[type=submit]');}"
         + "if(!s){s=Array.prototype.find.call(document.querySelectorAll('button,[role=button],input[type=button]'),function(b){"
         + "return __vis(b)&&/log\\s*in|sign\\s*in|submit|continue/i.test(b.textContent||b.value||'');});}"
-        + "return{user:u?__sel(u):null,pass:__sel(p),submit:s?__sel(s):null};})(arguments[0],arguments[1],arguments[2]);";
+        + "return{user:u?__sel(u):null,pass:__sel(p),submit:s?__sel(s):null,userCand:__cand(u),passCand:__cand(p),submitCand:__cand(s)};})(arguments[0],arguments[1],arguments[2]);";
 
     // Set a value the way frameworks observe it (native setter + input/change events), or click.
     static final String SET_JS = "return (function(s,v,val){" + HELPERS_JS
@@ -283,9 +288,9 @@ public class SpaCrawler {
         if (loginSel != null) {
             Map<String, Object> u = map(loginSel.get("user")), p = map(loginSel.get("pass")), s = map(loginSel.get("submit"));
             sb.append("// login\ngoto ").append(spec.getLoginUrl()).append("\n");
-            if (!u.isEmpty()) sb.append("type \"${username}\" ").append(sel(u)).append("\n");
-            sb.append("type \"${password}\" ").append(sel(p)).append("\n");
-            if (!s.isEmpty()) sb.append("click ").append(sel(s)).append("\n");
+            if (!u.isEmpty()) sb.append("type \"${username}\" ").append(loc(loginSel.get("userCand"), u)).append("\n");
+            sb.append("type \"${password}\" ").append(loc(loginSel.get("passCand"), p)).append("\n");
+            if (!s.isEmpty()) sb.append("click ").append(loc(loginSel.get("submitCand"), s)).append("\n");
             sb.append("sleep 2000\n\n");
         }
         int i = 0;
@@ -306,9 +311,9 @@ public class SpaCrawler {
                 Map<String, Object> sub = map(f.get("submit"));
                 if (!sub.isEmpty()) {
                     if (spec.isSubmitForms() || "get".equals(method)) {
-                        sb.append("click ").append(sel(sub)).append("\nsleep 1000\n");
+                        sb.append("click ").append(loc(f.get("submitCand"), sub)).append("\nsleep 1000\n");
                     } else {
-                        sb.append("// click ").append(sel(sub)).append("   (POST form: not submitted — enable submitForms)\n");
+                        sb.append("// click ").append(loc(f.get("submitCand"), sub)).append("   (POST form: not submitted — enable submitForms)\n");
                     }
                 }
             }
@@ -323,7 +328,7 @@ public class SpaCrawler {
 
     static String fillLine(Map<String, Object> fl) {
         String tag = str(fl.get("tag")), type = str(fl.get("type"));
-        String s = sel(map(fl.get("sel")));
+        String s = loc(fl.get("cand"), map(fl.get("sel")));
         if ("select".equals(tag)) {
             int n = fl.get("options") instanceof Number ? ((Number) fl.get("options")).intValue() : 0;
             return "select index@" + (n > 1 ? 1 : 0) + " " + s;
@@ -331,6 +336,11 @@ public class SpaCrawler {
         if ("checkbox".equals(type) || "radio".equals(type)) return "click " + s;
         String v = "textarea".equals(tag) ? "sample text" : PortalCrawler.sampleByType(type);
         return "type \"" + v + "\" " + s;
+    }
+
+    /** M3: the emitted locator — a unique semantic candidate (testid → role → label) else the legacy selector. */
+    static String loc(Object candidates, Map<String, Object> legacy) {
+        return com.gatf.selenium.LocatorRanking.choose(candidates instanceof List ? (List<?>) candidates : null, sel(legacy));
     }
 
     /** {s,v} → seleasy selector (id@x / name@x / css@"…" / xpath@"…"). */

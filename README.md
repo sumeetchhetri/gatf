@@ -93,8 +93,8 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 
 ### Authoring on-ramps
 - **Web editor:** syntax highlighting, autocomplete, diagnostics, go-to-definition across files, and multi-tab editing. Saving validates the script by parsing and compiling it.
-- **Recorder:** opens a browser (Chrome, Firefox or Edge) and turns your clicks and typing into seleasy, with timing pauses preserved.
-- **Crawler:** logs into an application (including JavaScript SPAs), explores it in a real browser, and proposes a seleasy suite plus a coverage map.
+- **Recorder:** opens a browser (Chrome, Firefox or Edge) and turns your clicks and typing into seleasy, with timing pauses preserved. Each step uses the first locator that is unique on the page: `testid@`, then `role@…[name=…]`, then `label@`, then id / name / CSS / XPath.
+- **Crawler:** logs into an application (including JavaScript SPAs), explores it in a real browser, and proposes a seleasy suite plus a coverage map (the SPA crawler ranks locators the same way as the recorder).
 - **Importers:** Playwright specs become seleasy; JMeter plans become GATF API tests, and their thread-group load settings are shown to apply.
   cURL commands (bash/cmd/PowerShell "Copy as cURL", or a report's cURL line), Postman collections (v2.x and v1) and HAR
   recordings become GATF API tests: headers, bodies (raw, urlencoded, multipart, GraphQL), auth, Postman variables

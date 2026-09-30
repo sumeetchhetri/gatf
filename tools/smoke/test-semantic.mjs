@@ -41,7 +41,10 @@ function textBlock(src, name) {
   const ind = Math.min(closing.length, ...lines.filter((l) => l.trim()).map((l) => l.match(/^ */)[0].length));
   return lines.map((l) => l.slice(ind)).join('\n').replace(/\\\\/g, '\\');
 }
-const resolver = new Function(textBlock(javaSrc, 'RESOLVER_JS'));
+const RESOLVER_FN = textBlock(javaSrc, 'RESOLVER_FN');
+const CANDIDATES_FN = textBlock(javaSrc, 'CANDIDATES_FN');
+// RESOLVER_JS = RESOLVER_FN + the call (see SemanticLocators)
+const resolver = new Function(RESOLVER_FN + 'return __gatfSemantic(arguments[0], arguments[1], arguments[2]);');
 
 const dom = new JSDOM(`<!doctype html><html><body>
   <header><nav aria-label="Main"><a href="/home">Home</a><a>not a link</a></nav></header>
@@ -68,7 +71,7 @@ const dom = new JSDOM(`<!doctype html><html><body>
     <div style="display:none"><button>Ghost</button></div>
     <span title="Close panel">x</span>
     <x-card id="card"></x-card>
-  </main></body></html>`);
+  </main></body></html>`, { runScripts: 'outside-only' });
 const { document, window } = dom.window;
 const card = document.getElementById('card');
 const sr = card.attachShadow({ mode: 'open' });
@@ -131,6 +134,36 @@ eq('scoped to a root element', q({ kind: 'role', role: 'button' }, document.quer
 const many = q({ kind: 'role', role: 'button' });
 eq('candidates described for strict mode', many.desc[0], '<button.btn.primary> "Save"');
 eq('count reports every visible match', many.count, 6);
+
+
+// ---- recorder / crawler candidates (CANDIDATES_FN): what each element could be located by, with match counts ----
+const candidates = new Function('el', 'tid', RESOLVER_FN + CANDIDATES_FN + 'return __gatfCandidates(el, tid);');
+const btnSave = document.querySelector('[data-testid=save-btn]');
+eq('candidates: testid + role + counts', candidates(btnSave, 'data-testid'),
+  [{ s: 'testid', v: 'save-btn', n: 1 }, { s: 'role', role: 'button', name: 'Save', n: 1 }]);
+eq('candidates: labelled input', candidates(document.getElementById('email'), 'data-testid'),
+  [{ s: 'role', role: 'textbox', name: 'Email address', n: 1 }, { s: 'label', v: 'Email address', n: 1 }]);
+eq('candidates: link by role + name', candidates(document.querySelector('a[href]'), 'data-testid'),
+  [{ s: 'role', role: 'link', name: 'Home', n: 1 }]);
+
+// ---- the recorder content script itself (RecordSession.RECORDER_JS, assembled from the Java source) ----
+const recSrc = readFileSync(resolve(here, '../../alldep-jar/src/main/java/com/gatf/record/RecordSession.java'), 'utf8');
+const expr = recSrc.match(/static final String RECORDER_JS =([\s\S]*?);\n/)[1];
+let recorderJs = '';
+for (const t of expr.matchAll(/"((?:[^"\\]|\\.)*)"|com\.gatf\.selenium\.SemanticLocators\.(RESOLVER_FN|CANDIDATES_FN)/g)) {
+  if (t[2]) recorderJs += t[2] === 'RESOLVER_FN' ? RESOLVER_FN : CANDIDATES_FN;
+  else recorderJs += JSON.parse('"' + t[1].replace(/\\'/g, "'") + '"');
+}
+window.eval(recorderJs);
+window.__gatfRecord__.length = 0;
+document.querySelector('[aria-pressed]').dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+const rec = window.__gatfRecord__[0];
+eq('recorder click carries candidates', [rec.type, rec.cand], ['click', [{ s: 'role', role: 'button', name: 'Bold', n: 1 }]]);
+const age = document.getElementById('age');
+age.value = '42';
+age.dispatchEvent(new window.Event('change', { bubbles: true }));
+const t2 = window.__gatfRecord__[1];
+eq('recorder change carries candidates', [t2.type, t2.value, t2.cand.map((c) => c.s)], ['type', '42', ['role', 'label']]);
 
 // ---- label edge cases (a fresh page): wrapping labels label their control only; a label's text excludes controls ----
 {
