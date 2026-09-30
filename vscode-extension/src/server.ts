@@ -39,6 +39,24 @@ import {
 } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import catalog from './commands.json';
+import { fetchPlugins, pluginItems, type PluginItem } from './plugins';
+
+// M13: plugins from the running GATF server (names + docs); empty until fetched or when no server runs
+let PLUGIN_ITEMS: PluginItem[] = [];
+const PLUGIN_NAMES = new Set<string>();
+declare const fetch: (url: string) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>;
+// the server may start after the editor: re-fetched in the background on completion when older than 30 s
+let pluginSource: { url?: string; token?: string } = {};
+let pluginFetchedAt = 0;
+async function refreshPlugins(url?: string, token?: string): Promise<void> {
+  pluginSource = { url, token };
+  pluginFetchedAt = Date.now();
+  if (typeof fetch !== 'function') return;
+  const known = new Set<string>(COMMANDS.map((c) => c.keyword.toLowerCase()));
+  PLUGIN_ITEMS = pluginItems(await fetchPlugins(url || 'http://localhost:9080', token, fetch), known);
+  PLUGIN_NAMES.clear();
+  for (const p of PLUGIN_ITEMS) PLUGIN_NAMES.add(p.label.toLowerCase());
+}
 
 interface Cmd {
   keyword: string;
@@ -78,7 +96,7 @@ function knownLeading(line: string): boolean {
   const m = ALPHA_TOK.exec(L);
   if (m) {
     const w = m[0];
-    if (ALPHA.has(w)) return true;
+    if (ALPHA.has(w) || PLUGIN_NAMES.has(w)) return true;
     for (const rb of REGEX_BASES) if (w === rb || w.startsWith(rb)) return true;
   }
   return false;
@@ -200,16 +218,17 @@ connection.onInitialize((_params: InitializeParams): InitializeResult => ({
 }));
 
 connection.onInitialized(() => {
-  connection.workspace?.getConfiguration?.('seleasy').then((cfg: { strictDiagnostics?: boolean } | null) => {
+  connection.workspace?.getConfiguration?.('seleasy').then(async (cfg: { strictDiagnostics?: boolean; gatfUrl?: string; gatfToken?: string } | null) => {
     if (cfg && typeof cfg.strictDiagnostics === 'boolean') strictDiagnostics = cfg.strictDiagnostics;
+    await refreshPlugins(cfg?.gatfUrl, cfg?.gatfToken || undefined);
     documents.all().forEach(validate);
   }).catch(() => {});
 });
 
 connection.onDidChangeConfiguration((change) => {
-  const cfg = (change.settings as { seleasy?: { strictDiagnostics?: boolean } } | undefined)?.seleasy;
+  const cfg = (change.settings as { seleasy?: { strictDiagnostics?: boolean; gatfUrl?: string; gatfToken?: string } } | undefined)?.seleasy;
   if (cfg && typeof cfg.strictDiagnostics === 'boolean') strictDiagnostics = cfg.strictDiagnostics;
-  documents.all().forEach(validate);
+  refreshPlugins(cfg?.gatfUrl, cfg?.gatfToken || undefined).finally(() => documents.all().forEach(validate));
 });
 
 function validate(doc: TextDocument) {
@@ -221,6 +240,7 @@ documents.onDidClose((e) => connection.sendDiagnostics({ uri: e.document.uri, di
 
 // completion — keyword catalog + a couple of block snippets
 connection.onCompletion((): CompletionItem[] => {
+  if (Date.now() - pluginFetchedAt > 30_000) refreshPlugins(pluginSource.url, pluginSource.token).catch(() => {});
   const items: CompletionItem[] = COMMANDS.map((c) => ({
     label: c.keyword,
     kind: CompletionItemKind.Keyword,
@@ -228,6 +248,10 @@ connection.onCompletion((): CompletionItem[] => {
     insertText: c.requiresArg ? c.keyword + ' ' : c.keyword,
     documentation: `${c.match} keyword${c.requiresArg ? ' — requires an argument' : ''}${c.canBeBare ? ' — may stand alone' : ''}`,
   }));
+  for (const p of PLUGIN_ITEMS) {
+    items.push({ label: p.label, kind: CompletionItemKind.Function, detail: p.detail, insertText: p.insertText,
+      documentation: { kind: 'markdown', value: p.documentation } });
+  }
   items.push(
     { label: 'if-block', kind: CompletionItemKind.Snippet, insertText: '? ${1:condition} {\n\t$0\n}', insertTextFormat: 2, detail: 'seleasy if block' },
     { label: 'subtest', kind: CompletionItemKind.Snippet, insertText: 'subtest "${1:name}" {\n\t$0\n}', insertTextFormat: 2, detail: 'define a sub-test' },

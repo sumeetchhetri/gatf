@@ -1761,15 +1761,12 @@ public class Command {
     }
 
     static void loadPlugins(CommandState state, AcceptanceTestContext cntxt) throws Exception {
-    	List<String> lines = new ArrayList<>();
-    	lines.add("jsonread=com.gatf.selenium.plugins.JsonPlugin@read");
-    	lines.add("jsonwrite=com.gatf.selenium.plugins.JsonPlugin@write");
-    	lines.add("jsonpath=com.gatf.selenium.plugins.JsonPlugin@path");
-    	lines.add("xmlread=com.gatf.selenium.plugins.XmlPlugin@read");
-    	lines.add("xmlwrite=com.gatf.selenium.plugins.XmlPlugin@write");
-    	lines.add("xmlpath=com.gatf.selenium.plugins.XmlPlugin@path");
-    	lines.add("api=com.gatf.selenium.plugins.ApiPlugin@api");
-    	lines.add("curl=com.gatf.selenium.plugins.CurlPlugin@execute");
+    	// M13: plugins/*.jar (SDK v2 via ServiceLoader, and plugins.txt classes shipped in jars) - re-scanned on every load
+    	com.gatf.selenium.plugins.sdk.PluginRegistry.loadAndInit(cntxt.getResourceFile("plugins"), Command.class.getClassLoader(), cntxt);
+    	for (String w : com.gatf.selenium.plugins.sdk.PluginRegistry.warnings()) {
+    		org.apache.logging.log4j.LogManager.getLogger(Command.class).warn("plugins/: {}", w);
+    	}
+    	List<String> lines = new ArrayList<>(PluginCatalog.BUILTIN);
     	//lines.add("sendmail=com.gatf.selenium.plugins.MailPlugin@execute");
         if(cntxt.getResourceFile("plugins.txt").exists()) {
         	lines.addAll(FileUtils.readLines(cntxt.getResourceFile("plugins.txt"), "UTF-8"));
@@ -1802,13 +1799,26 @@ public class Command {
                 }
             }
         }
+        // M13: SDK v2 plugins after the built-ins and plugins.txt (the first definition of a name wins); a jar removed
+        // since the last load drops its names, so the script fails to compile instead of at run time
+        Map<String, com.gatf.selenium.plugins.sdk.GatfStepPlugin> v2s = com.gatf.selenium.plugins.sdk.PluginRegistry.all();
+        plugins.entrySet().removeIf(e -> e.getValue().startsWith(V2_PLUGIN) && !v2s.containsKey(e.getKey()));
+        for (Map.Entry<String, com.gatf.selenium.plugins.sdk.GatfStepPlugin> e : v2s.entrySet()) {
+            String prev = plugins.get(e.getKey());
+            if (prev == null || prev.startsWith(V2_PLUGIN)) {
+                plugins.put(e.getKey(), V2_PLUGIN + e.getKey());
+            } else {
+                org.apache.logging.log4j.LogManager.getLogger(Command.class).warn("plugins/: '{}' is already defined ({}); keeping the first definition", e.getKey(), prev);
+            }
+        }
         for (String name : plugins.keySet()) {
         	String signature = plugins.get(name);
+        	if (signature.startsWith(V2_PLUGIN)) continue;
 	        try {
 	            String[] parts = signature.split("@");
 	            String clsname = parts[0].trim();
 
-	            Class<?> cls = Class.forName(clsname);
+	            Class<?> cls = Class.forName(clsname, true, com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader());
 	            Method meth = cls.getMethod("init", new Class[]{AcceptanceTestContext.class});
 	            
 	            meth.invoke(null, new Object[] {cntxt});
@@ -1826,10 +1836,13 @@ public class Command {
      * {@code void.class}, so void methods were accepted. It also didn't check {@code static}, so an instance method
      * failed later with an NPE at {@code invoke(null, ...)}.
      */
+    /** M13: the {@code plugins} signature of an SDK v2 plugin ({@code v2:<name>}); resolved via PluginRegistry at run time. */
+    static final String V2_PLUGIN = "v2:";
+
     static String pluginSignatureError(String clsname, String method) {
         Class<?> cls;
         try {
-            cls = Class.forName(clsname);
+            cls = Class.forName(clsname, true, com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader());   // M13: plugins/*.jar too
         } catch (Throwable e) {
             return "class not found: " + clsname;
         }

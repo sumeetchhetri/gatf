@@ -44,6 +44,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
  *
  *   GET /api            | /api/health   -> { ok, service, api, version }
  *   GET /api/reports                    -> { dir, reports:[{name,url,size,modified}], traces:[...] }
+ *   GET /api/plugins                    -> [{name,kind(builtin|plugins.txt|sdk),summary,usage?,args,examples,source}] (M13)
  *   GET /api/history?limit=N            -> { dir, runs:[{id,time,summary,tests:[{title,status,durationMs}]}] } (M12)
  *   GET /api/config                     -> { testDir, outDir, config:{...effective GatfExecutorConfig} }
  *   GET /api/testfiles                  -> { dir, files:[{name,path,size,modified,kind}] }
@@ -80,6 +81,8 @@ public class GatfApiHandler extends HttpHandler {
                 out.put("service", "gatf");
                 out.put("api", "v1");
                 writeJson(response, HttpStatus.OK_200, out);
+            } else if (sub.equals("plugins")) {
+                plugins(request, response);
             } else if (sub.equals("history")) {
                 history(request, response);
             } else if (sub.equals("reports")) {
@@ -164,6 +167,17 @@ public class GatfApiHandler extends HttpHandler {
         out.put("dir", dir);
         out.put("reports", reports);
         writeJson(response, HttpStatus.OK_200, out);
+    }
+
+    // M13: GET /api/plugins -> every plugin a script can call (built-ins, plugins.txt, plugins/*.jar) with docs, for completion
+    private void plugins(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
+        String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
+        List<File> bases = new ArrayList<>();
+        if (cfg.getTestCaseDir() != null) bases.add(new File(tbase, cfg.getTestCaseDir()));
+        bases.add(new File(tbase));
+        bases.add(new File(System.getProperty("user.dir")));
+        writeJson(response, HttpStatus.OK_200, com.gatf.selenium.PluginCatalog.list(bases));
     }
 
     // M12: GET /api/history?limit=N -> the newest N archived gatf-results.json (summary + compact tests), newest first

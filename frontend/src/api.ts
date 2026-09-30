@@ -93,6 +93,16 @@ export interface TraceChecks {
   // M10: one report per `a11y check` step
   a11y?: A11yResult[];
 }
+// ---- M13: plugins (GET /api/plugins) ----
+export interface PluginInfo {
+  name: string;
+  kind: 'builtin' | 'plugins.txt' | 'sdk' | string;
+  summary: string | null;
+  usage?: string[];
+  args: { name: string; doc?: string | null; required?: boolean }[];
+  examples: string[];
+  source?: string | null;
+}
 // ---- M10: accessibility (axe-core via `a11y check`), as A11yReport maps it ----
 export interface A11yNode {
   target: string; // CSS selector; iframe / shadow hops joined with " >>> "
@@ -769,6 +779,8 @@ export const api = {
   reportData: (url: string) => getJson<ReportData>(url),
   // M12: a run's gatf-results.json (CLI runs write it to the out dir root; merge-reports to the merged dir)
   runResults: (url: string) => getJson<import('./report/results').RunResults>(url),
+  // M13: every plugin a script can call (built-ins, plugins.txt, plugins/*.jar) with docs, for completion
+  plugins: () => getJson<PluginInfo[]>('/api/plugins'),
   // M10: one `a11y check` result file (attachment)
   a11yResult: (url: string) => getJson<A11yResult>(url),
   // M12: archived runs for the trend chart, newest first

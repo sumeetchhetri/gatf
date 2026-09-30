@@ -54,7 +54,7 @@
         "seleasy.gatfUrl": {
           "type": "string",
           "default": "http://localhost:9080",
-          "description": "Base URL of the running GATF server (config-tool). Used by the debugger to start/step sessions."
+          "description": "Base URL of the running GATF server (config-tool). Used by the debugger to start/step sessions, and for plugin completions (GET /api/plugins)."
         },
         "seleasy.gatfToken": {
           "type": "string",
@@ -139,6 +139,7 @@
     "watch": "node esbuild.mjs --watch",
     "typecheck": "tsc --noEmit",
     "test:grammar": "node test/grammar.test.mjs",
+    "test:plugins": "node test/plugins.test.mjs",
     "vscode:prepublish": "npm run gen && npm run compile"
   },
   "dependencies": {

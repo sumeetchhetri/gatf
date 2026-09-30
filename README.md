@@ -87,6 +87,7 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 
 ### Plugin and extension framework
 - **seleasy plugins:** map a keyword to any static Java method in `plugins.txt` (`name=com.acme.MyPlugin@method`), then use it as a statement or `var x plugin name ...`.
+  - **Plugin SDK v2:** implement `GatfStepPlugin` (name, execute, optional info/init), register it via `META-INF/services`, and drop the jar into `plugins/`. It is loaded in its own class loader and picked up without a rebuild. Its docs appear in the web editor's and VS Code's completion (`GET /api/plugins`). See [the reference](docs/seleasy/REFERENCE.md#plugins).
   - Built-ins: `jsonread` / `jsonwrite` / `jsonpath`, `xmlread` / `xmlwrite` / `xmlpath`, `api` (call a GATF API test from a UI script and use its response) and `curl` (ad-hoc HTTP).
     Both share the browser's session: the browser's cookies for the target URL are sent, and response Set-Cookies are
     stored back in the browser, so a script can log in through the UI and call the API authenticated (or the reverse).

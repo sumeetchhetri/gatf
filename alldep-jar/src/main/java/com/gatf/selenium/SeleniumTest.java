@@ -1725,25 +1725,52 @@ public abstract class SeleniumTest {
 		RandomValues.randomizeSelect(le);   // G8: moved to RandomValues
 	}
 
+	private void pluginsLoad() {
+		if (___cxt___ != null) {
+			com.gatf.selenium.plugins.sdk.PluginRegistry.loadAndInit(___cxt___.getResourceFile("plugins"), SeleniumTest.class.getClassLoader(), ___cxt___);
+		}
+	}
+
 	protected Object pluginize(String name, String signature, List<String> args, List<List<String>> args1) {
 		try
 		{
-			String[] parts = signature.split("@");
-			String clsname = parts[0].trim();
-			String method = parts[1].trim();
-
-			Class<?> cls = Class.forName(clsname);
+			// M13: an SDK v2 plugin (plugins/*.jar) runs through its instance; the legacy static form through reflection
+			com.gatf.selenium.plugins.sdk.GatfStepPlugin v2 = null;
+			if (signature.startsWith("v2:")) {
+				v2 = com.gatf.selenium.plugins.sdk.PluginRegistry.get(name);
+				if (v2 == null) {
+					// a JVM that never compiled the script (debugger, distributed node) loads plugins/ here
+					pluginsLoad();
+					v2 = com.gatf.selenium.plugins.sdk.PluginRegistry.get(name);
+				}
+				if (v2 == null) throw new RuntimeException("plugin " + name + " is no longer in plugins/");
+			}
+			Class<?> cls;
 			Method meth = null, meth1 = null;
 			boolean twoargs = true;
+			if (v2 != null) {
+				cls = v2.getClass();
+			} else {
+				String[] parts = signature.split("@");
+				String clsname = parts[0].trim();
+				String method = parts[1].trim();
 
-			try {
-				meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
-			} catch (Exception e) {
-			}
+				try {
+					cls = Class.forName(clsname, true, com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader());
+				} catch (ClassNotFoundException e) {
+					pluginsLoad();
+					cls = Class.forName(clsname, true, com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader());
+				}
 
-			if(meth==null) {
-				meth = cls.getMethod(method, new Class[]{Object[].class});
-				twoargs = false;
+				try {
+					meth = cls.getMethod(method, new Class[]{String.class, Object[].class});
+				} catch (Exception e) {
+				}
+
+				if(meth==null) {
+					meth = cls.getMethod(method, new Class[]{Object[].class});
+					twoargs = false;
+				}
 			}
 
 			try {
@@ -1877,6 +1904,10 @@ public abstract class SeleniumTest {
 					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageToken() : null,
 					___cxt___!=null && ___cxt___.getGatfExecutorConfig()!=null ? ___cxt___.getGatfExecutorConfig().getBrowserApiStorageTokenHosts() : null);
 			try {
+				if (v2 != null) {
+					List<Object> inline = new ArrayList<Object>(java.util.Arrays.asList(nargs).subList(0, args.size()));
+					return v2.execute(new com.gatf.selenium.plugins.sdk.GatfStepPlugin.Call(name, inline, nargs1, state.index==-1?0:state.index, ___cxt___));
+				}
 				return meth.invoke(null, twoargs?new Object[]{name, nargs}:new Object[]{nargs});
 			} finally {
 				com.gatf.executor.core.SessionBridge.restore(prevBridge);

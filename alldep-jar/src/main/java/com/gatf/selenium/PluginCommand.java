@@ -215,7 +215,8 @@ public class PluginCommand extends Command {
 		            String[] parts = signature.split("@");
 		            String clsname = parts[0].trim();
 
-		            Class<?> cls = Class.forName(clsname);
+		            if (signature.startsWith(V2_PLUGIN)) continue;   // M13: SDK plugins document themselves via info()
+		            Class<?> cls = Class.forName(clsname, true, com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader());
 		            Method meth = cls.getMethod("toSampleSelCmd", new Class[]{});
 		            
 		            String[] cmds = (String[])meth.invoke(null, new Object[] {});

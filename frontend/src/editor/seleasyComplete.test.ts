@@ -16,7 +16,7 @@
 import { describe, it, expect } from 'vitest';
 import { EditorState } from '@codemirror/state';
 import { CompletionContext } from '@codemirror/autocomplete';
-import { mkSeleasyCompletion } from './seleasyComplete';
+import { mkSeleasyCompletion, pluginOptions } from './seleasyComplete';
 
 const ctxFor = (doc: string, pos: number, explicit: boolean) =>
   new CompletionContext(EditorState.create({ doc }), pos, explicit);
@@ -33,5 +33,23 @@ describe('mkSeleasyCompletion', () => {
   it('returns null at an empty, non-explicit position', async () => {
     const src = mkSeleasyCompletion(() => null);
     expect(await src(ctxFor('', 0, false))).toBeNull();
+  });
+});
+
+describe('plugin completions', () => {
+  it('offers SDK and plugins.txt plugins with their docs, not names the editor already knows', () => {
+    const opts = pluginOptions(
+      [
+        { name: 'greet', kind: 'sdk', summary: 'Says hello', args: [{ name: 'who', required: true }, { name: 'times' }], examples: ['greet World'], source: 'acme.jar' },
+        { name: 'curl', kind: 'builtin', summary: 'cURL', args: [], examples: [] },
+        { name: 'Bad Name', kind: 'sdk', summary: null, args: [], examples: [] },
+      ],
+      new Set(['curl']),
+    );
+    expect(opts).toHaveLength(1);
+    expect(opts[0]).toMatchObject({ label: 'greet', type: 'function', detail: 'plugin (sdk)', apply: 'greet ' });
+    expect(String(opts[0].info)).toContain('Says hello');
+    expect(String(opts[0].info)).toContain('args: who [times]');
+    expect(String(opts[0].info)).toContain('e.g. greet World');
   });
 });

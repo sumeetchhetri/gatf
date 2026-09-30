@@ -1290,6 +1290,22 @@ Built-in plugins are statements, or values via `var x plugin <name> ...`. Your o
 `name=com.acme.MyPlugin@method`, where the method is `public static Object method(Object[] args)` or
 `public static Object method(String name, Object[] args)`. Entries that don't match are skipped with a warning in the log.
 
+**Plugin SDK v2 (jars, no rebuild).**
+1. Implement `com.gatf.selenium.plugins.sdk.GatfStepPlugin`:
+   - `name()`: the keyword, `[a-z][a-z0-9_-]*`.
+   - `execute(Call)`: `call.args` (inline, expanded like built-ins), `call.block` (block lines), `call.index`, `call.context`. The return value is what `var x plugin <name> …` stores.
+   - optional `info()`: summary, args and examples.
+   - optional `init(context)`.
+2. List the class in `META-INF/services/com.gatf.selenium.plugins.sdk.GatfStepPlugin` and drop the jar into `plugins/`.
+   - The folder is found like `plugins.txt`: under the test-case dir, the base path, or the working dir.
+   - It is re-scanned whenever a script is compiled, so a new or changed jar works without a rebuild or restart.
+
+How names and classes resolve:
+- **Precedence:** built-ins first, then `plugins.txt`, then jars; the first definition of a name wins.
+- **Legacy plugins in jars:** `plugins.txt` classes may also live in a `plugins/` jar.
+- **Editor help:** `GET /api/plugins` lists every plugin with its docs. The web editor and the VS Code extension (`seleasy.gatfUrl`) use it for completion.
+- **Distributed runs:** jars are not shipped to distributed nodes; copy `plugins/` there too.
+
 - `jsonpath` / `xmlpath` take the document and the path in either order. The document may be text or a value from
   `jsonread` / `xmlread`.
 - `jsonwrite` / `xmlwrite` take the file and the object in either order.

@@ -16,6 +16,7 @@
 import { type CompletionContext, type CompletionResult, type Completion } from '@codemirror/autocomplete';
 import { SELEASY } from './seleasyLang';
 import { api } from '../api';
+import type { PluginInfo } from '../api';
 import commandsData from '../config/seleasyCommands.json';
 
 interface CmdMeta {
@@ -50,6 +51,41 @@ const baseOptions: Completion[] = Object.keys(SELEASY)
     return opt;
   });
 
+/** M13: completion entries for the plugins the server knows (built-ins, plugins.txt, plugins/*.jar SDK plugins). */
+export function pluginOptions(list: PluginInfo[], known: Set<string>): Completion[] {
+  return list
+    .filter((p) => p && /^[a-z][\w-]*$/i.test(p.name) && !known.has(p.name))
+    .map((p) => {
+      const args = (p.args || []).map((a) => (a.required ? a.name : '[' + a.name + ']')).join(' ');
+      const info = [p.summary, args ? 'args: ' + args : '', ...(p.usage || []), ...(p.examples || []).map((e) => 'e.g. ' + e)]
+        .filter(Boolean)
+        .join('\n');
+      return { label: p.name, type: 'function', detail: 'plugin (' + p.kind + ')', info: info || undefined, apply: p.name + ' ' };
+    });
+}
+
+// fetched at most every 30 s (a jar dropped into plugins/ shows up without a reload); a failure (older server,
+// offline) leaves the keyword list and is retried on the next completion
+const PLUGIN_TTL_MS = 30_000;
+let pluginCache: { at: number; list: Promise<Completion[]> } | null = null;
+function plugins(): Promise<Completion[]> {
+  if (!pluginCache || Date.now() - pluginCache.at > PLUGIN_TTL_MS) {
+    const known = new Set(baseOptions.map((o) => o.label));
+    const entry = {
+      at: Date.now(),
+      list: api
+        .plugins()
+        .then((l) => pluginOptions(Array.isArray(l) ? l : [], known))
+        .catch(() => {
+          if (pluginCache === entry) pluginCache = null;
+          return [] as Completion[];
+        }),
+    };
+    pluginCache = entry;
+  }
+  return pluginCache.list;
+}
+
 // Build a file-aware completion source. `getPath` yields the current .sel file (for @call subtests).
 export function mkSeleasyCompletion(getPath: () => string | null) {
   return async (ctx: CompletionContext): Promise<CompletionResult | null> => {
@@ -75,6 +111,7 @@ export function mkSeleasyCompletion(getPath: () => string | null) {
 
     const word = ctx.matchBefore(/[@\w-]*/);
     if (!word || (word.from === word.to && !ctx.explicit)) return null;
-    return { from: word.from, options: baseOptions, validFor: /^[@\w-]*$/ };
+    const extra = await plugins();
+    return { from: word.from, options: extra.length ? baseOptions.concat(extra) : baseOptions, validFor: /^[@\w-]*$/ };
   };
 }
