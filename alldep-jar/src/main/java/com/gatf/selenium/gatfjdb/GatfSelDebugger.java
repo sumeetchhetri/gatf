@@ -76,7 +76,7 @@ public class GatfSelDebugger {
 	private volatile Process proc; // debuggee process (an accept()ed VM has no vm.process())
 	private Class debugClass; 
 	private VirtualMachine dvm;
-	private ClassPrepareEvent cpe;
+	private volatile ClassPrepareEvent cpe;   // Δ145a: set by the event thread, read by UI/test threads
 	private Map<String, List<List<Integer[]>>> selToJavaLineMap = null;
 	private Thread eventThr = null;
 	private volatile int running = 1;
@@ -227,7 +227,16 @@ public class GatfSelDebugger {
         classPrepareRequest.enable();
     }
 
+    // Δ145a: user breakpoint changes and the ClassPrepare hand-off (cpe + applyPendingBreakpoints) are atomic with
+    // respect to each other. Before, an unset landing between "cpe = event" and applyPendingBreakpoints() found no
+    // request (returned false) and the pending apply then installed the breakpoint the user had just removed.
+    private final Object bpLock = new Object();
+
     public boolean unsetBreakPoint(int selLineNum) throws AbsentInformationException {
+    	synchronized (bpLock) { return unsetBreakPoint0(selLineNum); }
+    }
+
+    private boolean unsetBreakPoint0(int selLineNum) throws AbsentInformationException {
     	activity.incrementAndGet();
     	if(!stateMap.get(currFile).breaks.contains(selLineNum)) {
     		return false;
@@ -260,6 +269,10 @@ public class GatfSelDebugger {
     }
 
     public boolean setBreakPoint(int selLineNum) throws AbsentInformationException {
+    	synchronized (bpLock) { return setBreakPoint0(selLineNum); }
+    }
+
+    private boolean setBreakPoint0(int selLineNum) throws AbsentInformationException {
     	activity.incrementAndGet();
     	if(stateMap.get(currFile).breaks.contains(selLineNum)) {
     		return true;
@@ -466,9 +479,11 @@ public class GatfSelDebugger {
 		                for (Event event : eventSet) {
 		                    if (event instanceof ClassPrepareEvent) {
 		                    	LOG.debug("ClassPrepareEvent received");
-		                    	dbgIns.cpe = (ClassPrepareEvent)event;
-		                    	dbgIns.applyPendingBreakpoints();
-		                    	dbgIns.setTempBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
+		                    	synchronized (dbgIns.bpLock) {
+		                    		dbgIns.cpe = (ClassPrepareEvent)event;
+		                    		dbgIns.applyPendingBreakpoints();
+		                    		dbgIns.setTempBreakPoint(dbgIns.stateMap.get(dbgIns.currFile).prevLine);
+		                    	}
 		                    	dbgIns.dvm.resume();
 		                    } else if (event instanceof BreakpointEvent) {
 		                    	LOG.debug("BreakpointEvent received");
