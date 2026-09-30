@@ -92,6 +92,8 @@ public class Command {
         boolean isLoginOnceScript = false;
         // M4: the script uses route/unroute: non-Chromium sessions then ask for a BiDi socket (webSocketUrl)
         boolean hasRouteCommand = false;
+        /** M8/M11: emulate / clock need CDP or the BiDi socket (webSocketUrl asked for like route's). */
+        boolean hasEmulateCommand = false;
         // M1: the project's config has autoWait on; codegen then also emits probes for raw Actions drags
         boolean autoWait = false;
 
@@ -950,6 +952,9 @@ public class Command {
             state.hasNetapixCommand = true;
         } else if (cmd.toLowerCase().startsWith("a11y ")) {
             comd = new A11yCommand(state.unsanitize(cmd.substring(5).trim()), cmdDetails, state);   // M10 accessibility
+        } else if (cmd.toLowerCase().startsWith("emulate ")) {
+            comd = new EmulateCommand(state.unsanitize(cmd.substring(8).trim()), cmdDetails, state);   // M8 emulation
+            state.hasEmulateCommand = true;
         } else if (cmd.toLowerCase().startsWith("state ")) {
             comd = new StateCommand(cmd.substring(6).trim(), cmdDetails, state);   // M5 auth state
         } else if (cmd.toLowerCase().startsWith("route ") || cmd.toLowerCase().equals("unroute") || cmd.toLowerCase().startsWith("unroute ")) {
@@ -3533,7 +3538,7 @@ public class Command {
                 config.getProperties().remove("class");
                 config.getProperties().remove("property");
             }
-            if(state.hasRouteCommand) b.append("__route_bidi__();\n");   // M4: before the driver is created
+            if(state.hasRouteCommand || state.hasEmulateCommand) b.append("__route_bidi__();\n");   // M4/M8: before the driver is created
             b.append("/*GATF_ST_DRIVER_INIT_"+(config.getName().toUpperCase())+"*/");
             DriverInitCodegen.append(b, config, rUrl, fileLineDetails);   // G8: per-browser driver-options codegen
             b.append("initBrowser(get___d___(), logconsole, logdebug, lognw, "+state.hasNetapixCommand+");\n");

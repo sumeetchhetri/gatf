@@ -2386,6 +2386,60 @@ public abstract class SeleniumTest {
 		return new File(base, name);
 	}
 
+	/**
+	 * M8/M11: the protocol channel for emulate / clock: CDP when the driver speaks it (local Chromium), else the
+	 * session's WebDriver BiDi socket (Firefox, Grid sessions; codegen asks for webSocketUrl when a script emulates).
+	 */
+	protected com.gatf.selenium.emulation.Emulation.Channel protocolChannel(WebDriver d, String what) {
+		if (d instanceof org.openqa.selenium.chromium.HasCdp) {
+			final org.openqa.selenium.chromium.HasCdp cdp = (org.openqa.selenium.chromium.HasCdp) d;
+			return new com.gatf.selenium.emulation.Emulation.Channel() {
+				public boolean cdp() { return true; }
+				public Map<String, Object> send(String method, Map<String, Object> params) { return cdp.executeCdpCommand(method, params); }
+				public String context() { return null; }
+				public String origin() { return null; }
+			};
+		}
+		if (com.gatf.selenium.trace.BidiRaw.available(d)) {
+			return new com.gatf.selenium.emulation.Emulation.Channel() {
+				public boolean cdp() { return false; }
+				public Map<String, Object> send(String method, Map<String, Object> params) { return com.gatf.selenium.trace.BidiRaw.send(d, method, params); }
+				public String context() { return d.getWindowHandle(); }   // a BiDi browsing-context id is the window handle
+				public String origin() {
+					try {
+						java.net.URI u = java.net.URI.create(d.getCurrentUrl());
+						return u.getScheme() != null && u.getScheme().startsWith("http") && u.getHost() != null
+								? u.getScheme() + "://" + u.getHost() + (u.getPort() > 0 ? ":" + u.getPort() : "") : null;
+					} catch (RuntimeException e) {
+						return null;
+					}
+				}
+			};
+		}
+		throw new RuntimeException(what + ": this browser session has neither CDP (local Chromium) nor a WebDriver BiDi socket (webSocketUrl)");
+	}
+
+	/** M8: permissions granted per driver (CDP replaces the whole set on every grant). */
+	private final Map<WebDriver, java.util.Set<String>> __granted__ = new java.util.IdentityHashMap<WebDriver, java.util.Set<String>>();
+
+	/** M8: {@code emulate …} (device, viewport, geolocation, locale, timezone, permissions, colorscheme, offline, network, reset). */
+	protected void __emulate__(WebDriver d, String spec) {
+		com.gatf.selenium.emulation.Emulation e = com.gatf.selenium.emulation.Emulation.parse(spec);
+		com.gatf.selenium.emulation.Devices.Device dev = null;
+		if (e.needsDevice()) {
+			File custom = state != null && state.basePath != null ? new File(state.basePath, "devices.json") : null;
+			dev = com.gatf.selenium.emulation.Devices.find(e.deviceName(), custom);
+		}
+		String msg;
+		try {
+			msg = e.apply(dev, protocolChannel(d, "emulate " + e.op), __granted__.computeIfAbsent(d, k -> new java.util.LinkedHashSet<String>()));
+		} catch (UnsupportedOperationException x) {
+			throw new RuntimeException(x.getMessage(), x);
+		}
+		__traceAction__("emulate", msg);
+		System.out.println(msg);
+	}
+
 	/** M4: set by codegen when the script uses route/unroute (see addWdm). */
 	private boolean __routeBidi__;
 

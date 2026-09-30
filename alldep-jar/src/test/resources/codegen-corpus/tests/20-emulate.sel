@@ -1,0 +1,16 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M8 emulation: device, viewport, geolocation, locale, timezone, permissions, colour scheme, network.
+open chrome
+emulate device "iPhone 13"
+emulate device "Pixel 7" landscape
+emulate viewport 1024 768
+emulate geolocation 51.5072 -0.1276
+emulate locale de-DE
+emulate timezone Europe/Berlin
+emulate permissions geolocation,notifications
+emulate colorscheme dark
+emulate offline
+emulate online
+emulate network slow3g
+goto https://shop.test/
+emulate reset

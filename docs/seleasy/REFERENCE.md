@@ -108,6 +108,36 @@ Examples :-
 	timeout 60 1 1000
 ```
 
+### Emulate a device, location, locale, time zone, permissions, colour scheme or network (CDP / WebDriver BiDi)
+
+```
+	emulate device {device-name} {optional landscape}
+	emulate viewport {width} {height} {optional scale}
+	emulate geolocation {latitude} {longitude} {optional accuracy}
+	emulate locale {BCP 47 tag}
+	emulate timezone {IANA time zone}
+	emulate permissions {name,name,...}|clear
+	emulate colorscheme dark|light|no-preference
+	emulate offline|online
+	emulate network slow3g|slow4g|fast4g|off|{down kbit/s} {up kbit/s} {latency ms}
+	emulate reset
+Examples :-
+	emulate device "iPhone 13"
+	emulate device "Pixel 7" landscape
+	emulate viewport 1024 768
+	emulate geolocation 51.5072 -0.1276
+	emulate locale de-DE
+	emulate timezone Europe/Berlin
+	emulate permissions geolocation,notifications
+	emulate colorscheme dark
+	emulate offline
+	emulate network slow3g
+	emulate reset
+```
+- **Devices:** a mobile viewport without Appium: viewport, device scale factor, mobile layout, touch and user agent from the bundled descriptors. They include iPhone SE / 13 / 13 Mini / 14 / 14 Pro Max / 15 / 15 Pro Max, iPad Mini / Pro 11, Pixel 5 / 7, Galaxy S9+ / S23 / Tab S4, and Desktop Chrome (HiDPI, 1920x1080). Add or override devices with a `devices.json` in the test-case dir, in the same shape as `gatf-devices/devices.json`. Emulate before `goto`, so the first page load already sees the user agent.
+- **Settings:** `geolocation` also grants the geolocation permission. The names `permissions` accepts are `geolocation`, `notifications`, `camera`, `microphone`, `clipboard-read`, `clipboard-write`, `midi`, `midi-sysex`, `background-sync`, `persistent-storage`, `sensors`, `idle-detection` and `storage-access`. Grants accumulate until `permissions clear` or `reset`. `network` presets follow Chrome DevTools: `slow3g`, `slow4g` (DevTools' former "Fast 3G", also accepted as `fast3g`) and `fast4g`. Custom values are kbit/s down, kbit/s up and ms latency. `online` also ends throttling.
+- **Browsers:** Chromium uses CDP and supports everything. Firefox and Grid sessions use WebDriver BiDi, which covers viewport, user agent, geolocation, locale, time zone, permission grants and offline. Colour scheme, throttling and `permissions clear` need CDP and fail with a message saying so. Touch / mobile flags on BiDi are applied as viewport + user agent, with a note. A BiDi command the browser does not implement yet fails naming it. Scripts that use `emulate` ask for the BiDi socket (`webSocketUrl`) automatically.
+
 ## Navigation, windows, tabs & frames
 
 ### Open URL in window
