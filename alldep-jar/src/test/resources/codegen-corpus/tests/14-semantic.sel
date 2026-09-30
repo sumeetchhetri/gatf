@@ -1,0 +1,16 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// M3 semantic locators: role@ / label@ / placeholder@ / testid@ / alt@ / title@ and exact / regex text@.
+open chrome
+click role@button[name=Save]
+click role@button[name=~sav]
+click role@link[name=/^home$/i]
+?? role@heading[level=2][name='Orders (3)']
+??10 role@checkbox[checked] click
+type 'me@example.com' label@'Email address'
+type 'shoes' placeholder@~search
+click testid@save-btn
+?? alt@'Company logo'
+click title@=Close
+?? text@'=Order placed'
+?? text@'/order (placed|shipped)/i'
+?? role@heading[name=Welcome] text ='Welcome back'

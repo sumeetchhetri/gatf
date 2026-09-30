@@ -23,6 +23,7 @@ subtest "login"                               // reusable, individually reported
 - **Web-first assertions:** with `webFirstAssertions` set in the executor config, an assertion whose element is found but whose condition is false (`?? css@h1 text ="Welcome"`, `?? id@count text != "0"`) is retried until `assertTimeout` ms (default 5000). Without the setting the assertion fails at once, as before.
 - **Soft assertions:** `??~` (optionally `??~N`) asserts like `??` but a failure is recorded instead of stopping the script; the script or subtest fails at the end, listing every soft failure with its file and line.
 - **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`). The opt-out applies to that line only.
+- **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots; role queries skip hidden elements. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates.
 - **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
 - **Comments:** `// line` and `/* block */`.
 
@@ -221,7 +222,13 @@ Examples :-
 ### Find Expression
 
 ```
-	{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+	{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|role|label|placeholder|testid|alt|title|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
+	semantic: role@button[name=Save][level=N][checked] label@Email placeholder@Search testid@id alt@Logo title@Close text@=exact text@/regex/i
+	value: plain = whole text, case-insensitive | ~x = contains | =x = exact | /re/flags = regex
+Examples :-
+	click role@button[name=Save]
+	type 'me@example.com' label@'Email address'
+	?? text@'=Order placed'
 ```
 
 ### Value
@@ -250,9 +257,11 @@ Examples :-
 	??(+|-) {find-expr}
 	'+' - wait till element is visible
 	'-' - wait till element is not visible
+	??~ {find-expr} {assertion} - soft assertion: a failure is recorded, the script continues and fails at the end
 Examples :-
 	??+ id@'eleid'
 	??- id@'eleid'
+	??~ css@'h1' text ='Welcome'
 ```
 
 ### Sleep for milliseconds

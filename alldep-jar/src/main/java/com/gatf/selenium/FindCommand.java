@@ -84,7 +84,13 @@ public class FindCommand extends Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
         		"Find Expression",
-        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\t{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|role|label|placeholder|testid|alt|title|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}",
+        		"\tsemantic: role@button[name=Save][level=N][checked] label@Email placeholder@Search testid@id alt@Logo title@Close text@=exact text@/regex/i",
+        		"\tvalue: plain = whole text, case-insensitive | ~x = contains | =x = exact | /re/flags = regex",
+        		"Examples :-",
+        		"\tclick role@button[name=Save]",
+        		"\ttype 'me@example.com' label@'Email address'",
+        		"\t?? text@'=Order placed'",
             };
         }
         FindCommand(String val, Object[] cmdDetails, CommandState state) {
@@ -189,8 +195,16 @@ public class FindCommand extends Command {
 								//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
 							}
 	                    }
-	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector") || classifier.isEmpty()) {
-	                		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector}@expr`"));
+	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector|role|label|placeholder|testid|alt|title") || classifier.isEmpty()) {
+	                		throwError(cmdDetails, new RuntimeException("Invalid selector, should confirm to `{id|name|class|classname|tag|tagname|xpath|text||partiallinktext|linktext|jquery|jq|$|css|cssselector|role|label|placeholder|testid|alt|title}@expr`"));
+	                	}
+	                	// M3: a semantic locator is checked when the script is compiled (unless it holds a runtime variable)
+	                	if(SemanticLocators.isSemantic(by, classifier) && classifier.indexOf('$')==-1) {
+	                		try {
+	                			SemanticLocators.parse(by, classifier);
+	                		} catch (IllegalArgumentException e) {
+	                			throwError(cmdDetails, new RuntimeException(e.getMessage()));
+	                		}
 	                	}
 	                } else {
 	                	by = parts[0];

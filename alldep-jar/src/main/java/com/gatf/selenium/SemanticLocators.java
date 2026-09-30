@@ -133,6 +133,12 @@ public final class SemanticLocators {
         return s;
     }
 
+    /** Thrown when a strict semantic locator matches more than one element; never retried or swallowed by waits. */
+    public static final class StrictViolation extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+        public StrictViolation(String message) { super(message); }
+    }
+
     /** The strict-mode failure: the locator matched {@code count} elements (first few described). */
     public static String strictViolation(String locator, List<String> candidates) {
         StringBuilder b = new StringBuilder("Strict locator " + locator + " matched " + candidates.size() + " elements");

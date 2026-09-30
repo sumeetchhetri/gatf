@@ -134,7 +134,7 @@
     "selectors": {
       "patterns": [
         {
-          "match": "(?<![\\w-])(id|css|xpath|class|name|tag|text|cssselector|linktext|partiallinktext|jq|jquery|cssvalue|attr|active|relative|near|above|below|leftof|rightof)(@)",
+          "match": "(?<![\\w-])(id|css|xpath|class|name|tag|text|cssselector|linktext|partiallinktext|role|label|placeholder|testid|alt|title|jq|jquery|cssvalue|attr|active|relative|near|above|below|leftof|rightof)(@)",
           "captures": {
             "1": {
               "name": "entity.name.tag.selector.seleasy"

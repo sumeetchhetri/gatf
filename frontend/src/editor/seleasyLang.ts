@@ -33,6 +33,7 @@ export const SELEASY: Record<string, Style> = {
   '@window': 3, '@element': 3, '@sc': 3, '@printprovjson': 3, '@printProv': 3, '@index': 3, '@line': 3,
   '@cntxtparam': 3, pass: 1, fail: 1, warn: 1, dynprops: 1, maximize: 1, include: 1, config: 1, xpath: 3,
   css: 3, id: 3, name: 3, class: 3, tag: 3, cssselector: 3, text: 3, partiallinktext: 3, linktext: 3,
+  role: 3, label: 3, placeholder: 3, testid: 3, alt: 3,
   jq: 3, jquery: 3, active: 3, this: 3, current: 3, var: 1, robot: 1, type: 3, click: 3, back: 1,
   forward: 1, refresh: 1, clear: 3, submit: 3, setting: 1, window: 1, frame: 1, tab: 1, jsvar: 1,
   execjs: 1, screenshot: 1, 'ele-screenshot': 1, hoverclick: 3, actions: 1, chord: 3, provider: 1,

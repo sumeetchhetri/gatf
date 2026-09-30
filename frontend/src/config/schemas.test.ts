@@ -54,6 +54,11 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.assertTimeout.type).toBe('integer');
   });
 
+  it('executor schema exposes the M3 semantic locator settings', () => {
+    expect(executorSchema.properties!.testIdAttribute.type).toBe('string');
+    expect(executorSchema.properties!.strictLocators.type).toBe('boolean');
+  });
+
   it('generator schema is a non-empty object', () => {
     expect(generatorSchema.type).toBe('object');
     expect(Object.keys(generatorSchema.properties ?? {}).length).toBeGreaterThan(0);

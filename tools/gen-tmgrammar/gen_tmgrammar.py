@@ -100,7 +100,7 @@ def build_grammar(cmds):
     # selector prefixes (id@ css@ …) and @-directives — kept explicit; they take precedence over
     # the bare-keyword rule by ordering.
     selectors = (
-        "id|css|xpath|class|name|tag|text|cssselector|linktext|partiallinktext|"
+        "id|css|xpath|class|name|tag|text|cssselector|linktext|partiallinktext|role|label|placeholder|testid|alt|title|"
         "jq|jquery|cssvalue|attr|active|relative|near|above|below|leftof|rightof"
     )
     atdirs = (

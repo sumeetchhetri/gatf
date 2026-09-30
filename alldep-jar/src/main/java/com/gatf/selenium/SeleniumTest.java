@@ -1862,7 +1862,9 @@ public abstract class SeleniumTest {
 		}
 		
 		List< WebElement> el = null;
-		if(by.equalsIgnoreCase("id")) {
+		if(SemanticLocators.isSemantic(by, classifier)) {
+			el = semanticElements(d, sc, by, classifier);
+		} else if(by.equalsIgnoreCase("id")) {
 			el = By.id(classifier).findElements(sc);
 		} else if(by.equalsIgnoreCase("name")) {
 			el = By.name(classifier).findElements(sc);
@@ -1917,6 +1919,29 @@ public abstract class SeleniumTest {
 		return el;
 	}
 	
+	/** M3: {testIdAttribute, strict ("true"/"false")} for this thread's script; refreshed on every element search. */
+	private static final ThreadLocal<String[]> SEMANTIC_OPTS = new ThreadLocal<String[]>();
+
+	/** M3: resolve a semantic locator in the page (see {@link SemanticLocators}); strict mode fails on more than one match. */
+	@SuppressWarnings("unchecked")
+	protected static List<WebElement> semanticElements(WebDriver d, SearchContext sc, String by, String classifier) {
+		if(!(d instanceof JavascriptExecutor)) {
+			throw new IllegalStateException("Semantic locator " + by + "@" + classifier + " needs a driver that can run JavaScript");
+		}
+		String[] opts = SEMANTIC_OPTS.get();
+		String tid = opts != null && StringUtils.isNotBlank(opts[0]) ? opts[0] : SemanticLocators.DEFAULT_TEST_ID_ATTRIBUTE;
+		boolean strict = opts != null && "true".equals(opts[1]);
+		Object root = sc instanceof WebElement ? sc : null;
+		Object r = ((JavascriptExecutor)d).executeScript(SemanticLocators.RESOLVER_JS, root, SemanticLocators.parse(by, classifier), tid);
+		if(!(r instanceof Map)) return new ArrayList<WebElement>();
+		Map<String, Object> m = (Map<String, Object>)r;
+		List<WebElement> els = m.get("els") instanceof List ? new ArrayList<WebElement>((List<WebElement>)m.get("els")) : new ArrayList<WebElement>();
+		if(strict && els.size() > 1) {
+			throw new SemanticLocators.StrictViolation(SemanticLocators.strictViolation(by + "@" + classifier, SemanticLocators.strings(m.get("desc"))));
+		}
+		return els;
+	}
+
 	private static By getBy(WebDriver d, String finder) {
 		finder = finder.trim();
 		String by = finder.substring(0, finder.indexOf("@")).trim();
@@ -2643,6 +2668,9 @@ public abstract class SeleniumTest {
 		final WebDriver wsc = (WebDriver) sc;
 		final Object[] o = new Object[2];
 		long timeoutRemaining = 0;
+		GatfExecutorConfig __semcfg__ = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;   // M3 semantic locator options
+		SEMANTIC_OPTS.set(new String[] { __semcfg__ == null ? null : __semcfg__.getTestIdAttribute(),
+				String.valueOf(__semcfg__ != null && __semcfg__.strictLocatorsEnabled()) });
 		initJs(driver);
 		System.out.println("Searching element => " + by[0]+"@"+classifier[0]);
 		if(timeOutInSeconds<=0) {
@@ -2682,6 +2710,8 @@ public abstract class SeleniumTest {
 								return true;
 							}
 							return false;
+						} catch(SemanticLocators.StrictViolation sv) {
+							throw sv;   // M3: ambiguity is not a timing problem: fail now with the candidates
 						} catch(Exception e) {
 							return false;
 						}

@@ -2520,14 +2520,14 @@ public class Command {
         public static String[] toSampleSelCmd() {
         	return new String[] {
 				"Read text from a QR code or a Bar code",
-				"\treadqrbar {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
-				"\tqrcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
-				"\tbarcode {varname} {element-selector} {optional image-file-path-to-save-screenshot-to}",
+				"\treadqrbar {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}",
+				"\tqrcode {element-selector} {varname}  {optional image-file-path-to-save-screenshot-to}",
+				"\tbarcode {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}",
 				"Examples :-",
-	    		"\treadqrbar somevar id@'eleid'",
-	    		"\tqrcode somevar id@'eleid'",
-	    		"\tbarcode somevar id@'eleid'",
-	    		"\treadqrbar captchatext id@'eleid' '/path/to/image/file/file.png'"
+	    		"\treadqrbar id@'eleid' somevar",
+	    		"\tqrcode id@'eleid' somevar",
+	    		"\tbarcode id@'eleid' somevar",
+	    		"\treadqrbar id@'eleid' captchatext '/path/to/image/file/file.png'"
             };
         }
     }

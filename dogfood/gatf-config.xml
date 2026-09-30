@@ -15,6 +15,7 @@
   <actionTimeout>5000</actionTimeout>
   <webFirstAssertions>true</webFirstAssertions>
   <assertTimeout>5000</assertTimeout>
+  <strictLocators>true</strictLocators>
   <gatfTestDataConfig>
     <globalVariables/>
   </gatfTestDataConfig>

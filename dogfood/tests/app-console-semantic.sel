@@ -1,0 +1,27 @@
+// ── Dogfood: the console again, located only by role / label / test id (M3) ──
+// Same walk as app-console.sel without CSS or XPath: role@ (accessible role + name),
+// testid@ (data-testid on the nav tabs) and label@ (the theme toggle's aria-label).
+// strictLocators is on in dogfood/run.sh, so an ambiguous locator fails with the candidates.
+
+open chrome
+maximize
+
+config app.props             // -> ${appUrl}
+goto ${appUrl}
+
+click role@button[name=Config]
+?? role@heading[name=Configuration]
+
+click testid@nav-testfiles
+?? role@heading[name='Test files']
+
+click role@button[name=Execute]
+?? role@heading[level=2][name=Execute]
+
+click testid@nav-reports
+?? role@heading[name=Reports]
+
+click label@'Toggle theme'
+click label@'Toggle theme'
+
+close

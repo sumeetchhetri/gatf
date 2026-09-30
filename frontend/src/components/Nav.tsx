@@ -69,6 +69,7 @@ export default function Nav({
         {TABS.map((t) => (
           <button
             key={t.key}
+            data-testid={'nav-' + t.key}
             className={'nav-tab' + (active === t.key ? ' on' : '')}
             onClick={() => onNavigate(t.key)}
           >
@@ -89,6 +90,7 @@ export default function Nav({
               {MORE.map((m) => (
                 <button
                   key={m.key}
+                  data-testid={'nav-' + m.key}
                   className={'nav-more-item' + (active === m.key ? ' on' : '')}
                   role="menuitem"
                   onClick={() => {

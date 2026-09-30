@@ -29,6 +29,7 @@ describe('SELEASY keyword map', () => {
     expect(SELEASY['@call']).toBe(1);
     expect(SELEASY['css']).toBe(3);
     expect(SELEASY['xpath']).toBe(3);
+    for (const p of ['role', 'label', 'placeholder', 'testid', 'alt', 'title']) expect(SELEASY[p]).toBe(3);   // M3 semantic locators
     expect(SELEASY['chrome']).toBe(3);
     expect(SELEASY['==']).toBe(4);
     expect(SELEASY['??']).toBe(1);          // conditional wait

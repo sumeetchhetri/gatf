@@ -61,8 +61,10 @@ cat > "${CONFIG}" <<XML
   <traceSnapshots>true</traceSnapshots>
   <autoWait>true</autoWait>
   <webFirstAssertions>true</webFirstAssertions>
+  <strictLocators>true</strictLocators>
   <seleniumScripts>
     <string>app-console.sel</string>
+    <string>app-console-semantic.sel</string>
   </seleniumScripts>
   <seleniumDriverConfigs>
     <seleniumDriverConfig>

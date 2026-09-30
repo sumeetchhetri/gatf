@@ -279,6 +279,14 @@ export const executorSchema: CfgSchema = {
     "assertTimeout": {
       "type": "integer"
     },
+    // M3: attribute read by testid@ locators (blank = data-testid); strictLocators = a semantic locator
+    // matching more than one element fails and lists the candidates.
+    "testIdAttribute": {
+      "type": "string"
+    },
+    "strictLocators": {
+      "type": "boolean"
+    },
     "seleniumScripts": {
       "type": "array",
       "items": {

@@ -108,6 +108,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// null = legacy behaviour (off); new configs set it true.
 	private Boolean webFirstAssertions;
 	private Long assertTimeout;
+	// M3: attribute read by testid@ locators (null = data-testid); strictLocators = a semantic locator matching
+	// more than one element fails and lists the candidates (null/false = first match, as before).
+	private String testIdAttribute;
+	private Boolean strictLocators;
 	private boolean traceNetwork = true;
 	private boolean traceConsole = true;
 	private boolean traceSnapshots = true;
@@ -544,6 +548,12 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	/** M2: retrying (web-first) assertions on? Absent (null) keeps the legacy fail-at-once behaviour. Not a bean property. */
 	public boolean webFirstAssertionsEnabled() { return Boolean.TRUE.equals(webFirstAssertions); }
 	/** M2: per-assertion retry budget in ms (default 5000). Not a bean property. */
+	public String getTestIdAttribute() { return testIdAttribute; }
+	public void setTestIdAttribute(String testIdAttribute) { this.testIdAttribute = testIdAttribute; }
+	public Boolean getStrictLocators() { return strictLocators; }
+	public void setStrictLocators(Boolean strictLocators) { this.strictLocators = strictLocators; }
+	/** M3: strict semantic locators on? Not a bean property. */
+	public boolean strictLocatorsEnabled() { return Boolean.TRUE.equals(strictLocators); }
 	public long effectiveAssertTimeoutMs() { return assertTimeout != null && assertTimeout > 0 ? assertTimeout : com.gatf.selenium.WebFirst.DEFAULT_ASSERT_TIMEOUT_MS; }
 	public String getTraceProtocol() { return traceProtocol; }
 	public void setTraceProtocol(String traceProtocol) { this.traceProtocol = traceProtocol; }
