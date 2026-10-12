@@ -169,6 +169,150 @@ class PickLocatorTest {
         }
     }
 
+    // ---- Δ148a ------------------------------------------------------------------------------------------------
+
+    @Test
+    void velocityAndControlCharactersAreNeverExpressible() {
+        // the orchestrator's repro: a forged strict css fallback with '$' used to come back as `click css@"a$x"`
+        PickLocator.Reply r = post("{\"sel\":{\"s\":\"css\",\"v\":\"a$x\",\"n\":1}}");
+        assertEquals(200, r.status);
+        assertNull(r.body.get("locator"));
+        assertNull(r.body.get("line"));
+        assertEquals(Boolean.FALSE, r.body.get("strict"));
+        for (String v : new String[] { "$x", "${x}", "$!x", "a$", "#set(", "x#if(y)", "#foreach", "a\rb", "a\tb", "a\u0000b", "a\u007fb",
+                "a\u0085b", "a\u2028b", "a\u2029b", "a\nb" }) {
+            assertTrue(com.gatf.selenium.LocatorRanking.unsafe(v), v);
+            for (String k : new String[] { "testid", "label" }) assertNull(com.gatf.selenium.LocatorRanking.render(cand(k, v, 1)), k + " " + v);
+            assertNull(com.gatf.selenium.LocatorRanking.render(cand("role", "button|" + v, 1)), "role " + v);
+            for (String k : new String[] { "id", "name", "css", "xpath" }) assertNull(PickLocator.selector(sel(k, v, 1)), k + " " + v);
+        }
+        for (String v : new String[] { "Item #5", "a # b", "50%", "C:\\x", "Größe" }) assertFalse(com.gatf.selenium.LocatorRanking.unsafe(v), v);
+        // a semantic candidate that is unsafe falls through to a safe one
+        Map<String, Object> rk = PickLocator.rank(Arrays.asList(cand("testid", "$x", 1), cand("role", "button|Save", 1)), sel("id", "a$b", 1));
+        assertEquals("role@button[name=Save]", rk.get("locator"));
+    }
+
+    @Test
+    void theRecorderNeverWritesAnUnsafeStep() {
+        RecordSession s = new RecordSession("t", null);
+        Map<String, Object> a = new LinkedHashMap<String, Object>();
+        a.put("type", "click");
+        a.put("sel", sel("name", "ctl00$main$go", 1));
+        s.ingest(a);
+        Map<String, Object> b = new LinkedHashMap<String, Object>();
+        b.put("type", "evil\r#set($x=1)");
+        b.put("sel", sel("css", "a$x", 1));
+        s.ingest(b);
+        Map<String, Object> c = new LinkedHashMap<String, Object>();
+        c.put("type", "click");
+        c.put("sel", sel("id", "ok", 1));
+        c.put("cand", Arrays.asList(cand("label", "#if(x)", 1)));
+        s.ingest(c);
+        List<String> l = s.currentLines();
+        assertEquals(2, l.size(), String.valueOf(l));
+        assertTrue(l.get(0).startsWith("// GATF record: a click step was skipped"), l.get(0));
+        assertEquals("click id@ok", l.get(1));
+        for (String line : l) {
+            assertFalse(line.contains("$") || line.matches("(?s).*#[A-Za-z].*") || line.matches("(?s).*[\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029].*"), line);
+        }
+    }
+
+    @Test
+    void onlyAWholeOneIsStrict() {
+        for (Object n : new Object[] { 1.9d, 1.0000001d, 4294967297L, -1, 0, 2, "1", null, Double.NaN, new java.math.BigInteger("4294967297"), 1.5f }) {
+            Map<String, Object> rk = PickLocator.rank(Arrays.asList(withN(cand("testid", "go", 1), n)), withN(sel("id", "go", 1), n));
+            assertNull(rk.get("locator"), "n=" + n);
+        }
+        for (Object n : new Object[] { 1, 1L, 1.0d, 1.0f, (short) 1, java.math.BigInteger.ONE, new java.math.BigDecimal("1.00") }) {
+            assertEquals("testid@go", PickLocator.rank(Arrays.asList(withN(cand("testid", "go", 1), n)), null).get("locator"), "n=" + n);
+            assertEquals("id@go", PickLocator.rank(null, withN(sel("id", "go", 1), n)).get("locator"), "n=" + n);
+        }
+        assertNull(post("{\"cand\":[{\"s\":\"testid\",\"v\":\"go\",\"n\":1.9}]}").body.get("locator"));
+        assertNull(post("{\"cand\":[{\"s\":\"testid\",\"v\":\"go\",\"n\":4294967297}]}").body.get("locator"));
+        assertEquals("testid@go", post("{\"cand\":[{\"s\":\"testid\",\"v\":\"go\",\"n\":1}]}").body.get("locator"));
+    }
+
+    private static Map<String, Object> withN(Map<String, Object> m, Object n) {
+        m.put("n", n);
+        return m;
+    }
+
+    @Test
+    void aDrainedPickIsBounded() {
+        List<Object> many = new ArrayList<Object>();
+        StringBuilder big = new StringBuilder();
+        for (int i = 0; i < 5000; i++) big.append('x');
+        for (int i = 0; i < 1000; i++) many.add(cand("testid", "t" + i + big, 1));
+        Map<String, Object> p = new LinkedHashMap<String, Object>();
+        p.put("type", "pick");
+        p.put("cand", many);
+        p.put("sel", sel("css", big.toString(), 1));
+        Map<String, Object> b = PickLocator.boundedPick(p);
+        assertEquals(PickLocator.MAX_CANDIDATES, ((List<?>) b.get("cand")).size());
+        for (Object o : (List<?>) b.get("cand")) assertEquals(com.gatf.selenium.LocatorRanking.MAX_TEXT + 1, ((String) ((Map<?, ?>) o).get("v")).length());
+        assertEquals(PickLocator.MAX_SELECTOR + 1, ((String) ((Map<?, ?>) b.get("sel")).get("v")).length());
+        assertEquals(-1, ((Map<?, ?>) b.get("sel")).get("n"));   // a cut selector is another selector: its count is void
+        RecordSession s = new RecordSession("t", null);
+        s.ingestPick(p);
+        assertNull(s.lastPick().get("locator"));                  // nothing cut can become a locator
+        assertEquals(PickLocator.MAX_CANDIDATES, ((List<?>) s.lastPick().get("candidates")).size());
+        // a long but whole css path (common) is kept and still strict
+        Map<String, Object> q = new LinkedHashMap<String, Object>();
+        q.put("type", "pick");
+        q.put("sel", sel("css", "div.container > div:nth-of-type(2) > ul.list > li:nth-of-type(3) > a.item", 1));
+        s.ingestPick(q);
+        assertEquals("click css@\"div.container > div:nth-of-type(2) > ul.list > li:nth-of-type(3) > a.item\"", s.lastPick().get("line"));
+    }
+
+    /** A fake driver: the poller's scripts, with the page's queued picks as DRAIN_JS results. */
+    private static final class FakePage implements java.lang.reflect.InvocationHandler {
+        final java.util.ArrayDeque<Object> drains = new java.util.ArrayDeque<Object>();
+        final List<String> ran = new ArrayList<String>();
+        public Object invoke(Object proxy, java.lang.reflect.Method m, Object[] args) {
+            if (m.getName().equals("executeScript")) {
+                String js = (String) args[0];
+                ran.add(js.equals(PickLocator.DRAIN_JS) ? "drain" : js.equals(PickLocator.OFF_JS) ? "off" : js.startsWith("(function(){if(window.__gatfPicker)return;") ? "arm" : "other");
+                return js.equals(PickLocator.DRAIN_JS) ? (drains.isEmpty() ? new ArrayList<Object>() : drains.poll()) : null;
+            }
+            return null;
+        }
+    }
+
+    private static Map<String, Object> pickOf(String testid) {
+        Map<String, Object> p = new LinkedHashMap<String, Object>();
+        p.put("type", "pick");
+        p.put("cand", Arrays.asList(cand("testid", testid, 1)));
+        p.put("sel", null);
+        return p;
+    }
+
+    @Test
+    void aPickQueuedBeforeArmingIsDiscarded() throws Exception {
+        RecordSession s = new RecordSession("t", null);
+        FakePage page = new FakePage();
+        Object driver = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] { org.openqa.selenium.WebDriver.class, org.openqa.selenium.JavascriptExecutor.class }, page);
+        java.lang.reflect.Field d = RecordSession.class.getDeclaredField("driver");
+        d.setAccessible(true);
+        d.set(s, driver);
+        java.lang.reflect.Field run = RecordSession.class.getDeclaredField("running");
+        run.setAccessible(true);
+        run.setBoolean(s, true);
+        assertTrue(s.armPicker(true));
+        page.drains.add(Arrays.asList(pickOf("forged")));         // the page queued this before the user armed
+        s.pickTick();
+        assertNull(s.lastPick());
+        assertTrue(s.isPickerArmed());
+        page.drains.add(Arrays.asList(pickOf("first"), pickOf("real")));   // two after arming: only the last counts
+        s.pickTick();
+        assertEquals("click testid@real", s.lastPick().get("line"));
+        assertFalse(s.isPickerArmed());
+        page.drains.add(Arrays.asList(pickOf("late")));           // after the pick disarmed it: the poller no longer reads picks
+        s.pickTick();
+        assertEquals("click testid@real", s.lastPick().get("line"));
+        assertEquals(Arrays.asList("drain", "arm", "drain", "off"), page.ran);   // no re-arm after the pick, OFF exactly once
+    }
+
     @SuppressWarnings("unchecked")
     static List<Map<String, Object>> vectors() throws Exception {
         File f = new File("src/test/resources/pick-locator/escape-vectors.json");

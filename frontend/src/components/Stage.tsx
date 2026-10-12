@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Trace, SnapshotRef } from '../trace/types';
 import { actionSnapshots } from '../trace/loadTrace';
-import { rebuildSnapshot, type Rebuilt } from '../trace/rebuild';
+import { rebuildSnapshot, MAX_SRCDOC_FRAMES, type Rebuilt } from '../trace/rebuild';
 import { SnapshotPicker } from './SnapshotPicker';
 
 export type StageMode = 'video' | 'dom' | 'screenshot';
@@ -218,6 +218,7 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
         ) : (
           <>Lite snapshot (outerHTML){st.sheets ? `, ${st.sheets} stylesheet${st.sheets === 1 ? '' : 's'} from captured network bodies` : ''}. Use the Screenshot view for pixel-accurate state.</>
         )}
+        {st.droppedFrames > 0 && ` ${st.droppedFrames} nested frame${st.droppedFrames === 1 ? '' : 's'} over the ${MAX_SRCDOC_FRAMES}-frame cap left empty.`}
         {(st.missingImages > 0 || st.missingSheets > 0) && (
           <>
             {' '}

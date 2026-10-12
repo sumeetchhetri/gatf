@@ -734,3 +734,55 @@ describe('guardHtml hardening (Δ147e)', () => {
     expect(SNAPSHOT_CSP).toMatch(/^default-src 'none'/);
   });
 });
+
+// Δ148a probes (from the Δ147e review): the guard runs once, at the top (it already recurses into every srcdoc), and
+// a snapshot keeps at most MAX_SRCDOC_FRAMES srcdoc documents; the rest are dropped and counted.
+describe('srcdoc cost (Δ148a)', () => {
+  const lite = (html: string) => {
+    const t = parseFiles({
+      'snapshots/s.html': strToU8(html),
+      'snapshots.ndjson': strToU8(JSON.stringify({ n: 1, ts: 1, label: null, html: 'snapshots/s.html', screenshot: null }) + '\n'),
+    });
+    return rebuildSnapshot(t, t.snapshots[0], { toUrl: (p: string) => `blob:test/${p}` })!;
+  };
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const nest = (levels: number, leaf: string) => {
+    let h = leaf;
+    for (let k = 0; k < levels; k++) h = `<html><body><p>L${levels - k}</p><iframe class="f" srcdoc="${esc(h)}"></iframe></body></html>`;
+    return h;
+  };
+  const docs = (html: string): number => {
+    const d = parse(html);
+    let n = 0;
+    for (const f of Array.from(d.querySelectorAll('iframe[srcdoc]'))) n += 1 + docs(f.getAttribute('srcdoc')!);
+    return n;
+  };
+
+  it('30 frames x 3 levels rebuild in under 2 s, capped at MAX_SRCDOC_FRAMES documents, with the drop counted', () => {
+    const one = nest(3, '<p>leaf<script>x()</script></p>');
+    const body = Array.from({ length: 30 }, () => `<div>${one.replace(/^<html><body>|<\/body><\/html>$/g, '')}</div>`).join('');
+    const t0 = performance.now();
+    const r = lite(`<html><body>${body}</body></html>`);
+    const ms = performance.now() - t0;
+    expect(ms).toBeLessThan(2000);
+    expect(rebuildMod.MAX_SRCDOC_FRAMES).toBe(64);
+    expect(docs(r.html)).toBe(64);
+    // depth-first: chains 1-21 use 63 documents, chain 22 its first (64th); its level 2 and chains 23-30 are dropped
+    expect(r.stats.droppedFrames).toBe(1 + 8);
+    expect(r.stats.guardFixes).toBe(0);
+    expect(r.html).not.toMatch(/&lt;script|<script/);
+  });
+
+  it('nested documents are guarded once, by the top-level guard', () => {
+    const spy = vi.spyOn(DOMParser.prototype, 'parseFromString');
+    lite(nest(3, '<p>leaf</p>'));
+    // 4 rebuild parses (top + 3 levels) + the top guard's 4 (top + its recursion); Δ148 guarded at every depth too (10)
+    expect(spy.mock.calls.length).toBe(8);
+    spy.mockRestore();
+  });
+
+  it('a hostile nested srcdoc is still cleaned (the top guard reaches every level)', () => {
+    const r = lite(nest(2, '<a href="http://evil.test/x">x</a><img src="http://evil.test/i.png"><iframe src="blob:x"></iframe>'));
+    expect(r.html).not.toMatch(/evil\.test|blob:x/);
+  });
+});

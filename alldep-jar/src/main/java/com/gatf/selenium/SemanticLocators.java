@@ -187,6 +187,38 @@ public final class SemanticLocators {
         return count == 1;
     }
 
+    /**
+     * Δ148a: a match count as reported by a page or a request body; -1 unless it is a whole number in 0..MAX_INT, so
+     * 1.9 or 4294967297 (which {@code intValue()} turns into 1) never pass {@link #resolvesStrictly}.
+     */
+    public static int matchCount(Object n) {
+        if (n instanceof Integer || n instanceof Short || n instanceof Byte) {
+            int i = ((Number) n).intValue();
+            return i >= 0 ? i : -1;
+        }
+        if (n instanceof Long) {
+            long l = (Long) n;
+            return l >= 0 && l <= Integer.MAX_VALUE ? (int) l : -1;
+        }
+        if (n instanceof Double || n instanceof Float) {
+            double d = ((Number) n).doubleValue();
+            return d >= 0 && d <= Integer.MAX_VALUE && d == Math.rint(d) ? (int) d : -1;
+        }
+        if (n instanceof java.math.BigInteger) {
+            java.math.BigInteger b = (java.math.BigInteger) n;
+            return b.signum() >= 0 && b.bitLength() < 32 ? b.intValue() : -1;
+        }
+        if (n instanceof java.math.BigDecimal) {
+            try {
+                int i = ((java.math.BigDecimal) n).intValueExact();
+                return i >= 0 ? i : -1;
+            } catch (ArithmeticException e) {
+                return -1;
+            }
+        }
+        return -1;
+    }
+
     /** The strict-mode failure: the locator matched {@code candidates.size()} elements (first few described). */
     public static String strictViolation(String locator, List<String> candidates) {
         return strictViolation(locator, candidates, candidates.size());

@@ -99,6 +99,7 @@ public class RecordSession {
     private final String pickArmJs;
     private volatile boolean pickArmed = false;
     private volatile boolean pickOffPending = false;
+    private volatile boolean pickFresh = false;   // Δ148a: the first drain after arming is discarded (pre-queued by the page)
     private volatile Map<String, Object> lastPick = null;
     private int pickSeq = 0;
 
@@ -201,14 +202,16 @@ public class RecordSession {
 
     // Δ148: drain picks first, then (re)arm into the current document, or take the picker out of it once disarmed
     @SuppressWarnings("unchecked")
-    private void pickTick() {
+    void pickTick() {   // package-private for PickLocatorTest
         if (!pickArmed && !pickOffPending) return;
         JavascriptExecutor js = (JavascriptExecutor) driver;
         Object raw = js.executeScript(PickLocator.DRAIN_JS);
-        if (raw instanceof List) {
-            for (Object o : (List<Object>) raw) {
-                if (o instanceof Map) ingestPick((Map<String, Object>) o);
-            }
+        boolean fresh = pickFresh;
+        pickFresh = false;
+        if (raw instanceof List && pickArmed && !fresh) {   // Δ148a: nothing queued before arming, nothing after a disarm
+            List<Object> l = (List<Object>) raw;
+            Object last = l.isEmpty() ? null : l.get(l.size() - 1);
+            if (last instanceof Map) ingestPick((Map<String, Object>) last);
         }
         if (pickArmed) {
             js.executeScript(pickArmJs);   // idempotent; re-installs after a navigation
@@ -224,6 +227,7 @@ public class RecordSession {
         if (on) {
             pickArmed = true;
             pickOffPending = false;
+            pickFresh = true;
         } else if (pickArmed || pickOffPending) {
             pickArmed = false;
             pickOffPending = true;
@@ -237,7 +241,8 @@ public class RecordSession {
     public Map<String, Object> lastPick() { return lastPick; }
 
     // one drained picker event: a pick is ranked (testid → role → label → strict fallback); either kind disarms
-    synchronized void ingestPick(Map<String, Object> p) {
+    synchronized void ingestPick(Map<String, Object> raw) {
+        Map<String, Object> p = PickLocator.boundedPick(raw);   // Δ148a: at most 16 candidates, short strings
         Map<String, Object> out = new java.util.LinkedHashMap<String, Object>();
         out.put("seq", ++pickSeq);
         boolean cancel = "cancel".equals(str(p.get("type")));
@@ -293,6 +298,11 @@ public class RecordSession {
         Map<String, Object> sel = a.get("sel") instanceof Map ? (Map<String, Object>) a.get("sel") : null;
         // M3: testid → role → label when unique in the page, else the legacy id → name → css → xpath
         String selector = com.gatf.selenium.LocatorRanking.choose(a.get("cand") instanceof List ? (List<Object>) a.get("cand") : null, PickLocator.selector(sel));
+        // Δ148a: a step whose only locator is unsafe ('$', a Velocity directive, a control char) is not written; a fixed
+        // comment marks the gap so the script is not silently missing an action (the value itself is never echoed)
+        if (selector == null && PickLocator.unsafeSelector(sel) && type.matches("click|submit|check|type|select")) {
+            return "// GATF record: a " + type + " step was skipped: its locator held an unsafe character (dollar sign, hash before a letter, or a control character)";
+        }
         if (selector == null) return null;
         if ("click".equals(type)) return PickLocator.line(selector);   // Δ148: the picker pastes this same step
         if ("submit".equals(type)) return "submit " + selector;

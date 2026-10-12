@@ -46,6 +46,8 @@ export interface RebuildStats {
   targetMarked: boolean;
   /** Δ147d: things the post-serialisation guard had to remove (0 unless something broke out on re-parse) */
   guardFixes: number;
+  /** Δ148a: srcdoc documents over MAX_SRCDOC_FRAMES that were dropped (their frames stay, empty) */
+  droppedFrames: number;
 }
 
 export interface Rebuilt {
@@ -71,6 +73,8 @@ export const SNAPSHOT_CSP =
 
 const dec = new TextDecoder('utf-8');
 const MAX_FRAME_DEPTH = 3;
+/** Δ148a: most srcdoc documents one snapshot rebuilds, all depths together; the rest are dropped and counted. */
+export const MAX_SRCDOC_FRAMES = 64;
 
 /** url (without fragment) -> captured body, from the HAR. Later entries win (the page saw the latest body). */
 export function resourceMap(trace: Pick<Trace, 'har' | 'files'>): Map<string, Resource> {
@@ -171,7 +175,9 @@ export function parseSrcset(v: string): Array<{ url: string; descriptors: string
 class Rewriter {
   readonly urls: string[] = [];
   private readonly made = new Map<string, string>();
-  readonly stats: RebuildStats = { styled: false, sheets: 0, missingSheets: 0, missingImages: 0, rewritten: 0, targetMarked: false, guardFixes: 0 };
+  readonly stats: RebuildStats = { styled: false, sheets: 0, missingSheets: 0, missingImages: 0, rewritten: 0, targetMarked: false, guardFixes: 0, droppedFrames: 0 };
+  /** Δ148a: srcdoc documents rebuilt so far in this snapshot (all depths) */
+  frames = 0;
 
   constructor(
     private readonly files: Record<string, Uint8Array>,
@@ -748,9 +754,13 @@ function rebuildDoc(
     if (el.localName === 'iframe') {
       const sd = el.getAttribute('srcdoc');
       el.removeAttribute('src');
-      if (sd != null && depth < MAX_FRAME_DEPTH) {
+      if (sd != null && depth < MAX_FRAME_DEPTH && rw.frames < MAX_SRCDOC_FRAMES) {
+        rw.frames++;
         el.setAttribute('srcdoc', rebuildDoc(sd, base, rw, null, null, null, depth + 1));
-      } else el.removeAttribute('srcdoc');
+      } else {
+        if (sd != null && depth < MAX_FRAME_DEPTH) rw.stats.droppedFrames++;
+        el.removeAttribute('srcdoc');
+      }
       attrUrls(el, rw, base);   // Δ147a: its style / other attributes too
       continue;
     }
@@ -791,7 +801,9 @@ function rebuildDoc(
   gatf.textContent = css;
   head.appendChild(gatf);
   escapeRawText(doc);
-  return guardHtml('<!DOCTYPE html>' + doc.documentElement.outerHTML, rw);
+  const out = '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  // Δ148a: only the top-level document is guarded; guardHtml recurses into every srcdoc level from there
+  return depth === 0 ? guardHtml(out, rw) : out;
 }
 
 const HTML_NS = 'http://www.w3.org/1999/xhtml';

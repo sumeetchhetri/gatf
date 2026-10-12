@@ -167,6 +167,7 @@ public final class PickLocator {
         String s = str(sel.get("s"));
         String v = str(sel.get("v"));
         if (v.isEmpty()) return null;
+        if (LocatorRanking.unsafe(v)) return null;   // Δ148a: '$' / Velocity directive / control or line-separator char
         if ("id".equals(s)) return "id@" + simpleOrQuoted(v);
         if ("name".equals(s)) return "name@" + simpleOrQuoted(v);
         if ("css".equals(s)) return "css@" + q(v);
@@ -189,7 +190,55 @@ public final class PickLocator {
     }
 
     private static int count(Object n) {
-        return n instanceof Number ? ((Number) n).intValue() : -1;
+        return SemanticLocators.matchCount(n);
+    }
+
+    /** Δ148a: whether {@code sel} names a value that {@link #selector} refuses as unsafe (not merely empty). */
+    public static boolean unsafeSelector(Map<?, ?> sel) {
+        if (sel == null) return false;
+        String v = str(sel.get("v"));
+        return !v.isEmpty() && LocatorRanking.unsafe(v);
+    }
+
+    /** Δ148a: longest fallback selector value (id / name / css path) a drained pick keeps. */
+    public static final int MAX_SELECTOR = 1024;
+
+    /**
+     * Δ148a: a drained page pick reduced to what ranking reads, bounded: {@code type}, at most {@link #MAX_CANDIDATES}
+     * candidates with only {s, v, role, name, n}, candidate strings cut to {@code MAX_TEXT + 1} chars and fallback strings
+     * to {@code MAX_SELECTOR + 1}. An entry with a cut string gets {@code n = -1}: a cut value is a different selector, so
+     * the page's count no longer applies and it can never be ranked as strict.
+     */
+    public static Map<String, Object> boundedPick(Map<?, ?> p) {
+        Map<String, Object> out = new LinkedHashMap<String, Object>();
+        Object type = p == null ? null : p.get("type");
+        out.put("type", type instanceof String && ((String) type).length() <= 16 ? type : "");
+        List<Map<String, Object>> cand = new ArrayList<Map<String, Object>>();
+        Object c = p == null ? null : p.get("cand");
+        if (c instanceof List) {
+            for (Object o : (List<?>) c) {
+                if (cand.size() >= MAX_CANDIDATES) break;
+                if (o instanceof Map) cand.add(boundedEntry((Map<?, ?>) o, LocatorRanking.MAX_TEXT));
+            }
+        }
+        out.put("cand", cand);
+        Object sel = p == null ? null : p.get("sel");
+        out.put("sel", sel instanceof Map ? boundedEntry((Map<?, ?>) sel, MAX_SELECTOR) : null);
+        return out;
+    }
+
+    private static Map<String, Object> boundedEntry(Map<?, ?> m, int cap) {
+        Map<String, Object> e = new LinkedHashMap<String, Object>();
+        boolean cut = false;
+        for (String k : new String[] { "s", "v", "role", "name" }) {
+            Object o = m.get(k);
+            if (o == null) continue;
+            String s = o instanceof String ? (String) o : (o instanceof Number || o instanceof Boolean ? String.valueOf(o) : "");
+            if (s.length() > cap) { s = s.substring(0, cap + 1); cut = true; }
+            e.put(k, s);
+        }
+        e.put("n", cut ? -1 : count(m.get("n")));
+        return e;
     }
 
     private static String str(Object o) {
@@ -207,6 +256,7 @@ public final class PickLocator {
     public static final String PICKER_FN = """
         var __gatfPickerInstall = function (tidAttr) {
           if (window.__gatfPicker) return;
+          try { delete window.__gatfPicks; } catch (x) { window.__gatfPicks = undefined; }   // nothing queued before arming counts
           var doc = document, box = null, last = null;
           var BLOCK = ['pointerdown', 'mousedown', 'pointerup', 'mouseup', 'dblclick', 'auxclick', 'contextmenu'];
           var deep = function (x, y) {
@@ -275,9 +325,18 @@ public final class PickLocator {
                 + SemanticLocators.FALLBACK_FN + PICKER_FN + "__gatfPickerInstall(" + tidAttrLiteral + ");})();";
     }
 
-    /** Takes the queued picks out of the page (leaves no global behind). */
+    /**
+     * Takes the queued picks out of the page (leaves no global behind). Δ148a: only the last one, rebuilt in the page as
+     * {type, cand (at most 16), sel} with each string cut one past its cap (candidates 60, fallback 1024), so a hostile
+     * page cannot hand the poller an unbounded structure; {@link #boundedPick} bounds it again and voids cut entries.
+     */
     public static final String DRAIN_JS =
-            "var p=window.__gatfPicks||[];try{delete window.__gatfPicks;}catch(e){window.__gatfPicks=undefined;}return p;";
+            "var p=window.__gatfPicks;try{delete window.__gatfPicks;}catch(e){window.__gatfPicks=undefined;}"
+            + "if(!p||typeof p.length!=='number'||p.length<1)return[];var x=p[p.length-1];if(!x||typeof x!=='object')return[];"
+            + "var t=function(v,k){return typeof v==='string'?v.slice(0,k+1):null;};"
+            + "var e=function(o,k){if(!o||typeof o!=='object')return null;return{s:t(o.s,k),v:t(o.v,k),role:t(o.role,k),name:t(o.name,k),n:typeof o.n==='number'?o.n:-1};};"
+            + "var c=[];if(x.cand&&typeof x.cand.length==='number')for(var i=0;i<x.cand.length&&c.length<16;i++){var y=e(x.cand[i],60);if(y)c.push(y);}"
+            + "return[{type:t(x.type,16),cand:c,sel:e(x.sel,1024)}];";
 
     /** Removes the picker (listeners, outline, globals) if it is there; a no-op otherwise. */
     public static final String OFF_JS =

@@ -27,7 +27,7 @@ import java.util.Map;
  */
 public final class LocatorRanking {
 
-    static final int MAX_TEXT = 60;
+    public static final int MAX_TEXT = 60;
 
     private LocatorRanking() {}
 
@@ -38,7 +38,7 @@ public final class LocatorRanking {
                 for (Object o : candidates) {
                     if (!(o instanceof Map)) continue;
                     Map<?, ?> c = (Map<?, ?>) o;
-                    if (!kind.equals(str(c.get("s"))) || !SemanticLocators.resolvesStrictly(count(c.get("n")))) continue;
+                    if (!kind.equals(str(c.get("s"))) || !SemanticLocators.resolvesStrictly(SemanticLocators.matchCount(c.get("n")))) continue;
                     String loc = locator(kind, c);
                     if (loc != null) return loc;
                 }
@@ -68,7 +68,7 @@ public final class LocatorRanking {
 
     /** A value as seleasy writes it: bare when simple, else single- or double-quoted; null when not expressible. */
     static String value(String v) {
-        if (v == null || v.isEmpty() || v.length() > MAX_TEXT || v.indexOf('\n') >= 0 || v.contains("${") || v.contains("$v{")) return null;
+        if (v == null || v.isEmpty() || v.length() > MAX_TEXT || unsafe(v)) return null;
         char f = v.charAt(0);
         if (f == '~' || f == '=' || f == '/') return null;   // would read as a match mode
         if (v.matches("[A-Za-z0-9_.:-]+")) return v;
@@ -77,8 +77,21 @@ public final class LocatorRanking {
         return null;
     }
 
-    private static int count(Object n) {
-        return n instanceof Number ? ((Number) n).intValue() : -1;
+    /**
+     * Δ148a: a value no locator may carry. {@code $} anywhere: {@code SeleniumTest.evaluate} sends any value with a
+     * {@code $} through the template engine (context variables, {@code #set(…)}), so a page could plant a step that leaks
+     * or changes test state. {@code #} followed by a letter (a Velocity directive; defence in depth, evaluate templates
+     * only values that also hold a {@code $}). Any C0 control, DEL, NEL, LS or PS: they split the statement on the
+     * recorder's save path (a bare CR is a line break to commons-io {@code readLines}).
+     */
+    public static boolean unsafe(String v) {
+        if (v == null) return true;
+        for (int i = 0; i < v.length(); i++) {
+            char c = v.charAt(i);
+            if (c == '$' || c < 0x20 || c == 0x7f || c == 0x85 || c == 0x2028 || c == 0x2029) return true;
+            if (c == '#' && i + 1 < v.length() && Character.isLetter(v.charAt(i + 1))) return true;
+        }
+        return false;
     }
 
     private static String str(Object o) {
