@@ -67,7 +67,7 @@ export interface RebuildOptions {
 export const BLANK_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 export const SNAPSHOT_CSP =
-  "default-src 'none'; img-src blob: data:; style-src blob: data: 'unsafe-inline'; font-src blob: data:; media-src blob: data:; frame-src 'self' about: blob: data:";
+  "default-src 'none'; img-src blob: data:; style-src blob: data: 'unsafe-inline'; font-src blob: data:; media-src blob: data:; frame-src 'self' about: blob:";
 
 const dec = new TextDecoder('utf-8');
 const MAX_FRAME_DEPTH = 3;
@@ -819,8 +819,21 @@ export function escapeRawText(doc: Document): void {
  * rebuild produces — active elements, handlers, script URLs, refresh / foreign CSP / referrer metas, followable
  * links, and URL attributes that are not blob:, data: or #refs. Returns the HTML unchanged when nothing was found
  * (the normal case); otherwise the cleaned re-serialisation, with the count in stats.guardFixes.
+ *
+ * Δ147e: an iframe / frame never keeps a src (the rebuild only ever emits srcdoc frames; a blob: or data: src would
+ * be a document the guard never read), and every srcdoc value is guarded recursively, as its own document; a srcdoc
+ * on a document already MAX_FRAME_DEPTH frames deep is removed (the rebuild never emits one).
+ * Left to the CSP, not the guard: url() inside a style attribute, and a data: stylesheet link
+ * (<link rel=stylesheet href="data:text/css,…">). The rewriter handles both on the normal path; whatever they could
+ * still reference is stopped by the CSP (default-src 'none'; only blob:/data: for images, styles, fonts, media).
  */
 export function guardHtml(html: string, rw?: { stats: RebuildStats }): string {
+  const r = guardDoc(html, 0);
+  if (rw) rw.stats.guardFixes += r.fixes;
+  return r.html;
+}
+
+function guardDoc(html: string, depth: number): { html: string; fixes: number } {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   let fixes = 0;
   const okUrl = (v: string) => /^\s*(blob:|data:|#)/i.test(v) && !isDangerous(v);
@@ -841,6 +854,14 @@ export function guardHtml(html: string, rw?: { stats: RebuildStats }): string {
     for (const a of Array.from(el.attributes)) {
       const n = a.name.toLowerCase();
       if (n.startsWith('on')) { el.removeAttribute(a.name); fixes++; continue; }
+      if (n === 'src' && (tag === 'iframe' || tag === 'frame')) { el.removeAttribute(a.name); fixes++; continue; }
+      if (n === 'srcdoc') {
+        // the rebuild keeps srcdoc only above this depth
+        if (depth >= MAX_FRAME_DEPTH) { el.removeAttribute(a.name); fixes++; continue; }
+        const inner = guardDoc(a.value, depth + 1);
+        if (inner.fixes) { el.setAttribute(a.name, inner.html); fixes += inner.fixes; }
+        continue;
+      }
       if (n === 'href' || n === 'xlink:href') {
         if (NAV_TAGS.has(tag) ? !a.value.trim().startsWith('#') : !okUrl(a.value)) { el.removeAttribute(a.name); fixes++; }
         continue;
@@ -852,10 +873,9 @@ export function guardHtml(html: string, rw?: { stats: RebuildStats }): string {
       if (isDangerous(a.value)) { el.removeAttribute(a.name); fixes++; }
     }
   }
-  if (!fixes) return html;
-  if (rw) rw.stats.guardFixes += fixes;
+  if (!fixes) return { html, fixes: 0 };
   escapeRawText(doc);
-  return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
+  return { html: '<!DOCTYPE html>' + doc.documentElement.outerHTML, fixes };
 }
 
 function resourceText(rw: Rewriter, absUrl: string): string | null {

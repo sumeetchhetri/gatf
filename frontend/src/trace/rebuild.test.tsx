@@ -670,3 +670,67 @@ describe('Δ147d probes', () => {
       expect(rebuildMod.importPreludeOk(p)).toBe(true);
   });
 });
+
+// Δ147e probes: each calls guardHtml directly on hand-written HTML (the rebuild itself never emits these shapes).
+describe('guardHtml hardening (Δ147e)', () => {
+  const page = (body: string, head = '') => `<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`;
+  const attr = (s: string) => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+  const run = (html: string) => {
+    const holder = { stats: { guardFixes: 0 } as rebuildMod.RebuildStats };
+    return { out: rebuildMod.guardHtml(html, holder), fixes: holder.stats.guardFixes };
+  };
+
+  it('1. an iframe / frame never keeps a src, whatever its scheme; frame-src no longer allows data:', () => {
+    for (const src of ['blob:https://app.test/0b1d', 'data:text/html,<script>parent.x()</script>', '#top', 'about:blank']) {
+      const { out, fixes } = run(page(`<iframe id="f" src="${attr(src)}" srcdoc="&lt;p&gt;ok&lt;/p&gt;"></iframe>`));
+      const f = parse(out).getElementById('f')!;
+      expect(f.hasAttribute('src')).toBe(false);
+      expect(f.getAttribute('srcdoc')).toBe('<p>ok</p>');   // a srcdoc frame keeps its document
+      expect(fixes).toBe(1);
+    }
+    // <frame> outside a frameset is dropped by the parser; inside one it must lose its src too
+    const fs = run('<!DOCTYPE html><html><head></head><frameset><frame id="g" src="blob:https://app.test/1" srcdoc="x"></frameset></html>');
+    expect(parse(fs.out).getElementById('g')!.hasAttribute('src')).toBe(false);
+    expect(fs.out).not.toContain('blob:');
+    expect(SNAPSHOT_CSP).toMatch(/frame-src 'self' about: blob:$/);
+    expect(SNAPSHOT_CSP.split(';').find((d) => d.trim().startsWith('frame-src'))).not.toMatch(/data:/);
+  });
+
+  it('2. every srcdoc is guarded as its own document, recursively, with the depth capped', () => {
+    const lvl2 = page('<a href="http://evil.test/2">x</a><img src="http://evil.test/2.png"><iframe src="data:text/html,y"></iframe>');
+    const lvl1 = page(`<script>x()</script><p onclick="x()">p</p><iframe id="i2" srcdoc="${attr(lvl2)}"></iframe>`,
+      '<meta http-equiv="refresh" content="0;url=http://evil.test/1">');
+    const { out, fixes } = run(page(`<iframe id="i1" srcdoc="${attr(lvl1)}"></iframe>`));
+    const d1 = parse(parse(out).getElementById('i1')!.getAttribute('srcdoc')!);
+    expect(d1.querySelector('script, meta[http-equiv]')).toBeNull();
+    expect(d1.querySelector('p')!.hasAttribute('onclick')).toBe(false);
+    const d2 = parse(d1.getElementById('i2')!.getAttribute('srcdoc')!);
+    expect(d2.querySelector('a')!.hasAttribute('href')).toBe(false);
+    expect(d2.querySelector('img')!.hasAttribute('src')).toBe(false);
+    expect(d2.querySelector('iframe')!.hasAttribute('src')).toBe(false);
+    expect(out).not.toMatch(/evil\.test|data:text\/html|&lt;script/i);
+    expect(fixes).toBe(6);   // script, meta, onclick | href, img src, iframe src
+    // a clean nested srcdoc is left byte-for-byte alone
+    const clean = page(`<iframe srcdoc="${attr(page('<p>a</p>'))}"></iframe>`);
+    expect(run(clean)).toEqual({ out: clean, fixes: 0 });
+    // depth: srcdoc survives on documents 0..2 (MAX_FRAME_DEPTH = 3, as in the rebuild); the one on document 3 goes
+    let chain = page('<p id="leaf">leaf</p>');
+    for (let k = 0; k < 4; k++) chain = page(`<iframe class="n" srcdoc="${attr(chain)}"></iframe>`);
+    const deep = run(chain);
+    let d = parse(deep.out);
+    let levels = 0;
+    for (let f = d.querySelector('iframe.n'); f && f.hasAttribute('srcdoc'); f = d.querySelector('iframe.n')) { d = parse(f.getAttribute('srcdoc')!); levels++; }
+    expect(levels).toBe(3);
+    expect(deep.fixes).toBe(1);
+    expect(deep.out).not.toContain('leaf');
+  });
+
+  it('3. left to the CSP (documented): url() in a style attribute and a data: stylesheet link pass the guard', () => {
+    const html = page('<p style="background:url(http://evil.test/s.png)">p</p>',
+      '<link rel="stylesheet" href="data:text/css,p%7Bbackground:url(http://evil.test/l.png)%7D">');
+    expect(run(html)).toEqual({ out: html, fixes: 0 });
+    // what stops them is the CSP the rebuild puts first in <head>: no network scheme in any fetch directive
+    for (const dir of SNAPSHOT_CSP.split(';')) expect(dir).not.toMatch(/https?:|\*/);
+    expect(SNAPSHOT_CSP).toMatch(/^default-src 'none'/);
+  });
+});
