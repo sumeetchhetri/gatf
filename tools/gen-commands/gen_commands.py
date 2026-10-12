@@ -141,8 +141,9 @@ def extract_method_body(src: str, signature_repattern: str) -> str:
 # equalsIgnoreCase("x") / toLowerCase().equals("x") etc. We only care about the
 # call name + the string literal argument.
 LITERAL_RE = re.compile(r'\.(startsWith|equals|equalsIgnoreCase)\(\s*"((?:[^"\\]|\\.)*)"')
-# the statement's own command object is always assigned to `comd`
-COMD_NEW_RE = re.compile(r'comd\s*=\s*new\s+([A-Za-z_]\w*Command)\b')
+# the statement's own command object is always assigned to `comd` (any class name: WaitForReady has no
+# "Command" suffix, and requiring one attributed `waitready` to the next branch's MaximizeCommand)
+COMD_NEW_RE = re.compile(r'comd\s*=\s*new\s+([A-Za-z_]\w*)\b')
 
 
 def blank_comments(body: str) -> str:

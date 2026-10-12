@@ -66,6 +66,9 @@ import com.gatf.selenium.plugins.XmlPlugin;
  */
 @SuppressWarnings("unused")
 public class FindCommand extends Command {
+        // the `timeout ... <granularity>` in effect where this find is written: a later `timeout` line must not
+        // retroactively change this wait (counter was computed with this value)
+        long sleepGranularity = state.timeoutSleepGranularity;
         String by, classifier, relative = "", by1 = "", classifier1 = "", subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, operval = null, eval = null, browserScope = "", sessionScope = "";
         boolean suppressErr = false, byselsame = false, classifierPinvXp = false, classifier1PinvXp = false;
         String[] classifierPinvXps = null, classifier1PinvXps = null;
@@ -358,7 +361,7 @@ public class FindCommand extends Command {
             return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", null, "+tvalue+", \"Element not found by selector " 
-                    + logbc + " at line number "+fileLineDetails[1]+" \", false, "+state.timeoutSleepGranularity+", false, "+state.getLayers()+");\n";
+                    + logbc + " at line number "+fileLineDetails[1]+" \", false, "+sleepGranularity+", false, "+state.getLayers()+");\n";
         }
         /*String javacodevaronly() {
             String sc = state.currvarnamesc();
@@ -515,7 +518,7 @@ public class FindCommand extends Command {
             }
             String b = "___ce___ = handleWaitFuncWL(___cw___, "+sc+", "+wel+", "+counter+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
-                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+state.timeoutSleepGranularity+", "+isVisible+", \""+esc(fileLineDetails[2].toString())+"\", "+fileLineDetails[1]+" ,"+state.getLayers()+");\n";
+                    + action + ", "+soper+", "+tvalue+", "+excmsg+", "+noexcep+", "+sleepGranularity+", "+isVisible+", \""+esc(fileLineDetails[2].toString())+"\", "+fileLineDetails[1]+" ,"+state.getLayers()+");\n";
             return b;
         }
 

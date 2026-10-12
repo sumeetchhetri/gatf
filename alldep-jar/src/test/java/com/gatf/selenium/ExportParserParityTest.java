@@ -66,7 +66,8 @@ class ExportParserParityTest {
     private static final String EXPORT_CORPUS = "src/test/resources/export-corpus/playwright";
     private static final Set<String> SKIP = new HashSet<String>(Arrays.asList("10-unsupported.sel"));
     private static final Set<String> NOT_STATEMENTS = new HashSet<String>(Arrays.asList("StartCommand", "EndCommand", "ValueCommand",
-            "ValueListCommand", "EndValueListCommand", "NoopCommand", "CommentCommand", "MultiCommentCommand", "EndMultiCommentCommand"));
+            "ValueListCommand", "EndValueListCommand", "NoopCommand", "CommentCommand", "MultiCommentCommand", "EndMultiCommentCommand",
+            "EndCodeCommand"));   // `>>>` / `end code` closes a code block like `}` closes a block
     private static final Set<String> RAW_OWNERS = new HashSet<String>(Arrays.asList("PluginCommand", "VarCommand"));
     private static final Set<String> INTERACTIONS = new HashSet<String>(Arrays.asList("click", "type", "sendkeys", "chord", "randomize", "select",
             "doubleclick", "dblclick", "hover", "hoverclick", "clear", "submit", "upload", "actions"));
@@ -201,7 +202,8 @@ class ExportParserParityTest {
         for (SelScript.Step s : steps) {
             String k = s.keyword;
             if (s.kind == SelScript.Kind.COMMENT || "{".equals(k) || "}".equals(k) || "[".equals(k) || "]".equals(k)) continue;
-            if ("^".equals(k)) { skip.add(s.line); continue; }
+            // ^dynprop lines, and include/import/dynprops (resolved while parsing: the real tree has no statement for them)
+            if ("^".equals(k) || "include".equals(k) || "import".equals(k) || "dynprops".equals(k)) { skip.add(s.line); continue; }
             Stmt st = new Stmt(s.line, s.depth, k == null ? "plugin" : k);
             SelScript.Locator l = s.target;
             boolean locatorStmt = s.kind == SelScript.Kind.WAIT || (s.kind == SelScript.Kind.ASSERT && !s.assertion.pageLevel)
@@ -273,7 +275,9 @@ class ExportParserParityTest {
                     st.soft = Boolean.TRUE.equals(field(c, "soft"));
                     st.negated = Boolean.TRUE.equals(field(c, "negation"));
                     Object counter = field(c, "counter"), state = field(c, "state");
-                    Object gran = state == null ? null : field(state, "timeoutSleepGranularity");
+                    // the granularity the find captured where it is written (a later `timeout` line changes the state's)
+                    Object gran = cond == null ? null : field(cond, "sleepGranularity");
+                    if (gran == null) gran = state == null ? null : field(state, "timeoutSleepGranularity");
                     if (counter instanceof Number && gran instanceof Number) {
                         st.timeoutSec = (int) (((Number) counter).longValue() * ((Number) gran).longValue() / 1000L);
                     }

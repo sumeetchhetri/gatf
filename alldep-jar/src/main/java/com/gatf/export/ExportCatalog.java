@@ -196,7 +196,7 @@ public final class ExportCatalog {
         d("var", "VarCommand", PARTIAL, "literal values and @var only; plugin and Java values are TODO");
         d("wait for", "WaitTillElementVisibleOrInvisibleCommand", MAPPED, "");
         d("wait till visible", "WaitTillElementVisibleOrInvisibleCommand", MAPPED, "");
-        d("waitready", "MaximizeCommand", MAPPED, "");
+        d("waitready", "WaitForReady", MAPPED, "");
         d("warn", "WarnCommand", MAPPED, "");
         d("window", "WindowCommand", UNSUPPORTED, "");
         d("wopensave", "WindowOpenSaveInterceptJsCommand", UNSUPPORTED, "");

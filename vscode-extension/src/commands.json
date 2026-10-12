@@ -1020,7 +1020,7 @@
    "match": "exact",
    "requiresArg": false,
    "canBeBare": true,
-   "class": "MaximizeCommand"
+   "class": "WaitForReady"
   },
   {
    "keyword": "warn",
