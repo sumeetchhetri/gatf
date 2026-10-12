@@ -16,7 +16,9 @@
 package com.gatf.ui;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -33,6 +35,7 @@ import org.glassfish.grizzly.http.util.HttpStatus;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
+import com.gatf.record.PickLocator;
 import com.gatf.record.RecordSession;
 import com.gatf.selenium.Command;
 
@@ -45,6 +48,12 @@ import com.gatf.selenium.Command;
  *   GET  /record?action=steps&sessionId=<id>         -> { running, lines:[...], count, error? }
  *   POST /record?action=stop&sessionId=<id>          -> { content, lines, count }
  *   POST /record?action=save&sessionId=<id>&fileName=<name>  -> { saved, savedPath, validation }
+ *   Δ148 pick locator:
+ *   POST /record?action=rank   body {cand, sel}              -> PickLocator.rank (no session; Trace Viewer snapshots)
+ *   GET  /record?action=tid                                  -> { testIdAttribute }
+ *   GET  /record?action=list                                 -> { sessions:[{sessionId, browser}] } (recording ones)
+ *   POST /record?action=pick&sessionId=<id>&on=true|false    -> { armed } (409 when the session is not recording)
+ *   GET  /record?action=picked&sessionId=<id>                -> { running, armed, pick }
  *
  * Record mode is a local, dev-time authoring activity (the browser opens on the same machine as GATF).
  * Additive: touches no existing handler; registered by GatfConfigToolUtil at /record.
@@ -87,6 +96,36 @@ public class GatfRecordHandler extends HttpHandler {
                 return;
             }
 
+            // Δ148: session-less pick-locator helpers
+            if ("rank".equals(action)) {
+                if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to rank")); return; }
+                PickLocator.Reply r = PickLocator.rankRequest(request.getInputStream(), request.getContentLengthLong(),
+                        b -> WorkflowContextHandler.OM.readValue(b, Object.class));
+                writeJson(response, r.status, r.body);   // 200, 400, or 413 for an over-cap body / candidate list
+                return;
+            }
+            if ("tid".equals(action)) {
+                String tid = testIdAttribute(request);
+                Map<String, Object> out = new LinkedHashMap<String, Object>();
+                out.put("testIdAttribute", tid == null || tid.trim().isEmpty() ? "data-testid" : tid.trim());
+                writeJson(response, HttpStatus.OK_200, out);
+                return;
+            }
+            if ("list".equals(action)) {
+                List<Map<String, Object>> list = new ArrayList<Map<String, Object>>();
+                for (RecordSession r : SESSIONS.values()) {
+                    if (!r.isRunning()) continue;
+                    Map<String, Object> m = new LinkedHashMap<String, Object>();
+                    m.put("sessionId", r.getId());
+                    m.put("browser", r.getBrowser());
+                    list.add(m);
+                }
+                Map<String, Object> out = new LinkedHashMap<String, Object>();
+                out.put("sessions", list);
+                writeJson(response, HttpStatus.OK_200, out);
+                return;
+            }
+
             RecordSession s = sessionId == null ? null : SESSIONS.get(sessionId);
             if (s == null) { writeJson(response, HttpStatus.NOT_FOUND_404, err("no such recording session")); return; }
 
@@ -96,6 +135,19 @@ public class GatfRecordHandler extends HttpHandler {
                 out.put("lines", s.currentLines());
                 out.put("count", s.currentLines().size());
                 if (s.getError() != null) out.put("error", s.getError());
+                writeJson(response, HttpStatus.OK_200, out);
+            } else if ("pick".equals(action)) {
+                if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to arm the picker")); return; }
+                boolean on = !"false".equalsIgnoreCase(String.valueOf(request.getParameter("on")));
+                if (!s.armPicker(on)) { writeJson(response, HttpStatus.CONFLICT_409, err("the recording session is not running")); return; }
+                Map<String, Object> out = new LinkedHashMap<String, Object>();
+                out.put("armed", s.isPickerArmed());
+                writeJson(response, HttpStatus.OK_200, out);
+            } else if ("picked".equals(action)) {
+                Map<String, Object> out = new LinkedHashMap<String, Object>();
+                out.put("running", s.isRunning());
+                out.put("armed", s.isPickerArmed());
+                out.put("pick", s.lastPick());
                 writeJson(response, HttpStatus.OK_200, out);
             } else if ("stop".equals(action)) {
                 if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to stop")); return; }
@@ -170,6 +222,16 @@ public class GatfRecordHandler extends HttpHandler {
     private String ensureSel(String name) {
         String base = (name == null || name.trim().isEmpty()) ? "recorded" : name.trim().replaceAll("[^A-Za-z0-9_\\-]", "_");
         return base.replaceAll("\\.sel$", "") + ".sel";
+    }
+
+    // Δ148: a numeric status (PickLocator.Reply), set the same way as the HttpStatus form below
+    private void writeJson(Response response, int status, Object body) throws Exception {
+        String json = WorkflowContextHandler.OM.writeValueAsString(body);
+        byte[] b = json.getBytes("UTF-8");
+        response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+        response.setContentLength(b.length);
+        response.getWriter().write(json);
+        response.setStatus(status);
     }
 
     private void writeJson(Response response, HttpStatus status, Object body) throws Exception {

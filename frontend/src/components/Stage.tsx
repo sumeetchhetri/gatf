@@ -17,6 +17,7 @@ import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Trace, SnapshotRef } from '../trace/types';
 import { actionSnapshots } from '../trace/loadTrace';
 import { rebuildSnapshot, type Rebuilt } from '../trace/rebuild';
+import { SnapshotPicker } from './SnapshotPicker';
 
 export type StageMode = 'video' | 'dom' | 'screenshot';
 
@@ -148,8 +149,13 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
     }
   }, [trace, shown, snap?.action, cache]);
 
+  // Δ148: pick locator (opt-in); listeners are attached from this realm on every frame load
+  const [picking, setPicking] = useState(false);
+  const [loadSeq, setLoadSeq] = useState(0);
+
   // the frame runs no script; the viewer (same origin via allow-same-origin) restores scroll and reveals the target
   const onLoad = () => {
+    setLoadSeq((n) => n + 1);
     try {
       const w = iframeRef.current?.contentWindow;
       const d = iframeRef.current?.contentDocument;
@@ -174,8 +180,12 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
   const st = built.stats;
   return (
     <div className="dom-wrap">
-      {pair && (
-        <div className="dom-phase">
+      <div className="dom-phase">
+        <button className={'btn small' + (picking ? ' primary' : '')} onClick={() => setPicking((p) => !p)} title="Hover the snapshot to get a strict locator">
+          ⌖ Pick locator
+        </button>
+        {pair && (
+          <>
           <span className="seg">
             <button className={'seg-btn' + (phase === 'before' ? ' on' : '')} disabled={!pair.before} onClick={() => setPhase('before')}>
               Before
@@ -185,16 +195,20 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
             </button>
           </span>
           <span className="muted small">action #{snap!.action}{shown?.label ? ` — ${shown.label}` : ''}</span>
-        </div>
-      )}
-      <iframe
-        ref={iframeRef}
-        className="dom-frame"
-        sandbox="allow-same-origin"
-        srcDoc={built.html}
-        title="dom-snapshot"
-        onLoad={onLoad}
-      />
+          </>
+        )}
+      </div>
+      <div className="dom-frame-box">
+        <iframe
+          ref={iframeRef}
+          className="dom-frame"
+          sandbox="allow-same-origin"
+          srcDoc={built.html}
+          title="dom-snapshot"
+          onLoad={onLoad}
+        />
+        {picking && <SnapshotPicker iframeRef={iframeRef} loadSeq={loadSeq} lite={!st.styled} origin={`trace snapshot #${shown?.n ?? '?'}`} />}
+      </div>
       <div className="dom-note muted small">
         {st.styled ? (
           <>

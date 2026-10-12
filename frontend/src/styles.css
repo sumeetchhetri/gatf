@@ -158,6 +158,14 @@ button { font-family: inherit; cursor: pointer; }
 .dom-frame { flex: 1; width: 100%; border: 1px solid var(--border); border-radius: 4px; background: var(--dom-bg); }
 .dom-note { padding: 6px 2px 0; line-height: 1.4; }
 .dom-phase { display: flex; align-items: center; gap: 10px; padding: 0 2px 6px; }
+.dom-frame-box { flex: 1; position: relative; display: flex; min-height: 0; }
+.pick-outline { position: absolute; pointer-events: none; box-sizing: border-box; border: 2px solid #2563eb; background: rgba(37, 99, 235, .12); z-index: 2; }
+.pick-panel { position: absolute; right: 8px; bottom: 8px; max-width: min(520px, 90%); max-height: 45%; overflow: auto; z-index: 3; padding: 8px 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 6px; box-shadow: 0 2px 10px rgba(0, 0, 0, .15); }
+.pick-head, .pick-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.pick-line code { word-break: break-all; }
+.pick-cands { margin: 4px 0 0; padding-left: 18px; }
+.pick-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.pick-bar code { word-break: break-all; }
 
 /* ---------- Timeline ---------- */
 .timeline { background: var(--panel); border-top: 1px solid var(--border); padding: 8px 12px 10px; }

@@ -139,6 +139,8 @@ It is captured over CDP or **WebDriver BiDi** (Chromium, Firefox and Edge) and o
 
 With `traceDomSnapshots=full`, the viewer's **DOM** view is a styled time-travel: each action's page is rebuilt from the trace alone (its stylesheets and the captured response bodies) in a sandboxed, script-less frame, with a **Before / After** toggle and the action's element outlined. Images the trace has no body for show as blank placeholders (turn on `traceNetwork` to capture them); nothing is fetched from the live site.
 
+**⌖ Pick locator** (DOM view): hover the snapshot to get the element's strict locator, ranked as the recorder ranks it (`testid@` → `role@` → `label@` → id/name/css), and offered only when it matches exactly one element in that snapshot; click to keep it, then **Send to editor**. In the seleasy editor, **Insert below cursor** pastes it as a `click …` step, and **⌖ Pick in live browser** picks one element in the window of an active recording session (Esc cancels; the picker leaves nothing on the page). Ranking runs on the GATF server; without it the viewer lists the candidates with their match counts and paste is disabled.
+
 `traceMode` decides when a trace is captured and kept (it overrides the older `enableTrace` flag):
 
 | `traceMode` | Captures | Keeps |

@@ -13,7 +13,7 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { EditorState } from '@codemirror/state';
 import {
   EditorView,
@@ -30,6 +30,11 @@ import { lintGutter, lintKeymap, setDiagnostics, type Diagnostic } from '@codemi
 import { seleasyLanguage, seleasyHighlight } from '../editor/seleasyLang';
 import { mkSeleasyCompletion } from '../editor/seleasyComplete';
 import { seleasyNav } from '../editor/seleasyNav';
+import { usePicked, pickStore } from '../editor/pickStore';
+import { insertPickedLine } from '../editor/pastePick';
+import { LivePicker, type LiveState } from '../editor/livePicker';
+import { matchText } from '../trace/picker';
+import { api } from '../api';
 
 export interface EditorDiag {
   line: number; // 1-based
@@ -179,5 +184,64 @@ export default function SelCodeMirror({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gotoSeq]);
 
-  return <div className="scm" ref={hostRef} />;
+  return (
+    <>
+      <PickBar viewRef={viewRef} />
+      <div className="scm" ref={hostRef} />
+    </>
+  );
+}
+
+/**
+ * Δ148: paste a picked locator. The line is the server's (PickLocator / LocatorRanking), inserted verbatim as its own
+ * line below the cursor. Sources: the Trace Viewer's snapshot picker (pickStore), or the live browser of a recording
+ * session (opt-in, one pick per click of the button).
+ */
+function PickBar({ viewRef }: { viewRef: MutableRefObject<EditorView | null> }) {
+  const picked = usePicked();
+  const [live, setLive] = useState<LiveState>({ phase: 'idle' });
+  const liveRef = useRef<LivePicker | null>(null);
+  useEffect(() => {
+    const lp = new LivePicker(
+      api,
+      (line) => { if (viewRef.current) insertPickedLine(viewRef.current, line); },
+      setLive,
+    );
+    liveRef.current = lp;
+    return () => lp.dispose();
+  }, [viewRef]);
+  const paste = () => {
+    if (picked && viewRef.current && insertPickedLine(viewRef.current, picked.line)) pickStore.set(null);
+  };
+  const lastPick = live.phase === 'idle' ? live.pick : undefined;
+  return (
+    <div className="pick-bar small">
+      {live.phase === 'armed' ? (
+        <>
+          <span>Click an element in the {live.browser} recording window (Esc there cancels)…</span>
+          <button className="btn ghost small" onClick={() => liveRef.current?.cancel()}>Cancel</button>
+        </>
+      ) : (
+        <button className="btn ghost small" disabled={live.phase === 'arming'} onClick={() => void liveRef.current?.start()}
+          title="Pick an element in the browser of an active recording session">
+          ⌖ Pick in live browser
+        </button>
+      )}
+      {live.phase === 'idle' && live.message && <span className="muted">{live.message}</span>}
+      {lastPick && !lastPick.cancelled && live.phase === 'idle' && live.message && (
+        <span className="muted">
+          {lastPick.candidates.map((c, i) => <code key={i}>{(c.locator ?? c.kind) + ' (' + matchText(c.n) + ') '}</code>)}
+          {lastPick.fallback && <code>{lastPick.fallback.locator + ' (' + matchText(lastPick.fallback.n) + ')'}</code>}
+        </span>
+      )}
+      {picked && (
+        <>
+          <span className="muted">Picked ({picked.origin}):</span>
+          <code>{picked.line}</code>
+          <button className="btn small primary" onClick={paste}>Insert below cursor</button>
+          <button className="btn ghost small" onClick={() => pickStore.set(null)}>×</button>
+        </>
+      )}
+    </div>
+  );
 }

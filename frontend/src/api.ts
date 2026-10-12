@@ -16,6 +16,7 @@
 // Client for the read-only JSON API (Phase 3.x) exposed by GatfApiHandler at /api.
 // These endpoints are additive over the legacy Grizzly handlers; writes still go through
 // the classic config-tool at "/". Absolute paths so they resolve regardless of the /app base.
+import type { PickRaw, RankReply } from './trace/picker';
 
 export interface ReportArtifact {
   name: string;
@@ -741,6 +742,28 @@ export interface RecordSave {
   validation?: string;
   error?: string;
 }
+// Δ148 pick locator: server-side ranking (LocatorRanking) and the live-browser picker of a recording session
+export interface RecordPick extends RankReply {
+  seq: number;
+  cancelled: boolean;
+}
+export interface RecordPicked {
+  running: boolean;
+  armed: boolean;
+  pick: RecordPick | null;
+  error?: string;
+}
+async function rankLocator(raw: Pick<PickRaw, 'cand' | 'sel'>): Promise<RankReply> {
+  const r = await fetch(withTok('/record?action=rank'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ cand: raw.cand, sel: raw.sel }),
+  });
+  const d = (await r.json().catch(() => ({}))) as RankReply;
+  if (!r.ok) return { ...d, error: d?.error || 'HTTP ' + r.status } as RankReply;
+  return d;
+}
+
 async function recordPost<T>(qs: string): Promise<T> {
   const r = await fetch(withTok(qs), { method: 'POST', headers: { Accept: 'application/json' } });
   const d = (await r.json().catch(() => ({}))) as T & { error?: string };
@@ -1029,4 +1052,11 @@ export const api = {
     recordPost<RecordSave>(
       '/record?action=save&sessionId=' + encodeURIComponent(sessionId) + '&fileName=' + encodeURIComponent(fileName),
     ),
+  // ---- Δ148 pick locator ----
+  rankLocator,
+  recordTestId: () => getJson<{ testIdAttribute: string }>('/record?action=tid'),
+  recordList: () => getJson<{ sessions: Array<{ sessionId: string; browser: string }> }>('/record?action=list'),
+  recordPick: (sessionId: string, on: boolean) =>
+    recordPost<{ armed?: boolean; error?: string }>('/record?action=pick&sessionId=' + encodeURIComponent(sessionId) + '&on=' + on),
+  recordPicked: (sessionId: string) => getJson<RecordPicked>('/record?action=picked&sessionId=' + encodeURIComponent(sessionId)),
 };

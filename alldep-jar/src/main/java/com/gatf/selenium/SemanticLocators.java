@@ -178,6 +178,15 @@ public final class SemanticLocators {
         public StrictViolation(String message) { super(message); }
     }
 
+    /**
+     * Δ148: the strict rule itself. A locator resolves strictly when it matches exactly one element: more is the
+     * {@link #strictViolation} case, none is "not found". The recorder / picker ranking ({@link LocatorRanking}) and
+     * the pick-locator fallback apply this same rule to their match counts.
+     */
+    public static boolean resolvesStrictly(int count) {
+        return count == 1;
+    }
+
     /** The strict-mode failure: the locator matched {@code candidates.size()} elements (first few described). */
     public static String strictViolation(String locator, List<String> candidates) {
         return strictViolation(locator, candidates, candidates.size());
@@ -494,6 +503,61 @@ public final class SemanticLocators {
             if (info.label) out.push({ s: 'label', v: info.label, n: n({ kind: 'label', mode: 'full', value: info.label }) });
           } catch (e) { }
           return out;
+        };
+        """;
+
+    /**
+     * Δ148 (pick locator): defines {@code __gatfFallback(el)} → the legacy selector that finds {@code el} strictly
+     * ({@code {s:'id'|'name'|'css', v, n:1}}), or null. id when unique in the document, else name when unique, else the
+     * shortest {@code tag.class:nth-of-type(k)} path (built upwards) that matches exactly one element. An element inside
+     * a shadow root gets null (id@ / name@ / css@ do not pierce shadow roots). Plain ES5, no other function needed; it
+     * runs in the page (live picker) and, from the generated frontend module, against a trace snapshot's document.
+     * Keep backslashes doubled: this is a Java text block.
+     */
+    public static final String FALLBACK_FN = """
+        var __gatfFallback = function (el) {
+          try {
+            if (!el || el.nodeType !== 1) return null;
+            var doc = el.ownerDocument || document;
+            if (!el.getRootNode || el.getRootNode() !== doc) return null;   // shadow root or detached
+            var esc = function (s) {   // CSS.serializeIdentifier, ES5
+              var out = '';
+              for (var i = 0; i < s.length; i++) {
+                var c = s.charAt(i), cc = s.charCodeAt(i);
+                if (cc === 0) out += String.fromCharCode(0xfffd);
+                else if ((cc >= 1 && cc <= 31) || cc === 127 || (i === 0 && cc >= 48 && cc <= 57)
+                    || (i === 1 && cc >= 48 && cc <= 57 && s.charCodeAt(0) === 45)) out += '\\\\' + cc.toString(16) + ' ';
+                else if (i === 0 && cc === 45 && s.length === 1) out += '\\\\' + c;
+                else if (cc >= 128 || cc === 45 || cc === 95 || (cc >= 48 && cc <= 57) || (cc >= 65 && cc <= 90) || (cc >= 97 && cc <= 122)) out += c;
+                else out += '\\\\' + c;
+              }
+              return out;
+            };
+            var count = function (q) { try { return doc.querySelectorAll(q).length; } catch (x) { return -1; } };
+            var id = el.getAttribute('id');
+            if (id && count('#' + esc(id)) === 1) return { s: 'id', v: id, n: 1 };
+            var nm = el.getAttribute('name');
+            if (nm && doc.getElementsByName && doc.getElementsByName(nm).length === 1) return { s: 'name', v: nm, n: 1 };
+            var path = '', e = el;
+            for (var depth = 0; e && e.nodeType === 1 && depth < 64; depth++) {
+              var t = (e.localName || '').toLowerCase();
+              if (!/^[a-z][a-z0-9-]*$/.test(t)) return null;
+              var seg = t, cl = (e.getAttribute('class') || '').replace(/^\\s+|\\s+$/g, '');
+              if (cl) seg += '.' + esc(cl.split(/\\s+/)[0]);
+              var p = e.parentElement;
+              if (p) {
+                var k = 0, same = 0;
+                for (var s = p.firstElementChild; s; s = s.nextElementSibling) {
+                  if ((s.localName || '').toLowerCase() === t) { same++; if (s === e) k = same; }
+                }
+                if (same > 1) seg += ':nth-of-type(' + k + ')';
+              }
+              path = path ? seg + ' > ' + path : seg;
+              if (count(path) === 1) return { s: 'css', v: path, n: 1 };
+              e = p;
+            }
+            return null;
+          } catch (x) { return null; }
         };
         """;
 }

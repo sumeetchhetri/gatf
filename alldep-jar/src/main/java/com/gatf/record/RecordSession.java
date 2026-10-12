@@ -95,6 +95,13 @@ public class RecordSession {
     private final String browser;   // G9: chrome | firefox | edge
     private final String recorderJs;   // RECORDER_JS for this project's testIdAttribute
 
+    // Δ148 live pick locator: opt-in, only while recording. HTTP threads flip the flags; only the poller touches the driver.
+    private final String pickArmJs;
+    private volatile boolean pickArmed = false;
+    private volatile boolean pickOffPending = false;
+    private volatile Map<String, Object> lastPick = null;
+    private int pickSeq = 0;
+
     public RecordSession(String id, String startUrl) {
         this(id, startUrl, "chrome");
     }
@@ -108,6 +115,7 @@ public class RecordSession {
         this.id = id;
         String tid = testIdAttribute == null || testIdAttribute.trim().isEmpty() ? null : testIdAttribute.trim();
         this.recorderJs = tid == null ? RECORDER_JS : RECORDER_JS.replace(CAND_CALL, "__gatfCandidates(el," + jsString(tid) + ")");
+        this.pickArmJs = PickLocator.armJs(jsString(tid == null ? "data-testid" : tid));
         this.startUrl = (startUrl == null || startUrl.trim().isEmpty()) ? "about:blank" : startUrl.trim();
         String b = browser == null ? "" : browser.trim().toLowerCase(java.util.Locale.ROOT);
         this.browser = b.equals("firefox") || b.equals("edge") ? b : "chrome";
@@ -178,6 +186,7 @@ public class RecordSession {
                         if (o instanceof Map) ingest((Map<String, Object>) o);
                     }
                 }
+                pickTick();
             } catch (org.openqa.selenium.WebDriverException nav) {
                 // page navigating or window closed by the user — if the window is gone, stop
                 if (isWindowGone()) { running = false; break; }
@@ -187,6 +196,61 @@ public class RecordSession {
             } catch (Exception e) {
                 // transient; keep polling
             }
+        }
+    }
+
+    // Δ148: drain picks first, then (re)arm into the current document, or take the picker out of it once disarmed
+    @SuppressWarnings("unchecked")
+    private void pickTick() {
+        if (!pickArmed && !pickOffPending) return;
+        JavascriptExecutor js = (JavascriptExecutor) driver;
+        Object raw = js.executeScript(PickLocator.DRAIN_JS);
+        if (raw instanceof List) {
+            for (Object o : (List<Object>) raw) {
+                if (o instanceof Map) ingestPick((Map<String, Object>) o);
+            }
+        }
+        if (pickArmed) {
+            js.executeScript(pickArmJs);   // idempotent; re-installs after a navigation
+        } else if (pickOffPending) {
+            js.executeScript(PickLocator.OFF_JS);
+            pickOffPending = false;
+        }
+    }
+
+    /** Δ148: arm (or disarm) the live picker; false when the session is not recording. A pick or Escape disarms it. */
+    public synchronized boolean armPicker(boolean on) {
+        if (on && !running) return false;
+        if (on) {
+            pickArmed = true;
+            pickOffPending = false;
+        } else if (pickArmed || pickOffPending) {
+            pickArmed = false;
+            pickOffPending = true;
+        }
+        return true;
+    }
+
+    public boolean isPickerArmed() { return pickArmed && running; }
+
+    /** Δ148: the latest pick, {@code {seq, cancelled} + PickLocator.rank(…)}, or null before the first one. */
+    public Map<String, Object> lastPick() { return lastPick; }
+
+    // one drained picker event: a pick is ranked (testid → role → label → strict fallback); either kind disarms
+    synchronized void ingestPick(Map<String, Object> p) {
+        Map<String, Object> out = new java.util.LinkedHashMap<String, Object>();
+        out.put("seq", ++pickSeq);
+        boolean cancel = "cancel".equals(str(p.get("type")));
+        out.put("cancelled", cancel);
+        if (!cancel) {
+            Object c = p.get("cand");
+            Object sel = p.get("sel");
+            out.putAll(PickLocator.rank(c instanceof List ? (List<?>) c : null, sel instanceof Map ? (Map<?, ?>) sel : null));
+        }
+        lastPick = out;
+        if (pickArmed) {
+            pickArmed = false;
+            pickOffPending = true;
         }
     }
 
@@ -228,9 +292,9 @@ public class RecordSession {
         }
         Map<String, Object> sel = a.get("sel") instanceof Map ? (Map<String, Object>) a.get("sel") : null;
         // M3: testid → role → label when unique in the page, else the legacy id → name → css → xpath
-        String selector = com.gatf.selenium.LocatorRanking.choose(a.get("cand") instanceof List ? (List<Object>) a.get("cand") : null, selector(sel));
+        String selector = com.gatf.selenium.LocatorRanking.choose(a.get("cand") instanceof List ? (List<Object>) a.get("cand") : null, PickLocator.selector(sel));
         if (selector == null) return null;
-        if ("click".equals(type)) return "click " + selector;
+        if ("click".equals(type)) return PickLocator.line(selector);   // Δ148: the picker pastes this same step
         if ("submit".equals(type)) return "submit " + selector;
         if ("check".equals(type)) return "click " + selector;
         if ("type".equals(type)) return "type \"" + esc(str(a.get("value"))) + "\" " + selector;
@@ -239,33 +303,6 @@ public class RecordSession {
             return v.isEmpty() ? "select index@0 " + selector : "select value@\"" + esc(v) + "\" " + selector;
         }
         return null;
-    }
-
-    // {s:strategy, v:value} → seleasy selector, choosing a quote wrapper that avoids collisions
-    private String selector(Map<String, Object> sel) {
-        if (sel == null) return null;
-        String s = str(sel.get("s"));
-        String v = str(sel.get("v"));
-        if (v.isEmpty()) return null;
-        if ("id".equals(s)) return "id@" + simpleOrQuoted(v);
-        if ("name".equals(s)) return "name@" + simpleOrQuoted(v);
-        if ("css".equals(s)) return "css@" + q(v);
-        return "xpath@" + xp(v);
-    }
-
-    private String simpleOrQuoted(String v) {
-        return v.matches("[A-Za-z0-9_\\-:.]+") ? v : q(v);
-    }
-
-    private String q(String v) {
-        if (v.indexOf('"') >= 0 && v.indexOf('\'') < 0) return "'" + v + "'";
-        return "\"" + v.replace("\"", "\\\"") + "\"";
-    }
-
-    private String xp(String x) {
-        String t = x.trim();
-        if (t.indexOf('"') >= 0 && t.indexOf('\'') < 0) return "'" + t + "'";
-        return "\"" + t.replace("\"", "\\\"") + "\"";
     }
 
     // ---- lifecycle / output ---------------------------------------------------------------------
@@ -277,6 +314,14 @@ public class RecordSession {
     public synchronized void stop() {
         running = false;
         if (poller != null) poller.interrupt();
+        boolean pickerOut = pickArmed || pickOffPending;
+        pickArmed = false;
+        pickOffPending = false;
+        try {
+            // Δ148: no picker listener or outline stays on the page, even when the browser is left open by a failed quit
+            if (pickerOut && driver != null) ((JavascriptExecutor) driver).executeScript(PickLocator.OFF_JS);
+        } catch (Exception ignore) {
+        }
         try {
             // final drain before closing so the last actions aren't lost
             if (driver != null) {

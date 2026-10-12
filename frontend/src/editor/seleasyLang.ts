@@ -16,7 +16,7 @@
 // Seleasy language for CodeMirror 6, ported from the classic CodeMirror 5 mode
 // (alldep-jar/src/main/resources/gatf-config-tool/codemirror/mode/seleasy/seleasy.js, text/x-seleasy).
 // The tokenizer logic is transcribed verbatim; only the wrapper (StreamLanguage + tag table) is new.
-import { StreamLanguage, type StringStream, HighlightStyle } from '@codemirror/language';
+import { StreamLanguage, type StringStream, type StreamParser, HighlightStyle } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 
 // keyword -> style code: 1 keyword, 2 def, 3 atom, 4 operator, 5 variable-2; [x,y] => x is the code.
@@ -61,7 +61,7 @@ export const SELEASY: Record<string, Style> = {
   nowait: 1,
 };
 
-interface SelState {
+export interface SelState {
   tokenize: ((s: StringStream, st: SelState) => string | null) | null;
   chain: string[] | string | null;
   style: string | null;
@@ -315,7 +315,8 @@ function styleFor(c: number, meta = false): string {
   return meta ? 'meta' : 'string';
 }
 
-export const seleasyLanguage = StreamLanguage.define<SelState>({
+/** Δ148: the tokenizer spec itself, exported so tests can run a line through it outside an editor. */
+export const seleasyStreamParser: StreamParser<SelState> = {
   name: 'seleasy',
   startState: () => ({ tokenize: tokenSeleasy, chain: null, style: null, tail: null }),
   token: (stream, state) => (state.tokenize || tokenSeleasy)(stream, state),
@@ -335,7 +336,9 @@ export const seleasyLanguage = StreamLanguage.define<SelState>({
     'variable-2': t.special(t.variableName),
     'string-2': t.special(t.string),
   },
-});
+};
+
+export const seleasyLanguage = StreamLanguage.define<SelState>(seleasyStreamParser);
 
 // Colors reference CSS vars (declared in styles.css) so the editor tracks the app light/dark theme.
 export const seleasyHighlight = HighlightStyle.define([

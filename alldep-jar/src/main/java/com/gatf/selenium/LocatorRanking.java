@@ -38,13 +38,21 @@ public final class LocatorRanking {
                 for (Object o : candidates) {
                     if (!(o instanceof Map)) continue;
                     Map<?, ?> c = (Map<?, ?>) o;
-                    if (!kind.equals(str(c.get("s"))) || count(c.get("n")) != 1) continue;
+                    if (!kind.equals(str(c.get("s"))) || !SemanticLocators.resolvesStrictly(count(c.get("n")))) continue;
                     String loc = locator(kind, c);
                     if (loc != null) return loc;
                 }
             }
         }
         return fallback;
+    }
+
+    /** Δ148: one candidate as seleasy ({@code testid@…}, {@code role@…[name=…]}, {@code label@…}), or null when its kind is
+     *  unknown or its value is not expressible; the same rendering {@link #choose} uses. */
+    public static String render(Map<?, ?> c) {
+        if (c == null) return null;
+        String kind = str(c.get("s"));
+        return kind.equals("testid") || kind.equals("role") || kind.equals("label") ? locator(kind, c) : null;
     }
 
     static String locator(String kind, Map<?, ?> c) {
