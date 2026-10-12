@@ -129,6 +129,11 @@ public final class GatfCli {
     			// Q2: `gatf import <playwright|jmeter|curl|postman|har|openapi> <file|-> [-o out] [--name ..] [--filter ..] [--force]`
     			exitCode = ImportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
+    		else if(args[0].equals("export"))
+    		{
+    			// Δ160: `gatf export playwright <file.sel|dir> [-o out] [--strict-locators] [--force]` (seleasy -> Playwright TS)
+    			exitCode = ExportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
+    		}
     		else if(args[0].equals("merge-reports"))
     		{
     			// M7: `gatf merge-reports <dir>... [-o out]` joins the out dirs of a sharded run into one report
@@ -164,6 +169,7 @@ public final class GatfCli {
     		System.out.println("Invalid invocation - valid invocation options are, \n" +
 					"java -jar gatf-plugin-{version}.jar " + TestCommandArgs.USAGE.substring("gatf ".length()).replace("\n", "\n    ") + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + ExportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + DocsCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + com.gatf.log.ReportMerger.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + com.gatf.mcp.McpCli.USAGE.substring("gatf ".length()) + "\n" +

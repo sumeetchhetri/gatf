@@ -1,0 +1,48 @@
+// Δ160 export corpus: constructs with no Playwright mapping become TODO(gatf-export) lines; whole blocks stay commented.
+open chrome
+goto https://shop.test/
+#j if(1==1) {} else {}
+## class@"row"
+{
+    click xpath@"//a[@index]"
+}
+#counter 0 5
+{
+    exec @print(@index)
+}
+<<<(java) var0
+System.out.println("}");
+>>>
+curl post http://abc.com
+{
+    [
+        Content-Type: application/xml
+    ]
+    <abc>abc</abc>
+}
+? eval "a"=="a"
+{
+    click id@a
+}
+: 
+{
+    click id@b
+}
+? id@x
+{
+    click id@c
+}
+else ifnot id@y
+{
+    click id@d
+}
+frame "my-frame"
+include lib/common.sel
+randomize id@'ele1' alphanumeric 12
+alert 'Hello'
+^mobileOnly click id@burger
+click jq@'.menu:visible'
+click relative tag@input rightof label@Email
+open firefox
+@call "nowhere"
+a11y check

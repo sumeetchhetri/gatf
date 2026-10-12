@@ -1,0 +1,9 @@
+12-structure → 12-structure.spec.ts  {statements=24, exported=24, todo=0, notes=5}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  5 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #15 subtest "save [smoke]" (who) — skipped with test.step.skip (another subtest is marked only); needs @playwright/test 1.50 or later
+   ~ #19 ? testid@status — getByTestId uses Playwright's testIdAttribute (default data-testid); set use.testIdAttribute if the project changes seleasy's testIdAttribute
+   ~ #19 ? testid@status — an if condition is checked at once with count(); seleasy may poll for it briefly first
+   ~ #39 skip subtest "later" — skipped with test.step.skip (skip); needs @playwright/test 1.50 or later

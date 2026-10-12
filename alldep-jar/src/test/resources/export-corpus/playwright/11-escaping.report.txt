@@ -1,0 +1,8 @@
+11-escaping → 11-escaping.spec.ts  {statements=14, exported=13, todo=1, notes=2}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  1 unsupported (exported as TODO(gatf-export) comments):
+   ! #14 ?? text@'/*x/' — locator text@'/*x/': Invalid regex /*x/: Dangling meta character '*'
+  2 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #12 ?? label@'/a\/b[/]c/i' — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible

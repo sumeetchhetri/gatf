@@ -1,0 +1,15 @@
+// Δ160 export e2e: semantic locators against the fixture page (e2e/export/fixture); exported and run by npm run test:export.
+open chrome
+goto ${baseUrl}/index.html
+type 'me@example.com' label@'Email address'
+type 'shoes' placeholder@~search
+click role@checkbox[name=Subscribe]
+?? role@checkbox[name=Subscribe][checked]
+click role@button[name=Save]
+?? testid@status text ='Saved: me@example.com'
+?? alt@'Company logo'
+click title@=Close
+??+ title@=Close
+?? text@'=Order placed'
+?? text@'/order (placed|shipped)/i'
+?? role@heading[level=2][name='Orders (3)']

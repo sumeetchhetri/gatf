@@ -1,0 +1,5 @@
+16-strict → 16-strict.spec.ts  {statements=7, exported=7, todo=0, notes=3}
+  3 note(s) on behaviour that differs:
+   ~ #3 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #6 ?? testid@status text ='ok' — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions
+   ~ #6 ?? testid@status text ='ok' — getByTestId uses Playwright's testIdAttribute (default data-testid); set use.testIdAttribute if the project changes seleasy's testIdAttribute

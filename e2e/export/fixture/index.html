@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>GATF export fixture</title>
+  <style>
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Welcome</h1>
+  <p id="greeting"></p>
+  <h2>Orders (3)</h2>
+  <p>Order placed</p>
+  <img alt="Company logo" width="40" height="20" src="data:image/gif;base64,R0lGODlhAQABAAAAACw=">
+  <form id="profile" onsubmit="return false">
+    <label for="email">Email address</label>
+    <input id="email" name="email" placeholder="you@example.com">
+    <input id="q" placeholder="Search products">
+    <label><input type="checkbox" id="subscribe"> Subscribe</label>
+    <select id="size">
+      <option value="s">Small</option>
+      <option value="m">Medium</option>
+      <option value="l">Large</option>
+    </select>
+    <button type="button" class="hidden">Save</button>
+    <button type="button" id="save">Save</button>
+    <button type="button" id="draft">Save draft</button>
+  </form>
+  <div data-testid="status" id="status"></div>
+  <span id="count">3</span>
+  <div id="banner-slot"></div>
+  <button type="button" title="Close" id="close">x</button>
+  <a href="page2.html">Next page</a>
+  <script>
+    const params = new URLSearchParams(location.search);
+    if (params.get('name')) document.getElementById('greeting').textContent = 'Hello ' + params.get('name');
+    document.getElementById('save').addEventListener('click', () => {
+      document.getElementById('status').textContent = 'Saved: ' + document.getElementById('email').value;
+    });
+    document.getElementById('close').addEventListener('click', (e) => e.target.remove());
+    // a late element, for the web-first / polling assertions
+    setTimeout(() => {
+      const b = document.createElement('div');
+      b.id = 'banner';
+      b.textContent = 'Banner shown';
+      document.getElementById('banner-slot').appendChild(b);
+    }, 400);
+  </script>
+</body>
+</html>

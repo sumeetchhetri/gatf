@@ -1,0 +1,8 @@
+e2e-01-semantic → e2e-01-semantic.spec.ts  {statements=14, exported=14, todo=0, notes=4}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  4 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #7 ?? role@checkbox[name=Subscribe][checked] — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #9 ?? testid@status text ='Saved: me@example.com' — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions
+   ~ #9 ?? testid@status text ='Saved: me@example.com' — getByTestId uses Playwright's testIdAttribute (default data-testid); set use.testIdAttribute if the project changes seleasy's testIdAttribute

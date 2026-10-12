@@ -1,0 +1,16 @@
+// Δ160 export corpus: adversarial strings. Every value must survive as the same characters in TypeScript.
+open chrome
+goto ${baseUrl}/a'b\c
+type "it's \"quoted\" with `back` ticks and ${ not a ref} and $v{who}" id@q
+type 'back\slash \n stays two chars' id@q
+type 'line sep   para   end' id@q
+type '</script> */ /* -->' id@q
+click css@'a[title="x\"y"]'
+click id@'weird id"]'
+click name@'n\\a'
+click xpath@"//a[text()='it''s']"
+?? label@'/a\/b[/]c/i'
+?? role@button[name=*star]
+?? text@'/*x/'
+// comment with a line separator   inside
+fail 'emoji 😀 and tab	end'

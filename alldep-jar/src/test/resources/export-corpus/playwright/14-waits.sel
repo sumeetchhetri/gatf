@@ -1,0 +1,34 @@
+// Δ160 export corpus: waits, assertion operators, soft assertions, timeouts and the nowait opt-out.
+open chrome
+??10 id@'ele1' click
+??5 label@Email type 'a@b.c'
+??5 id@size select index@2
+nowait ??10 id@'ele3' click
+click! css@#fast-btn
+nowait type 'abc' id@q
+typebl 'abc' id@q
+sendkeysch 'abc' id@q
+typefo 'abc' id@q
+typebk 'abc' id@q
+clickfo id@x
+hoverclick id@menu id@item
+actions draganddrop id@'source' id@'target'
+??~5 id@'count' text !='0'
+?? id@x text %abc%
+?? id@x text 'abc'%
+?? id@x text %'abc'
+?? id@x text >'b'
+?? id@x text =['a', 'b']
+?? id@x cssvalue@color ='rgb(0, 0, 0)'
+?? id@x visible =true
+?? id@x enabled =false
+?? id@x selected ='true'
+?? id@x width ='10'
+wait for id@x
+wait till visible id@y
+scroll pagedown
+scroll id@footer
+sleep 250
+timeout 30 1 500
+maximize
+close

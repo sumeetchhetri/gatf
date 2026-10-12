@@ -1,0 +1,18 @@
+// Δ160 export e2e: assertions, soft assertions, waits and select against the fixture page.
+open chrome
+goto ${baseUrl}/index.html
+?? css@'h1' text ='Welcome'
+?? title ='GATF export fixture'
+?? id@count text !='0'
+??~ id@count text ='3'
+?? id@email attr@placeholder ='you@example.com'
+type 'abc' id@email
+?? id@email attr@value ='abc'
+select text@'Medium' id@size
+?? id@size attr@value ='m'
+// seleasy compares expected.op(actual): this passes once the late banner reads 'Banner shown'
+?? id@banner text %'Banner shown later'
+?? id@count text <='3'
+??- id@banner
+??+ id@ghost
+?? id@size tagname ='select'

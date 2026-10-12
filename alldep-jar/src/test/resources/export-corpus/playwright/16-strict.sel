@@ -1,0 +1,9 @@
+// export-options: --strict-locators
+// Δ160 export corpus: --strict-locators keeps semantic locators strict (no .first()); CSS/XPath/id still act on the first match.
+open chrome
+click role@button[name=Save]
+type 'x' label@Email
+?? testid@status text ='ok'
+click css@'.btn'
+click role@button[name=Hidden][include-hidden]
+click alt@'Logo[include-hidden]'

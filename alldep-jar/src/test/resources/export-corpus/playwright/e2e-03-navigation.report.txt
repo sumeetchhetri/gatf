@@ -1,0 +1,7 @@
+e2e-03-navigation → e2e-03-navigation.spec.ts  {statements=20, exported=20, todo=0, notes=3}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  3 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #21 ?? testid@status text ='Saved: x@y.z' — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions
+   ~ #21 ?? testid@status text ='Saved: x@y.z' — getByTestId uses Playwright's testIdAttribute (default data-testid); set use.testIdAttribute if the project changes seleasy's testIdAttribute

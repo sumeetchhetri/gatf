@@ -1,0 +1,17 @@
+13-network → 13-network.spec.ts  {statements=27, exported=23, todo=4, notes=10}
+  4 unsupported (exported as TODO(gatf-export) comments):
+   ! #4 route **/api/raw fulfill 204 — seleasy reads a line containing '*/' as the end of a block comment and never runs it (here the '*/' of '**/'); quote the value ('**/...') so it runs, then export again
+   ! #13 state load .auth/admin.json — state load: storageState is a browser-context option in Playwright (test.use({ storageState }))
+   ! #20 emulate locale de-DE — emulate locale is a browser-context option in Playwright (test.use / newContext)
+   ! #24 clock pause — clock pause has no Playwright equivalent
+  10 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #3 route '**/api/users' fulfill 200 users.json — file paths are resolved from the Playwright working directory, not the script's folder
+   ~ #5 route POST '**/api/orders' fulfill 201 '{"id": 7}' type application/json header 'X-Mock: yes' header 'X-Mock: again' — Playwright runs the most recently added matching route first; seleasy uses the first one added. Overlapping routes may need reordering
+   ~ #5 route POST '**/api/orders' fulfill 201 '{"id": 7}' type application/json header 'X-Mock: yes' header 'X-Mock: again' — header X-Mock is repeated; Playwright sends one value per name (the last one)
+   ~ #8 route from har checkout.har url '**/api/**' notfound abort — routeFromHAR matches by URL + method (and POST body); seleasy also prefers the entry sharing the most query parameters
+   ~ #12 state save .auth/admin.json — Playwright saves cookies + localStorage, relative to its working directory; seleasy also saves sessionStorage and merges into an existing file next to the test cases
+   ~ #15 emulate geolocation 51.5072 -0.1276 — grant the 'geolocation' permission (emulate permissions geolocation) if the page asks for it
+   ~ #21 clock install 2026-01-01T09:00:00Z — Playwright's fake clock covers the whole browser context; install it before the page loads for timers set at load time
+   ~ #28 screenshot compare "checkout step 2" 0.1 maxdiff 0.5% mask id@clock mask css@'.ad-banner' — threshold 0.1 is not mapped (Playwright's threshold is per-pixel colour distance)
+   ~ #28 screenshot compare "checkout step 2" 0.1 maxdiff 0.5% mask id@clock mask css@'.ad-banner' — toHaveScreenshot keeps its own baselines (the spec's -snapshots folder); seleasy baselines are not reused

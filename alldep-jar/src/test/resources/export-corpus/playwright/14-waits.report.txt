@@ -1,0 +1,15 @@
+14-waits → 14-waits.spec.ts  {statements=33, exported=32, todo=1, notes=11}
+  1 unsupported (exported as TODO(gatf-export) comments):
+   ! #26 ?? id@x width ='10' — element property 'width' has no Playwright mapping
+  11 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #6 nowait ??10 id@'ele3' click — nowait / '!' maps to { force: true }, which skips Playwright's actionability checks as seleasy's opt-out does
+   ~ #8 nowait type 'abc' id@q — nowait has no effect on typing: pressSequentially has no force option
+   ~ #16 ??~5 id@'count' text !='0' — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions
+   ~ #17 ?? id@x text %abc% — seleasy compares expected.contains(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #18 ?? id@x text 'abc'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #19 ?? id@x text %'abc' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #20 ?? id@x text >'b' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #27 wait for id@x — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #32 timeout 30 1 500 — only the element timeout is exported; '1 500' (if-timeout / poll granularity) has no equivalent
+   ~ #33 maximize — maximize has no page-level equivalent; set use.viewport in playwright.config

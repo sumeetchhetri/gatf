@@ -6,7 +6,9 @@
   "scripts": {
     "test": "playwright test",
     "test:headed": "playwright test --headed",
-    "install-browser": "playwright install chromium"
+    "install-browser": "playwright install chromium",
+    "test:export": "node export/prepare.mjs && playwright test -c export/playwright.config.ts",
+    "typecheck:export": "node export/typecheck.mjs"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0"

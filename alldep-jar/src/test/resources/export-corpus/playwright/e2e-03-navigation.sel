@@ -1,0 +1,23 @@
+// Δ160 export e2e: navigation, variables and a subtest against the fixture page.
+open chrome
+goto ${baseUrl}/index.html
+click role@link[name='Next page']
+?? currentUrl ='${baseUrl}/page2.html'
+?? css@h1 text ='Second page'
+back
+?? title ='GATF export fixture'
+forward
+?? css@h1 text ='Second page'
+refresh
+waitready
+?? title ='Page two'
+var who 'Ada'
+goto ${baseUrl}/index.html?name=$v{who}
+?? id@greeting text ='Hello Ada'
+subtest "save"
+{
+    type 'x@y.z' label@'Email address'
+    click role@button[name=Save]
+    ?? testid@status text ='Saved: x@y.z'
+}
+@call "save"
