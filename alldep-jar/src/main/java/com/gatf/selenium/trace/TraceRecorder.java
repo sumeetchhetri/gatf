@@ -71,6 +71,9 @@ public final class TraceRecorder implements AutoCloseable {
     // discard() before any stop() skips the end capture. In a run, quitAll() -> stop() comes before the executor's
     // keep/discard decision, so the end capture is taken there and deleted with the working dir when discarded.
     private volatile boolean discarding;
+    private volatile String outcome;        // Δ156: passed | failed, when the executor knows it at zip time
+    private long endTs;                     // Δ156: fixed at the first metadata write, so a rewrite keeps it
+    private String caps;                    // Δ156: the capability list, read while the browser is still open
     private int failureAt = -1;            // Δ146a: the action id a failure was last recorded for
     private int fullCaptures, liteCaptures; // Δ147b: what the captures actually produced
 
@@ -252,6 +255,17 @@ public final class TraceRecorder implements AutoCloseable {
         try { stop(); } finally { deleteTree(workDir); }
     }
 
+    /**
+     * Δ156: {@link #writeZip(Path)} with the session's outcome ({@code passed} | {@code failed}) in metadata.json, so a
+     * coverage index can tell a script that stopped early (partial coverage) from one that ran to the end.
+     */
+    public Path writeZip(Path target, String outcome) {
+        this.outcome = outcome;
+        stop();
+        try { writeMetadata(); } catch (Exception ignored) {}
+        return writeZip(target);
+    }
+
     /** Zip the working dir to {@code target} (streamed) and delete the working dir. */
     public Path writeZip(Path target) {
         stop();
@@ -293,7 +307,8 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("domSnapshotsLimit", domLimit)
                 .put("domSnapshotBytes", snap == null ? 0 : snap.capturedBytes())
                 .put("startTs", startTs)
-                .put("endTs", System.currentTimeMillis())
+                .put("endTs", endTs == 0 ? (endTs = System.currentTimeMillis()) : endTs)
+                .put("outcome", outcome)
                 .put("recNetwork", net != null)
                 .put("recConsole", console != null)
                 .put("recSnapshots", snap != null)
@@ -302,7 +317,7 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("recCoverage", coverage != null)
                 .put("recVideo", video != null)
                 .put("transport", browser.getClass().getSimpleName())
-                .put("capabilities", capabilityList())
+                .put("capabilities", caps == null ? (caps = capabilityList()) : caps)
                 .put("truncatedBodies", net != null ? net.truncatedBodies() : 0)
                 .put("bytesCaptured", net != null ? net.bytesCaptured() : 0)
                 .end();

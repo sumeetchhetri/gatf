@@ -1317,7 +1317,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     if (__st != null && !__st.isStatus()) __failed = true;
                                 }
                                 if (context.getGatfExecutorConfig().keepTrace(__failed)) {
-                                    java.nio.file.Path __tzp = sess.__trace__.writeZip(new File(context.getOutDir().getAbsolutePath() + File.separator + path, fileName + "-trace.zip").toPath());
+                                    java.nio.file.Path __tzp = sess.__trace__.writeZip(new File(context.getOutDir().getAbsolutePath() + File.separator + path, fileName + "-trace.zip").toPath(), __failed ? "failed" : "passed");   // H6 (delta 156): the outcome, for test-impact selection
                                     if(__tzp!=null) {
                                         __traceRel = fileName + "-trace.zip";
                                         __traceAbs = __tzp.toAbsolutePath().toString();

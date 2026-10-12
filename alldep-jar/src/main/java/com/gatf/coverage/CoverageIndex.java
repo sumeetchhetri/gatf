@@ -54,6 +54,8 @@ public final class CoverageIndex {
     public static final String CACHE = "coverage-index.json";
     private static final Pattern MANIFEST = Pattern.compile("snapshots/snapshot-\\d+\\.json");
     private static final long SMALL = 1L << 20;   // metadata.json and snapshot manifests
+    // Δ156: bumped whenever the writer changes within one format version, so a cache from an older writer is rebuilt
+    static final String REV = "156";
 
     private CoverageIndex() {}
 
@@ -77,25 +79,27 @@ public final class CoverageIndex {
         String run = runDir == null || runDir.getFileName() == null ? "" : runDir.getFileName().toString();
         try {
             List<Path> zips = traceZips(runDir);
-            int n = 0;
+            int n = 0, peeks = lim.maxTraces;
             for (Path z : zips) {
                 String name = z.getFileName().toString();
-                if (++n > lim.maxTraces) { m.skip(name, null, "cap: more than " + lim.maxTraces + " trace bundles in the run"); continue; }
-                if (budget[0] <= 0) { m.skip(name, null, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up"); continue; }
+                // Δ156: a capped trace still names its test (metadata.json only, outside the budget), so that test is marked
+                // capped instead of leaving a skip no selector can attribute; past the peek allowance the test stays unknown
+                if (++n > lim.maxTraces) { capped(m, z, name, "cap: more than " + lim.maxTraces + " trace bundles in the run", peeks-- > 0); continue; }
+                if (budget[0] <= 0) { capped(m, z, name, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up", peeks-- > 0); continue; }
                 readTrace(m, z, name, lim, budget);
             }
         } catch (Exception e) {
-            m.skip(run, null, "run folder unreadable (" + e.getClass().getSimpleName() + ")");
+            m.skip(run, null, "run folder unreadable (" + e.getClass().getSimpleName() + ")", "run");
         }
         if (crawlFile != null) {
             String src = crawlFile.getFileName() == null ? crawlFile.toString() : crawlFile.getFileName().toString();
             if (!Files.isRegularFile(crawlFile)) {
-                m.skip(src, null, "crawl map not found");
+                m.skip(src, null, "crawl map not found", "crawl");
             } else {
                 try (InputStream in = new Capped(Files.newInputStream(crawlFile), lim.maxCrawlBytes)) {
                     m.crawl(src, in);
                 } catch (Exception e) {
-                    m.skip(src, null, "crawl map unreadable (" + e.getClass().getSimpleName() + ")");
+                    m.skip(src, null, "crawl map unreadable (" + e.getClass().getSimpleName() + ")", "crawl");
                 }
             }
         }
@@ -164,13 +168,57 @@ public final class CoverageIndex {
         return out;
     }
 
+    // Δ156: a trace over a cap: name its test (metadata.json only, never the budget) and mark it capped; else a test=null skip
+    private static void capped(CoverageMerge m, Path z, String name, String reason, boolean peek) {
+        String testId = null;
+        if (peek) {
+            try (ZipFile zf = new ZipFile(z.toFile())) {
+                ZipEntry meta = zf.getEntry("metadata.json");
+                if (meta == null) { m.skip(name, null, reason, scopeOf(name)); return; }
+                JsonNode md = readSmall(zf, meta, new long[] {SMALL});
+                testId = trustedTestId(md);
+                if (testId != null) m.traceStart(startTs(md));
+            } catch (Exception ignored) {
+                // unreadable: the test stays unknown
+            }
+        }
+        if (testId == null) {
+            m.skip(name, null, reason + (peek ? "; its test could not be read" : "; its test was not read"), "trace");
+        } else {
+            m.skip(name, testId, reason);
+            m.mark(testId, CoverageMerge.Read.CAPPED);
+        }
+    }
+
+    // a zip without metadata.json is only a trace when it is named like one (…-trace.zip)
+    private static String scopeOf(String zipName) {
+        return zipName.toLowerCase(Locale.ROOT).endsWith("-trace.zip") ? "trace" : "other";
+    }
+
+    private static Long startTs(JsonNode meta) {
+        long ts = meta == null ? 0 : meta.path("startTs").asLong(0);
+        return ts > 0 ? ts : null;
+    }
+
     private static void readTrace(CoverageMerge m, Path z, String name, CoverageMerge.Limits lim, long[] budget) {
         String testId = null;
         try (ZipFile zf = new ZipFile(z.toFile())) {
-            if (zf.size() > lim.maxZipEntries) { m.skip(name, null, "cap: more than " + lim.maxZipEntries + " zip entries"); return; }
             ZipEntry meta = zf.getEntry("metadata.json");
-            if (meta == null) { m.skip(name, null, "not a GATF trace bundle (no metadata.json)"); return; }
-            testId = testId(readSmall(zf, meta, budget), name);
+            if (meta == null) { m.skip(name, null, "not a GATF trace bundle (no metadata.json)", scopeOf(name)); return; }
+            JsonNode md = readSmall(zf, meta, new long[] {SMALL});   // Δ156: its own allowance, so a low budget never hides the test
+            testId = testId(md, name);
+            if (trustedTestId(md) == null) {
+                // Δ156: indexed under its file name for the report page, but no selector can know which script it ran
+                m.skip(name, null, md == null ? "metadata.json unreadable: the trace's test is unknown" : "metadata.json names no selFile: the trace's test is unknown", "trace");
+            }
+            m.traceStart(startTs(md));
+            m.outcome(testId, md == null ? null : md.path("outcome").asText(null));
+            if (zf.size() > lim.maxZipEntries) {
+                // Δ156: metadata first, so the skip names the test and the test is marked capped
+                m.skip(name, testId, "cap: more than " + lim.maxZipEntries + " zip entries");
+                m.mark(testId, CoverageMerge.Read.CAPPED);
+                return;
+            }
             ZipEntry cov = zf.getEntry("coverage.json");
             m.trace(testId, name, cov != null);
             // network.har first: its script bodies decide which body this trace's coverage is filed under
@@ -218,7 +266,8 @@ public final class CoverageIndex {
                 if (man != null) m.visit(testId, man.path("url").asText(null));
             }
         } catch (Exception e) {
-            m.skip(name, testId, "unreadable trace bundle (" + e.getClass().getSimpleName() + ")");
+            if (testId == null) m.skip(name, null, "unreadable trace bundle (" + e.getClass().getSimpleName() + ")", scopeOf(name));
+            else m.skip(name, testId, "unreadable trace bundle (" + e.getClass().getSimpleName() + ")");
             if (testId != null) m.mark(testId, CoverageMerge.Read.MALFORMED);   // its coverage can't be trusted complete
         }
     }
@@ -248,14 +297,19 @@ public final class CoverageIndex {
         }
     }
 
+    // the selFile a trace names, normalised; null when it names none
+    static String trustedTestId(JsonNode meta) {
+        String sel = meta == null ? null : meta.path("selFile").asText(null);
+        if (sel == null || sel.trim().isEmpty()) return null;
+        String s = sel.trim().replace('\\', '/');
+        while (s.startsWith("./")) s = s.substring(2);
+        return s;
+    }
+
     // the test id is the script the trace ran (metadata.json selFile); a trace without one falls back to its file name
     static String testId(JsonNode meta, String zipName) {
-        String sel = meta == null ? null : meta.path("selFile").asText(null);
-        if (sel != null && !sel.trim().isEmpty()) {
-            String s = sel.trim().replace('\\', '/');
-            while (s.startsWith("./")) s = s.substring(2);
-            return s;
-        }
+        String s = trustedTestId(meta);
+        if (s != null) return s;
         String n = zipName;
         if (n.toLowerCase(Locale.ROOT).endsWith(".zip")) n = n.substring(0, n.length() - 4);
         if (n.endsWith("-trace")) n = n.substring(0, n.length() - 6);
@@ -308,7 +362,7 @@ public final class CoverageIndex {
     static String fingerprint(Path runDir, Path crawlFile, CoverageMerge.Limits lim) {
         try {
             StringBuilder b = new StringBuilder();
-            b.append(CoverageMerge.FORMAT).append('/').append(CoverageMerge.VERSION).append('|').append(lim.fingerprint()).append('\n');
+            b.append(CoverageMerge.FORMAT).append('/').append(CoverageMerge.VERSION).append('|').append(REV).append('|').append(lim.fingerprint()).append('\n');
             for (Path z : traceZips(runDir)) {
                 b.append(z.getFileName()).append('|').append(Files.size(z)).append('|').append(mtime(z)).append('\n');
             }

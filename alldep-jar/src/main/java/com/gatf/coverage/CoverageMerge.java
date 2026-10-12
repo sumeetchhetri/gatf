@@ -93,6 +93,8 @@ public final class CoverageMerge {
     private String crawlSource;
     private int traces, tracesWithCoverage, tracesCoverageRead;
     private int anonymousScripts;
+    private Long oldestStart, newestStart;        // Δ156: metadata.json startTs over the traces read
+    private int unknownStart;
 
     public CoverageMerge(Limits limits) {
         this.limits = limits == null ? new Limits() : limits;
@@ -104,6 +106,7 @@ public final class CoverageMerge {
         // url -> body sha1 (or UNKNOWN_BODY when the trace captured no single body for it) -> accumulated coverage
         final SortedMap<String, SortedMap<String, ScriptAcc>> scripts = new TreeMap<>();
         Read coverage;                                          // worst over the test's traces; null = none recorded
+        int outcome = -1;                                       // Δ156: worst over its traces: 0 passed, 1 unknown, 2 failed
         long cssRules, cssTotal, cssUsed;
         final SortedSet<String> cssSheets = new TreeSet<>();   // per-trace sheet ids, only counted
     }
@@ -112,6 +115,7 @@ public final class CoverageMerge {
         long len;
         List<long[]> ranges = new ArrayList<>();
         final SortedSet<long[]> functions = new TreeSet<>(CoverageMerge::cmp);   // distinct (start, end) pairs
+        final SortedSet<long[]> zeros = new TreeSet<>(CoverageMerge::cmp);       // Δ156: raw ranges that never ran
         int functionsTotal;
         boolean truncated;
     }
@@ -140,11 +144,35 @@ public final class CoverageMerge {
     }
 
     public void skip(String file, String testId, String reason) {
+        skip(file, testId, reason, testId != null ? "test" : "trace");
+    }
+
+    /**
+     * Δ156: {@code scope} says what the skip may hide: {@code test} (that test's coverage), {@code trace} (a trace bundle
+     * whose test is unknown, so no test can be trusted), {@code run} (the run folder), {@code crawl} (the crawl map) or
+     * {@code other} (a file that is not a trace bundle).
+     */
+    public void skip(String file, String testId, String reason, String scope) {
         Map<String, Object> m = new LinkedHashMap<>();
         m.put("file", file);
         m.put("test", testId);
         m.put("reason", reason);
+        m.put("scope", scope);
         skipped.add(m);
+    }
+
+    /** Δ156: a trace's outcome (metadata.json "outcome": passed | failed; anything else is unknown). The worst wins. */
+    public void outcome(String testId, String outcome) {
+        int o = "passed".equals(outcome) ? 0 : "failed".equals(outcome) ? 2 : 1;
+        TestAcc ta = test(testId);
+        if (o > ta.outcome) ta.outcome = o;
+    }
+
+    /** Δ156: a trace's metadata.json startTs (null when it has none); the index reports the oldest and newest. */
+    public void traceStart(Long startTs) {
+        if (startTs == null || startTs <= 0) { unknownStart++; return; }
+        if (oldestStart == null || startTs < oldestStart) oldestStart = startTs;
+        if (newestStart == null || startTs > newestStart) newestStart = startTs;
     }
 
     public void note(String n) { notes.add(n); }
@@ -230,6 +258,7 @@ public final class CoverageMerge {
         if (url == null) { anonymousScripts++; return; }
         List<long[]> raw = new ArrayList<>();
         List<long[]> fnRanges = new ArrayList<>();
+        List<long[]> zeroRaw = new ArrayList<>();
         long len = 0;
         for (JsonNode fn : s.path("functions")) {
             JsonNode rs = fn.path("ranges");
@@ -238,6 +267,7 @@ public final class CoverageMerge {
                 long a = r.path("startOffset").asLong(-1), b = r.path("endOffset").asLong(-1), c = r.path("count").asLong(0);
                 if (a < 0 || b <= a) { first = false; continue; }
                 raw.add(new long[] {a, b, c});
+                if (c == 0) zeroRaw.add(new long[] {a, b});   // Δ156: a function or block that never ran (not merged)
                 if (b > len) len = b;
                 if (first) fnRanges.add(new long[] {a, b, c});
                 first = false;
@@ -265,6 +295,12 @@ public final class CoverageMerge {
         sa.functionsTotal = Math.max(sa.functionsTotal, fnTotal);
         sa.ranges = union(sa.ranges, covered(raw));
         sa.functions.addAll(executedFns);
+        sa.zeros.addAll(zeroRaw);
+        while (sa.zeros.size() > limits.maxRangesPerScript) {
+            sa.zeros.remove(sa.zeros.last());
+            if (!sa.truncated) skip(traceName, testId, "cap: " + url + " has more than " + limits.maxRangesPerScript + " uncovered ranges; truncated");
+            sa.truncated = true;
+        }
         if (sa.ranges.size() > limits.maxRangesPerScript) {
             sa.ranges = new ArrayList<>(sa.ranges.subList(0, limits.maxRangesPerScript));
             if (!sa.truncated) skip(traceName, testId, "cap: " + url + " has more than " + limits.maxRangesPerScript + " covered ranges; truncated");
@@ -295,7 +331,7 @@ public final class CoverageMerge {
             JsonNode root = OM.readTree(in);
             JsonNode pages = root == null ? null : root.isArray() ? root : root.path("pages");
             if (pages == null || !pages.isArray()) {
-                skip(source, null, "not a crawl map (expected [{url…}] or {pages:[{url…}]})");
+                skip(source, null, "not a crawl map (expected [{url…}] or {pages:[{url…}]})", "crawl");
                 crawl = null;
                 return false;
             }
@@ -303,7 +339,7 @@ public final class CoverageMerge {
                 String r = CoverageUrls.route(pg.path("url").asText(null));
                 if (r == null) continue;
                 if (out.size() >= limits.maxRoutes) {
-                    skip(source, null, "cap: more than " + limits.maxRoutes + " crawl routes; the rest were not read");
+                    skip(source, null, "cap: more than " + limits.maxRoutes + " crawl routes; the rest were not read", "crawl");
                     break;
                 }
                 String pr = pg.path("priority").asText("");
@@ -312,11 +348,11 @@ public final class CoverageMerge {
                 if (prev == null || prev.isEmpty()) out.put(r, pr);
             }
         } catch (CoverageIndex.CapExceeded e) {
-            skip(source, null, "cap: crawl map is larger than " + e.cap + " bytes");
+            skip(source, null, "cap: crawl map is larger than " + e.cap + " bytes", "crawl");
             crawl = null;
             return false;
         } catch (Exception e) {
-            skip(source, null, "crawl map is not valid JSON (" + e.getClass().getSimpleName() + ")");
+            skip(source, null, "crawl map is not valid JSON (" + e.getClass().getSimpleName() + ")", "crawl");
             crawl = null;
             return false;
         }
@@ -418,6 +454,7 @@ public final class CoverageMerge {
         long len;
         List<long[]> ranges = new ArrayList<>();
         final SortedSet<long[]> functions = new TreeSet<>(CoverageMerge::cmp);
+        final SortedSet<long[]> zeros = new TreeSet<>(CoverageMerge::cmp);
         int functionsTotal;
         boolean truncated;
 
@@ -425,6 +462,7 @@ public final class CoverageMerge {
             len = Math.max(len, s.len);
             ranges = union(ranges, s.ranges);
             functions.addAll(s.functions);
+            zeros.addAll(s.zeros);
             functionsTotal = Math.max(functionsTotal, s.functionsTotal);
             truncated |= s.truncated;
         }
@@ -450,6 +488,17 @@ public final class CoverageMerge {
         m.put("unmapped", "a changed file that no script URL or source map maps to is unmapped: run every test and say why");
         m.put("urls", "URLs keep scheme, host and path only: query, fragment, userinfo and ;jsessionid= are dropped (routes keep #/ and #!/ hash routes)");
         m.put("routes", "routes are keyed by com.gatf.coverage.CoverageUrls.route, which applies the crawler's SpaCrawler.norm");
+        // Δ156
+        m.put("fileLevel", "a test's script marked fileLevel (ranges truncated at maxRangesPerScript, or an unknown body while the URL"
+                + " has a known body in the run) is mapped at file level: any change that maps to that script selects the test");
+        m.put("uncovered", "uncovered = the raw V8 function and block ranges that never ran in the test (count 0, not merged): only a change"
+                + " strictly inside one of them, and outside every covered range, is outside the test's code");
+        m.put("skipped", "a skip whose test is null and whose scope is trace or run (a bundle the reader could not attribute to a test)"
+                + " means no test can be trusted: run every test and say why; crawl and other (not a trace) skips don't affect selection");
+        m.put("outcome", "outcome = passed only when every trace of the test recorded that it passed (failed, or unknown for a trace"
+                + " without one): a test that is not passed may have stopped early, so its coverage is partial and it is always selected");
+        m.put("traceStart", "traceStart.oldest = the earliest metadata.json startTs of the run's traces (null when any trace has none):"
+                + " an index older than the base commit of a change range, or of unknown age, must not deselect anything");
         return m;
     }
 
@@ -515,15 +564,27 @@ public final class CoverageMerge {
                     if (full) {
                         so.put("ranges", json(testAgg.ranges));
                         so.put("functions", json(testAgg.functions));
+                        so.put("uncovered", json(testAgg.zeros));
                     }
                 }
                 if (testAgg.truncated) so.put("truncated", true);
+                // Δ156: ranges that can't be trusted line by line: the selector maps this script at file level
+                boolean unknownBody = se.getValue().containsKey(UNKNOWN_BODY);
+                if (unknownBody) so.put("unknownBody", true);
+                String fileLevel = testAgg.truncated ? "truncated at maxRangesPerScript"
+                        : unknownBody && !runBodies.get(u).isEmpty() ? "ran a body the trace did not capture, while the run has a known body for this URL"
+                        : null;
+                if (fileLevel != null) {
+                    so.put("fileLevel", true);
+                    so.put("fileLevelReason", fileLevel);
+                }
                 scripts.put(u, so);
             }
             Read cov = ta.coverage == null ? Read.MISSING : ta.coverage;
             if (cov != Read.OK) testsNotOk++;
             Map<String, Object> to = new LinkedHashMap<>();
             to.put("coverage", cov.label);
+            to.put("outcome", ta.outcome == 0 ? "passed" : ta.outcome == 2 ? "failed" : "unknown");
             to.put("traces", new ArrayList<>(ta.traces));
             to.put("routes", new ArrayList<>(ta.routes));
             to.put("scripts", scripts);
@@ -631,6 +692,11 @@ public final class CoverageMerge {
         untested.put("scripts", untestedScripts);
         out.put("untested", untested);
         out.put("skipped", new ArrayList<>(skipped));
+        Map<String, Object> ts = new LinkedHashMap<>();
+        ts.put("oldest", unknownStart > 0 ? null : oldestStart);
+        ts.put("newest", newestStart);
+        ts.put("unknown", unknownStart);
+        out.put("traceStart", ts);
         out.put("notes", new ArrayList<>(outNotes));
         out.put("rules", rules());
         return out;
@@ -655,6 +721,7 @@ public final class CoverageMerge {
                         Map<String, Object> so = new LinkedHashMap<>((Map<String, Object>) se.getValue());
                         so.remove("ranges");
                         so.remove("functions");
+                        so.remove("uncovered");
                         scripts.put(se.getKey(), so);
                     }
                     to.put("scripts", scripts);

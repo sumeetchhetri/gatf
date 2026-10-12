@@ -24,7 +24,7 @@ import java.util.List;
  * <pre>
  *   gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]
  *             [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only] [--update-snapshots]
- *             [--watch]
+ *             [--watch] [--changed git-range [--explain] [--coverage-run dir] [--source-maps dir]]
  * </pre>
  * The config defaults to gatf-config.json, else gatf-config.xml, in the working directory. Whether the suite is
  * API or UI comes from the config's isSeleniumExecutor, exactly as for -executor / -selenium. Pure parsing; no side
@@ -48,11 +48,19 @@ public final class TestCommandArgs {
     public Boolean updateSnapshots;
     /** M15: --watch: re-run on save (changed scripts + last failures), Enter = everything with failures first. */
     public boolean watch;
+    /** Δ156: --changed &lt;git-range&gt;: run only the UI scripts the change can reach (null = every script). */
+    public String changed;
+    /** Δ156: --explain (with --changed): print the selection with a reason per script and run nothing. */
+    public boolean explain;
+    /** Δ156: --coverage-run &lt;dir&gt;: the run folder whose traces form the coverage index (default: the newest one). */
+    public String coverageRun;
+    /** Δ156: --source-maps &lt;dir&gt;: the build output holding the scripts' external .map files. */
+    public String sourceMaps;
 
     public static final String USAGE =
             "gatf test [config] [--grep RE]... [--grep-invert RE]... [--tag T]... [--reporter junit,json,github,docs|none]\n"
           + "          [--trace off|on|retain-on-failure|on-first-retry] [--retries N] [--workers N|N%] [--shard i/n] [--forbid-only]\n"
-          + "          [--update-snapshots] [--watch]";
+          + "          [--update-snapshots] [--watch] [--changed <git-range> [--explain] [--coverage-run dir] [--source-maps dir]]";
 
     /** Parses {@code args} (everything after "test"). Throws IllegalArgumentException with a usage message on error. */
     public static TestCommandArgs parse(String[] args, File cwd) {
@@ -77,6 +85,10 @@ public final class TestCommandArgs {
                 case "--update-snapshots": case "-u": a.updateSnapshots = v == null || Boolean.parseBoolean(v.trim()); continue;   // M9: a flag
                 case "--watch":                    a.watch = v == null || Boolean.parseBoolean(v.trim()); continue;   // M15: a flag
                 case "--forbid-only":              a.forbidOnly = v == null || Boolean.parseBoolean(v.trim()); continue;   // a flag: no value argument
+                case "--changed":                  a.changed = val(args, i, s, v); break;          // Δ156: test-impact selection
+                case "--coverage-run":             a.coverageRun = val(args, i, s, v); break;
+                case "--source-maps":              a.sourceMaps = val(args, i, s, v); break;
+                case "--explain":                  a.explain = v == null || Boolean.parseBoolean(v.trim()); continue;   // a flag
                 default:
                     if (s.startsWith("-")) throw new IllegalArgumentException("Unknown option " + s + "\n" + USAGE);
                     if (a.config != null) throw new IllegalArgumentException("Only one config file may be given (got " + a.config + " and " + s + ")\n" + USAGE);
@@ -95,6 +107,10 @@ public final class TestCommandArgs {
         }
         if (a.retries != null && a.retries < 0) throw new IllegalArgumentException("--retries must be >= 0");
         if (a.workers != null && a.workers < 1) throw new IllegalArgumentException("--workers must be >= 1");
+        if (a.changed == null && (a.explain || a.coverageRun != null || a.sourceMaps != null)) {
+            throw new IllegalArgumentException("--explain, --coverage-run and --source-maps only apply with --changed <git-range>\n" + USAGE);
+        }
+        if (a.changed != null && a.watch) throw new IllegalArgumentException("--changed and --watch can't be combined");
         return a;
     }
 

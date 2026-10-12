@@ -73,6 +73,25 @@ public final class TestFilter {
         this.description = String.join(" ", d);
     }
 
+    // Δ156: a copy of {@code base} that also excludes these UI scripts (exact configured paths)
+    private TestFilter(TestFilter base, java.util.Collection<String> scripts, String note) {
+        include.addAll(base.include);
+        exclude.addAll(base.exclude);
+        for (String s : scripts) {
+            // selTitle = the path with '/' plus " @tag"s: match the whole path, never a prefix of another script's
+            exclude.add(Pattern.compile("^" + Pattern.quote(s.replace('\\', '/')) + "(?:$| @)"));
+        }
+        this.description = note == null || note.isEmpty() ? base.description : base.description.isEmpty() ? note : base.description + " " + note;
+    }
+
+    /**
+     * Δ156: {@code gatf test --changed}: this filter, also excluding the UI scripts the change provably can't reach
+     * (an AND with --grep/--tag: an excluded script never runs, a kept one still has to match them).
+     */
+    public TestFilter excludingScripts(java.util.Collection<String> scripts, String note) {
+        return scripts == null || scripts.isEmpty() ? this : new TestFilter(this, scripts, note);
+    }
+
     private static Pattern compile(String re, String opt) {
         try {
             return Pattern.compile(re);

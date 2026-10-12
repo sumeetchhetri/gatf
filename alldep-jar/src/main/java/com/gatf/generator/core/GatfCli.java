@@ -104,6 +104,18 @@ public final class GatfCli {
     					if (rep.contains("docs") && !rep.contains("json")) rep += ",json";
     					System.setProperty("gatf.reporters", rep);
     				}
+    				if (t.changed != null) {
+    					// Δ156: `--changed <git-range> [--explain]`: leave out the UI scripts the change provably can't reach
+    					ChangedCli.Plan plan = ChangedCli.plan(t, new java.io.File(System.getProperty("user.dir")), System.out);
+    					if (plan.done) {
+    						exitCode = plan.exitCode;   // --explain, or no script is affected: nothing runs
+    						t = null;
+    					} else if (!plan.exclude.isEmpty()) {
+    						f = f.excludingScripts(plan.exclude, plan.note);
+    						TestFilter.activate(f);
+    						RunConsole.setFilterNote(note == null ? plan.note : note + ", " + plan.note);
+    					}
+    				}
     			} catch (IllegalArgumentException e) {
     				System.err.println("gatf test: " + e.getMessage());
     				t = null;
