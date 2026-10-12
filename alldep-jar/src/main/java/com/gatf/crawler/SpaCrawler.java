@@ -297,9 +297,12 @@ public class SpaCrawler {
         for (PageInfo pi : ps) {
             i++;
             if (pi.error != null) continue;
-            sb.append("// page ").append(i).append(" (depth ").append(pi.depth).append("): ").append(pi.url);
-            if (pi.title != null && !pi.title.isEmpty()) sb.append(" — ").append(pi.title.replace('\n', ' '));
-            sb.append("\ngoto ").append(pi.url).append("\nsleep 1000\n");
+            // Δ148c: the crawled URL is page-controlled (location.href keeps '$' and '()' unencoded): it goes through the
+            // recorder's gotoUrl check ('$' as Velocity unparsed content; quotes, whitespace, controls, other schemes → skip)
+            String g = com.gatf.record.PickLocator.gotoUrl(pi.url);
+            sb.append("// page ").append(i).append(" (depth ").append(pi.depth).append("): ").append(g != null ? pi.url : "(URL not shown: unsafe)");
+            if (pi.title != null && !pi.title.isEmpty()) sb.append(" — ").append(pi.title.replaceAll("[\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029]", " "));
+            sb.append("\n").append(g == null ? com.gatf.record.PickLocator.skipped("crawl", "goto") : "goto " + g).append("\nsleep 1000\n");
             int fi = 0;
             for (Map<String, Object> f : pi.forms) {
                 List<Map<String, Object>> fields = list(f.get("fields"));
