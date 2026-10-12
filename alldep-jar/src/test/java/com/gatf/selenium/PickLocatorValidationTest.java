@@ -47,7 +47,10 @@ class PickLocatorValidationTest {
     }
 
     private static FindCommand find(String expr) {
-        return new FindCommand(expr, new Object[] { expr, 1, new File("t.sel"), "", null, "" }, new Command.CommandState());
+        // as Command.parse does it: quoted text is masked (sanitize) before the statement is split on whitespace, so
+        // role@button[name='Save draft'] reaches FindCommand as one token and is unmasked inside it
+        Command.CommandState st = new Command.CommandState();
+        return new FindCommand(st.sanitize(expr), new Object[] { expr, 1, new File("t.sel"), "", null, "" }, st);
     }
 
     @Test

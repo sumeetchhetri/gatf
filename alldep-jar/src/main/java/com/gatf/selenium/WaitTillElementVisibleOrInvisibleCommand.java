@@ -134,7 +134,9 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("upload ")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, cmdDetails, state);
-                            children.add(comd);
+                            // a forced (global-timeout) `hoverclick A B` lands here as just "hoverclick": handleActions builds
+                            // nothing for it, and a null child broke every walker of the tree (the generated code is unchanged)
+                            if(comd!=null) children.add(comd);
                         }
                     }
                 } else if(cmd.equalsIgnoreCase("actions")) {
