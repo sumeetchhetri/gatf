@@ -47,16 +47,16 @@ const row: ReportArtifact = {
 
 const base = (over: Record<string, unknown> = {}) => ({
   format: 'gatf-coverage-index',
-  version: 1,
+  version: 2,
   detail: 'summary',
   run: 'run-1',
   status: 'ok',
   counts: { traces: 2, tracesWithCoverage: 2, tracesCoverageRead: 2, tests: 2, scripts: 2, routesVisited: 2, crawlRoutes: 4,
     untestedRoutes: 2, untestedScripts: 1, skipped: 0 },
   tests: {
-    'orders.sel': { traces: ['a-trace.zip'], routes: ['https://app.test/#/orders'], scripts: { 'https://app.test/main.js': { len: 100, usedBytes: 40 } },
+    'orders.sel': { coverage: 'ok', traces: ['a-trace.zip'], routes: ['https://app.test/#/orders'], scripts: { 'https://app.test/main.js': { len: 100, usedBytes: 40 } },
       css: { rules: 3, totalBytes: 40, usedBytes: 10 } },
-    'login.sel': { traces: ['b-trace.zip'], routes: ['https://app.test/login'], scripts: {}, css: { rules: 0, totalBytes: 0, usedBytes: 0 } },
+    'login.sel': { coverage: 'missing', traces: ['b-trace.zip'], routes: ['https://app.test/login'], scripts: {}, css: { rules: 0, totalBytes: 0, usedBytes: 0 } },
   },
   routes: { 'https://app.test/#/orders': ['orders.sel'], 'https://app.test/login': ['login.sel'] },
   scripts: {
@@ -97,6 +97,8 @@ describe('<CoverageReportView>', () => {
     expect(screen.getByText(/CSS rules — unattributed/)).toBeTruthy();
     expect(screen.getByText(/summed over 1 trace/)).toBeTruthy();
     expect(screen.getByText('orders.sel')).toBeTruthy();
+    const missing = screen.getByText('missing'); // Δ155a: the per-test state is shown, with why it matters
+    expect(missing.getAttribute('title')).toMatch(/always selected/);
     expect(screen.queryByText(/Partial data/)).toBeNull();
   });
 
@@ -124,7 +126,7 @@ describe('<CoverageReportView>', () => {
         counts: { ...base().counts, tracesCoverageRead: 1, skipped: 1 },
         crawl: null,
         untested: { routes: null, scripts: [] },
-        skipped: [{ file: 'b-trace.zip', reason: 'coverage.json has an unknown or old format (expected {js:[…], css:[…]})' }],
+        skipped: [{ file: 'b-trace.zip', test: 'login.sel', reason: 'coverage.json has an unknown or old format (expected {js:[…], css:[…]})' }],
       }),
     );
     render(<CoverageReportView report={row} onBack={() => {}} />);
@@ -132,10 +134,11 @@ describe('<CoverageReportView>', () => {
     expect(screen.getByText(/No crawl map to compare with/)).toBeTruthy();
     expect(screen.getByText('Skipped (1)')).toBeTruthy();
     expect(screen.getByText(/unknown or old format/)).toBeTruthy();
+    expect(screen.getAllByText('login.sel').length).toBeGreaterThan(1); // the skip names its test
   });
 
   it('treats an old or foreign payload as no data, and a failed request as an error', async () => {
-    coverageIndex.mockResolvedValueOnce({ format: 'gatf-coverage-index', version: 2, status: 'ok', counts: {} });
+    coverageIndex.mockResolvedValueOnce({ format: 'gatf-coverage-index', version: 3, status: 'ok', counts: {} });
     const { unmount } = render(<CoverageReportView report={row} onBack={() => {}} />);
     await screen.findByText(/did not return a coverage index this page understands/);
     unmount();

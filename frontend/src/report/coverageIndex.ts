@@ -14,15 +14,22 @@
     limitations under the License.
 */
 // H6 (Δ155): the coverage index served by GET /api/coverage (com.gatf.coverage.CoverageMerge, format
-// "gatf-coverage-index" v1). Field names mirror the Java writer. Old, missing or foreign payloads → null ("no data").
+// "gatf-coverage-index" v2 since Δ155a; v1 is still read). Field names mirror the Java writer. Old, missing or
+// foreign payloads → null ("no data").
 
 export const COVERAGE_INDEX_FORMAT = 'gatf-coverage-index';
-export const COVERAGE_INDEX_VERSION = 1;
+export const COVERAGE_INDEX_VERSION = 2;
+const READABLE_VERSIONS = [1, 2];
+
+/** Δ155a: a test's coverage state; anything but 'ok' means its script list may be incomplete. */
+export type CovState = 'ok' | 'empty' | 'capped' | 'old' | 'malformed' | 'missing';
 
 export interface CovTestEntry {
+  /** v2 */
+  coverage?: CovState;
   traces: string[];
   routes: string[];
-  scripts: Record<string, { len: number; usedBytes: number; truncated?: boolean }>;
+  scripts: Record<string, { len: number; usedBytes: number | null; bodies?: string[]; mixedBodies?: boolean; truncated?: boolean }>;
   css: { rules: number; totalBytes: number; usedBytes: number };
 }
 export interface CovScriptAgg {
@@ -32,6 +39,8 @@ export interface CovScriptAgg {
   functionsTotal: number;
   tests: string[];
   bodies: string[];
+  /** v2: more than one body of this URL in the run (ranges not unioned across them) */
+  mixedBodies?: boolean;
 }
 export interface CovUntestedRoute {
   route: string;
@@ -48,6 +57,7 @@ export interface CoverageIndexDto {
     tracesWithCoverage: number;
     tracesCoverageRead?: number;
     tests: number;
+    testsCoverageNotOk?: number;
     scripts: number;
     routesVisited: number;
     crawlRoutes: number | null;
@@ -61,7 +71,7 @@ export interface CoverageIndexDto {
   css: { unattributed: boolean; traces: number; sheets: number; rules: number; totalBytes: number; usedBytes: number };
   crawl: { source: string; routes: number } | null;
   untested: { routes: CovUntestedRoute[] | null; scripts: string[] };
-  skipped: { file: string; reason: string }[];
+  skipped: { file: string; test?: string | null; reason: string }[];
   notes: string[];
   rules: Record<string, string>;
   /** /api/coverage only: crawl maps in the test dir, newest first */
@@ -72,7 +82,7 @@ const isObj = (x: unknown): x is Record<string, unknown> => typeof x === 'object
 
 /** The index when the payload is one this page understands; null for anything else (old server, other version, junk). */
 export function asCoverageIndex(x: unknown): CoverageIndexDto | null {
-  if (!isObj(x) || x.format !== COVERAGE_INDEX_FORMAT || x.version !== COVERAGE_INDEX_VERSION) return null;
+  if (!isObj(x) || x.format !== COVERAGE_INDEX_FORMAT || !READABLE_VERSIONS.includes(x.version as number)) return null;
   if (typeof x.status !== 'string' || !isObj(x.counts)) return null;
   const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   const obj = <T,>(v: unknown): Record<string, T> => (isObj(v) ? (v as Record<string, T>) : {});
@@ -96,7 +106,7 @@ export function asCoverageIndex(x: unknown): CoverageIndexDto | null {
       routes: Array.isArray(untested.routes) ? (untested.routes as CovUntestedRoute[]) : null,
       scripts: arr<string>(untested.scripts),
     },
-    skipped: arr<{ file: string; reason: string }>(x.skipped),
+    skipped: arr<{ file: string; test?: string | null; reason: string }>(x.skipped),
     notes: arr<string>(x.notes),
     rules: obj<string>(x.rules),
     crawls: arr<string>(x.crawls),

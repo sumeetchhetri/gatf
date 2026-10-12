@@ -80,22 +80,22 @@ public final class CoverageIndex {
             int n = 0;
             for (Path z : zips) {
                 String name = z.getFileName().toString();
-                if (++n > lim.maxTraces) { m.skip(name, "cap: more than " + lim.maxTraces + " trace bundles in the run"); continue; }
-                if (budget[0] <= 0) { m.skip(name, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up"); continue; }
+                if (++n > lim.maxTraces) { m.skip(name, null, "cap: more than " + lim.maxTraces + " trace bundles in the run"); continue; }
+                if (budget[0] <= 0) { m.skip(name, null, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up"); continue; }
                 readTrace(m, z, name, lim, budget);
             }
         } catch (Exception e) {
-            m.skip(run, "run folder unreadable (" + e.getClass().getSimpleName() + ")");
+            m.skip(run, null, "run folder unreadable (" + e.getClass().getSimpleName() + ")");
         }
         if (crawlFile != null) {
             String src = crawlFile.getFileName() == null ? crawlFile.toString() : crawlFile.getFileName().toString();
             if (!Files.isRegularFile(crawlFile)) {
-                m.skip(src, "crawl map not found");
+                m.skip(src, null, "crawl map not found");
             } else {
                 try (InputStream in = new Capped(Files.newInputStream(crawlFile), lim.maxCrawlBytes)) {
                     m.crawl(src, in);
                 } catch (Exception e) {
-                    m.skip(src, "crawl map unreadable (" + e.getClass().getSimpleName() + ")");
+                    m.skip(src, null, "crawl map unreadable (" + e.getClass().getSimpleName() + ")");
                 }
             }
         }
@@ -165,39 +165,43 @@ public final class CoverageIndex {
     }
 
     private static void readTrace(CoverageMerge m, Path z, String name, CoverageMerge.Limits lim, long[] budget) {
+        String testId = null;
         try (ZipFile zf = new ZipFile(z.toFile())) {
-            if (zf.size() > lim.maxZipEntries) { m.skip(name, "cap: more than " + lim.maxZipEntries + " zip entries"); return; }
+            if (zf.size() > lim.maxZipEntries) { m.skip(name, null, "cap: more than " + lim.maxZipEntries + " zip entries"); return; }
             ZipEntry meta = zf.getEntry("metadata.json");
-            if (meta == null) { m.skip(name, "not a GATF trace bundle (no metadata.json)"); return; }
-            String testId = testId(readSmall(zf, meta, budget), name);
+            if (meta == null) { m.skip(name, null, "not a GATF trace bundle (no metadata.json)"); return; }
+            testId = testId(readSmall(zf, meta, budget), name);
             ZipEntry cov = zf.getEntry("coverage.json");
             m.trace(testId, name, cov != null);
-            if (cov != null) {
-                long cap = Math.min(lim.maxEntryBytes, budget[0]);
-                if (cap <= 0) {
-                    m.skip(name, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up; coverage.json not read");
-                } else if (cov.getSize() > cap) {
-                    m.skip(name, "cap: coverage.json is " + cov.getSize() + " bytes (limit " + cap + ")");
-                } else {
-                    try (InputStream in = new Capped(zf.getInputStream(cov), cap, budget)) {
-                        m.coverage(testId, name, in);
-                    }
-                }
-            }
+            // network.har first: its script bodies decide which body this trace's coverage is filed under
             ZipEntry har = zf.getEntry("network.har");
             if (har != null) {
                 long cap = Math.min(lim.maxEntryBytes, budget[0]);
                 if (cap <= 0) {
-                    m.skip(name, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up; network.har not read");
+                    m.skip(name, testId, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up; network.har not read");
                 } else if (har.getSize() > cap) {
-                    m.skip(name, "cap: network.har is " + har.getSize() + " bytes (limit " + cap + "); page visits from it not read");
+                    m.skip(name, testId, "cap: network.har is " + har.getSize() + " bytes (limit " + cap + "); page visits from it not read");
                 } else {
                     try (InputStream in = new Capped(zf.getInputStream(har), cap, budget)) {
-                        readHar(m, testId, CoverageMerge.OM.readTree(in));
+                        readHar(m, testId, name, CoverageMerge.OM.readTree(in));
                     } catch (CapExceeded e) {
-                        m.skip(name, "cap: network.har over " + e.cap + " bytes; page visits from it not read");
+                        m.skip(name, testId, "cap: network.har over " + e.cap + " bytes; page visits from it not read");
                     } catch (Exception e) {
-                        m.skip(name, "network.har unreadable (" + e.getClass().getSimpleName() + ")");
+                        m.skip(name, testId, "network.har unreadable (" + e.getClass().getSimpleName() + ")");
+                    }
+                }
+            }
+            if (cov != null) {
+                long cap = Math.min(lim.maxEntryBytes, budget[0]);
+                if (cap <= 0) {
+                    m.skip(name, testId, "cap: the run's read budget of " + lim.maxTotalBytes + " bytes is used up; coverage.json not read");
+                    m.mark(testId, CoverageMerge.Read.CAPPED);
+                } else if (cov.getSize() > cap) {
+                    m.skip(name, testId, "cap: coverage.json is " + cov.getSize() + " bytes (limit " + cap + ")");
+                    m.mark(testId, CoverageMerge.Read.CAPPED);
+                } else {
+                    try (InputStream in = new Capped(zf.getInputStream(cov), cap, budget)) {
+                        m.coverage(testId, name, in);
                     }
                 }
             }
@@ -207,19 +211,20 @@ public final class CoverageIndex {
                 ZipEntry e = en.nextElement();
                 if (!MANIFEST.matcher(e.getName()).matches()) continue;
                 if (++manifests > lim.maxManifestsPerTrace) {
-                    m.skip(name, "cap: more than " + lim.maxManifestsPerTrace + " snapshot manifests; the rest not read");
+                    m.skip(name, testId, "cap: more than " + lim.maxManifestsPerTrace + " snapshot manifests; the rest not read");
                     break;
                 }
                 JsonNode man = readSmall(zf, e, budget);
                 if (man != null) m.visit(testId, man.path("url").asText(null));
             }
         } catch (Exception e) {
-            m.skip(name, "unreadable trace bundle (" + e.getClass().getSimpleName() + ")");
+            m.skip(name, testId, "unreadable trace bundle (" + e.getClass().getSimpleName() + ")");
+            if (testId != null) m.mark(testId, CoverageMerge.Read.MALFORMED);   // its coverage can't be trusted complete
         }
     }
 
     // pages the test loaded (HTML documents, 2xx/304) and the sha1 of each captured script body
-    private static void readHar(CoverageMerge m, String testId, JsonNode har) {
+    private static void readHar(CoverageMerge m, String testId, String traceName, JsonNode har) {
         for (JsonNode e : har.path("log").path("entries")) {
             String url = e.path("request").path("url").asText(null);
             int status = e.path("response").path("status").asInt(0);
@@ -230,7 +235,7 @@ public final class CoverageIndex {
             String file = content.path("_file").asText("");
             if (mime.contains("javascript") || mime.contains("ecmascript")) {
                 int s = file.lastIndexOf('/');
-                if (s >= 0) m.body(url, file.substring(s + 1));
+                if (s >= 0) m.body(traceName, url, file.substring(s + 1));
             }
         }
     }

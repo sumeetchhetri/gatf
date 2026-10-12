@@ -92,7 +92,8 @@ class CoverageMergeTest {
         Map<String, Object> idx = m.build("run-1", true);
 
         assertEquals("gatf-coverage-index", idx.get("format"));
-        assertEquals(1, idx.get("version"));
+        assertEquals(2, idx.get("version"));
+        assertEquals("ok", at(idx, "tests", "a.sel", "coverage"));
         assertEquals("ok", idx.get("status"));
         assertEquals("[[0,30],[40,100]]", json(at(idx, "tests", "a.sel", "scripts", url, "ranges")));
         assertEquals("[[10,20]]", json(at(idx, "tests", "a.sel", "scripts", url, "functions")));
@@ -155,7 +156,7 @@ class CoverageMergeTest {
                 + "\"source\":\"SECRET_EXTRA\"}";
         assertEquals(CoverageMerge.Read.OK, m.coverage("t.sel", "t-trace.zip", in(cov)));
         m.visit("t.sel", "https://user:SECRET_PW@app.test/reset?token=SECRET_TOKEN#/x?SECRET_HASH=1");
-        m.body("https://app.test/a.js?token=SECRET_TOKEN", "0123456789abcdef0123456789abcdef01234567");
+        m.body("t-trace.zip", "https://app.test/a.js?token=SECRET_TOKEN;jsessionid=SECRET_SID", "0123456789abcdef0123456789abcdef01234567");
         m.crawl("c-coverage.json", in("[{\"url\":\"https://app.test/login?next=SECRET_NEXT\"}]"));
         String out = json(m.build("r", true));
         assertFalse(out.contains("SECRET"), out);
@@ -217,6 +218,91 @@ class CoverageMergeTest {
         assertEquals(2, ((List<?>) at(idx, "tests", "t.sel", "scripts", "https://x.test/a.js", "ranges")).size());
         assertNull(at(idx, "scripts", "https://x.test/b.js"));
         assertEquals(2, ((List<?>) idx.get("skipped")).size());
+    }
+
+    @Test
+    void worstCoverageStatePerTest() throws Exception {
+        CoverageMerge m = new CoverageMerge(null);
+        m.trace("t.sel", "a.zip", true);
+        m.coverage("t.sel", "a.zip", in(cov(script("https://x.test/a.js", fn("", r(0, 9, 1))))));
+        m.trace("t.sel", "b.zip", true);
+        m.coverage("t.sel", "b.zip", in("{\"js\":["));                   // second trace broken: the test is malformed
+        m.trace("u.sel", "c.zip", true);
+        m.coverage("u.sel", "c.zip", in("{\"js\":[],\"css\":[]}"));
+        m.trace("v.sel", "d.zip", false);
+        m.trace("w.sel", "e.zip", true);
+        m.mark("w.sel", CoverageMerge.Read.CAPPED);
+        m.trace("o.sel", "f.zip", true);
+        m.coverage("o.sel", "f.zip", in("[1]"));
+        Map<String, Object> idx = m.build("r", true);
+        assertEquals("malformed", at(idx, "tests", "t.sel", "coverage"));
+        assertEquals("empty", at(idx, "tests", "u.sel", "coverage"));
+        assertEquals("missing", at(idx, "tests", "v.sel", "coverage"));
+        assertEquals("capped", at(idx, "tests", "w.sel", "coverage"));
+        assertEquals("old", at(idx, "tests", "o.sel", "coverage"));
+        // the malformed test's good trace still lists its script: the state, not an empty map, says "incomplete"
+        assertEquals(1, ((Map<?, ?>) at(idx, "tests", "t.sel", "scripts")).size());
+        for (Object s : (List<?>) idx.get("skipped")) assertTrue(((Map<?, ?>) s).containsKey("test"), String.valueOf(s));
+        assertTrue(json(idx.get("skipped")).contains("{\"file\":\"d.zip\",\"test\":\"v.sel\",\"reason\":\"no coverage.json"));
+        assertTrue(((String) CoverageMerge.rules().get("coverage")).contains("always selected"));
+    }
+
+    @Test
+    void executedFunctionsAreADistinctSetNotAUnion() throws Exception {
+        CoverageMerge m = new CoverageMerge(null);
+        m.trace("t.sel", "t.zip", true);
+        // f[10,80) contains g[20,30); h[80,90) touches f's end: union would make them one
+        m.coverage("t.sel", "t.zip", in(cov(script("https://x.test/a.js", fn("", r(0, 100, 1)), fn("f", r(10, 80, 1)),
+                fn("g", r(20, 30, 1)), fn("h", r(80, 90, 1)), fn("k", r(90, 95, 0))))));
+        m.trace("u.sel", "u.zip", true);
+        m.coverage("u.sel", "u.zip", in(cov(script("https://x.test/a.js", fn("", r(0, 100, 1)), fn("f", r(10, 80, 1))))));
+        Map<String, Object> idx = m.build("r", true);
+        assertEquals("[[10,80],[20,30],[80,90]]", json(at(idx, "tests", "t.sel", "scripts", "https://x.test/a.js", "functions")));
+        assertEquals(3, (int) at(idx, "scripts", "https://x.test/a.js", "functionsHit"));
+        assertEquals(4, (int) at(idx, "scripts", "https://x.test/a.js", "functionsTotal"));
+        assertEquals("[[0,90],[95,100]]", json(at(idx, "tests", "t.sel", "scripts", "https://x.test/a.js", "ranges")));   // ranges stay unioned
+    }
+
+    @Test
+    void bodiesArePerTestScriptAndNeverUnionedAcrossBodies() throws Exception {
+        String a = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", b = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        String url = "https://x.test/app.js";
+        CoverageMerge m = new CoverageMerge(null);
+        m.trace("a.sel", "a.zip", true);
+        m.body("a.zip", url + "?v=1", a);
+        m.coverage("a.sel", "a.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("x", r(10, 50, 0))))));
+        m.trace("b.sel", "b.zip", true);
+        m.body("b.zip", url + "?v=2", b);
+        m.coverage("b.sel", "b.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("y", r(50, 90, 0))))));
+        m.trace("c.sel", "c1.zip", true);                                  // one test, both bodies
+        m.body("c1.zip", url, a);
+        m.coverage("c.sel", "c1.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("x", r(10, 50, 0))))));
+        m.trace("c.sel", "c2.zip", true);
+        m.body("c2.zip", url, b);
+        m.coverage("c.sel", "c2.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("y", r(50, 90, 0))))));
+        Map<String, Object> idx = m.build("r", true);
+        assertEquals("[\"" + a + "\"]", json(at(idx, "tests", "a.sel", "scripts", url, "bodies")));
+        assertEquals("[[0,10],[50,100]]", json(at(idx, "tests", "a.sel", "scripts", url, "ranges")));
+        assertEquals("[\"" + b + "\"]", json(at(idx, "tests", "b.sel", "scripts", url, "bodies")));
+        assertEquals(Boolean.TRUE, at(idx, "tests", "c.sel", "scripts", url, "mixedBodies"));
+        assertEquals("[]", json(at(idx, "tests", "c.sel", "scripts", url, "ranges")));
+        assertNull(at(idx, "tests", "c.sel", "scripts", url, "usedBytes"));
+        assertEquals(Boolean.TRUE, at(idx, "scripts", url, "mixedBodies"));
+        assertEquals("[\"" + a + "\",\"" + b + "\"]", json(at(idx, "scripts", url, "bodies")));
+        assertEquals(60L, (long) at(idx, "scripts", url, "usedBytes"));     // best single body, not the union (100)
+        assertTrue(((String) CoverageMerge.rules().get("bodies")).contains(">1 body"));
+
+        // one body (or none captured) in the run: one group, ranges unioned as before
+        CoverageMerge one = new CoverageMerge(null);
+        one.trace("a.sel", "a.zip", true);
+        one.body("a.zip", url, a);
+        one.coverage("a.sel", "a.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("x", r(10, 50, 0))))));
+        one.trace("b.sel", "b.zip", true);                                 // no HAR body: unknown, compatible
+        one.coverage("b.sel", "b.zip", in(cov(script(url, fn("", r(0, 100, 1)), fn("y", r(50, 90, 0))))));
+        Map<String, Object> i1 = one.build("r", true);
+        assertNull(at(i1, "scripts", url, "mixedBodies"));
+        assertEquals(100L, (long) at(i1, "scripts", url, "usedBytes"));
+        assertEquals("[]", json(at(i1, "tests", "b.sel", "scripts", url, "bodies")));
     }
 
     @Test

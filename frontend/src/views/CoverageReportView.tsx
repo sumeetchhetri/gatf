@@ -99,6 +99,7 @@ function Notes({ idx }: { idx: CoverageIndexDto }) {
               {idx.skipped.map((s, i) => (
                 <tr key={i}>
                   <td className="mono small">{s.file}</td>
+                  <td className="mono small">{s.test ?? ''}</td>
                   <td className="small">{s.reason}</td>
                 </tr>
               ))}
@@ -234,6 +235,7 @@ function CoverageBody({ idx }: { idx: CoverageIndexDto }) {
           <thead>
             <tr>
               <th>Test</th>
+              <th>Coverage</th>
               <th className="num">Traces</th>
               <th className="num">Routes</th>
               <th className="num">Scripts</th>
@@ -243,6 +245,9 @@ function CoverageBody({ idx }: { idx: CoverageIndexDto }) {
             {tests.map(([id, t]) => (
               <tr key={id}>
                 <td className="mono">{id}</td>
+                <td className="small" title={t.coverage && t.coverage !== 'ok' ? 'incomplete: always selected by test-impact selection' : undefined}>
+                  {t.coverage ?? '\u2014'}
+                </td>
                 <td className="mono num">{(t.traces ?? []).length}</td>
                 <td className="mono num">{(t.routes ?? []).length}</td>
                 <td className="mono num">{Object.keys(t.scripts ?? {}).length}</td>

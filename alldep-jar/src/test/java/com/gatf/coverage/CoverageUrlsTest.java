@@ -63,4 +63,16 @@ class CoverageUrlsTest {
         assertEquals("http://a.test/x", CoverageUrls.route("http://user:pw@a.test/x"));
         assertEquals(CoverageUrls.route("http://a.test/orders"), CoverageUrls.route("http://a.test/orders/?page=2"));
     }
+
+    @Test
+    void sessionIdPathParameterIsDropped() {
+        assertEquals("https://app.test/js/app.js", CoverageUrls.script("https://app.test/js/app.js;jsessionid=0A1B2C?v=3"));
+        assertEquals("https://app.test/js/app.js", CoverageUrls.script("https://app.test/js/app.js;JSESSIONID=0A1B2C"));
+        assertEquals("http://a.test/home", CoverageUrls.route("http://a.test/home;jsessionid=XYZ"));
+        assertEquals("http://a.test/cart/items", CoverageUrls.route("http://a.test/cart;JSessionId=XYZ/items/"));
+        assertEquals("http://a.test/#/orders", CoverageUrls.route("http://a.test/;jsessionid=XYZ#/orders"));
+        assertEquals(CoverageUrls.route("http://a.test/home"), CoverageUrls.route("http://a.test/home;jsessionid=A"));
+        assertEquals(CoverageUrls.route("http://a.test/home;jsessionid=A"), CoverageUrls.route("http://a.test/home;jsessionid=B"));
+        assertEquals("http://a.test/p;v=1", CoverageUrls.route("http://a.test/p;v=1"));   // other matrix params are kept
+    }
 }

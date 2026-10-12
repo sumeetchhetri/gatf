@@ -22,6 +22,8 @@ describe('coverage index helpers', () => {
     expect(asCoverageIndex([])).toBeNull();
     expect(asCoverageIndex({ js: [] })).toBeNull(); // a raw trace coverage.json is not an index
     expect(asCoverageIndex({ format: 'gatf-coverage-index', version: 0, status: 'ok', counts: {} })).toBeNull();
+    expect(asCoverageIndex({ format: 'gatf-coverage-index', version: 3, status: 'ok', counts: {} })).toBeNull();
+    expect(asCoverageIndex({ format: 'gatf-coverage-index', version: 2, status: 'ok', counts: {} })).not.toBeNull(); // Δ155a
     const i = asCoverageIndex({ format: 'gatf-coverage-index', version: 1, status: 'partial', counts: {} })!;
     expect(i.untested.routes).toBeNull();
     expect(i.untested.scripts).toEqual([]);

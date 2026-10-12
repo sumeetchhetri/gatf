@@ -335,7 +335,15 @@ public class GatfApiHandler extends HttpHandler {
             writeJson(response, HttpStatus.BAD_REQUEST_400, err("report is required"));
             return;
         }
-        File target = new File(outDir, report.trim()).getCanonicalFile();
+        File target;
+        try {
+            // Δ155a: a NUL (or any other path the filesystem rejects) is a bad request, not a 500
+            if (report.indexOf('\0') >= 0) throw new java.io.IOException("NUL in path");
+            target = new File(outDir, report.trim()).getCanonicalFile();
+        } catch (java.io.IOException | RuntimeException e) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("report must name a file or folder under the reports dir"));
+            return;
+        }
         if (!target.toPath().startsWith(outDir.toPath()) || !target.exists()) {
             writeJson(response, HttpStatus.BAD_REQUEST_400, err("report must name a file or folder under the reports dir"));
             return;

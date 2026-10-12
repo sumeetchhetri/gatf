@@ -168,7 +168,7 @@ class CoverageIndexTest {
         assertTrue(Files.isRegularFile(cache));
         String bytes = Files.readString(cache);
         assertFalse(bytes.contains("SECRET"));
-        assertTrue(bytes.contains("\"version\":1"));
+        assertTrue(bytes.contains("\"version\":2"));
         try (Stream<Path> s = Files.list(run)) {
             assertEquals(0L, s.filter(p -> p.getFileName().toString().endsWith(".tmp")).count());
         }
@@ -179,13 +179,31 @@ class CoverageIndexTest {
         Files.setLastModifiedTime(run.resolve("r-1-1-2-chrome-trace.zip"), FileTime.fromMillis(1_000_000L));
         assertEquals("run-1", CoverageIndex.buildCached(run, crawl, null).get("run"));
         // so does an old cache version
-        Files.writeString(cache, Files.readString(cache).replace("\"version\":1", "\"version\":0").replace("\"run\":\"run-1\"", "\"run\":\"stale\""));
+        Files.writeString(cache, Files.readString(cache).replace("\"version\":2", "\"version\":1").replace("\"run\":\"run-1\"", "\"run\":\"stale\""));
         assertEquals("run-1", CoverageIndex.buildCached(run, crawl, null).get("run"));
         // and a broken one
         Files.writeString(cache, "{oops");
         assertEquals(first.get("counts"), CoverageIndex.buildCached(run, crawl, null).get("counts"));
         // the cache is never mistaken for a trace or a crawl map
         assertEquals(2, (int) at(CoverageIndex.build(run, crawl, null), "counts", "traces"));
+    }
+
+    @Test
+    void everyTestCarriesItsCoverageStateAndEverySkipItsTest(@TempDir Path dir) throws Exception {
+        Path run = fixtureRun(dir);   // orders.sel has coverage, login.sel's trace has none
+        zip(run.resolve("r-1-1-3-chrome-trace.zip"), "metadata.json", meta("big.sel"), "coverage.json", COV);
+        CoverageMerge.Limits l = new CoverageMerge.Limits();
+        l.maxEntryBytes = 600;        // COV (~560 B) fits; the 900 B one below does not
+        zip(run.resolve("r-1-1-4-chrome-trace.zip"), "metadata.json", meta("huge.sel"), "coverage.json", COV + new String(new char[340]).replace('\0', ' '));
+        Map<String, Object> idx = CoverageIndex.build(run, null, l);
+        assertEquals("ok", at(idx, "tests", "tests/orders.sel", "coverage"));
+        assertEquals("missing", at(idx, "tests", "login.sel", "coverage"));
+        assertEquals("ok", at(idx, "tests", "big.sel", "coverage"));
+        assertEquals("capped", at(idx, "tests", "huge.sel", "coverage"), CoverageMergeTest.json(idx.get("skipped")));
+        String sk = CoverageMergeTest.json(idx.get("skipped"));
+        assertTrue(sk.contains("{\"file\":\"r-1-1-2-chrome-trace.zip\",\"test\":\"login.sel\",\"reason\":\"no coverage.json"), sk);
+        assertTrue(sk.contains("{\"file\":\"attachments.zip\",\"test\":null,"), sk);
+        assertEquals(2, (int) at(idx, "counts", "testsCoverageNotOk"));
     }
 
     @Test

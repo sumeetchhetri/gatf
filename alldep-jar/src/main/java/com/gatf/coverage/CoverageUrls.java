@@ -16,12 +16,14 @@
 package com.gatf.coverage;
 
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import com.gatf.crawler.SpaCrawler;
 
 /**
  * H6 (Δ155): the only two ways a URL enters a coverage index. Both drop the query string and any
- * {@code user:pass@} userinfo, so tokens in a script or page URL never reach a coverage file.
+ * {@code user:pass@} userinfo and any {@code ;jsessionid=…} path parameter (Δ155a), so tokens in a script or page URL
+ * never reach a coverage file.
  *
  * <ul>
  * <li>{@link #script}: http(s) and file URLs only (data:, blob:, extension and eval scripts have no stable
@@ -37,10 +39,17 @@ public final class CoverageUrls {
 
     private CoverageUrls() {}
 
+    // Δ155a: a servlet session id in the path (;jsessionid=…) is a secret and would split one script/route per session
+    private static final Pattern JSESSIONID = Pattern.compile("(?i);jsessionid=[^/?#]*");
+
+    static String stripSessionId(String u) {
+        return JSESSIONID.matcher(u).replaceAll("");
+    }
+
     /** A script/stylesheet URL as stored in the index, or null when it has no stable, shareable identity. */
     public static String script(String url) {
         if (url == null) return null;
-        String u = url.trim();
+        String u = stripSessionId(url.trim());
         if (u.isEmpty()) return null;
         String lc = u.toLowerCase(Locale.ROOT);
         if (!(lc.startsWith("http://") || lc.startsWith("https://") || lc.startsWith("file:"))) return null;
@@ -54,7 +63,7 @@ public final class CoverageUrls {
     /** A page route as stored in the index (and as crawl routes are keyed), or null when it isn't an http(s) page. */
     public static String route(String url) {
         if (url == null) return null;
-        String u = url.trim();
+        String u = stripSessionId(url.trim());
         int h = u.indexOf('#');
         String base = h >= 0 ? u.substring(0, h) : u;
         String frag = h >= 0 ? u.substring(h) : "";
