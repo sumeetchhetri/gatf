@@ -20,7 +20,7 @@ import { StrictMode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { strToU8 } from 'fflate';
 import { loadTraceZip, parseFiles } from './loadTrace';
-import { rebuildSnapshot, resourceMap, BLANK_GIF, SNAPSHOT_CSP, parseSrcset, isDangerous } from './rebuild';
+import { rebuildSnapshot, resourceMap, BLANK_GIF, SNAPSHOT_CSP, parseSrcset, isDangerous, wrapImport } from './rebuild';
 import { DomView } from '../components/Stage';
 import type { Trace, SnapshotRef } from './types';
 
@@ -413,7 +413,7 @@ describe('Δ147b probes', () => {
       .b{background:IMAGE-SET(url(ok.png) 1x,'https://evil.test/x.png' 2x)}
       .c{background:image-set("ok.png" type("image/png") 1x)}</style>`);
     expect(r.html).toContain('.a{background:image-set(url("blob:test/resources/ok.png") 1x)}');
-    expect(r.html).toContain(`.b{background:IMAGE-SET(url("blob:test/resources/ok.png") 1x,none 2x)}`);
+    expect(r.html).toContain(`.b{background:IMAGE-SET(url("blob:test/resources/ok.png") 1x)}`);   // Δ147c: the missing candidate is dropped
     expect(r.html).toContain('.c{background:image-set(url("blob:test/resources/ok.png") type("image/png") 1x)}');   // type() strings are not URLs
     expect(r.html).not.toMatch(/evil\.test/);
   });
@@ -446,5 +446,115 @@ describe('Δ147b probes', () => {
     expect(afterHtml).toBe(rebuildSnapshot(t, a2, { toUrl: () => 'blob:v', highlight: 2 })!.html);
     fireEvent.click(screen.getByText('Before'));                               // toggling on this step still works
     expect(frame()).toBe(beforeHtml);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Δ147c: one probe per review item (B1, M1, m-a … m-d; m-e is the Java side).
+describe('Δ147c probes', () => {
+  const enc = (x: string) => strToU8(x);
+  const blobUrl = (p: string) => `blob:test/${p}`;
+  function one(body: string, head = '', extra: Array<[string, string, string, string]> = []) {
+    const har = [['https://app.test/p/ok.png', 'image/png', 'resources/ok.png'], ...extra.map(([u, m, f]) => [u, m, f])].map(([url, mime, file], i) => ({
+      startedDateTime: new Date(1000 + i).toISOString(), time: 1, request: { method: 'GET', url, httpVersion: '', headers: [] },
+      response: { status: 200, statusText: 'OK', httpVersion: '', headers: [], content: { size: 1, mimeType: mime, _file: file }, bodySize: 1 },
+    }));
+    const files: Record<string, Uint8Array> = {
+      'snapshots/s.html': enc(`<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`),
+      'snapshots/s.json': enc(JSON.stringify({ v: 2, source: 'script', url: 'https://app.test/p/', title: '', viewport: { w: 1, h: 1 }, scroll: { x: 0, y: 0 }, truncated: false, styles: [] })),
+      'snapshots.ndjson': enc(JSON.stringify({ n: 1, ts: 5000, label: null, html: 'snapshots/s.html', screenshot: null, v: 2, dom: 'snapshots/s.json' }) + '\n'),
+      'network.har': enc(JSON.stringify({ log: { version: '1.2', creator: { name: 'gatf', version: 'trace' }, entries: har } })),
+      'resources/ok.png': new Uint8Array([137, 80, 78, 71]),
+    };
+    for (const [, , f, body] of extra) files[f] = enc(body);
+    const t = parseFiles(files);
+    return rebuildSnapshot(t, t.snapshots[0], { toUrl: blobUrl })!;
+  }
+
+  it('B1: a trailing backslash in a <style> does not hang', { timeout: 3000 }, () => {
+    const r = one('<p>x</p>', '<style>.a{color:red}\\</style>');
+    expect(r.html).toContain('.a{color:red}\\</style>');
+  });
+
+  it('B1: a trailing backslash in an attribute value does not hang', { timeout: 3000 }, () => {
+    const r = one('<p id="p" title="Path (C:\\">x</p><p id="q" title="@\\">y</p><p id="r" style="color:red;\\">z</p>');
+    const d = parse(r.html);
+    expect(d.getElementById('p')!.getAttribute('title')).toBe('Path (C:\\');
+    expect(d.getElementById('q')!.getAttribute('title')).toBe('@\\');
+  });
+
+  it('M1: 200 000 nested parentheses neither overflow the stack nor stall', { timeout: 10000 }, () => {
+    const deep = '('.repeat(200000);
+    const r = one(`<p id="p" title="${deep}">x</p>`, `<style>.a{background:url(ok.png)} .b{width:calc${deep}} .c{background:image-set${deep}}</style>`);
+    expect(r.html).toContain('.a{background:url("blob:test/resources/ok.png")}');
+    expect(parse(r.html).getElementById('p')!.getAttribute('title')!.length).toBe(200000);
+  });
+
+  it('M1: DomView shows a message instead of unmounting when a rebuild throws', () => {
+    const t = load();
+    URL.createObjectURL = (() => 'blob:v') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+    const spy = vi.spyOn(DOMParser.prototype, 'parseFromString').mockImplementation(() => { throw new RangeError('Maximum call stack size exceeded'); });
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(<DomView trace={t} snap={snap(t, 2, 'before')} />);
+      expect(screen.getByText('Snapshot could not be rebuilt.')).toBeTruthy();
+    } finally {
+      spy.mockRestore();
+      warn.mockRestore();
+    }
+  });
+
+  it('m-a: src("…") is treated like url()', () => {
+    const r = one('<p>x</p>', '<style>.a{background-image:src("https://evil.test/s.png")} .b{background-image:src("ok.png")} .c{background:SRC(ok.png)}</style>');
+    expect(r.html).not.toMatch(/evil\.test/);
+    expect(r.html).toContain('.a{background-image:none}');
+    expect(r.html).toContain('.b{background-image:url("blob:test/resources/ok.png")}');
+    expect(r.html).toContain('.c{background:url("blob:test/resources/ok.png")}');
+  });
+
+  it('m-b: a missing image-set candidate is dropped with its descriptor; none only when nothing is left', () => {
+    const r = one('<p>x</p>', `<style>.a{background:image-set('https://evil.test/1.png' 1x, "ok.png" 2x)}
+      .b{background:image-set("https://evil.test/a.png" 1x, url(https://evil.test/b.png) 2x)}
+      .c{background:image-set(linear-gradient(red, blue) 1x, "https://evil.test/c.png" type("image/png") 2x)}</style>`);
+    expect(r.html).toContain('.a{background:image-set(url("blob:test/resources/ok.png") 2x)}');
+    expect(r.html).toContain('.b{background:none}');
+    expect(r.html).toContain('.c{background:image-set(linear-gradient(red, blue) 1x)}');
+    expect(r.html).not.toMatch(/evil\.test|none \dx/);
+  });
+
+  it('self-review fuzz finds: an unclosed image-set and a comment before a candidate are still rewritten', () => {
+    // CSS closes an open function at EOF, so the browser uses these URLs; both were copied verbatim before
+    const r1 = one('<p>x</p>', `<style>.a{background:image-set(url("https://evil.test/x.png 2x,))}</style>`);
+    const r2 = one('<p>x</p>', `<style>.a{background:-webkit-image-set(/**/'https://evil.test/q.png' 2x, "ok.png" 1x)}</style>`);
+    expect(r1.html).not.toMatch(/evil\.test/);
+    expect(r2.html).not.toMatch(/evil\.test/);
+    expect(r2.html).toContain('-webkit-image-set(url("blob:test/resources/ok.png") 1x)');
+  });
+
+  it('m-c: an @import keeps its layer / supports / media conditions', () => {
+    expect(wrapImport('.x{}', 'layer(base) supports(display:grid) screen and (min-width: 1px)'))
+      .toBe('@layer base{@supports (display:grid){@media screen and (min-width: 1px){.x{}}}}');
+    expect(wrapImport('.x{}', 'layer')).toBe('@layer{.x{}}');
+    expect(wrapImport('.x{}', 'supports((a:b) and (c:d))')).toBe('@supports ((a:b) and (c:d)){.x{}}');
+    expect(wrapImport('.x{}', 'print')).toBe('@media print{.x{}}');
+    expect(wrapImport('.x{}', '')).toBe('.x{}');
+    const r = one('<p>x</p>', '<style>@import "lib.css" layer(lib) supports(display:grid);</style>',
+      [['https://app.test/p/lib.css', 'text/css', 'resources/lib.css', '.lib{color:red}']]);
+    expect(r.html).toContain('@layer lib{@supports (display:grid){.lib{color:red}}}');
+  });
+
+  it('m-d: the toggle does not carry over to the same step of another trace', () => {
+    const t1 = load();
+    const t2 = load();                                                          // a different trace with the same n
+    URL.createObjectURL = (() => 'blob:v') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+    const frame = () => (screen.getAllByTitle('dom-snapshot').pop() as HTMLIFrameElement).getAttribute('srcdoc')!;
+    const { rerender } = render(<DomView trace={t1} snap={snap(t1, 2, 'before')} />);
+    const own = frame();
+    fireEvent.click(screen.getByText('After'));
+    expect(frame()).not.toBe(own);
+    rerender(<DomView trace={t2} snap={snap(t2, 2, 'before')} />);
+    expect(frame()).toBe(own);                                                  // its own "before", not t1's toggle
   });
 });

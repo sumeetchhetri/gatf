@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Trace, SnapshotRef } from '../trace/types';
 import { actionSnapshots } from '../trace/loadTrace';
-import { rebuildSnapshot } from '../trace/rebuild';
+import { rebuildSnapshot, type Rebuilt } from '../trace/rebuild';
 
 export type StageMode = 'video' | 'dom' | 'screenshot';
 
@@ -123,9 +123,11 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
   // step change renders once, with no effect-driven second build
   // Δ147b: the toggle belongs to the step the user toggled on (snap.n), not to the action: reaching the same action
   // again from another step (its other phase on the timeline) shows that step's own phase
-  const [override, setOverride] = useState<{ n: number; phase: 'before' | 'after' } | null>(null);
-  const phase: 'before' | 'after' = override && snap && override.n === snap.n ? override.phase : (snap?.phase ?? 'before');
-  const setPhase = (p: 'before' | 'after') => { if (snap) setOverride({ n: snap.n, phase: p }); };
+  // Δ147c: …and to this trace (step n of another trace does not inherit it)
+  const [override, setOverride] = useState<{ trace: Trace; n: number; phase: 'before' | 'after' } | null>(null);
+  const phase: 'before' | 'after' =
+    override && snap && override.trace === trace && override.n === snap.n ? override.phase : (snap?.phase ?? 'before');
+  const setPhase = (p: 'before' | 'after') => { if (snap) setOverride({ trace, n: snap.n, phase: p }); };
   const pair = snap?.action != null ? actionSnapshots(trace.snapshots, snap.action) : null;
   const shown = phaseSnapshot(trace, snap, phase);
   // one URL cache per trace, owned by an effect: revoked when the trace changes or the view unmounts
@@ -135,17 +137,23 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
     setCache(c);
     return () => c.revokeAll();
   }, [trace]);
-  const built = useMemo(
-    () => (shown && cache ? rebuildSnapshot(trace, shown, { highlight: snap?.action ?? null, toUrl: cache.get }) : null),
-    [trace, shown, snap?.action, cache],
-  );
+  // Δ147c: a snapshot that cannot be rebuilt (corrupt / hostile input) shows a message, never takes the viewer down
+  const built = useMemo((): Rebuilt | 'error' | null => {
+    if (!shown || !cache) return null;
+    try {
+      return rebuildSnapshot(trace, shown, { highlight: snap?.action ?? null, toUrl: cache.get });
+    } catch (e) {
+      console.warn('trace: snapshot could not be rebuilt', e);
+      return 'error';
+    }
+  }, [trace, shown, snap?.action, cache]);
 
   // the frame runs no script; the viewer (same origin via allow-same-origin) restores scroll and reveals the target
   const onLoad = () => {
     try {
       const w = iframeRef.current?.contentWindow;
       const d = iframeRef.current?.contentDocument;
-      if (!w || !d || !built) return;
+      if (!w || !d || !built || built === 'error') return;
       const sc = built.manifest?.scroll;
       if (sc && (sc.x || sc.y)) w.scrollTo(sc.x, sc.y);
       if (snap?.action != null) {
@@ -161,6 +169,7 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
   };
 
   if (shown && !cache) return <div className="stage-empty">Loading snapshot…</div>;
+  if (built === 'error') return <div className="stage-empty">Snapshot could not be rebuilt.</div>;
   if (!built) return <div className="stage-empty">No DOM snapshot at this point.</div>;
   const st = built.stats;
   return (

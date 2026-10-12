@@ -211,13 +211,6 @@ class Rewriter {
     return b ? dec.decode(b) : null;
   }
 
-  private cssUrl(u: string, base: string | null): string {
-    const v = this.url(u, base);
-    if (v) return `url("${v.replace(/"/g, '%22')}")`;
-    this.stats.missingImages++;   // Δ147a: a CSS resource (image, font, cursor …) not in the bundle
-    return 'none';
-  }
-
   /**
    * CSS text with every reference resolved against `base` and rewritten: url(), the strings of image-set() and
    * @import (missing -> none / dropped). Δ147b: a single pass over CSS tokens — strings and comments are copied
@@ -229,9 +222,13 @@ class Rewriter {
     return new CssScan(text, base, this, depth).run();
   }
 
-  /** @internal used by CssScan */
-  urlToken(value: string, base: string | null): string {
-    return this.cssUrl(value, base);
+  /** @internal used by CssScan: url("…") for a reference, or null when it is not in the bundle (counted). */
+  cssRef(value: string, base: string | null): string | null {
+    if (this.produced(value)) return `url("${value.replace(/"/g, '%22')}")`;
+    const v = this.url(value, base);
+    if (v) return `url("${v.replace(/"/g, '%22')}")`;
+    this.stats.missingImages++;   // a CSS resource (image, font, cursor …) not in the bundle
+    return null;
   }
 
   /** @internal used by CssScan: the inlined text of an @import, or null when not in the bundle. */
@@ -252,76 +249,60 @@ class Rewriter {
 
 const isNameChar = (c: string) => /[A-Za-z0-9_-]/.test(c) || c.charCodeAt(0) >= 0x80;
 const isWs = (c: string | undefined) => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
+/** Nested image-set() / @import levels handled; deeper input is copied verbatim (the CSP still applies). */
+const MAX_CSS_DEPTH = 8;
 
-/** Δ147b: a minimal CSS tokenizer-rewriter (CSS Syntax 3 strings, comments, escapes, idents, url tokens). */
+/**
+ * Δ147b/c: a minimal CSS tokenizer-rewriter (CSS Syntax 3 strings, comments, escapes, idents, url tokens).
+ * Δ147c: one flat loop — no recursion per '(' (generic parentheses are plain characters here), progress on every
+ * iteration (a trailing '\' or '@\' cannot stall it), and image-set() bodies are located by an iterative
+ * balanced-paren search, so input depth never reaches the call stack.
+ */
 class CssScan {
   private i = 0;
   constructor(private readonly s: string, private readonly base: string | null, private readonly rw: Rewriter, private readonly depth: number) {}
 
   run(): string {
-    return this.scan(false, false);
-  }
-
-  /** Copy/transform until EOF, or (inParens) the matching ')', which is consumed and emitted. */
-  private scan(inParens: boolean, imageSet: boolean): string {
     const s = this.s;
     let out = '';
     while (this.i < s.length) {
+      const before = this.i;
       const c = s[this.i];
       if (c === '/' && s[this.i + 1] === '*') {          // comment: verbatim
         const e = s.indexOf('*/', this.i + 2);
         const end = e < 0 ? s.length : e + 2;
         out += s.slice(this.i, end);
         this.i = end;
-      } else if (c === '"' || c === "'") {                  // string: verbatim, or a URL inside image-set()
+      } else if (c === '"' || c === "'") {                  // string: verbatim
         const start = this.i;
-        const v = this.readString();
-        out += imageSet ? this.urlOut(v) : s.slice(start, this.i);
+        this.readString();
+        out += s.slice(start, this.i);
       } else if (c === '@' && this.identAt(this.i + 1)) {
         const start = this.i;
         this.i++;
         const name = this.readIdent();
-        if (name.toLowerCase() === 'import') out += this.atImport(start);
-        else out += s.slice(start, this.i);
-      } else if (isNameChar(c) || (c === '\\' && s[this.i + 1] !== '\n')) {
+        out += name.toLowerCase() === 'import' && this.depth < MAX_CSS_DEPTH ? this.atImport(start) : s.slice(start, this.i);
+      } else if (this.identAt(this.i)) {
         const start = this.i;
         const name = this.readIdent().toLowerCase();
-        if (s[this.i] === '(') {
-          if (name === 'url') { out += this.urlFunction(); continue; }
-          if (name === 'image-set' || name === '-webkit-image-set') {
-            out += s.slice(start, this.i) + '(';
-            this.i++;
-            out += this.scan(true, true);
-            continue;
-          }
-          out += s.slice(start, this.i) + '(';
-          this.i++;
-          out += this.scan(true, false);
-          continue;
-        }
-        out += s.slice(start, this.i);
-      } else if (c === '(') {
-        out += c;
-        this.i++;
-        out += this.scan(true, false);
-      } else if (c === ')' && inParens) {
-        this.i++;
-        return out + ')';
+        if (s[this.i] === '(' && (name === 'url' || name === 'src')) out += this.urlFunction();
+        else if (s[this.i] === '(' && (name === 'image-set' || name === '-webkit-image-set')) out += this.imageSet(s.slice(start, this.i));
+        else out += s.slice(start, this.i);
       } else {
         out += c;
         this.i++;
       }
+      if (this.i === before) out += s[this.i++];           // Δ147c: never stall
     }
     return out;
   }
 
-  private urlOut(v: string): string {
-    return this.rw.produced(v) ? `url("${v.replace(/"/g, '%22')}")` : this.rw.urlToken(v, this.base);
-  }
-
+  /** An identifier can start at k: a name char, or a valid escape ('\' followed by something other than a newline). */
   private identAt(k: number): boolean {
     const c = this.s[k];
-    return c !== undefined && (isNameChar(c) || c === '\\');
+    if (c === undefined) return false;
+    if (c === '\\') return this.s[k + 1] !== undefined && this.s[k + 1] !== '\n';
+    return isNameChar(c);
   }
 
   /** An identifier with escapes decoded (for matching only). */
@@ -330,7 +311,11 @@ class CssScan {
     let v = '';
     while (this.i < s.length) {
       const c = s[this.i];
-      if (c === '\\' && s[this.i + 1] !== undefined && s[this.i + 1] !== '\n') { v += this.readEscape(); continue; }
+      if (c === '\\') {
+        if (s[this.i + 1] === undefined || s[this.i + 1] === '\n') break;
+        v += this.readEscape();
+        continue;
+      }
       if (!isNameChar(c)) break;
       v += c;
       this.i++;
@@ -350,7 +335,7 @@ class CssScan {
       return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : '\ufffd';
     }
     const ch = s[this.i] ?? '';
-    this.i++;
+    if (this.i < s.length) this.i++;
     return ch;
   }
 
@@ -377,10 +362,9 @@ class CssScan {
     return v;
   }
 
-  /** At '(' after "url": url("…") / url('…') / url(bare) → rewritten url() or none. */
-  private urlFunction(): string {
+  /** The value of a url( / src( argument at i (just past '('); i ends after ')'. */
+  private urlArg(): string {
     const s = this.s;
-    this.i++;   // '('
     while (isWs(s[this.i])) this.i++;
     let v = '';
     if (s[this.i] === '"' || s[this.i] === "'") {
@@ -388,16 +372,85 @@ class CssScan {
       while (this.i < s.length && s[this.i] !== ')') this.i++;   // skip ws (and anything malformed) to ')'
     } else {
       while (this.i < s.length && s[this.i] !== ')') {
-        if (s[this.i] === '\\' && s[this.i + 1] !== '\n') { v += this.readEscape(); continue; }
+        if (s[this.i] === '\\' && s[this.i + 1] !== undefined && s[this.i + 1] !== '\n') { v += this.readEscape(); continue; }
         v += s[this.i++];
       }
       v = v.trim();
     }
     if (s[this.i] === ')') this.i++;
-    return this.urlOut(v);
+    return v;
   }
 
-  /** After "@import": its URL (string or url()), then the media/conditions up to ';'. */
+  /** At '(' after "url" / "src": the rewritten url(), or none. Δ147c: src("…") is a URL too. */
+  private urlFunction(): string {
+    this.i++;   // '('
+    return this.rw.cssRef(this.urlArg(), this.base) ?? 'none';
+  }
+
+  /** Index of the ')' closing the '(' at `open`, skipping strings, comments and escapes; -1 when unbalanced. */
+  private matchParen(open: number): number {
+    const s = this.s;
+    let depth = 0;
+    for (let k = open; k < s.length; k++) {
+      const c = s[k];
+      if (c === '\\') { k++; continue; }
+      if (c === '/' && s[k + 1] === '*') { const e = s.indexOf('*/', k + 2); if (e < 0) return -1; k = e + 1; continue; }
+      if (c === '"' || c === "'") {
+        for (k++; k < s.length && s[k] !== c && s[k] !== '\n'; k++) if (s[k] === '\\') k++;
+        continue;
+      }
+      if (c === '(') depth++;
+      else if (c === ')' && --depth === 0) return k;
+    }
+    return -1;
+  }
+
+  /**
+   * At '(' after image-set: each candidate's image (a string or url()/src()) is rewritten; Δ147c: a candidate whose
+   * image is not in the bundle is dropped with its descriptors, and only an image-set with no candidate left becomes
+   * none (a "none 2x" candidate would invalidate the whole declaration).
+   */
+  private imageSet(head: string): string {
+    const s = this.s;
+    if (this.depth >= MAX_CSS_DEPTH) {                     // too deep to inspect: drop it rather than keep it unread
+      const close = this.matchParen(this.i);
+      this.i = close < 0 ? s.length : close + 1;
+      return 'none';
+    }
+    // unbalanced: CSS closes an open function at EOF, so the body runs to the end (it must still be rewritten)
+    const close = this.matchParen(this.i);
+    const body = s.slice(this.i + 1, close < 0 ? s.length : close);
+    this.i = close < 0 ? s.length : close + 1;
+    const kept: string[] = [];
+    for (const cand of splitTopLevel(body)) {
+      const sub = new CssScan(cand.trim(), this.base, this.rw, this.depth + 1);
+      const img = sub.leadingImage();
+      if (img === undefined) { kept.push(new CssScan(cand.trim(), this.base, this.rw, this.depth + 1).run()); continue; }   // e.g. a gradient
+      if (img === null) continue;                              // not in the bundle: drop the candidate
+      kept.push(img + sub.s.slice(sub.i));                     // descriptors verbatim
+    }
+    return kept.length ? `${head}(${kept.join(', ')})` : 'none';
+  }
+
+  /** At the start of an image-set candidate: its rewritten image (url("…")), null when missing, undefined when the
+   *  candidate does not start with a string / url() / src(). Leaves i after the image. */
+  private leadingImage(): string | null | undefined {
+    const s = this.s;
+    for (;;) {                                              // whitespace and comments before the image
+      while (isWs(s[this.i])) this.i++;
+      if (s[this.i] === '/' && s[this.i + 1] === '*') { const e = s.indexOf('*/', this.i + 2); this.i = e < 0 ? s.length : e + 2; continue; }
+      break;
+    }
+    if (s[this.i] === '"' || s[this.i] === "'") return this.rw.cssRef(this.readString(), this.base);
+    if (!this.identAt(this.i)) return undefined;
+    const save = this.i;
+    const name = this.readIdent().toLowerCase();
+    if ((name === 'url' || name === 'src') && s[this.i] === '(') { this.i++; return this.rw.cssRef(this.urlArg(), this.base); }
+    this.i = save;
+    return undefined;
+  }
+
+  /** After "@import": its URL (string, url() or src()), then layer / supports / media up to ';'. */
   private atImport(start: number): string {
     const s = this.s;
     const skip = () => {
@@ -408,35 +461,82 @@ class CssScan {
       }
     };
     skip();
-    let v: string | null = null;
+    let v: string;
     if (s[this.i] === '"' || s[this.i] === "'") v = this.readString();
     else {
       const save = this.i;
       const name = this.identAt(this.i) ? this.readIdent().toLowerCase() : '';
-      if (name === 'url' && s[this.i] === '(') {
-        this.i++;
-        while (isWs(s[this.i])) this.i++;
-        if (s[this.i] === '"' || s[this.i] === "'") v = this.readString();
-        else { let b = ''; while (this.i < s.length && s[this.i] !== ')') { if (s[this.i] === '\\') { b += this.readEscape(); continue; } b += s[this.i++]; } v = b.trim(); }
-        while (this.i < s.length && s[this.i] !== ')') this.i++;
-        if (s[this.i] === ')') this.i++;
-      } else {
-        this.i = save;
-        return s.slice(start, this.i);   // not an @import we understand: leave it (the CSP still blocks it)
-      }
+      if ((name === 'url' || name === 'src') && s[this.i] === '(') { this.i++; v = this.urlArg(); }
+      else { this.i = save; return s.slice(start, this.i); }   // not an @import we understand: leave it (the CSP still blocks it)
     }
-    // media / supports / layer up to ';' outside strings
-    const mStart = this.i;
+    const pStart = this.i;
     while (this.i < s.length && s[this.i] !== ';') {
       if (s[this.i] === '"' || s[this.i] === "'") this.readString();
       else this.i++;
     }
-    const media = s.slice(mStart, this.i).trim();
+    const prelude = s.slice(pStart, this.i).trim();
     if (s[this.i] === ';') this.i++;
-    const inner = this.rw.importText(v ?? '', this.base, this.depth);
-    if (inner == null) return '';
-    return media ? `@media ${media}{${inner}}` : inner;
+    const inner = this.rw.importText(v, this.base, this.depth);
+    return inner == null ? '' : wrapImport(inner, prelude);
   }
+}
+
+/** Split at commas outside parentheses, strings and comments (iterative). */
+function splitTopLevel(body: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let from = 0;
+  for (let k = 0; k < body.length; k++) {
+    const c = body[k];
+    if (c === '\\') { k++; continue; }
+    if (c === '/' && body[k + 1] === '*') { const e = body.indexOf('*/', k + 2); k = e < 0 ? body.length : e + 1; continue; }
+    if (c === '"' || c === "'") { for (k++; k < body.length && body[k] !== c && body[k] !== '\n'; k++) if (body[k] === '\\') k++; continue; }
+    if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    else if (c === ',' && depth === 0) { out.push(body.slice(from, k)); from = k + 1; }
+  }
+  out.push(body.slice(from));
+  return out.filter((x) => x.trim() !== '');
+}
+
+/**
+ * Δ147c: an inlined @import keeps its conditions: `layer` / `layer(name)` → @layer, `supports(…)` → @supports, the
+ * rest → @media (outermost first: layer, supports, media).
+ */
+export function wrapImport(inner: string, prelude: string): string {
+  let p = prelude.trim();
+  let layer: string | null = null;
+  let supports: string | null = null;
+  const lm = /^layer\b/i.exec(p);
+  if (lm) {
+    p = p.slice(lm[0].length);
+    if (p.startsWith('(')) {
+      const close = closeParen(p, 0);
+      layer = close < 0 ? '' : p.slice(1, close).trim();
+      p = close < 0 ? '' : p.slice(close + 1);
+    } else layer = '';
+    p = p.trim();
+  }
+  const sm = /^supports\(/i.exec(p);
+  if (sm) {
+    const close = closeParen(p, sm[0].length - 1);
+    supports = close < 0 ? null : p.slice(sm[0].length, close).trim();
+    p = close < 0 ? '' : p.slice(close + 1).trim();
+  }
+  let r = inner;
+  if (p) r = `@media ${p}{${r}}`;
+  if (supports) r = `@supports (${supports}){${r}}`;
+  if (layer != null) r = layer ? `@layer ${layer}{${r}}` : `@layer{${r}}`;
+  return r;
+}
+
+function closeParen(s: string, open: number): number {
+  let depth = 0;
+  for (let k = open; k < s.length; k++) {
+    if (s[k] === '(') depth++;
+    else if (s[k] === ')' && --depth === 0) return k;
+  }
+  return -1;
 }
 
 const NAV_TAGS = new Set(['a', 'area']);

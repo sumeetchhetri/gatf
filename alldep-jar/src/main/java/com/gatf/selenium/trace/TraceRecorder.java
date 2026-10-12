@@ -142,12 +142,12 @@ public final class TraceRecorder implements AutoCloseable {
     /** H2: the effective per-action snapshot mode (off | lite | full) — degrades when captures are slow or over budget. */
     public synchronized String domSnapshotMode() { return snap == null ? "off" : domMode; }
 
-    /** Δ147b: the mode the bundle actually holds — "lite" when full was asked for but no capture came out styled
-     *  (every rich capture fell back to the lite serializer), else the current mode. */
+    /** Δ147c: what the bundle holds — "full" if any capture came out styled, else "lite" if any lite capture was
+     *  written, else "off" (none were, e.g. both capture paths returned nothing). {@link #domSnapshotMode()} stays the
+     *  live mode the recorder is capturing in. */
     public synchronized String effectiveDomSnapshotMode() {
         if (snap == null) return "off";
-        if (fullCaptures == 0 && liteCaptures > 0 && "full".equals(domMode)) return "lite";
-        return domMode;
+        return fullCaptures > 0 ? "full" : liteCaptures > 0 ? "lite" : "off";
     }
 
     /**

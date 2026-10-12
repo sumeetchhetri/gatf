@@ -210,7 +210,8 @@ class TraceRecorderSnapshotsTest {
         assertEquals("lite", r.domSnapshotMode());
         String meta = zip(r.writeZip(dir.resolve("t.zip"))).get("metadata.json");
         assertTrue(meta.contains("\"domSnapshotsLimit\":\"slow\""), meta);
-        assertTrue(meta.contains("\"domSnapshots\":\"lite\"") && meta.contains("\"domSnapshotsRequested\":\"full\""), "effective mode: " + meta);
+        // Δ147c: the bundle holds styled captures (the first three), so it reads "full"; the live mode is lite
+        assertTrue(meta.contains("\"domSnapshots\":\"full\"") && meta.contains("\"domSnapshotsRequested\":\"full\""), "bundle mode: " + meta);
         assertFalse(b.calls.contains("raw"), "degraded lite is the sanitizer, not outerHTML");
     }
 
@@ -288,6 +289,22 @@ class TraceRecorderSnapshotsTest {
         r2.action("click", "x", "el");
         assertEquals("full", r2.effectiveDomSnapshotMode());
         r2.discard();
+    }
+
+    @Test
+    void bundleModeIsOffWhenNeitherCapturePathProducedAnything(@TempDir Path dir) throws Exception {   // Δ147c m-e
+        Fake b = new Fake(EnumSet.of(Capability.DOM_SNAPSHOT, Capability.DOM_SNAPSHOT_RICH)) {
+            @Override public RichSnapshot captureRichSnapshot(List<Object> t, List<String> m) { calls.add("rich-null"); return null; }
+            @Override public RichSnapshot captureLiteSnapshot(List<Object> t, List<String> m) { calls.add("lite-null"); return null; }
+        };
+        TraceRecorder r = TraceRecorder.attach(b, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd"), "a.sel", "chrome");
+        r.action("click", "x", "el");
+        r.action("click", "y", "el");
+        assertEquals("full", r.domSnapshotMode(), "live mode unchanged");
+        assertEquals("off", r.effectiveDomSnapshotMode());
+        String meta = zip(r.writeZip(dir.resolve("t.zip"))).get("metadata.json");
+        assertTrue(meta.contains("\"domSnapshots\":\"off\"") && meta.contains("\"domSnapshotsRequested\":\"full\""), meta);
+        assertTrue(b.calls.contains("rich-null") && b.calls.contains("lite-null"), b.calls.toString());
     }
 
     @Test
