@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>Fixture &amp; Co</title>
+<meta http-equiv="refresh" content="999;url=/elsewhere">
+<base href="/">
+<link rel="stylesheet" href="/s.css">
+<style id="cssinjs"></style>
+<style>.plain{margin:3px}</style>
+<script>window.__x = 1;</script>
+</head><body onload="void 0">
+<noscript><p>enable js</p></noscript>
+<h1 class="plain">Hello <b>&lt;world&gt;</b></h1>
+<input id="name" type="text" value="default">
+<input id="pw" type="password">
+<input id="cb" type="checkbox">
+<select id="sel"><option value="a" selected>A</option><option value="b">B</option></select>
+<textarea id="ta">initial</textarea>
+<a id="bad" href="javascript:alert(1)">bad</a>
+<button id="go" class="btn" onclick="alert(1)">Go</button>
+<img id="im" src="/a.png" srcset="/a.png 1x, /a2.png 2x" alt="x">
+<div id="host"></div>
+<svg width="10" height="10"><linearGradient id="g"></linearGradient><foreignObject></foreignObject></svg>
+<iframe id="fr" src="/frame.html"></iframe>
+<script>
+document.getElementById('cssinjs').sheet.insertRule('.injected{color:rgb(0,128,0)}');
+var s = new CSSStyleSheet(); s.replaceSync('body{background:rgb(1,2,3)}'); document.adoptedStyleSheets=[s];
+var h=document.getElementById('host').attachShadow({mode:'open'}); h.innerHTML='<style>p{color:blue}</style><p class="in-shadow">shadow text</p>';
+</script>
+</body></html>

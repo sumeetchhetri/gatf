@@ -1265,6 +1265,8 @@ public abstract class SeleniumTest {
 			this.line = test.state.line;
 			this.internalTestRes = test.getSession().internalTestRs;
 			this.stName = subTestName;
+			// H2 (Δ146): the failing step's DOM after-state goes into the trace before any failure screenshot
+			if(!(exc instanceof PassSubTestException) && !(exc instanceof WarnSubTestException)) test.__traceFailure__(exc);
 			/*Logs logs = d.manage().logs();
             for (String s : LOG_TYPES_SET) {
                 if(!logs.getAvailableLogTypes().contains(s))continue;
@@ -2368,9 +2370,22 @@ public abstract class SeleniumTest {
 	
 	/** Emit a per-action timeline event into the active trace (no-op when tracing is off). */
 	protected void __traceAction__(String type, String detail) {
+		__traceAction__(type, detail, null);
+	}
+
+	/** H2 (Δ146): as above, with the action's element, which the per-action DOM snapshots mark as the target. */
+	protected void __traceAction__(String type, String detail, WebElement target) {
 		try {
 			SeleniumTestSession s = getSession();
-			if (s != null && s.__trace__ != null) s.__trace__.event("action", type, detail);
+			if (s != null && s.__trace__ != null) s.__trace__.action(type, detail, target);
+		} catch (Exception e) {}
+	}
+
+	/** H2 (Δ146): the failing step's after-state, before the failure screenshot (no-op when tracing is off). */
+	protected void __traceFailure__(Throwable cause) {
+		try {
+			SeleniumTestSession s = getSession();
+			if (s != null && s.__trace__ != null) s.__trace__.failure(cause == null ? null : String.valueOf(cause.getMessage()));
 		} catch (Exception e) {}
 	}
 
@@ -2710,7 +2725,7 @@ public abstract class SeleniumTest {
 	}
 
 	protected void clickAction(WebDriver wd, List<WebElement> ret, String qualifier) {
-		__traceAction__("click", qualifier);
+		__traceAction__("click", qualifier, ret!=null && !ret.isEmpty() ? ret.get(0) : null);
 		if(ret!=null && !ret.isEmpty()) awaitActionable(wd, ret.get(0), "click");
 		for(final WebElement we: ret) {
 			String sessionId = getSessionId(wd);
@@ -2732,7 +2747,7 @@ public abstract class SeleniumTest {
 	}
 
 	private void elementAction(WebDriver wd, List<WebElement> ret, String action, String tvalue, String selValue, String selSubsel) {
-		if(!action.toLowerCase().matches(Command.clickExStr)) __traceAction__(action, selValue);
+		if(!action.toLowerCase().matches(Command.clickExStr)) __traceAction__(action, selValue, ret!=null && !ret.isEmpty() ? ret.get(0) : null);
 		if(action.toLowerCase().matches(Command.clickExStr)) {
 			Matcher m = Command.clickEx.matcher(action.toLowerCase());
         	m.matches();
@@ -4361,7 +4376,11 @@ public abstract class SeleniumTest {
 							.setCoverage(__cfg.isTraceCoverage())
 							.setVideo(__cfg.isTraceVideo())
 							.setVideoQuality(__cfg.getTraceVideoQuality())
-							.setVideoEveryNthFrame(__cfg.getTraceVideoEveryNthFrame());
+							.setVideoEveryNthFrame(__cfg.getTraceVideoEveryNthFrame())
+							.setDomSnapshots(__cfg.getTraceDomSnapshots());
+					if(__cfg.getTraceDomSnapshotMaxMb()!=null && __cfg.getTraceDomSnapshotMaxMb()>0) {
+						__tc.setSnapshotMaxTotalBytes((long)__cfg.getTraceDomSnapshotMaxMb()*1024L*1024L);
+					}
 					java.nio.file.Path __wd = new java.io.File(new java.io.File(getOutDir(), ".trace"), "trace-"+__sid).toPath();
 					com.gatf.selenium.trace.BrowserControl __bc = com.gatf.selenium.trace.Transports.create(driver, __tc);
 					getSession().__trace__ = com.gatf.selenium.trace.TraceRecorder.attach(__bc, __tc, __wd, getName(), getSession().browserName);

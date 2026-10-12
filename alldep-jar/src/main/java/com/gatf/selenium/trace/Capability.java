@@ -33,5 +33,6 @@ public enum Capability {
     CPU_PROFILE,    // Profiler.start/stop -> .cpuprofile
     COVERAGE,       // Phase 2
     PRINT_PDF,      // G10: CDP Page.printToPDF / BiDi browsingContext.print / W3C print
-    ROUTE           // M4: request interception (CDP Fetch.* / BiDi network.addIntercept)
+    ROUTE,          // M4: request interception (CDP Fetch.* / BiDi network.addIntercept)
+    DOM_SNAPSHOT_RICH // H2: styled snapshot (CDP DOMSnapshot.captureSnapshot, else serialized DOM + CSSOM by script)
 }

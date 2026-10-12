@@ -56,6 +56,20 @@ public final class TraceRecorder implements AutoCloseable {
     private CoverageRecorder coverage;
     private VideoRecorder video;
 
+    // H2 (Δ146): per-action DOM snapshots. "after k" is taken at the start of action k+1 (the same capture serves
+    // "before k+1"), on a failure, and at stop. Guarded by `this`: actions arrive on the test thread, stop may not.
+    static final java.util.Set<String> NO_SNAPSHOT = new java.util.HashSet<>(java.util.Arrays.asList(
+            "autowait", "softfail", "hookfail", "state", "emulate", "clock", "route", "a11y", "screenshot-compare"));
+    private String domMode = "off";
+    private String domLimit;          // why capture stopped or degraded: slow | budget | count
+    private int actionSeq;
+    private int pendingId = -1;
+    private String pendingName;
+    private Object pendingTarget;
+    private long snapNanos;
+    private int snapTimed;
+    private volatile boolean discarding;   // a discarded trace needs no final after-capture
+
     private TraceRecorder(BrowserControl browser, TraceConfig cfg, Path workDir, String selFile, String browserName) {
         this.browser = browser;
         this.cfg = cfg;
@@ -81,7 +95,8 @@ public final class TraceRecorder implements AutoCloseable {
                 browser.enableConsole(r.console);
             }
             if (cfg.isSnapshots() && (browser.supports(Capability.DOM_SNAPSHOT) || browser.supports(Capability.SCREENSHOT))) {
-                r.snap = new SnapshotRecorder(browser, workDir);
+                r.snap = new SnapshotRecorder(browser, workDir, cfg);
+                r.domMode = cfg.getDomSnapshots();
             }
             if (cfg.isMetrics() && browser.supports(Capability.METRICS)) {
                 r.metrics = new MetricsRecorder(browser, workDir, cfg);
@@ -120,8 +135,68 @@ public final class TraceRecorder implements AutoCloseable {
         if (snap != null) snap.snapshot(label);
     }
 
+    /** H2: the effective per-action snapshot mode (off | lite | full) — degrades when captures are slow or over budget. */
+    public synchronized String domSnapshotMode() { return snap == null ? "off" : domMode; }
+
+    /**
+     * H2 (Δ146): a per-action timeline event (with its action id {@code a}) and, when per-action snapshots are on,
+     * one capture that is both the previous action's "after" and this action's "before". {@code target} is the
+     * action's element (an opaque WebElement) or null. Never throws.
+     */
+    public synchronized int action(String name, String detail, Object target) {
+        int id = ++actionSeq;
+        try { if (timeline != null) timeline.action(id, name, detail); } catch (Exception ignored) {}
+        if (snap == null || "off".equals(domMode) || stopped.get() || (name != null && NO_SNAPSHOT.contains(name))) return id;
+        java.util.List<SnapshotRecorder.Point> pts = new java.util.ArrayList<>();
+        java.util.List<Object> targets = new java.util.ArrayList<>();
+        if (pendingId > 0) {
+            pts.add(new SnapshotRecorder.Point(pendingId, "after", pendingName, targets.size()));
+            targets.add(pendingTarget);
+        }
+        pts.add(new SnapshotRecorder.Point(id, "before", name, targets.size()));
+        targets.add(target);
+        timedCapture(pts, targets);
+        pendingId = id; pendingName = name; pendingTarget = target;
+        return id;
+    }
+
+    /** H2: the failing step's after-state, captured now (on the failure path, before the failure screenshot). */
+    public synchronized void failure(String detail) {
+        try { if (timeline != null) timeline.event("lifecycle", "failure", detail); } catch (Exception ignored) {}
+        captureAfter("failure");
+    }
+
+    private void captureAfter(String why) {
+        if (snap == null || "off".equals(domMode) || pendingId <= 0) return;
+        java.util.List<Object> targets = new java.util.ArrayList<>();
+        targets.add(pendingTarget);
+        java.util.List<SnapshotRecorder.Point> pts = new java.util.ArrayList<>();
+        pts.add(new SnapshotRecorder.Point(pendingId, "after", pendingName + " (" + why + ")", 0));
+        timedCapture(pts, targets);
+        pendingId = -1; pendingName = null; pendingTarget = null;
+    }
+
+    private void timedCapture(java.util.List<SnapshotRecorder.Point> pts, java.util.List<Object> targets) {
+        long t0 = System.nanoTime();
+        try { snap.capture(pts, targets, "full".equals(domMode)); } catch (Exception ignored) {}
+        snapNanos += System.nanoTime() - t0;
+        snapTimed++;
+        // never noticeably slow a run, never balloon the bundle: full -> lite -> off
+        if (snap.overBudget()) { domMode = "off"; domLimit = "budget"; return; }
+        if (snap.captureCount() >= cfg.getSnapshotMaxCount()) { domMode = "off"; domLimit = "count"; return; }
+        if (snapTimed >= 3 && snapNanos / snapTimed > cfg.getSnapshotSlowMs() * 1_000_000L) {
+            domMode = "full".equals(domMode) ? "lite" : "off";
+            domLimit = "slow";
+            snapNanos = 0; snapTimed = 0;
+        }
+    }
+
     /** Freeze capture: detach listeners (DevTools still alive), flush, finalize HAR + metadata. */
     public void stop() {
+        synchronized (this) {   // H2: the last action's after-state, while the driver is still alive
+            if (stopped.get()) return;
+            if (!discarding) try { captureAfter("end"); } catch (Exception ignored) {}
+        }
         if (!stopped.compareAndSet(false, true)) return;
         try { if (timeline != null) timeline.event("lifecycle", "trace-stop", null); } catch (Exception ignored) {}
         try { browser.disableNetwork(); } catch (Exception ignored) {}
@@ -153,6 +228,7 @@ public final class TraceRecorder implements AutoCloseable {
     /** Q3: stop capture and delete the working dir without producing a bundle (retain-on-failure on a passing
      *  script, or a session whose result was never reported). Safe to call more than once. */
     public void discard() {
+        discarding = true;
         try { stop(); } finally { deleteTree(workDir); }
     }
 
@@ -191,6 +267,10 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("selFile", selFile)
                 .put("browser", browserName)
                 .put("protocol", cfg.getProtocol())
+                .put("format", 2)   // H2 (Δ146): per-action events carry `a`; snapshots.ndjson lines may be v2 (dom manifest)
+                .put("domSnapshots", snap == null ? "off" : cfg.getDomSnapshots())
+                .put("domSnapshotsLimit", domLimit)
+                .put("domSnapshotBytes", snap == null ? 0 : snap.capturedBytes())
                 .put("startTs", startTs)
                 .put("endTs", System.currentTimeMillis())
                 .put("recNetwork", net != null)

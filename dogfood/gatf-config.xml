@@ -11,6 +11,8 @@
   <traceNetwork>true</traceNetwork>
   <traceConsole>true</traceConsole>
   <traceSnapshots>true</traceSnapshots>
+  <traceDomSnapshots>full</traceDomSnapshots>
+  <traceDomSnapshotMaxMb>32</traceDomSnapshotMaxMb>
   <autoWait>true</autoWait>
   <actionTimeout>5000</actionTimeout>
   <webFirstAssertions>true</webFirstAssertions>

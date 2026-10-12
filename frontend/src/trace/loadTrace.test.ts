@@ -15,7 +15,7 @@
 */
 import { describe, it, expect } from 'vitest';
 import { zipSync } from 'fflate';
-import { parseFiles, loadTraceZip, pageVitals } from './loadTrace';
+import { parseFiles, loadTraceZip, pageVitals, domManifest, actionSnapshots } from './loadTrace';
 
 const enc = new TextEncoder();
 const j = (o: unknown) => enc.encode(JSON.stringify(o));
@@ -96,5 +96,39 @@ describe('pageVitals', () => {
       ],
     });
     expect(rows.map((r) => r.url)).toEqual(['https://a/1', 'https://a/2']);
+  });
+});
+
+describe('H2 format-2 snapshots', () => {
+  const v2 = (n: number, action: number, phase: 'before' | 'after', capture: number) => ({
+    n, ts: 1000 + capture, label: 'click', html: `snapshots/snapshot-${capture}.html`, screenshot: null,
+    v: 2, dom: `snapshots/snapshot-${capture}.json`, action, phase, capture, target: { rect: [1, 2, 3, 4] },
+  });
+  const manifest = { v: 2, source: 'cdp', url: 'https://a/', title: 'A', viewport: { w: 800, h: 600 }, scroll: { x: 0, y: 40 }, truncated: false,
+    styles: [{ owner: 'link', href: 'https://a/s.css', media: '', index: -1, ref: 'resources/abc' }, null] };
+
+  it('reads v2 index lines, manifests and before/after pairs; v1 lines still parse', () => {
+    const files: Record<string, Uint8Array> = {
+      'metadata.json': j(fullMeta({ format: 2, domSnapshots: 'full', recSnapshots: true })),
+      'snapshots.ndjson': nd(
+        { n: 1, ts: 900, label: 'legacy', html: 'snapshots/snapshot-0.html', screenshot: null },
+        v2(2, 1, 'before', 1), v2(3, 1, 'after', 2), v2(4, 2, 'before', 2),
+      ),
+      'snapshots/snapshot-1.json': j(manifest),
+      'snapshots/snapshot-2.json': enc.encode('{not json'),
+    };
+    const t = parseFiles(files);
+    expect(t.meta.format).toBe(2);
+    expect(t.snapshots).toHaveLength(4);
+    expect(domManifest(files, t.snapshots[0])).toBeNull();                 // lite
+    const m = domManifest(files, t.snapshots[1])!;
+    expect(m.source).toBe('cdp');
+    expect(m.styles).toHaveLength(1);                                       // null entry dropped
+    expect(domManifest(files, t.snapshots[2])).toBeNull();                 // corrupt manifest -> lite fallback
+    const p = actionSnapshots(t.snapshots, 1);
+    expect(p.before!.capture).toBe(1);
+    expect(p.after!.capture).toBe(2);
+    expect(actionSnapshots(t.snapshots, 2).before!.capture).toBe(2);       // after(1) and before(2) share capture 2
+    expect(actionSnapshots(t.snapshots, 9)).toEqual({ before: null, after: null });
   });
 });

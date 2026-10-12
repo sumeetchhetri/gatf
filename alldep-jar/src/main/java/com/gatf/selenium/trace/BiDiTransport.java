@@ -135,6 +135,7 @@ public final class BiDiTransport implements BrowserControl {
             case NETWORK:
             case CONSOLE:      return hasBiDi();
             case DOM_SNAPSHOT: return driver instanceof JavascriptExecutor;   // protocol-agnostic
+            case DOM_SNAPSHOT_RICH: return driver instanceof JavascriptExecutor; // H2: serialized DOM + CSSOM by script
             case SCREENSHOT:   return driver instanceof TakesScreenshot;      // protocol-agnostic
             case METRICS:      return driver instanceof JavascriptExecutor;   // performance/memory via read-only JS (in-band; see class doc)
             case RESPONSE_BODY: return collectorId != null;                   // runtime: browser accepted network.addDataCollector
@@ -318,6 +319,18 @@ public final class BiDiTransport implements BrowserControl {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /** H2 (Δ146): serialized DOM + stylesheets by script (the BiDi fallback for DOMSnapshot). Never throws. */
+    @Override
+    public RichSnapshot captureRichSnapshot(java.util.List<Object> targets, java.util.List<String> marks) {
+        if (!(driver instanceof JavascriptExecutor)) return null;
+        try {
+            final JavascriptExecutor js = (JavascriptExecutor) driver;
+            return DomCapture.captureByScript(args -> js.executeScript(DomCapture.META_JS, args), targets, marks, DomCapture.Caps.of(cfg));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

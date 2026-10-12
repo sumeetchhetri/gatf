@@ -26,6 +26,7 @@ import type {
   PageVitals,
   Memory,
   Coverage,
+  DomManifest,
 } from './types';
 
 const dec = new TextDecoder('utf-8');
@@ -141,6 +142,31 @@ export function parseFiles(files: Record<string, Uint8Array>): Trace {
     t0: meta.startTs,
     t1,
   };
+}
+
+/** H2: the styled snapshot's manifest, or null for a lite (v1) snapshot or a missing/corrupt file. */
+export function domManifest(files: Record<string, Uint8Array>, snap: SnapshotRef | null | undefined): DomManifest | null {
+  if (!snap || snap.v !== 2 || !snap.dom) return null;
+  const m = json<DomManifest>(files, snap.dom);
+  if (!m || m.v !== 2 || typeof m !== 'object') return null;
+  return {
+    ...m,
+    styles: Array.isArray(m.styles) ? m.styles.filter((s) => !!s && typeof s === 'object') : [],
+    viewport: m.viewport ?? { w: 0, h: 0 },
+    scroll: m.scroll ?? { x: 0, y: 0 },
+  };
+}
+
+/** H2: an action's before/after snapshots (format 2); both null for older traces. */
+export function actionSnapshots(snaps: SnapshotRef[], action: number): { before: SnapshotRef | null; after: SnapshotRef | null } {
+  let before: SnapshotRef | null = null;
+  let after: SnapshotRef | null = null;
+  for (const s of snaps) {
+    if (s.action !== action) continue;
+    if (s.phase === 'before' && !before) before = s;
+    else if (s.phase === 'after') after = s;   // a failure/end capture replaces nothing: only one after per action
+  }
+  return { before, after };
 }
 
 /** Unzip raw bytes and parse. */

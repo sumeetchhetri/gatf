@@ -42,6 +42,14 @@ public final class TraceConfig {
     // G10 knobs (system properties, so no config-schema change): page.pdf at stop; BiDi polled-screenshot video fps
     private boolean pdf = Boolean.getBoolean("gatf.trace.pdf");
     private int videoPollFps = Integer.getInteger("gatf.trace.videoPollFps", 0);
+    // H2 (Δ146): per-action DOM snapshots: off (default) | lite (outerHTML) | full (styled: DOMSnapshot / serialized DOM + CSS)
+    private String domSnapshots = normDom(System.getProperty("gatf.trace.domSnapshots"));
+    private int snapshotMaxNodes = 200_000;
+    private int snapshotMaxChars = 8 * 1024 * 1024;      // serialized HTML cap per snapshot
+    private int snapshotMaxCssChars = 2 * 1024 * 1024;   // CSSOM text cap per sheet
+    private long snapshotMaxTotalBytes = 32L * 1024 * 1024; // stylesheet bytes stored per trace (resources/, sha1-deduped)
+    private int snapshotMaxCount = 2000;                 // captures per trace
+    private long snapshotSlowMs = 800;                   // mean capture time above which full -> lite -> off
 
     public boolean isEnableTrace() { return enableTrace; }
     public TraceConfig setEnableTrace(boolean v) { this.enableTrace = v; return this; }
@@ -51,6 +59,25 @@ public final class TraceConfig {
     public int getVideoPollFps() { return videoPollFps; }
     public TraceConfig setVideoPollFps(int fps) { this.videoPollFps = Math.max(0, Math.min(10, fps)); return this; }
     public TraceConfig setProtocol(String v) { this.protocol = (v == null ? "cdp" : v.trim().toLowerCase()); return this; }
+    public String getDomSnapshots() { return domSnapshots; }
+    /** off | lite | full; null/blank keeps the current value (the -Dgatf.trace.domSnapshots default); unknown -> off. */
+    public TraceConfig setDomSnapshots(String v) { if (v != null && !v.trim().isEmpty()) this.domSnapshots = normDom(v); return this; }
+    static String normDom(String v) {
+        String s = v == null ? "" : v.trim().toLowerCase(java.util.Locale.ROOT);
+        return s.equals("lite") || s.equals("full") ? s : "off";
+    }
+    public int getSnapshotMaxNodes() { return snapshotMaxNodes; }
+    public TraceConfig setSnapshotMaxNodes(int v) { if (v > 0) this.snapshotMaxNodes = v; return this; }
+    public int getSnapshotMaxChars() { return snapshotMaxChars; }
+    public TraceConfig setSnapshotMaxChars(int v) { if (v > 0) this.snapshotMaxChars = v; return this; }
+    public int getSnapshotMaxCssChars() { return snapshotMaxCssChars; }
+    public TraceConfig setSnapshotMaxCssChars(int v) { if (v > 0) this.snapshotMaxCssChars = v; return this; }
+    public long getSnapshotMaxTotalBytes() { return snapshotMaxTotalBytes; }
+    public TraceConfig setSnapshotMaxTotalBytes(long v) { if (v > 0) this.snapshotMaxTotalBytes = v; return this; }
+    public int getSnapshotMaxCount() { return snapshotMaxCount; }
+    public TraceConfig setSnapshotMaxCount(int v) { if (v > 0) this.snapshotMaxCount = v; return this; }
+    public long getSnapshotSlowMs() { return snapshotSlowMs; }
+    public TraceConfig setSnapshotSlowMs(long v) { if (v > 0) this.snapshotSlowMs = v; return this; }
     public boolean isNetwork() { return network; }
     public TraceConfig setNetwork(boolean v) { this.network = v; return this; }
     public boolean isConsole() { return console; }

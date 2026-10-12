@@ -100,6 +100,7 @@ public final class CdpTransport implements BrowserControl {
             case METRICS:
             case RESPONSE_BODY: return devTools != null;
             case DOM_SNAPSHOT:  return driver instanceof JavascriptExecutor;
+            case DOM_SNAPSHOT_RICH: return driver instanceof JavascriptExecutor;   // H2: DOMSnapshot via HasCdp, else script
             case SCREENSHOT:    return driver instanceof TakesScreenshot;
             case CPU_PROFILE:
             case COVERAGE:      return driver instanceof HasCdp;
@@ -195,6 +196,29 @@ public final class CdpTransport implements BrowserControl {
             }
         } catch (Exception ignored) {}
         return null;
+    }
+
+    /** H2 (Δ146): CDP DOMSnapshot.captureSnapshot (+ page CSSOM/targets by script); the script serializer when the
+     *  driver has no raw CDP channel or the command fails. Never throws. */
+    @Override
+    public RichSnapshot captureRichSnapshot(List<Object> targets, List<String> marks) {
+        if (!(driver instanceof JavascriptExecutor)) return null;
+        try {
+            final JavascriptExecutor js = (JavascriptExecutor) driver;
+            DomCapture.ScriptRunner run = args -> js.executeScript(DomCapture.META_JS, args);
+            DomCapture.Caps caps = DomCapture.Caps.of(cfg);
+            if (driver instanceof HasCdp) {
+                try {
+                    Object meta = DomCapture.runMeta(run, targets, marks, false, caps);
+                    Map<String, Object> snap = ((HasCdp) driver).executeCdpCommand("DOMSnapshot.captureSnapshot", DomCapture.cdpParams());
+                    RichSnapshot r = DomCapture.fromCdp(snap, meta, marks, targets == null ? 0 : targets.size(), caps);
+                    if (r != null) return r;
+                } catch (Exception cdpFailed) { /* fall through to the script serializer */ }
+            }
+            return DomCapture.captureByScript(run, targets, marks, caps);
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Override

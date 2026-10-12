@@ -142,6 +142,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private boolean traceVideo = false;
 	private int traceVideoQuality = 60;
 	private int traceVideoEveryNthFrame = 2;
+	// H2 (Δ146): per-action DOM snapshots: off (default) | lite (outerHTML) | full (styled, for time-travel)
+	private String traceDomSnapshots;
+	// H2 (Δ146): MB the per-action snapshots may add to one trace (HTML + stylesheets); past it capture stops
+	private Integer traceDomSnapshotMaxMb;
 	
 	private GatfTestDataConfig gatfTestDataConfig; 
 	
@@ -596,6 +600,10 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setTraceNetwork(boolean traceNetwork) { this.traceNetwork = traceNetwork; }
 	public boolean isTraceConsole() { return traceConsole; }
 	public void setTraceConsole(boolean traceConsole) { this.traceConsole = traceConsole; }
+	public String getTraceDomSnapshots() { return traceDomSnapshots; }
+	public void setTraceDomSnapshots(String traceDomSnapshots) { this.traceDomSnapshots = traceDomSnapshots; }
+	public Integer getTraceDomSnapshotMaxMb() { return traceDomSnapshotMaxMb; }
+	public void setTraceDomSnapshotMaxMb(Integer traceDomSnapshotMaxMb) { this.traceDomSnapshotMaxMb = traceDomSnapshotMaxMb; }
 	public boolean isTraceSnapshots() { return traceSnapshots; }
 	public void setTraceSnapshots(boolean traceSnapshots) { this.traceSnapshots = traceSnapshots; }
 	public int getTraceMaxBodyKb() { return traceMaxBodyKb; }

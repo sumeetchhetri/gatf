@@ -109,6 +109,14 @@ public interface BrowserControl extends AutoCloseable {
     /** Stop intercepting (pending requests are released). Default no-op. */
     default void disableRoutes() { }
 
+    // --- H2 (Δ146): styled DOM snapshot (default unsupported) ---
+    /**
+     * A styled snapshot of the current document (DOM_SNAPSHOT_RICH), or null. {@code targets} are opaque element
+     * handles (WebElement, or null) to mark with the matching {@code marks} value as {@code data-gatf-target}; a
+     * stale handle is dropped, never fatal. Must not throw and must not mutate the page.
+     */
+    default RichSnapshot captureRichSnapshot(java.util.List<Object> targets, java.util.List<String> marks) { return null; }
+
     // --- G10: print-to-PDF (default unsupported) ---
     /** Current page as PDF bytes, or null (PRINT_PDF). */
     default byte[] printPdf() { return null; }

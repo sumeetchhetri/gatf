@@ -248,6 +248,15 @@ export const executorSchema: CfgSchema = {
     "traceSnapshots": {
       "type": "boolean"
     },
+    // H2: per-action DOM snapshots for the Trace Viewer's time-travel (full = styled). Blank = off.
+    "traceDomSnapshots": {
+      "type": "string",
+      "options": ["off", "lite", "full"]
+    },
+    // H2: MB the per-action snapshots may add to one trace (blank = 32); past it capture stops
+    "traceDomSnapshotMaxMb": {
+      "type": "integer"
+    },
     "traceVideo": {
       "type": "boolean"
     },

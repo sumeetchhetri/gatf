@@ -46,6 +46,7 @@ final class HybridTransport implements BrowserControl {
             case SCREENCAST:
                 return cdp.supports(c) ? cdp : bidi;
             case ROUTE:   // M4: CDP Fetch on Chromium, BiDi interception otherwise
+            case DOM_SNAPSHOT_RICH:   // H2: DOMSnapshot (out-of-band, pierces shadow roots) beats the script serializer
                 return cdp.supports(c) ? cdp : bidi;
             default:
                 return bidi.supports(c) ? bidi : cdp;
@@ -60,6 +61,9 @@ final class HybridTransport implements BrowserControl {
     @Override public void disableConsole() { bidi.disableConsole(); }
     @Override public String captureDomSnapshot() { return route(Capability.DOM_SNAPSHOT).captureDomSnapshot(); }
     @Override public byte[] captureScreenshot() { return route(Capability.SCREENSHOT).captureScreenshot(); }
+    @Override public RichSnapshot captureRichSnapshot(java.util.List<Object> targets, java.util.List<String> marks) {
+        return route(Capability.DOM_SNAPSHOT_RICH).captureRichSnapshot(targets, marks);
+    }
     // bodies must come from the side that saw the request ids (BiDi owns network in hybrid mode)
     @Override public byte[] fetchBody(String requestId) { return bidi.fetchBody(requestId); }
 

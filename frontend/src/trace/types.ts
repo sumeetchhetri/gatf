@@ -32,6 +32,12 @@ export interface Metadata {
   recVideo: boolean;
   truncatedBodies: number;
   bytesCaptured: number;
+  /** H2: 2 for traces whose action events carry `a` and whose snapshots may be v2; absent on older traces. */
+  format?: number;
+  domSnapshots?: 'off' | 'lite' | 'full';
+  /** why per-action capture degraded or stopped: slow | budget | count */
+  domSnapshotsLimit?: string | null;
+  domSnapshotBytes?: number;
 }
 
 // events.ndjson — one object per line
@@ -40,6 +46,8 @@ export interface TraceEvent {
   type: string; // lifecycle | navigation | snapshot | action | event
   name: string | null;
   detail: string | null;
+  /** H2: the action id (per-action events only) that keys its before/after snapshots */
+  a?: number;
 }
 
 // console.ndjson — one object per line
@@ -59,6 +67,37 @@ export interface SnapshotRef {
   label: string | null;
   html: string | null; // e.g. "snapshots/snapshot-1.html"
   screenshot: string | null; // e.g. "screenshots/shot-1.png"
+  /** H2 (format 2): 2 = styled, `dom` is its manifest; 1/absent = lite outerHTML */
+  v?: number;
+  dom?: string | null;
+  action?: number;
+  phase?: 'before' | 'after';
+  /** the physical capture; "after k" and "before k+1" share one */
+  capture?: number;
+  /** the action's element at capture time: viewport rect [x, y, w, h]; the HTML marks it data-gatf-target~=action */
+  target?: { rect: [number, number, number, number] } | null;
+}
+
+/** H2: snapshots/snapshot-<c>.json, the styled snapshot's manifest. */
+export interface DomStyle {
+  owner: 'link' | 'style' | 'adopted';
+  /** stylesheet URL (link) or the document URL; base for relative url()s */
+  href: string | null;
+  media: string | null;
+  /** owner=style: index of the <style> element (document order) whose CSSOM-only rules this is */
+  index: number;
+  /** resources/<sha1> with the CSS text, or null (cross-origin: use the HAR body for href) */
+  ref: string | null;
+}
+export interface DomManifest {
+  v: 2;
+  source: 'cdp' | 'script';
+  url: string | null;
+  title: string | null;
+  viewport: { w: number; h: number };
+  scroll: { x: number; y: number };
+  truncated: boolean;
+  styles: DomStyle[];
 }
 
 // network.har (HAR 1.2 subset actually emitted by NetworkRecorder.buildHar)

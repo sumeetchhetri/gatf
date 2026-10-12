@@ -39,6 +39,17 @@ public final class EventTimelineRecorder {
                 .end());
     }
 
+    /** H2 (Δ146): a per-action event carrying its action id {@code a}, which keys the before/after snapshots. */
+    public void action(int id, String name, String detail) {
+        out.writeLine(new Json.Obj()
+                .put("ts", System.currentTimeMillis())
+                .put("type", "action")
+                .put("name", name)
+                .put("detail", detail)
+                .put("a", id)
+                .end());
+    }
+
     public void flush() { out.flush(); }
     public void close() { out.close(); }
 }

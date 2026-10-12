@@ -1,0 +1,7 @@
+{
+  "dir": "/Users/sumeetc/Projects/GitHub/gatf/alldep-jar",
+  "summary": {"total": 1, "passed": 1, "failed": 0, "flaky": 0, "skipped": 0, "softFailures": 0, "durationMs": 0, "workers": 1, "shard": "2/4"},
+  "tests": [
+    {"suite": "a.sel", "name": "t", "title": "a.sel › t", "status": "passed", "attempts": 1, "durationMs": 5, "startMs": 0, "worker": 0, "error": null, "softFailures": 0, "tags": [], "attachments": []}
+  ]
+}
