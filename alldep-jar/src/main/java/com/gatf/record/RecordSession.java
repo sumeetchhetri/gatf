@@ -99,7 +99,11 @@ public class RecordSession {
     private final String pickArmJs;
     private volatile boolean pickArmed = false;
     private volatile boolean pickOffPending = false;
-    private volatile boolean pickFresh = false;   // Δ148a: the first drain after arming is discarded (pre-queued by the page)
+    // Δ148a: the first drain after arming is discarded (pre-queued by the page). Δ148b: atomic, and consumed only by a
+    // tick that saw the picker armed, so a tick can never clobber a concurrent arming's flag
+    private final java.util.concurrent.atomic.AtomicBoolean pickFresh = new java.util.concurrent.atomic.AtomicBoolean(false);
+    /** Δ148b test seam (null in production): runs inside armPicker(true) after pickFresh is set, before pickArmed. */
+    static volatile Runnable armSeam;   // Δ148a: the first drain after arming is discarded (pre-queued by the page)
     private volatile Map<String, Object> lastPick = null;
     private int pickSeq = 0;
 
@@ -205,10 +209,12 @@ public class RecordSession {
     void pickTick() {   // package-private for PickLocatorTest
         if (!pickArmed && !pickOffPending) return;
         JavascriptExecutor js = (JavascriptExecutor) driver;
+        // Δ148b: armed is read first, then fresh; armPicker writes them in the opposite order, so a tick that sees the
+        // picker armed also sees (and consumes) the fresh flag of that arming
+        boolean armed = pickArmed;
+        boolean fresh = armed && pickFresh.getAndSet(false);
         Object raw = js.executeScript(PickLocator.DRAIN_JS);
-        boolean fresh = pickFresh;
-        pickFresh = false;
-        if (raw instanceof List && pickArmed && !fresh) {   // Δ148a: nothing queued before arming, nothing after a disarm
+        if (raw instanceof List && armed && !fresh) {   // Δ148a: nothing queued before arming, nothing after a disarm
             List<Object> l = (List<Object>) raw;
             Object last = l.isEmpty() ? null : l.get(l.size() - 1);
             if (last instanceof Map) ingestPick((Map<String, Object>) last);
@@ -225,9 +231,12 @@ public class RecordSession {
     public synchronized boolean armPicker(boolean on) {
         if (on && !running) return false;
         if (on) {
-            pickArmed = true;
+            // Δ148b: fresh first, then armed (volatile): a tick that sees armed always sees fresh, so a pre-queued pick is dropped
+            pickFresh.set(true);
             pickOffPending = false;
-            pickFresh = true;
+            Runnable seam = armSeam;
+            if (seam != null) seam.run();   // tests only: a poller tick landing between the two writes
+            pickArmed = true;
         } else if (pickArmed || pickOffPending) {
             pickArmed = false;
             pickOffPending = true;
@@ -293,7 +302,9 @@ public class RecordSession {
         String type = str(a.get("type"));
         if ("goto".equals(type)) {
             String url = str(a.get("url"));
-            return url.isEmpty() || "about:blank".equals(url) ? null : "goto " + url;
+            if (url.isEmpty() || "about:blank".equals(url)) return null;
+            String g = PickLocator.gotoUrl(url);   // Δ148b: the page controls this text
+            return g == null ? PickLocator.skipped("record", "goto") : "goto " + g;
         }
         Map<String, Object> sel = a.get("sel") instanceof Map ? (Map<String, Object>) a.get("sel") : null;
         // M3: testid → role → label when unique in the page, else the legacy id → name → css → xpath
@@ -301,16 +312,22 @@ public class RecordSession {
         // Δ148a: a step whose only locator is unsafe ('$', a Velocity directive, a control char) is not written; a fixed
         // comment marks the gap so the script is not silently missing an action (the value itself is never echoed)
         if (selector == null && PickLocator.unsafeSelector(sel) && type.matches("click|submit|check|type|select")) {
-            return "// GATF record: a " + type + " step was skipped: its locator held an unsafe character (dollar sign, hash before a letter, or a control character)";
+            return PickLocator.skipped("record", type);
         }
         if (selector == null) return null;
         if ("click".equals(type)) return PickLocator.line(selector);   // Δ148: the picker pastes this same step
         if ("submit".equals(type)) return "submit " + selector;
         if ("check".equals(type)) return "click " + selector;
-        if ("type".equals(type)) return "type \"" + esc(str(a.get("value"))) + "\" " + selector;
+        // Δ148b: typed / selected values are page-supplied: a '$' is carried as Velocity unparsed content, never parsed
+        if ("type".equals(type)) {
+            String v = PickLocator.stepValue(str(a.get("value")));
+            return v == null ? PickLocator.skipped("record", type) : "type \"" + v + "\" " + selector;
+        }
         if ("select".equals(type)) {
-            String v = str(a.get("value"));
-            return v.isEmpty() ? "select index@0 " + selector : "select value@\"" + esc(v) + "\" " + selector;
+            String raw = str(a.get("value"));
+            if (raw.isEmpty()) return "select index@0 " + selector;
+            String v = PickLocator.stepValue(raw);
+            return v == null ? PickLocator.skipped("record", type) : "select value@\"" + v + "\" " + selector;
         }
         return null;
     }
@@ -365,7 +382,4 @@ public class RecordSession {
         return o == null ? "" : String.valueOf(o);
     }
 
-    private static String esc(String v) {
-        return v == null ? "" : v.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ").replace("\r", " ");
-    }
 }

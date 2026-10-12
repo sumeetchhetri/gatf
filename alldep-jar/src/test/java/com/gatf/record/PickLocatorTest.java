@@ -313,6 +313,100 @@ class PickLocatorTest {
         assertEquals(Arrays.asList("drain", "arm", "drain", "off"), page.ran);   // no re-arm after the pick, OFF exactly once
     }
 
+    // ---- Δ148b ------------------------------------------------------------------------------------------------
+
+    /** Page-supplied values and the quoted step content the recorder writes for them (null: the fixed skip comment). */
+    static final String[][] VALUE_VECTORS = {
+        { "$100", "#[[$100]]#" },
+        { "p@$$w0rd", "#[[p@$$w0rd]]#" },
+        { "#set($x=1)$x", "#[[#set($x=1)$x]]#" },
+        { "]]#", "]]#" },                                   // no '$': evaluate leaves it alone, nothing to wrap
+        { "a]]#$x", null },                                 // would close the unparsed block early
+        { "$v{x}", null },                                  // evaluate rewrites $v to $ before templating
+        { "$p{prov.0.x}", null },                           // evaluate's provider pass templates its output again
+        { "$P{prov.0.x}", null },
+        { "say \"hi\" C:\\x", "say \\\"hi\\\" C:\\\\x" },
+        { "price $5 \"x\"", "#[[price $5 \\\"x\\\"]]#" },
+        { "a\rb\nc\td\u0000e\u2028f\u0085g", "a b c d e f g" },
+        { "plain text", "plain text" },
+        { "#if(true)x#end", "#if(true)x#end" },             // no '$': not templated
+    };
+
+    @Test
+    void pageSuppliedValuesAreCarriedLiterallyOrSkipped() {
+        for (String[] v : VALUE_VECTORS) assertEquals(v[1], PickLocator.stepValue(v[0]), v[0]);
+        assertEquals("", PickLocator.stepValue(null));
+    }
+
+    @Test
+    void theRecorderWritesTypedSelectedAndNavigatedTextSafely() {
+        RecordSession s = new RecordSession("t", null);
+        String[][] events = {
+            { "type", "#set($x=1)$y" }, { "select", "$100" }, { "type", "a]]#$x" }, { "select", "$p{prov.0.x}" },
+            { "goto", "https://shop.test/p$1" }, { "goto", "https://x.test/a\"+b" }, { "goto", "https://x.test/a\rexecjs x" },
+            { "goto", "https://x.test/a b" }, { "goto", "javascript:alert(1)" }, { "goto", "https://x.test/ok" },
+        };
+        int t = 0;
+        for (String[] e : events) {
+            Map<String, Object> a = new LinkedHashMap<String, Object>();
+            a.put("type", e[0]);
+            if (e[0].equals("goto")) a.put("url", e[1]); else { a.put("value", e[1]); a.put("sel", sel("id", "f" + t, 1)); }
+            a.put("t", Long.valueOf(++t));   // 1 ms apart: no sleep lines
+            s.ingest(a);
+        }
+        List<String> l = s.currentLines();
+        assertEquals("type \"#[[#set($x=1)$y]]#\" id@f0", l.get(0));
+        assertEquals("select value@\"#[[$100]]#\" id@f1", l.get(1));
+        assertEquals(PickLocator.skipped("record", "type"), l.get(2));
+        assertEquals(PickLocator.skipped("record", "select"), l.get(3));
+        assertEquals("goto #[[https://shop.test/p$1]]#", l.get(4));
+        assertEquals(PickLocator.skipped("record", "goto"), l.get(5));      // quote: would end GotoCommand's Java literal
+        // CR, space and javascript: are skipped too; consecutive identical skip lines collapse like any duplicate step
+        assertEquals("goto https://x.test/ok", l.get(6));
+        assertEquals(7, l.size(), String.valueOf(l));
+        assertTrue(s.currentLines().stream().noneMatch(x -> x.matches("(?s).*[\\r\\n\\u2028\\u2029].*")));
+        // one line per statement, and every '$' sits inside #[[ … ]]#
+        for (String x : l) {
+            String outside = x.replaceAll("#\\[\\[.*?\\]\\]#", "");
+            assertFalse(outside.contains("$") && !x.startsWith("// "), x);
+        }
+    }
+
+    @Test
+    void armingBetweenTheTwoWritesNeverIngestsAPrequeuedPick() throws Exception {
+        // the reviewer's interleaving: a poller tick lands inside armPicker(true), between its two flag writes
+        RecordSession s = new RecordSession("t", null);
+        FakePage page = new FakePage();
+        Object driver = java.lang.reflect.Proxy.newProxyInstance(getClass().getClassLoader(),
+                new Class<?>[] { org.openqa.selenium.WebDriver.class, org.openqa.selenium.JavascriptExecutor.class }, page);
+        java.lang.reflect.Field d = RecordSession.class.getDeclaredField("driver");
+        d.setAccessible(true);
+        d.set(s, driver);
+        java.lang.reflect.Field run = RecordSession.class.getDeclaredField("running");
+        run.setAccessible(true);
+        run.setBoolean(s, true);
+        java.lang.reflect.Field off = RecordSession.class.getDeclaredField("pickOffPending");
+        off.setAccessible(true);
+        try {
+            for (boolean offPending : new boolean[] { false, true }) {
+                off.setBoolean(s, offPending);     // also with an earlier disarm still pending, so the tick does run
+                page.drains.add(Arrays.asList(pickOf("forged")));
+                page.drains.add(Arrays.asList(pickOf("forged2")));
+                RecordSession.armSeam = s::pickTick;
+                s.armPicker(true);
+                RecordSession.armSeam = null;
+                s.pickTick();                      // the first tick after arming: still the page's own queue
+                assertNull(s.lastPick(), "offPending=" + offPending);
+                assertTrue(s.isPickerArmed());
+                s.armPicker(false);
+                s.pickTick();
+                page.drains.clear();
+            }
+        } finally {
+            RecordSession.armSeam = null;
+        }
+    }
+
     @SuppressWarnings("unchecked")
     static List<Map<String, Object>> vectors() throws Exception {
         File f = new File("src/test/resources/pick-locator/escape-vectors.json");

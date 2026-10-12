@@ -288,9 +288,9 @@ public class SpaCrawler {
         if (loginSel != null) {
             Map<String, Object> u = map(loginSel.get("user")), p = map(loginSel.get("pass")), s = map(loginSel.get("submit"));
             sb.append("// login\ngoto ").append(spec.getLoginUrl()).append("\n");
-            if (!u.isEmpty()) sb.append("type \"${username}\" ").append(loc(loginSel.get("userCand"), u)).append("\n");
-            sb.append("type \"${password}\" ").append(loc(loginSel.get("passCand"), p)).append("\n");
-            if (!s.isEmpty()) sb.append("click ").append(loc(loginSel.get("submitCand"), s)).append("\n");
+            if (!u.isEmpty()) sb.append(step("type \"${username}\"", "type", loc(loginSel.get("userCand"), u))).append("\n");
+            sb.append(step("type \"${password}\"", "type", loc(loginSel.get("passCand"), p))).append("\n");
+            if (!s.isEmpty()) sb.append(step("click", "click", loc(loginSel.get("submitCand"), s))).append("\n");
             sb.append("sleep 2000\n\n");
         }
         int i = 0;
@@ -311,9 +311,10 @@ public class SpaCrawler {
                 Map<String, Object> sub = map(f.get("submit"));
                 if (!sub.isEmpty()) {
                     if (spec.isSubmitForms() || "get".equals(method)) {
-                        sb.append("click ").append(loc(f.get("submitCand"), sub)).append("\nsleep 1000\n");
+                        sb.append(step("click", "click", loc(f.get("submitCand"), sub))).append("\nsleep 1000\n");
                     } else {
-                        sb.append("// click ").append(loc(f.get("submitCand"), sub)).append("   (POST form: not submitted — enable submitForms)\n");
+                        String l = loc(f.get("submitCand"), sub);
+                        sb.append(l == null ? com.gatf.record.PickLocator.skipped("crawl", "click") : "// click " + l + "   (POST form: not submitted — enable submitForms)").append("\n");
                     }
                 }
             }
@@ -329,6 +330,7 @@ public class SpaCrawler {
     static String fillLine(Map<String, Object> fl) {
         String tag = str(fl.get("tag")), type = str(fl.get("type"));
         String s = loc(fl.get("cand"), map(fl.get("sel")));
+        if (s == null) return com.gatf.record.PickLocator.skipped("crawl", "select".equals(tag) ? "select" : "checkbox".equals(type) || "radio".equals(type) ? "click" : "type");   // Δ148b
         if ("select".equals(tag)) {
             int n = fl.get("options") instanceof Number ? ((Number) fl.get("options")).intValue() : 0;
             return "select index@" + (n > 1 ? 1 : 0) + " " + s;
@@ -343,9 +345,17 @@ public class SpaCrawler {
         return com.gatf.selenium.LocatorRanking.choose(candidates instanceof List ? (List<?>) candidates : null, sel(legacy));
     }
 
+    // Δ148b: "<verb…> <locator>", or the fixed skip comment when no locator is safe
+    private static String step(String head, String verb, String locator) {
+        return locator == null ? com.gatf.record.PickLocator.skipped("crawl", verb) : head + " " + locator;
+    }
+
     /** {s,v} → seleasy selector (id@x / name@x / css@"…" / xpath@"…"). */
     static String sel(Map<String, Object> m) {
         String s = str(m.get("s")), v = str(m.get("v"));
+        // Δ148b: a crawled page is untrusted: '$' (Velocity at run time), '#' + letter, control / line-separator chars
+        // make the fallback unusable, and ranking falls through exactly as for the recorder
+        if (com.gatf.selenium.LocatorRanking.unsafe(v)) return null;
         if ("id".equals(s)) return "id@" + simpleOrQuoted(v);
         if ("name".equals(s)) return "name@" + simpleOrQuoted(v);
         if ("css".equals(s)) return "css@" + quote(v);

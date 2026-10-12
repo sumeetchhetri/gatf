@@ -106,6 +106,44 @@ public final class PickLocator {
         return new Reply(status, m);
     }
 
+    /**
+     * Δ148b: page-supplied text as the content of a quoted step value ({@code type "…"}, {@code select value@"…"}), or
+     * null when it cannot be carried safely (the caller writes a fixed skip comment instead). The generated test hands
+     * that value to {@code SeleniumTest.evaluate}, which runs it through Velocity whenever it holds a {@code $}; so a
+     * value with {@code $} is wrapped as Velocity unparsed content {@code #[[…]]#} and comes out literally. Refused:
+     * a value containing <code>]]#</code> (it would end the unparsed block), <code>$v{</code> (evaluate rewrites
+     * <code>$v</code> to <code>$</code> before templating) or <code>$p{</code> / <code>$P{</code> (evaluate's
+     * provider-reference pass templates its output again). Control and line-separator characters become spaces, as CR/LF already did; then {@code \} and {@code "}
+     * are escaped for the seleasy/Java string.
+     */
+    public static String stepValue(String v) {
+        String s = v == null ? "" : v.replaceAll("[\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029]", " ");
+        if (s.indexOf('$') >= 0) {
+            if (s.contains("]]#") || s.contains("$v{") || s.contains("$p{") || s.contains("$P{")) return null;
+            s = "#[[" + s + "]]#";
+        }
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
+    }
+
+    /**
+     * Δ148b: a recorded page URL for {@code goto <url>}, or null to skip. {@code GotoCommand} pastes the URL into a Java
+     * string literal unescaped (only backslashes are doubled) and runs it through {@code evaluate}, so it must be an
+     * http(s) or file URL (a forged event cannot replay a javascript: / data: navigation) with no whitespace, quote, backslash, angle bracket, backtick, control or line-separator character (a
+     * real {@code location.href} never has one: browsers percent-encode them). A {@code $} is wrapped as in
+     * {@link #stepValue}, with the same refusals.
+     */
+    public static String gotoUrl(String url) {
+        if (url == null || !url.matches("(?i:https?|file):/[^\\s\"'\\\\<>`\\x00-\\x1f\\x7f\\u0085\\u2028\\u2029]+")) return null;
+        if (url.indexOf('$') < 0) return url;
+        if (url.contains("]]#") || url.contains("$v{") || url.contains("$p{") || url.contains("$P{")) return null;
+        return "#[[" + url + "]]#";
+    }
+
+    /** Δ148b: the fixed line written instead of a step whose page-supplied text cannot be carried safely. */
+    public static String skipped(String source, String verb) {
+        return "// GATF " + source + ": a " + verb + " step was skipped: its page-supplied text cannot be written safely in a step (dollar sign, hash before a letter, quote, or control character)";
+    }
+
     /** The ready-to-paste line for a picked locator: the recorder's click step ({@link RecordSession} emits clicks with it). */
     public static String line(String locator) {
         return locator == null ? null : "click " + locator;
