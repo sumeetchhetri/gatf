@@ -9,7 +9,7 @@ open chrome                                   // start a browser session (one pe
 goto https://example.com                      // navigate
 ??10 id@username type "user"                  // wait up to 10s for the element, then act on it
 ?? css@"h1" text ="Welcome"                   // wait (global timeout) and assert the element text
-??+ id@spinner                                // wait until visible;  ??- until not visible
+??+ id@spinner                                // wait until no longer found;  ??- until found
 var who "alice"                               // variables: reference as $v{who} (or @who in exec code)
 subtest "login"                               // reusable, individually reported block
 {
@@ -18,14 +18,14 @@ subtest "login"                               // reusable, individually reported
 ```
 
 - **Find expression:** `<by>@<selector>` where `<by>` is `id`, `name`, `class`, `css`/`cssselector`, `xpath`, `tag`, `text`, `linkText`, `partialLinkText`, `jq`/`$`/`jquery` (jQuery selector), `active`, `this`/`current`. Optional prefixes scope the search (`eval`, `browser-scope`, `session-scope`, `relative`). See [Find Expression](#find-expression).
-- **Waits:** `??N` waits up to N seconds (default: the global `timeout`) for the element, then applies the action or assertion on the same line; `??+` / `??-` wait for visibility / invisibility.
+- **Waits:** `??N` waits up to N seconds (default: the global `timeout`) for the element, then applies the action or assertion on the same line; `??+` (word form `wait till visible`) waits until the element is no longer found, e.g. a spinner has gone; `??-` (word form `wait for`) waits until it is found, like `??`. Neither checks visibility, whatever the word form says; assert the `visible` property for that.
 - **Auto-wait:** with `autoWait` set in the executor config, element actions (click, type, select, hover, clear, submit, upload, double-click, `actions … draganddrop`/`moveto`/`clickandhold`) also wait (up to `actionTimeout` ms, default 5000) until the element is visible, enabled, stable and not covered by another element; An element clipped by a scrolling container is scrolled into view first. `type` fails only on a readonly text field (keys still go to other focusable elements); `clear` needs an editable field (upload and submit only need it attached and enabled). A step that times out fails with the reason, e.g. `covered by <div.modal>`. So an explicit `??10 x` before `click x` is no longer needed.
 - **Web-first assertions:** with `webFirstAssertions` set in the executor config, an assertion whose element is found but whose condition is false (`?? css@h1 text ="Welcome"`, `?? id@count text != "0"`) is retried until `assertTimeout` ms (default 5000). That retry budget applies regardless of `??N`, where N only bounds the search for the element. Without the setting the assertion fails at once, as before.
 - **Soft assertions:** `??~` (optionally `??~N`) asserts like `??` but a failure is recorded instead of stopping the script; the script or subtest fails at the end, listing every soft failure with its file and line.
 - **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`, `nowait actions draganddrop id@a id@b`). The opt-out applies to that line only.
 - **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots and skip hidden elements (append `[include-hidden]` to any value, e.g. `text@=Saved[include-hidden]`); empty values and invalid regexes fail when the script is compiled. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates (loops `#`/`##` and `#transient-provider` may match many). A semantic locator can also be the anchor: `relative tag@input rightof label@Email`.
 - **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
-- **Comments:** `// line` and `/* block */`.
+- **Comments:** `// line` and `/* block */`; `/* … */` may sit on one line. `*/` closes only an open block comment, so `route **/api/x` and `xpath@//div/*/a` are ordinary statements.
 
 The catalog of statement keywords used by the editor and linter is generated from the parser: [`commands.json`](commands.json).
 
@@ -339,12 +339,12 @@ Examples :-
 	[true, false]
 ```
 
-### Wait for element to be visible/invisible
+### Wait for element to be found / no longer found
 
 ```
 	??(+|-) {find-expr}
-	'+' - wait till element is visible
-	'-' - wait till element is not visible
+	'+' - wait till the element is no longer found (same as: wait till visible {find-expr})
+	'-' - wait till the element is found, like ?? (same as: wait for {find-expr}); neither checks visibility
 	??~ {find-expr} {assertion} - soft assertion: a failure is recorded, the script continues and fails at the end
 Examples :-
 	??+ id@'eleid'

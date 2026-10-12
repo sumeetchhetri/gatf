@@ -68,6 +68,7 @@ public final class SelParser {
     private static final Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     private static final Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
     private static final Pattern WAIT_SOFT = Pattern.compile("^\\?\\?~([0-9]*)");
+    private static final Pattern ELSE_IF = Pattern.compile("^else[ \\t]+(ifnot|if)[ \\t]+");   // Command.ELSE_IF, verbatim
     private static final Pattern HOOK_BLOCK = Pattern.compile("(?i)^(beforeall|beforeeach|aftereach|afterall)$");
     private static final Pattern SUBTEST_MARKER = Pattern.compile("(?i)^(only|skip|fixme)\\s+subtest\\s+");
     private static final Pattern TAG = Pattern.compile("\\[[^\\]]*\\]");
@@ -228,12 +229,12 @@ public final class SelParser {
         s.keyword = "/*";
         s.depth = depth;
         StringBuilder b = new StringBuilder();
-        // As Command.parse: the '/*' line opens the comment even when it also holds '*/'; the comment ends at the next
-        // line that contains '*/'.
-        if (trim(lines.get(pos)).substring(2).contains("*/")) s.args.put("sameLineEnd", "true");
+        // As Command.parse (Δ145b): a '/*' line that also holds '*/' outside quotes is a whole comment; otherwise the
+        // comment ends at the next line holding '*/' outside quotes.
+        boolean oneLine = mask(trim(lines.get(pos))).text.substring(2).contains("*/");
         b.append(lines.get(pos)).append('\n');
         pos++;
-        while (pos < lines.size()) {
+        while (!oneLine && pos < lines.size()) {
             String raw = lines.get(pos);
             b.append(raw).append('\n');
             pos++;
@@ -437,15 +438,9 @@ public final class SelParser {
             if (m.find()) { time = m.group(1); start = m.end(1) + 1; }
             return waitStatement(mk, safeSub(cmd, start), line, "??", time, false, false);
         }
-        if (cmd.contains("*/")) {
-            // Command.parse reads any line holding '*/' (outside quotes) as the end of a block comment and generates
-            // nothing for it, e.g. the '*/' inside an unquoted route glob '**/api/...'.
-            if (cmd.trim().startsWith("*/") || cmd.trim().endsWith("*/") && !cmd.matches("(?s).*\\*\\*/.*")) return step(Kind.COMMENT, line, "*/");
-            String holder = "*/";
-            for (String tok : cmd.split("[\\t ]+")) if (tok.contains("*/")) { holder = mk.unmask(tok); break; }
-            return unsupported(line, "*/", "seleasy reads a line containing '*/' as the end of a block comment and never runs it"
-                    + " (here in '" + holder + "'); quote that value so it runs, then export again");
-        }
+        // Command.parse (Δ145b): a line starting with '*/' outside a block comment is a parse error; a '*/' elsewhere in
+        // a line (route **/api/x, xpath@//div/*/a) is ordinary text.
+        if (cmd.startsWith("*/")) return unsupported(line, "*/", "'*/' without an open '/*' block comment (seleasy rejects the script)");
         if (cmd.equals(">>>")) return unsupported(line, ">>>", "code block end without a start");
         if (cmd.equals("end code")) return unsupported(line, "end code", "code block end without a start");
         if (cmd.startsWith("?")) {
@@ -460,13 +455,10 @@ public final class SelParser {
             boolean not = cmd.startsWith(":?!");
             return ifStatement(mk, cmd.substring(not ? 3 : 2), line, not ? ":?!" : ":?", Kind.ELSE_IF, not);
         }
-        if (cmd.startsWith("else if ") || cmd.startsWith("else ifnot ")) {
-            if (cmd.startsWith("else ifnot ")) {
-                Step s = step(Kind.ELSE_IF, line, "else ifnot");
-                return s.unsupported("the transpiler reads `else ifnot x` as `else if` on \"not x\" (it checks for 'else ifnot' with two spaces); "
-                        + "not exported — write `:?! x` instead");
-            }
-            return ifStatement(mk, cmd.substring(8), line, "else if", Kind.ELSE_IF, false);
+        Matcher ei = ELSE_IF.matcher(cmd);
+        if (ei.lookingAt()) {   // Command.parse (Δ145b): the condition starts after the matched keyword
+            boolean not = "ifnot".equals(ei.group(1));
+            return ifStatement(mk, cmd.substring(ei.end()), line, not ? "else ifnot" : "else if", Kind.ELSE_IF, not);
         }
         if (cmd.startsWith(":")) return step(Kind.ELSE, line, ":");
         if (cmd.equals("else")) return step(Kind.ELSE, line, "else");

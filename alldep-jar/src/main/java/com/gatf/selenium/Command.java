@@ -381,6 +381,8 @@ public class Command {
     static Pattern p = Pattern.compile("\"([^\"]*)\"");
     static Pattern WAIT = Pattern.compile("^\\?\\?([0-9]*)");
     static Pattern WAIT_IF = Pattern.compile("^\\?\\?(\\+|\\-)([0-9]*)");
+    // Δ145b: `else if <cond>` / `else ifnot <cond>`
+    static final Pattern ELSE_IF = Pattern.compile("^else[ \\t]+(ifnot|if)[ \\t]+");
     static Pattern WAIT_SOFT = Pattern.compile("^\\?\\?~([0-9]*)");
     // M6: hook blocks and subtest markers
     static Pattern HOOK_BLOCK = Pattern.compile("(?i)^(beforeall|beforeeach|aftereach|afterall)$");
@@ -573,7 +575,8 @@ public class Command {
         cmd = state.sanitize(cmd);
         // Phase 7: drop a trailing end-of-line // comment before dispatch (values inside
         // quotes are already placeholder-masked by sanitize; :// URL schemes are preserved).
-        if(!state.commentStart && !state.codeStart && !(parent instanceof ValueListCommand)) {
+        // Δ145b: not on a '/*' line, so `/* a // b */` keeps its '*/' and stays a one-line comment
+        if(!state.commentStart && !state.codeStart && !(parent instanceof ValueListCommand) && !cmd.startsWith("/*")) {
             cmd = stripTrailingLineComment(cmd);
         }
         if(!state.commentStart && cmd.trim().startsWith("^")) {
@@ -609,6 +612,11 @@ public class Command {
     	} else if(state.commentStart && !cmd.contains("*/")) {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
+        } else if(state.commentStart) {
+            // Δ145b: '*/' ends a block comment only while one is open (sanitize() has masked quoted text, so a
+            // quoted '*/' never counts); text after the first '*/' on the closing line is ignored, as before
+            state.commentStart = false;
+            comd = new EndMultiCommentCommand(cmd.substring(0, cmd.indexOf("*/")), cmdDetails, state);
         } else if(state.codeStart && (!cmd.equals(">>>") && !cmd.equals("end code"))) {
             comd = new ValueCommand(cmdDetails, state);
             ((ValueCommand)comd).value = cmd;
@@ -679,16 +687,18 @@ public class Command {
             comd = new CommentCommand(cmd, cmdDetails, state);
         } else if (cmd.startsWith("/*")) {
             cmd = cmd.substring(2);
-            comd = new MultiCommentCommand(cmdDetails, state);
-            ((MultiCommentCommand)comd).b.append(state.unsanitize(cmd)+"\n");
-            state.commentStart = true;
-        } else if (cmd.contains("*/")) {
-            state.commentStart = false;
-            if(!cmd.endsWith("*/")) {
-                //exception
+            if(!cmd.contains("*/")) {
+                comd = new MultiCommentCommand(cmdDetails, state);
+                ((MultiCommentCommand)comd).b.append(state.unsanitize(cmd)+"\n");
+                state.commentStart = true;
+            } else {
+                // Δ145b: /* … */ on one line is a whole comment and opens no block (as sel-lint and SelDocs read it)
+                comd = new CommentCommand(cmd.substring(0, cmd.indexOf("*/")), cmdDetails, state);
             }
-            cmd = cmd.substring(0, cmd.length()-2);
-            comd = new EndMultiCommentCommand(cmd, cmdDetails, state);
+        } else if (cmd.indexOf("*/")==0) {
+            // Δ145b: a '*/' with no open block comment is an error, no longer a silent no-op; a '*/' elsewhere in a
+            // line (route **/api/x, xpath@//div/*/a) is ordinary text and the statement runs
+            throwParseErrorS(cmdDetails, new RuntimeException("'*/' without an open '/*' block comment"));
         } else if (cmd.equals("<<<") || cmd.startsWith("<<<(")) {
             String lang = "java";
             String argnames = "";
@@ -733,9 +743,14 @@ public class Command {
             comd = new ElseIfCommand(cmd, isIfNot, cmdDetails, state);
             //((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
             //((ElseIfCommand)comd).cond.suppressErr = true;
-        } else if (cmd.startsWith("else if ") || cmd.startsWith("else ifnot ")) {
-            boolean isIfNot = cmd.startsWith("else ifnot  ");
-            cmd = cmd.substring((isIfNot?11:8)).trim();
+        } else if (cmd.startsWith("else if ") || cmd.startsWith("else ifnot ") || ELSE_IF.matcher(cmd).lookingAt()) {
+            // Δ145b: the condition starts after the matched keyword (was startsWith("else ifnot  ") with two spaces,
+            // so `else ifnot x` ran as `else if` on "ot x"); any run of spaces/tabs between the words is accepted.
+            // The startsWith literals are subsumed by ELSE_IF and stay for tools/gen-commands.
+            Matcher em = ELSE_IF.matcher(cmd);
+            em.lookingAt();
+            boolean isIfNot = "ifnot".equals(em.group(1));
+            cmd = cmd.substring(em.end()).trim();
             comd = new ElseIfCommand(cmd, isIfNot, cmdDetails, state);
             //((ElseIfCommand)comd).cond = new FindCommand(cmd, cmdDetails, state);
             //((ElseIfCommand)comd).cond.suppressErr = true;
@@ -2196,7 +2211,8 @@ public class Command {
     public static class MultiCommentCommand extends Command {
         StringBuilder b = new StringBuilder();
         String javacode() {
-            return b.toString() + "*/";
+            // Δ145b: a quoted '*/' in the comment text must not end the generated Java comment early
+            return "/*" + b.substring(2).replace("*/", "* /") + "*/";
         }
         MultiCommentCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);

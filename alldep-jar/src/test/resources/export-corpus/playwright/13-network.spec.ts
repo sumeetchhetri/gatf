@@ -1,5 +1,5 @@
 // Exported from 13-network.sel by GATF (gatf export playwright). Review every TODO(gatf-export) line.
-// 23 of 27 statement(s) exported, 4 TODO, 10 note(s): see the export report.
+// 24 of 27 statement(s) exported, 3 TODO, 10 note(s): see the export report.
 import { test, expect } from '@playwright/test';
 
 test('13-network', async ({ page }) => {
@@ -8,7 +8,9 @@ test('13-network', async ({ page }) => {
   await page.route('**/api/users', async (route) => {
     await route.fulfill({ status: 200, path: 'users.json' });
   });
-  // TODO(gatf-export): route **/api/raw fulfill 204
+  await page.route('**/api/raw', async (route) => {
+    await route.fulfill({ status: 204 });
+  });
   await page.route('**/api/orders', async (route) => {
     if (route.request().method() !== 'POST') return route.fallback();
     await route.fulfill({ status: 201, body: '{"id": 7}', contentType: 'application/json', headers: { 'X-Mock': 'again' } });

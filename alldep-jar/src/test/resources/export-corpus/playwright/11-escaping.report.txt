@@ -3,5 +3,5 @@
     ${baseUrl} → GATF_BASEURL
   3 note(s) on behaviour that differs:
    ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
-   ~ #12 ?? label@'/a\/b[/]c/i' — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #12 ?? label@'/a\/b[/]c/i' — ??+ / wait till visible wait until the element is no longer found (exported as toHaveCount(0)), ??- / ?? / wait for until it is found (toBeAttached); neither checks visibility
    ~ #14 ?? id@x text ="x\y z" — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions

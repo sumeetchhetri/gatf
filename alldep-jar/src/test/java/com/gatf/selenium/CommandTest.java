@@ -16,6 +16,7 @@
 package com.gatf.selenium;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
 
@@ -179,5 +180,83 @@ class CommandTest {
         assertThat(st.firstOnly()).isSameAs(only);
         assertThat(st.hasOnly()).isTrue();
         assertThat(Command.FORBID_ONLY).isEqualTo("'only' is not allowed (forbidOnly)");
+    }
+
+    /** One statement through Command.parse, sharing {@code st} across calls like Command.read does for a file. */
+    private static Command parseLine(String line, Command.CommandState st) {
+        return Command.parse(new Object[]{line, 1, new java.io.File("t.sel"), "", st, ""}, st, null);
+    }
+
+    @Test
+    void waitDirectionCodegenIsPinned() {
+        // Δ145b: ??+ / wait till visible wait until the element is NOT found (isVisible=true: handleWaitFuncWL returns
+        // once the find comes back empty); ??- / ?? / wait for wait until it is found. REFERENCE.md documents this.
+        Command.CommandState st = new Command.CommandState();
+        for (String s : new String[] { "??+ id@x", "wait till visible id@x" }) {
+            WaitTillElementVisibleOrInvisibleCommand w = (WaitTillElementVisibleOrInvisibleCommand) parseLine(s, st);
+            assertThat(w.isVisible).as(s).isTrue();
+            assertThat(w.javacode()).as(s).contains("handleWaitFuncWL(").contains(", true, \"t.sel\", 1 ,");
+        }
+        for (String s : new String[] { "??- id@x", "?? id@x", "wait for id@x" }) {
+            WaitTillElementVisibleOrInvisibleCommand w = (WaitTillElementVisibleOrInvisibleCommand) parseLine(s, st);
+            assertThat(w.isVisible).as(s).isFalse();
+            assertThat(w.javacode()).as(s).contains(", false, \"t.sel\", 1 ,");
+        }
+    }
+
+    @Test
+    void commentEndOutsideABlockCommentIsOrdinaryText() {
+        // Δ145b: an unquoted '*/' ended a "comment" on any line, so these statements generated nothing
+        Command.CommandState st = new Command.CommandState();
+        assertThat(parseLine("route **/api/users fulfill 200 users.json", st)).isInstanceOf(RouteCommand.class);
+        assertThat(((RouteCommand) parseLine("unroute **/api/users", st)).statement).isEqualTo("unroute **/api/users");
+        Command x = parseLine("click xpath@//div/*/a", st);   // global timeouts on (the default): a waited click
+        assertThat(x).isInstanceOf(WaitTillElementVisibleOrInvisibleCommand.class);
+        assertThat(((WaitTillElementVisibleOrInvisibleCommand) x).cond.by).isEqualTo("xpath");
+        assertThat(((WaitTillElementVisibleOrInvisibleCommand) x).cond.classifier).contains("div/*/a");
+        assertThat(st.commentStart).isFalse();
+        assertThatThrownBy(() -> parseLine("*/", st)).isInstanceOf(Command.GatfSelCodeParseError.class)
+                .satisfies(e -> assertThat(e.getCause()).hasMessageContaining("without an open '/*'"));
+    }
+
+    @Test
+    void blockCommentsOpenAndCloseOnlyWhereTheyShould() {
+        Command.CommandState st = new Command.CommandState();
+        Command one = parseLine("/* one line */", st);
+        assertThat(one).isInstanceOf(Command.CommentCommand.class);
+        assertThat(one.javacode()).isEqualTo("// one line ");
+        assertThat(st.commentStart).isFalse();
+        assertThat(parseLine("/* a // b */", st)).isInstanceOf(Command.CommentCommand.class);   // the trailing-// strip skips '/*' lines
+        assertThat(st.commentStart).isFalse();
+        Command.MultiCommentCommand open = (Command.MultiCommentCommand) parseLine("/*", st);
+        assertThat(st.commentStart).isTrue();
+        assertThat(parseLine("click id@x", st)).isInstanceOf(Command.ValueCommand.class);
+        assertThat(parseLine("\"a quoted */ does not close it\"", st)).isInstanceOf(Command.ValueCommand.class);
+        assertThat(st.commentStart).isTrue();
+        assertThat(parseLine("??+ id@x */", st)).isInstanceOf(Command.EndMultiCommentCommand.class);   // was a wait command
+        assertThat(st.commentStart).isFalse();
+        open.b.append("\"q */ q\"\n");
+        assertThat(open.javacode()).isEqualTo("/*\n\"q * / q\"\n*/");   // a quoted */ cannot end the Java comment early
+    }
+
+    @Test
+    void elseIfnotIsNegatedWithAnySpacing() {
+        // Δ145b: was startsWith("else ifnot  ") (two spaces) + substring(8), so `else ifnot x` ran as `else if` on "ot x"
+        Command.CommandState st = new Command.CommandState();
+        for (String s : new String[] { "else ifnot id@x", "else ifnot   id@x", "else\tifnot\tid@x", "else  ifnot id@x" }) {
+            Command.ElseIfCommand e = (Command.ElseIfCommand) parseLine(s, st);
+            assertThat(e.negation).as(s).isTrue();
+            assertThat(e.conds.get(0).by).as(s).isEqualTo("id");
+            assertThat(e.conds.get(0).classifier).as(s).isEqualTo("x");
+        }
+        for (String s : new String[] { "else if id@x", "else  if id@x" }) {
+            Command.ElseIfCommand e = (Command.ElseIfCommand) parseLine(s, st);
+            assertThat(e.negation).as(s).isFalse();
+            assertThat(e.conds.get(0).classifier).as(s).isEqualTo("x");
+        }
+        assertThat(((Command.ElseIfCommand) parseLine(":?! id@x", st)).negation).isTrue();
+        assertThat(((IfCommand) parseLine("ifnot id@x", st)).negation).isTrue();
+        assertThat(((IfCommand) parseLine("?! id@x", st)).negation).isTrue();
+        assertThat(parseLine("else", st)).isInstanceOf(Command.ElseCommand.class);
     }
 }

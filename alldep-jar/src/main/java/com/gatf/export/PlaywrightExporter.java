@@ -408,10 +408,6 @@ public final class PlaywrightExporter implements Exporter {
         private void comment(Step s, StringBuilder b, int ind) {
             if ("/*".equals(s.keyword) && s.text != null) {
                 for (String l : SelParser.splitLines(s.text)) line(b, ind, "// " + Ts.comment(SelParser.trim(l)));
-                if (s.args.containsKey("sameLineEnd")) {
-                    note(s.line, src(s.line), "a /* … */ comment on one line: seleasy keeps the comment open up to the next line containing */, so lines "
-                            + (s.line + 1) + "-" + s.endLine + " are comments too (exported as comments)");
-                }
             } else if (s.text != null) {
                 line(b, ind, "//" + Ts.comment(s.text));
             }
@@ -856,8 +852,8 @@ public final class PlaywrightExporter implements Exporter {
 
         private void waitFor(Step s, StringBuilder b, int ind) {
             if (s.args.containsKey("nowaitNote")) note(s.line, src(s.line), "nowait on a wait or assertion has no Playwright equivalent; it keeps its retry");
-            noteOnce("wait-direction", s.line, "??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: "
-                    + "that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible");
+            noteOnce("wait-direction", s.line, "??+ / wait till visible wait until the element is no longer found (exported as toHaveCount(0)), "
+                    + "??- / ?? / wait for until it is found (toBeAttached); neither checks visibility");
             String t = timeoutOpt(s);
             if ("gone".equals(s.verb)) {
                 line(b, ind, "await " + expect(s) + "(" + all(s.target, s.line) + ").toHaveCount(0" + (t == null ? "" : ", { " + t + " }") + ");");

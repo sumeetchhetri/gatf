@@ -70,6 +70,12 @@ def strip_eol_comment(s: str) -> str:
     return s
 
 
+def mask_quotes(s: str) -> str:
+    """Quoted text blanked, as Command.sanitize masks it: a quoted '*/' never closes a block comment (Δ145b)."""
+    masked = re.sub(r'"(?:\\.|[^"\\])*"', lambda m: "\0" * len(m.group()), s)
+    return re.sub(r"'(?:\\.|[^'\\])*'", lambda m: "\0" * len(m.group()), masked)
+
+
 class Catalog:
     def __init__(self, doc):
         cmds = doc["commands"]
@@ -140,7 +146,7 @@ def lint_file(path: Path, cat: Catalog):
         s = raw.strip()
 
         if in_block_comment:
-            if "*/" in s:
+            if "*/" in mask_quotes(s):
                 in_block_comment = False
             continue
         if in_code:
@@ -158,7 +164,7 @@ def lint_file(path: Path, cat: Catalog):
         if not s:
             continue
         if s.startswith("/*"):
-            if "*/" not in s:
+            if "*/" not in mask_quotes(s[2:]):
                 in_block_comment = True
                 comment_open_line = n
             continue

@@ -9,4 +9,4 @@ e2e-02-assertions → e2e-02-assertions.spec.ts  {statements=19, exported=19, to
    ~ #16 ?? id@banner text %'$v{n} shown later' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
    ~ #17 ?? id@banner text '$v{n} shown'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
    ~ #18 ?? id@count text <='3' — seleasy compares expected.<=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
-   ~ #19 ??- id@banner — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #19 ??- id@banner — ??+ / wait till visible wait until the element is no longer found (exported as toHaveCount(0)), ??- / ?? / wait for until it is found (toBeAttached); neither checks visibility

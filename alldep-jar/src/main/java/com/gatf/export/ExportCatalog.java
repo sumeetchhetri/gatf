@@ -126,7 +126,7 @@ public final class ExportCatalog {
         d("ele-screenshot", "EleScreenshotCommand", MAPPED, "");
         d("else", "ElseCommand", MAPPED, "plain locator conditions only; others are TODO");
         d("else if", "ElseIfCommand", MAPPED, "plain locator conditions only; others are TODO");
-        d("else ifnot", "ElseIfCommand", UNSUPPORTED, "the transpiler never negates it (it checks for 'else ifnot' with two spaces); write :?! instead");
+        d("else ifnot", "ElseIfCommand", MAPPED, "plain locator conditions only; others are TODO");
         d("emulate", "EmulateCommand", PARTIAL, "viewport, geolocation, permissions, colorscheme, offline, online");
         d("end code", "ValueCommand", UNSUPPORTED, "");
         d("exec", "ExecCommand", UNSUPPORTED, "");
@@ -170,7 +170,7 @@ public final class ExportCatalog {
         d("require", "RequireCommand", UNSUPPORTED, "");
         d("robot", "RobotCommand", UNSUPPORTED, "");
         d("rotate", "MRotateCommand", UNSUPPORTED, "");
-        d("route", "RouteCommand", PARTIAL, "an unquoted glob holding */ (e.g. **/api/x) is read by seleasy as a block-comment end and never runs; such lines are TODO");
+        d("route", "RouteCommand", MAPPED, "");
         d("screenshot", "ScreenshotCommand", MAPPED, "");
         d("screenshot compare", "ScreenshotCompareCommand", PARTIAL, "name, masks and maxdiff mapped; threshold is noted");
         d("scroll", "ScrollCommand", MAPPED, "");

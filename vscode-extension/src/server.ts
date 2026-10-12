@@ -102,6 +102,11 @@ function knownLeading(line: string): boolean {
   return false;
 }
 
+// Δ145b: quoted text blanked, as Command.sanitize masks it
+function maskQuotes(s: string): string {
+  return s.replace(/"(?:\\.|[^"\\])*"/g, (mm) => '\0'.repeat(mm.length)).replace(/'(?:\\.|[^'\\])*'/g, (mm) => '\0'.repeat(mm.length));
+}
+
 // Phase 7: strip a trailing whitespace-preceded // comment (quotes masked so // in a string is safe)
 function stripEol(s: string): string {
   let masked = s.replace(/"(?:\\.|[^"\\])*"/g, (mm) => '\0'.repeat(mm.length));
@@ -138,7 +143,7 @@ function lint(doc: TextDocument): Diagnostic[] {
   for (let n = 0; n < lines.length; n++) {
     let s = lines[n].trim();
     if (inBlockComment) {
-      if (s.includes('*/')) inBlockComment = false;
+      if (maskQuotes(s).includes('*/')) inBlockComment = false;   // Δ145b: a quoted */ does not close it
       continue;
     }
     if (inCode) {
@@ -152,7 +157,7 @@ function lint(doc: TextDocument): Diagnostic[] {
     }
     if (!s) continue;
     if (s.startsWith('/*')) {
-      if (!s.includes('*/')) {
+      if (!maskQuotes(s.slice(2)).includes('*/')) {
         inBlockComment = true;
         commentOpen = n;
       }

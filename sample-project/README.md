@@ -32,7 +32,7 @@ sample-project/
 - `config <file.properties>` — load a properties file as `${...}` provider variables
 - `dynprops <file.props>` — load dynamic code variables as `${...}`
 - element targeting: `id@` / `css@` / `xpath@` / `text@` / `name@` / `class@`
-- conditional presence: `??+` (wait until present) / `??-` (act when present) / `??N` (wait up to N s)
+- conditional presence: `??+` (wait until no longer found) / `??-` (wait until found) / `??N` (wait up to N s)
 - assertions: `?? <el> visible | text ="..." | enabled | ...`
 - data: `randomize alphauc N` / `randomize range MIN MAX`; `execjs '...'`
 

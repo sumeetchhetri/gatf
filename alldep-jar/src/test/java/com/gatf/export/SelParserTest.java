@@ -155,23 +155,54 @@ class SelParserTest {
 
     @Test
     void codeBlocksAndCommentsSwallowTheirLines() {
-        List<Step> s = parse("<<<(java)\n}\n{\n>>>\n/* one line */\nclick id@a\nend */\nclick id@b\n");
+        List<Step> s = parse("<<<(java)\n}\n{\n>>>\n/* one line */\nclick id@a\n/*\n'*/' still open\nend */\nclick id@b\n");
         assertEquals(Kind.UNSUPPORTED, s.get(0).kind);
         assertEquals(4, s.get(0).endLine);
         assertEquals(Kind.COMMENT, s.get(1).kind);
-        assertEquals(7, s.get(1).endLine, "a one-line /* */ stays open up to the next */, as Command.parse does");
+        assertEquals(5, s.get(1).endLine, "Δ145b: a one-line /* */ is a whole comment, as Command.parse reads it");
         assertEquals(Kind.ACTION, s.get(2).kind);
+        assertEquals(Kind.COMMENT, s.get(3).kind);
+        assertEquals(9, s.get(3).endLine, "a quoted '*/' does not end the block");
+        assertEquals(Kind.ACTION, s.get(4).kind);
+        assertEquals(5, s.size());
     }
 
     @Test
     void transpilerQuirksAreNotExportedSilently() {
-        Step glob = one("route **/api/users fulfill 200 users.json");
-        assertEquals(Kind.UNSUPPORTED, glob.kind);
-        assertTrue(glob.reason.contains("end of a block comment"));
-        assertEquals(Kind.ROUTE, one("route '**/api/users' fulfill 200 users.json").kind);
-        Step elseIfNot = one("else ifnot id@x");
-        assertEquals(Kind.UNSUPPORTED, elseIfNot.kind);
         assertEquals(Kind.UNSUPPORTED, one("click id@'\uE0000\uE001'").kind);
+    }
+
+    @Test
+    void unquotedCommentEndIsOrdinaryText() {   // Δ145b: '*/' ends a comment only inside one
+        Step glob = one("route **/api/users fulfill 200 users.json");
+        assertEquals(Kind.ROUTE, glob.kind);
+        assertEquals("**/api/users", glob.text);
+        assertEquals(Kind.ROUTE, one("route '**/api/users' fulfill 200 users.json").kind);
+        assertEquals(Kind.UNROUTE, one("unroute **/api/users").kind);
+        Step x = one("click xpath@//div/*/a");
+        assertEquals(Kind.ACTION, x.kind);
+        assertEquals("//div/*/a", x.target.value);
+        Step stray = one("*/");
+        assertEquals(Kind.UNSUPPORTED, stray.kind);
+        assertTrue(stray.reason.contains("without an open"), stray.reason);
+    }
+
+    @Test
+    void elseIfnotIsNegatedWithAnySpacing() {   // Δ145b: was read as `else if` on "ot x"
+        for (String src : new String[] { "else ifnot id@x", "else ifnot   id@x", "else\tifnot\tid@x", "else  ifnot id@x" }) {
+            Step s = one(src + "\n{\n}");
+            assertEquals(Kind.ELSE_IF, s.kind, src);
+            assertEquals("else ifnot", s.keyword, src);
+            assertTrue(s.negated, src);
+            assertEquals("x", s.target.value, src);
+        }
+        Step e = one("else  if id@y\n{\n}");
+        assertEquals("else if", e.keyword);
+        assertFalse(e.negated);
+        assertEquals("y", e.target.value);
+        Step z = one(":?! id@z\n{\n}");
+        assertEquals(Kind.ELSE_IF, z.kind);
+        assertTrue(z.negated);
     }
 
     @Test
@@ -183,12 +214,6 @@ class SelParserTest {
         assertEquals(Kind.ACTION, t.kind);
         assertEquals("C:\\temp dir\\a b", t.text);
         assertEquals("x", t.target.value);
-    }
-
-    @Test
-    void commentEndReasonQuotesTheActualText() {   // Δ160a
-        assertTrue(one("route **/api/raw fulfill 204").reason.contains("'**/api/raw'"));
-        assertTrue(one("click css@a*/b").reason.contains("'css@a*/b'"), one("click css@a*/b").reason);
     }
 
     @Test

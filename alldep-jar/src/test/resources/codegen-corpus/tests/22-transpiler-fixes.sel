@@ -1,0 +1,31 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Delta 145b transpiler fixes: '*/' ends a block comment only inside one; `else ifnot` is negated.
+open chrome
+route '**/api/quoted' fulfill 200 users.json
+route **/api/unquoted abort
+click xpath@//div/*/a
+/* one-line block comment */
+click id@'after-one-line'
+/*
+   a real block comment: these lines generate nothing
+   click id@'never'
+   "a quoted */ does not close it"
+*/
+click id@'after-block'
+? id@'first'
+{
+    click id@'first'
+}
+else ifnot id@'second'
+{
+    click id@'not-second'
+}
+else ifnot   id@'third'
+{
+    click id@'not-third'
+}
+:
+{
+    click id@'otherwise'
+}
+unroute all

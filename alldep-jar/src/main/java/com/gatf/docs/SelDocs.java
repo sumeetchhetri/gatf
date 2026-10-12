@@ -146,6 +146,11 @@ public final class SelDocs {
     }
 
     /** First header comment line that is not only tags/decoration, else the file name. */
+    /** Δ145b: quoted text blanked, as Command.sanitize masks it, so a quoted '*' '/' never closes a block comment. */
+    static String maskQuotes(String s) {
+        return s.replaceAll("\"(?:\\\\.|[^\"\\\\])*\"", "\"\"").replaceAll("'(?:\\\\.|[^'\\\\])*'", "''");
+    }
+
     private static String title(Path file, List<String> header) {
         for (String h : header) {
             String c = clean(h);
@@ -206,11 +211,11 @@ public final class SelDocs {
         for (String raw : lines) {
             String t = raw.trim();
             if (inMulti) {                                 // /* … */ comment
-                if (t.contains("*/")) inMulti = false;
+                if (maskQuotes(t).contains("*/")) inMulti = false;   // Δ145b: a quoted */ does not close it (as Command)
                 continue;
             }
             if (t.startsWith("/*")) {
-                if (!t.contains("*/")) inMulti = true;
+                if (!maskQuotes(t.substring(2)).contains("*/")) inMulti = true;
                 continue;
             }
             if (t.isEmpty()) {

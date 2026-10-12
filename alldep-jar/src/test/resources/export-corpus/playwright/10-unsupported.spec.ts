@@ -1,5 +1,5 @@
 // Exported from 10-unsupported.sel by GATF (gatf export playwright). Review every TODO(gatf-export) line.
-// 2 of 28 statement(s) exported, 26 TODO, 1 note(s): see the export report.
+// 6 of 28 statement(s) exported, 22 TODO, 2 note(s): see the export report.
 import { test, expect } from '@playwright/test';
 
 test('10-unsupported', async ({ page }) => {
@@ -33,14 +33,11 @@ test('10-unsupported', async ({ page }) => {
   // TODO(gatf-export): {
   // TODO(gatf-export): click id@b
   // TODO(gatf-export): }
-  // TODO(gatf-export): ? id@x
-  // TODO(gatf-export): {
-  // TODO(gatf-export): click id@c
-  // TODO(gatf-export): }
-  // TODO(gatf-export): else ifnot id@y
-  // TODO(gatf-export): {
-  // TODO(gatf-export): click id@d
-  // TODO(gatf-export): }
+  if ((await page.locator('#x').count()) > 0) {
+    await page.locator('#c').first().click();
+  } else if ((await page.locator('#y').count()) === 0) {
+    await page.locator('#d').first().click();
+  }
   // TODO(gatf-export): frame "my-frame"
   // TODO(gatf-export): include lib/common.sel
   // TODO(gatf-export): randomize id@'ele1' alphanumeric 12

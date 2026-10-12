@@ -55,8 +55,9 @@ import com.gatf.export.SelScript;
  * which holds deliberately invalid statements.
  *
  * <p>Comparable statements: comments, braces, value lists, code-block bodies and plugin / var data blocks are not
- * statements on either side; a {@code ^dynprop} line (resolved from config at parse time) and a line holding an
- * unquoted {@code * /} (the real parser reads it as a block-comment end) are skipped.
+ * statements on either side; a {@code ^dynprop} line (resolved from config at parse time) is skipped. Δ145b: a line
+ * holding an unquoted {@code * /} outside a block comment (e.g. {@code route **}{@code /api/x}) is an ordinary
+ * statement on both sides and is compared.
  */
 class ExportParserParityTest {
 
@@ -200,7 +201,7 @@ class ExportParserParityTest {
         for (SelScript.Step s : steps) {
             String k = s.keyword;
             if (s.kind == SelScript.Kind.COMMENT || "{".equals(k) || "}".equals(k) || "[".equals(k) || "]".equals(k)) continue;
-            if ("^".equals(k) || "*/".equals(k)) { skip.add(s.line); continue; }
+            if ("^".equals(k)) { skip.add(s.line); continue; }
             Stmt st = new Stmt(s.line, s.depth, k == null ? "plugin" : k);
             SelScript.Locator l = s.target;
             boolean locatorStmt = s.kind == SelScript.Kind.WAIT || (s.kind == SelScript.Kind.ASSERT && !s.assertion.pageLevel)

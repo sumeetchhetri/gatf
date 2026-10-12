@@ -1,5 +1,5 @@
-10-unsupported → 10-unsupported.spec.ts  {statements=28, exported=2, todo=26, notes=1}
-  26 unsupported (exported as TODO(gatf-export) comments):
+10-unsupported → 10-unsupported.spec.ts  {statements=28, exported=6, todo=22, notes=2}
+  22 unsupported (exported as TODO(gatf-export) comments):
    ! #4 #j if(1==1) {} else {} — inline Java control statement
    ! #5 ## class@"row" — element loop (##)
    ! #7 click xpath@"//a[@index]" — inside the unsupported block at line 5
@@ -11,10 +11,6 @@
    ! #25 click id@a — inside the unsupported block at line 23
    ! #27 : — part of the unsupported if/else chain at line 23
    ! #29 click id@b — inside the unsupported block at line 23
-   ! #31 ? id@x — if/else chain: the transpiler reads `else ifnot x` as `else if` on "not x" (it checks for 'else ifnot' with two spaces); not exported — write `:?! x` instead
-   ! #33 click id@c — inside the unsupported block at line 31
-   ! #35 else ifnot id@y — part of the unsupported if/else chain at line 31
-   ! #37 click id@d — inside the unsupported block at line 31
    ! #39 frame "my-frame" — frame switching (use frameLocator in Playwright)
    ! #40 include lib/common.sel — inline include of another script
    ! #41 randomize id@'ele1' alphanumeric 12 — randomize (random test data)
@@ -26,5 +22,6 @@
    ! #47 @call "nowhere" — no exported subtest or func named 'nowhere' in this script
    ! #48 a11y check — accessibility check (needs @axe-core/playwright)
    ! #49 ?? text@'/*x/' — locator text@'/*x/': Invalid regex /*x/: Dangling meta character '*'
-  1 note(s) on behaviour that differs:
+  2 note(s) on behaviour that differs:
    ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
+   ~ #31 ? id@x — an if condition is checked at once with count(); seleasy may poll for it briefly first

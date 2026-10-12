@@ -223,10 +223,10 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
         }
         public static String[] toSampleSelCmd() {
         	return new String[] {
-				"Wait for element to be visible/invisible",
+				"Wait for element to be found / no longer found",
 				"\t??(+|-) {find-expr}",
-				"\t'+' - wait till element is visible",
-				"\t'-' - wait till element is not visible",
+				"\t'+' - wait till the element is no longer found (same as: wait till visible {find-expr})",
+				"\t'-' - wait till the element is found, like ?? (same as: wait for {find-expr}); neither checks visibility",
 				"\t??~ {find-expr} {assertion} - soft assertion: a failure is recorded, the script continues and fails at the end",
 				"Examples :-",
 	    		"\t??+ id@'eleid'",

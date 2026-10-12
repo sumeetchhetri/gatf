@@ -87,14 +87,20 @@ ___ocw___ = ___cw___;
 List<WebElement> ___ce___ = null;
 // Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
 // M4 network mocking: route fulfill / abort / continue, HAR replay, unroute.
-/*GATF_LINE@<ROOT>/tests/15-route.sel:4*/__set__cln__("<ROOT>/tests/15-route.sel:4");
-/*GATF_LINE@<ROOT>/tests/15-route.sel:5*/__set__cln__("<ROOT>/tests/15-route.sel:5");
-/*GATF_LINE@<ROOT>/tests/15-route.sel:6*/__set__cln__("<ROOT>/tests/15-route.sel:6");
-/*GATF_LINE@<ROOT>/tests/15-route.sel:7*/__set__cln__("<ROOT>/tests/15-route.sel:7");
-/*GATF_LINE@<ROOT>/tests/15-route.sel:8*/__set__cln__("<ROOT>/tests/15-route.sel:8");
+/*GATF_LINE@<ROOT>/tests/15-route.sel:4*/__set__cln__("<ROOT>/tests/15-route.sel:4");__route__(get___d___(), evaluate("route **/api/users fulfill 200 users.json"));
+
+/*GATF_LINE@<ROOT>/tests/15-route.sel:5*/__set__cln__("<ROOT>/tests/15-route.sel:5");__route__(get___d___(), evaluate("route POST **/api/orders fulfill 201 '{\"id\": 7}' header 'X-Mock: yes'"));
+
+/*GATF_LINE@<ROOT>/tests/15-route.sel:6*/__set__cln__("<ROOT>/tests/15-route.sel:6");__route__(get___d___(), evaluate("route **/*.{png,jpg} abort blockedbyclient"));
+
+/*GATF_LINE@<ROOT>/tests/15-route.sel:7*/__set__cln__("<ROOT>/tests/15-route.sel:7");__route__(get___d___(), evaluate("route **/api/** continue header 'X-Env: test'"));
+
+/*GATF_LINE@<ROOT>/tests/15-route.sel:8*/__set__cln__("<ROOT>/tests/15-route.sel:8");__route__(get___d___(), evaluate("route from har checkout.har url **/api/** notfound abort"));
+
 /*GATF_LINE@<ROOT>/tests/15-route.sel:9*/__set__cln__("<ROOT>/tests/15-route.sel:9");navigateTo(___cw___, evaluate("https://shop.test/"));
 
-/*GATF_LINE@<ROOT>/tests/15-route.sel:10*/__set__cln__("<ROOT>/tests/15-route.sel:10");
+/*GATF_LINE@<ROOT>/tests/15-route.sel:10*/__set__cln__("<ROOT>/tests/15-route.sel:10");__route__(get___d___(), evaluate("unroute **/api/users"));
+
 /*GATF_LINE@<ROOT>/tests/15-route.sel:11*/__set__cln__("<ROOT>/tests/15-route.sel:11");__route__(get___d___(), evaluate("unroute all"));
 
 pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
