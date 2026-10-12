@@ -121,10 +121,11 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   // Δ147a: the phase is derived — the snapshot's own phase unless the user toggled within this same action — so a
   // step change renders once, with no effect-driven second build
-  const [override, setOverride] = useState<{ action: number; phase: 'before' | 'after' } | null>(null);
-  const phase: 'before' | 'after' =
-    override && snap?.action != null && override.action === snap.action ? override.phase : (snap?.phase ?? 'before');
-  const setPhase = (p: 'before' | 'after') => { if (snap?.action != null) setOverride({ action: snap.action, phase: p }); };
+  // Δ147b: the toggle belongs to the step the user toggled on (snap.n), not to the action: reaching the same action
+  // again from another step (its other phase on the timeline) shows that step's own phase
+  const [override, setOverride] = useState<{ n: number; phase: 'before' | 'after' } | null>(null);
+  const phase: 'before' | 'after' = override && snap && override.n === snap.n ? override.phase : (snap?.phase ?? 'before');
+  const setPhase = (p: 'before' | 'after') => { if (snap) setOverride({ n: snap.n, phase: p }); };
   const pair = snap?.action != null ? actionSnapshots(trace.snapshots, snap.action) : null;
   const shown = phaseSnapshot(trace, snap, phase);
   // one URL cache per trace, owned by an effect: revoked when the trace changes or the view unmounts

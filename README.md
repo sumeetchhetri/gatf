@@ -131,7 +131,7 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 Each UI run can produce a `trace.zip` containing:
 - network traffic (HAR), with response bodies;
 - console logs;
-- DOM snapshots per action (opt-in `traceDomSnapshots`: `lite` = outerHTML, `full` = styled, with the page's stylesheets, a before and an after state per action and the action's element marked; capped by `traceDomSnapshotMaxMb`, default 32), and video;
+- DOM snapshots per action (opt-in `traceDomSnapshots`: `lite` = the sanitized DOM without stylesheets, `full` = styled, with the page's stylesheets, a before and an after state per action and the action's element marked; capped by `traceDomSnapshotMaxMb`, default 32), and video;
 - web vitals, performance and memory metrics;
 - a **CPU profile** and **JS/CSS coverage**.
 

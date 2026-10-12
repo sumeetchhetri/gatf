@@ -166,16 +166,6 @@ export function parseSrcset(v: string): Array<{ url: string; descriptors: string
   return out;
 }
 
-/** CSS hex escapes of identifier characters (u\72l( = url() decoded, so no construct hides behind an escape. */
-function unescapeIdents(css: string): string {
-  return css.replace(/\\([0-9a-fA-F]{1,6})[ \t\n\r\f]?|\\([A-Za-z0-9_-])/g, (m, hex: string | undefined, ch: string | undefined) => {
-    if (ch) return ch;
-    const cp = parseInt(hex!, 16);
-    const c = cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
-    return /^[A-Za-z0-9_-]$/.test(c) ? c : m;
-  });
-}
-
 class Rewriter {
   readonly urls: string[] = [];
   private readonly made = new Map<string, string>();
@@ -229,28 +219,223 @@ class Rewriter {
   }
 
   /**
-   * CSS text with every reference resolved against `base` and rewritten: url(), image-set() strings and @import
-   * (missing -> none / dropped). Comments are removed and identifier escapes decoded first, so neither hides a
-   * reference. Best-effort: the frame's CSP is what guarantees nothing is fetched.
+   * CSS text with every reference resolved against `base` and rewritten: url(), the strings of image-set() and
+   * @import (missing -> none / dropped). Δ147b: a single pass over CSS tokens — strings and comments are copied
+   * verbatim (never decoded or stripped), escapes are decoded only to *recognise* identifiers (u\72l( is url(), but
+   * "\75 rl(" inside a string stays text), quoted values honour line continuations, and image-set() is matched with
+   * balanced parentheses. Each construct is rewritten exactly once. Best-effort: the CSP is the guarantee.
    */
   css(text: string, base: string | null, depth = 0): string {
-    let out = unescapeIdents(text.replace(/\/\*[\s\S]*?\*\//g, ''));
-    out = out.replace(/@import\s*(?:url\(\s*(['"]?)(.*?)\1\s*\)|(['"])(.*?)\3)([^;]*);?/gi,
-      (_m, _q1, u1: string | undefined, _q2, u2: string | undefined, media: string) => {
-        const u = (u1 ?? u2 ?? '').trim();
-        const abs = resolve(u, base);
-        const r = abs && depth < 4 ? this.map.get(stripHash(abs)) : undefined;
-        const t = r ? this.text(r.path) : null;
-        if (t == null) { this.stats.missingSheets++; return ''; }
-        const inner = this.css(t, abs, depth + 1);
-        const m = media.trim();
-        return m ? `@media ${m}{${inner}}` : inner;
-      });
-    out = out.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (_m, _q, u: string) => this.cssUrl(u, base));
-    // image-set("a.png" 1x, 'b.png' 2x): bare strings are URLs there
-    out = out.replace(/((?:-webkit-)?image-set\()([^)]*\))/gi, (_m, head: string, body: string) =>
-      head + body.replace(/(["'])(.*?)\1/g, (_s, _q, u: string) => this.cssUrl(u, base)));
+    return new CssScan(text, base, this, depth).run();
+  }
+
+  /** @internal used by CssScan */
+  urlToken(value: string, base: string | null): string {
+    return this.cssUrl(value, base);
+  }
+
+  /** @internal used by CssScan: the inlined text of an @import, or null when not in the bundle. */
+  importText(value: string, base: string | null, depth: number): string | null {
+    const abs = resolve(value.trim(), base);
+    const r = abs && depth < 4 ? this.map.get(stripHash(abs)) : undefined;
+    const t = r ? this.text(r.path) : null;
+    if (t == null) { this.stats.missingSheets++; return null; }
+    return this.css(t, abs, depth + 1);
+  }
+
+  /** Whether `u` is a URL this rewriter itself produced (never rewrite a rewritten value). */
+  produced(u: string): boolean {
+    for (const v of this.made.values()) if (v === u) return true;
+    return false;
+  }
+}
+
+const isNameChar = (c: string) => /[A-Za-z0-9_-]/.test(c) || c.charCodeAt(0) >= 0x80;
+const isWs = (c: string | undefined) => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
+
+/** Δ147b: a minimal CSS tokenizer-rewriter (CSS Syntax 3 strings, comments, escapes, idents, url tokens). */
+class CssScan {
+  private i = 0;
+  constructor(private readonly s: string, private readonly base: string | null, private readonly rw: Rewriter, private readonly depth: number) {}
+
+  run(): string {
+    return this.scan(false, false);
+  }
+
+  /** Copy/transform until EOF, or (inParens) the matching ')', which is consumed and emitted. */
+  private scan(inParens: boolean, imageSet: boolean): string {
+    const s = this.s;
+    let out = '';
+    while (this.i < s.length) {
+      const c = s[this.i];
+      if (c === '/' && s[this.i + 1] === '*') {          // comment: verbatim
+        const e = s.indexOf('*/', this.i + 2);
+        const end = e < 0 ? s.length : e + 2;
+        out += s.slice(this.i, end);
+        this.i = end;
+      } else if (c === '"' || c === "'") {                  // string: verbatim, or a URL inside image-set()
+        const start = this.i;
+        const v = this.readString();
+        out += imageSet ? this.urlOut(v) : s.slice(start, this.i);
+      } else if (c === '@' && this.identAt(this.i + 1)) {
+        const start = this.i;
+        this.i++;
+        const name = this.readIdent();
+        if (name.toLowerCase() === 'import') out += this.atImport(start);
+        else out += s.slice(start, this.i);
+      } else if (isNameChar(c) || (c === '\\' && s[this.i + 1] !== '\n')) {
+        const start = this.i;
+        const name = this.readIdent().toLowerCase();
+        if (s[this.i] === '(') {
+          if (name === 'url') { out += this.urlFunction(); continue; }
+          if (name === 'image-set' || name === '-webkit-image-set') {
+            out += s.slice(start, this.i) + '(';
+            this.i++;
+            out += this.scan(true, true);
+            continue;
+          }
+          out += s.slice(start, this.i) + '(';
+          this.i++;
+          out += this.scan(true, false);
+          continue;
+        }
+        out += s.slice(start, this.i);
+      } else if (c === '(') {
+        out += c;
+        this.i++;
+        out += this.scan(true, false);
+      } else if (c === ')' && inParens) {
+        this.i++;
+        return out + ')';
+      } else {
+        out += c;
+        this.i++;
+      }
+    }
     return out;
+  }
+
+  private urlOut(v: string): string {
+    return this.rw.produced(v) ? `url("${v.replace(/"/g, '%22')}")` : this.rw.urlToken(v, this.base);
+  }
+
+  private identAt(k: number): boolean {
+    const c = this.s[k];
+    return c !== undefined && (isNameChar(c) || c === '\\');
+  }
+
+  /** An identifier with escapes decoded (for matching only). */
+  private readIdent(): string {
+    const s = this.s;
+    let v = '';
+    while (this.i < s.length) {
+      const c = s[this.i];
+      if (c === '\\' && s[this.i + 1] !== undefined && s[this.i + 1] !== '\n') { v += this.readEscape(); continue; }
+      if (!isNameChar(c)) break;
+      v += c;
+      this.i++;
+    }
+    return v;
+  }
+
+  /** At a backslash: the escaped code point (hex 1–6 + one optional whitespace, or the next char). */
+  private readEscape(): string {
+    const s = this.s;
+    this.i++;   // '\'
+    const m = /^[0-9a-fA-F]{1,6}/.exec(s.slice(this.i, this.i + 6));
+    if (m) {
+      this.i += m[0].length;
+      if (isWs(s[this.i])) this.i += s[this.i] === '\r' && s[this.i + 1] === '\n' ? 2 : 1;
+      const cp = parseInt(m[0], 16);
+      return cp > 0 && cp <= 0x10ffff && !(cp >= 0xd800 && cp <= 0xdfff) ? String.fromCodePoint(cp) : '\ufffd';
+    }
+    const ch = s[this.i] ?? '';
+    this.i++;
+    return ch;
+  }
+
+  /** At a quote: the string's value (escapes decoded, line continuations removed); i ends after the closing quote. */
+  private readString(): string {
+    const s = this.s;
+    const q = s[this.i++];
+    let v = '';
+    while (this.i < s.length) {
+      const c = s[this.i];
+      if (c === q) { this.i++; return v; }
+      if (c === '\n') return v;                               // bad string: ends at the newline (not consumed)
+      if (c === '\\') {
+        const n = s[this.i + 1];
+        if (n === undefined) { this.i++; return v; }
+        if (n === '\n') { this.i += 2; continue; }          // line continuation
+        if (n === '\r') { this.i += s[this.i + 2] === '\n' ? 3 : 2; continue; }
+        v += this.readEscape();
+        continue;
+      }
+      v += c;
+      this.i++;
+    }
+    return v;
+  }
+
+  /** At '(' after "url": url("…") / url('…') / url(bare) → rewritten url() or none. */
+  private urlFunction(): string {
+    const s = this.s;
+    this.i++;   // '('
+    while (isWs(s[this.i])) this.i++;
+    let v = '';
+    if (s[this.i] === '"' || s[this.i] === "'") {
+      v = this.readString();
+      while (this.i < s.length && s[this.i] !== ')') this.i++;   // skip ws (and anything malformed) to ')'
+    } else {
+      while (this.i < s.length && s[this.i] !== ')') {
+        if (s[this.i] === '\\' && s[this.i + 1] !== '\n') { v += this.readEscape(); continue; }
+        v += s[this.i++];
+      }
+      v = v.trim();
+    }
+    if (s[this.i] === ')') this.i++;
+    return this.urlOut(v);
+  }
+
+  /** After "@import": its URL (string or url()), then the media/conditions up to ';'. */
+  private atImport(start: number): string {
+    const s = this.s;
+    const skip = () => {
+      for (;;) {
+        while (isWs(s[this.i])) this.i++;
+        if (s[this.i] === '/' && s[this.i + 1] === '*') { const e = s.indexOf('*/', this.i + 2); this.i = e < 0 ? s.length : e + 2; continue; }
+        break;
+      }
+    };
+    skip();
+    let v: string | null = null;
+    if (s[this.i] === '"' || s[this.i] === "'") v = this.readString();
+    else {
+      const save = this.i;
+      const name = this.identAt(this.i) ? this.readIdent().toLowerCase() : '';
+      if (name === 'url' && s[this.i] === '(') {
+        this.i++;
+        while (isWs(s[this.i])) this.i++;
+        if (s[this.i] === '"' || s[this.i] === "'") v = this.readString();
+        else { let b = ''; while (this.i < s.length && s[this.i] !== ')') { if (s[this.i] === '\\') { b += this.readEscape(); continue; } b += s[this.i++]; } v = b.trim(); }
+        while (this.i < s.length && s[this.i] !== ')') this.i++;
+        if (s[this.i] === ')') this.i++;
+      } else {
+        this.i = save;
+        return s.slice(start, this.i);   // not an @import we understand: leave it (the CSP still blocks it)
+      }
+    }
+    // media / supports / layer up to ';' outside strings
+    const mStart = this.i;
+    while (this.i < s.length && s[this.i] !== ';') {
+      if (s[this.i] === '"' || s[this.i] === "'") this.readString();
+      else this.i++;
+    }
+    const media = s.slice(mStart, this.i).trim();
+    if (s[this.i] === ';') this.i++;
+    const inner = this.rw.importText(v ?? '', this.base, this.depth);
+    if (inner == null) return '';
+    return media ? `@media ${media}{${inner}}` : inner;
   }
 }
 
@@ -298,9 +483,12 @@ function attrUrls(el: Element, rw: Rewriter, base: string | null): void {
   }
   // url() anywhere else: style, SVG presentation attributes (fill, filter, mask, clip-path, marker-* …)
   for (const at of Array.from(el.attributes)) {
-    if (URL_ATTRS.includes(at.name.toLowerCase()) || at.name === 'srcset' || at.name === 'imagesrcset') continue;
-    if (!/[(\\]/.test(at.value) || !/url\(|image-set\(/i.test(unescapeIdents(at.value))) continue;
-    el.setAttribute(at.name, rw.css(at.value, base));
+    const an = at.name.toLowerCase();
+    // Δ147b: srcdoc is a whole document, already rebuilt (its CSS must not be rewritten a second time)
+    if (URL_ATTRS.includes(an) || an === 'srcset' || an === 'imagesrcset' || an === 'srcdoc') continue;
+    if (!at.value.includes('(')) continue;
+    const v = rw.css(at.value, base);
+    if (v !== at.value) el.setAttribute(at.name, v);
   }
 }
 

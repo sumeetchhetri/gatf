@@ -42,7 +42,7 @@ public final class TraceConfig {
     // G10 knobs (system properties, so no config-schema change): page.pdf at stop; BiDi polled-screenshot video fps
     private boolean pdf = Boolean.getBoolean("gatf.trace.pdf");
     private int videoPollFps = Integer.getInteger("gatf.trace.videoPollFps", 0);
-    // H2 (Δ146): per-action DOM snapshots: off (default) | lite (outerHTML) | full (styled: DOMSnapshot / serialized DOM + CSS)
+    // H2 (Δ146): per-action DOM snapshots: off (default) | lite (sanitized DOM, no stylesheets) | full (styled: DOMSnapshot / serialized DOM + CSS)
     private String domSnapshots = normDom(System.getProperty("gatf.trace.domSnapshots"));
     private int snapshotMaxNodes = 200_000;
     private int snapshotMaxChars = 8 * 1024 * 1024;      // serialized HTML cap per snapshot

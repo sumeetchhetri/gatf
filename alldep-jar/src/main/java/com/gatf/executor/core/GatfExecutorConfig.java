@@ -142,7 +142,7 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	private boolean traceVideo = false;
 	private int traceVideoQuality = 60;
 	private int traceVideoEveryNthFrame = 2;
-	// H2 (Δ146): per-action DOM snapshots: off (default) | lite (outerHTML) | full (styled, for time-travel)
+	// H2 (Δ146): per-action DOM snapshots: off (default) | lite (sanitized DOM, no stylesheets) | full (styled, for time-travel)
 	private String traceDomSnapshots;
 	// H2 (Δ146): MB the per-action snapshots may add to one trace (HTML + stylesheets); past it capture stops
 	private Integer traceDomSnapshotMaxMb;

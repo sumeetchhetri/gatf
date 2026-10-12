@@ -72,6 +72,7 @@ public final class TraceRecorder implements AutoCloseable {
     // keep/discard decision, so the end capture is taken there and deleted with the working dir when discarded.
     private volatile boolean discarding;
     private int failureAt = -1;            // Δ146a: the action id a failure was last recorded for
+    private int fullCaptures, liteCaptures; // Δ147b: what the captures actually produced
 
     private TraceRecorder(BrowserControl browser, TraceConfig cfg, Path workDir, String selFile, String browserName) {
         this.browser = browser;
@@ -141,6 +142,14 @@ public final class TraceRecorder implements AutoCloseable {
     /** H2: the effective per-action snapshot mode (off | lite | full) — degrades when captures are slow or over budget. */
     public synchronized String domSnapshotMode() { return snap == null ? "off" : domMode; }
 
+    /** Δ147b: the mode the bundle actually holds — "lite" when full was asked for but no capture came out styled
+     *  (every rich capture fell back to the lite serializer), else the current mode. */
+    public synchronized String effectiveDomSnapshotMode() {
+        if (snap == null) return "off";
+        if (fullCaptures == 0 && liteCaptures > 0 && "full".equals(domMode)) return "lite";
+        return domMode;
+    }
+
     /**
      * H2 (Δ146): a per-action timeline event (with its action id {@code a}) and, when per-action snapshots are on,
      * one capture that is both the previous action's "after" and this action's "before". {@code target} is the
@@ -186,7 +195,10 @@ public final class TraceRecorder implements AutoCloseable {
 
     private void timedCapture(java.util.List<SnapshotRecorder.Point> pts, java.util.List<Object> targets, boolean screenshot) {
         long t0 = System.nanoTime();
-        try { snap.capture(pts, targets, "full".equals(domMode), screenshot); } catch (Exception ignored) {}
+        String kind = null;
+        try { kind = snap.capture(pts, targets, "full".equals(domMode), screenshot); } catch (Exception ignored) {}
+        if ("full".equals(kind)) fullCaptures++;
+        else if ("lite".equals(kind)) liteCaptures++;
         snapNanos += System.nanoTime() - t0;
         snapTimed++;
         // never noticeably slow a run, never balloon the bundle: full -> lite -> off
@@ -276,7 +288,7 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("browser", browserName)
                 .put("protocol", cfg.getProtocol())
                 .put("format", 2)   // H2 (Δ146): per-action events carry `a`; snapshots.ndjson lines may be v2 (dom manifest)
-                .put("domSnapshots", domSnapshotMode())                                   // Δ146a: effective (after any degrade)
+                .put("domSnapshots", effectiveDomSnapshotMode())                          // Δ146a/147b: effective (degrade, fallback)
                 .put("domSnapshotsRequested", snap == null ? "off" : cfg.getDomSnapshots())
                 .put("domSnapshotsLimit", domLimit)
                 .put("domSnapshotBytes", snap == null ? 0 : snap.capturedBytes())

@@ -270,6 +270,27 @@ class TraceRecorderSnapshotsTest {
     }
 
     @Test
+    void effectiveModeIsLiteWhenNoCaptureCameOutStyled(@TempDir Path dir) throws Exception {      // Δ147b item 5
+        Fake b = new Fake(EnumSet.of(Capability.DOM_SNAPSHOT, Capability.DOM_SNAPSHOT_RICH)) {
+            @Override public RichSnapshot captureRichSnapshot(List<Object> t, List<String> m) { calls.add("rich-null"); return null; }
+        };
+        TraceRecorder r = TraceRecorder.attach(b, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd"), "a.sel", "chrome");
+        r.action("click", "x", "el");
+        r.action("click", "y", "el");
+        assertEquals("full", r.domSnapshotMode(), "still asking for full");
+        assertEquals("lite", r.effectiveDomSnapshotMode());
+        String meta = zip(r.writeZip(dir.resolve("t.zip"))).get("metadata.json");
+        assertTrue(meta.contains("\"domSnapshots\":\"lite\"") && meta.contains("\"domSnapshotsRequested\":\"full\""), meta);
+        assertTrue(b.calls.contains("lite") && !b.calls.contains("raw"), b.calls.toString());
+
+        Fake ok = richBrowser();                                            // one styled capture: full
+        TraceRecorder r2 = TraceRecorder.attach(ok, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd2"), "a.sel", "chrome");
+        r2.action("click", "x", "el");
+        assertEquals("full", r2.effectiveDomSnapshotMode());
+        r2.discard();
+    }
+
+    @Test
     void aThrowingTransportNeverBreaksTheRun(@TempDir Path dir) throws Exception {
         Fake b = new Fake(EnumSet.of(Capability.DOM_SNAPSHOT, Capability.DOM_SNAPSHOT_RICH, Capability.SCREENSHOT)) {
             @Override public RichSnapshot captureRichSnapshot(List<Object> t, List<String> m) { throw new IllegalStateException("x"); }

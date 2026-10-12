@@ -374,3 +374,77 @@ describe('Δ147a probes', () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------------------------------------------
+// Δ147b: one probe per review item N1–N4.
+describe('Δ147b probes', () => {
+  const enc = (x: string) => strToU8(x);
+  // blob-style URLs, as the viewer really produces (data: URLs would hide N1/N2: the rewriter keeps data:)
+  const blobUrl = (p: string) => `blob:test/${p}`;
+  function one(body: string, head = '') {
+    const entries = [['https://app.test/p/ok.png', 'image/png', 'resources/ok.png']].map(([url, mime, file], i) => ({
+      startedDateTime: new Date(1000 + i).toISOString(), time: 1, request: { method: 'GET', url, httpVersion: '', headers: [] },
+      response: { status: 200, statusText: 'OK', httpVersion: '', headers: [], content: { size: 1, mimeType: mime, _file: file }, bodySize: 1 },
+    }));
+    const files: Record<string, Uint8Array> = {
+      'snapshots/s.html': enc(`<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`),
+      'snapshots/s.json': enc(JSON.stringify({ v: 2, source: 'script', url: 'https://app.test/p/', title: '', viewport: { w: 1, h: 1 }, scroll: { x: 0, y: 0 }, truncated: false, styles: [] })),
+      'snapshots.ndjson': enc(JSON.stringify({ n: 1, ts: 5000, label: null, html: 'snapshots/s.html', screenshot: null, v: 2, dom: 'snapshots/s.json' }) + '\n'),
+      'network.har': enc(JSON.stringify({ log: { version: '1.2', creator: { name: 'gatf', version: 'trace' }, entries } })),
+      'resources/ok.png': new Uint8Array([137, 80, 78, 71]),
+    };
+    const t = parseFiles(files);
+    return rebuildSnapshot(t, t.snapshots[0], { toUrl: blobUrl })!;
+  }
+
+  it('N1: a nested srcdoc frame keeps its CSS resources and its comments/escapes', () => {
+    const child = '<style>.f{background:url(ok.png)} /* keep me */ .g::before{content:"\\75 rl(x)"}</style><p class="f">x</p>';
+    const r = one(`<iframe id="fr" srcdoc="${child.replace(/"/g, '&quot;')}" style="background:url(ok.png)"></iframe>`);
+    const fr = parse(r.html).getElementById('fr')!;
+    const sd = fr.getAttribute('srcdoc')!;
+    expect(sd).toContain('url("blob:test/resources/ok.png")');           // was: none (re-rewritten)
+    expect(sd).toContain('/* keep me */');
+    expect(sd).toContain('content:"\\75 rl(x)"');
+    expect(fr.getAttribute('style')).toBe('background:url("blob:test/resources/ok.png")');
+  });
+
+  it('N2: image-set is rewritten once, with balanced parentheses', () => {
+    const r = one('<p>x</p>', `<style>.a{background:image-set(url(ok.png) 1x)}
+      .b{background:IMAGE-SET(url(ok.png) 1x,'https://evil.test/x.png' 2x)}
+      .c{background:image-set("ok.png" type("image/png") 1x)}</style>`);
+    expect(r.html).toContain('.a{background:image-set(url("blob:test/resources/ok.png") 1x)}');
+    expect(r.html).toContain(`.b{background:IMAGE-SET(url("blob:test/resources/ok.png") 1x,none 2x)}`);
+    expect(r.html).toContain('.c{background:image-set(url("blob:test/resources/ok.png") type("image/png") 1x)}');   // type() strings are not URLs
+    expect(r.html).not.toMatch(/evil\.test/);
+  });
+
+  it('N3: strings are never altered; comments only outside strings; url() with a line continuation', () => {
+    const css = '.q::before{content:"/*"} .keep{color:red} .r::after{content:"*/"} .e::before{content:"\\\\75 rl(x)"}' +
+      ' .s::before{content:"\\75 rl(https://evil.test/inert-text)"} .l{background:url("https://evil\\\n.test/l.png")} .m{background:url("o\\\nk.png")}';
+    const r = one('<p>x</p>', `<style>${css}</style>`);
+    const out = parse(r.html).querySelector('style:not([data-gatf])')!.textContent!;
+    expect(out).toContain('.q::before{content:"/*"} .keep{color:red} .r::after{content:"*/"}');
+    expect(out).toContain('.e::before{content:"\\\\75 rl(x)"}');                 // was: "\none"
+    expect(out).toContain('.s::before{content:"\\75 rl(https://evil.test/inert-text)"}');   // a string, not a url()
+    expect(out).toContain('.l{background:none}');                               // continuation joined: evil URL removed
+    expect(out).toContain('.m{background:url("blob:test/resources/ok.png")}');   // "o\<nl>k.png" = ok.png
+  });
+
+  it('N4: the Before/After toggle belongs to the step, not the action', () => {
+    const t = load();
+    URL.createObjectURL = (() => 'blob:v') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+    const b2 = snap(t, 2, 'before');
+    const a2 = snap(t, 2, 'after');
+    const frame = () => (screen.getAllByTitle('dom-snapshot').pop() as HTMLIFrameElement).getAttribute('srcdoc')!;
+    const { rerender } = render(<DomView trace={t} snap={b2} />);
+    const beforeHtml = frame();
+    fireEvent.click(screen.getByText('Before'));                               // a toggle on step before(2)
+    rerender(<DomView trace={t} snap={a2} />);                                 // the timeline reaches step after(2)
+    const afterHtml = frame();
+    expect(afterHtml).not.toBe(beforeHtml);                                    // was: still "before" (keyed on the action)
+    expect(afterHtml).toBe(rebuildSnapshot(t, a2, { toUrl: () => 'blob:v', highlight: 2 })!.html);
+    fireEvent.click(screen.getByText('Before'));                               // toggling on this step still works
+    expect(frame()).toBe(beforeHtml);
+  });
+});
