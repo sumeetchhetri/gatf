@@ -38,7 +38,9 @@ import java.util.Map;
  *  <li>{@code html} (only when {@code serialize}): the BiDi/any-driver serialization, same rules as
  *      {@link DomSnapshotSerializer}.</li>
  * </ul>
- * The script never mutates the page.
+ * The script never mutates the page. Comments are dropped; {@code javascript:} is recognised after removing tab/CR/LF
+ * and leading control characters; tag checks are case-insensitive and namespace-aware (an SVG {@code <style>} is
+ * escaped, not raw text).
  */
 public final class DomCapture {
 
@@ -59,7 +61,7 @@ public final class DomCapture {
     }
 
     public static final String META_JS =
-        "return (function(targets, marks, serialize, maxNodes, maxChars, maxCss){\n"
+        "return (function(targets, marks, serialize, maxNodes, maxChars, maxCss, noStyles){\n"
       + "var d=document, out={url:location.href,title:d.title,vw:innerWidth,vh:innerHeight,sx:Math.round(scrollX||0),sy:Math.round(scrollY||0),styles:[],targets:[],trunc:false};\n"
       + "targets=targets||[]; marks=marks||[];\n"
       + "function rulesText(sheet,depth){var rules;try{rules=sheet.cssRules;}catch(e){return null;} if(!rules)return null; var parts=[],n=0;\n"
@@ -68,10 +70,12 @@ public final class DomCapture {
       + "  var c=r.cssText; parts.push(c); n+=c.length; if(n>maxCss){out.trunc=true;break;}}\n"
       + " return parts.join('\\n');}\n"
       + "var styleEls=d.querySelectorAll('style');\n"
+      + "if(!noStyles){\n"
       + "for(var i=0;i<d.styleSheets.length;i++){var s=d.styleSheets[i],own=s.ownerNode; if(!own)continue; var tag=(own.localName||'').toLowerCase();\n"
       + " if(tag==='link'){out.styles.push({owner:'link',href:s.href,media:s.media?s.media.mediaText:'',text:rulesText(s,0),index:-1});}\n"
       + " else if(tag==='style'&&!(own.textContent||'').trim()){var t=rulesText(s,0); if(t)out.styles.push({owner:'style',href:location.href,media:s.media?s.media.mediaText:'',text:t,index:Array.prototype.indexOf.call(styleEls,own)});}}\n"
       + "var ad=d.adoptedStyleSheets||[]; for(var i=0;i<ad.length;i++){var t=rulesText(ad[i],0); if(t)out.styles.push({owner:'adopted',href:location.href,media:'',text:t,index:-1});}\n"
+      + "}\n"
       + "function path(el){if(!el||el.nodeType!==1||!el.isConnected||el.ownerDocument!==d)return null; var p=[],root=d.documentElement;\n"
       + " while(el&&el!==root){var par=el.parentNode; if(!par||par.nodeType!==1)return null; p.unshift(Array.prototype.indexOf.call(par.children,el)); el=par;}\n"
       + " return el===root?p:null;}\n"
@@ -84,38 +88,41 @@ public final class DomCapture {
       + "var mk=new Map(); for(var i=0;i<targets.length;i++){var t=targets[i]; if(t&&marks[i]!=null){var v=mk.get(t); var s=String(marks[i]); mk.set(t,v?(v.split(' ').indexOf(s)<0?v+' '+s:v):s);}}\n"
       + "function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\n"
       + "function escA(s){return String(s).replace(/&/g,'&amp;').replace(/\"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}\n"
+      + "function foreign(n){for(var a=n.parentNode;a&&a.nodeType===1;a=a.parentNode){var x=(a.localName||'').toLowerCase(); if(x==='foreignobject')return false; if(x==='svg'||x==='math')return true;} return false;}\n"
+      + "function isJs(v){return /^(javascript|vbscript):/i.test(String(v).replace(/[\\t\\n\\r]/g,'').replace(/^[\\x00-\\x20]+/,''));}\n"
       + "function mask(v){return new Array(Math.min(32,v.length)+1).join('\\u2022');}\n"
       + "function put(b,s){b.push(s);len+=s.length;}\n"
       + "function ser(node,b,depth){ if(stop)return; if(++nodes>maxNodes||len>maxChars){stop=true;out.trunc=true;return;}\n"
       + " var t=node.nodeType;\n"
       + " if(t===10){put(b,'<!DOCTYPE '+(node.name||'html')+'>');return;}\n"
-      + " if(t===3){var p=node.parentNode,pn=p&&p.localName; if(pn==='style')put(b,node.data.split('</').join('<\\\\/')); else if(pn==='textarea')return; else put(b,esc(node.data));return;}\n"
-      + " if(t===8){put(b,'<!--'+node.data.split('--').join('- -')+'-->');return;}\n"
+      + " if(t===3){var p=node.parentNode,ph=p&&p.nodeType===1&&!foreign(p),pn=p&&(p.localName||'').toLowerCase(); if(ph&&pn==='style')put(b,node.data.split('</').join('<\\\\/')); else if(ph&&pn==='textarea')return; else put(b,esc(node.data));return;}\n"
+      + " if(t===8)return;\n"
       + " if(t===9||t===11){for(var c=node.firstChild;c;c=c.nextSibling)ser(c,b,depth);return;}\n"
       + " if(t!==1)return;\n"
       + " var tag=node.namespaceURI===HTML?node.localName:node.nodeName; if(!/^[A-Za-z][A-Za-z0-9._:-]*$/.test(tag))tag='span';\n"
-      + " if(tag==='script'||tag==='noscript'||tag==='base')return;\n"
-      + " if(tag==='meta'){var he=(node.getAttribute('http-equiv')||'').trim().toLowerCase(); if(he==='refresh'||he.indexOf('content-security-policy')===0)return;}\n"
-      + " var isIn=tag==='input',isOpt=tag==='option',isFr=tag==='iframe'||tag==='frame',cur=(tag==='img'||tag==='video')&&node.currentSrc;\n"
+      + " var lt=tag.toLowerCase(), hns=node.namespaceURI===HTML&&!foreign(node);\n"
+      + " if(lt==='script'||lt==='noscript'||lt==='base')return;\n"
+      + " if(lt==='meta'){var he=(node.getAttribute('http-equiv')||'').trim().toLowerCase(); if(he==='refresh'||he.indexOf('content-security-policy')===0)return;}\n"
+      + " var isIn=hns&&lt==='input',isOpt=hns&&lt==='option',isFr=hns&&(lt==='iframe'||lt==='frame'),cur=hns&&(lt==='img'||lt==='video')&&node.currentSrc;\n"
       + " var s='<'+tag;\n"
       + " for(var i=0;i<node.attributes.length;i++){var a=node.attributes[i],n=a.name,ln=n.toLowerCase();\n"
       + "  if(ln.indexOf('on')===0||ln==='data-gatf-target')continue; if(!/^[^\\s\"'>\\/=<]+$/.test(n))continue;\n"
       + "  if(isIn&&(ln==='value'||ln==='checked'))continue; if(isOpt&&ln==='selected')continue;\n"
       + "  if(cur&&(ln==='src'||ln==='srcset'||ln==='sizes'))continue; if(isFr&&(ln==='src'||ln==='srcdoc'))continue;\n"
-      + "  if(URLA[ln]&&/^\\s*javascript:/i.test(a.value))continue;\n"
+      + "  if(URLA[ln]&&isJs(a.value))continue;\n"
       + "  s+=' '+n+'=\"'+escA(a.value)+'\"';}\n"
       + " if(isIn){var ty=(node.type||'').toLowerCase(); if(ty!=='file'&&node.value!=null&&node.value!=='')s+=' value=\"'+escA(ty==='password'?mask(node.value):node.value)+'\"'; if((ty==='checkbox'||ty==='radio')&&node.checked)s+=' checked';}\n"
       + " if(isOpt&&node.selected)s+=' selected';\n"
       + " if(cur)s+=' src=\"'+escA(node.currentSrc)+'\"';\n"
       + " if(mk.has(node))s+=' data-gatf-target=\"'+escA(mk.get(node))+'\"';\n"
       + " if(isFr&&depth<3){var cd=null;try{cd=node.contentDocument;}catch(e){} if(cd&&cd.documentElement){var ib=[];ser(cd,ib,depth+1); s+=' srcdoc=\"'+escA(ib.join(''))+'\"';}}\n"
-      + " put(b,s+'>'); if(VOID[tag])return;\n"
-      + " if(tag==='textarea')put(b,esc(node.value||''));\n"
+      + " put(b,s+'>'); if(hns&&VOID[lt])return;\n"
+      + " if(hns&&lt==='textarea')put(b,esc(node.value||''));\n"
       + " var sr=node.shadowRoot; if(sr){put(b,'<template shadowrootmode=\"open\">'); for(var c=sr.firstChild;c;c=c.nextSibling)ser(c,b,depth); put(b,'</template>');}\n"
-      + " var kids=(tag==='template'&&node.content)?node.content:node; for(var c=kids.firstChild;c;c=c.nextSibling)ser(c,b,depth);\n"
+      + " var kids=(hns&&lt==='template'&&node.content)?node.content:node; for(var c=kids.firstChild;c;c=c.nextSibling)ser(c,b,depth);\n"
       + " put(b,'</'+tag+'>');}\n"
       + "ser(d,buf,0); out.html=buf.join(''); return out;\n"
-      + "})(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5]);";
+      + "})(arguments[0],arguments[1],arguments[2],arguments[3],arguments[4],arguments[5],arguments[6]);";
 
     /** CDP {@code DOMSnapshot.captureSnapshot} parameters: no computed styles or layout (the HTML + CSS carry it). */
     public static Map<String, Object> cdpParams() {
@@ -131,10 +138,15 @@ public final class DomCapture {
      * targets (the "after" of the previous action), then without any. Returns null when the page refused the script.
      */
     public static Object runMeta(ScriptRunner runner, List<Object> targets, List<String> marks, boolean serialize, Caps caps) {
+        return runMeta(runner, targets, marks, serialize, false, caps);
+    }
+
+    /** {@code noStyles}: skip the CSSOM collection (the lite capture keeps only the sanitized DOM). */
+    public static Object runMeta(ScriptRunner runner, List<Object> targets, List<String> marks, boolean serialize, boolean noStyles, Caps caps) {
         List<Object> t = targets == null ? new ArrayList<>() : new ArrayList<>(targets);
         for (int attempt = 0; attempt <= t.size(); attempt++) {
             try {
-                return runner.run(t, marks == null ? Collections.emptyList() : marks, serialize, caps.maxNodes, caps.maxChars, caps.maxCss);
+                return runner.run(t, marks == null ? Collections.emptyList() : marks, serialize, caps.maxNodes, caps.maxChars, caps.maxCss, noStyles);
             } catch (Exception e) {
                 // null out the earliest still-set target and try again; the last attempt has none
                 int i = 0;
@@ -148,7 +160,22 @@ public final class DomCapture {
 
     /** BiDi / any script-capable driver: {@link #META_JS} with serialize=true. */
     public static RichSnapshot captureByScript(ScriptRunner runner, List<Object> targets, List<String> marks, Caps caps) {
-        Object meta = runMeta(runner, targets, marks, true, caps);
+        return captureByScript(runner, targets, marks, false, caps);
+    }
+
+    /**
+     * Δ146a: the lite capture — the same sanitizing serializer (passwords masked, scripts / handlers / javascript:
+     * URLs removed, nothing mutated) without the stylesheet collection. Replaces raw outerHTML for per-action
+     * snapshots, which leaked typed passwords and kept scripts.
+     */
+    public static RichSnapshot captureLite(ScriptRunner runner, List<Object> targets, List<String> marks, Caps caps) {
+        RichSnapshot r = captureByScript(runner, targets, marks, true, caps);
+        if (r != null) { r.source = "lite"; r.styles.clear(); }
+        return r;
+    }
+
+    private static RichSnapshot captureByScript(ScriptRunner runner, List<Object> targets, List<String> marks, boolean noStyles, Caps caps) {
+        Object meta = runMeta(runner, targets, marks, true, noStyles, caps);
         RichSnapshot r = fromMeta(meta, targets == null ? 0 : targets.size());
         if (r == null) return null;
         r.source = "script";

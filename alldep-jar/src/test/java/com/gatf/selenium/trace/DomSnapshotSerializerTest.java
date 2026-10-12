@@ -113,6 +113,101 @@ class DomSnapshotSerializerTest {
         assertEquals(3, r.styles.size());
     }
 
+    /** Δ146a: the three serializations of the hostile block the fixture page appends (see domsnapshot-page.html's
+     *  capture script): comments with "-->" / leading ">", SVG and HTML-in-SVG &lt;style&gt; with markup, SCRIPT /
+     *  svg "Script" / svg "Base", and java&#92;tscript: / \u0001javascript: / " \njavascript:" hrefs. */
+    @SuppressWarnings("unchecked")
+    static List<String> hostileOutputs() throws Exception {
+        Map<String, Object> fx = fixture();
+        DomCapture.Caps caps = DomCapture.Caps.of(null);
+        String cdp = DomCapture.fromCdp((Map<String, Object>) fx.get("snapshot"), fx.get("cdpMeta"), Arrays.asList("1", "2"), 2, caps).html;
+        String script = DomCapture.captureByScript(a -> fx.get("scriptMeta"), Arrays.asList(new Object(), new Object()), Arrays.asList("1", "2"), caps).html;
+        String lite = DomCapture.captureLite(a -> fx.get("liteMeta"), Arrays.asList(new Object(), new Object()), Arrays.asList("1", "2"), caps).html;
+        return Arrays.asList(cdp, script, lite);
+    }
+
+    static String hostile(String html) {
+        int i = html.indexOf("id=\"hostile\"");
+        assertTrue(i > 0, "fixture has the hostile block");
+        return html.substring(i);
+    }
+
+    @Test
+    void commentsAreDroppedSoTheyCannotBreakOut() throws Exception {            // Δ146a item 3
+        for (String h : hostileOutputs()) {
+            assertFalse(h.contains("<!--"), "comment kept");
+            assertFalse(h.contains("__pwn=1") || h.contains("__pwn=11"), "comment payload kept");
+        }
+        Map<String, Object> s = tinyDoc();
+        addChild(s, 3, 8, "--><img src=x onerror=alert(1)>");
+        addChild(s, 3, 8, "><img src=x onerror=alert(2)>");
+        String h = DomSnapshotSerializer.serialize(s, null).html;
+        assertFalse(h.contains("<!--") || h.contains("<img") || h.contains("onerror"), h);
+    }
+
+    @Test
+    void svgStyleIsEscapedHtmlStyleStaysRaw() throws Exception {               // Δ146a item 4
+        for (String h : hostileOutputs()) {
+            String x = hostile(h);
+            assertTrue(x.contains("<svg id=\"hsvg\"><style>&lt;/style&gt;&lt;img src=x onerror=\"window.__pwn=2\"&gt;</style>"), x);
+            assertTrue(x.contains("<style>&lt;img src=x onerror=\"window.__pwn=3\"&gt;</style>"), "HTML-namespace style inside svg: " + x);
+            assertTrue(h.contains("<style>.plain{margin:3px}</style>"), "HTML style raw");
+            assertTrue(h.contains("<style>p{color:blue}</style>"), "shadow style raw");
+        }
+    }
+
+    @Test
+    void dropChecksAreCaseInsensitive() throws Exception {                      // Δ146a item 5
+        for (String h : hostileOutputs()) {
+            String l = h.toLowerCase(java.util.Locale.ROOT);
+            assertFalse(l.contains("<script") || l.contains("<base") || h.contains("__pwn=4") || h.contains("__pwn=5"), hostile(h));
+        }
+    }
+
+    @Test
+    void obfuscatedJavascriptUrlsAreRemoved() throws Exception {                // Δ146a item 6
+        for (String h : hostileOutputs()) {
+            String x = hostile(h);
+            assertTrue(x.contains("<a id=\"js1\">j1</a>") && x.contains("<a id=\"js2\">j2</a>") && x.contains("<a id=\"js3\"></a>"), x);
+        }
+        for (String v : new String[] { "javascript:x", " JavaScript:x", "java\tscript:x", "java\nscr\ript:x", "\u0001javascript:x",
+                "\u0000 \u001fjavascript:x", "vbscript:x", "jav\tascript:x" }) {
+            assertTrue(DomSnapshotSerializer.isScriptUrl(v), v);
+        }
+        for (String v : new String[] { "https://a/javascript:x", "#javascript:", "data:text/plain,javascript:", "" }) {
+            assertFalse(DomSnapshotSerializer.isScriptUrl(v), v);
+        }
+    }
+
+    @Test
+    void liteCaptureIsTheSanitizerWithoutStylesheets() throws Exception {       // Δ146a item 1
+        Map<String, Object> fx = fixture();
+        List<Object> seen = new ArrayList<>();
+        RichSnapshot r = DomCapture.captureLite(a -> { seen.addAll(Arrays.asList(a)); return fx.get("liteMeta"); },
+                Arrays.asList(new Object(), new Object()), Arrays.asList("1", "2"), DomCapture.Caps.of(null));
+        assertEquals("lite", r.source);
+        assertEquals(Boolean.TRUE, seen.get(6), "noStyles passed to the page");
+        assertEquals(Boolean.TRUE, seen.get(2), "serialize on");
+        assertEquals(0, r.styles.size());
+        assertFalse(r.html.contains("hunter2"), "password");
+        assertTrue(r.html.contains("type=\"password\" value=\"\u2022\u2022\u2022\u2022\u2022\u2022\u2022\""), "masked");
+        assertFalse(r.html.toLowerCase(java.util.Locale.ROOT).contains("<script") || r.html.contains("onclick"), "active content");
+        assertTrue(r.html.contains("data-gatf-target=\"2\""), "targets still marked");
+    }
+
+    /** Append a node of {@code type} with text {@code value} under node {@code parent} of tinyDoc. */
+    @SuppressWarnings("unchecked")
+    static void addChild(Map<String, Object> s, int parent, int type, String value) {
+        List<Object> strings = (List<Object>) s.get("strings");
+        strings.add(value);
+        Map<String, Object> nodes = (Map<String, Object>) ((Map<String, Object>) ((List<Object>) s.get("documents")).get(0)).get("nodes");
+        ((List<Object>) nodes.get("parentIndex")).add(parent);
+        ((List<Object>) nodes.get("nodeType")).add(type);
+        ((List<Object>) nodes.get("nodeName")).add(-1);
+        ((List<Object>) nodes.get("nodeValue")).add(strings.size() - 1);
+        ((List<Object>) nodes.get("attributes")).add(new ArrayList<>());
+    }
+
     @Test
     void markingTheSameElementForTwoActionsJoinsTheIds() {
         Map<String, Object> s = tinyDoc();

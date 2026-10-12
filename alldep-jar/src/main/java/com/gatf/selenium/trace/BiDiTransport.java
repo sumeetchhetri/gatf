@@ -333,6 +333,18 @@ public final class BiDiTransport implements BrowserControl {
         }
     }
 
+    /** Δ146a: lite = the sanitizing script serializer without stylesheets (never raw outerHTML). Never throws. */
+    @Override
+    public RichSnapshot captureLiteSnapshot(java.util.List<Object> targets, java.util.List<String> marks) {
+        if (!(driver instanceof JavascriptExecutor)) return null;
+        try {
+            final JavascriptExecutor js = (JavascriptExecutor) driver;
+            return DomCapture.captureLite(args -> js.executeScript(DomCapture.META_JS, args), targets, marks, DomCapture.Caps.of(cfg));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @Override
     public byte[] captureScreenshot() {
         try {

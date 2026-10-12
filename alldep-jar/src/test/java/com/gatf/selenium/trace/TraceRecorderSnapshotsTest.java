@@ -52,8 +52,18 @@ class TraceRecorderSnapshotsTest {
         public void disableNetwork() { }
         public void enableConsole(ConsoleListener l) { }
         public void disableConsole() { }
-        public String captureDomSnapshot() { calls.add("lite"); return "<html><body>lite " + (++n) + "</body></html>"; }
-        public byte[] captureScreenshot() { calls.add("shot"); return new byte[] { 1, 2, 3 }; }
+        int shotBytes = 3;
+        /** raw outerHTML: Δ146a — never used for per-action snapshots (it leaks typed passwords and keeps scripts) */
+        public String captureDomSnapshot() { calls.add("raw"); return "<html><body><input type=password value=hunter2><script>x()</script></body></html>"; }
+        public RichSnapshot captureLiteSnapshot(List<Object> targets, List<String> marks) {
+            calls.add("lite");
+            RichSnapshot r = new RichSnapshot();
+            r.source = "lite";
+            r.html = "<html><body>lite " + (++n) + " " + marks + "</body></html>";
+            for (int i = 0; i < targets.size(); i++) r.targetRects.add(targets.get(i) == null ? null : new double[] { 5, 6, 7, 8 });
+            return r;
+        }
+        public byte[] captureScreenshot() { calls.add("shot"); return new byte[shotBytes]; }
         public byte[] fetchBody(String id) { return null; }
         public void close() { }
         public RichSnapshot captureRichSnapshot(List<Object> targets, List<String> marks) {
@@ -115,11 +125,16 @@ class TraceRecorderSnapshotsTest {
         assertTrue(idx.get(3).contains("\"action\":3,\"phase\":\"after\",\"capture\":3") && idx.get(3).contains("(failure)"), idx.get(3));
         // v1 fields stay, so the current viewer still shows the HTML; v2 adds the manifest + target rect
         for (String l : idx) {
-            assertTrue(l.contains("\"html\":\"snapshots/snapshot-") && l.contains("\"screenshot\":\"screenshots/shot-") && l.contains("\"n\":"), l);
+            assertTrue(l.contains("\"html\":\"snapshots/snapshot-") && l.contains("\"n\":"), l);
             assertTrue(l.contains("\"v\":2") && l.contains("\"dom\":\"snapshots/snapshot-"), l);
             assertTrue(l.contains("\"target\":{\"rect\":[1,2.5,30,40]}"), l);
         }
         assertTrue(idx.get(1).contains("\"html\":\"snapshots/snapshot-2.html\"") && idx.get(2).contains("\"html\":\"snapshots/snapshot-2.html\""));
+        // Δ146a: no per-action screenshots; the failure capture has one
+        for (int i = 0; i < 3; i++) assertTrue(idx.get(i).contains("\"screenshot\":null"), idx.get(i));
+        assertTrue(idx.get(3).contains("\"screenshot\":\"screenshots/shot-3.png\""), idx.get(3));
+        assertEquals(1, b.calls.stream().filter(c -> c.equals("shot")).count(), b.calls.toString());
+        assertFalse(b.calls.contains("raw"), "raw outerHTML never used");
         // manifest: styles go to resources/<sha1>, deduped across captures; cross-origin keeps ref null
         String man = z.get("snapshots/snapshot-1.json");
         assertTrue(man.startsWith("{\"v\":2,\"source\":\"cdp\",\"url\":\"https://app/\""), man);
@@ -133,7 +148,8 @@ class TraceRecorderSnapshotsTest {
         assertTrue(ev.stream().anyMatch(l -> l.contains("\"type\":\"action\",\"name\":\"click\",\"detail\":\"id@go\",\"a\":1")), ev.toString());
         assertTrue(ev.stream().anyMatch(l -> l.contains("\"type\":\"lifecycle\",\"name\":\"failure\"")), ev.toString());
         String meta = z.get("metadata.json");
-        assertTrue(meta.contains("\"format\":2") && meta.contains("\"domSnapshots\":\"full\"") && meta.contains("\"domSnapshotsLimit\":null"), meta);
+        assertTrue(meta.contains("\"format\":2") && meta.contains("\"domSnapshots\":\"full\"") && meta.contains("\"domSnapshotsRequested\":\"full\"")
+                && meta.contains("\"domSnapshotsLimit\":null"), meta);
         assertTrue(meta.contains("DOM_SNAPSHOT_RICH"), meta);
     }
 
@@ -173,8 +189,11 @@ class TraceRecorderSnapshotsTest {
         TraceRecorder r2 = TraceRecorder.attach(lite, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd2"), "a.sel", "chrome");
         r2.action("click", "x", "el");
         Map<String, String> z = zip(r2.writeZip(dir.resolve("t2.zip")));
-        assertEquals(List.of("lite", "lite"), lite.calls);
-        for (String l : lines(z.get("snapshots.ndjson"))) assertTrue(l.contains("\"v\":1") && l.contains("\"dom\":null"), l);
+        assertEquals(List.of("lite", "lite"), lite.calls);               // Δ146a: the sanitizer, never "raw"; no shot (no SCREENSHOT)
+        for (String l : lines(z.get("snapshots.ndjson"))) {
+            assertTrue(l.contains("\"v\":1") && l.contains("\"dom\":null") && l.contains("\"target\":{\"rect\":[5,6,7,8]}"), l);
+        }
+        assertTrue(z.get("snapshots/snapshot-1.html").contains("lite 1 [1]"), "lite marks the target");
     }
 
     @Test
@@ -191,6 +210,8 @@ class TraceRecorderSnapshotsTest {
         assertEquals("lite", r.domSnapshotMode());
         String meta = zip(r.writeZip(dir.resolve("t.zip"))).get("metadata.json");
         assertTrue(meta.contains("\"domSnapshotsLimit\":\"slow\""), meta);
+        assertTrue(meta.contains("\"domSnapshots\":\"lite\"") && meta.contains("\"domSnapshotsRequested\":\"full\""), "effective mode: " + meta);
+        assertFalse(b.calls.contains("raw"), "degraded lite is the sanitizer, not outerHTML");
     }
 
     @Test
@@ -217,10 +238,43 @@ class TraceRecorderSnapshotsTest {
     }
 
     @Test
+    void failureAndEndScreenshotsCountAgainstTheBudget(@TempDir Path dir) throws Exception {       // Δ146a item 2
+        Fake b = richBrowser();
+        b.shotBytes = 30_000;
+        TraceRecorder r = TraceRecorder.attach(b, new TraceConfig().setEnableTrace(true).setDomSnapshots("full").setSnapshotMaxTotalBytes(40_000),
+                dir.resolve("wd"), "a.sel", "chrome");
+        for (int i = 0; i < 4; i++) r.action("click", "x" + i, "el");
+        assertEquals(0, b.calls.stream().filter(c -> c.equals("shot")).count(), "per-action captures take no screenshot");
+        r.failure("boom");                                                  // after(4) + a 30 KB screenshot
+        r.action("click", "y", "el");                                       // 30 KB + ~3 KB < 40 KB: still on
+        r.failure("again");
+        assertEquals("off", r.domSnapshotMode(), "two 30 KB screenshots cross the 40 KB budget");
+        Map<String, String> z = zip(r.writeZip(dir.resolve("t.zip")));
+        assertTrue(z.get("metadata.json").contains("\"domSnapshotsLimit\":\"budget\""), z.get("metadata.json"));
+        assertTrue(z.get("metadata.json").matches("(?s).*\"domSnapshotBytes\":6\\d{4}.*"), z.get("metadata.json"));
+    }
+
+    @Test
+    void failureIsRecordedOncePerActionAndNeverAfterStop(@TempDir Path dir) throws Exception {   // Δ146a item 8
+        Fake b = richBrowser();
+        TraceRecorder r = TraceRecorder.attach(b, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd"), "a.sel", "chrome");
+        r.action("click", "x", "el");
+        r.failure("subtest");                                               // nested subtest failure ...
+        r.failure("subtest re-reported by the parent");                     // ... reported again for the same action
+        long captures = b.calls.stream().filter(c -> c.startsWith("rich")).count();
+        r.stop();
+        r.failure("after stop");
+        assertEquals(captures, b.calls.stream().filter(c -> c.startsWith("rich")).count(), "no capture after stop");
+        Map<String, String> z = zip(r.writeZip(dir.resolve("t.zip")));
+        assertEquals(1, lines(z.get("events.ndjson")).stream().filter(l -> l.contains("\"name\":\"failure\"")).count(), z.get("events.ndjson"));
+    }
+
+    @Test
     void aThrowingTransportNeverBreaksTheRun(@TempDir Path dir) throws Exception {
         Fake b = new Fake(EnumSet.of(Capability.DOM_SNAPSHOT, Capability.DOM_SNAPSHOT_RICH, Capability.SCREENSHOT)) {
             @Override public RichSnapshot captureRichSnapshot(List<Object> t, List<String> m) { throw new IllegalStateException("x"); }
             @Override public String captureDomSnapshot() { throw new IllegalStateException("y"); }
+            @Override public RichSnapshot captureLiteSnapshot(List<Object> t, List<String> m) { throw new IllegalStateException("w"); }
             @Override public byte[] captureScreenshot() { throw new IllegalStateException("z"); }
         };
         TraceRecorder r = TraceRecorder.attach(b, new TraceConfig().setEnableTrace(true).setDomSnapshots("full"), dir.resolve("wd"), "a.sel", "chrome");

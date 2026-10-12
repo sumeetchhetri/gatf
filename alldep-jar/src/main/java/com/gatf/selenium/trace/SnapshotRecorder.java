@@ -37,7 +37,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * <pre>{"v":2,"source":"cdp|script","url","title","viewport":{"w","h"},"scroll":{"x","y"},"truncated",
  *  "styles":[{"owner":"link|style|adopted","href","media","index","ref":"resources/&lt;sha1&gt;"|null}]}</pre>
  * Stylesheet text goes to {@code resources/<sha1>} (deduped); identical HTML is written once and shared.
- * Bytes written by captures are counted against a budget; past it the caller stops capturing.
+ * Bytes written by captures (HTML, manifests, stylesheets, the failure/end screenshots) are counted against a
+ * budget; past it the caller stops capturing.
  *
  * @author Sumeet Chhetri
  */
@@ -85,7 +86,9 @@ public final class SnapshotRecorder {
         String htmlRef = null, shotRef = null;
         try {
             if (browser.supports(Capability.DOM_SNAPSHOT)) {
-                String html = browser.captureDomSnapshot();
+                // Δ146a: the sanitizing serializer (passwords masked, scripts removed), never raw outerHTML
+                RichSnapshot lite = browser.captureLiteSnapshot(new ArrayList<>(), new ArrayList<>());
+                String html = lite == null ? null : lite.html;
                 if (html != null) {
                     Path f = snapDir.resolve("snapshot-" + n + ".html");
                     Files.write(f, html.getBytes(StandardCharsets.UTF_8));
@@ -123,22 +126,33 @@ public final class SnapshotRecorder {
      * captured). Best-effort: never throws.
      */
     public String capture(List<Point> points, List<Object> targets, boolean rich) {
+        return capture(points, targets, rich, false);
+    }
+
+    /**
+     * As above. Δ146a: per-action captures carry no screenshot (the viewer rebuilds from the DOM); {@code screenshot}
+     * is set only for the failure and end captures, and its bytes count against the snapshot budget. The lite path
+     * is the sanitizing serializer ({@link BrowserControl#captureLiteSnapshot}), never raw outerHTML.
+     */
+    public String capture(List<Point> points, List<Object> targets, boolean rich, boolean screenshot) {
         if (points == null || points.isEmpty()) return null;
         int c = captures.incrementAndGet();
         long ts = System.currentTimeMillis();
         String htmlRef = null, domRef = null, shotRef = null, kind = null;
-        RichSnapshot rs = null;
+        List<Object> tl = targets == null ? new ArrayList<>() : targets;
+        List<String> marks = new ArrayList<>();
+        for (int i = 0; i < tl.size(); i++) marks.add(null);
+        for (Point p : points) if (p.target >= 0 && p.target < marks.size()) marks.set(p.target, String.valueOf(p.action));
+        RichSnapshot rs = null, lite = null;
         try {
-            if (rich && browser.supports(Capability.DOM_SNAPSHOT_RICH)) {
-                List<String> marks = new ArrayList<>();
-                for (int i = 0; i < (targets == null ? 0 : targets.size()); i++) marks.add(null);
-                for (Point p : points) if (p.target >= 0 && p.target < marks.size()) marks.set(p.target, String.valueOf(p.action));
-                rs = browser.captureRichSnapshot(targets == null ? new ArrayList<>() : targets, marks);
-            }
+            if (rich && browser.supports(Capability.DOM_SNAPSHOT_RICH)) rs = browser.captureRichSnapshot(tl, marks);
         } catch (Exception ignored) { rs = null; }
+        if (rs != null && rs.html == null) rs = null;
         try {
-            String html = rs != null ? rs.html : null;
-            if (html == null && browser.supports(Capability.DOM_SNAPSHOT)) { html = browser.captureDomSnapshot(); rs = null; }
+            if (rs == null && browser.supports(Capability.DOM_SNAPSHOT)) lite = browser.captureLiteSnapshot(tl, marks);
+        } catch (Exception ignored) { lite = null; }
+        try {
+            String html = rs != null ? rs.html : lite != null ? lite.html : null;
             if (html != null) {
                 htmlRef = writeHtml(c, html);
                 kind = rs != null ? "full" : "lite";
@@ -152,16 +166,20 @@ public final class SnapshotRecorder {
                 domRef = "snapshots/snapshot-" + c + ".json";
             }
         } catch (Exception ignored) {}
-        try {
-            if (browser.supports(Capability.SCREENSHOT)) {
-                byte[] png = browser.captureScreenshot();
-                if (png != null && png.length > 0) {
-                    Files.write(shotDir.resolve("shot-" + c + ".png"), png);
-                    shotRef = "screenshots/shot-" + c + ".png";
+        if (screenshot) {
+            try {
+                if (browser.supports(Capability.SCREENSHOT)) {
+                    byte[] png = browser.captureScreenshot();
+                    if (png != null && png.length > 0) {
+                        Files.write(shotDir.resolve("shot-" + c + ".png"), png);
+                        bytes.addAndGet(png.length);
+                        shotRef = "screenshots/shot-" + c + ".png";
+                    }
                 }
-            }
-        } catch (Exception ignored) {}
+            } catch (Exception ignored) {}
+        }
         if (htmlRef == null && shotRef == null) return null;
+        RichSnapshot src = rs != null ? rs : lite;
         for (Point p : points) {
             Json.Obj o = new Json.Obj()
                     .put("n", seq.incrementAndGet())
@@ -174,7 +192,7 @@ public final class SnapshotRecorder {
                     .put("action", p.action)
                     .put("phase", p.phase)
                     .put("capture", c);
-            double[] r = rs != null ? rs.rect(p.target) : null;
+            double[] r = src != null ? src.rect(p.target) : null;
             o.putRaw("target", r == null ? null : "{\"rect\":[" + num(r[0]) + "," + num(r[1]) + "," + num(r[2]) + "," + num(r[3]) + "]}");
             index.writeLine(o.end());
         }

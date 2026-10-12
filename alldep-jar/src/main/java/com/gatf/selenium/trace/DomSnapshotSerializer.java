@@ -180,17 +180,16 @@ public final class DomSnapshotSerializer {
                     String v = d.value(x);
                     if (v == null) continue;
                     int p = d.parent(x);
-                    String pt = p >= 0 && d.type(p) == 1 ? d.tag(p) : "";
-                    if ("style".equals(pt)) {
+                    String pt = p >= 0 && d.type(p) == 1 ? d.tag(p).toLowerCase(Locale.ROOT) : "";
+                    boolean htmlCtx = p >= 0 && !d.foreign(p);
+                    // raw text only where the re-parse treats it as raw: an HTML-context <style> (not SVG/MathML)
+                    if ("style".equals(pt) && htmlCtx) {
                         out.append(v.replace("</", "<\\/"));
-                    } else if ("textarea".equals(pt)) {
+                    } else if ("textarea".equals(pt) && htmlCtx) {
                         if (!d.textValue.containsKey(p)) out.append(escText(v));
                     } else out.append(escText(v));
-                } else if (type == 8) {   // comment
-                    nodes++;
-                    if (over(out)) continue;
-                    String v = d.value(x);
-                    out.append("<!--").append(v == null ? "" : v.replace("--", "- -")).append("-->");
+                } else if (type == 8) {   // Δ146a: comments are dropped ("--->" / a leading ">" re-parse into markup)
+                    continue;
                 } else if (type == 10) {  // doctype
                     String nm = d.name(x);
                     out.append("<!DOCTYPE ").append(nm == null || nm.isEmpty() ? "html" : nm.toLowerCase(Locale.ROOT)).append('>');
@@ -204,10 +203,12 @@ public final class DomSnapshotSerializer {
                     nodes++;
                     if (over(out)) continue;
                     String tag = d.tag(x);
-                    if (DROP.contains(tag) || dropMeta(d, x, tag)) continue;
+                    String lt = tag.toLowerCase(Locale.ROOT);   // Δ146a: checks are case-insensitive ("Script", "SCRIPT")
+                    boolean htmlCtx = !d.foreign(x);
+                    if (DROP.contains(lt) || dropMeta(d, x, lt)) continue;
                     out.append('<').append(tag);
-                    writeAttrs(d, x, tag, out, marked);
-                    if (tag.equals("iframe") || tag.equals("frame")) {
+                    writeAttrs(d, x, htmlCtx ? lt : "", out, marked);
+                    if (htmlCtx && (lt.equals("iframe") || lt.equals("frame"))) {
                         Integer cdi = d.contentDoc.get(x);
                         if (cdi != null && depth < MAX_FRAME_DEPTH) {
                             Doc child = doc(cdi);
@@ -219,9 +220,9 @@ public final class DomSnapshotSerializer {
                         }
                     }
                     out.append('>');
-                    if (VOID.contains(tag)) continue;
+                    if (htmlCtx && VOID.contains(lt)) continue;
                     stack.push(~x);
-                    if (tag.equals("textarea") && d.textValue.containsKey(x)) {
+                    if (htmlCtx && lt.equals("textarea") && d.textValue.containsKey(x)) {
                         out.append(escText(str(d.textValue.get(x))));
                     }
                     pushChildren(d, x, stack);
@@ -279,7 +280,7 @@ public final class DomSnapshotSerializer {
                 if (hasCurrentSrc && (ln.equals("src") || ln.equals("srcset") || ln.equals("sizes"))) continue;
                 if (isFrame && (ln.equals("src") || ln.equals("srcdoc"))) continue;
                 String v = a[1] == null ? "" : a[1];
-                if (URL_ATTRS.contains(ln) && v.trim().toLowerCase(Locale.ROOT).startsWith("javascript:")) continue;
+                if (URL_ATTRS.contains(ln) && isScriptUrl(v)) continue;
                 out.append(' ').append(n).append("=\"").append(escAttr(v)).append('"');
             }
             if (isInput) {
@@ -372,6 +373,21 @@ public final class DomSnapshotSerializer {
             return out;
         }
 
+        /** Whether element {@code x} sits in SVG/MathML content (below an svg/math element, not under foreignObject),
+         *  i.e. where an HTML re-parse treats {@code <style>} as markup rather than raw text. */
+        boolean foreign(int x) {
+            int guard = 0;
+            for (int p = parent(x); p >= 0 && guard++ < 10_000; p = parent(p)) {
+                if (type(p) != 1) continue;
+                String n = name(p);
+                if (n == null) continue;
+                n = n.toLowerCase(Locale.ROOT);
+                if (n.equals("foreignobject")) return false;
+                if (n.equals("svg") || n.equals("math")) return true;
+            }
+            return false;
+        }
+
         String shadowMode(int k) { return shadowType.containsKey(k) ? c.str(shadowType.get(k)) : null; }
 
         /** A child in the host's shadow tree: it carries a shadow mode its host does not. A host that is itself inside
@@ -429,6 +445,16 @@ public final class DomSnapshotSerializer {
             for (Object i : list(((Map<String, Object>) o).get("index"))) if (i instanceof Number) s.add(((Number) i).intValue());
             return s;
         }
+    }
+
+    /**
+     * Δ146a: whether a URL runs script. Browsers ignore tab/CR/LF anywhere in the scheme and leading C0 controls and
+     * spaces, so "java\tscript:" and "\u0001javascript:" count.
+     */
+    public static boolean isScriptUrl(String v) {
+        if (v == null) return false;
+        String s = v.replaceAll("[\t\n\r]", "").replaceFirst("^[\u0000-\u0020]+", "").toLowerCase(Locale.ROOT);
+        return s.startsWith("javascript:") || s.startsWith("vbscript:");
     }
 
     /** A password field's value never reaches the bundle: same length (max 32) of bullets. */

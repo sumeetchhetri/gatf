@@ -61,6 +61,9 @@ final class HybridTransport implements BrowserControl {
     @Override public void disableConsole() { bidi.disableConsole(); }
     @Override public String captureDomSnapshot() { return route(Capability.DOM_SNAPSHOT).captureDomSnapshot(); }
     @Override public byte[] captureScreenshot() { return route(Capability.SCREENSHOT).captureScreenshot(); }
+    @Override public RichSnapshot captureLiteSnapshot(java.util.List<Object> targets, java.util.List<String> marks) {
+        return route(Capability.DOM_SNAPSHOT).captureLiteSnapshot(targets, marks);
+    }
     @Override public RichSnapshot captureRichSnapshot(java.util.List<Object> targets, java.util.List<String> marks) {
         return route(Capability.DOM_SNAPSHOT_RICH).captureRichSnapshot(targets, marks);
     }

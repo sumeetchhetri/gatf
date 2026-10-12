@@ -117,6 +117,13 @@ public interface BrowserControl extends AutoCloseable {
      */
     default RichSnapshot captureRichSnapshot(java.util.List<Object> targets, java.util.List<String> marks) { return null; }
 
+    /**
+     * Δ146a: the lite per-action snapshot (DOM_SNAPSHOT): the sanitizing in-page serializer without stylesheets —
+     * passwords masked, scripts / handlers / javascript: URLs removed, targets marked — never raw outerHTML.
+     * Null when unsupported. Must not throw and must not mutate the page.
+     */
+    default RichSnapshot captureLiteSnapshot(java.util.List<Object> targets, java.util.List<String> marks) { return null; }
+
     // --- G10: print-to-PDF (default unsupported) ---
     /** Current page as PDF bytes, or null (PRINT_PDF). */
     default byte[] printPdf() { return null; }
