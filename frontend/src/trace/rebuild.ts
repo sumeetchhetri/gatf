@@ -125,8 +125,55 @@ function isData(u: string): boolean {
   return /^\s*data:/i.test(u);
 }
 
-function isDangerous(u: string): boolean {
-  return /^\s*(javascript|vbscript):/i.test(u);
+/** Δ147a: a script URL as browsers read it — tab/CR/LF ignored anywhere, leading C0 controls and spaces ignored. */
+export function isDangerous(u: string): boolean {
+  const s = u.replace(/[\t\n\r]/g, '').replace(/^[\u0000-\u0020]+/, '');
+  return /^(javascript|vbscript):/i.test(s);
+}
+
+/** Δ147a: srcset / imagesrcset candidates per the HTML spec (a URL may contain commas, e.g. data: URLs). */
+export function parseSrcset(v: string): Array<{ url: string; descriptors: string }> {
+  const out: Array<{ url: string; descriptors: string }> = [];
+  let i = 0;
+  const n = v.length;
+  const ws = (c: string) => c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
+  while (i < n) {
+    while (i < n && (ws(v[i]) || v[i] === ',')) i++;
+    if (i >= n) break;
+    let j = i;
+    while (j < n && !ws(v[j])) j++;
+    let url = v.slice(i, j);
+    i = j;
+    let descriptors = '';
+    if (url.endsWith(',')) {
+      url = url.replace(/,+$/, '');
+    } else {
+      // descriptors run to the next comma outside parentheses
+      let depth = 0;
+      let k = i;
+      while (k < n) {
+        const c = v[k];
+        if (c === '(') depth++;
+        else if (c === ')') depth = Math.max(0, depth - 1);
+        else if (c === ',' && depth === 0) break;
+        k++;
+      }
+      descriptors = v.slice(i, k).trim();
+      i = k + 1;
+    }
+    if (url) out.push({ url, descriptors });
+  }
+  return out;
+}
+
+/** CSS hex escapes of identifier characters (u\72l( = url() decoded, so no construct hides behind an escape. */
+function unescapeIdents(css: string): string {
+  return css.replace(/\\([0-9a-fA-F]{1,6})[ \t\n\r\f]?|\\([A-Za-z0-9_-])/g, (m, hex: string | undefined, ch: string | undefined) => {
+    if (ch) return ch;
+    const cp = parseInt(hex!, 16);
+    const c = cp > 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '';
+    return /^[A-Za-z0-9_-]$/.test(c) ? c : m;
+  });
 }
 
 class Rewriter {
@@ -155,9 +202,10 @@ class Rewriter {
     return u;
   }
 
-  /** A raw URL from the document -> a bundle URL, the same data: URL, or null (not available offline). */
+  /** A raw URL from the document -> a bundle URL, the same data: URL, a same-document #ref, or null. */
   url(raw: string, base: string | null): string | null {
     if (isData(raw)) return raw.trim();
+    if (raw.trim().startsWith('#')) return raw.trim();   // SVG/CSS same-document reference (fill:url(#g))
     if (isDangerous(raw) || /^\s*blob:/i.test(raw)) return null;
     const abs = resolve(raw, base);
     if (!abs) return null;
@@ -173,49 +221,64 @@ class Rewriter {
     return b ? dec.decode(b) : null;
   }
 
-  /** CSS text with every url() / @import resolved against `base` and rewritten (missing -> none / dropped). */
-  css(text: string, base: string | null): string {
-    let out = text.replace(/@import\s+(?:url\(\s*)?(['"]?)([^'")\s;]+)\1\s*\)?([^;]*);/gi, (_m, _q, u: string, media: string) => {
-      const abs = resolve(u, base);
-      const r = abs ? this.map.get(stripHash(abs)) : undefined;
-      const t = r ? this.text(r.path) : null;
-      if (t == null) return '';
-      const inner = this.css(t, abs);
-      const m = media.trim();
-      return m ? `@media ${m}{${inner}}` : inner;
-    });
-    out = out.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (_m, _q, u: string) => {
-      const v = this.url(u, base);
-      return v ? `url("${v.replace(/"/g, '%22')}")` : 'none';
-    });
+  private cssUrl(u: string, base: string | null): string {
+    const v = this.url(u, base);
+    if (v) return `url("${v.replace(/"/g, '%22')}")`;
+    this.stats.missingImages++;   // Δ147a: a CSS resource (image, font, cursor …) not in the bundle
+    return 'none';
+  }
+
+  /**
+   * CSS text with every reference resolved against `base` and rewritten: url(), image-set() strings and @import
+   * (missing -> none / dropped). Comments are removed and identifier escapes decoded first, so neither hides a
+   * reference. Best-effort: the frame's CSP is what guarantees nothing is fetched.
+   */
+  css(text: string, base: string | null, depth = 0): string {
+    let out = unescapeIdents(text.replace(/\/\*[\s\S]*?\*\//g, ''));
+    out = out.replace(/@import\s*(?:url\(\s*(['"]?)(.*?)\1\s*\)|(['"])(.*?)\3)([^;]*);?/gi,
+      (_m, _q1, u1: string | undefined, _q2, u2: string | undefined, media: string) => {
+        const u = (u1 ?? u2 ?? '').trim();
+        const abs = resolve(u, base);
+        const r = abs && depth < 4 ? this.map.get(stripHash(abs)) : undefined;
+        const t = r ? this.text(r.path) : null;
+        if (t == null) { this.stats.missingSheets++; return ''; }
+        const inner = this.css(t, abs, depth + 1);
+        const m = media.trim();
+        return m ? `@media ${m}{${inner}}` : inner;
+      });
+    out = out.replace(/url\(\s*(['"]?)(.*?)\1\s*\)/gi, (_m, _q, u: string) => this.cssUrl(u, base));
+    // image-set("a.png" 1x, 'b.png' 2x): bare strings are URLs there
+    out = out.replace(/((?:-webkit-)?image-set\()([^)]*\))/gi, (_m, head: string, body: string) =>
+      head + body.replace(/(["'])(.*?)\1/g, (_s, _q, u: string) => this.cssUrl(u, base)));
     return out;
   }
 }
 
+const NAV_TAGS = new Set(['a', 'area']);
+const URL_ATTRS = ['src', 'href', 'xlink:href', 'poster', 'data', 'background', 'action', 'formaction', 'ping', 'cite', 'longdesc', 'manifest', 'lowsrc'];
+
 function attrUrls(el: Element, rw: Rewriter, base: string | null): void {
-  const tag = el.localName;
-  // srcset: rewrite each candidate, drop the unavailable ones
+  const tag = el.localName.toLowerCase();
+  // srcset: rewrite each candidate (spec parsing), drop the unavailable ones
   for (const a of ['srcset', 'imagesrcset']) {
     const v = el.getAttribute(a);
     if (v == null) continue;
     const kept: string[] = [];
-    for (const cand of v.split(/,(?=\s*\S)/)) {
-      const [u, ...d] = cand.trim().split(/\s+/);
-      const r = u ? rw.url(u, base) : null;
-      if (r) kept.push([r, ...d].join(' '));
+    for (const c of parseSrcset(v)) {
+      const r = rw.url(c.url, base);
+      if (r) kept.push(c.descriptors ? `${r} ${c.descriptors}` : r);
     }
     if (kept.length) el.setAttribute(a, kept.join(', '));
     else el.removeAttribute(a);
   }
-  for (const a of ['src', 'href', 'xlink:href', 'poster', 'data', 'background', 'action', 'formaction', 'ping', 'cite', 'longdesc', 'manifest', 'lowsrc']) {
+  for (const a of URL_ATTRS) {
     const v = el.getAttribute(a);
     if (v == null) continue;
-    if (a === 'href' && (tag === 'a' || tag === 'area')) {
-      // links are not followed from a snapshot: keep same-page anchors, drop the rest
-      if (!v.trim().startsWith('#')) el.removeAttribute('href');
+    if ((a === 'href' || a === 'xlink:href') && NAV_TAGS.has(tag)) {
+      // links are not followed from a snapshot: keep same-page anchors only (no data:, no bundle URL)
+      if (!v.trim().startsWith('#')) el.removeAttribute(a);
       continue;
     }
-    if (a === 'href' && tag === 'use' && v.trim().startsWith('#')) continue;   // SVG same-document reference
     if (a === 'action' || a === 'formaction' || a === 'ping' || a === 'cite' || a === 'longdesc' || a === 'manifest') {
       el.removeAttribute(a);
       continue;
@@ -233,8 +296,12 @@ function attrUrls(el: Element, rw: Rewriter, base: string | null): void {
       rw.stats.missingImages++;
     }
   }
-  const st = el.getAttribute('style');
-  if (st && /url\(/i.test(st)) el.setAttribute('style', rw.css(st, base));
+  // url() anywhere else: style, SVG presentation attributes (fill, filter, mask, clip-path, marker-* …)
+  for (const at of Array.from(el.attributes)) {
+    if (URL_ATTRS.includes(at.name.toLowerCase()) || at.name === 'srcset' || at.name === 'imagesrcset') continue;
+    if (!/[(\\]/.test(at.value) || !/url\(|image-set\(/i.test(unescapeIdents(at.value))) continue;
+    el.setAttribute(at.name, rw.css(at.value, base));
+  }
 }
 
 /** A sized slot instead of a broken image: an SVG of the element's width/height, else a transparent pixel. */
@@ -271,6 +338,11 @@ function sanitize(doc: Document): void {
   for (const el of allElements(doc)) {
     const tag = el.localName;
     if (el.matches(DROP)) { el.remove(); continue; }
+    // Δ147a: SVG animation that would set a link target (navigation the CSP does not cover)
+    if (/^(set|animate|animatemotion|animatetransform|animatecolor)$/i.test(tag)) {
+      const an = (el.getAttribute('attributeName') || '').trim().toLowerCase();
+      if (an === 'href' || an === 'xlink:href' || an.endsWith(':href')) { el.remove(); continue; }
+    }
     if (tag === 'meta') {
       const he = (el.getAttribute('http-equiv') || '').trim().toLowerCase();
       if (he === 'refresh' || he.startsWith('content-security-policy') || he === 'set-cookie') { el.remove(); continue; }
@@ -337,7 +409,8 @@ function rebuildDoc(
       rw.stats.sheets++;
     }
   }
-  for (const link of Array.from(doc.querySelectorAll('link'))) {
+  // every <link>, including those inside declarative shadow-root templates (Δ147a)
+  for (const link of allElements(doc).filter((e) => e.localName.toLowerCase() === 'link')) {
     if (used.has(link)) continue;
     const rel = (link.getAttribute('rel') || '').toLowerCase();
     const href = link.getAttribute('href') || '';
@@ -357,7 +430,7 @@ function rebuildDoc(
   }
   // inline <style> (incl. shadow-root styles) keep their text; only their url()s are rewritten
   for (const el of allElements(doc)) {
-    if (el.localName === 'style' && !used.has(el) && el.textContent && /url\(|@import/i.test(el.textContent)) {
+    if (el.localName.toLowerCase() === 'style' && !used.has(el) && el.textContent) {   // Δ147a: no prefilter (escapes, image-set)
       el.textContent = rw.css(el.textContent, base);
     }
   }
@@ -369,6 +442,7 @@ function rebuildDoc(
       if (sd != null && depth < MAX_FRAME_DEPTH) {
         el.setAttribute('srcdoc', rebuildDoc(sd, base, rw, null, null, null, depth + 1));
       } else el.removeAttribute('srcdoc');
+      attrUrls(el, rw, base);   // Δ147a: its style / other attributes too
       continue;
     }
     attrUrls(el, rw, base);
@@ -379,6 +453,10 @@ function rebuildDoc(
   meta.setAttribute('http-equiv', 'Content-Security-Policy');
   meta.setAttribute('content', SNAPSHOT_CSP);
   head.insertBefore(meta, head.firstChild);
+  const ref = doc.createElement('meta');   // Δ147a: no referrer even for anything the CSP lets through
+  ref.setAttribute('name', 'referrer');
+  ref.setAttribute('content', 'no-referrer');
+  meta.after(ref);
   const gatf = doc.createElement('style');
   gatf.setAttribute('data-gatf', '');
   let css = 'img[data-gatf-missing]{background:repeating-linear-gradient(45deg,#eef0f3 0 6px,#f7f8fa 6px 12px)}';

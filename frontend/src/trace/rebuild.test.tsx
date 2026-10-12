@@ -13,13 +13,14 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { StrictMode } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { strToU8 } from 'fflate';
 import { loadTraceZip, parseFiles } from './loadTrace';
-import { rebuildSnapshot, resourceMap, BLANK_GIF, SNAPSHOT_CSP } from './rebuild';
+import { rebuildSnapshot, resourceMap, BLANK_GIF, SNAPSHOT_CSP, parseSrcset, isDangerous } from './rebuild';
 import { DomView } from '../components/Stage';
 import type { Trace, SnapshotRef } from './types';
 
@@ -90,7 +91,7 @@ describe('rebuildSnapshot (styled, format 2)', () => {
     expect(img.getAttribute('src')).toBe(BLANK_GIF);
     expect(img.hasAttribute('data-gatf-missing')).toBe(true);
     expect(img.hasAttribute('srcset')).toBe(false);
-    expect(r.stats.missingImages).toBe(1);
+    expect(r.stats.missingImages).toBe(2);                         // Δ147a: the <img> + the CSS url(bg.png) (404)
     expect(d.querySelector('style[data-gatf-href="/s.css"]')!.textContent).toContain('.btn');   // from the manifest
     expect(r.html).not.toMatch(/http:\/\/127\.0\.0\.1/);
   });
@@ -163,7 +164,7 @@ describe('rebuildSnapshot (lite and hostile input)', () => {
     expect(decodeURIComponent(img.getAttribute('src')!)).toContain('width="40" height="30"');
     expect(d.querySelector('a[href="#top"]')).not.toBeNull();
     expect(d.querySelector('use')!.getAttribute('href')).toBe('#g');
-    expect(r.stats.missingSheets).toBe(1);
+    expect(r.stats.missingSheets).toBe(2);                         // the remote <link> + the remote @import
     expect(r.stats.missingImages).toBeGreaterThanOrEqual(3);
   });
 
@@ -227,5 +228,149 @@ describe('DomView', () => {
     expect(parse(after).getElementById('go')!.getAttribute('data-gatf-target')).toBe('2');
     fireEvent.click(screen.getByText('Before'));
     expect((screen.getByTitle('dom-snapshot') as HTMLIFrameElement).getAttribute('srcdoc')).toBe(before);
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Δ147a: one probe per bypass the orchestrator review found (item 2: rewriter misses, item 3: navigation), plus
+// srcset parsing (4), the StrictMode URL lifecycle (1), a single build per step (5) and CSS misses counted (6).
+describe('Δ147a probes', () => {
+  const enc = (x: string) => strToU8(x);
+  const EVIL = /evil\.test/i;
+  function one(body: string, head = '', extraHar: Array<[string, string, string]> = []) {
+    const entries = extraHar.map(([url, mime, file], i) => ({
+      startedDateTime: new Date(1000 + i).toISOString(), time: 1, request: { method: 'GET', url, httpVersion: '', headers: [] },
+      response: { status: 200, statusText: 'OK', httpVersion: '', headers: [], content: { size: 1, mimeType: mime, _file: file }, bodySize: 1 },
+    }));
+    const files: Record<string, Uint8Array> = {
+      'snapshots/s.html': enc(`<!DOCTYPE html><html><head>${head}</head><body>${body}</body></html>`),
+      'snapshots/s.json': enc(JSON.stringify({ v: 2, source: 'script', url: 'https://app.test/p/', title: '', viewport: { w: 1, h: 1 }, scroll: { x: 0, y: 0 }, truncated: false, styles: [] })),
+      'snapshots.ndjson': enc(JSON.stringify({ n: 1, ts: 5000, label: null, html: 'snapshots/s.html', screenshot: null, v: 2, dom: 'snapshots/s.json' }) + '\n'),
+      'network.har': enc(JSON.stringify({ log: { version: '1.2', creator: { name: 'gatf', version: 'trace' }, entries } })),
+      'resources/ok.css': enc('.ok{color:green}'),
+      'resources/ok.png': new Uint8Array([137, 80, 78, 71]),
+    };
+    const t = parseFiles(files);
+    return rebuildSnapshot(t, t.snapshots[0], { toUrl })!;
+  }
+
+  it('2a: a <link> inside a declarative shadow root is rewritten like any other', () => {
+    const r = one('<div><template shadowrootmode="open"><link rel="stylesheet" href="https://evil.test/s.css"><link rel="stylesheet" href="ok.css"><p>x</p></template></div>',
+      '', [['https://app.test/p/ok.css', 'text/css', 'resources/ok.css']]);
+    expect(r.html).not.toMatch(EVIL);
+    expect(r.html).toContain('.ok{color:green}');
+  });
+
+  it('2b: quoted URLs in image-set() and @import after a comment are rewritten', () => {
+    const r = one('<p class="a">x</p>', `<style>.a{background-image:image-set("https://evil.test/a.png" 1x, 'https://evil.test/b.png' 2x)}
+      .b{background-image:-webkit-image-set("ok.png" 1x)}</style><style>@import/**/"https://evil.test/x.css";@import/**/url(https://evil.test/y.css);@import'https://evil.test/z.css';</style>`,
+      [['https://app.test/p/ok.png', 'image/png', 'resources/ok.png']]);
+    expect(r.html).not.toMatch(EVIL);
+    expect(r.html).toMatch(/-webkit-image-set\(url\("data:image\/png;base64,/);
+  });
+
+  it('2c: CSS escapes cannot hide url(', () => {
+    const r = one('<p class="a">x</p><p style="background:\\75 rl(https://evil.test/s.png)">y</p>',
+      '<style>.a{background:u\\72l(https://evil.test/e.png)} .b{background:\\000075\\000072\\00006c(https://evil.test/f.png)}</style>');
+    expect(r.html).not.toMatch(EVIL);
+  });
+
+  it('2d: url() in SVG presentation attributes is rewritten; same-document #refs are kept', () => {
+    const r = one('<svg><defs><linearGradient id="g"></linearGradient></defs><rect fill="url(https://evil.test/f.svg#g)" filter="url(\'https://evil.test/x.svg#f\')" mask="URL(https://evil.test/m.svg)"/><rect id="loc" fill="url(#g)"/></svg>');
+    expect(r.html).not.toMatch(EVIL);
+    expect(parse(r.html).getElementById('loc')!.getAttribute('fill')).toBe('url("#g")');
+  });
+
+  it('2e: an iframe\'s own style attribute is rewritten', () => {
+    const r = one('<iframe srcdoc="<p>x</p>" style="background:url(https://evil.test/i.png)"></iframe>');
+    expect(r.html).not.toMatch(EVIL);
+    expect(r.stats.missingImages).toBe(1);                                       // item 6: counted
+  });
+
+  it('3a: SVG set/animate that would change a link target are dropped', () => {
+    const r = one('<svg><a id="sa"><set attributeName="href" to="https://evil.test/"/><animate attributeName="xlink:href" values="javascript:alert(1)"/>' +
+      '<animate attributeName="opacity" values="0;1"/><text>t</text></a></svg>');
+    const d = parse(r.html);
+    expect(d.querySelector('set')).toBeNull();
+    expect(d.querySelectorAll('animate').length).toBe(1);                       // the harmless one stays
+    expect(r.html).not.toMatch(/evil\.test|javascript:/i);
+  });
+
+  it('3b: data: links are not kept on a/area, via href or xlink:href', () => {
+    const r = one('<a id="h" href="data:text/html,<script>alert(1)</script>">h</a><svg><a id="x" xlink:href="data:text/html,x"><text>x</text></a></svg>' +
+      '<map><area id="ar" href="data:text/html,x"></map><a id="keep" href="#top">k</a>');
+    const d = parse(r.html);
+    for (const id of ['h', 'x', 'ar']) {
+      const e = d.getElementById(id)!;
+      expect(e.getAttribute('href')).toBeNull();
+      expect(e.getAttributeNS('http://www.w3.org/1999/xlink', 'href')).toBeNull();
+      expect(e.getAttribute('xlink:href')).toBeNull();
+    }
+    expect(d.getElementById('keep')!.getAttribute('href')).toBe('#top');
+  });
+
+  it('3c: a no-referrer meta sits next to the CSP', () => {
+    const d = parse(one('<p>x</p>').html);
+    expect(d.head.children[0].getAttribute('http-equiv')).toBe('Content-Security-Policy');
+    expect(d.head.children[1].getAttribute('name')).toBe('referrer');
+    expect(d.head.children[1].getAttribute('content')).toBe('no-referrer');
+  });
+
+  it('obfuscated javascript: URLs are recognised', () => {
+    for (const v of ['javascript:x', ' JavaScript:x', 'java\tscript:x', 'java\nscr\ript:x', '\u0001javascript:x', 'vbscript:x']) expect(isDangerous(v)).toBe(true);
+    for (const v of ['https://a/javascript:x', '#javascript:', 'data:,javascript:']) expect(isDangerous(v)).toBe(false);
+  });
+
+  it('4: srcset is parsed per spec (data: URLs and URLs with commas survive)', () => {
+    expect(parseSrcset('data:image/png;base64,AAA= 1x, a,b.png 2x,c.png 300w ,  d.png')).toEqual([
+      { url: 'data:image/png;base64,AAA=', descriptors: '1x' },
+      { url: 'a,b.png', descriptors: '2x' },
+      { url: 'c.png', descriptors: '300w' },
+      { url: 'd.png', descriptors: '' },
+    ]);
+    expect(parseSrcset('x.png,, y.png 2x')).toEqual([{ url: 'x.png', descriptors: '' }, { url: 'y.png', descriptors: '2x' }]);
+    const r = one('<img id="i" src="ok.png" srcset="data:image/gif;base64,R0lGOD== 1x, a,b.png 2x, https://evil.test/z.png 3x">', '',
+      [['https://app.test/p/a,b.png', 'image/png', 'resources/ok.png'], ['https://app.test/p/ok.png', 'image/png', 'resources/ok.png']]);
+    const ss = parse(r.html).getElementById('i')!.getAttribute('srcset')!;
+    expect(parseSrcset(ss).map((c) => [c.url.slice(0, 15), c.descriptors])).toEqual([['data:image/gif;', '1x'], ['data:image/png;', '2x']]);
+    expect(r.html).not.toMatch(EVIL);
+  });
+
+  it('1: StrictMode keeps the live blob URLs; unmount revokes them all', () => {
+    const created: string[] = [];
+    const revoked = new Set<string>();
+    vi.spyOn(URL, 'createObjectURL').mockImplementation(() => { const u = 'blob:t/' + created.length; created.push(u); return u; });
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation((u: string) => { revoked.add(u); });
+    try {
+      const t = load();
+      const { unmount } = render(<StrictMode><DomView trace={t} snap={snap(t, 2, 'before')} /></StrictMode>);
+      const sd = (screen.getByTitle('dom-snapshot') as HTMLIFrameElement).getAttribute('srcdoc')!;
+      const inUse = sd.match(/blob:t\/\d+/g) ?? [];
+      expect(inUse.length).toBeGreaterThan(0);
+      for (const u of inUse) expect(revoked.has(u)).toBe(false);              // the bug: StrictMode revoked these
+      unmount();
+      for (const u of created) expect(revoked.has(u)).toBe(true);              // no leak
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
+  it('5: a step change builds once', () => {
+    const t = load();
+    URL.createObjectURL = (() => 'blob:v') as typeof URL.createObjectURL;
+    URL.revokeObjectURL = (() => {}) as typeof URL.revokeObjectURL;
+    const spy = vi.spyOn(DOMParser.prototype, 'parseFromString');
+    try {
+      // from an "after" step to a "before" step: the old effect-synced phase built after(2) first, then before(2)
+      const { rerender } = render(<DomView trace={t} snap={snap(t, 1, 'after')} />);
+      spy.mockClear();
+      rebuildSnapshot(t, snap(t, 2, 'before'), { toUrl });
+      const perBuild = spy.mock.calls.length;                                   // the page + its srcdoc frame
+      spy.mockClear();
+      rerender(<DomView trace={t} snap={snap(t, 2, 'before')} />);
+      expect(spy.mock.calls.length).toBe(perBuild);
+    } finally {
+      spy.mockRestore();
+    }
   });
 });

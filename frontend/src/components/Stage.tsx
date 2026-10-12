@@ -94,15 +94,50 @@ export function phaseSnapshot(trace: Trace, snap: SnapshotRef | null, phase: 'be
   return (phase === 'after' ? pair.after : pair.before) ?? snap;
 }
 
+/**
+ * Δ147a: bundle path -> object URL, created on first use and revoked together. Owned by an effect (created there,
+ * revoked in its cleanup), never by a memo, so StrictMode's mount/unmount/mount cannot revoke URLs still in use.
+ */
+export class UrlCache {
+  private readonly urls = new Map<string, string>();
+  private revoked = false;
+  get = (path: string, mime: string, bytes: Uint8Array): string => {
+    let u = this.urls.get(path);
+    if (!u) {
+      u = URL.createObjectURL(new Blob([bytes.slice()], { type: mime }));
+      if (this.revoked) URL.revokeObjectURL(u);   // a late render after cleanup must not leak
+      else this.urls.set(path, u);
+    }
+    return u;
+  };
+  revokeAll(): void {
+    this.revoked = true;
+    for (const u of this.urls.values()) URL.revokeObjectURL(u);
+    this.urls.clear();
+  }
+}
+
 export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | null }) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const [phase, setPhase] = useState<'before' | 'after'>(snap?.phase ?? 'before');
-  // a newly active snapshot shows its own phase; the toggle then flips within the same action
-  useEffect(() => setPhase(snap?.phase ?? 'before'), [snap?.action, snap?.phase, snap?.n]);
+  // Δ147a: the phase is derived — the snapshot's own phase unless the user toggled within this same action — so a
+  // step change renders once, with no effect-driven second build
+  const [override, setOverride] = useState<{ action: number; phase: 'before' | 'after' } | null>(null);
+  const phase: 'before' | 'after' =
+    override && snap?.action != null && override.action === snap.action ? override.phase : (snap?.phase ?? 'before');
+  const setPhase = (p: 'before' | 'after') => { if (snap?.action != null) setOverride({ action: snap.action, phase: p }); };
   const pair = snap?.action != null ? actionSnapshots(trace.snapshots, snap.action) : null;
   const shown = phaseSnapshot(trace, snap, phase);
-  const built = useMemo(() => (shown ? rebuildSnapshot(trace, shown, { highlight: snap?.action ?? null }) : null), [trace, shown, snap?.action]);
-  useEffect(() => () => built?.urls.forEach((u) => URL.revokeObjectURL(u)), [built]);
+  // one URL cache per trace, owned by an effect: revoked when the trace changes or the view unmounts
+  const [cache, setCache] = useState<UrlCache | null>(null);
+  useEffect(() => {
+    const c = new UrlCache();
+    setCache(c);
+    return () => c.revokeAll();
+  }, [trace]);
+  const built = useMemo(
+    () => (shown && cache ? rebuildSnapshot(trace, shown, { highlight: snap?.action ?? null, toUrl: cache.get }) : null),
+    [trace, shown, snap?.action, cache],
+  );
 
   // the frame runs no script; the viewer (same origin via allow-same-origin) restores scroll and reveals the target
   const onLoad = () => {
@@ -124,6 +159,7 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
     }
   };
 
+  if (shown && !cache) return <div className="stage-empty">Loading snapshot…</div>;
   if (!built) return <div className="stage-empty">No DOM snapshot at this point.</div>;
   const st = built.stats;
   return (
@@ -161,7 +197,7 @@ export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
         {(st.missingImages > 0 || st.missingSheets > 0) && (
           <>
             {' '}
-            {st.missingImages > 0 && `${st.missingImages} image${st.missingImages === 1 ? '' : 's'}`}
+            {st.missingImages > 0 && `${st.missingImages} image${st.missingImages === 1 ? '' : 's'} or other resource${st.missingImages === 1 ? '' : 's'}`}
             {st.missingImages > 0 && st.missingSheets > 0 && ' and '}
             {st.missingSheets > 0 && `${st.missingSheets} stylesheet${st.missingSheets === 1 ? '' : 's'}`} not in the trace
             (turn on traceNetwork with response bodies to capture them).
