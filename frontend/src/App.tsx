@@ -81,7 +81,8 @@ export default function App({ traceUrl, onLoadRun }: { traceUrl?: string; onLoad
       currentTimeRef.current = t.t0;
       setCurrentTimeState(t.t0);
       setPlaying(false);
-      setStageMode(t.videoUrl ? 'video' : t.snapshots.length ? 'screenshot' : 'video');
+      // H2: a trace with styled per-action snapshots opens on the DOM view (unless it has video)
+      setStageMode(t.videoUrl ? 'video' : t.snapshots.some((x) => x.v === 2) ? 'dom' : t.snapshots.length ? 'screenshot' : 'video');
       setTab(t.events.length ? 'events' : t.har ? 'network' : 'console');
     } catch (e) {
       console.error(e);

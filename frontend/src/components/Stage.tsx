@@ -13,12 +13,12 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-import { useEffect, useMemo, useRef, type RefObject } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import type { Trace, SnapshotRef } from '../trace/types';
+import { actionSnapshots } from '../trace/loadTrace';
+import { rebuildSnapshot } from '../trace/rebuild';
 
 export type StageMode = 'video' | 'dom' | 'screenshot';
-
-const dec = new TextDecoder('utf-8');
 
 export function Stage({
   trace,
@@ -87,27 +87,86 @@ function ScreenshotView({ trace, snap }: { trace: Trace; snap: SnapshotRef | nul
   return <img className="stage-shot" src={url} alt="screenshot" />;
 }
 
-function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | null }) {
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const html = useMemo(() => {
-    if (!snap?.html) return null;
-    const b = trace.files[snap.html];
-    return b ? dec.decode(b) : null;
-  }, [trace, snap]);
+/** H2 (Δ147): the snapshot an action shows for a phase: its before/after pair when the trace has one (format 2). */
+export function phaseSnapshot(trace: Trace, snap: SnapshotRef | null, phase: 'before' | 'after'): SnapshotRef | null {
+  if (!snap || snap.action == null) return snap;
+  const pair = actionSnapshots(trace.snapshots, snap.action);
+  return (phase === 'after' ? pair.after : pair.before) ?? snap;
+}
 
-  if (!html) return <div className="stage-empty">No DOM snapshot at this point.</div>;
+export function DomView({ trace, snap }: { trace: Trace; snap: SnapshotRef | null }) {
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const [phase, setPhase] = useState<'before' | 'after'>(snap?.phase ?? 'before');
+  // a newly active snapshot shows its own phase; the toggle then flips within the same action
+  useEffect(() => setPhase(snap?.phase ?? 'before'), [snap?.action, snap?.phase, snap?.n]);
+  const pair = snap?.action != null ? actionSnapshots(trace.snapshots, snap.action) : null;
+  const shown = phaseSnapshot(trace, snap, phase);
+  const built = useMemo(() => (shown ? rebuildSnapshot(trace, shown, { highlight: snap?.action ?? null }) : null), [trace, shown, snap?.action]);
+  useEffect(() => () => built?.urls.forEach((u) => URL.revokeObjectURL(u)), [built]);
+
+  // the frame runs no script; the viewer (same origin via allow-same-origin) restores scroll and reveals the target
+  const onLoad = () => {
+    try {
+      const w = iframeRef.current?.contentWindow;
+      const d = iframeRef.current?.contentDocument;
+      if (!w || !d || !built) return;
+      const sc = built.manifest?.scroll;
+      if (sc && (sc.x || sc.y)) w.scrollTo(sc.x, sc.y);
+      if (snap?.action != null) {
+        const hit = (d.querySelector(`[data-gatf-target~="${snap.action}"]`) as HTMLElement | null) ?? (d.querySelector('[data-gatf-rect]') as HTMLElement | null);
+        const r = hit?.getBoundingClientRect();
+        if (hit && r && (r.bottom < 0 || r.top > w.innerHeight || r.right < 0 || r.left > w.innerWidth)) {
+          hit.scrollIntoView({ block: 'center', inline: 'center' });
+        }
+      }
+    } catch {
+      /* best-effort */
+    }
+  };
+
+  if (!built) return <div className="stage-empty">No DOM snapshot at this point.</div>;
+  const st = built.stats;
   return (
     <div className="dom-wrap">
+      {pair && (
+        <div className="dom-phase">
+          <span className="seg">
+            <button className={'seg-btn' + (phase === 'before' ? ' on' : '')} disabled={!pair.before} onClick={() => setPhase('before')}>
+              Before
+            </button>
+            <button className={'seg-btn' + (phase === 'after' ? ' on' : '')} disabled={!pair.after} onClick={() => setPhase('after')}>
+              After
+            </button>
+          </span>
+          <span className="muted small">action #{snap!.action}{shown?.label ? ` — ${shown.label}` : ''}</span>
+        </div>
+      )}
       <iframe
         ref={iframeRef}
         className="dom-frame"
         sandbox="allow-same-origin"
-        srcDoc={html}
+        srcDoc={built.html}
         title="dom-snapshot"
+        onLoad={onLoad}
       />
       <div className="dom-note muted small">
-        Lite snapshot (outerHTML). External CSS/images aren't captured in Phase-3 bundles, so styling
-        may differ from the live page — use the Screenshot view for pixel-accurate state.
+        {st.styled ? (
+          <>
+            Styled snapshot ({built.manifest?.source === 'cdp' ? 'DOMSnapshot' : 'serialized DOM'}), {st.sheets} stylesheet
+            {st.sheets === 1 ? '' : 's'} from the trace{built.manifest?.truncated ? '; truncated at the size cap' : ''}.
+          </>
+        ) : (
+          <>Lite snapshot (outerHTML){st.sheets ? `, ${st.sheets} stylesheet${st.sheets === 1 ? '' : 's'} from captured network bodies` : ''}. Use the Screenshot view for pixel-accurate state.</>
+        )}
+        {(st.missingImages > 0 || st.missingSheets > 0) && (
+          <>
+            {' '}
+            {st.missingImages > 0 && `${st.missingImages} image${st.missingImages === 1 ? '' : 's'}`}
+            {st.missingImages > 0 && st.missingSheets > 0 && ' and '}
+            {st.missingSheets > 0 && `${st.missingSheets} stylesheet${st.missingSheets === 1 ? '' : 's'}`} not in the trace
+            (turn on traceNetwork with response bodies to capture them).
+          </>
+        )}
       </div>
     </div>
   );
