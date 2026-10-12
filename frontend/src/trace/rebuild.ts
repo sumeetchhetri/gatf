@@ -44,6 +44,8 @@ export interface RebuildStats {
   rewritten: number;
   /** whether the action target was found in the document (else a rect overlay may stand in) */
   targetMarked: boolean;
+  /** Δ147d: things the post-serialisation guard had to remove (0 unless something broke out on re-parse) */
+  guardFixes: number;
 }
 
 export interface Rebuilt {
@@ -169,7 +171,7 @@ export function parseSrcset(v: string): Array<{ url: string; descriptors: string
 class Rewriter {
   readonly urls: string[] = [];
   private readonly made = new Map<string, string>();
-  readonly stats: RebuildStats = { styled: false, sheets: 0, missingSheets: 0, missingImages: 0, rewritten: 0, targetMarked: false };
+  readonly stats: RebuildStats = { styled: false, sheets: 0, missingSheets: 0, missingImages: 0, rewritten: 0, targetMarked: false, guardFixes: 0 };
 
   constructor(
     private readonly files: Record<string, Uint8Array>,
@@ -476,6 +478,8 @@ class CssScan {
     }
     const prelude = s.slice(pStart, this.i).trim();
     if (s[this.i] === ';') this.i++;
+    // Δ147d: a prelude that could inject rules or a reference is refused before anything is inlined
+    if (!importPreludeOk(prelude)) { this.rw.stats.missingSheets++; return ''; }
     const inner = this.rw.importText(v, this.base, this.depth);
     return inner == null ? '' : wrapImport(inner, prelude);
   }
@@ -497,6 +501,23 @@ function splitTopLevel(body: string): string[] {
   }
   out.push(body.slice(from));
   return out.filter((x) => x.trim() !== '');
+}
+
+/**
+ * Δ147d: an @import prelude we will re-emit must be conditions only — no '{', '}' or ';' (they would end the rule
+ * and inject others), no url( / src( (a reference outside the rewriter's reach), and a layer name, when given, must
+ * be a plain dotted identifier.
+ */
+export function importPreludeOk(prelude: string): boolean {
+  const p = prelude.trim();
+  if (/[{};]/.test(p)) return false;
+  if (/(?:^|[^\w-])(?:url|src)\s*\(/i.test(p) || /\\/.test(p)) return false;   // escapes could spell url( — refuse them
+  const lm = /^layer\s*\(/i.exec(p);
+  if (lm) {
+    const close = closeParen(p, lm[0].length - 1);
+    if (close < 0 || !/^[\w-]+(\.[\w-]+)*$/.test(p.slice(lm[0].length, close).trim())) return false;
+  }
+  return true;
 }
 
 /**
@@ -769,6 +790,71 @@ function rebuildDoc(
   }
   gatf.textContent = css;
   head.appendChild(gatf);
+  escapeRawText(doc);
+  return guardHtml('<!DOCTYPE html>' + doc.documentElement.outerHTML, rw);
+}
+
+const HTML_NS = 'http://www.w3.org/1999/xhtml';
+const RAW_TEXT = ['style', 'xmp', 'iframe', 'noembed', 'noframes', 'noscript', 'script'];
+
+/**
+ * Δ147d: text we put into an element the HTML parser reads as raw text (CSS set through textContent) is serialised
+ * verbatim by outerHTML, so "</style>" inside it would end the element on re-parse and turn the rest into live
+ * markup. Escape every "</tag" of the element's own name ("\/" is "/" inside a CSS string). One place, after all
+ * text is final; covers <style> inside shadow-root templates too. SVG-namespace <style> is escaped by the serialiser.
+ */
+export function escapeRawText(doc: Document): void {
+  for (const el of allElements(doc)) {
+    if (el.namespaceURI !== HTML_NS) continue;
+    const t = el.localName.toLowerCase();
+    if (!RAW_TEXT.includes(t)) continue;
+    const txt = el.textContent ?? '';
+    const re = new RegExp(`</(${t})`, 'gi');
+    if (re.test(txt)) el.textContent = txt.replace(new RegExp(`</(${t})`, 'gi'), '<\\/$1');
+  }
+}
+
+/**
+ * Δ147d, defence in depth: re-parse the final HTML exactly as the frame will and remove anything outside what the
+ * rebuild produces — active elements, handlers, script URLs, refresh / foreign CSP / referrer metas, followable
+ * links, and URL attributes that are not blob:, data: or #refs. Returns the HTML unchanged when nothing was found
+ * (the normal case); otherwise the cleaned re-serialisation, with the count in stats.guardFixes.
+ */
+export function guardHtml(html: string, rw?: { stats: RebuildStats }): string {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  let fixes = 0;
+  const okUrl = (v: string) => /^\s*(blob:|data:|#)/i.test(v) && !isDangerous(v);
+  for (const el of allElements(doc)) {
+    const tag = el.localName.toLowerCase();
+    if (el.matches(DROP)) { el.remove(); fixes++; continue; }
+    if (/^(set|animate|animatemotion|animatetransform|animatecolor)$/.test(tag)) {
+      const an = (el.getAttribute('attributeName') || '').trim().toLowerCase();
+      if (an === 'href' || an.endsWith(':href')) { el.remove(); fixes++; continue; }
+    }
+    if (tag === 'meta') {
+      const he = (el.getAttribute('http-equiv') || '').trim().toLowerCase();
+      const nm = (el.getAttribute('name') || '').trim().toLowerCase();
+      const content = el.getAttribute('content') || '';
+      const ourCsp = he === 'content-security-policy' && content === SNAPSHOT_CSP;
+      if ((he && !ourCsp) || (nm === 'referrer' && content.trim().toLowerCase() !== 'no-referrer')) { el.remove(); fixes++; continue; }
+    }
+    for (const a of Array.from(el.attributes)) {
+      const n = a.name.toLowerCase();
+      if (n.startsWith('on')) { el.removeAttribute(a.name); fixes++; continue; }
+      if (n === 'href' || n === 'xlink:href') {
+        if (NAV_TAGS.has(tag) ? !a.value.trim().startsWith('#') : !okUrl(a.value)) { el.removeAttribute(a.name); fixes++; }
+        continue;
+      }
+      if (['src', 'poster', 'data', 'background', 'action', 'formaction', 'ping', 'lowsrc', 'manifest', 'cite', 'longdesc'].includes(n) && !okUrl(a.value)) {
+        el.removeAttribute(a.name); fixes++; continue;
+      }
+      if ((n === 'srcset' || n === 'imagesrcset') && parseSrcset(a.value).some((c) => !okUrl(c.url))) { el.removeAttribute(a.name); fixes++; continue; }
+      if (isDangerous(a.value)) { el.removeAttribute(a.name); fixes++; }
+    }
+  }
+  if (!fixes) return html;
+  if (rw) rw.stats.guardFixes += fixes;
+  escapeRawText(doc);
   return '<!DOCTYPE html>' + doc.documentElement.outerHTML;
 }
 

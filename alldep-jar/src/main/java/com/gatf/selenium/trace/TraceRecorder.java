@@ -288,7 +288,7 @@ public final class TraceRecorder implements AutoCloseable {
                 .put("browser", browserName)
                 .put("protocol", cfg.getProtocol())
                 .put("format", 2)   // H2 (Δ146): per-action events carry `a`; snapshots.ndjson lines may be v2 (dom manifest)
-                .put("domSnapshots", effectiveDomSnapshotMode())                          // Δ146a/147b: effective (degrade, fallback)
+                .put("domSnapshots", effectiveDomSnapshotMode())                          // bundle content (Δ147c)
                 .put("domSnapshotsRequested", snap == null ? "off" : cfg.getDomSnapshots())
                 .put("domSnapshotsLimit", domLimit)
                 .put("domSnapshotBytes", snap == null ? 0 : snap.capturedBytes())

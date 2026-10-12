@@ -21,6 +21,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { strToU8 } from 'fflate';
 import { loadTraceZip, parseFiles } from './loadTrace';
 import { rebuildSnapshot, resourceMap, BLANK_GIF, SNAPSHOT_CSP, parseSrcset, isDangerous, wrapImport } from './rebuild';
+import * as rebuildMod from './rebuild';
 import { DomView } from '../components/Stage';
 import type { Trace, SnapshotRef } from './types';
 
@@ -556,5 +557,116 @@ describe('Δ147c probes', () => {
     expect(frame()).not.toBe(own);
     rerender(<DomView trace={t2} snap={snap(t2, 2, 'before')} />);
     expect(frame()).toBe(own);                                                  // its own "before", not t1's toggle
+  });
+});
+
+// ---------------------------------------------------------------------------------------------------------------
+// Δ147d: "</style>" break-out through every way CSS text enters the document, the guard, and @import preludes.
+describe('Δ147d probes', () => {
+  const enc = (x: string) => strToU8(x);
+  const PAYLOAD = `.a{content:"</style><a href=http://evil.test/nav>x</a><meta http-equiv=refresh content='0;url=http://evil.test'><meta name=referrer content=unsafe-url><style>"}`;
+  function bundle(html: string, manifestStyles: unknown[] | null, files: Record<string, string>, har: Array<[string, string, string]>) {
+    const entries = har.map(([url, mime, file], i) => ({
+      startedDateTime: new Date(1000 + i).toISOString(), time: 1, request: { method: 'GET', url, httpVersion: '', headers: [] },
+      response: { status: 200, statusText: 'OK', httpVersion: '', headers: [], content: { size: 1, mimeType: mime, _file: file }, bodySize: 1 },
+    }));
+    const f: Record<string, Uint8Array> = {
+      'snapshots/s.html': enc(html),
+      'snapshots.ndjson': enc(JSON.stringify({ n: 1, ts: 5000, label: null, html: 'snapshots/s.html', screenshot: null,
+        ...(manifestStyles ? { v: 2, dom: 'snapshots/s.json' } : {}) }) + '\n'),
+      'network.har': enc(JSON.stringify({ log: { version: '1.2', creator: { name: 'gatf', version: 'trace' }, entries } })),
+    };
+    if (manifestStyles) f['snapshots/s.json'] = enc(JSON.stringify({ v: 2, source: 'cdp', url: 'https://app.test/p/', title: '', viewport: { w: 1, h: 1 }, scroll: { x: 0, y: 0 }, truncated: false, styles: manifestStyles }));
+    for (const [k, v] of Object.entries(files)) f[k] = enc(v);
+    const t = parseFiles(f);
+    return rebuildSnapshot(t, t.snapshots[0], { toUrl: (p: string) => `blob:test/${p}` })!;
+  }
+  /** what the frame would get: no live link, no refresh, exactly our CSP + our referrer policy, and nothing guarded */
+  function inert(html: string) {
+    const d = parse(html);
+    expect(d.querySelector('a[href]:not([href^="#"])')).toBeNull();
+    expect(d.querySelector('meta[http-equiv="refresh" i]')).toBeNull();
+    const metas = Array.from(d.querySelectorAll('meta'));
+    expect(metas.filter((m) => (m.getAttribute('name') || '').toLowerCase() === 'referrer').map((m) => m.getAttribute('content'))).toEqual(['no-referrer']);
+    expect(d.head.firstElementChild!.getAttribute('content')).toBe(SNAPSHOT_CSP);
+    // the payload may survive only as inert CSS text, never as markup
+    const outsideStyles = Array.from(d.querySelectorAll('*')).filter((e) => e.localName !== 'style').map((e) => Array.from(e.attributes).map((x) => x.value).join(' ')).join(' ');
+    expect(outsideStyles).not.toMatch(/evil\.test|unsafe-url/);
+    return d;
+  }
+
+  it('MAJOR via the manifest CSSOM text', () => {
+    const r = bundle('<html><head><link rel="stylesheet" href="s.css"></head><body><p class="a">x</p></body></html>',
+      [{ owner: 'link', href: 'https://app.test/p/s.css', media: '', index: -1, ref: 'resources/s' }], { 'resources/s': PAYLOAD }, []);
+    const d = inert(r.html);
+    expect(d.querySelector('style[data-gatf-href]')!.textContent).toContain('content:"<\\/style><a href=');   // still the same CSS string
+    expect(r.stats.guardFixes).toBe(0);
+  });
+
+  it('MAJOR via a HAR body (lite snapshot)', () => {
+    const r = bundle('<html><head><link rel="stylesheet" href="s.css"></head><body><p class="a">x</p></body></html>', null,
+      { 'resources/s': PAYLOAD, 'resources/h': '<html></html>' },
+      [['https://app.test/p/index.html', 'text/html', 'resources/h'], ['https://app.test/p/s.css', 'text/css', 'resources/s']]);
+    inert(r.html);
+  });
+
+  it('MAJOR via an inlined @import, and an uppercase </STYLE', () => {
+    const r = bundle('<html><head><style>@import "i.css";</style></head><body><p class="a">x</p></body></html>', null,
+      { 'resources/i': PAYLOAD.replace('</style>', '</STYLE >'), 'resources/h': '<html></html>' },
+      [['https://app.test/p/index.html', 'text/html', 'resources/h'], ['https://app.test/p/i.css', 'text/css', 'resources/i']]);
+    const d = inert(r.html);
+    expect(d.querySelector('style')!.textContent).toContain('<\\/STYLE >');
+  });
+
+  it('MAJOR: a <style> inside SVG (and inside a shadow template) stays text', () => {
+    const svgPayload = PAYLOAD.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const r = bundle(`<html><head></head><body><svg><style>${svgPayload}</style></svg>` +
+      `<div><template shadowrootmode="open"><style>@import "i.css";</style><p>s</p></template></div></body></html>`, null,
+      { 'resources/i': PAYLOAD, 'resources/h': '<html></html>' },
+      [['https://app.test/p/index.html', 'text/html', 'resources/h'], ['https://app.test/p/i.css', 'text/css', 'resources/i']]);
+    const d = inert(r.html);
+    expect(d.querySelector('svg style')!.textContent).toContain('</style><a href=http://evil.test/nav>');   // text, not markup
+    const tpl = d.querySelector('template') as HTMLTemplateElement;
+    expect(tpl.content.querySelector('a, meta')).toBeNull();
+  });
+
+  it('guard: anything that breaks out on re-parse is removed', () => {
+    const hostile = `<!DOCTYPE html><html><head><meta http-equiv="Content-Security-Policy" content="${SNAPSHOT_CSP}"><meta name="referrer" content="no-referrer">` +
+      `<meta name="referrer" content="unsafe-url"><meta http-equiv="refresh" content="0;url=http://evil.test"></head><body>` +
+      `<a href="http://evil.test/nav">x</a><img src="http://evil.test/i.png" onerror="x()"><img src="blob:ok"><a href="#t">t</a><script>x()</script>` +
+      `<svg><a xlink:href="data:text/html,x"><set attributeName="href" to="http://evil.test"/></a></svg><iframe src="javascript:x()"></iframe></body></html>`;
+    const holder = { stats: { guardFixes: 0 } as rebuildMod.RebuildStats };
+    const out = rebuildMod.guardHtml(hostile, holder);
+    inert(out);
+    const d = parse(out);
+    expect(d.querySelector('img[src="blob:ok"]')).not.toBeNull();
+    expect(d.querySelector('a[href="#t"]')).not.toBeNull();
+    expect(out).not.toMatch(/evil\.test|<script|onerror|javascript:|<set|data:text\/html/i);
+    expect(holder.stats.guardFixes).toBeGreaterThanOrEqual(8);
+    expect(rebuildMod.guardHtml('<!DOCTYPE html><html><head></head><body><p>fine</p></body></html>', holder)).toBe('<!DOCTYPE html><html><head></head><body><p>fine</p></body></html>');
+  });
+
+  it('the fixture rebuild needs no guard fixes', () => {
+    const t = load();
+    expect(rebuildSnapshot(t, snap(t, 2, 'before'), { toUrl })!.stats.guardFixes).toBe(0);
+  });
+
+  it('MINOR: an @import prelude that could inject rules or a reference is refused', () => {
+    const lib = (prelude: string) => bundle(`<html><head><style>@import "i.css" ${prelude};.z{color:blue}</style></head><body><p>x</p></body></html>`, null,
+      { 'resources/i': '.lib{color:red}', 'resources/h': '<html></html>' },
+      [['https://app.test/p/index.html', 'text/html', 'resources/h'], ['https://app.test/p/i.css', 'text/css', 'resources/i']]);
+    const r1 = lib('layer(x){} body{background:url(http://evil.test/b.png)} .y{');
+    expect(r1.html).not.toMatch(/evil\.test|\.lib\{/);
+    expect(r1.stats.missingSheets).toBe(1);
+    const r2 = lib('layer(a{}b)');
+    expect(r2.html).not.toMatch(/\.lib\{|a\{\}b/);
+    const r3 = lib('screen and (min-width: 1px) url(x)');
+    expect(r3.html).not.toContain('.lib{');
+    const ok = lib('layer(base.ui) supports(display:grid) print');
+    expect(ok.html).toContain('@layer base.ui{@supports (display:grid){@media print{.lib{color:red}}}}');
+    for (const p of ['layer(x){}', 'layer(a{}b)', 'layer(a b)', 'layer(a..b)', 'supports(x;y)', 'u\\72l(x)', 'print url(x)', 'screen SRC(x)'])
+      expect(rebuildMod.importPreludeOk(p)).toBe(false);
+    for (const p of ['', 'print', 'layer', 'layer(a-b.c_d)', 'supports((a:b) and (c:d)) screen'])
+      expect(rebuildMod.importPreludeOk(p)).toBe(true);
   });
 });
