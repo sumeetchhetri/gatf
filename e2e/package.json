@@ -11,6 +11,8 @@
     "typecheck:export": "node export/typecheck.mjs"
   },
   "devDependencies": {
-    "@playwright/test": "^1.48.0"
+    "@playwright/test": "^1.48.0",
+    "@types/node": "^22.20.5",
+    "typescript": "^5.9.3"
   }
 }

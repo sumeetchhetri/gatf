@@ -49,8 +49,8 @@ import com.gatf.selenium.emulation.FakeClock;
  */
 public final class SelParser {
 
-    private static final Pattern DQ = Pattern.compile("\"(?:\\\\\"|[^\\\\\"])*\"");
-    private static final Pattern SQ = Pattern.compile("'(?:\\\\'|[^'])*'");
+    private static final Pattern DQ = Pattern.compile("\"(?:\\\\\\\"|[^\\\"])*\"");   // Command.sanitize, verbatim
+    private static final Pattern SQ = Pattern.compile("'(?:\\\\'|[^'])*'");   // Command.sanitize, verbatim
     private static final String MASK_OPEN = "\uE000", MASK_CLOSE = "\uE001";   // private-use: String.trim() keeps them
     private static final Pattern MASK = Pattern.compile("\uE000(\\d+)\uE001");
 
@@ -441,8 +441,10 @@ public final class SelParser {
             // Command.parse reads any line holding '*/' (outside quotes) as the end of a block comment and generates
             // nothing for it, e.g. the '*/' inside an unquoted route glob '**/api/...'.
             if (cmd.trim().startsWith("*/") || cmd.trim().endsWith("*/") && !cmd.matches("(?s).*\\*\\*/.*")) return step(Kind.COMMENT, line, "*/");
+            String holder = "*/";
+            for (String tok : cmd.split("[\\t ]+")) if (tok.contains("*/")) { holder = mk.unmask(tok); break; }
             return unsupported(line, "*/", "seleasy reads a line containing '*/' as the end of a block comment and never runs it"
-                    + " (here the '*/' of '**/'); quote the value ('**/...') so it runs, then export again");
+                    + " (here in '" + holder + "'); quote that value so it runs, then export again");
         }
         if (cmd.equals(">>>")) return unsupported(line, ">>>", "code block end without a start");
         if (cmd.equals("end code")) return unsupported(line, "end code", "code block end without a start");

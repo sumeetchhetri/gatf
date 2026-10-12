@@ -1,7 +1,7 @@
-14-waits → 14-waits.spec.ts  {statements=33, exported=32, todo=1, notes=11}
+14-waits → 14-waits.spec.ts  {statements=45, exported=44, todo=1, notes=19}
   1 unsupported (exported as TODO(gatf-export) comments):
    ! #26 ?? id@x width ='10' — element property 'width' has no Playwright mapping
-  11 note(s) on behaviour that differs:
+  19 note(s) on behaviour that differs:
    ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
    ~ #6 nowait ??10 id@'ele3' click — nowait / '!' maps to { force: true }, which skips Playwright's actionability checks as seleasy's opt-out does
    ~ #8 nowait type 'abc' id@q — nowait has no effect on typing: pressSequentially has no force option
@@ -10,6 +10,14 @@
    ~ #18 ?? id@x text 'abc'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
    ~ #19 ?? id@x text %'abc' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
    ~ #20 ?? id@x text >'b' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
-   ~ #27 wait for id@x — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
-   ~ #32 timeout 30 1 500 — only the element timeout is exported; '1 500' (if-timeout / poll granularity) has no equivalent
-   ~ #33 maximize — maximize has no page-level equivalent; set use.viewport in playwright.config
+   ~ #28 ?? id@x text %'$v{n} tail' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #29 ?? id@x text '$v{n} tail'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #30 ?? id@x text %'$v{n} tail'% — seleasy compares expected.contains(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #33 ?? id@x text <'$v{n} tail' — seleasy compares expected.<(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #34 ?? id@x text >'$v{n} tail' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #35 ?? id@x text <='$v{n} tail' — seleasy compares expected.<=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #36 ?? id@x text >='$v{n} tail' — seleasy compares expected.>=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #38 ?? title %'$v{n} tail' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #39 wait for id@x — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #44 timeout 30 1 500 — only the element timeout is exported; '1 500' (if-timeout / poll granularity) has no equivalent
+   ~ #45 maximize — maximize has no page-level equivalent; set use.viewport in playwright.config

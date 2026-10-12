@@ -1,8 +1,9 @@
 // Exported from 14-waits.sel by GATF (gatf export playwright). Review every TODO(gatf-export) line.
-// 32 of 33 statement(s) exported, 1 TODO, 11 note(s): see the export report.
+// 44 of 45 statement(s) exported, 1 TODO, 19 note(s): see the export report.
 import { test, expect } from '@playwright/test';
 
 test('14-waits', async ({ page }) => {
+  const vars: Record<string, string> = {};
   // Δ160 export corpus: waits, assertion operators, soft assertions, timeouts and the nowait opt-out.
   // gatf-export: 'open chrome' - the browser comes from the Playwright project (playwright.config)
   await page.locator('#ele1').first().click({ timeout: 10000 });
@@ -55,6 +56,45 @@ test('14-waits', async ({ page }) => {
     return 'true' === actual;
   }).toBe(true);
   // TODO(gatf-export): ?? id@x width ='10'
+  vars['n'] = 'abc';
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return (vars['n'] + ' tail').startsWith(actual);
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return (vars['n'] + ' tail').endsWith(actual);
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return (vars['n'] + ' tail').includes(actual);
+  }).toBe(true);
+  await expect(page.locator('#x').first()).toHaveText(vars['n'] + ' tail', { useInnerText: true });
+  await expect(page.locator('#x').first()).not.toHaveText(vars['n'] + ' tail', { useInnerText: true });
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return vars['n'] + ' tail' < actual;
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return vars['n'] + ' tail' > actual;
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return vars['n'] + ' tail' <= actual;
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return vars['n'] + ' tail' >= actual;
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#x').first().innerText();
+    return [vars['n'] + ' a', 'b'].includes(actual);
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.title();
+    return (vars['n'] + ' tail').startsWith(actual);
+  }).toBe(true);
   await expect(page.locator('#x').first()).toBeAttached();
   await expect(page.locator('#y')).toHaveCount(0);
   await page.evaluate('window.scrollBy(0, 200)');

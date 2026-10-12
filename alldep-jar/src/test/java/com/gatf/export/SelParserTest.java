@@ -175,6 +175,23 @@ class SelParserTest {
     }
 
     @Test
+    void doubleQuotedSpansAreMaskedAsCommandSanitize() {   // Δ160a: a lone '\' inside "…" stays in the span
+        Step a = one("?? id@x text =\"x\\y z\"");
+        assertEquals(Kind.ASSERT, a.kind);
+        assertEquals("x\\y z", a.assertion.value);
+        Step t = one("type \"C:\\temp dir\\a b\" id@x");
+        assertEquals(Kind.ACTION, t.kind);
+        assertEquals("C:\\temp dir\\a b", t.text);
+        assertEquals("x", t.target.value);
+    }
+
+    @Test
+    void commentEndReasonQuotesTheActualText() {   // Δ160a
+        assertTrue(one("route **/api/raw fulfill 204").reason.contains("'**/api/raw'"));
+        assertTrue(one("click css@a*/b").reason.contains("'css@a*/b'"), one("click css@a*/b").reason);
+    }
+
+    @Test
     void neverThrowsAndNeverLosesALine() {
         String[] nasty = { "}", "{", "??", "?? ", "click", "type", "select x", "@call", "subtest", "route", "clock set", "emulate",
             "/*", "<<<", "[", "#j", "var", "var x", "'unterminated", "\"", "??10", "^", "nowait", "click!", "?? id@x text",

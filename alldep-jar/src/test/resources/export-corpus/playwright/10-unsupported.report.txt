@@ -1,5 +1,5 @@
-10-unsupported → 10-unsupported.spec.ts  {statements=27, exported=2, todo=25, notes=1}
-  25 unsupported (exported as TODO(gatf-export) comments):
+10-unsupported → 10-unsupported.spec.ts  {statements=28, exported=2, todo=26, notes=1}
+  26 unsupported (exported as TODO(gatf-export) comments):
    ! #4 #j if(1==1) {} else {} — inline Java control statement
    ! #5 ## class@"row" — element loop (##)
    ! #7 click xpath@"//a[@index]" — inside the unsupported block at line 5
@@ -25,5 +25,6 @@
    ! #46 open firefox — a second browser session (open): one page per exported test
    ! #47 @call "nowhere" — no exported subtest or func named 'nowhere' in this script
    ! #48 a11y check — accessibility check (needs @axe-core/playwright)
+   ! #49 ?? text@'/*x/' — locator text@'/*x/': Invalid regex /*x/: Dangling meta character '*'
   1 note(s) on behaviour that differs:
    ~ #2 open chrome — the browser is chosen by the Playwright project, not the script

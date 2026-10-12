@@ -1,5 +1,5 @@
 // Exported from 11-escaping.sel by GATF (gatf export playwright). Review every TODO(gatf-export) line.
-// 13 of 14 statement(s) exported, 1 TODO, 2 note(s): see the export report.
+// 15 of 15 statement(s) exported, 0 TODO, 3 note(s): see the export report.
 // Environment variables (names only): ${baseUrl} -> GATF_BASEURL
 import { test, expect } from '@playwright/test';
 
@@ -24,7 +24,8 @@ test('11-escaping', async ({ page }) => {
   await page.locator('xpath=//a[text()=\'it\'\'s\']').first().click();
   await expect(page.getByLabel(new RegExp('a\\/b[/]c', 'i')).filter({ visible: true }).first()).toBeAttached();
   await expect(page.getByRole('button', { name: /^\*star$/i }).first()).toBeAttached();
-  // TODO(gatf-export): ?? text@'/*x/'
+  await expect(page.locator('#x').first()).toHaveText('x\\y z', { useInnerText: true });
+  await page.locator('#x').first().pressSequentially('C:\\temp dir\\a b');
   // comment with a line separator \u2028 inside
   throw new Error('emoji 😀 and tab\tend');
 });

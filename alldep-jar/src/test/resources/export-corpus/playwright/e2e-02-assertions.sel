@@ -12,6 +12,9 @@ select text@'Medium' id@size
 ?? id@size attr@value ='m'
 // seleasy compares expected.op(actual): this passes once the late banner reads 'Banner shown'
 ?? id@banner text %'Banner shown later'
+var n 'Banner'
+?? id@banner text %'$v{n} shown later'
+?? id@banner text '$v{n} shown'%
 ?? id@count text <='3'
 ??- id@banner
 ??+ id@ghost

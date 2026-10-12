@@ -1,6 +1,6 @@
 13-network → 13-network.spec.ts  {statements=27, exported=23, todo=4, notes=10}
   4 unsupported (exported as TODO(gatf-export) comments):
-   ! #4 route **/api/raw fulfill 204 — seleasy reads a line containing '*/' as the end of a block comment and never runs it (here the '*/' of '**/'); quote the value ('**/...') so it runs, then export again
+   ! #4 route **/api/raw fulfill 204 — seleasy reads a line containing '*/' as the end of a block comment and never runs it (here in '**/api/raw'); quote that value so it runs, then export again
    ! #13 state load .auth/admin.json — state load: storageState is a browser-context option in Playwright (test.use({ storageState }))
    ! #20 emulate locale de-DE — emulate locale is a browser-context option in Playwright (test.use / newContext)
    ! #24 clock pause — clock pause has no Playwright equivalent

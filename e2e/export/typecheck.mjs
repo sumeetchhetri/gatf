@@ -13,17 +13,17 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-// Δ160: typechecks every export golden against @playwright/test with the TypeScript compiler pinned by
-// frontend/package-lock.json (no global tsc, no npx download). Run from e2e/: npm run typecheck:export
+// Δ160 / Δ160a: typechecks every export golden against @playwright/test with e2e's own TypeScript and @types/node,
+// pinned by e2e/package-lock.json (no global tsc, no npx download). Run from e2e/: npm run typecheck:export
 import { existsSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
-const tsc = join(here, '..', '..', 'frontend', 'node_modules', 'typescript', 'bin', 'tsc');
+const tsc = join(here, '..', 'node_modules', 'typescript', 'bin', 'tsc');
 if (!existsSync(tsc)) {
-  console.error('run npm ci in frontend first');
+  console.error('run npm ci in e2e first');
   process.exit(1);
 }
 const prep = spawnSync(process.execPath, [join(here, 'prepare.mjs')], { stdio: 'inherit' });

@@ -48,7 +48,11 @@ import com.gatf.export.SelScript;
  * Δ160 fidelity guard — the export parser ({@link SelParser}) and the real parser ({@code Command.read}, set up as
  * CodegenGoldenTest does) must agree on every codegen-corpus, sample-project and dogfood script: the same statement
  * lines, the same block depth per line, a leading keyword whose Command class matches the one the real parser built,
- * and the same locator ({@code by} + value) for locator statements. Fails with the first differences per script.
+ * the same locator ({@code by} + value), typed / uploaded / selected value, assertion property / operator / value,
+ * {@code ??N} timeout, nowait and soft flags, and if vs ifnot. Fails with the first differences per script.
+ *
+ * <p>Δ160a: the export corpus is compared too (with the codegen corpus' gatf-config), except 10-unsupported.sel,
+ * which holds deliberately invalid statements.
  *
  * <p>Comparable statements: comments, braces, value lists, code-block bodies and plugin / var data blocks are not
  * statements on either side; a {@code ^dynprop} line (resolved from config at parse time) and a line holding an
@@ -56,7 +60,10 @@ import com.gatf.export.SelScript;
  */
 class ExportParserParityTest {
 
-    private static final String[] PROJECTS = { "../sample-project", "../dogfood", "src/test/resources/codegen-corpus" };
+    private static final String[] PROJECTS = { "../sample-project", "../dogfood", "src/test/resources/codegen-corpus",
+            "src/test/resources/export-corpus/playwright" };
+    private static final String EXPORT_CORPUS = "src/test/resources/export-corpus/playwright";
+    private static final Set<String> SKIP = new HashSet<String>(Arrays.asList("10-unsupported.sel"));
     private static final Set<String> NOT_STATEMENTS = new HashSet<String>(Arrays.asList("StartCommand", "EndCommand", "ValueCommand",
             "ValueListCommand", "EndValueListCommand", "NoopCommand", "CommentCommand", "MultiCommentCommand", "EndMultiCommentCommand"));
     private static final Set<String> RAW_OWNERS = new HashSet<String>(Arrays.asList("PluginCommand", "VarCommand"));
@@ -68,6 +75,12 @@ class ExportParserParityTest {
         final int line, depth;
         final String kind;   // real: Command class simple name; export: catalog keyword (or "plugin")
         String by, value;
+        /** typed / uploaded text, select mode + value */
+        String text, selectBy;
+        /** assertion: property (before '@'), attribute name, operator (=, !=, <, ..., contains, startsWith, endsWith), value */
+        String prop, propName, op, opValue;
+        Integer timeoutSec;
+        boolean noWait, soft, negated;
 
         Stmt(int line, int depth, String kind) {
             this.line = line;
@@ -85,7 +98,18 @@ class ExportParserParityTest {
             if (!Files.isDirectory(src)) continue;
             Path work = Paths.get("target", "export-parity-work", src.getFileName().toString()).toAbsolutePath();
             deleteTree(work);
-            copyTree(src, work);
+            if (projectPath.equals(EXPORT_CORPUS)) {
+                // .sel files only, run with the codegen corpus' config (testCaseDir = tests)
+                Files.createDirectories(work.resolve("tests"));
+                Files.copy(Paths.get("src/test/resources/codegen-corpus/gatf-config.xml"), work.resolve("gatf-config.xml"));
+                try (Stream<Path> w = Files.list(src)) {
+                    for (Path p : w.filter(x -> x.toString().endsWith(".sel")).collect(Collectors.toList())) {
+                        Files.copy(p, work.resolve("tests").resolve(p.getFileName().toString()));
+                    }
+                }
+            } else {
+                copyTree(src, work);
+            }
             String cfgName = Files.exists(work.resolve("gatf-config.json")) ? "gatf-config.json" : "gatf-config.xml";
             if (!Files.exists(work.resolve(cfgName))) continue;
             GatfExecutorConfig config = Command.getConfig(work.resolve(cfgName).toString(), work.toString());
@@ -102,6 +126,7 @@ class ExportParserParityTest {
             }
             for (Path sel : sels) {
                 String rel = tests.relativize(sel).toString().replace('\\', '/');
+                if (projectPath.equals(EXPORT_CORPUS) && SKIP.contains(sel.getFileName().toString())) continue;
                 File file = ctx.getResourceFile(rel);
                 Command root;
                 try {
@@ -145,6 +170,18 @@ class ExportParserParityTest {
             if (m.by != null && r.by != null && (!m.by.equalsIgnoreCase(r.by) || !String.valueOf(m.value).equals(String.valueOf(r.value)))) {
                 problems.add(at + "locator " + m.by + "@" + m.value + " (export) != " + r.by + "@" + r.value + " (real)");
             }
+            if (m.text != null && r.text != null && !m.text.equals(r.text)) problems.add(at + "value [" + m.text + "] (export) != [" + r.text + "] (real)");
+            if (m.selectBy != null && r.selectBy != null && !m.selectBy.equalsIgnoreCase(r.selectBy)) problems.add(at + "select " + m.selectBy + " (export) != " + r.selectBy + " (real)");
+            if (m.prop != null || r.prop != null) {
+                if (!String.valueOf(m.prop).equalsIgnoreCase(String.valueOf(r.prop))) problems.add(at + "assertion property " + m.prop + " (export) != " + r.prop + " (real)");
+                if (m.propName != null && !m.propName.equals(r.propName)) problems.add(at + "assertion attribute " + m.propName + " (export) != " + r.propName + " (real)");
+                if (!String.valueOf(m.op).equals(String.valueOf(r.op))) problems.add(at + "assertion operator " + m.op + " (export) != " + r.op + " (real)");
+                if (m.opValue != null && !m.opValue.equals(r.opValue)) problems.add(at + "assertion value [" + m.opValue + "] (export) != [" + r.opValue + "] (real)");
+            }
+            if (m.timeoutSec != null && !m.timeoutSec.equals(r.timeoutSec)) problems.add(at + "timeout " + m.timeoutSec + "s (export) != " + r.timeoutSec + "s (real)");
+            if (m.noWait != r.noWait) problems.add(at + "nowait " + m.noWait + " (export) != " + r.noWait + " (real)");
+            if (m.soft != r.soft) problems.add(at + "soft " + m.soft + " (export) != " + r.soft + " (real)");
+            if (m.negated != r.negated) problems.add(at + "negated (ifnot) " + m.negated + " (export) != " + r.negated + " (real)");
             if (problems.size() - before > 15) { problems.add(rel + ": ... more differences"); break; }
         }
         return mine.size();
@@ -170,6 +207,21 @@ class ExportParserParityTest {
                     || s.kind == SelScript.Kind.IF || s.kind == SelScript.Kind.ELSE_IF || s.kind == SelScript.Kind.ELEMENT_VAR
                     || (s.kind == SelScript.Kind.ACTION && s.verb != null && s.verb.matches("click|dblclick|hover|clear|submit|type|upload|select"));
             if (locatorStmt && l != null && l.raw.indexOf('@') > 0) { st.by = l.by; st.value = l.value; }
+            if (s.kind == SelScript.Kind.ACTION && s.verb != null && s.verb.matches("type|chord|upload")) st.text = s.text;
+            if (s.kind == SelScript.Kind.ACTION && "select".equals(s.verb) && s.args.get("mode") != null && s.text != null) {
+                st.selectBy = s.args.get("mode");
+                st.text = s.text;
+            }
+            if (s.kind == SelScript.Kind.ASSERT) {   // a value list (=[a, b]) compares property and operator only
+                st.prop = s.assertion.property;
+                st.propName = s.assertion.name;
+                st.op = s.assertion.op;
+                st.opValue = s.assertion.value;
+            }
+            st.timeoutSec = s.timeoutSec;
+            st.noWait = s.noWait;
+            st.soft = s.soft;
+            st.negated = s.negated;
             out.put(s.line, st);
             if (s.rawBlock) raw.add(new int[] { s.line, s.endLine });
             else walkModel(s.children, out, raw, skip);
@@ -196,6 +248,33 @@ class ExportParserParityTest {
                     if (cond != null) {
                         Object by = field(cond, "by"), classifier = field(cond, "classifier");
                         if (by != null && !String.valueOf(by).isEmpty()) { st.by = String.valueOf(by); st.value = String.valueOf(classifier); }
+                        Object sub = field(cond, "subselector"), oper = field(cond, "oper"), operval = field(cond, "operval"), pre = field(cond, "precond");
+                        if (oper != null) {
+                            String sb = String.valueOf(sub);
+                            int at = sb.indexOf('@');
+                            st.prop = (at < 0 ? sb : sb.substring(0, at)).toLowerCase(Locale.ROOT);
+                            st.propName = at < 0 ? null : SelParserAccess.unquote(sb.substring(at + 1));
+                            String p = String.valueOf(pre);
+                            st.op = p.equals("contains") || p.equals("startsWith") || p.equals("endsWith") ? p : String.valueOf(oper);
+                            st.opValue = operval == null ? null : String.valueOf(operval);
+                        }
+                    }
+                    // the action of the statement: the command itself, or (??N <loc> <verb> ...) its first child
+                    List<Object> acts = new ArrayList<Object>();
+                    acts.add(c);
+                    if (c.children != null) acts.addAll(c.children);
+                    for (Object a : acts) {
+                        String an = a.getClass().getSimpleName();
+                        if (an.equals("TypeCommand") || an.equals("UploadCommand")) { st.text = str(field(a, "value")); break; }
+                        if (an.equals("SelectCommand")) { st.selectBy = str(field(a, "by")); st.text = str(field(a, "value")); break; }
+                    }
+                    st.noWait = Boolean.TRUE.equals(field(c, "noWait"));
+                    st.soft = Boolean.TRUE.equals(field(c, "soft"));
+                    st.negated = Boolean.TRUE.equals(field(c, "negation"));
+                    Object counter = field(c, "counter"), state = field(c, "state");
+                    Object gran = state == null ? null : field(state, "timeoutSleepGranularity");
+                    if (counter instanceof Number && gran instanceof Number) {
+                        st.timeoutSec = (int) (((Number) counter).longValue() * ((Number) gran).longValue() / 1000L);
                     }
                     out.put(line, st);
                 }
@@ -206,6 +285,20 @@ class ExportParserParityTest {
             if (elseifs instanceof List) walkReal((List<?>) elseifs, depth, file, out, raw);
             Object elsecmd = field(c, "elsecmd");
             if (elsecmd instanceof Command) walkReal(java.util.Collections.singletonList(elsecmd), depth, file, out, raw);
+        }
+    }
+
+    private static String str(Object o) {
+        return o == null ? null : String.valueOf(o);
+    }
+
+    /** Outer-quote stripping as the parsers do it. */
+    static final class SelParserAccess {
+        static String unquote(String s) {
+            if (s != null && s.length() >= 2 && (s.charAt(0) == '"' || s.charAt(0) == '\'') && s.charAt(s.length() - 1) == s.charAt(0)) {
+                return s.substring(1, s.length() - 1);
+            }
+            return s;
         }
     }
 

@@ -24,6 +24,18 @@ actions draganddrop id@'source' id@'target'
 ?? id@x enabled =false
 ?? id@x selected ='true'
 ?? id@x width ='10'
+var n 'abc'
+?? id@x text %'$v{n} tail'
+?? id@x text '$v{n} tail'%
+?? id@x text %'$v{n} tail'%
+?? id@x text ='$v{n} tail'
+?? id@x text !='$v{n} tail'
+?? id@x text <'$v{n} tail'
+?? id@x text >'$v{n} tail'
+?? id@x text <='$v{n} tail'
+?? id@x text >='$v{n} tail'
+?? id@x text =['$v{n} a', 'b']
+?? title %'$v{n} tail'
 wait for id@x
 wait till visible id@y
 scroll pagedown

@@ -20,7 +20,9 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.LinkOption;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -102,14 +104,16 @@ final class ExportCli {
             File o = resolve(cwd, outArg);
             target = o.isDirectory() || outArg.endsWith("/") || outArg.endsWith(File.separator) ? new File(o, r.fileName) : o;
         }
-        write(target, r.content, force);
+        target = real(target, true);
+        write(target, r.content, force, target.getParentFile());
         out.println("Exported " + src.getName() + " → " + target.getPath());
         out.print(r.report());
         return 0;
     }
 
     private static int directory(Exporter exporter, File dir, String outArg, File cwd, boolean force, ExportOptions options, PrintStream out, PrintStream err) throws IOException {
-        File outDir = resolve(cwd, outArg != null ? outArg : "export-" + exporter.id());
+        File outDir = real(resolve(cwd, outArg != null ? outArg : "export-" + exporter.id()), false);
+        if (Files.isSymbolicLink(outDir.toPath())) throw new IllegalArgumentException("refusing to write into the symbolic link " + outDir.getPath());
         List<Path> sels;
         try (Stream<Path> w = Files.walk(dir.toPath())) {
             sels = w.filter(p -> p.toString().endsWith(".sel") && Files.isRegularFile(p)).sorted().collect(Collectors.toList());
@@ -149,16 +153,21 @@ final class ExportCli {
             File target = new File(outDir, (slash >= 0 ? outRel.substring(0, slash + 1) : "") + r.fileName);
             results.put(target, r);
         }
-        for (File t : results.keySet()) {
-            if (t.exists() && !force) throw new IllegalArgumentException(t.getPath() + " exists (use --force to overwrite)");
+        File reportFile = new File(outDir, "export-report.txt");
+        boolean writeReport = !results.isEmpty() || !skipped.isEmpty();
+        List<File> targets = new ArrayList<File>(results.keySet());
+        if (writeReport) targets.add(reportFile);
+        for (File t : targets) {   // every check before the first write: nothing is half-exported
+            checkTarget(t, outDir);
+            if (Files.exists(t.toPath(), LinkOption.NOFOLLOW_LINKS) && !force) throw new IllegalArgumentException(t.getPath() + " exists (use --force to overwrite)");
         }
         StringBuilder report = new StringBuilder();
         for (Map.Entry<File, ExportResult> e : results.entrySet()) {
-            write(e.getKey(), e.getValue().content, true);
+            write(e.getKey(), e.getValue().content, true, outDir);
             report.append(e.getValue().report());
         }
         for (String s : skipped) report.append("skipped ").append(s).append(": no 'open' statement (a library of subtests / funcs)\n");
-        if (!results.isEmpty() || !skipped.isEmpty()) write(new File(outDir, "export-report.txt"), report.toString(), true);
+        if (writeReport) write(reportFile, report.toString(), true, outDir);
         out.println("Exported " + results.size() + " script(s) → " + outDir.getPath() + (skipped.isEmpty() ? "" : ", skipped " + skipped.size())
                 + (failed == 0 ? "" : ", " + failed + " failed"));
         out.print(report);
@@ -178,10 +187,48 @@ final class ExportCli {
         return new String(Files.readAllBytes(f.toPath()), StandardCharsets.UTF_8);
     }
 
-    private static void write(File target, String content, boolean force) throws IOException {
-        if (target.exists() && !force) throw new IllegalArgumentException(target.getPath() + " exists (use --force to overwrite)");
-        if (target.getAbsoluteFile().getParentFile() != null) target.getAbsoluteFile().getParentFile().mkdirs();
-        Files.write(target.toPath(), content.getBytes(StandardCharsets.UTF_8));
+    /**
+     * Writes one output file. Refuses a target that is a symbolic link (dangling or not) or that would land outside
+     * {@code root} through a symlinked directory, and opens it with NOFOLLOW_LINKS.
+     */
+    private static void write(File target, String content, boolean force, File root) throws IOException {
+        checkTarget(target, root);
+        if (Files.exists(target.toPath(), LinkOption.NOFOLLOW_LINKS) && !force) throw new IllegalArgumentException(target.getPath() + " exists (use --force to overwrite)");
+        File parent = target.getAbsoluteFile().getParentFile();
+        if (parent != null) Files.createDirectories(parent.toPath());
+        checkTarget(target, root);   // again, now that the directories exist
+        try (java.io.OutputStream os = Files.newOutputStream(target.toPath(), LinkOption.NOFOLLOW_LINKS, StandardOpenOption.CREATE,
+                StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE)) {
+            os.write(content.getBytes(StandardCharsets.UTF_8));
+        }
+    }
+
+    /** A target must not be a symlink, and its nearest existing directory must resolve inside {@code root}. */
+    private static void checkTarget(File target, File root) throws IOException {
+        Path t = target.getAbsoluteFile().toPath();
+        if (Files.isSymbolicLink(t)) throw new IllegalArgumentException("refusing to write through the symbolic link " + target.getPath());
+        if (root == null) return;
+        Path dir = t.getParent();
+        while (dir != null && !Files.exists(dir)) dir = dir.getParent();
+        Path rootReal = real(root, false).toPath();
+        // the nearest existing directory is inside root, or an ancestor of root (then everything below it is new)
+        if (dir != null && !dir.toRealPath().startsWith(rootReal) && !rootReal.startsWith(dir.toRealPath())) {
+            throw new IllegalArgumentException("refusing to write " + target.getPath() + ": it resolves outside " + rootReal);
+        }
+    }
+
+    /**
+     * The path with its existing part resolved to the real location (symlinks followed), the rest appended. With
+     * {@code keepFinalLink} a final symbolic link is kept as a link (so a file target that is a link is refused).
+     */
+    static File real(File f, boolean keepFinalLink) throws IOException {
+        Path p = f.getAbsoluteFile().toPath().normalize();
+        Path existing = p;
+        while (existing != null && !Files.exists(existing)) existing = existing.getParent();
+        if (existing == null) return p.toFile();
+        Path rest = existing.relativize(p);
+        if (keepFinalLink && Files.isSymbolicLink(p)) return p.getParent().toRealPath().resolve(p.getFileName()).toFile();
+        return existing.toRealPath().resolve(rest).toFile();
     }
 
     private static File resolve(File cwd, String p) {

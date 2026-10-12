@@ -552,6 +552,14 @@ public final class PlaywrightExporter implements Exporter {
             return String.join(" + ", parts);
         }
 
+        /**
+         * An expression ready for a member access: a composed value ({@code vars['n'] + ' x'}) is parenthesised, because
+         * {@code a + 'b'.startsWith(c)} would call startsWith on 'b' alone and concatenate a boolean.
+         */
+        private static String member(String expr) {
+            return expr.contains(" + ") ? "(" + expr + ")" : expr;
+        }
+
         private boolean isLiteral(String raw) {
             return Template.parse(raw == null ? "" : raw).isLiteral();
         }
@@ -943,9 +951,9 @@ public final class PlaywrightExporter implements Exporter {
                     case "=": cmp = e + " === actual"; break;
                     case "!=": cmp = e + " !== actual"; break;
                     case "<": case ">": case "<=": case ">=": cmp = e + " " + a.op + " actual"; break;
-                    case "contains": cmp = e + ".includes(actual)"; break;
-                    case "startsWith": cmp = e + ".startsWith(actual)"; break;
-                    case "endsWith": cmp = e + ".endsWith(actual)"; break;
+                    case "contains": cmp = member(e) + ".includes(actual)"; break;
+                    case "startsWith": cmp = member(e) + ".startsWith(actual)"; break;
+                    case "endsWith": cmp = member(e) + ".endsWith(actual)"; break;
                     default: throw new Unmappable("assertion operator " + a.op);
                 }
                 if (!"=".equals(a.op) && !"!=".equals(a.op)) {

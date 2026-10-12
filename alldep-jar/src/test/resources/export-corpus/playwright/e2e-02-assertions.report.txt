@@ -1,10 +1,12 @@
-e2e-02-assertions → e2e-02-assertions.spec.ts  {statements=16, exported=16, todo=0, notes=6}
+e2e-02-assertions → e2e-02-assertions.spec.ts  {statements=19, exported=19, todo=0, notes=8}
   environment (names only):
     ${baseUrl} → GATF_BASEURL
-  6 note(s) on behaviour that differs:
+  8 note(s) on behaviour that differs:
    ~ #2 open chrome — the browser is chosen by the Playwright project, not the script
    ~ #4 ?? css@'h1' text ='Welcome' — Playwright assertions always retry until the expect timeout; seleasy retries only with webFirstAssertions
    ~ #8 ?? id@email attr@placeholder ='you@example.com' — attr@x reads the HTML attribute (toHaveAttribute); Selenium getAttribute prefers the live DOM property (attr@value maps to toHaveValue)
    ~ #14 ?? id@banner text %'Banner shown later' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
-   ~ #15 ?? id@count text <='3' — seleasy compares expected.<=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
-   ~ #16 ??- id@banner — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible
+   ~ #16 ?? id@banner text %'$v{n} shown later' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #17 ?? id@banner text '$v{n} shown'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #18 ?? id@count text <='3' — seleasy compares expected.<=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #19 ??- id@banner — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found: that is what the transpiler generates (handleWaitFuncWL), although REFERENCE.md describes ??+ as visible and ??- as not visible

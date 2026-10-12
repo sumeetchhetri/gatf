@@ -123,6 +123,16 @@ class PlaywrightExporterTest {
     }
 
     @Test
+    void composedExpectedValuesAreParenthesised() {   // Δ160a: a + 'b'.startsWith(x) would concatenate a boolean
+        // %$v{n} x% is two tokens: the parser joins them without the space, as FindCommand does
+        String c = export("var n 'Banner'\n?? id@b text %'$v{n} shown later'\n?? id@b text '$v{n} x'%\n?? id@b text %$v{n} x%\n?? id@b text %'plain'\n").content;
+        assertTrue(c.contains("return (vars['n'] + ' shown later').startsWith(actual);"), c);
+        assertTrue(c.contains("return (vars['n'] + ' x').endsWith(actual);"), c);
+        assertTrue(c.contains("return (vars['n'] + 'x').includes(actual);"), c);
+        assertTrue(c.contains("return 'plain'.startsWith(actual);"), c);
+    }
+
+    @Test
     void ifChainsAndSubtests() {
         String c = export("subtest \"s\"\n{\n? id@a\n{\nclick id@b\n}\n:\n{\nfail 'no'\n}\n}\n@call \"S\"\n").content;
         assertTrue(c.contains("const st_s = async (): Promise<void> => {"));

@@ -11,6 +11,7 @@ click name@'n\\a'
 click xpath@"//a[text()='it''s']"
 ?? label@'/a\/b[/]c/i'
 ?? role@button[name=*star]
-?? text@'/*x/'
+?? id@x text ="x\y z"
+type "C:\temp dir\a b" id@x
 // comment with a line separator   inside
 fail 'emoji 😀 and tab	end'

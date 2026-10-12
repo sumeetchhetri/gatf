@@ -1,5 +1,5 @@
 // Exported from e2e-02-assertions.sel by GATF (gatf export playwright). Review every TODO(gatf-export) line.
-// 16 of 16 statement(s) exported, 0 TODO, 6 note(s): see the export report.
+// 19 of 19 statement(s) exported, 0 TODO, 8 note(s): see the export report.
 // Environment variables (names only): ${baseUrl} -> GATF_BASEURL
 import { test, expect } from '@playwright/test';
 
@@ -10,6 +10,7 @@ function env(name: string): string {
 }
 
 test('e2e-02-assertions', async ({ page }) => {
+  const vars: Record<string, string> = {};
   // Δ160 export e2e: assertions, soft assertions, waits and select against the fixture page.
   // gatf-export: 'open chrome' - the browser comes from the Playwright project (playwright.config)
   await page.goto(env('GATF_BASEURL') + '/index.html');
@@ -26,6 +27,15 @@ test('e2e-02-assertions', async ({ page }) => {
   await expect.poll(async () => {
     const actual = await page.locator('#banner').first().innerText();
     return 'Banner shown later'.startsWith(actual);
+  }).toBe(true);
+  vars['n'] = 'Banner';
+  await expect.poll(async () => {
+    const actual = await page.locator('#banner').first().innerText();
+    return (vars['n'] + ' shown later').startsWith(actual);
+  }).toBe(true);
+  await expect.poll(async () => {
+    const actual = await page.locator('#banner').first().innerText();
+    return (vars['n'] + ' shown').endsWith(actual);
   }).toBe(true);
   await expect.poll(async () => {
     const actual = await page.locator('#count').first().innerText();

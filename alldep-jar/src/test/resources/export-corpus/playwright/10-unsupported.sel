@@ -46,3 +46,4 @@ click relative tag@input rightof label@Email
 open firefox
 @call "nowhere"
 a11y check
+?? text@'/*x/'

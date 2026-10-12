@@ -93,6 +93,44 @@ class ExportCliTest {
     }
 
     @Test
+    void reportIsNotOverwrittenWithoutForce(@TempDir Path dir) throws Exception {   // Δ160a
+        write(dir.resolve("t/a.sel"), "open chrome\nclick id@x\n");
+        write(dir.resolve("pw/export-report.txt"), "mine");
+        assertEquals(1, run(dir, "playwright", "t", "-o", "pw"));
+        assertTrue(err.toString("UTF-8").contains("export-report.txt exists"), err.toString("UTF-8"));
+        assertEquals("mine", read(dir.resolve("pw/export-report.txt")));
+        assertFalse(Files.exists(dir.resolve("pw/a.spec.ts")), "nothing written when a check fails");
+        assertEquals(0, run(dir, "playwright", "t", "-o", "pw", "--force"));
+        assertTrue(read(dir.resolve("pw/export-report.txt")).contains("a.spec.ts"));
+    }
+
+    @Test
+    void symlinkedTargetsAreRefused(@TempDir Path dir) throws Exception {   // Δ160a
+        write(dir.resolve("t/a.sel"), "open chrome\nclick id@x\n");
+        Path outside = Files.createDirectories(dir.resolve("outside"));
+        Files.createDirectories(dir.resolve("pw"));
+        Files.createSymbolicLink(dir.resolve("pw/a.spec.ts"), outside.resolve("evil.ts"));   // dangling
+        assertEquals(1, run(dir, "playwright", "t", "-o", "pw", "--force"));
+        assertTrue(err.toString("UTF-8").contains("symbolic link"), err.toString("UTF-8"));
+        assertFalse(Files.exists(outside.resolve("evil.ts")));
+
+        write(dir.resolve("t2/sub/b.sel"), "open chrome\nclick id@x\n");
+        Files.createDirectories(dir.resolve("pw2"));
+        Files.createSymbolicLink(dir.resolve("pw2/sub"), outside);                            // a directory pointing out
+        assertEquals(1, run(dir, "playwright", "t2", "-o", "pw2", "--force"));
+        assertTrue(err.toString("UTF-8").contains("resolves outside"), err.toString("UTF-8"));
+        assertFalse(Files.exists(outside.resolve("b.spec.ts")));
+
+        Files.createSymbolicLink(dir.resolve("single.spec.ts"), outside.resolve("single.ts"));
+        assertEquals(1, run(dir, "playwright", "t/a.sel", "-o", "single.spec.ts", "--force"));
+        assertFalse(Files.exists(outside.resolve("single.ts")));
+
+        Files.createSymbolicLink(dir.resolve("linked-out"), outside);                         // -o itself a link: resolved, allowed
+        assertEquals(0, run(dir, "playwright", "t", "-o", "linked-out"));
+        assertTrue(Files.exists(outside.resolve("a.spec.ts")));
+    }
+
+    @Test
     void usageErrors(@TempDir Path dir) throws Exception {
         assertEquals(1, run(dir, "cypress", "x.sel"));
         assertTrue(err.toString("UTF-8").contains("unknown export target"));
