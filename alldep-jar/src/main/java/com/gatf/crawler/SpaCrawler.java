@@ -411,8 +411,9 @@ public class SpaCrawler {
 
     // ------------------------------------------------------------------ helpers
 
-    /** Normalize for de-dup: drop plain #anchors (keep #/ and #!/ hash routes), trailing slash. */
-    static String norm(String url) {
+    /** Normalize for de-dup: drop plain #anchors (keep #/ and #!/ hash routes), trailing slash. Public for H6 (Δ155):
+     *  {@code CoverageUrls.route} keys routes through this same function. */
+    public static String norm(String url) {
         if (url == null) return null;
         try {
             String u = url.trim();

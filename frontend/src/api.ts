@@ -1059,4 +1059,7 @@ export const api = {
   recordPick: (sessionId: string, on: boolean) =>
     recordPost<{ armed?: boolean; error?: string }>('/record?action=pick&sessionId=' + encodeURIComponent(sessionId) + '&on=' + on),
   recordPicked: (sessionId: string) => getJson<RecordPicked>('/record?action=picked&sessionId=' + encodeURIComponent(sessionId)),
+  // ---- H6 coverage index (Δ155): the payload is checked by report/coverageIndex.asCoverageIndex ----
+  coverageIndex: (report: string, crawl?: string) =>
+    getJson<unknown>('/api/coverage?report=' + encodeURIComponent(report) + (crawl ? '&crawl=' + encodeURIComponent(crawl) : '')),
 };

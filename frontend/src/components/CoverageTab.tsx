@@ -18,7 +18,7 @@ import type { Trace } from '../trace/types';
 import { summarizeCoverage, type CovRow } from '../trace/coverage';
 import { fmtBytes } from '../util';
 
-function Bar({ pct }: { pct: number }) {
+export function Bar({ pct }: { pct: number }) {
   const p = Math.max(0, Math.min(100, pct));
   return (
     <div className="cov-bar">

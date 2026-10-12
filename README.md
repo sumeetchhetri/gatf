@@ -141,6 +141,8 @@ With `traceDomSnapshots=full`, the viewer's **DOM** view is a styled time-travel
 
 **⌖ Pick locator** (DOM view): hover the snapshot to get the element's strict locator, ranked as the recorder ranks it (`testid@` → `role@` → `label@` → id/name/css), and offered only when it matches exactly one element in that snapshot; click to keep it, then **Send to editor**. In the seleasy editor, **Insert below cursor** pastes it as a `click …` step, and **⌖ Pick in live browser** picks one element in the window of an active recording session (Esc cancels; the picker leaves nothing on the page). Ranking runs on the GATF server; without it the viewer lists the candidates with their match counts and paste is disabled.
 
+**Untested routes and scripts:** in Reports, a run's **Coverage** button merges the JS coverage and visited pages of that run's traces (`traceCoverage` on, Chromium) with the newest saved crawl map (`<name>-coverage.json` in the test dir) and lists the crawled routes no test visited and the scripts none of whose functions ran. `GET /api/coverage?report=<run>` returns the same per-test coverage index (`gatf-coverage-index` v1: URLs without query strings, and offset ranges only); `coverage-index.json` in the run folder is its cache. CSS is one unattributed total for now.
+
 `traceMode` decides when a trace is captured and kept (it overrides the older `enableTrace` flag):
 
 | `traceMode` | Captures | Keeps |

@@ -19,6 +19,7 @@ import type { ReportsIndex, ReportArtifact } from '../api';
 import type { RunResults } from '../report/results';
 import type { HistoryRun } from '../report/history';
 import RunTrends from '../components/RunTrends';
+import CoverageReportView from './CoverageReportView';
 import { fmtBytes } from '../util';
 
 function fmtDate(ms: number): string {
@@ -103,6 +104,10 @@ export default function ReportsView({
       .then(() => setDocsMsg(null))
       .catch((e) => setDocsMsg('Test cases: ' + e.message));
   };
+
+  // H6 (Δ155): a run's untested routes/scripts, shown in place of the list
+  const [coverageOf, setCoverageOf] = useState<ReportArtifact | null>(null);
+  if (coverageOf) return <CoverageReportView report={coverageOf} onBack={() => setCoverageOf(null)} />;
 
   return (
     <div className="view">
@@ -225,6 +230,15 @@ export default function ReportsView({
                             {'\u25EB'} Trace{traces.length > 1 ? ' ' + (i + 1) : ''}
                           </button>
                         ))}
+                        {traces.length > 0 && (
+                          <button
+                            className="btn ghost small"
+                            onClick={() => setCoverageOf(r)}
+                            title="Untested routes and scripts for this run (traces with coverage + a saved crawl)"
+                          >
+                            Coverage
+                          </button>
+                        )}
                       </td>
                     </tr>
                   );

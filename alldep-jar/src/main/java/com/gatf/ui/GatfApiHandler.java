@@ -49,6 +49,8 @@ import com.gatf.executor.core.WorkflowContextHandler;
  *   GET /api/config                     -> { testDir, outDir, config:{...effective GatfExecutorConfig} }
  *   GET /api/testfiles                  -> { dir, files:[{name,path,size,modified,kind}] }
  *   GET /api/testfile?path=<relative>   -> { path, kind, size, truncated, content }
+ *   GET /api/coverage?report=<reports row name>[&crawl=<name>-coverage.json][&full=1]
+ *                                       -> the run folder's coverage index (H6, Δ155) + { crawls:[names] }
  */
 public class GatfApiHandler extends HttpHandler {
 
@@ -97,6 +99,8 @@ public class GatfApiHandler extends HttpHandler {
                 testfiles(request, response);
             } else if (sub.equals("testfile")) {
                 testfile(request, response);
+            } else if (sub.equals("coverage")) {
+                coverage(request, response);
             } else {
                 writeJson(response, HttpStatus.NOT_FOUND_404, err("unknown resource: " + sub));
             }
@@ -316,6 +320,46 @@ public class GatfApiHandler extends HttpHandler {
         out.put("size", size);
         out.put("truncated", truncated);
         out.put("content", content);
+        writeJson(response, HttpStatus.OK_200, out);
+    }
+
+    // H6 (Δ155): GET /api/coverage?report=<a /api/reports row name> — the coverage index of that row's run folder (its
+    // trace zips) merged with a crawl map from the test dir (?crawl=, else the newest *-coverage.json). Summary unless
+    // full=1. The optional cache (coverage-index.json in the run folder) is the only write; reading never fails on bad data.
+    private void coverage(Request request, Response response) throws Exception {
+        GatfExecutorConfig cfg = cfgFor(request);
+        String base = cfg.getOutFilesBasePath() == null ? mojo.getRootDir() : cfg.getOutFilesBasePath();
+        File outDir = new File(cfg.getOutFilesDir() != null ? base + File.separator + cfg.getOutFilesDir() : base).getCanonicalFile();
+        String report = request.getParameter("report");
+        if (report == null || report.trim().isEmpty()) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("report is required"));
+            return;
+        }
+        File target = new File(outDir, report.trim()).getCanonicalFile();
+        if (!target.toPath().startsWith(outDir.toPath()) || !target.exists()) {
+            writeJson(response, HttpStatus.BAD_REQUEST_400, err("report must name a file or folder under the reports dir"));
+            return;
+        }
+        File runDir = target.isDirectory() ? target : target.getParentFile();
+
+        String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
+        File testDir = new File(cfg.getTestCaseDir() != null ? tbase + File.separator + cfg.getTestCaseDir() : tbase);
+        List<java.nio.file.Path> maps = com.gatf.coverage.CoverageIndex.crawlMaps(testDir.toPath());
+        List<String> crawls = new ArrayList<>();
+        for (java.nio.file.Path p : maps) crawls.add(p.getFileName().toString());
+        String want = request.getParameter("crawl");
+        java.nio.file.Path crawl = maps.isEmpty() ? null : maps.get(0);
+        if (want != null && !want.trim().isEmpty()) {
+            int i = crawls.indexOf(want.trim());
+            if (i < 0) {
+                writeJson(response, HttpStatus.BAD_REQUEST_400, err("unknown crawl map: " + want));
+                return;
+            }
+            crawl = maps.get(i);
+        }
+        Map<String, Object> idx = com.gatf.coverage.CoverageIndex.buildCached(runDir.toPath(), crawl, new com.gatf.coverage.CoverageMerge.Limits());
+        Map<String, Object> out = new LinkedHashMap<>("1".equals(request.getParameter("full")) ? idx : com.gatf.coverage.CoverageMerge.summary(idx));
+        out.put("crawls", crawls);
         writeJson(response, HttpStatus.OK_200, out);
     }
 
