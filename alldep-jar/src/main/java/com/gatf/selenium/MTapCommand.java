@@ -64,11 +64,15 @@ import com.gatf.selenium.Command.FindCommandImpl;   // nested supertype: resolve
 /** G8 — promoted verbatim from the nested Command.MTapCommand (inherits the same members/nested types). */
 @SuppressWarnings("unused")
 public class MTapCommand extends FindCommandImpl {
-        int x = Integer.MAX_VALUE , y = Integer.MAX_VALUE, d = 500;
+        int x = Integer.MAX_VALUE , y = Integer.MAX_VALUE, d = -1;   // Δ158: d -1 = no duration given (100 ms hold at run time; was 500)
         String toCmd() {
             return "";
         }
         String javacode() {
+            if(cond!=null) {   // Δ158: tap {find-expr} [x y] [d] taps the element (its centre, or x y from its top-left); was ignored
+                String pt = x==Integer.MAX_VALUE || y==Integer.MAX_VALUE ? "null" : "new org.openqa.selenium.Point("+x+", "+y+")";
+                return cond.javacodeonly() + "\ndoTap(___cw___, ___ce___.get(0), "+pt+", "+d+");";
+            }
             return "\ndoTap(___cw___, null, new org.openqa.selenium.Point("+x+", "+y+"), "+d+");";
         }
         String selcode(String varnm) {

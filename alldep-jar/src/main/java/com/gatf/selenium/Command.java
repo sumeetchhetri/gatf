@@ -5013,7 +5013,7 @@ public class Command {
             if(varnm==null) {
                 varnm = state.currvarname();
             }
-            return "\nmzoompinch(___cw___, ___ce___.get(0), -1, -1, true);";
+            return "\nmzoompinch(___cw___, ___ce___.get(0), -1, -1, false);";   // Δ158: pinch, not zoom
         }
         public MPinchCommand(String info, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -5100,12 +5100,7 @@ public class Command {
             return "";
         }
         String javacode() {
-            StringBuilder b = new StringBuilder();
-            String vn = state.varname();
-            b.append("org.openqa.selenium.ScreenOrientation "+vn+" = ((io.appium.java_client.remote.SupportsRotation)___cw___).getOrientation();\n");
-            b.append("if("+vn+".value().equals(org.openqa.selenium.ScreenOrientation.LANDSCAPE.value())){((io.appium.java_client.remote.SupportsRotation)___cw___).rotate(org.openqa.selenium.ScreenOrientation.PORTRAIT);}");
-            b.append("else{((io.appium.java_client.remote.SupportsRotation)___cw___).rotate(org.openqa.selenium.ScreenOrientation.LANDSCAPE);}");
-            return b.toString();
+            return "mobileRotate(___cw___);";   // Δ158: portrait <-> landscape; a step error off Appium
         }
         public MRotateCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -5124,7 +5119,7 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            b.append("try{Thread.sleep(200);if(___cw___ instanceof io.appium.java_client.HidesKeyboard) ((io.appium.java_client.HidesKeyboard) ___cw___).hideKeyboard();}catch(Exception e){}");
+            b.append("mobileHideKeypad(___cw___);");   // Δ158: mobile: hideKeyboard; was a silent no-op on failure
             return b.toString();
         }
         public MHideKeyPadCommand(Object[] cmdDetails, CommandState state) {
@@ -5144,7 +5139,7 @@ public class Command {
         }
         String javacode() {
             StringBuilder b = new StringBuilder();
-            b.append("if(___cw___ instanceof io.appium.java_client.ios.IOSDriver){((io.appium.java_client.ios.IOSDriver) ___cw___).shake();}");
+            b.append("mobileShake(___cw___);");   // Δ158: mobile: shake (iOS); a step error elsewhere, was a silent no-op
             return b.toString();
         }
         public MShakeCommand(Object[] cmdDetails, CommandState state) {

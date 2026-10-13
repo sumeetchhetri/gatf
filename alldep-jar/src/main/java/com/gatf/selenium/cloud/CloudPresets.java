@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import com.gatf.selenium.emulation.Devices;
+import com.gatf.selenium.mobile.MobilePlatform;
 
 /**
  * H5 (Δ157): device-cloud capability presets for BrowserStack, Sauce Labs and LambdaTest. Pure: no Selenium types.
@@ -105,10 +106,18 @@ public final class CloudPresets {
         /** chromedriver {@code mobileEmulation} for GATF_CLOUD_DEVICE (Chrome/Edge), or null. */
         public final Map<String, Object> mobileEmulation;
         public final String platform, browserVersion, device;
+        /** Δ158: an Appium session on a real device ({@link #buildAppium}); browser is then the platform label. */
+        public final boolean realDevice;
         private final String user, key;
 
         Preset(Provider p, String url, String browser, Map<String, Object> caps, Map<String, Object> mobile,
                String platform, String version, String device, String user, String key) {
+            this(p, url, browser, caps, mobile, platform, version, device, user, key, false);
+        }
+
+        Preset(Provider p, String url, String browser, Map<String, Object> caps, Map<String, Object> mobile,
+               String platform, String version, String device, String user, String key, boolean realDevice) {
+            this.realDevice = realDevice;
             this.provider = p;
             this.remoteUrl = url;
             this.browser = browser;
@@ -130,6 +139,10 @@ public final class CloudPresets {
 
         /** One log line: provider, browser, version, platform, device and hub, with no credentials. */
         public String describe() {
+            if (realDevice) {
+                return provider.id + ": " + browser + (browserVersion != null ? " " + browserVersion : "") + " on " + device
+                        + " (real device) via " + remoteUrl;
+            }
             return provider.id + ": " + browser + " " + browserVersion + " on " + platform
                     + (device != null ? " (device emulation: " + device + ")" : "") + " via " + remoteUrl;
         }
@@ -339,6 +352,166 @@ public final class CloudPresets {
 
     private static void safe(String v, String what) {
         if (!SAFE_TOKEN.matcher(v).matches()) throw new CloudError(what + " has unsupported characters (letters, digits, space, . _ - only)");
+    }
+
+    // ---- Δ158: Appium 2 on real devices ------------------------------------------------------------------------------
+
+    public static final String ENV_APP = "GATF_CLOUD_APP", PROP_APP = "gatf.cloud.app";
+    public static final String ENV_OS_VERSION = "GATF_CLOUD_OS_VERSION", PROP_OS_VERSION = "gatf.cloud.osVersion";
+    /** Sauce allows a device-name regex ("Google Pixel.*"). */
+    private static final Pattern DEVICE_TOKEN = Pattern.compile("[A-Za-z0-9._ ()\\[\\]*+^$|-]{1,80}");
+    /** Capabilities of a local Appium session that name local things (an apk path, a udid, ports): never sent to a cloud. */
+    static final List<String> LOCAL_ONLY = Arrays.asList("appium:app", "appium:udid", "appium:avd", "appium:deviceName",
+            "appium:platformVersion", "appium:chromedriverExecutable", "appium:chromedriverExecutableDir", "appium:xcodeOrgId",
+            "appium:xcodeSigningId", "appium:wdaLocalPort", "appium:systemPort", "appium:mjpegServerPort",
+            "appium:chromedriverPort", "appium:derivedDataPath", "appium:keystorePath", "appium:keystorePassword",
+            "appium:keyPassword");
+
+    /**
+     * The real-device preset for {@code open appium-android|appium-ios} with GATF_CLOUD set: BrowserStack App Automate,
+     * Sauce Labs Real Devices or LambdaTest Real Devices, on the provider's documented W3C/Appium 2 capabilities.
+     * <ul>
+     * <li>{@code GATF_CLOUD_DEVICE}: the device name as the provider spells it (required);</li>
+     * <li>{@code GATF_CLOUD_OS_VERSION}: the OS version (optional);</li>
+     * <li>{@code GATF_CLOUD_APP}: the uploaded app's id or URL ({@code bs://…}, {@code storage:filename=…},
+     *     {@code lt://…}); required unless the session is mobile web ({@code browserName} in the driver config);</li>
+     * <li>{@code GATF_CLOUD_BUILD} and {@code GATF_CLOUD_OPTIONS} as for browsers.</li>
+     * </ul>
+     * The credentials are the same environment variables as for browsers. The driver config's capabilities are kept
+     * except the local-only ones ({@link #LOCAL_ONLY}), and none of them, nor the app value, may carry a credential.
+     */
+    public static Preset buildAppium(MobilePlatform mp, Map<String, String> env, Map<String, String> props,
+                                     Map<String, Object> localCaps, Map<String, Object> extraOptions) {
+        try {
+            return buildAppium0(mp, env, props, localCaps, extraOptions);
+        } catch (CloudError e) {
+            String m = redact(e.getMessage(), allSecrets(env));
+            if (m.equals(e.getMessage())) throw e;
+            throw new CloudError(m);
+        }
+    }
+
+    private static Preset buildAppium0(MobilePlatform mp, Map<String, String> env, Map<String, String> props,
+                                       Map<String, Object> localCaps, Map<String, Object> extraOptions) {
+        String sel = selected(env, props);
+        if (sel == null) throw new CloudError("GATF_CLOUD is not set");
+        Provider p = Provider.parse(sel);
+        String user = env == null ? null : env.get(p.userEnv), key = env == null ? null : env.get(p.keyEnv);
+        List<String> missing = new ArrayList<String>();
+        if (user == null || user.trim().isEmpty()) missing.add(p.userEnv);
+        if (key == null || key.trim().isEmpty()) missing.add(p.keyEnv);
+        if (!missing.isEmpty()) {
+            throw new CloudError("GATF_CLOUD=" + p.id + " needs " + p.userEnv + " and " + p.keyEnv
+                    + " in the environment (missing: " + String.join(", ", missing) + "). Credentials are read from the environment only.");
+        }
+        user = user.trim();
+        key = key.trim();
+        List<String> creds = Arrays.asList(key, user);
+
+        String device = val(env, "GATF_CLOUD_DEVICE", props, "gatf.cloud.device");
+        if (device == null) {
+            throw new CloudError("GATF_CLOUD=" + p.id + ": open appium-" + mp.name().toLowerCase(Locale.ROOT)
+                    + " needs GATF_CLOUD_DEVICE, a real-device name as " + p.id + " spells it");
+        }
+        if (!DEVICE_TOKEN.matcher(device).matches()) {
+            throw new CloudError("GATF_CLOUD_DEVICE has unsupported characters (letters, digits, space, . _ - ( ) [ ] * + ^ $ | only)");
+        }
+        String osVersion = val(env, ENV_OS_VERSION, props, PROP_OS_VERSION);
+        if (osVersion != null) safe(osVersion, ENV_OS_VERSION);
+        String build = val(env, "GATF_CLOUD_BUILD", props, "gatf.cloud.build");
+        if (build != null) build = clip(build.replaceAll("\\p{Cntrl}", " "), 255);
+        String app = val(env, ENV_APP, props, PROP_APP);
+
+        Map<String, Object> kept = new LinkedHashMap<String, Object>();
+        if (localCaps != null) {
+            for (Map.Entry<String, Object> e : localCaps.entrySet()) {
+                if (!LOCAL_ONLY.contains(e.getKey())) kept.put(e.getKey(), e.getValue());
+            }
+        }
+        Object browserName = kept.get("browserName");
+        boolean web = browserName != null && !String.valueOf(browserName).trim().isEmpty();
+        if (app == null && !web) {
+            throw new CloudError("GATF_CLOUD=" + p.id + ": a native app session needs GATF_CLOUD_APP, the app id or URL from your "
+                    + p.id + " upload (" + appHint(p) + "); for mobile web set browserName in the appium driver config");
+        }
+        if (app != null) {
+            if (app.length() > 512 || app.matches(".*\\s.*")) throw new CloudError(ENV_APP + " is not an app id or URL");
+            if (URL_USERINFO.matcher(app).find()) {
+                throw new CloudError(ENV_APP + " must not carry credentials in the URL; credentials are read from the environment only");
+            }
+        }
+        for (String[] v : new String[][] {{osVersion, ENV_OS_VERSION}, {build, "GATF_CLOUD_BUILD"}, {device, "GATF_CLOUD_DEVICE"}, {app, ENV_APP}}) {
+            if (v[0] != null && containsSecret(v[0], creds)) {
+                throw new CloudError(v[1] + " contains a " + p.id + " credential; credentials are read from the environment only");
+            }
+        }
+        for (Map.Entry<String, Object> e : kept.entrySet()) {
+            String k = e.getKey().contains(":") ? e.getKey().substring(e.getKey().indexOf(':') + 1) : e.getKey();
+            if (isCredentialKey(k)) {
+                throw new CloudError("the appium driver config must not carry credentials (capability '" + clip(e.getKey(), 60) + "'); set "
+                        + p.userEnv + " and " + p.keyEnv + " in the environment instead");
+            }
+            if (e.getValue() != null && containsSecret(String.valueOf(e.getValue()), creds)) {
+                throw new CloudError("the appium driver config capability '" + clip(e.getKey(), 60) + "' contains a " + p.id
+                        + " credential; credentials are read from the environment only");
+            }
+        }
+
+        Map<String, Object> caps = new LinkedHashMap<String, Object>(kept);
+        caps.put("platformName", mp.platformName);
+        Map<String, Object> vendor = new LinkedHashMap<String, Object>();
+        String url, optionsKey;
+        switch (p) {
+            case BROWSERSTACK:
+                url = "https://hub-cloud.browserstack.com/wd/hub";
+                optionsKey = p.optionsKey;
+                if (app != null) caps.put("appium:app", app);
+                vendor.put("deviceName", device);
+                if (osVersion != null) vendor.put("osVersion", osVersion);
+                if (build != null) vendor.put("buildName", build);
+                break;
+            case SAUCE: {
+                String region = val(env, "SAUCE_REGION", props, "gatf.cloud.sauceRegion");
+                if (region == null) region = "us-west-1";
+                if (!SAUCE_REGION.matcher(region).matches()) {
+                    throw new CloudError("SAUCE_REGION '" + clip(region, 30) + "' is not a region name like us-west-1 or eu-central-1");
+                }
+                url = "https://ondemand." + region + ".saucelabs.com/wd/hub";
+                optionsKey = p.optionsKey;
+                if (app != null) caps.put("appium:app", app);
+                caps.put("appium:deviceName", device);
+                if (osVersion != null) caps.put("appium:platformVersion", osVersion);
+                vendor.put("appiumVersion", "latest");
+                if (build != null) vendor.put("build", build);
+                break;
+            }
+            default:
+                url = "https://mobile-hub.lambdatest.com/wd/hub";
+                optionsKey = "lt:options";   // LambdaTest's app-automation options key (LT:Options is its browser key)
+                vendor.put("platformName", mp.platformName);
+                vendor.put("deviceName", device);
+                if (osVersion != null) vendor.put("platformVersion", osVersion);
+                vendor.put("isRealMobile", Boolean.TRUE);
+                if (app != null) vendor.put("app", app);
+                vendor.put("w3c", Boolean.TRUE);
+                if (build != null) vendor.put("build", build);
+                break;
+        }
+        if (extraOptions != null) {
+            checkNoCredentials(extraOptions, "", creds, p);
+            vendor.putAll(extraOptions);
+        }
+        caps.put(optionsKey, vendor);
+        String label = mp.platformName + (web ? " " + String.valueOf(browserName).trim().toLowerCase(Locale.ROOT) : "");
+        return new Preset(p, url, label, caps, null, mp.platformName, osVersion, device, user, key, true);
+    }
+
+    private static String appHint(Provider p) {
+        switch (p) {
+            case BROWSERSTACK: return "bs://…";
+            case SAUCE: return "storage:filename=… or storage:<id>";
+            default: return "lt://…";
+        }
     }
 
     // ---- status callback ---------------------------------------------------------------------------------------------

@@ -1226,6 +1226,8 @@ Examples :-
 
 ## Mobile (Appium)
 
+Appium 2: `open appium-android|appium-ios` starts a UiAutomator2 / XCUITest session on a local Appium server (`GATF_APPIUM_URL`, the driver config's `url`, or `http://127.0.0.1:4723`; config capabilities get the `appium:` prefix) or, with `GATF_CLOUD` set, on a real cloud device (see the README's device clouds). `tap`, `swipe`, `zoom`, `pinch` and `touch` are sent as W3C touch actions; `tap` without a duration holds 100 ms, and `tap {find-expr} x y` is x y from the element's top-left. `hidekeypad` is `mobile: hideKeyboard`, `shake` is `mobile: shake` (iOS only), `rotate` toggles portrait/landscape. On a desktop browser session, or when the device refuses, each is a step error naming the command and its line.
+
 ### Mobile shake
 
 ```

@@ -228,82 +228,32 @@ public class MTouchActionCommand extends Command {
         String toCmd() {
             return "touch ";
         }
+        // Δ158 (H5): the chain is collected at run time and sent as one W3C touch source (SeleniumTest.doTouchChain →
+        // TouchGestures.chain). The removed java-client TouchAction is no longer emitted; wait steps are no longer dropped.
         String _javacode(String acnm) {
             StringBuilder b = new StringBuilder();
-            if(action.toLowerCase().matches("press|tap|moveto")) {
-                if(expr!=null) {
-                    FindCommand cond = new FindCommand(expr, fileLineDetails, state);
-                    b.append("\n"+cond.javacodeonly());
-                    if(x==null) {
-                        b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
-                    } else {
-                        b.append("\n"+acnm+"."+action+"(___ce___.get(0), "+x+", "+y+");");
-                    }
-                } else {
-                    b.append("\n"+acnm+"."+action+"("+x+", "+y+");");
-                }
-            } else if(action.toLowerCase().matches("longpress")) {
-                if(expr!=null) {
-                    FindCommand cond = new FindCommand(expr, fileLineDetails, state);
-                    b.append("\n"+cond.javacodeonly());
-                    if(d==null) {
-                        if(x==null) {
-                            b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
-                        } else {
-                            b.append("\n"+acnm+"."+action+"(___ce___.get(0), "+x+", "+y+");");
-                        }
-                    } else {
-                        if(x==null) {
-                            b.append("\n"+acnm+"."+action+"(___ce___.get(0), java.time.Duration.ofMillis("+d+"));");
-                        } else {
-                            b.append("\n"+acnm+"."+action+"(___ce___.get(0), "+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
-                        }
-                    }
-                } else {
-                	if(x!=null && y!=null) {
-	                    if(d==null) {
-	                        b.append("\n"+acnm+"."+action+"("+x+", "+y+");");
-	                    } else {
-	                        b.append("\n"+acnm+"."+action+"("+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
-	                    }
-                	} else {
-                		String cvarnm = state.currvarname();
-                		if(d==null) {
-                            if(x==null) {
-                                b.append("\n"+acnm+"."+action+"(___ce___.get(0));");
-                            } else {
-                                b.append("\n"+acnm+"."+action+"("+cvarnm+".get(0), "+x+", "+y+");");
-                            }
-                        } else {
-                            if(x==null) {
-                                b.append("\n"+acnm+"."+action+"(___ce___.get(0), java.time.Duration.ofMillis("+d+"));");
-                            } else {
-                                b.append("\n"+acnm+"."+action+"(___ce___.get(0), "+x+", "+y+", java.time.Duration.ofMillis("+d+"));");
-                            }
-                        }
-                	}
-                }
-            } else if(action.toLowerCase().matches("wait")) {
-                if(d!=null) {
-                    b.append("\n"+acnm+"."+action+"(java.time.Duration.ofMillis("+d+"));");
-                } else {
-                    b.append("\n"+acnm+"."+action+"();");
-                }
-            } else if(action.toLowerCase().matches("release")) {
-                b.append("\n"+acnm+"."+action+"();");
+            String el = "null";
+            if(expr!=null) {
+                FindCommand cond = new FindCommand(expr, fileLineDetails, state);
+                b.append("\n"+cond.javacodeonly());
+                el = "___ce___.get(0)";
             }
+            b.append("\n"+acnm+".add(new Object[] {\""+action+"\", "+el+", "+ival(x)+", "+ival(y)+", "+ival(d)+"});");
             if(!children.isEmpty()) {
                 MTouchActionCommand tcmd = (MTouchActionCommand)children.get(0);
                 b.append(tcmd._javacode(acnm));
             }
             return b.toString();
         }
+        private static String ival(Integer v) {
+            return v==null ? "null" : "Integer.valueOf("+v+")";
+        }
         String javacode() {
             StringBuilder b = new StringBuilder();
             String acnm = state.varname();
-            b.append("\nio.appium.java_client.TouchAction "+acnm+" = new io.appium.java_client.TouchAction((io.appium.java_client.PerformsTouchActions)___cw___);");
+            b.append("\njava.util.List<Object[]> "+acnm+" = new java.util.ArrayList<Object[]>();");
             b.append(_javacode(acnm));
-            b.append("\n"+acnm+".perform();");
+            b.append("\ndoTouchChain(___cw___, "+acnm+");");
             return b.toString();
         }
     }

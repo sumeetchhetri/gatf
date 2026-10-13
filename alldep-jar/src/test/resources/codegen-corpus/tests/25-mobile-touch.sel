@@ -1,0 +1,17 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Delta 158 mobile touch on Appium 2: tap with and without a duration, swipe, zoom/pinch, a touch chain, platform gestures.
+open appium-android
+tap 123 234
+tap 123 234 2000
+tap id@'login'
+tap id@'login' 2000
+tap id@'login' 10 5
+swipe 500 1600 500 400
+swipe 500 1600 500 400 300
+zoom 540 1200
+pinch id@'map'
+touch press 10 20 moveto 30 40 wait 250 release
+touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
+hidekeypad
+rotate
+shake

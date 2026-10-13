@@ -770,7 +770,11 @@ public abstract class SeleniumTest {
 			} catch(Exception e) {
 			}
 		}
-		___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
+		try {
+			___d___.manage().timeouts().pageLoadTimeout(Duration.ofSeconds(100));
+		} catch (org.openqa.selenium.WebDriverException e) {
+			if (AppiumTouch.platform(___d___) == null) throw e;   // Δ158: Appium native contexts have no pageLoad timeout
+		}
 		getSession().___d___.add(___d___);
 		getSession().___dqs___.add(false);
 	}
@@ -1687,108 +1691,47 @@ public abstract class SeleniumTest {
 	//END ZOOM IN/OUT Code
 
 	protected void mzoompinch(WebDriver driver, Object ele, int x, int y, boolean isZoom) {
-		try
-		{
-			if(ele==null) {
-				/*int leftX = x;
-				int rightX = get___d___().manage().window().getSize().getWidth() + leftX;
-				int midX = (leftX + rightX) / 2;
-
-				int upperY = y;
-				int lowerY = get___d___().manage().window().getSize().getHeight() + upperY;
-				int midY = (upperY + lowerY) / 2;
-
-				int aX = (int) (midX * 0.3);
-				int aY = (int) (midY * 1.7);
-				int bX = (int) (midX * 0.8);
-				int bY = (int) (midY * 1.2);
-
-				int cX = (int) (midX * 1.7);
-				int cY = (int) (midY * 0.3);
-				int dX = (int) (midX * 1.2);
-				int dY = (int) (midY * 0.8);
-
-				TouchAction action0 = new TouchAction((MobileDriver)get___d___());
-				TouchAction action1 = new TouchAction((MobileDriver)get___d___());*/
-
-				if(isZoom) {
-			        ((AppiumDriver)driver).perform(zoomIn(new Point(x, y), 450));
-					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
-					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
-				} else {
-					((AppiumDriver)driver).perform(zoomOut(new Point(x, y), 450));
-					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
-					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
-				}
-
-				//MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
-				//mAction.add(action0).add(action1).perform();
-			} else if(ele instanceof WebElement) {
-				/*int leftX = ((WebElement)ele).getLocation().getX();
-				int rightX = ((WebElement)ele).getSize().getWidth() + leftX;
-				int midX = (leftX + rightX) / 2;
-
-				int upperY = ((WebElement)ele).getLocation().getY();
-				int lowerY = ((WebElement)ele).getSize().getHeight() + upperY;
-				int midY = (upperY + lowerY) / 2;
-
-				int aX = (int) (midX * 0.3);
-				int aY = (int) (midY * 1.7);
-				int bX = (int) (midX * 0.8);
-				int bY = (int) (midY * 1.2);
-
-				int cX = (int) (midX * 1.7);
-				int cY = (int) (midY * 0.3);
-				int dX = (int) (midX * 1.2);
-				int dY = (int) (midY * 0.8);
-
-				TouchAction action0 = new TouchAction((MobileDriver)get___d___());
-				TouchAction action1 = new TouchAction((MobileDriver)get___d___());*/
-				
-				Rectangle rect = ((WebElement)ele).getRect();
-				Point from = new Point(rect.x + rect.getWidth() / 2, rect.y + rect.getHeight() / 2);
-
-				if(isZoom) {
-					((AppiumDriver)driver).perform(zoomIn(from, 450));
-					//action0.press(bX, bY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(aX, aY).release();
-					//action1.press(dX, dY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(cX, cY).release();
-				} else {
-					((AppiumDriver)driver).perform(zoomOut(from, 450));
-					//action0.press(aX, aY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(bX, bY).release();
-					//action1.press(cX, cY).waitAction(java.time.Duration.ofMillis(1000)).moveTo(dX, dY).release();
-				}
-
-				//MultiTouchAction mAction = new MultiTouchAction((MobileDriver)get___d___());
-				//mAction.add(action0).add(action1).perform();
-			}
-		}
-		catch (Exception e)
-		{
-		}
+		AppiumTouch.zoom(driver, ele instanceof WebElement ? (WebElement) ele : null, x, y, isZoom, __mwhere__());   // Δ158: W3C touch, errors are step errors
 	}
 	
 	protected void doSwipe(WebDriver driver, Point start, Point end, int duration) {
-		PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "fingerA");
-        Sequence swipe = new Sequence(finger, 1)
-                .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), start.getX(), start.getY()))
-                .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
-                .addAction(finger.createPointerMove(Duration.ofMillis(duration), PointerInput.Origin.viewport(), end.getX(), end.getY()))
-                .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        ((AppiumDriver)driver).perform(Arrays.asList(swipe));
-    }
+		AppiumTouch.swipe(driver, start, end, duration, __mwhere__());   // Δ158
+	}
 
+	/** Δ158: duration &lt; 0 = none given (100 ms hold); e + point = point offset from e's top-left. */
 	protected void doTap(WebDriver driver, WebElement e, Point point, int duration) {
-		if(e!=null) {
-			point = getCenter(e);
-		}
-		PointerInput finger = new PointerInput(PointerInput.Kind.TOUCH, "fingerA");
-        Sequence tap = new Sequence(finger, 1)
-                .addAction(finger.createPointerMove(Duration.ZERO, PointerInput.Origin.viewport(), point.getX(), point.getY()))
-                .addAction(finger.createPointerDown(PointerInput.MouseButton.LEFT.asArg()))
-                .addAction(new Pause(finger, Duration.ofMillis(duration)))
-                .addAction(finger.createPointerUp(PointerInput.MouseButton.LEFT.asArg()));
-        ((AppiumDriver)driver).perform(Arrays.asList(tap));
-    }
+		AppiumTouch.tap(driver, e, point, duration, __mwhere__());
+	}
+
+	/** Δ158 (H5): {@code touch …} as one W3C touch source; entries are {action, element, x, y, durationMs}. */
+	protected void doTouchChain(WebDriver driver, List<Object[]> steps) {
+		AppiumTouch.chain(driver, steps, __mwhere__());
+	}
+
+	protected void mobileRotate(WebDriver driver) {
+		AppiumTouch.rotate(driver, __mwhere__());
+	}
+
+	protected void mobileHideKeypad(WebDriver driver) {
+		AppiumTouch.hideKeypad(driver, __mwhere__());
+	}
+
+	protected void mobileShake(WebDriver driver) {
+		AppiumTouch.shake(driver, __mwhere__());
+	}
+
+	/** Δ158 (H5): {@code open appium-android | appium-ios}: local Appium 2, or a real device when GATF_CLOUD is set. */
+	protected WebDriver getAppiumDriver(String key, String configUrl, Map<String, String> caps, String version) {
+		return AppiumDrivers.create(key, configUrl, caps, version, ___cxt___);
+	}
+
+	/** The current statement as file:line (relative to the project), for step errors. */
+	protected String __mwhere__() {
+		if(state == null || state.cfileName == null) return "";
+		String where = state.cfileName.replace(state.basePath == null ? "" : state.basePath, "");
+		if(where.startsWith(File.separator) || where.startsWith("/")) where = where.substring(1);
+		return where + ":" + state.line;
+	}
 
 	protected static void randomizeSelect(WebElement le) {
 		RandomValues.randomizeSelect(le);   // G8: moved to RandomValues

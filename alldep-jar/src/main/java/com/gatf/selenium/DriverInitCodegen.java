@@ -296,28 +296,20 @@ final class DriverInitCodegen {
                     }
                 }
                 b.append("set___d___(new RemoteWebDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
-            } else if(config.getName().equalsIgnoreCase("appium-android")) {
-                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(org.openqa.selenium.remote.BrowserType.ANDROID, \""+config.getVersion()+"\", org.openqa.selenium.Platform.ANDROID);\n");
-                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
+            } else if(config.getName().equalsIgnoreCase("appium-android") || config.getName().equalsIgnoreCase("appium-ios")) {
+                // Δ158 (H5): Appium 2 (UiAutomator2 / XCUITest) via SeleniumTest.getAppiumDriver: local server or, with
+                // GATF_CLOUD, a real-device cloud. The old branches emitted removed Selenium 3 / Appium 1 APIs.
+                b.append("Map<String, String> ___ac___ = new java.util.LinkedHashMap<String, String>();\n");
                 if(config.getCapabilities()!=null)
                 {
                     for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
                     {
-                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
+                        b.append("___ac___.put(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("set___d___(new io.appium.java_client.android.AndroidDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
-            } else if(config.getName().equalsIgnoreCase("appium-ios")) {
-                b.append("DesiredCapabilities ___dc___ = new DesiredCapabilities(\"ios\", \""+config.getVersion()+"\", org.openqa.selenium.Platform.MAC);\n");
-                //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
-                if(config.getCapabilities()!=null)
-                {
-                    for (Map.Entry<String, String> e : config.getCapabilities().entrySet())
-                    {
-                        b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
-                    }
-                }
-                b.append("set___d___(new io.appium.java_client.ios.IOSDriver(new java.net.URL(\""+rUrl+"\"), ___dc___));\n");
+                String __au = StringUtils.isBlank(config.getUrl()) ? "null" : "\""+esc(config.getUrl().trim())+"\"";
+                String __av = StringUtils.isBlank(config.getVersion()) ? "null" : "\""+esc(config.getVersion().trim())+"\"";
+                b.append("set___d___(getAppiumDriver(\""+config.getName().toLowerCase().trim()+"\", "+__au+", ___ac___, "+__av+"));\n");
             } /*else if(config.getName().equalsIgnoreCase("selendroid")) {
                 b.append("SelendroidCapabilities  ___dc___ = new SelendroidCapabilities(\"\");\n");
                 b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
