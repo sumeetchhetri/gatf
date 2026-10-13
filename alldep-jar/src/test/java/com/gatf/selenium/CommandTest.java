@@ -324,4 +324,159 @@ class CommandTest {
         assertThat(parseLine("else ifnot id@x", st).toCmd()).startsWith(":?!");
         assertThat(parseLine(":? id@x", st).toCmd()).startsWith(":?").doesNotStartWith(":?!");
     }
+
+    /** One FindCommand as Command.parse builds it (the text is masked by sanitize() first). */
+    private static FindCommand find(String text, Command.CommandState st) {
+        return new FindCommand(st.sanitize(text), new Object[]{text, 1, new java.io.File("t.sel"), "", st, ""}, st);
+    }
+
+    @Test
+    void findKeepsTheTimeoutCountsWhereItIsWritten() {
+        // Δ145d: javacodeonly / javacodeifonly / the transient provider read state.timeoutNum / ifTimeoutNum at codegen,
+        // so a later `timeout` line changed the retry count of every find written before it
+        Command.CommandState st = new Command.CommandState();
+        FindCommand f = find("id@x", st);
+        assertThat(f.javacodeonly()).contains("___ce___, 60, \"\"");
+        parseLine("timeout 30 5", st);
+        assertThat(f.javacodeonly()).contains("___ce___, 60, \"\"").doesNotContain("___ce___, 30, \"\"");
+        assertThat(f.javacodeifonly(new java.util.ArrayList<Command>(), "__v")).contains("___ce___, 1, \"\"").doesNotContain("___ce___, 5, \"\"");
+        assertThat(f.javacodetrprovonly("__p")).contains("___ce___, 60, \"\"");
+        FindCommand g = find("id@y", st);   // written after the timeout line: the new counts
+        assertThat(g.javacodeonly()).contains("___ce___, 30, \"\"");
+        assertThat(g.javacodeifonly(new java.util.ArrayList<Command>(), "__v")).contains("___ce___, 5, \"\"");
+        assertThat(g.javacodetrprovonly("__p")).contains("___ce___, 30, \"\"");
+    }
+
+    @Test
+    void frameTabAndScreenshotMasksKeepTheTimeoutCountsWhereTheyAreWritten() {
+        // Δ145d: the retry count of frame / tab blocks and the if-timeout of screenshot-compare masks, as the find above
+        Command.CommandState st = new Command.CommandState();
+        Command.FrameCommand f = (Command.FrameCommand) parseLine("frame \"f\"", st);
+        f.children.add(parseLine("click id@x", st));
+        TabCommand t = (TabCommand) parseLine("tab 1", st);
+        TabCommand tn = (TabCommand) parseLine("tab \"named\"", st);
+        tn.children.add(parseLine("click id@x", st));
+        Command sc = parseLine("screenshot compare \"home\" mask id@m", st);
+        parseLine("timeout 30 5", st);
+        assertThat(st.timeoutNum).isEqualTo(30);
+        for (Command c : new Command[] { f, t, tn }) {
+            assertThat(c.javacode()).contains("++==60)throw").doesNotContain("++==30)throw");
+        }
+        assertThat(sc.javacode()).contains("___ce___, 1, \"\"").doesNotContain("___ce___, 5, \"\"");
+        assertThat(parseLine("frame \"g\"", st).javacode()).isEqualTo("switchToFrame(___ocw___, \"g\");\n");
+        Command.FrameCommand g = (Command.FrameCommand) parseLine("frame \"g\"", st);
+        g.children.add(parseLine("click id@x", st));
+        assertThat(g.javacode()).contains("++==30)throw");
+    }
+
+    @Test
+    void findToCmdRoundTrips() {
+        // Δ145d: toCmd() wrote `@'value` with no closing quote (and Java-escaped the value), so the text did not parse back
+        Command.CommandState st = new Command.CommandState();
+        String[] lines = { "id@x", "css@'div > a.b'", "xpath@\"//a[@title='x y']\"", "xpath@'//a[@x=\"1\"]'", "id@x title",
+                "role@button[name=Save]", "text@'=Order placed'", "relative tag@div above id@x", "title",
+                "eval 1 == 1", "browser-scope chrome", "session-scope 's 1'", "label@'C:\\dir\\x'" };
+        for (String line : lines) {
+            FindCommand a = find(line, st);
+            String text = a.toCmd();
+            assertThat(text).as(line).startsWith(" ");
+            FindCommand b = find(text.trim(), st);
+            assertThat(b.by).as(text).isEqualTo(a.by);
+            assertThat(b.classifier).as(text).isEqualTo(a.classifier);
+            assertThat(b.subselector).as(text).isEqualTo(a.subselector);
+            assertThat(b.relative).as(text).isEqualTo(a.relative);
+            assertThat(b.by1).as(text).isEqualTo(a.by1);
+            assertThat(b.classifier1).as(text).isEqualTo(a.classifier1);
+            assertThat(st.unsanitize(String.valueOf(b.eval))).as(text).isEqualTo(st.unsanitize(String.valueOf(a.eval)));
+            assertThat(st.unsanitize(b.browserScope)).as(text).isEqualTo(st.unsanitize(a.browserScope));
+            assertThat(st.unsanitize(b.sessionScope)).as(text).isEqualTo(st.unsanitize(a.sessionScope));
+        }
+        assertThat(find("css@'div > a'", st).toCmd()).isEqualTo(" css@'div > a'");
+        assertThat(find("xpath@\"//a[@t='q']\"", st).toCmd()).isEqualTo(" xpath@\"//a[@t='q']\"");
+        // and through a statement that embeds it
+        Command c = parseLine("hover css@'div > a'", st);
+        assertThat(c.toCmd()).endsWith("css@'div > a'");
+    }
+
+    /** Δ145d: the `open <key>` driver block, compiled inside a SeleniumTest subclass against the real Selenium API. */
+    private static String driverBlock(String key) {
+        SeleniumDriverConfig cfg = new SeleniumDriverConfig();
+        cfg.setName(key);
+        cfg.setCapabilities(new java.util.LinkedHashMap<String, String>());
+        StringBuilder b = new StringBuilder();
+        DriverInitCodegen.append(b, cfg, "http://127.0.0.1:4723/wd/hub", new Object[]{"open " + key, 1, new java.io.File("t.sel"), "", null, ""});
+        return b.toString();
+    }
+
+    private static java.util.List<String> compileDriverBlock(String key, String code) throws Exception {
+        String cls = "Gen145d" + key.replaceAll("[^A-Za-z]", "");
+        String src = "package com.gatf.selenium;\nimport java.util.Map;\nimport org.openqa.selenium.WebDriver;\n"
+                + "import org.openqa.selenium.remote.CapabilityType;\nimport org.openqa.selenium.logging.LoggingPreferences;\n"
+                + "abstract class " + cls + " extends SeleniumTest {\n" + cls + "() { super(null, null, 0); }\n"
+                + "void init(LoggingPreferences ___lp___) throws Exception {\n" + code + "}\n}\n";
+        javax.tools.JavaCompiler jc = javax.tools.ToolProvider.getSystemJavaCompiler();
+        java.nio.file.Path dir = java.nio.file.Files.createTempDirectory("gen145d");
+        java.nio.file.Path f = dir.resolve(cls + ".java");
+        java.nio.file.Files.write(f, src.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        javax.tools.DiagnosticCollector<javax.tools.JavaFileObject> dc = new javax.tools.DiagnosticCollector<>();
+        try (javax.tools.StandardJavaFileManager fm = jc.getStandardFileManager(dc, null, null)) {
+            jc.getTask(null, fm, dc, java.util.Arrays.asList("-proc:none", "-d", dir.toString(), "-cp", testClasspath()),
+                    null, fm.getJavaFileObjects(f.toFile())).call();
+        }
+        java.util.List<String> errors = new java.util.ArrayList<>();
+        for (javax.tools.Diagnostic<?> d : dc.getDiagnostics()) {
+            if (d.getKind() == javax.tools.Diagnostic.Kind.ERROR) errors.add(d.getLineNumber() + ": " + d.getMessage(null));
+        }
+        return errors;
+    }
+
+    /** The test classpath (surefire's own property first; its manifest-only booter jar expanded, as ExportSeleniumCompileTest). */
+    private static String testClasspath() throws Exception {
+        String cp = System.getProperty("surefire.test.class.path");
+        if (cp == null || cp.trim().isEmpty()) cp = System.getProperty("java.class.path");
+        java.util.Set<String> out = new java.util.LinkedHashSet<String>();
+        for (String e : cp.split(java.io.File.pathSeparator)) {
+            if (e.isEmpty()) continue;
+            out.add(e);
+            java.io.File f = new java.io.File(e);
+            if (!f.isFile() || !e.endsWith(".jar")) continue;
+            try (java.util.jar.JarFile jar = new java.util.jar.JarFile(f)) {
+                java.util.jar.Manifest m = jar.getManifest();
+                String more = m == null ? null : m.getMainAttributes().getValue("Class-Path");
+                if (more == null) continue;
+                for (String u : more.trim().split("\\s+")) {
+                    if (u.isEmpty()) continue;
+                    java.net.URI uri = f.getParentFile().toURI().resolve(u);
+                    out.add("file".equals(uri.getScheme()) ? new java.io.File(uri).getPath() : u);
+                }
+            }
+        }
+        return String.join(java.io.File.pathSeparator, out);
+    }
+
+    @Test
+    void openEdgeAndEdgeDkrGenerateCompilingCode() throws Exception {
+        // Δ145d: plain edge emitted addWdm("edge") (no such overload) and declared __bkey__ twice; edge-dkr had no branch
+        String edge = driverBlock("edge"), dkr = driverBlock("edge-dkr");
+        for (String code : new String[] { edge, dkr }) {
+            assertThat(code.split("String __bkey__ =", -1)).hasSize(2);
+            assertThat(code).contains("__workerDriver__(__bkey__)").contains("__workerAdopt__(__bkey__, ");   // Δ154 pool hooks kept
+        }
+        assertThat(edge).contains("addWdm(\"edge\", ___dc___)").contains("new org.openqa.selenium.edge.EdgeDriver(___dc___)");
+        assertThat(dkr).contains("addWdm(\"edge-dkr\", ___dc___)").contains("getDockerDriver(__bkey__)").doesNotContain("new org.openqa.selenium.edge.EdgeDriver");
+        assertThat(compileDriverBlock("edge", edge)).isEmpty();
+        assertThat(compileDriverBlock("edge-dkr", dkr)).isEmpty();
+        assertThat(compileDriverBlock("chrome", driverBlock("chrome"))).isEmpty();   // the harness itself compiles a known-good block
+    }
+
+    @Test
+    void openSafariGoesThroughGetDockerDriverWithoutInsecureCerts() throws Exception {
+        // Δ145d (from Δ159): safaridriver refuses acceptInsecureCerts=true; a direct SafariDriver skipped the Grid and the
+        // tracing webSocketUrl that BrowserDrivers.create adds
+        String safari = driverBlock("safari");
+        assertThat(safari).doesNotContain("ACCEPT_INSECURE_CERTS").doesNotContain("new org.openqa.selenium.safari.SafariDriver")
+                .contains("addWdm(\"safari\", ___dc___)").contains("getDockerDriver(__bkey__)").contains("__workerDriver__(__bkey__)");
+        assertThat(compileDriverBlock("safari", safari)).isEmpty();
+        assertThat(driverBlock("chrome")).contains("ACCEPT_INSECURE_CERTS");   // others unchanged
+    }
 }

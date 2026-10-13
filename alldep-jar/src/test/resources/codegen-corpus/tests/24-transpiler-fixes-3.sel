@@ -1,0 +1,33 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Delta 145d: frame/tab blocks, finds (wait, if, transient provider) and screenshot-compare masks keep the timeout
+// counts in effect where they are written; the later timeout line changes only the statements after it.
+open chrome
+frame "early-frame"
+{
+    click id@'in-early'
+}
+tab 1
+{
+    click id@'in-tab'
+}
+? id@'early-if'
+{
+    click id@'early-then'
+}
+#tp prov1 var1,var2 id@'early-tp' text,attr@abc
+screenshot compare early mask id@'early-mask'
+timeout 30 5 1000
+frame "late-frame"
+{
+    click id@'in-late'
+}
+tab 2
+{
+    click id@'in-late-tab'
+}
+? id@'late-if'
+{
+    click id@'late-then'
+}
+#tp prov2 var3,var4 id@'late-tp' text,attr@abc
+screenshot compare late mask id@'late-mask'

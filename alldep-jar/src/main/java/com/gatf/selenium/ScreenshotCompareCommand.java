@@ -101,7 +101,7 @@ public class ScreenshotCompareCommand extends Command {
         StringBuilder b = new StringBuilder("{\nList<WebElement> ___vmask___ = new java.util.ArrayList<WebElement>();\n");
         for (FindCommand m : masks) {
             // a mask that is not on the page masks nothing (short if-timeout, no failure)
-            b.append(m.javacodeonlyNoAssert(null, true, state.ifTimeoutNum, false));
+            b.append(m.javacodeonlyNoAssert(null, true, m.ifTimeoutNum, false));   // Δ145d: the mask's own if-timeout (where written)
             b.append("if(___ce___!=null) ___vmask___.addAll(___ce___);\n");
         }
         b.append("__screenshotCompare__(get___d___(), evaluate(\"").append(esc(name)).append("\"), ").append(threshold).append(", ")

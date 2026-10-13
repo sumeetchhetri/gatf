@@ -90,7 +90,7 @@ class Sel12StructureTest {
         fn_fill(args("who", v("who")));
         actionable(semantic("role@button[name=Save]", spec("kind", "role", "role", "button", "mode", "full", "value", "Save")), timeout, "click").click();
         if (!all(semantic("testid@status", spec("kind", "testid", "mode", "exact", "value", "status"))).isEmpty()) {
-            if (true) return; // pass: saved
+            System.out.println("[gatf-export] pass: " + "saved");
         } else if (!all(by("id@error", By.id("error"))).isEmpty()) {
             fail("error shown");
         } else {

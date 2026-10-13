@@ -70,6 +70,7 @@ gatf grid down [browser]
 - **Images:** `chrome` → `selenium/standalone-chrome`, or `selenium/standalone-chromium` on arm64 hosts (there is no Linux arm64 Google Chrome); `firefox` → `selenium/standalone-firefox` (multi-arch); `edge` → `selenium/standalone-edge` (amd64 only).
 - **Knobs:** `-Dgatf.grid.port` (4444), `-Dgatf.grid.tag` (`latest`), `-Dgatf.grid.startTimeoutMs` (180000), `-Dgatf.docker.bin`. Pass them via `GATF_JAVA_OPTS` when using the `gatf` launcher.
 - **Limitation:** one standalone container serves one browser. For mixed-browser suites run a multi-browser Grid (see D-1: `selenium/standalone-docker` dynamic Grid) and set `SELENIUM_REMOTE_URL`.
+- **Safari** (Δ145d): `open safari` follows step 1 (a Grid or remote endpoint that serves Safari) or else the local safaridriver; step 2 never applies (no official Safari image). GATF no longer sends `acceptInsecureCerts` to Safari, which refuses it.
 
 ## Per-test browser contexts (H3)
 

@@ -175,7 +175,17 @@ class SeleniumJavaExporterTest {
         assertEquals("type(actionable(by(\"id@q\", By.id(\"q\")), timeout, \"type\"), Keys.chord(\"a" + bs + "ue007\"), \"\");", line("chord 'a" + bs + "uE007' id@q"));
         assertTrue(export("chord 'a" + bs + "u12' id@q\n").content.contains("// TODO(gatf-export): chord 'a" + bs + bs + "u12' id@q\n"));
         assertEquals("driver.manage().window().maximize();", line("maximize"));
-        assertEquals("if (true) return; // pass: ok", line("pass 'ok'"));
+        assertEquals("System.out.println(\"[gatf-export] pass: \" + \"ok\");", line("pass 'ok'"));
+    }
+
+    @Test
+    void passRecordsAndContinues() {
+        // Δ145d: seleasy's `pass` records the pass and CONTINUES; it exported as `if (true) return;`, skipping the rest
+        String c = export("goto x\npass 'half way'\nclick id@after\npass\n").content;
+        assertFalse(c.contains("return; // pass"), c);
+        assertTrue(c.contains("System.out.println(\"[gatf-export] pass: \" + \"half way\");"), c);
+        assertTrue(c.contains("System.out.println(\"[gatf-export] pass: \" + \"pass\");"), c);
+        assertTrue(c.indexOf("id@after") > c.indexOf("half way"), c);
     }
 
     @Test

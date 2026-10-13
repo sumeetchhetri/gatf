@@ -554,7 +554,8 @@ public final class SeleniumJavaExporter implements Exporter {
                     call(s, b, ind);
                     return;
                 case PASS:
-                    line(b, ind, "if (true) return; // pass" + (s.text == null || s.text.isEmpty() ? "" : ": " + Jv.comment(s.text)));
+                    // Δ145d: seleasy records the pass (with its message) and CONTINUES; this was `if (true) return;`
+                    line(b, ind, "System.out.println(\"[gatf-export] pass: \" + " + tpl(s.text == null || s.text.isEmpty() ? "pass" : s.text, s.line) + ");");
                     return;
                 case FAIL:
                     imports.add("static org.junit.jupiter.api.Assertions.fail");

@@ -69,6 +69,9 @@ public class FindCommand extends Command {
         // the `timeout ... <granularity>` in effect where this find is written: a later `timeout` line must not
         // retroactively change this wait (counter was computed with this value)
         long sleepGranularity = state.timeoutSleepGranularity;
+        // Δ145d: the `timeout` retry counts in effect where this find is written, captured like the granularity: a
+        // later `timeout` line must not change this statement's wait (javacodeonly / javacodeifonly / transient provider)
+        int timeoutNum = state.timeoutNum, ifTimeoutNum = state.ifTimeoutNum;
         String by, classifier, relative = "", by1 = "", classifier1 = "", subselector, condvar = "true", topele, rtl, precond = "", postcond = "", cfiltvar = null, oper = null, operval = null, eval = null, browserScope = "", sessionScope = "";
         boolean suppressErr = false, byselsame = false, classifierPinvXp = false, classifier1PinvXp = false;
         String[] classifierPinvXps = null, classifier1PinvXps = null;
@@ -290,8 +293,24 @@ public class FindCommand extends Command {
         	return by != null && classifier != null && SemanticLocators.isSemantic(by, classifier);
         }
         String toCmd() {
-        	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier)):"");
-            return " " + logbc + (StringUtils.isEmpty(subselector)?"":" \"" + subselector + "\"");
+        	// Δ145d: was `@'value` with no closing quote and a Java-string-escaped value (esc), so the text did not
+        	// parse back. The selector text is written raw (parse never unescapes), quoted with ' or, when the value
+        	// holds a ' and no ", with "; the subselector token is written as parsed (it keeps its own quotes, if any).
+        	// Not round-tripped (as before): a trailing comparison (=x, %x%, …) is not written.
+        	if(StringUtils.isNotBlank(eval)) return " eval " + state.unsanitize(eval);   // these three keep the masked text
+        	if(StringUtils.isNotBlank(browserScope)) return " browser-scope " + state.unsanitize(browserScope);
+        	if(StringUtils.isNotBlank(sessionScope)) return " session-scope " + state.unsanitize(sessionScope);
+        	if(StringUtils.isNotBlank(relative)) {
+        		return " relative " + selCmd(by1, classifier1) + " " + relative + " " + selCmd(by, classifier);
+        	}
+        	if(byselsame) return " " + by;
+            return " " + selCmd(by, classifier) + (StringUtils.isEmpty(subselector)?"":" " + subselector);
+        }
+        /** Δ145d: {@code by@'value'} as seleasy text (see toCmd). */
+        static String selCmd(String by, String value) {
+        	if(value==null) return by;
+        	char q = value.indexOf('\'')>=0 && value.indexOf('"')<0 ? '"' : '\'';
+        	return by + "@" + q + value + q;
         }
         String getErr() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
@@ -358,7 +377,7 @@ public class FindCommand extends Command {
             if(classifier1PinvXp) {
             	this.state.invXpathErrs += "addPossInvXpath(\""+(esc(classifier1))+"\", \""+esc(classifierPinvXps[0])+"\", \""+classifier1PinvXps[1]+"\", \""+esc(classifierPinvXps[2])+"\");";
             }
-            return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+state.timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
+            return varname + " = transientProviderDataWL(___cw___, "+sc+", "+wel+", "+timeoutNum+", \""+relative+"\", "+sclassifier+", new String[]{\""+esc(by)+"\", \""+esc(by1)+"\"}, "
                     + ssubselector + ", "+byselsame+", "+value+", "+values+", "
                     + action + ", null, "+tvalue+", \"Element not found by selector " 
                     + logbc + " at line number "+fileLineDetails[1]+" \", false, "+sleepGranularity+", false, "+state.getLayers()+");\n";
@@ -424,7 +443,7 @@ public class FindCommand extends Command {
         }*/
         String javacodeonly() {
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
-            return javacodeonlyNoAssert(null, false, state.timeoutNum, false)
+            return javacodeonlyNoAssert(null, false, timeoutNum, false)
                     + "\nGatfAssert.assertTrue(\"Element not found by selector " + logbc
                     + " at line number "+fileLineDetails[1]+" \", ___ce___!=null && !___ce___.isEmpty());";
         }
@@ -437,7 +456,7 @@ public class FindCommand extends Command {
         		return vrd + " = isSessionName(\""+esc(unSantizedUnQuoted(sessionScope, state))+"\");\nGatfAssert.assertTrue(\"Evaluation condition is invalid at line number "+fileLineDetails[1]+" \", "+vrd+");";
         	}
         	String logbc = esc(by) + (classifier!=null?("@'" + esc(classifier) + "'"):"");
-            return javacodeonlyNoAssert(children, true, state.ifTimeoutNum, false)
+            return javacodeonlyNoAssert(children, true, ifTimeoutNum, false)
                     + vrd + " = ___ce___!=null && !___ce___.isEmpty();\nGatfAssert.assertTrue(\"Element not found by selector " + logbc 
                     + " at line number "+fileLineDetails[1]+" \", "+vrd+");";
         }

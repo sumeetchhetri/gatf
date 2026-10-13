@@ -186,13 +186,11 @@ final class DriverInitCodegen {
                         b.append("___dc___.setCapability(\""+esc(e.getKey())+"\", \""+esc(e.getValue())+"\");\n");
                     }
                 }
-                b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
+                // Δ145d: no acceptInsecureCerts=true for Safari (safaridriver refuses the session with it)
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!plainLocal(config, "safari")) {
-            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
-            	} else {
-            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.safari.SafariDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
-            	}
+                // Δ145d: always through getDockerDriver (BrowserDrivers.create: local SafariDriver, Grid or device cloud), so
+                // tracing and a Grid get webSocketUrl like the -dkr forms; it was a direct SafariDriver that ignored both
+                b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             } else if(config.getName().equalsIgnoreCase("opera")) {
                 b.append("org.openqa.selenium.opera.OperaOptions ___dc___ = new org.openqa.selenium.opera.OperaOptions();\n");
                 //b.append("___dc___.setCapability(CapabilityType.LOGGING_PREFS, ___lp___);\n");
@@ -214,8 +212,8 @@ final class DriverInitCodegen {
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.opera.OperaDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
-            } else if(config.getName().equalsIgnoreCase("edge")) {
-            	b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\");\n");
+            } else if(config.getName().equalsIgnoreCase("edge") || config.getName().equalsIgnoreCase("edge-dkr")) {
+            	// Δ145d: a stray addWdm("edge") (no such overload) also declared __bkey__ twice; edge-dkr had no branch
                 b.append("org.openqa.selenium.edge.EdgeOptions ___dc___ = new org.openqa.selenium.edge.EdgeOptions();\n");
                 b.append("___dc___.setCapability(org.openqa.selenium.edge.EdgeOptions.LOGGING_PREFS, ___lp___);\n");
                 if(config.getCapabilities()!=null)
@@ -227,7 +225,7 @@ final class DriverInitCodegen {
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!config.getName().equals("edge")) {
+            	if(!plainLocal(config, "edge")) {   // Δ145d: as chrome/firefox/ie: a selected device cloud (Δ157) routes plain edge too
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.edge.EdgeDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool

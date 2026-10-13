@@ -76,22 +76,26 @@ def multi_pat(k: str) -> str:
     return re.sub(r"\s+", r"\\s+", esc(k))
 
 
+def longest_first(k: str):
+    # Δ145d: longest first so an alternation never stops at a shorter prefix; equal lengths then sort by the text
+    # itself, so the output no longer depends on set iteration order (str hash randomisation): same input, same file
+    return (-len(k), k)
+
+
 def build_grammar(cmds):
     cm_kw, cm_atom = parse_cm_map()
     kws = [c["keyword"] for c in cmds]
     # command keywords + CM keyword-styled words; atoms come only from the CM map (browser targets,
     # booleans, get/post, …) minus anything already a command keyword.
     all_kw = set(kws) | cm_kw
-    multi = sorted([k for k in all_kw if " " in k and k not in STRUCTURAL], key=len, reverse=True)
+    multi = sorted([k for k in all_kw if " " in k and k not in STRUCTURAL], key=longest_first)
     wordy = sorted(
         [k for k in all_kw if re.match(r"^[A-Za-z0-9_]+$", k) and k not in STRUCTURAL],
-        key=len,
-        reverse=True,
+        key=longest_first,
     )
     atoms = sorted(
         [k for k in (cm_atom - set(kws)) if re.match(r"^[A-Za-z0-9_-]+$", k) and k not in STRUCTURAL],
-        key=len,
-        reverse=True,
+        key=longest_first,
     )
     multi_alt = "|".join(multi_pat(k) for k in multi)
     wordy_alt = "|".join(esc(k) for k in wordy)

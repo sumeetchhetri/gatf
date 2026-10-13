@@ -193,12 +193,8 @@ public class DistributedGatfTester {
 				        	File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
 				        	
 				        	File zipFile = new File(resource, fileName);
-				        	FileOutputStream fos = new FileOutputStream(zipFile);
-							IOUtils.copy(connection.ois, fos);
-							fos.flush();
-							fos.close();
-				        	
-				        	ReportHandler.unzipZipFile(zipFile, resource.getAbsolutePath());
+				        	// Δ145d: size-capped, and only the node's top-level .html/.csv reports are extracted (was zip4j extractAll)
+				        	ResultsZipGuard.receive(connection.ois, zipFile, resource, ResultsZipGuard.apiReports(), connection.node, logger::info);
 							
 							logger.info("Done Receiving GATF tests Result files from node " + connection.node);
 						} catch (Exception e) {
@@ -319,12 +315,8 @@ public class DistributedGatfTester {
 	                            
 	                            try {
 	                            File zipFile = new File(resource, fileName);
-	                            FileOutputStream fos = new FileOutputStream(zipFile);
-	                            IOUtils.copy(connection.ois, fos);
-	                            fos.flush();
-	                            fos.close();
-	                            
-	                            ReportHandler.unzipZipFile(zipFile, resource.getAbsolutePath());
+	                            // Δ145d: size-capped, and only this node's top-level DRun-<index> files are extracted (was zip4j extractAll)
+	                            ResultsZipGuard.receive(connection.ois, zipFile, resource, ResultsZipGuard.seleniumRun(index), traceNode, logger::info);
 	                            } finally {
 	                                if(traces!=null) {
 	                                    DistributedTraces.reverify(resource, traces.entries);

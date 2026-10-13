@@ -481,7 +481,8 @@ public final class PlaywrightExporter implements Exporter {
                     call(s, b, ind);
                     return;
                 case PASS:
-                    line(b, ind, "return; // pass" + (s.text == null || s.text.isEmpty() ? "" : ": " + Ts.comment(s.text)));
+                    // Δ145d: seleasy records the pass (with its message) and CONTINUES; this was `return;`, which skipped the rest
+                    line(b, ind, "test.info().annotations.push({ type: 'pass', description: " + tpl(s.text == null || s.text.isEmpty() ? "pass" : s.text, s.line) + " });");
                     return;
                 case FAIL:
                     line(b, ind, "throw new Error(" + tpl(s.text == null || s.text.isEmpty() ? "fail" : s.text, s.line) + ");");

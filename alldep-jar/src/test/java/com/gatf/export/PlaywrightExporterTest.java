@@ -141,4 +141,14 @@ class PlaywrightExporterTest {
         assertTrue(c.contains("throw new Error('no');"));
         assertTrue(c.contains("await st_s();"));
     }
+
+    @Test
+    void passRecordsAndContinues() {
+        // Δ145d: seleasy's `pass` records the pass and CONTINUES; it exported as `return;`, skipping the rest
+        String c = export("goto x\npass 'half way'\nclick id@after\npass\n").content;
+        assertFalse(c.contains("return; // pass"), c);
+        assertTrue(c.contains("test.info().annotations.push({ type: 'pass', description: 'half way' });"), c);
+        assertTrue(c.contains("test.info().annotations.push({ type: 'pass', description: 'pass' });"), c);
+        assertTrue(c.indexOf("#after") > c.indexOf("half way"), c);
+    }
 }

@@ -3707,6 +3707,8 @@ public class Command {
         // Δ145c: the `timeout ... <granularity>` in effect where this frame is written (as FindCommand): a later
         // `timeout` line must not change this statement's retry sleep
         long sleepGranularity = state.timeoutSleepGranularity;
+        // Δ145d: and the retry count (`timeout` seconds) in effect here, for the same reason
+        int timeoutNum = state.timeoutNum;
         FrameCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = unSantizedUnQuoted(cmd, state);
@@ -3732,7 +3734,7 @@ public class Command {
                 }
         		b.append("\nbreak;\n} catch(Exception e){}\n");
                 b.append("sleep("+sleepGranularity+");\n");
-                b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to frame ("+name+")\");\n");
+                b.append("if("+cntvar+"++=="+timeoutNum+")throw new RuntimeException(\"Unable to move to frame ("+name+")\");\n");
                 b.append("}\n");
         		b.append("switchToFrame(___ocw___, \"\");\n");//Switch to main frame
         		return b.toString();

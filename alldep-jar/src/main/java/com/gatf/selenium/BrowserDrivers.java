@@ -189,7 +189,8 @@ final class BrowserDrivers {
 		WebDriver __cloud = CloudDrivers.createIfSelected(browserName, caps, ___cxt___);
 		if (__cloud != null) return __cloud;
 		// G11: SELENIUM_REMOTE_URL / -Dgatf.selenium.remoteUrl, or an on-demand official Grid (GATF_WITH_GRID)
-		String __gridUrl = SeleniumGrid.remoteUrl(browserName);
+		// Δ145d: `open safari` comes here now; no official Grid image runs Safari, so GATF_WITH_GRID never applies to it
+		String __gridUrl = "safari".equals(browserName) ? SeleniumGrid.explicitRemoteUrl() : SeleniumGrid.remoteUrl(browserName);
 		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {
 			try {
 				return new RemoteWebDriver(new URL(__gridUrl.trim()), caps);

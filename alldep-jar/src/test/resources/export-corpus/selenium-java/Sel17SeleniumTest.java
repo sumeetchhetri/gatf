@@ -93,7 +93,7 @@ class Sel17SeleniumTest {
         js("arguments[0]");
         softFailures.add("no banner");
         if (all(by("id@spinner", By.id("spinner"))).isEmpty()) {
-            if (true) return; // pass
+            System.out.println("[gatf-export] pass: " + "pass");
         }
         // TODO(gatf-export): emulate geolocation 1 2
         st_evil____int_x_____name();

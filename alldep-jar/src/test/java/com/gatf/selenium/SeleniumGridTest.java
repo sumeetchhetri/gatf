@@ -33,6 +33,24 @@ import com.sun.net.httpserver.HttpServer;
 class SeleniumGridTest {
 
     @Test
+    void safariUsesOnlyAnExplicitRemoteUrl() {
+        // Δ145d: `open safari` now goes through BrowserDrivers.create; GATF_WITH_GRID's on-demand Grid has no Safari image
+        assumeTrue(System.getenv("SELENIUM_REMOTE_URL") == null, "SELENIUM_REMOTE_URL is set in this environment");
+        String oldUrl = System.getProperty("gatf.selenium.remoteUrl"), oldGrid = System.getProperty("gatf.withGrid");
+        try {
+            System.clearProperty("gatf.selenium.remoteUrl");
+            System.setProperty("gatf.withGrid", "true");
+            assertThat(SeleniumGrid.explicitRemoteUrl()).isNull();
+            System.setProperty("gatf.selenium.remoteUrl", " http://grid:4444 ");
+            assertThat(SeleniumGrid.explicitRemoteUrl()).isEqualTo("http://grid:4444");
+            assertThat(SeleniumGrid.remoteUrl("safari")).isEqualTo("http://grid:4444");
+        } finally {
+            if (oldUrl == null) System.clearProperty("gatf.selenium.remoteUrl"); else System.setProperty("gatf.selenium.remoteUrl", oldUrl);
+            if (oldGrid == null) System.clearProperty("gatf.withGrid"); else System.setProperty("gatf.withGrid", oldGrid);
+        }
+    }
+
+    @Test
     void imageSelectionIsOfficialAndArchAware() {
         assertThat(SeleniumGrid.image("chrome", "amd64")).isEqualTo("selenium/standalone-chrome:latest");
         assertThat(SeleniumGrid.image("chrome", "aarch64")).isEqualTo("selenium/standalone-chromium:latest");   // no Linux arm64 Chrome

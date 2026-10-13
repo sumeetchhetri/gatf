@@ -86,6 +86,13 @@ public final class SeleniumGrid {
         return v.trim();
     }
 
+    /** Δ145d: only an explicit SELENIUM_REMOTE_URL / -Dgatf.selenium.remoteUrl (never the on-demand Grid); null when unset. */
+    static String explicitRemoteUrl() {
+        String u = System.getenv("SELENIUM_REMOTE_URL");
+        if (u == null || u.trim().isEmpty()) u = System.getProperty("gatf.selenium.remoteUrl");
+        return u == null || u.trim().isEmpty() ? null : u.trim();
+    }
+
     /** The Grid URL a session for {@code browser} should use, or null for a local driver. */
     public static String remoteUrl(String browser) {
         String u = System.getenv("SELENIUM_REMOTE_URL");

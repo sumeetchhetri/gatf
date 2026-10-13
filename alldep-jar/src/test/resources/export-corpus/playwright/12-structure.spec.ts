@@ -31,7 +31,7 @@ test('12-structure', async ({ page }) => {
       await fn_fill({ 'who': vars['who'] });
       await page.getByRole('button', { name: /^Save$/i }).first().click();
       if ((await page.getByTestId('status').filter({ visible: true }).count()) > 0) {
-        return; // pass: saved
+        test.info().annotations.push({ type: 'pass', description: 'saved' });
       } else if ((await page.locator('#error').count()) > 0) {
         throw new Error('error shown');
       } else {
