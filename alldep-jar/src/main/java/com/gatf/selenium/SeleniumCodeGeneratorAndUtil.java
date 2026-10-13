@@ -125,14 +125,30 @@ public class SeleniumCodeGeneratorAndUtil {
 		return sb.toString();
 	}
 
+	/** Generated classes older than this are swept by {@link #clean()}. */
+	static final long CLEAN_AGE_MS = 24L * 60 * 60 * 1000;
+
+	// Δ161c: the shared gatf-code dir is no longer deleted wholesale. Every compile writes a uniquely named
+	// STC_<nanoTime> class, so a full wipe was never needed for correctness. It raced with concurrent runs and debug
+	// sessions in one server: one session deleted the classes another's debuggee JVM was about to load
+	// ("Could not find or load main class com.gatf.selenium.STC_…"). Now only files older than a day are removed.
 	public static void clean() throws Exception {
 	    File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
-        if(gcdir.exists()) {
-            FileUtils.deleteDirectory(gcdir);
-        }
-        
         File dir = new File(FileUtils.getTempDirectory(), "gatf-code/com/gatf/selenium/");
         dir.mkdirs();
+        sweep(gcdir, System.currentTimeMillis() - CLEAN_AGE_MS);
+	}
+
+	static void sweep(File gcdir, long cutoff) {
+        File[] files = gcdir.listFiles();
+        if(files == null) return;
+        for (File f : files) {
+            if(f.isDirectory()) {
+                sweep(f, cutoff);
+            } else if(f.lastModified() < cutoff) {
+                f.delete();
+            }
+        }
 	}
 	
 	@SuppressWarnings("unchecked")
