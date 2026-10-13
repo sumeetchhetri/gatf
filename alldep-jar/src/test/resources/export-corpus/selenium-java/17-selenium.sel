@@ -1,0 +1,45 @@
+// Δ161 export corpus (selenium-java only): what Selenium maps 1:1 that Playwright did not, and Java-specific escaping.
+open chrome-hdl
+goto https://shop.test/
+maximize
+chord 'ab\uE003c\uE007' id@q
+chord 'bad \u12' id@q
+chord "it\'s" id@q
+type "\u0022); System.exit(1); (\u0022" id@q
+// \u000a System.exit(2);
+type 'trailing \' id@q
+dblclick id@row
+hover css@'.menu'
+nowait hoverclick id@menu id@item
+submit id@form
+clear id@q
+upload files/a.txt id@file
+select value@'m' id@size
+select first id@size
+select last id@size
+actions draganddrop1 id@a id@b
+click linktext@'Next page'
+click partiallinktext@Next
+click text@'Order placed'
+click text@'it''s "both"'
+click text@$v{who}
+click active
+scroll top
+scroll bottom
+?? pagesource %'<html'
+?? xpos ='0'
+?? id@x height >'10'
+?? alerttext ='Are you sure?'
+?? id@x attr@data-state ='open'
+execjs 'arguments[0]'
+warn 'no banner'
+?! id@spinner
+{
+    pass
+}
+emulate geolocation 1 2
+subtest "evil */ int x; /* name"
+{
+    click id@e
+}
+@call "evil */ int x; /* name"

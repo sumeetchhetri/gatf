@@ -83,7 +83,8 @@ class ExportGoldenTest {
         assertTrue(compared > 0, "no export goldens compared or written");
     }
 
-    private static int check(Path golden, String actual, List<String> problems) throws Exception {
+    /** Δ161: shared with {@link SeleniumJavaGoldenTest}. */
+    static int check(Path golden, String actual, List<String> problems) throws Exception {
         if (UPDATE || (!CI && !Files.exists(golden))) {
             Files.write(golden, actual.getBytes(StandardCharsets.UTF_8));
             System.out.println("[export-golden] wrote " + golden);
@@ -149,7 +150,7 @@ class ExportGoldenTest {
         if (!problems.isEmpty()) fail(problems.size() + " problem(s):\n" + String.join("\n", problems.subList(0, Math.min(40, problems.size()))));
     }
 
-    private static void collectUnsupported(List<Step> steps, List<Step> out) {
+    static void collectUnsupported(List<Step> steps, List<Step> out) {
         for (Step s : steps) {
             if (s.kind == Kind.UNSUPPORTED) out.add(s);
             else collectUnsupported(s.children, out);

@@ -1,0 +1,28 @@
+// Δ161 export corpus (selenium-java, from Δ160): routes, HAR replay, auth state, emulation, clock and screenshots.
+open chrome
+route '**/api/users' fulfill 200 users.json
+route **/api/raw fulfill 204
+route POST '**/api/orders' fulfill 201 '{"id": 7}' type application/json header 'X-Mock: yes' header 'X-Mock: again'
+route '**/*.{png,jpg}' abort blockedbyclient
+route '**/api/**' continue header 'X-Env: test'
+route from har checkout.har url '**/api/**' notfound abort
+goto https://shop.test/
+unroute '**/api/users'
+unroute all
+state save .auth/admin.json
+state load .auth/admin.json
+emulate viewport 1024 768
+emulate geolocation 51.5072 -0.1276
+emulate permissions geolocation,notifications
+emulate colorscheme dark
+emulate offline
+emulate online
+emulate locale de-DE
+clock install 2026-01-01T09:00:00Z
+clock fastforward 1h30m
+clock set 2026-12-31T23:59:50Z
+clock pause
+clock resume
+screenshot
+ele-screenshot id@'cart' cart.png
+screenshot compare "checkout step 2" 0.1 maxdiff 0.5% mask id@clock mask css@'.ad-banner'

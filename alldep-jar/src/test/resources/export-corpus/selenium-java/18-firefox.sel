@@ -1,0 +1,4 @@
+// Δ161 export corpus (selenium-java only): the first open picks the driver; a session name is not exported.
+open firefox "ff-session"
+goto https://shop.test/
+?? id@x

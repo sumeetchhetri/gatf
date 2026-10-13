@@ -1,0 +1,45 @@
+// Δ161 export corpus (selenium-java, from Δ160): subtests, funcs, hooks, markers, arguments and if/else chains.
+open chrome
+beforeEach
+{
+    goto ${baseUrl}/index.html
+}
+afterEach
+{
+    screenshot each.png
+}
+func "fill" (who)
+{
+    type $v{who} label@'Email address'
+}
+subtest "save [smoke]" (who)
+{
+    @call "fill" (who:$v{who})
+    click role@button[name=Save]
+    ? testid@status
+    {
+        pass "saved"
+    }
+    :? id@error
+    {
+        fail "error shown"
+    }
+    :
+    {
+        warn "nothing happened"
+    }
+}
+only subtest "only one"
+{
+    ?! id@spinner
+    {
+        click id@go
+    }
+}
+skip subtest "later"
+{
+    click id@later
+}
+@call "SAVE" (who:Ada)
+@call "only one"
+@call "later"

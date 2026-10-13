@@ -1,0 +1,28 @@
+10-unsupported → Sel10UnsupportedTest.java  {statements=28, exported=6, todo=22, notes=3}
+  22 unsupported (exported as TODO(gatf-export) comments):
+   ! #4 #j if(1==1) {} else {} — inline Java control statement
+   ! #5 ## class@"row" — element loop (##)
+   ! #7 click xpath@"//a[@index]" — inside the unsupported block at line 5
+   ! #9 #counter 0 5 — data-provider loop (#counter)
+   ! #11 exec @print(@index) — inside the unsupported block at line 9
+   ! #13 <<<(java) var0 — embedded java code is not exported (port it by hand)
+   ! #16 curl post http://abc.com — plugin or unrecognised statement 'curl'
+   ! #23 ? eval "a"=="a" — if/else chain: eval condition (eval / scope / relative)
+   ! #25 click id@a — inside the unsupported block at line 23
+   ! #27 : — part of the unsupported if/else chain at line 23
+   ! #29 click id@b — inside the unsupported block at line 23
+   ! #39 frame "my-frame" — frame switching (driver.switchTo().frame(...) in Selenium; not exported yet)
+   ! #40 include lib/common.sel — inline include of another script
+   ! #41 randomize id@'ele1' alphanumeric 12 — randomize (random test data)
+   ! #42 alert 'Hello' — dialog handling (driver.switchTo().alert() in Selenium; not exported yet)
+   ! #43 ^mobileOnly click id@burger — dynprop-conditional statement (^<dynprop>): decided by config at parse time
+   ! #44 click jq@'.menu:visible' — locator jq@'.menu:visible': jQuery selector
+   ! #45 click relative tag@input rightof label@Email — relative find expression (eval / scope / relative)
+   ! #46 open firefox — a second browser session (open): one driver per exported test
+   ! #47 @call "nowhere" — no exported subtest or func named 'nowhere' in this script
+   ! #48 a11y check — accessibility check (needs axe-core injected with executeScript)
+   ! #49 ?? text@'/*x/' — locator text@'/*x/': Invalid regex /*x/: Dangling meta character '*'
+  3 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is created by newDriver() (ChromeDriver), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #31 ? id@x — an if condition is checked at once with findElements; seleasy may poll for it briefly first
+   ~ #33 click id@c — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer

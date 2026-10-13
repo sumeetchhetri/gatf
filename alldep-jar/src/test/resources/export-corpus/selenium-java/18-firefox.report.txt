@@ -1,0 +1,4 @@
+18-firefox → Sel18FirefoxTest.java  {statements=3, exported=3, todo=0, notes=2}
+  2 note(s) on behaviour that differs:
+   ~ #2 open firefox "ff-session" — the browser is created by newDriver() (FirefoxDriver), or on a Grid with SELENIUM_REMOTE_URL; the session name is not exported
+   ~ #4 ?? id@x — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found; neither checks visibility (as seleasy)

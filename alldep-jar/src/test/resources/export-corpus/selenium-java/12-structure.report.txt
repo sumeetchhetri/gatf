@@ -1,0 +1,10 @@
+12-structure → Sel12StructureTest.java  {statements=24, exported=24, todo=0, notes=6}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  6 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is created by newDriver() (ChromeDriver), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #13 type $v{who} label@'Email address' — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer
+   ~ #15 subtest "save [smoke]" (who) — skipped (another subtest is marked only): the method returns at once; the body is kept for review
+   ~ #19 ? testid@status — testid@ reads TEST_ID_ATTRIBUTE (data-testid); change it if the project sets seleasy's testIdAttribute
+   ~ #19 ? testid@status — an if condition is checked at once with findElements; seleasy may poll for it briefly first
+   ~ #39 skip subtest "later" — skipped (skip): the method returns at once; the body is kept for review

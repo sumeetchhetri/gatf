@@ -26,6 +26,9 @@ import java.util.Map;
  * commands.json gains a keyword with no decision here, or loses one this table still lists. The class name is copied
  * from commands.json so the parser-parity test can match each parsed statement to the real parser's Command class.
  * Backend-neutral: a second backend (Δ161) reuses these decisions or overrides them per keyword. Pure: no Selenium types.
+ *
+ * <p>Δ161: {@link #get(String, String)} / {@link #all(String)} give one backend's view — its overrides
+ * ({@code selenium-java}: where Selenium itself covers more or less than Playwright) over the shared table.
  */
 public final class ExportCatalog {
 
@@ -205,7 +208,58 @@ public final class ExportCatalog {
         d("}", "EndCommand", STRUCTURAL, "");
     }
 
+    /** Δ161: per-backend overrides of the shared decisions (backend id → keyword → entry). */
+    private static final Map<String, Map<String, Entry>> OVERRIDES = new LinkedHashMap<String, Map<String, Entry>>();
+
+    private static void o(String backend, String keyword, Decision decision, String note) {
+        Entry base = ENTRIES.get(keyword);
+        if (base == null) throw new IllegalStateException("override for '" + keyword + "', which has no shared export decision");
+        Map<String, Entry> m = OVERRIDES.computeIfAbsent(backend, k -> new LinkedHashMap<String, Entry>());
+        if (m.put(keyword, new Entry(keyword, base.commandClass, decision, note)) != null) {
+            throw new IllegalStateException("duplicate " + backend + " override for '" + keyword + "'");
+        }
+    }
+
+    static {
+        String sj = "selenium-java";
+        o(sj, "chord", MAPPED, "");   // Keys.chord after unescapeJava, as TypeCommand does: special keys included
+        o(sj, "clock", UNSUPPORTED, "seleasy's fake clock is injected JavaScript; Selenium has no clock API");
+        o(sj, "emulate", PARTIAL, "viewport only (as the window size); geolocation, permissions, colorscheme and offline need CDP in Selenium");
+        o(sj, "maximize", MAPPED, "");
+        o(sj, "open", PARTIAL, "the first open picks the driver in newDriver() (chrome, firefox, edge, safari); a second open is TODO");
+        o(sj, "route", UNSUPPORTED, "Selenium has no portable request routing (NetworkInterceptor is CDP-only)");
+        o(sj, "unroute", UNSUPPORTED, "Selenium has no portable request routing (NetworkInterceptor is CDP-only)");
+        o(sj, "screenshot compare", UNSUPPORTED, "Selenium has no visual comparison; screenshot is exported");
+        o(sj, "state", UNSUPPORTED, "Selenium has no storage-state API (cookies + web storage would be hand-written)");
+        o(sj, "timeout", PARTIAL, "first value only (the element timeout); the if-timeout and poll granularity are not exported");
+    }
+
     private ExportCatalog() {}
+
+    /** Backend ids with overrides. */
+    public static java.util.Set<String> overriddenBackends() {
+        return Collections.unmodifiableSet(OVERRIDES.keySet());
+    }
+
+    /** One backend's overrides only (empty for a backend that uses the shared table as is). */
+    public static Map<String, Entry> overrides(String backend) {
+        Map<String, Entry> m = OVERRIDES.get(backend);
+        return m == null ? Collections.<String, Entry>emptyMap() : Collections.unmodifiableMap(m);
+    }
+
+    /** Every keyword with its decision for {@code backend}: its overrides over the shared table, in commands.json order. */
+    public static Map<String, Entry> all(String backend) {
+        Map<String, Entry> out = new LinkedHashMap<String, Entry>(ENTRIES);
+        out.putAll(overrides(backend));
+        return Collections.unmodifiableMap(out);
+    }
+
+    /** The entry for a keyword as {@code backend} decides it, or null when the keyword is not a catalog keyword. */
+    public static Entry get(String backend, String keyword) {
+        if (keyword == null) return null;
+        Entry e = overrides(backend).get(keyword);
+        return e != null ? e : ENTRIES.get(keyword);
+    }
 
     /** Every keyword with its decision, in commands.json order. */
     public static Map<String, Entry> all() {

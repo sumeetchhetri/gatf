@@ -151,6 +151,11 @@ final class ExportCli {
             String outRel = rel.substring(0, rel.length() - ".sel".length());
             int slash = outRel.lastIndexOf('/');
             File target = new File(outDir, (slash >= 0 ? outRel.substring(0, slash + 1) : "") + r.fileName);
+            if (results.containsKey(target)) {   // Δ161: login.sel and Login.sel both become LoginTest.java
+                err.println("gatf export: " + rel + ": " + results.get(target).scriptName + ".sel already exports to " + r.fileName + "; rename one of them");
+                failed++;
+                continue;
+            }
             results.put(target, r);
         }
         File reportFile = new File(outDir, "export-report.txt");

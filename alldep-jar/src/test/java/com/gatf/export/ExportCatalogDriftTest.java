@@ -80,4 +80,33 @@ class ExportCatalogDriftTest {
             if (e.decision == ExportCatalog.Decision.PARTIAL) assertTrue(!e.note.isEmpty(), "PARTIAL without a note: " + e.keyword);
         }
     }
+
+    /**
+     * Δ161: every backend's view covers commands.json exactly, its overrides name real keywords with the shared
+     * Command class, a PARTIAL override is explained, and every registered backend is checked (selenium-java has
+     * overrides, playwright uses the shared table).
+     */
+    @Test
+    void everyBackendHasADecisionForEveryCommand() throws Exception {
+        Map<String, String> json = commandsJson();
+        assertTrue(ExportCatalog.overriddenBackends().contains("selenium-java"));
+        for (String backend : Exporters.ids()) {
+            Map<String, ExportCatalog.Entry> all = ExportCatalog.all(backend);
+            assertEquals(json.keySet(), all.keySet(), backend + ": keywords differ from commands.json");
+            for (Map.Entry<String, String> e : json.entrySet()) {
+                ExportCatalog.Entry d = ExportCatalog.get(backend, e.getKey());
+                assertEquals(e.getValue(), d.commandClass, backend + " " + e.getKey());
+                if (d.decision == ExportCatalog.Decision.PARTIAL) assertTrue(!d.note.isEmpty(), backend + ": PARTIAL without a note: " + d.keyword);
+            }
+        }
+        for (String backend : ExportCatalog.overriddenBackends()) {
+            assertTrue(Exporters.get(backend) != null, "overrides for an unregistered backend " + backend);
+            for (ExportCatalog.Entry o : ExportCatalog.overrides(backend).values()) {
+                assertTrue(json.containsKey(o.keyword), backend + " override for a keyword commands.json does not have: " + o.keyword);
+                assertTrue(o.decision != ExportCatalog.get(o.keyword).decision || !o.note.equals(ExportCatalog.get(o.keyword).note),
+                        backend + " override repeats the shared decision: " + o.keyword);
+            }
+        }
+        assertTrue(ExportCatalog.overrides("playwright").isEmpty());
+    }
 }

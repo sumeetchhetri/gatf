@@ -28,7 +28,7 @@ import java.nio.file.Path;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
-/** Δ160 — {@code gatf export playwright <file|dir> [-o] [--strict-locators] [--force]}. */
+/** Δ160 — {@code gatf export playwright|selenium-java <file|dir> [-o] [--strict-locators] [--force]}. */
 class ExportCliTest {
 
     private ByteArrayOutputStream out, err;
@@ -131,12 +131,25 @@ class ExportCliTest {
     }
 
     @Test
+    void seleniumJavaWritesTestClassesAndRefusesClassNameClashes(@TempDir Path dir) throws Exception {   // Δ161
+        write(dir.resolve("t/login-flow.sel"), "open chrome\ngoto ${baseUrl}\nclick role@button[name=Save]\n");
+        assertEquals(0, run(dir, "selenium-java", "t/login-flow.sel"));
+        String java = read(dir.resolve("LoginFlowTest.java"));
+        assertTrue(java.contains("class LoginFlowTest {") && java.contains("env(\"GATF_BASEURL\")"), java);
+        assertTrue(out.toString("UTF-8").contains("LoginFlowTest.java"));
+        write(dir.resolve("t/login_flow.sel"), "open chrome\nclick id@x\n");
+        assertEquals(1, run(dir, "selenium-java", "t", "-o", "sj"));
+        assertTrue(err.toString("UTF-8").contains("already exports to LoginFlowTest.java"), err.toString("UTF-8"));
+        assertTrue(Files.exists(dir.resolve("sj/LoginFlowTest.java")), "the first script is still exported");
+    }
+
+    @Test
     void usageErrors(@TempDir Path dir) throws Exception {
         assertEquals(1, run(dir, "cypress", "x.sel"));
         assertTrue(err.toString("UTF-8").contains("unknown export target"));
         assertEquals(1, run(dir, "playwright", "missing.sel"));
         assertTrue(err.toString("UTF-8").contains("input not found"));
         assertEquals(1, run(dir, "playwright"));
-        assertTrue(ExportCli.USAGE.startsWith("gatf export <playwright>"));
+        assertTrue(ExportCli.USAGE.startsWith("gatf export <playwright|selenium-java>"), ExportCli.USAGE);   // Δ161
     }
 }

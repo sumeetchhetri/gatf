@@ -1,0 +1,16 @@
+17-selenium → Sel17SeleniumTest.java  {statements=39, exported=37, todo=2, notes=11}
+  2 unsupported (exported as TODO(gatf-export) comments):
+   ! #6 chord 'bad \\u12' id@q — chord value: Less than 4 hex digits in unicode value: '\u12' (seleasy types nothing)
+   ! #40 emulate geolocation 1 2 — emulate geolocation: viewport only (as the window size); geolocation, permissions, colorscheme and offline need CDP in Selenium
+  11 note(s) on behaviour that differs:
+   ~ #2 open chrome-hdl — the browser is created by newDriver() (ChromeDriver, headless), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #5 chord 'ab\\uE003c\\uE007' id@q — chord value decoded as seleasy does (Java escapes); Selenium Keys characters (U+E000..) are sent as keys
+   ~ #5 chord 'ab\\uE003c\\uE007' id@q — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer
+   ~ #7 chord "it\'s" id@q — chord value decoded as seleasy does (Java escapes); Selenium Keys characters (U+E000..) are sent as keys
+   ~ #13 nowait hoverclick id@menu id@item — nowait has no effect on hoverclick: seleasy waits for both elements itself (Δ145c)
+   ~ #13 nowait hoverclick id@menu id@item — hoverclick finds the click target before hovering (it may be hidden until then), as seleasy does
+   ~ #16 upload files/a.txt id@file — file paths are resolved from the working directory of the test run, not the script's folder
+   ~ #29 ?? pagesource %'<html' — assertions re-read the value until the element timeout passes it (web-first); seleasy re-checks only with webFirstAssertions
+   ~ #29 ?? pagesource %'<html' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #31 ?? id@x height >'10' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #36 ?! id@spinner — an if condition is checked at once with findElements; seleasy may poll for it briefly first

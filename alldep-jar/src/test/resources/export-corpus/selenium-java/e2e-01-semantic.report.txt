@@ -1,0 +1,9 @@
+e2e-01-semantic → E2e01SemanticTest.java  {statements=14, exported=14, todo=0, notes=5}
+  environment (names only):
+    ${baseUrl} → GATF_BASEURL
+  5 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is created by newDriver() (ChromeDriver), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #4 type 'me@example.com' label@'Email address' — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer
+   ~ #7 ?? role@checkbox[name=Subscribe][checked] — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found; neither checks visibility (as seleasy)
+   ~ #9 ?? testid@status text ='Saved: me@example.com' — assertions re-read the value until the element timeout passes it (web-first); seleasy re-checks only with webFirstAssertions
+   ~ #9 ?? testid@status text ='Saved: me@example.com' — testid@ reads TEST_ID_ATTRIBUTE (data-testid); change it if the project sets seleasy's testIdAttribute

@@ -1,0 +1,21 @@
+14-waits → Sel14WaitsTest.java  {statements=45, exported=45, todo=0, notes=19}
+  19 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is created by newDriver() (ChromeDriver), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #3 ??10 id@'ele1' click — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer
+   ~ #6 nowait ??10 id@'ele3' click — nowait / '!' skips the displayed / enabled wait, as seleasy skips its actionability probe
+   ~ #14 hoverclick id@menu id@item — hoverclick finds the click target before hovering (it may be hidden until then), as seleasy does
+   ~ #16 ??~5 id@'count' text !='0' — assertions re-read the value until the element timeout passes it (web-first); seleasy re-checks only with webFirstAssertions
+   ~ #17 ?? id@x text %abc% — seleasy compares expected.contains(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #18 ?? id@x text 'abc'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #19 ?? id@x text %'abc' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #20 ?? id@x text >'b' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #28 ?? id@x text %'$v{n} tail' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #29 ?? id@x text '$v{n} tail'% — seleasy compares expected.endsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #30 ?? id@x text %'$v{n} tail'% — seleasy compares expected.contains(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #33 ?? id@x text <'$v{n} tail' — seleasy compares expected.<(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #34 ?? id@x text >'$v{n} tail' — seleasy compares expected.>(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #35 ?? id@x text <='$v{n} tail' — seleasy compares expected.<=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #36 ?? id@x text >='$v{n} tail' — seleasy compares expected.>=(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #38 ?? title %'$v{n} tail' — seleasy compares expected.startsWith(actual), e.g. %'ok' passes when 'ok' starts with the element text; exported literally
+   ~ #39 wait for id@x — ??+ / wait till visible wait until the element is no longer found, ??- / ?? / wait for until it is found; neither checks visibility (as seleasy)
+   ~ #44 timeout 30 1 500 — only the element timeout is exported; '1 500' (if-timeout / poll granularity) is not

@@ -21,13 +21,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
-/** Δ160 — the export backends by CLI name. Δ161 registers {@code selenium-java} here. */
+/** Δ160 — the export backends by CLI name; Δ161 adds {@code selenium-java}. */
 public final class Exporters {
 
     private static final Map<String, Exporter> BACKENDS = new LinkedHashMap<String, Exporter>();
 
     static {
         register(new PlaywrightExporter());
+        register(new SeleniumJavaExporter());
     }
 
     private Exporters() {}

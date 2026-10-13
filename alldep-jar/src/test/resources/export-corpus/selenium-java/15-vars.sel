@@ -1,0 +1,17 @@
+// Δ161 export corpus (selenium-java, from Δ160): variables, config references (environment), element and JavaScript values, dynamic locators.
+open chrome
+var name 'Ada Lovelace'
+var copy @name
+var count 3
+#tv heading css@h1 text
+#tv href css@'a.next' attr@href
+#tv html id@box html
+jsvar width 'return document.body.clientWidth'
+execjs 'console.log("hi from " + location.href)'
+goto ${base.url}/users/$v{count}?token=${apiToken}
+type ${user_name} label@Username
+type $v{name} id@'$v{copy}'
+click label@$v{name}
+click role@button[name=/$v{name}/i]
+click text@'=$v{name}'
+type 'Price $USD and !region!' id@price

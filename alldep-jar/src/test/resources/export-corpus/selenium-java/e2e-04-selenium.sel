@@ -1,0 +1,28 @@
+// Δ161 export e2e (selenium-java only): Selenium-specific mappings against the fixture page; run by ExportSeleniumCompileTest.
+open chrome
+goto ${baseUrl}/index.html
+emulate viewport 900 700
+?? width ='900'
+chord 'ab\uE003c' id@q
+?? id@q attr@value ='ac'
+type 'x' id@email
+clear id@email
+type 'z@y.x' id@email
+?? id@email attr@value ='z@y.x'
+select last id@size
+?? id@size attr@value ='l'
+#tv count id@count text
+?? id@count text ='$v{count}'
+jsvar title 'return document.title'
+?? title ='$v{title}'
+execjs 'document.getElementById("greeting").textContent = arguments.length + " args"'
+?? id@greeting text ='0 args'
+?? text@'Order placed' tagname ='p'
+?? id@subscribe selected ='false'
+click id@subscribe
+?? id@subscribe selected ='true'
+click linktext@'Next page'
+?? css@h1 text ='Second page'
+back
+click partiallinktext@Next
+?? title ='Page two'

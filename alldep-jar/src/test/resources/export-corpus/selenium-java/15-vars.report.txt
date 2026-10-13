@@ -1,0 +1,10 @@
+15-vars → Sel15VarsTest.java  {statements=16, exported=16, todo=0, notes=4}
+  environment (names only):
+    ${apiToken} → GATF_APITOKEN
+    ${base.url} → GATF_BASE_URL
+    ${user_name} → GATF_USER_NAME
+  4 note(s) on behaviour that differs:
+   ~ #2 open chrome — the browser is created by newDriver() (ChromeDriver), or on a Grid with SELENIUM_REMOTE_URL
+   ~ #12 type ${user_name} label@Username — before an action the element must be displayed and enabled (Selenium's elementToBeClickable); seleasy's actionability probe also checks that it is stable and receives the pointer
+   ~ #17 type 'Price $USD and !region!' id@price — Velocity reference(s) [$USD] left as literal text; use ${name} or $v{name} to export them
+   ~ #17 type 'Price $USD and !region!' id@price — !name! is replaced with a dynprop / global value when seleasy parses the script; left as literal text
