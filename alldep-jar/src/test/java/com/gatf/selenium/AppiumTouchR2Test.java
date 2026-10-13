@@ -104,6 +104,9 @@ public class AppiumTouchR2Test {
     /** An Appium-like driver: RemoteWebDriver + SupportsRotation (java-client's rotate/getOrientation go through execute()). */
     static final class Device extends RemoteWebDriver implements io.appium.java_client.remote.SupportsRotation {
         Device(CommandExecutor ex, Map<String, Object> caps) { super(ex, new ImmutableCapabilities(caps)); }
+        // java-client's ExecutesMethod declares both public (RemoteWebDriver's are protected); AppiumDriver widens them the same way
+        @Override public org.openqa.selenium.remote.Response execute(String command, Map<String, ?> parameters) { return super.execute(command, parameters); }
+        @Override public org.openqa.selenium.remote.Response execute(String command) { return super.execute(command); }
         @Override public void rotate(ScreenOrientation o) {
             execute("setScreenOrientation", Collections.singletonMap("orientation", o.value().toUpperCase()));
         }
