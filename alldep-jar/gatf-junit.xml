@@ -1,821 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuites name="gatf" tests="1200" failures="240" skipped="0" time="0.036">
-  <testsuite name="w0.sel" tests="150" failures="30" skipped="0" time="0.450">
-    <testcase name="t0" classname="w0.sel" time="0.003">
-      <failure message="boom 0/0">boom 0/0</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-0.png]]
-</system-out>
-    </testcase>
-    <testcase name="t1" classname="w0.sel" time="0.003"/>
-    <testcase name="t2" classname="w0.sel" time="0.003"/>
-    <testcase name="t3" classname="w0.sel" time="0.003"/>
-    <testcase name="t4" classname="w0.sel" time="0.003"/>
-    <testcase name="t5" classname="w0.sel" time="0.003">
-      <failure message="boom 0/5">boom 0/5</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-5.png]]
-</system-out>
-    </testcase>
-    <testcase name="t6" classname="w0.sel" time="0.003"/>
-    <testcase name="t7" classname="w0.sel" time="0.003"/>
-    <testcase name="t8" classname="w0.sel" time="0.003"/>
-    <testcase name="t9" classname="w0.sel" time="0.003"/>
-    <testcase name="t10" classname="w0.sel" time="0.003">
-      <failure message="boom 0/10">boom 0/10</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-10.png]]
-</system-out>
-    </testcase>
-    <testcase name="t11" classname="w0.sel" time="0.003"/>
-    <testcase name="t12" classname="w0.sel" time="0.003"/>
-    <testcase name="t13" classname="w0.sel" time="0.003"/>
-    <testcase name="t14" classname="w0.sel" time="0.003"/>
-    <testcase name="t15" classname="w0.sel" time="0.003">
-      <failure message="boom 0/15">boom 0/15</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-15.png]]
-</system-out>
-    </testcase>
-    <testcase name="t16" classname="w0.sel" time="0.003"/>
-    <testcase name="t17" classname="w0.sel" time="0.003"/>
-    <testcase name="t18" classname="w0.sel" time="0.003"/>
-    <testcase name="t19" classname="w0.sel" time="0.003"/>
-    <testcase name="t20" classname="w0.sel" time="0.003">
-      <failure message="boom 0/20">boom 0/20</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-20.png]]
-</system-out>
-    </testcase>
-    <testcase name="t21" classname="w0.sel" time="0.003"/>
-    <testcase name="t22" classname="w0.sel" time="0.003"/>
-    <testcase name="t23" classname="w0.sel" time="0.003"/>
-    <testcase name="t24" classname="w0.sel" time="0.003"/>
-    <testcase name="t25" classname="w0.sel" time="0.003">
-      <failure message="boom 0/25">boom 0/25</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-25.png]]
-</system-out>
-    </testcase>
-    <testcase name="t26" classname="w0.sel" time="0.003"/>
-    <testcase name="t27" classname="w0.sel" time="0.003"/>
-    <testcase name="t28" classname="w0.sel" time="0.003"/>
-    <testcase name="t29" classname="w0.sel" time="0.003"/>
-    <testcase name="t30" classname="w0.sel" time="0.003">
-      <failure message="boom 0/30">boom 0/30</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-30.png]]
-</system-out>
-    </testcase>
-    <testcase name="t31" classname="w0.sel" time="0.003"/>
-    <testcase name="t32" classname="w0.sel" time="0.003"/>
-    <testcase name="t33" classname="w0.sel" time="0.003"/>
-    <testcase name="t34" classname="w0.sel" time="0.003"/>
-    <testcase name="t35" classname="w0.sel" time="0.003">
-      <failure message="boom 0/35">boom 0/35</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-35.png]]
-</system-out>
-    </testcase>
-    <testcase name="t36" classname="w0.sel" time="0.003"/>
-    <testcase name="t37" classname="w0.sel" time="0.003"/>
-    <testcase name="t38" classname="w0.sel" time="0.003"/>
-    <testcase name="t39" classname="w0.sel" time="0.003"/>
-    <testcase name="t40" classname="w0.sel" time="0.003">
-      <failure message="boom 0/40">boom 0/40</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-40.png]]
-</system-out>
-    </testcase>
-    <testcase name="t41" classname="w0.sel" time="0.003"/>
-    <testcase name="t42" classname="w0.sel" time="0.003"/>
-    <testcase name="t43" classname="w0.sel" time="0.003"/>
-    <testcase name="t44" classname="w0.sel" time="0.003"/>
-    <testcase name="t45" classname="w0.sel" time="0.003">
-      <failure message="boom 0/45">boom 0/45</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-45.png]]
-</system-out>
-    </testcase>
-    <testcase name="t46" classname="w0.sel" time="0.003"/>
-    <testcase name="t47" classname="w0.sel" time="0.003"/>
-    <testcase name="t48" classname="w0.sel" time="0.003"/>
-    <testcase name="t49" classname="w0.sel" time="0.003"/>
-    <testcase name="t50" classname="w0.sel" time="0.003">
-      <failure message="boom 0/50">boom 0/50</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-50.png]]
-</system-out>
-    </testcase>
-    <testcase name="t51" classname="w0.sel" time="0.003"/>
-    <testcase name="t52" classname="w0.sel" time="0.003"/>
-    <testcase name="t53" classname="w0.sel" time="0.003"/>
-    <testcase name="t54" classname="w0.sel" time="0.003"/>
-    <testcase name="t55" classname="w0.sel" time="0.003">
-      <failure message="boom 0/55">boom 0/55</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-55.png]]
-</system-out>
-    </testcase>
-    <testcase name="t56" classname="w0.sel" time="0.003"/>
-    <testcase name="t57" classname="w0.sel" time="0.003"/>
-    <testcase name="t58" classname="w0.sel" time="0.003"/>
-    <testcase name="t59" classname="w0.sel" time="0.003"/>
-    <testcase name="t60" classname="w0.sel" time="0.003">
-      <failure message="boom 0/60">boom 0/60</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-60.png]]
-</system-out>
-    </testcase>
-    <testcase name="t61" classname="w0.sel" time="0.003"/>
-    <testcase name="t62" classname="w0.sel" time="0.003"/>
-    <testcase name="t63" classname="w0.sel" time="0.003"/>
-    <testcase name="t64" classname="w0.sel" time="0.003"/>
-    <testcase name="t65" classname="w0.sel" time="0.003">
-      <failure message="boom 0/65">boom 0/65</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-65.png]]
-</system-out>
-    </testcase>
-    <testcase name="t66" classname="w0.sel" time="0.003"/>
-    <testcase name="t67" classname="w0.sel" time="0.003"/>
-    <testcase name="t68" classname="w0.sel" time="0.003"/>
-    <testcase name="t69" classname="w0.sel" time="0.003"/>
-    <testcase name="t70" classname="w0.sel" time="0.003">
-      <failure message="boom 0/70">boom 0/70</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-70.png]]
-</system-out>
-    </testcase>
-    <testcase name="t71" classname="w0.sel" time="0.003"/>
-    <testcase name="t72" classname="w0.sel" time="0.003"/>
-    <testcase name="t73" classname="w0.sel" time="0.003"/>
-    <testcase name="t74" classname="w0.sel" time="0.003"/>
-    <testcase name="t75" classname="w0.sel" time="0.003">
-      <failure message="boom 0/75">boom 0/75</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-75.png]]
-</system-out>
-    </testcase>
-    <testcase name="t76" classname="w0.sel" time="0.003"/>
-    <testcase name="t77" classname="w0.sel" time="0.003"/>
-    <testcase name="t78" classname="w0.sel" time="0.003"/>
-    <testcase name="t79" classname="w0.sel" time="0.003"/>
-    <testcase name="t80" classname="w0.sel" time="0.003">
-      <failure message="boom 0/80">boom 0/80</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-80.png]]
-</system-out>
-    </testcase>
-    <testcase name="t81" classname="w0.sel" time="0.003"/>
-    <testcase name="t82" classname="w0.sel" time="0.003"/>
-    <testcase name="t83" classname="w0.sel" time="0.003"/>
-    <testcase name="t84" classname="w0.sel" time="0.003"/>
-    <testcase name="t85" classname="w0.sel" time="0.003">
-      <failure message="boom 0/85">boom 0/85</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-85.png]]
-</system-out>
-    </testcase>
-    <testcase name="t86" classname="w0.sel" time="0.003"/>
-    <testcase name="t87" classname="w0.sel" time="0.003"/>
-    <testcase name="t88" classname="w0.sel" time="0.003"/>
-    <testcase name="t89" classname="w0.sel" time="0.003"/>
-    <testcase name="t90" classname="w0.sel" time="0.003">
-      <failure message="boom 0/90">boom 0/90</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-90.png]]
-</system-out>
-    </testcase>
-    <testcase name="t91" classname="w0.sel" time="0.003"/>
-    <testcase name="t92" classname="w0.sel" time="0.003"/>
-    <testcase name="t93" classname="w0.sel" time="0.003"/>
-    <testcase name="t94" classname="w0.sel" time="0.003"/>
-    <testcase name="t95" classname="w0.sel" time="0.003">
-      <failure message="boom 0/95">boom 0/95</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-95.png]]
-</system-out>
-    </testcase>
-    <testcase name="t96" classname="w0.sel" time="0.003"/>
-    <testcase name="t97" classname="w0.sel" time="0.003"/>
-    <testcase name="t98" classname="w0.sel" time="0.003"/>
-    <testcase name="t99" classname="w0.sel" time="0.003"/>
-    <testcase name="t100" classname="w0.sel" time="0.003">
-      <failure message="boom 0/100">boom 0/100</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-100.png]]
-</system-out>
-    </testcase>
-    <testcase name="t101" classname="w0.sel" time="0.003"/>
-    <testcase name="t102" classname="w0.sel" time="0.003"/>
-    <testcase name="t103" classname="w0.sel" time="0.003"/>
-    <testcase name="t104" classname="w0.sel" time="0.003"/>
-    <testcase name="t105" classname="w0.sel" time="0.003">
-      <failure message="boom 0/105">boom 0/105</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-105.png]]
-</system-out>
-    </testcase>
-    <testcase name="t106" classname="w0.sel" time="0.003"/>
-    <testcase name="t107" classname="w0.sel" time="0.003"/>
-    <testcase name="t108" classname="w0.sel" time="0.003"/>
-    <testcase name="t109" classname="w0.sel" time="0.003"/>
-    <testcase name="t110" classname="w0.sel" time="0.003">
-      <failure message="boom 0/110">boom 0/110</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-110.png]]
-</system-out>
-    </testcase>
-    <testcase name="t111" classname="w0.sel" time="0.003"/>
-    <testcase name="t112" classname="w0.sel" time="0.003"/>
-    <testcase name="t113" classname="w0.sel" time="0.003"/>
-    <testcase name="t114" classname="w0.sel" time="0.003"/>
-    <testcase name="t115" classname="w0.sel" time="0.003">
-      <failure message="boom 0/115">boom 0/115</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-115.png]]
-</system-out>
-    </testcase>
-    <testcase name="t116" classname="w0.sel" time="0.003"/>
-    <testcase name="t117" classname="w0.sel" time="0.003"/>
-    <testcase name="t118" classname="w0.sel" time="0.003"/>
-    <testcase name="t119" classname="w0.sel" time="0.003"/>
-    <testcase name="t120" classname="w0.sel" time="0.003">
-      <failure message="boom 0/120">boom 0/120</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-120.png]]
-</system-out>
-    </testcase>
-    <testcase name="t121" classname="w0.sel" time="0.003"/>
-    <testcase name="t122" classname="w0.sel" time="0.003"/>
-    <testcase name="t123" classname="w0.sel" time="0.003"/>
-    <testcase name="t124" classname="w0.sel" time="0.003"/>
-    <testcase name="t125" classname="w0.sel" time="0.003">
-      <failure message="boom 0/125">boom 0/125</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-125.png]]
-</system-out>
-    </testcase>
-    <testcase name="t126" classname="w0.sel" time="0.003"/>
-    <testcase name="t127" classname="w0.sel" time="0.003"/>
-    <testcase name="t128" classname="w0.sel" time="0.003"/>
-    <testcase name="t129" classname="w0.sel" time="0.003"/>
-    <testcase name="t130" classname="w0.sel" time="0.003">
-      <failure message="boom 0/130">boom 0/130</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-130.png]]
-</system-out>
-    </testcase>
-    <testcase name="t131" classname="w0.sel" time="0.003"/>
-    <testcase name="t132" classname="w0.sel" time="0.003"/>
-    <testcase name="t133" classname="w0.sel" time="0.003"/>
-    <testcase name="t134" classname="w0.sel" time="0.003"/>
-    <testcase name="t135" classname="w0.sel" time="0.003">
-      <failure message="boom 0/135">boom 0/135</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-135.png]]
-</system-out>
-    </testcase>
-    <testcase name="t136" classname="w0.sel" time="0.003"/>
-    <testcase name="t137" classname="w0.sel" time="0.003"/>
-    <testcase name="t138" classname="w0.sel" time="0.003"/>
-    <testcase name="t139" classname="w0.sel" time="0.003"/>
-    <testcase name="t140" classname="w0.sel" time="0.003">
-      <failure message="boom 0/140">boom 0/140</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-140.png]]
-</system-out>
-    </testcase>
-    <testcase name="t141" classname="w0.sel" time="0.003"/>
-    <testcase name="t142" classname="w0.sel" time="0.003"/>
-    <testcase name="t143" classname="w0.sel" time="0.003"/>
-    <testcase name="t144" classname="w0.sel" time="0.003"/>
-    <testcase name="t145" classname="w0.sel" time="0.003">
-      <failure message="boom 0/145">boom 0/145</failure>
-      <system-out>[[ATTACHMENT|/tmp/w0-145.png]]
-</system-out>
-    </testcase>
-    <testcase name="t146" classname="w0.sel" time="0.003"/>
-    <testcase name="t147" classname="w0.sel" time="0.003"/>
-    <testcase name="t148" classname="w0.sel" time="0.003"/>
-    <testcase name="t149" classname="w0.sel" time="0.003"/>
-  </testsuite>
-  <testsuite name="w2.sel" tests="150" failures="30" skipped="0" time="0.450">
-    <testcase name="t0" classname="w2.sel" time="0.003">
-      <failure message="boom 2/0">boom 2/0</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-0.png]]
-</system-out>
-    </testcase>
-    <testcase name="t1" classname="w2.sel" time="0.003"/>
-    <testcase name="t2" classname="w2.sel" time="0.003"/>
-    <testcase name="t3" classname="w2.sel" time="0.003"/>
-    <testcase name="t4" classname="w2.sel" time="0.003"/>
-    <testcase name="t5" classname="w2.sel" time="0.003">
-      <failure message="boom 2/5">boom 2/5</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-5.png]]
-</system-out>
-    </testcase>
-    <testcase name="t6" classname="w2.sel" time="0.003"/>
-    <testcase name="t7" classname="w2.sel" time="0.003"/>
-    <testcase name="t8" classname="w2.sel" time="0.003"/>
-    <testcase name="t9" classname="w2.sel" time="0.003"/>
-    <testcase name="t10" classname="w2.sel" time="0.003">
-      <failure message="boom 2/10">boom 2/10</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-10.png]]
-</system-out>
-    </testcase>
-    <testcase name="t11" classname="w2.sel" time="0.003"/>
-    <testcase name="t12" classname="w2.sel" time="0.003"/>
-    <testcase name="t13" classname="w2.sel" time="0.003"/>
-    <testcase name="t14" classname="w2.sel" time="0.003"/>
-    <testcase name="t15" classname="w2.sel" time="0.003">
-      <failure message="boom 2/15">boom 2/15</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-15.png]]
-</system-out>
-    </testcase>
-    <testcase name="t16" classname="w2.sel" time="0.003"/>
-    <testcase name="t17" classname="w2.sel" time="0.003"/>
-    <testcase name="t18" classname="w2.sel" time="0.003"/>
-    <testcase name="t19" classname="w2.sel" time="0.003"/>
-    <testcase name="t20" classname="w2.sel" time="0.003">
-      <failure message="boom 2/20">boom 2/20</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-20.png]]
-</system-out>
-    </testcase>
-    <testcase name="t21" classname="w2.sel" time="0.003"/>
-    <testcase name="t22" classname="w2.sel" time="0.003"/>
-    <testcase name="t23" classname="w2.sel" time="0.003"/>
-    <testcase name="t24" classname="w2.sel" time="0.003"/>
-    <testcase name="t25" classname="w2.sel" time="0.003">
-      <failure message="boom 2/25">boom 2/25</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-25.png]]
-</system-out>
-    </testcase>
-    <testcase name="t26" classname="w2.sel" time="0.003"/>
-    <testcase name="t27" classname="w2.sel" time="0.003"/>
-    <testcase name="t28" classname="w2.sel" time="0.003"/>
-    <testcase name="t29" classname="w2.sel" time="0.003"/>
-    <testcase name="t30" classname="w2.sel" time="0.003">
-      <failure message="boom 2/30">boom 2/30</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-30.png]]
-</system-out>
-    </testcase>
-    <testcase name="t31" classname="w2.sel" time="0.003"/>
-    <testcase name="t32" classname="w2.sel" time="0.003"/>
-    <testcase name="t33" classname="w2.sel" time="0.003"/>
-    <testcase name="t34" classname="w2.sel" time="0.003"/>
-    <testcase name="t35" classname="w2.sel" time="0.003">
-      <failure message="boom 2/35">boom 2/35</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-35.png]]
-</system-out>
-    </testcase>
-    <testcase name="t36" classname="w2.sel" time="0.003"/>
-    <testcase name="t37" classname="w2.sel" time="0.003"/>
-    <testcase name="t38" classname="w2.sel" time="0.003"/>
-    <testcase name="t39" classname="w2.sel" time="0.003"/>
-    <testcase name="t40" classname="w2.sel" time="0.003">
-      <failure message="boom 2/40">boom 2/40</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-40.png]]
-</system-out>
-    </testcase>
-    <testcase name="t41" classname="w2.sel" time="0.003"/>
-    <testcase name="t42" classname="w2.sel" time="0.003"/>
-    <testcase name="t43" classname="w2.sel" time="0.003"/>
-    <testcase name="t44" classname="w2.sel" time="0.003"/>
-    <testcase name="t45" classname="w2.sel" time="0.003">
-      <failure message="boom 2/45">boom 2/45</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-45.png]]
-</system-out>
-    </testcase>
-    <testcase name="t46" classname="w2.sel" time="0.003"/>
-    <testcase name="t47" classname="w2.sel" time="0.003"/>
-    <testcase name="t48" classname="w2.sel" time="0.003"/>
-    <testcase name="t49" classname="w2.sel" time="0.003"/>
-    <testcase name="t50" classname="w2.sel" time="0.003">
-      <failure message="boom 2/50">boom 2/50</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-50.png]]
-</system-out>
-    </testcase>
-    <testcase name="t51" classname="w2.sel" time="0.003"/>
-    <testcase name="t52" classname="w2.sel" time="0.003"/>
-    <testcase name="t53" classname="w2.sel" time="0.003"/>
-    <testcase name="t54" classname="w2.sel" time="0.003"/>
-    <testcase name="t55" classname="w2.sel" time="0.003">
-      <failure message="boom 2/55">boom 2/55</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-55.png]]
-</system-out>
-    </testcase>
-    <testcase name="t56" classname="w2.sel" time="0.003"/>
-    <testcase name="t57" classname="w2.sel" time="0.003"/>
-    <testcase name="t58" classname="w2.sel" time="0.003"/>
-    <testcase name="t59" classname="w2.sel" time="0.003"/>
-    <testcase name="t60" classname="w2.sel" time="0.003">
-      <failure message="boom 2/60">boom 2/60</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-60.png]]
-</system-out>
-    </testcase>
-    <testcase name="t61" classname="w2.sel" time="0.003"/>
-    <testcase name="t62" classname="w2.sel" time="0.003"/>
-    <testcase name="t63" classname="w2.sel" time="0.003"/>
-    <testcase name="t64" classname="w2.sel" time="0.003"/>
-    <testcase name="t65" classname="w2.sel" time="0.003">
-      <failure message="boom 2/65">boom 2/65</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-65.png]]
-</system-out>
-    </testcase>
-    <testcase name="t66" classname="w2.sel" time="0.003"/>
-    <testcase name="t67" classname="w2.sel" time="0.003"/>
-    <testcase name="t68" classname="w2.sel" time="0.003"/>
-    <testcase name="t69" classname="w2.sel" time="0.003"/>
-    <testcase name="t70" classname="w2.sel" time="0.003">
-      <failure message="boom 2/70">boom 2/70</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-70.png]]
-</system-out>
-    </testcase>
-    <testcase name="t71" classname="w2.sel" time="0.003"/>
-    <testcase name="t72" classname="w2.sel" time="0.003"/>
-    <testcase name="t73" classname="w2.sel" time="0.003"/>
-    <testcase name="t74" classname="w2.sel" time="0.003"/>
-    <testcase name="t75" classname="w2.sel" time="0.003">
-      <failure message="boom 2/75">boom 2/75</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-75.png]]
-</system-out>
-    </testcase>
-    <testcase name="t76" classname="w2.sel" time="0.003"/>
-    <testcase name="t77" classname="w2.sel" time="0.003"/>
-    <testcase name="t78" classname="w2.sel" time="0.003"/>
-    <testcase name="t79" classname="w2.sel" time="0.003"/>
-    <testcase name="t80" classname="w2.sel" time="0.003">
-      <failure message="boom 2/80">boom 2/80</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-80.png]]
-</system-out>
-    </testcase>
-    <testcase name="t81" classname="w2.sel" time="0.003"/>
-    <testcase name="t82" classname="w2.sel" time="0.003"/>
-    <testcase name="t83" classname="w2.sel" time="0.003"/>
-    <testcase name="t84" classname="w2.sel" time="0.003"/>
-    <testcase name="t85" classname="w2.sel" time="0.003">
-      <failure message="boom 2/85">boom 2/85</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-85.png]]
-</system-out>
-    </testcase>
-    <testcase name="t86" classname="w2.sel" time="0.003"/>
-    <testcase name="t87" classname="w2.sel" time="0.003"/>
-    <testcase name="t88" classname="w2.sel" time="0.003"/>
-    <testcase name="t89" classname="w2.sel" time="0.003"/>
-    <testcase name="t90" classname="w2.sel" time="0.003">
-      <failure message="boom 2/90">boom 2/90</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-90.png]]
-</system-out>
-    </testcase>
-    <testcase name="t91" classname="w2.sel" time="0.003"/>
-    <testcase name="t92" classname="w2.sel" time="0.003"/>
-    <testcase name="t93" classname="w2.sel" time="0.003"/>
-    <testcase name="t94" classname="w2.sel" time="0.003"/>
-    <testcase name="t95" classname="w2.sel" time="0.003">
-      <failure message="boom 2/95">boom 2/95</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-95.png]]
-</system-out>
-    </testcase>
-    <testcase name="t96" classname="w2.sel" time="0.003"/>
-    <testcase name="t97" classname="w2.sel" time="0.003"/>
-    <testcase name="t98" classname="w2.sel" time="0.003"/>
-    <testcase name="t99" classname="w2.sel" time="0.003"/>
-    <testcase name="t100" classname="w2.sel" time="0.003">
-      <failure message="boom 2/100">boom 2/100</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-100.png]]
-</system-out>
-    </testcase>
-    <testcase name="t101" classname="w2.sel" time="0.003"/>
-    <testcase name="t102" classname="w2.sel" time="0.003"/>
-    <testcase name="t103" classname="w2.sel" time="0.003"/>
-    <testcase name="t104" classname="w2.sel" time="0.003"/>
-    <testcase name="t105" classname="w2.sel" time="0.003">
-      <failure message="boom 2/105">boom 2/105</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-105.png]]
-</system-out>
-    </testcase>
-    <testcase name="t106" classname="w2.sel" time="0.003"/>
-    <testcase name="t107" classname="w2.sel" time="0.003"/>
-    <testcase name="t108" classname="w2.sel" time="0.003"/>
-    <testcase name="t109" classname="w2.sel" time="0.003"/>
-    <testcase name="t110" classname="w2.sel" time="0.003">
-      <failure message="boom 2/110">boom 2/110</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-110.png]]
-</system-out>
-    </testcase>
-    <testcase name="t111" classname="w2.sel" time="0.003"/>
-    <testcase name="t112" classname="w2.sel" time="0.003"/>
-    <testcase name="t113" classname="w2.sel" time="0.003"/>
-    <testcase name="t114" classname="w2.sel" time="0.003"/>
-    <testcase name="t115" classname="w2.sel" time="0.003">
-      <failure message="boom 2/115">boom 2/115</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-115.png]]
-</system-out>
-    </testcase>
-    <testcase name="t116" classname="w2.sel" time="0.003"/>
-    <testcase name="t117" classname="w2.sel" time="0.003"/>
-    <testcase name="t118" classname="w2.sel" time="0.003"/>
-    <testcase name="t119" classname="w2.sel" time="0.003"/>
-    <testcase name="t120" classname="w2.sel" time="0.003">
-      <failure message="boom 2/120">boom 2/120</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-120.png]]
-</system-out>
-    </testcase>
-    <testcase name="t121" classname="w2.sel" time="0.003"/>
-    <testcase name="t122" classname="w2.sel" time="0.003"/>
-    <testcase name="t123" classname="w2.sel" time="0.003"/>
-    <testcase name="t124" classname="w2.sel" time="0.003"/>
-    <testcase name="t125" classname="w2.sel" time="0.003">
-      <failure message="boom 2/125">boom 2/125</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-125.png]]
-</system-out>
-    </testcase>
-    <testcase name="t126" classname="w2.sel" time="0.003"/>
-    <testcase name="t127" classname="w2.sel" time="0.003"/>
-    <testcase name="t128" classname="w2.sel" time="0.003"/>
-    <testcase name="t129" classname="w2.sel" time="0.003"/>
-    <testcase name="t130" classname="w2.sel" time="0.003">
-      <failure message="boom 2/130">boom 2/130</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-130.png]]
-</system-out>
-    </testcase>
-    <testcase name="t131" classname="w2.sel" time="0.003"/>
-    <testcase name="t132" classname="w2.sel" time="0.003"/>
-    <testcase name="t133" classname="w2.sel" time="0.003"/>
-    <testcase name="t134" classname="w2.sel" time="0.003"/>
-    <testcase name="t135" classname="w2.sel" time="0.003">
-      <failure message="boom 2/135">boom 2/135</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-135.png]]
-</system-out>
-    </testcase>
-    <testcase name="t136" classname="w2.sel" time="0.003"/>
-    <testcase name="t137" classname="w2.sel" time="0.003"/>
-    <testcase name="t138" classname="w2.sel" time="0.003"/>
-    <testcase name="t139" classname="w2.sel" time="0.003"/>
-    <testcase name="t140" classname="w2.sel" time="0.003">
-      <failure message="boom 2/140">boom 2/140</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-140.png]]
-</system-out>
-    </testcase>
-    <testcase name="t141" classname="w2.sel" time="0.003"/>
-    <testcase name="t142" classname="w2.sel" time="0.003"/>
-    <testcase name="t143" classname="w2.sel" time="0.003"/>
-    <testcase name="t144" classname="w2.sel" time="0.003"/>
-    <testcase name="t145" classname="w2.sel" time="0.003">
-      <failure message="boom 2/145">boom 2/145</failure>
-      <system-out>[[ATTACHMENT|/tmp/w2-145.png]]
-</system-out>
-    </testcase>
-    <testcase name="t146" classname="w2.sel" time="0.003"/>
-    <testcase name="t147" classname="w2.sel" time="0.003"/>
-    <testcase name="t148" classname="w2.sel" time="0.003"/>
-    <testcase name="t149" classname="w2.sel" time="0.003"/>
-  </testsuite>
-  <testsuite name="w4.sel" tests="150" failures="30" skipped="0" time="0.450">
-    <testcase name="t0" classname="w4.sel" time="0.003">
-      <failure message="boom 4/0">boom 4/0</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-0.png]]
-</system-out>
-    </testcase>
-    <testcase name="t1" classname="w4.sel" time="0.003"/>
-    <testcase name="t2" classname="w4.sel" time="0.003"/>
-    <testcase name="t3" classname="w4.sel" time="0.003"/>
-    <testcase name="t4" classname="w4.sel" time="0.003"/>
-    <testcase name="t5" classname="w4.sel" time="0.003">
-      <failure message="boom 4/5">boom 4/5</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-5.png]]
-</system-out>
-    </testcase>
-    <testcase name="t6" classname="w4.sel" time="0.003"/>
-    <testcase name="t7" classname="w4.sel" time="0.003"/>
-    <testcase name="t8" classname="w4.sel" time="0.003"/>
-    <testcase name="t9" classname="w4.sel" time="0.003"/>
-    <testcase name="t10" classname="w4.sel" time="0.003">
-      <failure message="boom 4/10">boom 4/10</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-10.png]]
-</system-out>
-    </testcase>
-    <testcase name="t11" classname="w4.sel" time="0.003"/>
-    <testcase name="t12" classname="w4.sel" time="0.003"/>
-    <testcase name="t13" classname="w4.sel" time="0.003"/>
-    <testcase name="t14" classname="w4.sel" time="0.003"/>
-    <testcase name="t15" classname="w4.sel" time="0.003">
-      <failure message="boom 4/15">boom 4/15</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-15.png]]
-</system-out>
-    </testcase>
-    <testcase name="t16" classname="w4.sel" time="0.003"/>
-    <testcase name="t17" classname="w4.sel" time="0.003"/>
-    <testcase name="t18" classname="w4.sel" time="0.003"/>
-    <testcase name="t19" classname="w4.sel" time="0.003"/>
-    <testcase name="t20" classname="w4.sel" time="0.003">
-      <failure message="boom 4/20">boom 4/20</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-20.png]]
-</system-out>
-    </testcase>
-    <testcase name="t21" classname="w4.sel" time="0.003"/>
-    <testcase name="t22" classname="w4.sel" time="0.003"/>
-    <testcase name="t23" classname="w4.sel" time="0.003"/>
-    <testcase name="t24" classname="w4.sel" time="0.003"/>
-    <testcase name="t25" classname="w4.sel" time="0.003">
-      <failure message="boom 4/25">boom 4/25</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-25.png]]
-</system-out>
-    </testcase>
-    <testcase name="t26" classname="w4.sel" time="0.003"/>
-    <testcase name="t27" classname="w4.sel" time="0.003"/>
-    <testcase name="t28" classname="w4.sel" time="0.003"/>
-    <testcase name="t29" classname="w4.sel" time="0.003"/>
-    <testcase name="t30" classname="w4.sel" time="0.003">
-      <failure message="boom 4/30">boom 4/30</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-30.png]]
-</system-out>
-    </testcase>
-    <testcase name="t31" classname="w4.sel" time="0.003"/>
-    <testcase name="t32" classname="w4.sel" time="0.003"/>
-    <testcase name="t33" classname="w4.sel" time="0.003"/>
-    <testcase name="t34" classname="w4.sel" time="0.003"/>
-    <testcase name="t35" classname="w4.sel" time="0.003">
-      <failure message="boom 4/35">boom 4/35</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-35.png]]
-</system-out>
-    </testcase>
-    <testcase name="t36" classname="w4.sel" time="0.003"/>
-    <testcase name="t37" classname="w4.sel" time="0.003"/>
-    <testcase name="t38" classname="w4.sel" time="0.003"/>
-    <testcase name="t39" classname="w4.sel" time="0.003"/>
-    <testcase name="t40" classname="w4.sel" time="0.003">
-      <failure message="boom 4/40">boom 4/40</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-40.png]]
-</system-out>
-    </testcase>
-    <testcase name="t41" classname="w4.sel" time="0.003"/>
-    <testcase name="t42" classname="w4.sel" time="0.003"/>
-    <testcase name="t43" classname="w4.sel" time="0.003"/>
-    <testcase name="t44" classname="w4.sel" time="0.003"/>
-    <testcase name="t45" classname="w4.sel" time="0.003">
-      <failure message="boom 4/45">boom 4/45</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-45.png]]
-</system-out>
-    </testcase>
-    <testcase name="t46" classname="w4.sel" time="0.003"/>
-    <testcase name="t47" classname="w4.sel" time="0.003"/>
-    <testcase name="t48" classname="w4.sel" time="0.003"/>
-    <testcase name="t49" classname="w4.sel" time="0.003"/>
-    <testcase name="t50" classname="w4.sel" time="0.003">
-      <failure message="boom 4/50">boom 4/50</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-50.png]]
-</system-out>
-    </testcase>
-    <testcase name="t51" classname="w4.sel" time="0.003"/>
-    <testcase name="t52" classname="w4.sel" time="0.003"/>
-    <testcase name="t53" classname="w4.sel" time="0.003"/>
-    <testcase name="t54" classname="w4.sel" time="0.003"/>
-    <testcase name="t55" classname="w4.sel" time="0.003">
-      <failure message="boom 4/55">boom 4/55</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-55.png]]
-</system-out>
-    </testcase>
-    <testcase name="t56" classname="w4.sel" time="0.003"/>
-    <testcase name="t57" classname="w4.sel" time="0.003"/>
-    <testcase name="t58" classname="w4.sel" time="0.003"/>
-    <testcase name="t59" classname="w4.sel" time="0.003"/>
-    <testcase name="t60" classname="w4.sel" time="0.003">
-      <failure message="boom 4/60">boom 4/60</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-60.png]]
-</system-out>
-    </testcase>
-    <testcase name="t61" classname="w4.sel" time="0.003"/>
-    <testcase name="t62" classname="w4.sel" time="0.003"/>
-    <testcase name="t63" classname="w4.sel" time="0.003"/>
-    <testcase name="t64" classname="w4.sel" time="0.003"/>
-    <testcase name="t65" classname="w4.sel" time="0.003">
-      <failure message="boom 4/65">boom 4/65</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-65.png]]
-</system-out>
-    </testcase>
-    <testcase name="t66" classname="w4.sel" time="0.003"/>
-    <testcase name="t67" classname="w4.sel" time="0.003"/>
-    <testcase name="t68" classname="w4.sel" time="0.003"/>
-    <testcase name="t69" classname="w4.sel" time="0.003"/>
-    <testcase name="t70" classname="w4.sel" time="0.003">
-      <failure message="boom 4/70">boom 4/70</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-70.png]]
-</system-out>
-    </testcase>
-    <testcase name="t71" classname="w4.sel" time="0.003"/>
-    <testcase name="t72" classname="w4.sel" time="0.003"/>
-    <testcase name="t73" classname="w4.sel" time="0.003"/>
-    <testcase name="t74" classname="w4.sel" time="0.003"/>
-    <testcase name="t75" classname="w4.sel" time="0.003">
-      <failure message="boom 4/75">boom 4/75</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-75.png]]
-</system-out>
-    </testcase>
-    <testcase name="t76" classname="w4.sel" time="0.003"/>
-    <testcase name="t77" classname="w4.sel" time="0.003"/>
-    <testcase name="t78" classname="w4.sel" time="0.003"/>
-    <testcase name="t79" classname="w4.sel" time="0.003"/>
-    <testcase name="t80" classname="w4.sel" time="0.003">
-      <failure message="boom 4/80">boom 4/80</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-80.png]]
-</system-out>
-    </testcase>
-    <testcase name="t81" classname="w4.sel" time="0.003"/>
-    <testcase name="t82" classname="w4.sel" time="0.003"/>
-    <testcase name="t83" classname="w4.sel" time="0.003"/>
-    <testcase name="t84" classname="w4.sel" time="0.003"/>
-    <testcase name="t85" classname="w4.sel" time="0.003">
-      <failure message="boom 4/85">boom 4/85</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-85.png]]
-</system-out>
-    </testcase>
-    <testcase name="t86" classname="w4.sel" time="0.003"/>
-    <testcase name="t87" classname="w4.sel" time="0.003"/>
-    <testcase name="t88" classname="w4.sel" time="0.003"/>
-    <testcase name="t89" classname="w4.sel" time="0.003"/>
-    <testcase name="t90" classname="w4.sel" time="0.003">
-      <failure message="boom 4/90">boom 4/90</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-90.png]]
-</system-out>
-    </testcase>
-    <testcase name="t91" classname="w4.sel" time="0.003"/>
-    <testcase name="t92" classname="w4.sel" time="0.003"/>
-    <testcase name="t93" classname="w4.sel" time="0.003"/>
-    <testcase name="t94" classname="w4.sel" time="0.003"/>
-    <testcase name="t95" classname="w4.sel" time="0.003">
-      <failure message="boom 4/95">boom 4/95</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-95.png]]
-</system-out>
-    </testcase>
-    <testcase name="t96" classname="w4.sel" time="0.003"/>
-    <testcase name="t97" classname="w4.sel" time="0.003"/>
-    <testcase name="t98" classname="w4.sel" time="0.003"/>
-    <testcase name="t99" classname="w4.sel" time="0.003"/>
-    <testcase name="t100" classname="w4.sel" time="0.003">
-      <failure message="boom 4/100">boom 4/100</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-100.png]]
-</system-out>
-    </testcase>
-    <testcase name="t101" classname="w4.sel" time="0.003"/>
-    <testcase name="t102" classname="w4.sel" time="0.003"/>
-    <testcase name="t103" classname="w4.sel" time="0.003"/>
-    <testcase name="t104" classname="w4.sel" time="0.003"/>
-    <testcase name="t105" classname="w4.sel" time="0.003">
-      <failure message="boom 4/105">boom 4/105</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-105.png]]
-</system-out>
-    </testcase>
-    <testcase name="t106" classname="w4.sel" time="0.003"/>
-    <testcase name="t107" classname="w4.sel" time="0.003"/>
-    <testcase name="t108" classname="w4.sel" time="0.003"/>
-    <testcase name="t109" classname="w4.sel" time="0.003"/>
-    <testcase name="t110" classname="w4.sel" time="0.003">
-      <failure message="boom 4/110">boom 4/110</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-110.png]]
-</system-out>
-    </testcase>
-    <testcase name="t111" classname="w4.sel" time="0.003"/>
-    <testcase name="t112" classname="w4.sel" time="0.003"/>
-    <testcase name="t113" classname="w4.sel" time="0.003"/>
-    <testcase name="t114" classname="w4.sel" time="0.003"/>
-    <testcase name="t115" classname="w4.sel" time="0.003">
-      <failure message="boom 4/115">boom 4/115</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-115.png]]
-</system-out>
-    </testcase>
-    <testcase name="t116" classname="w4.sel" time="0.003"/>
-    <testcase name="t117" classname="w4.sel" time="0.003"/>
-    <testcase name="t118" classname="w4.sel" time="0.003"/>
-    <testcase name="t119" classname="w4.sel" time="0.003"/>
-    <testcase name="t120" classname="w4.sel" time="0.003">
-      <failure message="boom 4/120">boom 4/120</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-120.png]]
-</system-out>
-    </testcase>
-    <testcase name="t121" classname="w4.sel" time="0.003"/>
-    <testcase name="t122" classname="w4.sel" time="0.003"/>
-    <testcase name="t123" classname="w4.sel" time="0.003"/>
-    <testcase name="t124" classname="w4.sel" time="0.003"/>
-    <testcase name="t125" classname="w4.sel" time="0.003">
-      <failure message="boom 4/125">boom 4/125</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-125.png]]
-</system-out>
-    </testcase>
-    <testcase name="t126" classname="w4.sel" time="0.003"/>
-    <testcase name="t127" classname="w4.sel" time="0.003"/>
-    <testcase name="t128" classname="w4.sel" time="0.003"/>
-    <testcase name="t129" classname="w4.sel" time="0.003"/>
-    <testcase name="t130" classname="w4.sel" time="0.003">
-      <failure message="boom 4/130">boom 4/130</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-130.png]]
-</system-out>
-    </testcase>
-    <testcase name="t131" classname="w4.sel" time="0.003"/>
-    <testcase name="t132" classname="w4.sel" time="0.003"/>
-    <testcase name="t133" classname="w4.sel" time="0.003"/>
-    <testcase name="t134" classname="w4.sel" time="0.003"/>
-    <testcase name="t135" classname="w4.sel" time="0.003">
-      <failure message="boom 4/135">boom 4/135</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-135.png]]
-</system-out>
-    </testcase>
-    <testcase name="t136" classname="w4.sel" time="0.003"/>
-    <testcase name="t137" classname="w4.sel" time="0.003"/>
-    <testcase name="t138" classname="w4.sel" time="0.003"/>
-    <testcase name="t139" classname="w4.sel" time="0.003"/>
-    <testcase name="t140" classname="w4.sel" time="0.003">
-      <failure message="boom 4/140">boom 4/140</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-140.png]]
-</system-out>
-    </testcase>
-    <testcase name="t141" classname="w4.sel" time="0.003"/>
-    <testcase name="t142" classname="w4.sel" time="0.003"/>
-    <testcase name="t143" classname="w4.sel" time="0.003"/>
-    <testcase name="t144" classname="w4.sel" time="0.003"/>
-    <testcase name="t145" classname="w4.sel" time="0.003">
-      <failure message="boom 4/145">boom 4/145</failure>
-      <system-out>[[ATTACHMENT|/tmp/w4-145.png]]
-</system-out>
-    </testcase>
-    <testcase name="t146" classname="w4.sel" time="0.003"/>
-    <testcase name="t147" classname="w4.sel" time="0.003"/>
-    <testcase name="t148" classname="w4.sel" time="0.003"/>
-    <testcase name="t149" classname="w4.sel" time="0.003"/>
-  </testsuite>
+<testsuites name="gatf" tests="1200" failures="240" skipped="0" time="0.042">
   <testsuite name="w3.sel" tests="150" failures="30" skipped="0" time="0.450">
     <testcase name="t0" classname="w3.sel" time="0.003">
       <failure message="boom 3/0">boom 3/0</failure>
@@ -1360,277 +544,277 @@
     <testcase name="t148" classname="w5.sel" time="0.003"/>
     <testcase name="t149" classname="w5.sel" time="0.003"/>
   </testsuite>
-  <testsuite name="w6.sel" tests="150" failures="30" skipped="0" time="0.450">
-    <testcase name="t0" classname="w6.sel" time="0.003">
-      <failure message="boom 6/0">boom 6/0</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-0.png]]
+  <testsuite name="w2.sel" tests="150" failures="30" skipped="0" time="0.450">
+    <testcase name="t0" classname="w2.sel" time="0.003">
+      <failure message="boom 2/0">boom 2/0</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-0.png]]
 </system-out>
     </testcase>
-    <testcase name="t1" classname="w6.sel" time="0.003"/>
-    <testcase name="t2" classname="w6.sel" time="0.003"/>
-    <testcase name="t3" classname="w6.sel" time="0.003"/>
-    <testcase name="t4" classname="w6.sel" time="0.003"/>
-    <testcase name="t5" classname="w6.sel" time="0.003">
-      <failure message="boom 6/5">boom 6/5</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-5.png]]
+    <testcase name="t1" classname="w2.sel" time="0.003"/>
+    <testcase name="t2" classname="w2.sel" time="0.003"/>
+    <testcase name="t3" classname="w2.sel" time="0.003"/>
+    <testcase name="t4" classname="w2.sel" time="0.003"/>
+    <testcase name="t5" classname="w2.sel" time="0.003">
+      <failure message="boom 2/5">boom 2/5</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-5.png]]
 </system-out>
     </testcase>
-    <testcase name="t6" classname="w6.sel" time="0.003"/>
-    <testcase name="t7" classname="w6.sel" time="0.003"/>
-    <testcase name="t8" classname="w6.sel" time="0.003"/>
-    <testcase name="t9" classname="w6.sel" time="0.003"/>
-    <testcase name="t10" classname="w6.sel" time="0.003">
-      <failure message="boom 6/10">boom 6/10</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-10.png]]
+    <testcase name="t6" classname="w2.sel" time="0.003"/>
+    <testcase name="t7" classname="w2.sel" time="0.003"/>
+    <testcase name="t8" classname="w2.sel" time="0.003"/>
+    <testcase name="t9" classname="w2.sel" time="0.003"/>
+    <testcase name="t10" classname="w2.sel" time="0.003">
+      <failure message="boom 2/10">boom 2/10</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-10.png]]
 </system-out>
     </testcase>
-    <testcase name="t11" classname="w6.sel" time="0.003"/>
-    <testcase name="t12" classname="w6.sel" time="0.003"/>
-    <testcase name="t13" classname="w6.sel" time="0.003"/>
-    <testcase name="t14" classname="w6.sel" time="0.003"/>
-    <testcase name="t15" classname="w6.sel" time="0.003">
-      <failure message="boom 6/15">boom 6/15</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-15.png]]
+    <testcase name="t11" classname="w2.sel" time="0.003"/>
+    <testcase name="t12" classname="w2.sel" time="0.003"/>
+    <testcase name="t13" classname="w2.sel" time="0.003"/>
+    <testcase name="t14" classname="w2.sel" time="0.003"/>
+    <testcase name="t15" classname="w2.sel" time="0.003">
+      <failure message="boom 2/15">boom 2/15</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-15.png]]
 </system-out>
     </testcase>
-    <testcase name="t16" classname="w6.sel" time="0.003"/>
-    <testcase name="t17" classname="w6.sel" time="0.003"/>
-    <testcase name="t18" classname="w6.sel" time="0.003"/>
-    <testcase name="t19" classname="w6.sel" time="0.003"/>
-    <testcase name="t20" classname="w6.sel" time="0.003">
-      <failure message="boom 6/20">boom 6/20</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-20.png]]
+    <testcase name="t16" classname="w2.sel" time="0.003"/>
+    <testcase name="t17" classname="w2.sel" time="0.003"/>
+    <testcase name="t18" classname="w2.sel" time="0.003"/>
+    <testcase name="t19" classname="w2.sel" time="0.003"/>
+    <testcase name="t20" classname="w2.sel" time="0.003">
+      <failure message="boom 2/20">boom 2/20</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-20.png]]
 </system-out>
     </testcase>
-    <testcase name="t21" classname="w6.sel" time="0.003"/>
-    <testcase name="t22" classname="w6.sel" time="0.003"/>
-    <testcase name="t23" classname="w6.sel" time="0.003"/>
-    <testcase name="t24" classname="w6.sel" time="0.003"/>
-    <testcase name="t25" classname="w6.sel" time="0.003">
-      <failure message="boom 6/25">boom 6/25</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-25.png]]
+    <testcase name="t21" classname="w2.sel" time="0.003"/>
+    <testcase name="t22" classname="w2.sel" time="0.003"/>
+    <testcase name="t23" classname="w2.sel" time="0.003"/>
+    <testcase name="t24" classname="w2.sel" time="0.003"/>
+    <testcase name="t25" classname="w2.sel" time="0.003">
+      <failure message="boom 2/25">boom 2/25</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-25.png]]
 </system-out>
     </testcase>
-    <testcase name="t26" classname="w6.sel" time="0.003"/>
-    <testcase name="t27" classname="w6.sel" time="0.003"/>
-    <testcase name="t28" classname="w6.sel" time="0.003"/>
-    <testcase name="t29" classname="w6.sel" time="0.003"/>
-    <testcase name="t30" classname="w6.sel" time="0.003">
-      <failure message="boom 6/30">boom 6/30</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-30.png]]
+    <testcase name="t26" classname="w2.sel" time="0.003"/>
+    <testcase name="t27" classname="w2.sel" time="0.003"/>
+    <testcase name="t28" classname="w2.sel" time="0.003"/>
+    <testcase name="t29" classname="w2.sel" time="0.003"/>
+    <testcase name="t30" classname="w2.sel" time="0.003">
+      <failure message="boom 2/30">boom 2/30</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-30.png]]
 </system-out>
     </testcase>
-    <testcase name="t31" classname="w6.sel" time="0.003"/>
-    <testcase name="t32" classname="w6.sel" time="0.003"/>
-    <testcase name="t33" classname="w6.sel" time="0.003"/>
-    <testcase name="t34" classname="w6.sel" time="0.003"/>
-    <testcase name="t35" classname="w6.sel" time="0.003">
-      <failure message="boom 6/35">boom 6/35</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-35.png]]
+    <testcase name="t31" classname="w2.sel" time="0.003"/>
+    <testcase name="t32" classname="w2.sel" time="0.003"/>
+    <testcase name="t33" classname="w2.sel" time="0.003"/>
+    <testcase name="t34" classname="w2.sel" time="0.003"/>
+    <testcase name="t35" classname="w2.sel" time="0.003">
+      <failure message="boom 2/35">boom 2/35</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-35.png]]
 </system-out>
     </testcase>
-    <testcase name="t36" classname="w6.sel" time="0.003"/>
-    <testcase name="t37" classname="w6.sel" time="0.003"/>
-    <testcase name="t38" classname="w6.sel" time="0.003"/>
-    <testcase name="t39" classname="w6.sel" time="0.003"/>
-    <testcase name="t40" classname="w6.sel" time="0.003">
-      <failure message="boom 6/40">boom 6/40</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-40.png]]
+    <testcase name="t36" classname="w2.sel" time="0.003"/>
+    <testcase name="t37" classname="w2.sel" time="0.003"/>
+    <testcase name="t38" classname="w2.sel" time="0.003"/>
+    <testcase name="t39" classname="w2.sel" time="0.003"/>
+    <testcase name="t40" classname="w2.sel" time="0.003">
+      <failure message="boom 2/40">boom 2/40</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-40.png]]
 </system-out>
     </testcase>
-    <testcase name="t41" classname="w6.sel" time="0.003"/>
-    <testcase name="t42" classname="w6.sel" time="0.003"/>
-    <testcase name="t43" classname="w6.sel" time="0.003"/>
-    <testcase name="t44" classname="w6.sel" time="0.003"/>
-    <testcase name="t45" classname="w6.sel" time="0.003">
-      <failure message="boom 6/45">boom 6/45</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-45.png]]
+    <testcase name="t41" classname="w2.sel" time="0.003"/>
+    <testcase name="t42" classname="w2.sel" time="0.003"/>
+    <testcase name="t43" classname="w2.sel" time="0.003"/>
+    <testcase name="t44" classname="w2.sel" time="0.003"/>
+    <testcase name="t45" classname="w2.sel" time="0.003">
+      <failure message="boom 2/45">boom 2/45</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-45.png]]
 </system-out>
     </testcase>
-    <testcase name="t46" classname="w6.sel" time="0.003"/>
-    <testcase name="t47" classname="w6.sel" time="0.003"/>
-    <testcase name="t48" classname="w6.sel" time="0.003"/>
-    <testcase name="t49" classname="w6.sel" time="0.003"/>
-    <testcase name="t50" classname="w6.sel" time="0.003">
-      <failure message="boom 6/50">boom 6/50</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-50.png]]
+    <testcase name="t46" classname="w2.sel" time="0.003"/>
+    <testcase name="t47" classname="w2.sel" time="0.003"/>
+    <testcase name="t48" classname="w2.sel" time="0.003"/>
+    <testcase name="t49" classname="w2.sel" time="0.003"/>
+    <testcase name="t50" classname="w2.sel" time="0.003">
+      <failure message="boom 2/50">boom 2/50</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-50.png]]
 </system-out>
     </testcase>
-    <testcase name="t51" classname="w6.sel" time="0.003"/>
-    <testcase name="t52" classname="w6.sel" time="0.003"/>
-    <testcase name="t53" classname="w6.sel" time="0.003"/>
-    <testcase name="t54" classname="w6.sel" time="0.003"/>
-    <testcase name="t55" classname="w6.sel" time="0.003">
-      <failure message="boom 6/55">boom 6/55</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-55.png]]
+    <testcase name="t51" classname="w2.sel" time="0.003"/>
+    <testcase name="t52" classname="w2.sel" time="0.003"/>
+    <testcase name="t53" classname="w2.sel" time="0.003"/>
+    <testcase name="t54" classname="w2.sel" time="0.003"/>
+    <testcase name="t55" classname="w2.sel" time="0.003">
+      <failure message="boom 2/55">boom 2/55</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-55.png]]
 </system-out>
     </testcase>
-    <testcase name="t56" classname="w6.sel" time="0.003"/>
-    <testcase name="t57" classname="w6.sel" time="0.003"/>
-    <testcase name="t58" classname="w6.sel" time="0.003"/>
-    <testcase name="t59" classname="w6.sel" time="0.003"/>
-    <testcase name="t60" classname="w6.sel" time="0.003">
-      <failure message="boom 6/60">boom 6/60</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-60.png]]
+    <testcase name="t56" classname="w2.sel" time="0.003"/>
+    <testcase name="t57" classname="w2.sel" time="0.003"/>
+    <testcase name="t58" classname="w2.sel" time="0.003"/>
+    <testcase name="t59" classname="w2.sel" time="0.003"/>
+    <testcase name="t60" classname="w2.sel" time="0.003">
+      <failure message="boom 2/60">boom 2/60</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-60.png]]
 </system-out>
     </testcase>
-    <testcase name="t61" classname="w6.sel" time="0.003"/>
-    <testcase name="t62" classname="w6.sel" time="0.003"/>
-    <testcase name="t63" classname="w6.sel" time="0.003"/>
-    <testcase name="t64" classname="w6.sel" time="0.003"/>
-    <testcase name="t65" classname="w6.sel" time="0.003">
-      <failure message="boom 6/65">boom 6/65</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-65.png]]
+    <testcase name="t61" classname="w2.sel" time="0.003"/>
+    <testcase name="t62" classname="w2.sel" time="0.003"/>
+    <testcase name="t63" classname="w2.sel" time="0.003"/>
+    <testcase name="t64" classname="w2.sel" time="0.003"/>
+    <testcase name="t65" classname="w2.sel" time="0.003">
+      <failure message="boom 2/65">boom 2/65</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-65.png]]
 </system-out>
     </testcase>
-    <testcase name="t66" classname="w6.sel" time="0.003"/>
-    <testcase name="t67" classname="w6.sel" time="0.003"/>
-    <testcase name="t68" classname="w6.sel" time="0.003"/>
-    <testcase name="t69" classname="w6.sel" time="0.003"/>
-    <testcase name="t70" classname="w6.sel" time="0.003">
-      <failure message="boom 6/70">boom 6/70</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-70.png]]
+    <testcase name="t66" classname="w2.sel" time="0.003"/>
+    <testcase name="t67" classname="w2.sel" time="0.003"/>
+    <testcase name="t68" classname="w2.sel" time="0.003"/>
+    <testcase name="t69" classname="w2.sel" time="0.003"/>
+    <testcase name="t70" classname="w2.sel" time="0.003">
+      <failure message="boom 2/70">boom 2/70</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-70.png]]
 </system-out>
     </testcase>
-    <testcase name="t71" classname="w6.sel" time="0.003"/>
-    <testcase name="t72" classname="w6.sel" time="0.003"/>
-    <testcase name="t73" classname="w6.sel" time="0.003"/>
-    <testcase name="t74" classname="w6.sel" time="0.003"/>
-    <testcase name="t75" classname="w6.sel" time="0.003">
-      <failure message="boom 6/75">boom 6/75</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-75.png]]
+    <testcase name="t71" classname="w2.sel" time="0.003"/>
+    <testcase name="t72" classname="w2.sel" time="0.003"/>
+    <testcase name="t73" classname="w2.sel" time="0.003"/>
+    <testcase name="t74" classname="w2.sel" time="0.003"/>
+    <testcase name="t75" classname="w2.sel" time="0.003">
+      <failure message="boom 2/75">boom 2/75</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-75.png]]
 </system-out>
     </testcase>
-    <testcase name="t76" classname="w6.sel" time="0.003"/>
-    <testcase name="t77" classname="w6.sel" time="0.003"/>
-    <testcase name="t78" classname="w6.sel" time="0.003"/>
-    <testcase name="t79" classname="w6.sel" time="0.003"/>
-    <testcase name="t80" classname="w6.sel" time="0.003">
-      <failure message="boom 6/80">boom 6/80</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-80.png]]
+    <testcase name="t76" classname="w2.sel" time="0.003"/>
+    <testcase name="t77" classname="w2.sel" time="0.003"/>
+    <testcase name="t78" classname="w2.sel" time="0.003"/>
+    <testcase name="t79" classname="w2.sel" time="0.003"/>
+    <testcase name="t80" classname="w2.sel" time="0.003">
+      <failure message="boom 2/80">boom 2/80</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-80.png]]
 </system-out>
     </testcase>
-    <testcase name="t81" classname="w6.sel" time="0.003"/>
-    <testcase name="t82" classname="w6.sel" time="0.003"/>
-    <testcase name="t83" classname="w6.sel" time="0.003"/>
-    <testcase name="t84" classname="w6.sel" time="0.003"/>
-    <testcase name="t85" classname="w6.sel" time="0.003">
-      <failure message="boom 6/85">boom 6/85</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-85.png]]
+    <testcase name="t81" classname="w2.sel" time="0.003"/>
+    <testcase name="t82" classname="w2.sel" time="0.003"/>
+    <testcase name="t83" classname="w2.sel" time="0.003"/>
+    <testcase name="t84" classname="w2.sel" time="0.003"/>
+    <testcase name="t85" classname="w2.sel" time="0.003">
+      <failure message="boom 2/85">boom 2/85</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-85.png]]
 </system-out>
     </testcase>
-    <testcase name="t86" classname="w6.sel" time="0.003"/>
-    <testcase name="t87" classname="w6.sel" time="0.003"/>
-    <testcase name="t88" classname="w6.sel" time="0.003"/>
-    <testcase name="t89" classname="w6.sel" time="0.003"/>
-    <testcase name="t90" classname="w6.sel" time="0.003">
-      <failure message="boom 6/90">boom 6/90</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-90.png]]
+    <testcase name="t86" classname="w2.sel" time="0.003"/>
+    <testcase name="t87" classname="w2.sel" time="0.003"/>
+    <testcase name="t88" classname="w2.sel" time="0.003"/>
+    <testcase name="t89" classname="w2.sel" time="0.003"/>
+    <testcase name="t90" classname="w2.sel" time="0.003">
+      <failure message="boom 2/90">boom 2/90</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-90.png]]
 </system-out>
     </testcase>
-    <testcase name="t91" classname="w6.sel" time="0.003"/>
-    <testcase name="t92" classname="w6.sel" time="0.003"/>
-    <testcase name="t93" classname="w6.sel" time="0.003"/>
-    <testcase name="t94" classname="w6.sel" time="0.003"/>
-    <testcase name="t95" classname="w6.sel" time="0.003">
-      <failure message="boom 6/95">boom 6/95</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-95.png]]
+    <testcase name="t91" classname="w2.sel" time="0.003"/>
+    <testcase name="t92" classname="w2.sel" time="0.003"/>
+    <testcase name="t93" classname="w2.sel" time="0.003"/>
+    <testcase name="t94" classname="w2.sel" time="0.003"/>
+    <testcase name="t95" classname="w2.sel" time="0.003">
+      <failure message="boom 2/95">boom 2/95</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-95.png]]
 </system-out>
     </testcase>
-    <testcase name="t96" classname="w6.sel" time="0.003"/>
-    <testcase name="t97" classname="w6.sel" time="0.003"/>
-    <testcase name="t98" classname="w6.sel" time="0.003"/>
-    <testcase name="t99" classname="w6.sel" time="0.003"/>
-    <testcase name="t100" classname="w6.sel" time="0.003">
-      <failure message="boom 6/100">boom 6/100</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-100.png]]
+    <testcase name="t96" classname="w2.sel" time="0.003"/>
+    <testcase name="t97" classname="w2.sel" time="0.003"/>
+    <testcase name="t98" classname="w2.sel" time="0.003"/>
+    <testcase name="t99" classname="w2.sel" time="0.003"/>
+    <testcase name="t100" classname="w2.sel" time="0.003">
+      <failure message="boom 2/100">boom 2/100</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-100.png]]
 </system-out>
     </testcase>
-    <testcase name="t101" classname="w6.sel" time="0.003"/>
-    <testcase name="t102" classname="w6.sel" time="0.003"/>
-    <testcase name="t103" classname="w6.sel" time="0.003"/>
-    <testcase name="t104" classname="w6.sel" time="0.003"/>
-    <testcase name="t105" classname="w6.sel" time="0.003">
-      <failure message="boom 6/105">boom 6/105</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-105.png]]
+    <testcase name="t101" classname="w2.sel" time="0.003"/>
+    <testcase name="t102" classname="w2.sel" time="0.003"/>
+    <testcase name="t103" classname="w2.sel" time="0.003"/>
+    <testcase name="t104" classname="w2.sel" time="0.003"/>
+    <testcase name="t105" classname="w2.sel" time="0.003">
+      <failure message="boom 2/105">boom 2/105</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-105.png]]
 </system-out>
     </testcase>
-    <testcase name="t106" classname="w6.sel" time="0.003"/>
-    <testcase name="t107" classname="w6.sel" time="0.003"/>
-    <testcase name="t108" classname="w6.sel" time="0.003"/>
-    <testcase name="t109" classname="w6.sel" time="0.003"/>
-    <testcase name="t110" classname="w6.sel" time="0.003">
-      <failure message="boom 6/110">boom 6/110</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-110.png]]
+    <testcase name="t106" classname="w2.sel" time="0.003"/>
+    <testcase name="t107" classname="w2.sel" time="0.003"/>
+    <testcase name="t108" classname="w2.sel" time="0.003"/>
+    <testcase name="t109" classname="w2.sel" time="0.003"/>
+    <testcase name="t110" classname="w2.sel" time="0.003">
+      <failure message="boom 2/110">boom 2/110</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-110.png]]
 </system-out>
     </testcase>
-    <testcase name="t111" classname="w6.sel" time="0.003"/>
-    <testcase name="t112" classname="w6.sel" time="0.003"/>
-    <testcase name="t113" classname="w6.sel" time="0.003"/>
-    <testcase name="t114" classname="w6.sel" time="0.003"/>
-    <testcase name="t115" classname="w6.sel" time="0.003">
-      <failure message="boom 6/115">boom 6/115</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-115.png]]
+    <testcase name="t111" classname="w2.sel" time="0.003"/>
+    <testcase name="t112" classname="w2.sel" time="0.003"/>
+    <testcase name="t113" classname="w2.sel" time="0.003"/>
+    <testcase name="t114" classname="w2.sel" time="0.003"/>
+    <testcase name="t115" classname="w2.sel" time="0.003">
+      <failure message="boom 2/115">boom 2/115</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-115.png]]
 </system-out>
     </testcase>
-    <testcase name="t116" classname="w6.sel" time="0.003"/>
-    <testcase name="t117" classname="w6.sel" time="0.003"/>
-    <testcase name="t118" classname="w6.sel" time="0.003"/>
-    <testcase name="t119" classname="w6.sel" time="0.003"/>
-    <testcase name="t120" classname="w6.sel" time="0.003">
-      <failure message="boom 6/120">boom 6/120</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-120.png]]
+    <testcase name="t116" classname="w2.sel" time="0.003"/>
+    <testcase name="t117" classname="w2.sel" time="0.003"/>
+    <testcase name="t118" classname="w2.sel" time="0.003"/>
+    <testcase name="t119" classname="w2.sel" time="0.003"/>
+    <testcase name="t120" classname="w2.sel" time="0.003">
+      <failure message="boom 2/120">boom 2/120</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-120.png]]
 </system-out>
     </testcase>
-    <testcase name="t121" classname="w6.sel" time="0.003"/>
-    <testcase name="t122" classname="w6.sel" time="0.003"/>
-    <testcase name="t123" classname="w6.sel" time="0.003"/>
-    <testcase name="t124" classname="w6.sel" time="0.003"/>
-    <testcase name="t125" classname="w6.sel" time="0.003">
-      <failure message="boom 6/125">boom 6/125</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-125.png]]
+    <testcase name="t121" classname="w2.sel" time="0.003"/>
+    <testcase name="t122" classname="w2.sel" time="0.003"/>
+    <testcase name="t123" classname="w2.sel" time="0.003"/>
+    <testcase name="t124" classname="w2.sel" time="0.003"/>
+    <testcase name="t125" classname="w2.sel" time="0.003">
+      <failure message="boom 2/125">boom 2/125</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-125.png]]
 </system-out>
     </testcase>
-    <testcase name="t126" classname="w6.sel" time="0.003"/>
-    <testcase name="t127" classname="w6.sel" time="0.003"/>
-    <testcase name="t128" classname="w6.sel" time="0.003"/>
-    <testcase name="t129" classname="w6.sel" time="0.003"/>
-    <testcase name="t130" classname="w6.sel" time="0.003">
-      <failure message="boom 6/130">boom 6/130</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-130.png]]
+    <testcase name="t126" classname="w2.sel" time="0.003"/>
+    <testcase name="t127" classname="w2.sel" time="0.003"/>
+    <testcase name="t128" classname="w2.sel" time="0.003"/>
+    <testcase name="t129" classname="w2.sel" time="0.003"/>
+    <testcase name="t130" classname="w2.sel" time="0.003">
+      <failure message="boom 2/130">boom 2/130</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-130.png]]
 </system-out>
     </testcase>
-    <testcase name="t131" classname="w6.sel" time="0.003"/>
-    <testcase name="t132" classname="w6.sel" time="0.003"/>
-    <testcase name="t133" classname="w6.sel" time="0.003"/>
-    <testcase name="t134" classname="w6.sel" time="0.003"/>
-    <testcase name="t135" classname="w6.sel" time="0.003">
-      <failure message="boom 6/135">boom 6/135</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-135.png]]
+    <testcase name="t131" classname="w2.sel" time="0.003"/>
+    <testcase name="t132" classname="w2.sel" time="0.003"/>
+    <testcase name="t133" classname="w2.sel" time="0.003"/>
+    <testcase name="t134" classname="w2.sel" time="0.003"/>
+    <testcase name="t135" classname="w2.sel" time="0.003">
+      <failure message="boom 2/135">boom 2/135</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-135.png]]
 </system-out>
     </testcase>
-    <testcase name="t136" classname="w6.sel" time="0.003"/>
-    <testcase name="t137" classname="w6.sel" time="0.003"/>
-    <testcase name="t138" classname="w6.sel" time="0.003"/>
-    <testcase name="t139" classname="w6.sel" time="0.003"/>
-    <testcase name="t140" classname="w6.sel" time="0.003">
-      <failure message="boom 6/140">boom 6/140</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-140.png]]
+    <testcase name="t136" classname="w2.sel" time="0.003"/>
+    <testcase name="t137" classname="w2.sel" time="0.003"/>
+    <testcase name="t138" classname="w2.sel" time="0.003"/>
+    <testcase name="t139" classname="w2.sel" time="0.003"/>
+    <testcase name="t140" classname="w2.sel" time="0.003">
+      <failure message="boom 2/140">boom 2/140</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-140.png]]
 </system-out>
     </testcase>
-    <testcase name="t141" classname="w6.sel" time="0.003"/>
-    <testcase name="t142" classname="w6.sel" time="0.003"/>
-    <testcase name="t143" classname="w6.sel" time="0.003"/>
-    <testcase name="t144" classname="w6.sel" time="0.003"/>
-    <testcase name="t145" classname="w6.sel" time="0.003">
-      <failure message="boom 6/145">boom 6/145</failure>
-      <system-out>[[ATTACHMENT|/tmp/w6-145.png]]
+    <testcase name="t141" classname="w2.sel" time="0.003"/>
+    <testcase name="t142" classname="w2.sel" time="0.003"/>
+    <testcase name="t143" classname="w2.sel" time="0.003"/>
+    <testcase name="t144" classname="w2.sel" time="0.003"/>
+    <testcase name="t145" classname="w2.sel" time="0.003">
+      <failure message="boom 2/145">boom 2/145</failure>
+      <system-out>[[ATTACHMENT|/tmp/w2-145.png]]
 </system-out>
     </testcase>
-    <testcase name="t146" classname="w6.sel" time="0.003"/>
-    <testcase name="t147" classname="w6.sel" time="0.003"/>
-    <testcase name="t148" classname="w6.sel" time="0.003"/>
-    <testcase name="t149" classname="w6.sel" time="0.003"/>
+    <testcase name="t146" classname="w2.sel" time="0.003"/>
+    <testcase name="t147" classname="w2.sel" time="0.003"/>
+    <testcase name="t148" classname="w2.sel" time="0.003"/>
+    <testcase name="t149" classname="w2.sel" time="0.003"/>
   </testsuite>
   <testsuite name="w7.sel" tests="150" failures="30" skipped="0" time="0.450">
     <testcase name="t0" classname="w7.sel" time="0.003">
@@ -1904,6 +1088,278 @@
     <testcase name="t148" classname="w7.sel" time="0.003"/>
     <testcase name="t149" classname="w7.sel" time="0.003"/>
   </testsuite>
+  <testsuite name="w4.sel" tests="150" failures="30" skipped="0" time="0.450">
+    <testcase name="t0" classname="w4.sel" time="0.003">
+      <failure message="boom 4/0">boom 4/0</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-0.png]]
+</system-out>
+    </testcase>
+    <testcase name="t1" classname="w4.sel" time="0.003"/>
+    <testcase name="t2" classname="w4.sel" time="0.003"/>
+    <testcase name="t3" classname="w4.sel" time="0.003"/>
+    <testcase name="t4" classname="w4.sel" time="0.003"/>
+    <testcase name="t5" classname="w4.sel" time="0.003">
+      <failure message="boom 4/5">boom 4/5</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-5.png]]
+</system-out>
+    </testcase>
+    <testcase name="t6" classname="w4.sel" time="0.003"/>
+    <testcase name="t7" classname="w4.sel" time="0.003"/>
+    <testcase name="t8" classname="w4.sel" time="0.003"/>
+    <testcase name="t9" classname="w4.sel" time="0.003"/>
+    <testcase name="t10" classname="w4.sel" time="0.003">
+      <failure message="boom 4/10">boom 4/10</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-10.png]]
+</system-out>
+    </testcase>
+    <testcase name="t11" classname="w4.sel" time="0.003"/>
+    <testcase name="t12" classname="w4.sel" time="0.003"/>
+    <testcase name="t13" classname="w4.sel" time="0.003"/>
+    <testcase name="t14" classname="w4.sel" time="0.003"/>
+    <testcase name="t15" classname="w4.sel" time="0.003">
+      <failure message="boom 4/15">boom 4/15</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-15.png]]
+</system-out>
+    </testcase>
+    <testcase name="t16" classname="w4.sel" time="0.003"/>
+    <testcase name="t17" classname="w4.sel" time="0.003"/>
+    <testcase name="t18" classname="w4.sel" time="0.003"/>
+    <testcase name="t19" classname="w4.sel" time="0.003"/>
+    <testcase name="t20" classname="w4.sel" time="0.003">
+      <failure message="boom 4/20">boom 4/20</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-20.png]]
+</system-out>
+    </testcase>
+    <testcase name="t21" classname="w4.sel" time="0.003"/>
+    <testcase name="t22" classname="w4.sel" time="0.003"/>
+    <testcase name="t23" classname="w4.sel" time="0.003"/>
+    <testcase name="t24" classname="w4.sel" time="0.003"/>
+    <testcase name="t25" classname="w4.sel" time="0.003">
+      <failure message="boom 4/25">boom 4/25</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-25.png]]
+</system-out>
+    </testcase>
+    <testcase name="t26" classname="w4.sel" time="0.003"/>
+    <testcase name="t27" classname="w4.sel" time="0.003"/>
+    <testcase name="t28" classname="w4.sel" time="0.003"/>
+    <testcase name="t29" classname="w4.sel" time="0.003"/>
+    <testcase name="t30" classname="w4.sel" time="0.003">
+      <failure message="boom 4/30">boom 4/30</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-30.png]]
+</system-out>
+    </testcase>
+    <testcase name="t31" classname="w4.sel" time="0.003"/>
+    <testcase name="t32" classname="w4.sel" time="0.003"/>
+    <testcase name="t33" classname="w4.sel" time="0.003"/>
+    <testcase name="t34" classname="w4.sel" time="0.003"/>
+    <testcase name="t35" classname="w4.sel" time="0.003">
+      <failure message="boom 4/35">boom 4/35</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-35.png]]
+</system-out>
+    </testcase>
+    <testcase name="t36" classname="w4.sel" time="0.003"/>
+    <testcase name="t37" classname="w4.sel" time="0.003"/>
+    <testcase name="t38" classname="w4.sel" time="0.003"/>
+    <testcase name="t39" classname="w4.sel" time="0.003"/>
+    <testcase name="t40" classname="w4.sel" time="0.003">
+      <failure message="boom 4/40">boom 4/40</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-40.png]]
+</system-out>
+    </testcase>
+    <testcase name="t41" classname="w4.sel" time="0.003"/>
+    <testcase name="t42" classname="w4.sel" time="0.003"/>
+    <testcase name="t43" classname="w4.sel" time="0.003"/>
+    <testcase name="t44" classname="w4.sel" time="0.003"/>
+    <testcase name="t45" classname="w4.sel" time="0.003">
+      <failure message="boom 4/45">boom 4/45</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-45.png]]
+</system-out>
+    </testcase>
+    <testcase name="t46" classname="w4.sel" time="0.003"/>
+    <testcase name="t47" classname="w4.sel" time="0.003"/>
+    <testcase name="t48" classname="w4.sel" time="0.003"/>
+    <testcase name="t49" classname="w4.sel" time="0.003"/>
+    <testcase name="t50" classname="w4.sel" time="0.003">
+      <failure message="boom 4/50">boom 4/50</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-50.png]]
+</system-out>
+    </testcase>
+    <testcase name="t51" classname="w4.sel" time="0.003"/>
+    <testcase name="t52" classname="w4.sel" time="0.003"/>
+    <testcase name="t53" classname="w4.sel" time="0.003"/>
+    <testcase name="t54" classname="w4.sel" time="0.003"/>
+    <testcase name="t55" classname="w4.sel" time="0.003">
+      <failure message="boom 4/55">boom 4/55</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-55.png]]
+</system-out>
+    </testcase>
+    <testcase name="t56" classname="w4.sel" time="0.003"/>
+    <testcase name="t57" classname="w4.sel" time="0.003"/>
+    <testcase name="t58" classname="w4.sel" time="0.003"/>
+    <testcase name="t59" classname="w4.sel" time="0.003"/>
+    <testcase name="t60" classname="w4.sel" time="0.003">
+      <failure message="boom 4/60">boom 4/60</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-60.png]]
+</system-out>
+    </testcase>
+    <testcase name="t61" classname="w4.sel" time="0.003"/>
+    <testcase name="t62" classname="w4.sel" time="0.003"/>
+    <testcase name="t63" classname="w4.sel" time="0.003"/>
+    <testcase name="t64" classname="w4.sel" time="0.003"/>
+    <testcase name="t65" classname="w4.sel" time="0.003">
+      <failure message="boom 4/65">boom 4/65</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-65.png]]
+</system-out>
+    </testcase>
+    <testcase name="t66" classname="w4.sel" time="0.003"/>
+    <testcase name="t67" classname="w4.sel" time="0.003"/>
+    <testcase name="t68" classname="w4.sel" time="0.003"/>
+    <testcase name="t69" classname="w4.sel" time="0.003"/>
+    <testcase name="t70" classname="w4.sel" time="0.003">
+      <failure message="boom 4/70">boom 4/70</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-70.png]]
+</system-out>
+    </testcase>
+    <testcase name="t71" classname="w4.sel" time="0.003"/>
+    <testcase name="t72" classname="w4.sel" time="0.003"/>
+    <testcase name="t73" classname="w4.sel" time="0.003"/>
+    <testcase name="t74" classname="w4.sel" time="0.003"/>
+    <testcase name="t75" classname="w4.sel" time="0.003">
+      <failure message="boom 4/75">boom 4/75</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-75.png]]
+</system-out>
+    </testcase>
+    <testcase name="t76" classname="w4.sel" time="0.003"/>
+    <testcase name="t77" classname="w4.sel" time="0.003"/>
+    <testcase name="t78" classname="w4.sel" time="0.003"/>
+    <testcase name="t79" classname="w4.sel" time="0.003"/>
+    <testcase name="t80" classname="w4.sel" time="0.003">
+      <failure message="boom 4/80">boom 4/80</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-80.png]]
+</system-out>
+    </testcase>
+    <testcase name="t81" classname="w4.sel" time="0.003"/>
+    <testcase name="t82" classname="w4.sel" time="0.003"/>
+    <testcase name="t83" classname="w4.sel" time="0.003"/>
+    <testcase name="t84" classname="w4.sel" time="0.003"/>
+    <testcase name="t85" classname="w4.sel" time="0.003">
+      <failure message="boom 4/85">boom 4/85</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-85.png]]
+</system-out>
+    </testcase>
+    <testcase name="t86" classname="w4.sel" time="0.003"/>
+    <testcase name="t87" classname="w4.sel" time="0.003"/>
+    <testcase name="t88" classname="w4.sel" time="0.003"/>
+    <testcase name="t89" classname="w4.sel" time="0.003"/>
+    <testcase name="t90" classname="w4.sel" time="0.003">
+      <failure message="boom 4/90">boom 4/90</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-90.png]]
+</system-out>
+    </testcase>
+    <testcase name="t91" classname="w4.sel" time="0.003"/>
+    <testcase name="t92" classname="w4.sel" time="0.003"/>
+    <testcase name="t93" classname="w4.sel" time="0.003"/>
+    <testcase name="t94" classname="w4.sel" time="0.003"/>
+    <testcase name="t95" classname="w4.sel" time="0.003">
+      <failure message="boom 4/95">boom 4/95</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-95.png]]
+</system-out>
+    </testcase>
+    <testcase name="t96" classname="w4.sel" time="0.003"/>
+    <testcase name="t97" classname="w4.sel" time="0.003"/>
+    <testcase name="t98" classname="w4.sel" time="0.003"/>
+    <testcase name="t99" classname="w4.sel" time="0.003"/>
+    <testcase name="t100" classname="w4.sel" time="0.003">
+      <failure message="boom 4/100">boom 4/100</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-100.png]]
+</system-out>
+    </testcase>
+    <testcase name="t101" classname="w4.sel" time="0.003"/>
+    <testcase name="t102" classname="w4.sel" time="0.003"/>
+    <testcase name="t103" classname="w4.sel" time="0.003"/>
+    <testcase name="t104" classname="w4.sel" time="0.003"/>
+    <testcase name="t105" classname="w4.sel" time="0.003">
+      <failure message="boom 4/105">boom 4/105</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-105.png]]
+</system-out>
+    </testcase>
+    <testcase name="t106" classname="w4.sel" time="0.003"/>
+    <testcase name="t107" classname="w4.sel" time="0.003"/>
+    <testcase name="t108" classname="w4.sel" time="0.003"/>
+    <testcase name="t109" classname="w4.sel" time="0.003"/>
+    <testcase name="t110" classname="w4.sel" time="0.003">
+      <failure message="boom 4/110">boom 4/110</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-110.png]]
+</system-out>
+    </testcase>
+    <testcase name="t111" classname="w4.sel" time="0.003"/>
+    <testcase name="t112" classname="w4.sel" time="0.003"/>
+    <testcase name="t113" classname="w4.sel" time="0.003"/>
+    <testcase name="t114" classname="w4.sel" time="0.003"/>
+    <testcase name="t115" classname="w4.sel" time="0.003">
+      <failure message="boom 4/115">boom 4/115</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-115.png]]
+</system-out>
+    </testcase>
+    <testcase name="t116" classname="w4.sel" time="0.003"/>
+    <testcase name="t117" classname="w4.sel" time="0.003"/>
+    <testcase name="t118" classname="w4.sel" time="0.003"/>
+    <testcase name="t119" classname="w4.sel" time="0.003"/>
+    <testcase name="t120" classname="w4.sel" time="0.003">
+      <failure message="boom 4/120">boom 4/120</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-120.png]]
+</system-out>
+    </testcase>
+    <testcase name="t121" classname="w4.sel" time="0.003"/>
+    <testcase name="t122" classname="w4.sel" time="0.003"/>
+    <testcase name="t123" classname="w4.sel" time="0.003"/>
+    <testcase name="t124" classname="w4.sel" time="0.003"/>
+    <testcase name="t125" classname="w4.sel" time="0.003">
+      <failure message="boom 4/125">boom 4/125</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-125.png]]
+</system-out>
+    </testcase>
+    <testcase name="t126" classname="w4.sel" time="0.003"/>
+    <testcase name="t127" classname="w4.sel" time="0.003"/>
+    <testcase name="t128" classname="w4.sel" time="0.003"/>
+    <testcase name="t129" classname="w4.sel" time="0.003"/>
+    <testcase name="t130" classname="w4.sel" time="0.003">
+      <failure message="boom 4/130">boom 4/130</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-130.png]]
+</system-out>
+    </testcase>
+    <testcase name="t131" classname="w4.sel" time="0.003"/>
+    <testcase name="t132" classname="w4.sel" time="0.003"/>
+    <testcase name="t133" classname="w4.sel" time="0.003"/>
+    <testcase name="t134" classname="w4.sel" time="0.003"/>
+    <testcase name="t135" classname="w4.sel" time="0.003">
+      <failure message="boom 4/135">boom 4/135</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-135.png]]
+</system-out>
+    </testcase>
+    <testcase name="t136" classname="w4.sel" time="0.003"/>
+    <testcase name="t137" classname="w4.sel" time="0.003"/>
+    <testcase name="t138" classname="w4.sel" time="0.003"/>
+    <testcase name="t139" classname="w4.sel" time="0.003"/>
+    <testcase name="t140" classname="w4.sel" time="0.003">
+      <failure message="boom 4/140">boom 4/140</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-140.png]]
+</system-out>
+    </testcase>
+    <testcase name="t141" classname="w4.sel" time="0.003"/>
+    <testcase name="t142" classname="w4.sel" time="0.003"/>
+    <testcase name="t143" classname="w4.sel" time="0.003"/>
+    <testcase name="t144" classname="w4.sel" time="0.003"/>
+    <testcase name="t145" classname="w4.sel" time="0.003">
+      <failure message="boom 4/145">boom 4/145</failure>
+      <system-out>[[ATTACHMENT|/tmp/w4-145.png]]
+</system-out>
+    </testcase>
+    <testcase name="t146" classname="w4.sel" time="0.003"/>
+    <testcase name="t147" classname="w4.sel" time="0.003"/>
+    <testcase name="t148" classname="w4.sel" time="0.003"/>
+    <testcase name="t149" classname="w4.sel" time="0.003"/>
+  </testsuite>
   <testsuite name="w1.sel" tests="150" failures="30" skipped="0" time="0.450">
     <testcase name="t0" classname="w1.sel" time="0.003">
       <failure message="boom 1/0">boom 1/0</failure>
@@ -2175,5 +1631,549 @@
     <testcase name="t147" classname="w1.sel" time="0.003"/>
     <testcase name="t148" classname="w1.sel" time="0.003"/>
     <testcase name="t149" classname="w1.sel" time="0.003"/>
+  </testsuite>
+  <testsuite name="w6.sel" tests="150" failures="30" skipped="0" time="0.450">
+    <testcase name="t0" classname="w6.sel" time="0.003">
+      <failure message="boom 6/0">boom 6/0</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-0.png]]
+</system-out>
+    </testcase>
+    <testcase name="t1" classname="w6.sel" time="0.003"/>
+    <testcase name="t2" classname="w6.sel" time="0.003"/>
+    <testcase name="t3" classname="w6.sel" time="0.003"/>
+    <testcase name="t4" classname="w6.sel" time="0.003"/>
+    <testcase name="t5" classname="w6.sel" time="0.003">
+      <failure message="boom 6/5">boom 6/5</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-5.png]]
+</system-out>
+    </testcase>
+    <testcase name="t6" classname="w6.sel" time="0.003"/>
+    <testcase name="t7" classname="w6.sel" time="0.003"/>
+    <testcase name="t8" classname="w6.sel" time="0.003"/>
+    <testcase name="t9" classname="w6.sel" time="0.003"/>
+    <testcase name="t10" classname="w6.sel" time="0.003">
+      <failure message="boom 6/10">boom 6/10</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-10.png]]
+</system-out>
+    </testcase>
+    <testcase name="t11" classname="w6.sel" time="0.003"/>
+    <testcase name="t12" classname="w6.sel" time="0.003"/>
+    <testcase name="t13" classname="w6.sel" time="0.003"/>
+    <testcase name="t14" classname="w6.sel" time="0.003"/>
+    <testcase name="t15" classname="w6.sel" time="0.003">
+      <failure message="boom 6/15">boom 6/15</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-15.png]]
+</system-out>
+    </testcase>
+    <testcase name="t16" classname="w6.sel" time="0.003"/>
+    <testcase name="t17" classname="w6.sel" time="0.003"/>
+    <testcase name="t18" classname="w6.sel" time="0.003"/>
+    <testcase name="t19" classname="w6.sel" time="0.003"/>
+    <testcase name="t20" classname="w6.sel" time="0.003">
+      <failure message="boom 6/20">boom 6/20</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-20.png]]
+</system-out>
+    </testcase>
+    <testcase name="t21" classname="w6.sel" time="0.003"/>
+    <testcase name="t22" classname="w6.sel" time="0.003"/>
+    <testcase name="t23" classname="w6.sel" time="0.003"/>
+    <testcase name="t24" classname="w6.sel" time="0.003"/>
+    <testcase name="t25" classname="w6.sel" time="0.003">
+      <failure message="boom 6/25">boom 6/25</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-25.png]]
+</system-out>
+    </testcase>
+    <testcase name="t26" classname="w6.sel" time="0.003"/>
+    <testcase name="t27" classname="w6.sel" time="0.003"/>
+    <testcase name="t28" classname="w6.sel" time="0.003"/>
+    <testcase name="t29" classname="w6.sel" time="0.003"/>
+    <testcase name="t30" classname="w6.sel" time="0.003">
+      <failure message="boom 6/30">boom 6/30</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-30.png]]
+</system-out>
+    </testcase>
+    <testcase name="t31" classname="w6.sel" time="0.003"/>
+    <testcase name="t32" classname="w6.sel" time="0.003"/>
+    <testcase name="t33" classname="w6.sel" time="0.003"/>
+    <testcase name="t34" classname="w6.sel" time="0.003"/>
+    <testcase name="t35" classname="w6.sel" time="0.003">
+      <failure message="boom 6/35">boom 6/35</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-35.png]]
+</system-out>
+    </testcase>
+    <testcase name="t36" classname="w6.sel" time="0.003"/>
+    <testcase name="t37" classname="w6.sel" time="0.003"/>
+    <testcase name="t38" classname="w6.sel" time="0.003"/>
+    <testcase name="t39" classname="w6.sel" time="0.003"/>
+    <testcase name="t40" classname="w6.sel" time="0.003">
+      <failure message="boom 6/40">boom 6/40</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-40.png]]
+</system-out>
+    </testcase>
+    <testcase name="t41" classname="w6.sel" time="0.003"/>
+    <testcase name="t42" classname="w6.sel" time="0.003"/>
+    <testcase name="t43" classname="w6.sel" time="0.003"/>
+    <testcase name="t44" classname="w6.sel" time="0.003"/>
+    <testcase name="t45" classname="w6.sel" time="0.003">
+      <failure message="boom 6/45">boom 6/45</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-45.png]]
+</system-out>
+    </testcase>
+    <testcase name="t46" classname="w6.sel" time="0.003"/>
+    <testcase name="t47" classname="w6.sel" time="0.003"/>
+    <testcase name="t48" classname="w6.sel" time="0.003"/>
+    <testcase name="t49" classname="w6.sel" time="0.003"/>
+    <testcase name="t50" classname="w6.sel" time="0.003">
+      <failure message="boom 6/50">boom 6/50</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-50.png]]
+</system-out>
+    </testcase>
+    <testcase name="t51" classname="w6.sel" time="0.003"/>
+    <testcase name="t52" classname="w6.sel" time="0.003"/>
+    <testcase name="t53" classname="w6.sel" time="0.003"/>
+    <testcase name="t54" classname="w6.sel" time="0.003"/>
+    <testcase name="t55" classname="w6.sel" time="0.003">
+      <failure message="boom 6/55">boom 6/55</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-55.png]]
+</system-out>
+    </testcase>
+    <testcase name="t56" classname="w6.sel" time="0.003"/>
+    <testcase name="t57" classname="w6.sel" time="0.003"/>
+    <testcase name="t58" classname="w6.sel" time="0.003"/>
+    <testcase name="t59" classname="w6.sel" time="0.003"/>
+    <testcase name="t60" classname="w6.sel" time="0.003">
+      <failure message="boom 6/60">boom 6/60</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-60.png]]
+</system-out>
+    </testcase>
+    <testcase name="t61" classname="w6.sel" time="0.003"/>
+    <testcase name="t62" classname="w6.sel" time="0.003"/>
+    <testcase name="t63" classname="w6.sel" time="0.003"/>
+    <testcase name="t64" classname="w6.sel" time="0.003"/>
+    <testcase name="t65" classname="w6.sel" time="0.003">
+      <failure message="boom 6/65">boom 6/65</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-65.png]]
+</system-out>
+    </testcase>
+    <testcase name="t66" classname="w6.sel" time="0.003"/>
+    <testcase name="t67" classname="w6.sel" time="0.003"/>
+    <testcase name="t68" classname="w6.sel" time="0.003"/>
+    <testcase name="t69" classname="w6.sel" time="0.003"/>
+    <testcase name="t70" classname="w6.sel" time="0.003">
+      <failure message="boom 6/70">boom 6/70</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-70.png]]
+</system-out>
+    </testcase>
+    <testcase name="t71" classname="w6.sel" time="0.003"/>
+    <testcase name="t72" classname="w6.sel" time="0.003"/>
+    <testcase name="t73" classname="w6.sel" time="0.003"/>
+    <testcase name="t74" classname="w6.sel" time="0.003"/>
+    <testcase name="t75" classname="w6.sel" time="0.003">
+      <failure message="boom 6/75">boom 6/75</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-75.png]]
+</system-out>
+    </testcase>
+    <testcase name="t76" classname="w6.sel" time="0.003"/>
+    <testcase name="t77" classname="w6.sel" time="0.003"/>
+    <testcase name="t78" classname="w6.sel" time="0.003"/>
+    <testcase name="t79" classname="w6.sel" time="0.003"/>
+    <testcase name="t80" classname="w6.sel" time="0.003">
+      <failure message="boom 6/80">boom 6/80</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-80.png]]
+</system-out>
+    </testcase>
+    <testcase name="t81" classname="w6.sel" time="0.003"/>
+    <testcase name="t82" classname="w6.sel" time="0.003"/>
+    <testcase name="t83" classname="w6.sel" time="0.003"/>
+    <testcase name="t84" classname="w6.sel" time="0.003"/>
+    <testcase name="t85" classname="w6.sel" time="0.003">
+      <failure message="boom 6/85">boom 6/85</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-85.png]]
+</system-out>
+    </testcase>
+    <testcase name="t86" classname="w6.sel" time="0.003"/>
+    <testcase name="t87" classname="w6.sel" time="0.003"/>
+    <testcase name="t88" classname="w6.sel" time="0.003"/>
+    <testcase name="t89" classname="w6.sel" time="0.003"/>
+    <testcase name="t90" classname="w6.sel" time="0.003">
+      <failure message="boom 6/90">boom 6/90</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-90.png]]
+</system-out>
+    </testcase>
+    <testcase name="t91" classname="w6.sel" time="0.003"/>
+    <testcase name="t92" classname="w6.sel" time="0.003"/>
+    <testcase name="t93" classname="w6.sel" time="0.003"/>
+    <testcase name="t94" classname="w6.sel" time="0.003"/>
+    <testcase name="t95" classname="w6.sel" time="0.003">
+      <failure message="boom 6/95">boom 6/95</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-95.png]]
+</system-out>
+    </testcase>
+    <testcase name="t96" classname="w6.sel" time="0.003"/>
+    <testcase name="t97" classname="w6.sel" time="0.003"/>
+    <testcase name="t98" classname="w6.sel" time="0.003"/>
+    <testcase name="t99" classname="w6.sel" time="0.003"/>
+    <testcase name="t100" classname="w6.sel" time="0.003">
+      <failure message="boom 6/100">boom 6/100</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-100.png]]
+</system-out>
+    </testcase>
+    <testcase name="t101" classname="w6.sel" time="0.003"/>
+    <testcase name="t102" classname="w6.sel" time="0.003"/>
+    <testcase name="t103" classname="w6.sel" time="0.003"/>
+    <testcase name="t104" classname="w6.sel" time="0.003"/>
+    <testcase name="t105" classname="w6.sel" time="0.003">
+      <failure message="boom 6/105">boom 6/105</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-105.png]]
+</system-out>
+    </testcase>
+    <testcase name="t106" classname="w6.sel" time="0.003"/>
+    <testcase name="t107" classname="w6.sel" time="0.003"/>
+    <testcase name="t108" classname="w6.sel" time="0.003"/>
+    <testcase name="t109" classname="w6.sel" time="0.003"/>
+    <testcase name="t110" classname="w6.sel" time="0.003">
+      <failure message="boom 6/110">boom 6/110</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-110.png]]
+</system-out>
+    </testcase>
+    <testcase name="t111" classname="w6.sel" time="0.003"/>
+    <testcase name="t112" classname="w6.sel" time="0.003"/>
+    <testcase name="t113" classname="w6.sel" time="0.003"/>
+    <testcase name="t114" classname="w6.sel" time="0.003"/>
+    <testcase name="t115" classname="w6.sel" time="0.003">
+      <failure message="boom 6/115">boom 6/115</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-115.png]]
+</system-out>
+    </testcase>
+    <testcase name="t116" classname="w6.sel" time="0.003"/>
+    <testcase name="t117" classname="w6.sel" time="0.003"/>
+    <testcase name="t118" classname="w6.sel" time="0.003"/>
+    <testcase name="t119" classname="w6.sel" time="0.003"/>
+    <testcase name="t120" classname="w6.sel" time="0.003">
+      <failure message="boom 6/120">boom 6/120</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-120.png]]
+</system-out>
+    </testcase>
+    <testcase name="t121" classname="w6.sel" time="0.003"/>
+    <testcase name="t122" classname="w6.sel" time="0.003"/>
+    <testcase name="t123" classname="w6.sel" time="0.003"/>
+    <testcase name="t124" classname="w6.sel" time="0.003"/>
+    <testcase name="t125" classname="w6.sel" time="0.003">
+      <failure message="boom 6/125">boom 6/125</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-125.png]]
+</system-out>
+    </testcase>
+    <testcase name="t126" classname="w6.sel" time="0.003"/>
+    <testcase name="t127" classname="w6.sel" time="0.003"/>
+    <testcase name="t128" classname="w6.sel" time="0.003"/>
+    <testcase name="t129" classname="w6.sel" time="0.003"/>
+    <testcase name="t130" classname="w6.sel" time="0.003">
+      <failure message="boom 6/130">boom 6/130</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-130.png]]
+</system-out>
+    </testcase>
+    <testcase name="t131" classname="w6.sel" time="0.003"/>
+    <testcase name="t132" classname="w6.sel" time="0.003"/>
+    <testcase name="t133" classname="w6.sel" time="0.003"/>
+    <testcase name="t134" classname="w6.sel" time="0.003"/>
+    <testcase name="t135" classname="w6.sel" time="0.003">
+      <failure message="boom 6/135">boom 6/135</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-135.png]]
+</system-out>
+    </testcase>
+    <testcase name="t136" classname="w6.sel" time="0.003"/>
+    <testcase name="t137" classname="w6.sel" time="0.003"/>
+    <testcase name="t138" classname="w6.sel" time="0.003"/>
+    <testcase name="t139" classname="w6.sel" time="0.003"/>
+    <testcase name="t140" classname="w6.sel" time="0.003">
+      <failure message="boom 6/140">boom 6/140</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-140.png]]
+</system-out>
+    </testcase>
+    <testcase name="t141" classname="w6.sel" time="0.003"/>
+    <testcase name="t142" classname="w6.sel" time="0.003"/>
+    <testcase name="t143" classname="w6.sel" time="0.003"/>
+    <testcase name="t144" classname="w6.sel" time="0.003"/>
+    <testcase name="t145" classname="w6.sel" time="0.003">
+      <failure message="boom 6/145">boom 6/145</failure>
+      <system-out>[[ATTACHMENT|/tmp/w6-145.png]]
+</system-out>
+    </testcase>
+    <testcase name="t146" classname="w6.sel" time="0.003"/>
+    <testcase name="t147" classname="w6.sel" time="0.003"/>
+    <testcase name="t148" classname="w6.sel" time="0.003"/>
+    <testcase name="t149" classname="w6.sel" time="0.003"/>
+  </testsuite>
+  <testsuite name="w0.sel" tests="150" failures="30" skipped="0" time="0.450">
+    <testcase name="t0" classname="w0.sel" time="0.003">
+      <failure message="boom 0/0">boom 0/0</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-0.png]]
+</system-out>
+    </testcase>
+    <testcase name="t1" classname="w0.sel" time="0.003"/>
+    <testcase name="t2" classname="w0.sel" time="0.003"/>
+    <testcase name="t3" classname="w0.sel" time="0.003"/>
+    <testcase name="t4" classname="w0.sel" time="0.003"/>
+    <testcase name="t5" classname="w0.sel" time="0.003">
+      <failure message="boom 0/5">boom 0/5</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-5.png]]
+</system-out>
+    </testcase>
+    <testcase name="t6" classname="w0.sel" time="0.003"/>
+    <testcase name="t7" classname="w0.sel" time="0.003"/>
+    <testcase name="t8" classname="w0.sel" time="0.003"/>
+    <testcase name="t9" classname="w0.sel" time="0.003"/>
+    <testcase name="t10" classname="w0.sel" time="0.003">
+      <failure message="boom 0/10">boom 0/10</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-10.png]]
+</system-out>
+    </testcase>
+    <testcase name="t11" classname="w0.sel" time="0.003"/>
+    <testcase name="t12" classname="w0.sel" time="0.003"/>
+    <testcase name="t13" classname="w0.sel" time="0.003"/>
+    <testcase name="t14" classname="w0.sel" time="0.003"/>
+    <testcase name="t15" classname="w0.sel" time="0.003">
+      <failure message="boom 0/15">boom 0/15</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-15.png]]
+</system-out>
+    </testcase>
+    <testcase name="t16" classname="w0.sel" time="0.003"/>
+    <testcase name="t17" classname="w0.sel" time="0.003"/>
+    <testcase name="t18" classname="w0.sel" time="0.003"/>
+    <testcase name="t19" classname="w0.sel" time="0.003"/>
+    <testcase name="t20" classname="w0.sel" time="0.003">
+      <failure message="boom 0/20">boom 0/20</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-20.png]]
+</system-out>
+    </testcase>
+    <testcase name="t21" classname="w0.sel" time="0.003"/>
+    <testcase name="t22" classname="w0.sel" time="0.003"/>
+    <testcase name="t23" classname="w0.sel" time="0.003"/>
+    <testcase name="t24" classname="w0.sel" time="0.003"/>
+    <testcase name="t25" classname="w0.sel" time="0.003">
+      <failure message="boom 0/25">boom 0/25</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-25.png]]
+</system-out>
+    </testcase>
+    <testcase name="t26" classname="w0.sel" time="0.003"/>
+    <testcase name="t27" classname="w0.sel" time="0.003"/>
+    <testcase name="t28" classname="w0.sel" time="0.003"/>
+    <testcase name="t29" classname="w0.sel" time="0.003"/>
+    <testcase name="t30" classname="w0.sel" time="0.003">
+      <failure message="boom 0/30">boom 0/30</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-30.png]]
+</system-out>
+    </testcase>
+    <testcase name="t31" classname="w0.sel" time="0.003"/>
+    <testcase name="t32" classname="w0.sel" time="0.003"/>
+    <testcase name="t33" classname="w0.sel" time="0.003"/>
+    <testcase name="t34" classname="w0.sel" time="0.003"/>
+    <testcase name="t35" classname="w0.sel" time="0.003">
+      <failure message="boom 0/35">boom 0/35</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-35.png]]
+</system-out>
+    </testcase>
+    <testcase name="t36" classname="w0.sel" time="0.003"/>
+    <testcase name="t37" classname="w0.sel" time="0.003"/>
+    <testcase name="t38" classname="w0.sel" time="0.003"/>
+    <testcase name="t39" classname="w0.sel" time="0.003"/>
+    <testcase name="t40" classname="w0.sel" time="0.003">
+      <failure message="boom 0/40">boom 0/40</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-40.png]]
+</system-out>
+    </testcase>
+    <testcase name="t41" classname="w0.sel" time="0.003"/>
+    <testcase name="t42" classname="w0.sel" time="0.003"/>
+    <testcase name="t43" classname="w0.sel" time="0.003"/>
+    <testcase name="t44" classname="w0.sel" time="0.003"/>
+    <testcase name="t45" classname="w0.sel" time="0.003">
+      <failure message="boom 0/45">boom 0/45</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-45.png]]
+</system-out>
+    </testcase>
+    <testcase name="t46" classname="w0.sel" time="0.003"/>
+    <testcase name="t47" classname="w0.sel" time="0.003"/>
+    <testcase name="t48" classname="w0.sel" time="0.003"/>
+    <testcase name="t49" classname="w0.sel" time="0.003"/>
+    <testcase name="t50" classname="w0.sel" time="0.003">
+      <failure message="boom 0/50">boom 0/50</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-50.png]]
+</system-out>
+    </testcase>
+    <testcase name="t51" classname="w0.sel" time="0.003"/>
+    <testcase name="t52" classname="w0.sel" time="0.003"/>
+    <testcase name="t53" classname="w0.sel" time="0.003"/>
+    <testcase name="t54" classname="w0.sel" time="0.003"/>
+    <testcase name="t55" classname="w0.sel" time="0.003">
+      <failure message="boom 0/55">boom 0/55</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-55.png]]
+</system-out>
+    </testcase>
+    <testcase name="t56" classname="w0.sel" time="0.003"/>
+    <testcase name="t57" classname="w0.sel" time="0.003"/>
+    <testcase name="t58" classname="w0.sel" time="0.003"/>
+    <testcase name="t59" classname="w0.sel" time="0.003"/>
+    <testcase name="t60" classname="w0.sel" time="0.003">
+      <failure message="boom 0/60">boom 0/60</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-60.png]]
+</system-out>
+    </testcase>
+    <testcase name="t61" classname="w0.sel" time="0.003"/>
+    <testcase name="t62" classname="w0.sel" time="0.003"/>
+    <testcase name="t63" classname="w0.sel" time="0.003"/>
+    <testcase name="t64" classname="w0.sel" time="0.003"/>
+    <testcase name="t65" classname="w0.sel" time="0.003">
+      <failure message="boom 0/65">boom 0/65</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-65.png]]
+</system-out>
+    </testcase>
+    <testcase name="t66" classname="w0.sel" time="0.003"/>
+    <testcase name="t67" classname="w0.sel" time="0.003"/>
+    <testcase name="t68" classname="w0.sel" time="0.003"/>
+    <testcase name="t69" classname="w0.sel" time="0.003"/>
+    <testcase name="t70" classname="w0.sel" time="0.003">
+      <failure message="boom 0/70">boom 0/70</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-70.png]]
+</system-out>
+    </testcase>
+    <testcase name="t71" classname="w0.sel" time="0.003"/>
+    <testcase name="t72" classname="w0.sel" time="0.003"/>
+    <testcase name="t73" classname="w0.sel" time="0.003"/>
+    <testcase name="t74" classname="w0.sel" time="0.003"/>
+    <testcase name="t75" classname="w0.sel" time="0.003">
+      <failure message="boom 0/75">boom 0/75</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-75.png]]
+</system-out>
+    </testcase>
+    <testcase name="t76" classname="w0.sel" time="0.003"/>
+    <testcase name="t77" classname="w0.sel" time="0.003"/>
+    <testcase name="t78" classname="w0.sel" time="0.003"/>
+    <testcase name="t79" classname="w0.sel" time="0.003"/>
+    <testcase name="t80" classname="w0.sel" time="0.003">
+      <failure message="boom 0/80">boom 0/80</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-80.png]]
+</system-out>
+    </testcase>
+    <testcase name="t81" classname="w0.sel" time="0.003"/>
+    <testcase name="t82" classname="w0.sel" time="0.003"/>
+    <testcase name="t83" classname="w0.sel" time="0.003"/>
+    <testcase name="t84" classname="w0.sel" time="0.003"/>
+    <testcase name="t85" classname="w0.sel" time="0.003">
+      <failure message="boom 0/85">boom 0/85</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-85.png]]
+</system-out>
+    </testcase>
+    <testcase name="t86" classname="w0.sel" time="0.003"/>
+    <testcase name="t87" classname="w0.sel" time="0.003"/>
+    <testcase name="t88" classname="w0.sel" time="0.003"/>
+    <testcase name="t89" classname="w0.sel" time="0.003"/>
+    <testcase name="t90" classname="w0.sel" time="0.003">
+      <failure message="boom 0/90">boom 0/90</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-90.png]]
+</system-out>
+    </testcase>
+    <testcase name="t91" classname="w0.sel" time="0.003"/>
+    <testcase name="t92" classname="w0.sel" time="0.003"/>
+    <testcase name="t93" classname="w0.sel" time="0.003"/>
+    <testcase name="t94" classname="w0.sel" time="0.003"/>
+    <testcase name="t95" classname="w0.sel" time="0.003">
+      <failure message="boom 0/95">boom 0/95</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-95.png]]
+</system-out>
+    </testcase>
+    <testcase name="t96" classname="w0.sel" time="0.003"/>
+    <testcase name="t97" classname="w0.sel" time="0.003"/>
+    <testcase name="t98" classname="w0.sel" time="0.003"/>
+    <testcase name="t99" classname="w0.sel" time="0.003"/>
+    <testcase name="t100" classname="w0.sel" time="0.003">
+      <failure message="boom 0/100">boom 0/100</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-100.png]]
+</system-out>
+    </testcase>
+    <testcase name="t101" classname="w0.sel" time="0.003"/>
+    <testcase name="t102" classname="w0.sel" time="0.003"/>
+    <testcase name="t103" classname="w0.sel" time="0.003"/>
+    <testcase name="t104" classname="w0.sel" time="0.003"/>
+    <testcase name="t105" classname="w0.sel" time="0.003">
+      <failure message="boom 0/105">boom 0/105</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-105.png]]
+</system-out>
+    </testcase>
+    <testcase name="t106" classname="w0.sel" time="0.003"/>
+    <testcase name="t107" classname="w0.sel" time="0.003"/>
+    <testcase name="t108" classname="w0.sel" time="0.003"/>
+    <testcase name="t109" classname="w0.sel" time="0.003"/>
+    <testcase name="t110" classname="w0.sel" time="0.003">
+      <failure message="boom 0/110">boom 0/110</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-110.png]]
+</system-out>
+    </testcase>
+    <testcase name="t111" classname="w0.sel" time="0.003"/>
+    <testcase name="t112" classname="w0.sel" time="0.003"/>
+    <testcase name="t113" classname="w0.sel" time="0.003"/>
+    <testcase name="t114" classname="w0.sel" time="0.003"/>
+    <testcase name="t115" classname="w0.sel" time="0.003">
+      <failure message="boom 0/115">boom 0/115</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-115.png]]
+</system-out>
+    </testcase>
+    <testcase name="t116" classname="w0.sel" time="0.003"/>
+    <testcase name="t117" classname="w0.sel" time="0.003"/>
+    <testcase name="t118" classname="w0.sel" time="0.003"/>
+    <testcase name="t119" classname="w0.sel" time="0.003"/>
+    <testcase name="t120" classname="w0.sel" time="0.003">
+      <failure message="boom 0/120">boom 0/120</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-120.png]]
+</system-out>
+    </testcase>
+    <testcase name="t121" classname="w0.sel" time="0.003"/>
+    <testcase name="t122" classname="w0.sel" time="0.003"/>
+    <testcase name="t123" classname="w0.sel" time="0.003"/>
+    <testcase name="t124" classname="w0.sel" time="0.003"/>
+    <testcase name="t125" classname="w0.sel" time="0.003">
+      <failure message="boom 0/125">boom 0/125</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-125.png]]
+</system-out>
+    </testcase>
+    <testcase name="t126" classname="w0.sel" time="0.003"/>
+    <testcase name="t127" classname="w0.sel" time="0.003"/>
+    <testcase name="t128" classname="w0.sel" time="0.003"/>
+    <testcase name="t129" classname="w0.sel" time="0.003"/>
+    <testcase name="t130" classname="w0.sel" time="0.003">
+      <failure message="boom 0/130">boom 0/130</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-130.png]]
+</system-out>
+    </testcase>
+    <testcase name="t131" classname="w0.sel" time="0.003"/>
+    <testcase name="t132" classname="w0.sel" time="0.003"/>
+    <testcase name="t133" classname="w0.sel" time="0.003"/>
+    <testcase name="t134" classname="w0.sel" time="0.003"/>
+    <testcase name="t135" classname="w0.sel" time="0.003">
+      <failure message="boom 0/135">boom 0/135</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-135.png]]
+</system-out>
+    </testcase>
+    <testcase name="t136" classname="w0.sel" time="0.003"/>
+    <testcase name="t137" classname="w0.sel" time="0.003"/>
+    <testcase name="t138" classname="w0.sel" time="0.003"/>
+    <testcase name="t139" classname="w0.sel" time="0.003"/>
+    <testcase name="t140" classname="w0.sel" time="0.003">
+      <failure message="boom 0/140">boom 0/140</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-140.png]]
+</system-out>
+    </testcase>
+    <testcase name="t141" classname="w0.sel" time="0.003"/>
+    <testcase name="t142" classname="w0.sel" time="0.003"/>
+    <testcase name="t143" classname="w0.sel" time="0.003"/>
+    <testcase name="t144" classname="w0.sel" time="0.003"/>
+    <testcase name="t145" classname="w0.sel" time="0.003">
+      <failure message="boom 0/145">boom 0/145</failure>
+      <system-out>[[ATTACHMENT|/tmp/w0-145.png]]
+</system-out>
+    </testcase>
+    <testcase name="t146" classname="w0.sel" time="0.003"/>
+    <testcase name="t147" classname="w0.sel" time="0.003"/>
+    <testcase name="t148" classname="w0.sel" time="0.003"/>
+    <testcase name="t149" classname="w0.sel" time="0.003"/>
   </testsuite>
 </testsuites>

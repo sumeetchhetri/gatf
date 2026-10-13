@@ -14,7 +14,7 @@
     limitations under the License.
 */
 import { useEffect, useRef, useState, type MutableRefObject } from 'react';
-import { EditorState } from '@codemirror/state';
+import { EditorState, StateEffect, StateField } from '@codemirror/state';
 import {
   EditorView,
   keymap,
@@ -22,6 +22,8 @@ import {
   highlightActiveLine,
   highlightActiveLineGutter,
   drawSelection,
+  Decoration,
+  type DecorationSet,
 } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { syntaxHighlighting, bracketMatching } from '@codemirror/language';
@@ -64,6 +66,25 @@ const cmTheme = EditorView.theme({
   '.cm-scroller': { overflow: 'auto', lineHeight: '1.5' },
   '.cm-tooltip': { backgroundColor: 'var(--panel)', color: 'var(--fg)', border: '1px solid var(--border)' },
   '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--accent, #2b6cb0)', color: '#fff' },
+  '.cm-heal-line': { backgroundColor: 'rgba(248, 81, 73, 0.14)' },
+});
+
+// H1 (Δ150): the line a heal proposal would replace, marked until the heal is accepted or closed
+const setHealMark = StateEffect.define<number | null>();
+const healMarkField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    let d = deco.map(tr.changes);
+    for (const e of tr.effects) {
+      if (!e.is(setHealMark)) continue;
+      const n = e.value;
+      d = n != null && n >= 1 && n <= tr.state.doc.lines
+        ? Decoration.set([Decoration.line({ class: 'cm-heal-line' }).range(tr.state.doc.line(n).from)])
+        : Decoration.none;
+    }
+    return d;
+  },
+  provide: (f) => EditorView.decorations.from(f),
 });
 
 export default function SelCodeMirror({
@@ -76,6 +97,7 @@ export default function SelCodeMirror({
   gotoSeq,
   onNavigate,
   onNavError,
+  markLine,
 }: {
   value: string;
   onChange?: (v: string) => void;
@@ -86,6 +108,7 @@ export default function SelCodeMirror({
   gotoSeq?: number;
   onNavigate?: (path: string, line?: number) => void;
   onNavError?: (msg: string) => void;
+  markLine?: number | null;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -138,6 +161,7 @@ export default function SelCodeMirror({
           if (u.docChanged) onChangeRef.current?.(u.state.doc.toString());
         }),
         cmTheme,
+        healMarkField,
       ],
     });
     const view = new EditorView({ state, parent: hostRef.current });
@@ -171,6 +195,13 @@ export default function SelCodeMirror({
       });
     view.dispatch(setDiagnostics(view.state, diags));
   }, [diagnostics]);
+
+  // Δ150: mark the line a shown heal targets (after the doc sync above, so the line exists)
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({ effects: setHealMark.of(markLine ?? null) });
+  }, [markLine, value]);
 
   // jump to a line (from a problem click or a cross-file navigation) — gotoSeq re-triggers even for the same line
   useEffect(() => {

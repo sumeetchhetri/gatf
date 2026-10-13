@@ -771,6 +771,19 @@ async function recordPost<T>(qs: string): Promise<T> {
   return d as T;
 }
 
+// H1 (Δ150): heal + accept on /record. JSON bodies (paths never go in the query); the reply body always comes back
+// with its HTTP status, so 409 conflict / 422 invalid / 400 bad input are results to show, not throws.
+async function healReq<T>(action: 'heal' | 'healApply', body: unknown): Promise<T & { error?: string; httpStatus: number }> {
+  const r = await fetch(withTok('/record?action=' + action), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const d = (await r.json().catch(() => ({}))) as T & { error?: string; status?: unknown };
+  if (!r.ok && !d.error && d.status === undefined) (d as { error?: string }).error = 'HTTP ' + r.status;
+  return { ...d, httpStatus: r.status };
+}
+
 // ---- SPA crawler (G3) — start a browser-driven crawl, poll progress, fetch result, save ----
 export interface CrawlStartBody {
   seed: string;
@@ -1059,6 +1072,9 @@ export const api = {
   recordPick: (sessionId: string, on: boolean) =>
     recordPost<{ armed?: boolean; error?: string }>('/record?action=pick&sessionId=' + encodeURIComponent(sessionId) + '&on=' + on),
   recordPicked: (sessionId: string) => getJson<RecordPicked>('/record?action=picked&sessionId=' + encodeURIComponent(sessionId)),
+  // ---- H1 healer (Δ150): proposals from a failed step's trace; Accept writes one of them after validateSel ----
+  heal: (b: { trace?: string; file?: string; step?: string }) => healReq<import('./editor/heal').HealResult>('heal', b),
+  healApply: (healId: string, rank: number) => healReq<import('./editor/heal').HealApplyResult>('healApply', { healId, rank }),
   // ---- H6 coverage index (Δ155): the payload is checked by report/coverageIndex.asCoverageIndex ----
   coverageIndex: (report: string, crawl?: string) =>
     getJson<unknown>('/api/coverage?report=' + encodeURIComponent(report) + (crawl ? '&crawl=' + encodeURIComponent(crawl) : '')),

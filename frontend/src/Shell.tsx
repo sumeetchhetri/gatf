@@ -28,6 +28,7 @@ import ExtApiConfig from './views/ExtApiConfig';
 import ImportView from './views/ImportView';
 import RecordView from './views/RecordView';
 import CrawlView from './views/CrawlView';
+import { healStore } from './editor/heal';
 
 // Compare is no longer a Shell view (it's invoked from the test-file tree). The Trace Viewer is reached
 // from Reports rather than being a top-level tab, so it maps to 'reports' in the nav highlight.
@@ -160,6 +161,10 @@ export default function Shell() {
             onLoadRun={(path) => {
               setPendingRun(path);
               navigate('execute');
+            }}
+            onHeal={(r) => {
+              healStore.set(r);
+              if (r.file) openTestFile(r.file);
             }}
           />
         </div>

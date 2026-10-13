@@ -28,6 +28,8 @@ import { CoverageTab } from './components/CoverageTab';
 import { CpuTab } from './components/CpuTab';
 import { EventsTab } from './components/EventsTab';
 import { api, flowLoadFileName } from './api';
+import { TraceHealButton } from './components/HealPanel';
+import { hasFailure, type HealResult } from './editor/heal';
 
 type TabId = 'events' | 'network' | 'console' | 'perf' | 'coverage' | 'cpu';
 
@@ -40,7 +42,7 @@ function activeSnapshot(snaps: SnapshotRef[], t: number): SnapshotRef | null {
   return found ?? (snaps.length ? snaps[0] : null);
 }
 
-export default function App({ traceUrl, onLoadRun }: { traceUrl?: string; onLoadRun?: (savedPath: string) => void }) {
+export default function App({ traceUrl, onLoadRun, onHeal }: { traceUrl?: string; onLoadRun?: (savedPath: string) => void; onHeal?: (r: HealResult) => void }) {
   const [trace, setTrace] = useState<Trace | null>(null);
   // M17: "Load test this flow" — the trace's network.har becomes a saved load test, then runs
   const [loadBusy, setLoadBusy] = useState(false);
@@ -208,6 +210,10 @@ export default function App({ traceUrl, onLoadRun }: { traceUrl?: string; onLoad
         loadBusy={loadBusy}
         loadMsg={loadMsg}
       />
+      {/* H1 (Δ150): heal the failed step of a run's trace; the proposals open in the editor */}
+      {onHeal && hasFailure(trace.events) && (
+        <TraceHealButton traceUrl={traceUrl || new URLSearchParams(window.location.search).get('trace')} onHeal={onHeal} />
+      )}
       <div className="main">
         <div className="left">
           <div className="tabbar">

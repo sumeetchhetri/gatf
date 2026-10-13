@@ -166,6 +166,16 @@ button { font-family: inherit; cursor: pointer; }
 .pick-cands { margin: 4px 0 0; padding-left: 18px; }
 .pick-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
 .pick-bar code { word-break: break-all; }
+/* H1 (Δ150): heal proposals as editor diffs */
+.heal-bar { display: flex; flex-direction: column; gap: 6px; margin: 4px 0; }
+.heal-head, .heal-prop-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.heal-head code { word-break: break-all; }
+.heal-prop { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+.heal-diff { margin: 6px 0 0; font-family: var(--mono, monospace); font-size: 12px; overflow-x: auto; }
+.heal-row-add { background: rgba(46, 160, 67, 0.15); }
+.heal-row-del { background: rgba(248, 81, 73, 0.15); }
+.heal-row-hunk { color: var(--muted); }
+.heal-trace { display: flex; align-items: center; gap: 8px; padding: 4px 12px; }
 
 /* ---------- Timeline ---------- */
 .timeline { background: var(--panel); border-top: 1px solid var(--border); padding: 8px 12px 10px; }

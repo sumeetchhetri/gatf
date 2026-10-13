@@ -73,6 +73,14 @@ public final class AiClient {
      * @param http       {@link JdkHttpSender} in production; a fake in tests
      */
     public static AiClient open(AiConfig cfg, Function<String, String> env, Map<String, AiProvider> providers, HttpSender http, Sleeper sleeper) {
+        return open(cfg, null, env, providers, http, sleeper);
+    }
+
+    /**
+     * Δ150: as {@link #open(AiConfig, Function, Map, HttpSender, Sleeper)}, with a relative {@code <apiKeyFile>}
+     * resolved against {@code configDir} (the config file's directory) instead of the working directory.
+     */
+    public static AiClient open(AiConfig cfg, Path configDir, Function<String, String> env, Map<String, AiProvider> providers, HttpSender http, Sleeper sleeper) {
         if (cfg == null || cfg.getProvider() == null || cfg.getProvider().isBlank()) return notConfigured("no <ai> provider in the config");
         String name = cfg.getProvider().trim().toLowerCase(java.util.Locale.ROOT);
         AiProvider p = providers == null ? null : providers.get(name);
@@ -87,6 +95,7 @@ public final class AiClient {
         if (cfg.getApiKeyFile() != null && !cfg.getApiKeyFile().isBlank()) {
             try {
                 Path f = Paths.get(cfg.getApiKeyFile().trim());
+                if (!f.isAbsolute() && configDir != null) f = configDir.resolve(f);
                 if (Files.isRegularFile(f) && Files.size(f) <= 16 * 1024) {
                     String s = new String(Files.readAllBytes(f), StandardCharsets.UTF_8);
                     int nl = s.indexOf('\n');

@@ -22,6 +22,8 @@ import SelDebugger from '../components/SelDebugger';
 import SelRunner from '../components/SelRunner';
 import { initialWatch, onFinished as watchFinished, onSaved as watchSaved, watchOn, type WatchAction, type WatchState } from '../components/watchQueue';
 import CompareFiles from './CompareFiles';
+import { HealBar } from '../components/HealPanel';
+import { useHeal } from '../editor/heal';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
@@ -109,6 +111,9 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
 
   const active = tabs.find((t) => t.path === activePath) ?? null;
   const dirty = active != null && active.kind !== 'xml' && active.draft !== active.text;
+  // H1 (Δ150): the line a shown heal targets, marked in the editor
+  const healNow = useHeal();
+  const healLine = healNow && active && healNow.file === active.path ? healNow.line : null;
 
   const jumpTo = (n: number) => {
     setGotoLine(n);
@@ -656,6 +661,15 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                     <div className={watching && active.kind === 'sel' ? 'tf-watch' : undefined}>
                     <div>
                       {active.kind === 'sel' ? (
+                        <>
+                        <HealBar
+                          path={active.path}
+                          dirty={dirty}
+                          onApplied={(content, line) => {
+                            patchTab(active.path, { text: content, draft: content });
+                            jumpTo(line);
+                          }}
+                        />
                         <Suspense fallback={<div className="view-note">Loading editor…</div>}>
                           <SelCodeMirror
                             key={active.path}
@@ -668,8 +682,10 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                             gotoSeq={gotoSeq}
                             onNavigate={onNavigate}
                             onNavError={flashNav}
+                            markLine={healLine}
                           />
                         </Suspense>
+                        </>
                       ) : (
                         <CodeEditor key={active.path} value={active.draft} onChange={setDraft} markers={markers} gotoLine={gotoLine} />
                       )}

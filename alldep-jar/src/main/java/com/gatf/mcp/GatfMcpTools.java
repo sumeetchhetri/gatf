@@ -66,7 +66,7 @@ public final class GatfMcpTools {
     public static final String INSTRUCTIONS =
             "GATF test automation (UI seleasy .sel scripts + API XML test cases). Debug loop: list_tests → run (grep to narrow) → "
           + "get_report (failed tests, errors, trace zips) → summarise_trace on a trace zip (last actions, console errors, failed "
-          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts.";
+          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts. heal proposes fixes for a failed step from its trace (never writes).";
 
     public McpServer register(McpServer s) {
         s.register(McpTool.of("list_tests", "List the project's tests: seleasy scripts (ui, with @tags and subtests) and API test-case XML (api).",
@@ -134,7 +134,31 @@ public final class GatfMcpTools {
                         "sessionId", "string", "the session (status/result/stop)",
                         "saveAs", "string", ".sel path relative to the project root (result)"),
                 this::crawl));
+
+        // H1 (Δ150): heal a failed step from its trace; read-only
+        s.register(new HealTool(root, om, this::healAi).tool());
         return s;
+    }
+
+    /** Δ150: the AI client for one heal, from the config's {@code <ai>} block; any gap gives a not-configured client. */
+    com.gatf.ai.AiClient healAi(String config) {
+        String name;
+        try {
+            name = configName(config);
+        } catch (McpTool.ToolError e) {
+            return com.gatf.ai.AiClient.notConfigured("config path escapes the project root");
+        }
+        Path cf = root.resolve(name).normalize();
+        com.gatf.ai.AiConfig ai;
+        try (java.io.InputStream in = Files.newInputStream(cf)) {
+            com.gatf.executor.core.GatfExecutorConfig c = com.gatf.executor.core.GatfTestCaseExecutorUtil.getConfig(in, name.toLowerCase(java.util.Locale.ROOT).endsWith(".xml"));
+            ai = c == null ? null : c.getAi();
+        } catch (Exception e) {
+            return com.gatf.ai.AiClient.notConfigured("config " + root.relativize(cf) + " could not be read");
+        }
+        File plugins = new File(root.toFile(), "plugins");
+        com.gatf.selenium.plugins.sdk.PluginRegistry.load(plugins.isDirectory() ? plugins : null, GatfMcpTools.class.getClassLoader());
+        return com.gatf.ai.heal.HealAi.open(ai, cf.getParent(), com.gatf.selenium.plugins.sdk.PluginRegistry.classLoader(), System::getenv, null, null);
     }
 
     // ---- tools ----

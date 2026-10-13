@@ -16,12 +16,15 @@
 package com.gatf.ui;
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
 import javax.ws.rs.core.MediaType;
 
@@ -32,12 +35,19 @@ import org.glassfish.grizzly.http.server.Request;
 import org.glassfish.grizzly.http.server.Response;
 import org.glassfish.grizzly.http.util.HttpStatus;
 
+import com.gatf.ai.AiClient;
+import com.gatf.ai.AiConfig;
+import com.gatf.ai.heal.HealAi;
+import com.gatf.ai.heal.HealApply;
+import com.gatf.ai.heal.HealEndpoint;
+import com.gatf.ai.heal.HealRun;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.GatfExecutorConfig;
 import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.record.PickLocator;
 import com.gatf.record.RecordSession;
 import com.gatf.selenium.Command;
+import com.gatf.selenium.plugins.sdk.PluginRegistry;
 
 /**
  * Phase 11 (record mode) — drives a live "infer a test case from user actions" recording from the React
@@ -54,6 +64,9 @@ import com.gatf.selenium.Command;
  *   GET  /record?action=list                                 -> { sessions:[{sessionId, browser}] } (recording ones)
  *   POST /record?action=pick&sessionId=<id>&on=true|false    -> { armed } (409 when the session is not recording)
  *   GET  /record?action=picked&sessionId=<id>                -> { running, armed, pick }
+ *   Δ150 heal (H1; no session; JSON bodies, so paths never sit in the query):
+ *   POST /record?action=heal       body {trace?, file?, step?}  -> Healer JSON + {file, line, trace, healId?} (writes nothing)
+ *   POST /record?action=healApply  body {healId, rank}          -> {status: applied|conflict|invalid, content?} (200/409/422)
  *
  * Record mode is a local, dev-time authoring activity (the browser opens on the same machine as GATF).
  * Additive: touches no existing handler; registered by GatfConfigToolUtil at /record.
@@ -126,6 +139,22 @@ public class GatfRecordHandler extends HttpHandler {
                 return;
             }
 
+            // Δ150: heal a failed step from its trace; Accept writes only one of the healer's own proposals, validated
+            if ("heal".equals(action) || "healApply".equals(action)) {
+                if (!isWrite(request)) { writeJson(response, HttpStatus.METHOD_NOT_ALLOWED_405, err("use POST to " + action)); return; }
+                HealEndpoint.Reply r;
+                try {
+                    Map<String, Object> body = HealEndpoint.readBody(request.getInputStream(), WorkflowContextHandler.OM);
+                    HealEndpoint ep = healEndpoint(request);
+                    r = "heal".equals(action) ? ep.heal(body) : ep.apply(body);
+                } catch (HealRun.BadInput e) {
+                    writeJson(response, HttpStatus.BAD_REQUEST_400, err(e.getMessage()));
+                    return;
+                }
+                writeJson(response, r.status, r.body);
+                return;
+            }
+
             RecordSession s = sessionId == null ? null : SESSIONS.get(sessionId);
             if (s == null) { writeJson(response, HttpStatus.NOT_FOUND_404, err("no such recording session")); return; }
 
@@ -175,6 +204,42 @@ public class GatfRecordHandler extends HttpHandler {
         } catch (Exception e) {
             writeJson(response, HttpStatus.INTERNAL_SERVER_ERROR_500, err(msg(e)));
         }
+    }
+
+    // Δ150: heal tickets (what Accept may write) live across requests, like the recording sessions
+    private static final HealApply.Tickets HEAL_TICKETS = new HealApply.Tickets();
+
+    // Δ150: the heal endpoint for this request's config: reports dir, test dir, AI client, validateSel
+    private HealEndpoint healEndpoint(Request request) throws Exception {
+        String configName = request.getParameter("config");
+        GatfExecutorConfig cfg = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, configName);
+        String obase = cfg.getOutFilesBasePath() == null ? mojo.getRootDir() : cfg.getOutFilesBasePath();
+        File outDir = new File(cfg.getOutFilesDir() != null ? obase + File.separator + cfg.getOutFilesDir() : obase);
+        final String tbase = cfg.getTestCasesBasePath() == null ? mojo.getRootDir() : cfg.getTestCasesBasePath();
+        File testDir = cfg.getTestCaseDir() != null ? new File(tbase, cfg.getTestCaseDir()) : new File(tbase);
+        List<Path> bases = new ArrayList<Path>();
+        bases.add(testDir.toPath());
+        bases.add(Paths.get(tbase));
+        File cf = GatfConfigToolUtil.selectedExecutorConfigFile(mojo, configName);
+        final Path configDir = cf != null ? cf.getParentFile().toPath() : Paths.get(mojo.getRootDir());
+        final AiConfig aiCfg = cfg.getAi();
+        File plugins = null;
+        for (File b : new File[] { testDir, new File(tbase), new File(System.getProperty("user.dir")) }) {
+            if (plugins == null && new File(b, "plugins").isDirectory()) plugins = new File(b, "plugins");
+        }
+        final File pluginsDir = plugins;
+        Supplier<AiClient> ai = () -> {
+            if (aiCfg == null) return HealAi.open(null, configDir, null, null, null, null);
+            PluginRegistry.load(pluginsDir, GatfRecordHandler.class.getClassLoader());
+            return HealAi.open(aiCfg, configDir, PluginRegistry.classLoader(), System::getenv, null, null);
+        };
+        HealApply.Validator v = cand -> {
+            Path b = Paths.get(tbase).toRealPath();
+            String rel = "." + File.separator + b.relativize(cand.toRealPath()).toString();
+            String cfgName = new File(tbase, "gatf-config.json").exists() ? "gatf-config.json" : "gatf-config.xml";
+            return Command.validateSel(new String[] { "-validate-sel", rel, cfgName, b.toString() }, null, false);
+        };
+        return new HealEndpoint(outDir.toPath(), bases, ai, v, HEAL_TICKETS, WorkflowContextHandler.OM, cfg.getTestIdAttribute());
     }
 
     // M3: the project's testIdAttribute for testid@ candidates (null = data-testid); an unreadable config keeps the default
