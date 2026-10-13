@@ -112,7 +112,7 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
                     }
                     if(parts[1].equalsIgnoreCase("hoverclick")) {
                     	// Δ145c: `?? <loc> hoverclick` built no action (a silent no-op); hoverclick waits for both of its elements itself
-                    	throwParseError(null, new RuntimeException("hoverclick cannot follow a ?? wait; write `hoverclick <hover-locator> <click-locator>` (it waits for both elements)"));
+                    	throwParseError(cmdDetails, new RuntimeException("hoverclick cannot follow a ?? wait; write `hoverclick <hover-locator> <click-locator>` (it waits for both elements)"));
                     }
                     String cstr = parts[0];
                     if((parts[1].toLowerCase().matches(typeExStr) && !parts[1].toLowerCase().startsWith("randomize")) 
