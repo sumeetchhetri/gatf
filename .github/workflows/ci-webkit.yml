@@ -1,0 +1,136 @@
+name: WebKit / Safari (non-blocking)
+
+# Δ159 — Safari (macOS safaridriver) + WebKitGTK (Linux, experimental) lanes over a small CDP-free
+# subset (tools/ci/webkit-lane.sh). A separate workflow on purpose: it never gates "Build gatf"
+# (ci-build.yml). Make it a required check, or fold it into ci-build.yml, only after a week green.
+# Parity note: README "Running in CI" → "WebKit and Safari".
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  schedule:
+    - cron: '17 21 * * *'   # nightly, 02:47 IST: builds the week-long green record
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: webkit-${{ github.event_name }}-${{ github.ref }}   # a push never cancels the nightly run
+  cancel-in-progress: true
+
+jobs:
+  jar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+        cache: maven
+
+    - name: Shaded jar (with the /app SPA), no tests
+      run: mvn -B -q -pl alldep-jar -am package -DskipTests
+
+    - uses: actions/upload-artifact@v4
+      with:
+        name: gatf-jar-webkit
+        path: alldep-jar/target/gatf-alldep-jar-*.jar
+        retention-days: 3
+
+  safari:
+    needs: jar
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: gatf-jar-webkit
+        path: alldep-jar/target
+
+    # Allows remote automation in Safari (needs sudo once per machine). Safari has no headless mode;
+    # the hosted runner's logged-in GUI session is used.
+    - name: Enable safaridriver
+      run: |
+        sudo safaridriver --enable
+        safaridriver --version
+
+    - name: Safari lane (functional subset + capability probe)
+      env:
+        WEBKIT_LANE_DIR: ${{ runner.temp }}/webkit-lane
+      run: bash tools/ci/webkit-lane.sh safari
+
+    - name: Capability summary
+      if: always()
+      run: |
+        f="${{ runner.temp }}/webkit-lane/capabilities.txt"
+        { echo '### Safari — trace capabilities served'; echo '```'; cat "$f" 2>/dev/null || echo 'no probe output'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: webkit-lane-safari
+        path: ${{ runner.temp }}/webkit-lane/
+        if-no-files-found: ignore
+
+  webkitgtk:
+    needs: jar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    continue-on-error: true   # experimental: GATF has no webkitgtk key yet (runs as `open firefox-dkr` via a capability shim)
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: '21'
+
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+
+    - uses: actions/download-artifact@v4
+      with:
+        name: gatf-jar-webkit
+        path: alldep-jar/target
+
+    - name: WebKitWebDriver + MiniBrowser + Xvfb
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -y -qq webkit2gtk-driver xvfb
+        dpkg-query -W webkit2gtk-driver libwebkit2gtk-4.1-0
+
+    - name: WebKitGTK lane (functional subset + capability probe)
+      env:
+        WEBKIT_LANE_DIR: ${{ runner.temp }}/webkit-lane
+      run: xvfb-run -a -s '-screen 0 1280x1024x24' bash tools/ci/webkit-lane.sh webkitgtk
+
+    - name: Capability summary
+      if: always()
+      run: |
+        f="${{ runner.temp }}/webkit-lane/capabilities.txt"
+        { echo '### WebKitGTK (experimental) — trace capabilities served'; echo '```'; cat "$f" 2>/dev/null || echo 'no probe output'; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: webkit-lane-webkitgtk
+        path: ${{ runner.temp }}/webkit-lane/
+        if-no-files-found: ignore
