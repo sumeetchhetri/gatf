@@ -109,6 +109,19 @@ public interface BrowserControl extends AutoCloseable {
     /** Stop intercepting (pending requests are released). Default no-op. */
     default void disableRoutes() { }
 
+    /**
+     * H3 (Δ153): as {@link #enableRoutes(com.gatf.selenium.route.RouteTable, boolean)}, limited to one top-level
+     * browsing context (a per-test context's tab) so a route never reaches another context. Null = unscoped. Only
+     * BiDi can scope an intercept; the default refuses a scoped request.
+     */
+    default boolean enableRoutes(com.gatf.selenium.route.RouteTable routes, boolean keepResponseStage, String browsingContext) {
+        return browsingContext == null && enableRoutes(routes, keepResponseStage);
+    }
+
+    // --- H3 (Δ153): per-test browser contexts (default unsupported) ---
+    /** The context operations of this transport, or null when unsupported (not a {@link Capability}: trace metadata is unchanged). */
+    default com.gatf.selenium.context.ContextOps contextOps() { return null; }
+
     // --- H2 (Δ146): styled DOM snapshot (default unsupported) ---
     /**
      * A styled snapshot of the current document (DOM_SNAPSHOT_RICH), or null. {@code targets} are opaque element

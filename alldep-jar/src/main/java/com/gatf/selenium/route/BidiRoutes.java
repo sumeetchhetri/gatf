@@ -33,10 +33,20 @@ public final class BidiRoutes {
 
     /** {@code network.addIntercept} params: every request, before it is sent. */
     public static Map<String, Object> interceptParams() {
+        return interceptParams(null);
+    }
+
+    /** H3 (Δ153): as above, limited to one top-level browsing context when {@code context} is not null. */
+    public static Map<String, Object> interceptParams(String context) {
         Map<String, Object> p = new LinkedHashMap<String, Object>();
         List<String> phases = new ArrayList<String>();
         phases.add("beforeRequestSent");
         p.put("phases", phases);
+        if (context != null) {
+            List<String> contexts = new ArrayList<String>();
+            contexts.add(context);
+            p.put("contexts", contexts);
+        }
         return p;
     }
 

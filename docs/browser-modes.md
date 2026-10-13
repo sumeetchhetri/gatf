@@ -70,3 +70,26 @@ gatf grid down [browser]
 - **Images:** `chrome` → `selenium/standalone-chrome`, or `selenium/standalone-chromium` on arm64 hosts (there is no Linux arm64 Google Chrome); `firefox` → `selenium/standalone-firefox` (multi-arch); `edge` → `selenium/standalone-edge` (amd64 only).
 - **Knobs:** `-Dgatf.grid.port` (4444), `-Dgatf.grid.tag` (`latest`), `-Dgatf.grid.startTimeoutMs` (180000), `-Dgatf.docker.bin`. Pass them via `GATF_JAVA_OPTS` when using the `gatf` launcher.
 - **Limitation:** one standalone container serves one browser. For mixed-browser suites run a multi-browser Grid (see D-1: `selenium/standalone-docker` dynamic Grid) and set `SELENIUM_REMOTE_URL`.
+
+## Per-test browser contexts (H3)
+
+Opt-in: `browserContexts: subtest` (default off = the shared context, unchanged). Each top-level subtest gets a new context in the running browser, so no new browser is launched per test; the context and its tabs are disposed when the subtest ends (pass, fail, timeout or stop), and any left over are disposed at script end. Contexts are created over WebDriver BiDi when the session has a socket (GATF asks Chrome, Edge and Firefox sessions for `webSocketUrl` when contexts are on), else over CDP on a browser-level connection (Chromium refuses `Target.*Context` on the page channel); a protocol refused at run time falls through to the other. `-Dgatf.contextProtocol=cdp|bidi` forces one.
+
+| | Chrome / Edge (local or Grid) | Firefox | Safari / IE |
+|---|---|---|---|
+| Context create / dispose | ✅ BiDi `browser.createUserContext` / `removeUserContext`; CDP `Target.createBrowserContext` / `disposeBrowserContext` over the session's `se:cdp` endpoint as fallback | ✅ BiDi `browser.createUserContext` | ❌ shared context (logged once per script) |
+
+What a context isolates:
+
+| Feature | Per context? |
+|---|---|
+| Cookies, localStorage, sessionStorage, HTTP cache | yes (the browser's own partitioning); each context starts with an empty cache, which is not disabled inside it (the script tab's `setCacheDisabled` rides its DevTools session) |
+| `state save/load`, `storageState` | yes; `storageState` is loaded into every new context (BiDi storage calls on that browser carry the context's `userContext`) |
+| `route` / `unroute` | yes: BiDi interception scoped to the context's tab (needs `webSocketUrl`); with contexts on, a BiDi route in the script body is scoped to its own tab too. Tabs a subtest opens are not intercepted |
+| `emulate` | yes: tab-level overrides; permission grants carry `browserContextId` (CDP) / `userContext` (BiDi) |
+| `clock` | yes: page script plus preload on the context's tab |
+| `tab` / `window` / `close others` | index only the context's tabs, its own first |
+| `upload` | on Chromium uses the context tab's CDP |
+| Trace network / console / video, `netapix` | CDP: default context only (they ride the script's DevTools session); BiDi: all contexts |
+
+Only the driver that is current when a subtest starts gets a context (a script with several `open` browsers keeps the others shared). A subtest starts on `about:blank`; `beforeAll` / `afterAll` and the script body run in the default context. A refused command at run time falls back to the shared context with a run-log line for that subtest; a context that could not be disposed is retried at script end.

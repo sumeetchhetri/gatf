@@ -116,6 +116,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	// script run once before the UI suite to produce it (its state is saved to storageState when it finishes).
 	private String storageState;
 	private String loginOnce;
+	// H3 (Δ153): per-test browser contexts: "subtest" = every top-level subtest runs in a fresh context (own cookies,
+	// storage, cache, routes, emulation, clock) in the same browser; null / "off" = the shared context, as before.
+	private String browserContexts;
 	// M6: scripts run once before the UI suite (after nothing else, before loginOnce) and once after it (also when
 	// it failed); like loginOnce they are never run as suite scripts, and a failing globalSetup stops the run.
 	private String globalSetup;
@@ -582,6 +585,13 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public String getStorageState() { return storageState; }
 	public void setStorageState(String storageState) { this.storageState = storageState; }
 	public String getLoginOnce() { return loginOnce; }
+	public String getBrowserContexts() { return browserContexts; }
+	public void setBrowserContexts(String browserContexts) { this.browserContexts = browserContexts; }
+	/** H3: the effective context mode, "subtest" or "off" (unknown values are off). Not a bean property. */
+	public String browserContextMode() {
+		String m = browserContexts == null ? "" : browserContexts.trim().toLowerCase(java.util.Locale.ROOT);
+		return "subtest".equals(m) ? "subtest" : "off";
+	}
 	public void setLoginOnce(String loginOnce) { this.loginOnce = loginOnce; }
 	public String getGlobalSetup() { return globalSetup; }
 	public void setGlobalSetup(String globalSetup) { this.globalSetup = globalSetup; }

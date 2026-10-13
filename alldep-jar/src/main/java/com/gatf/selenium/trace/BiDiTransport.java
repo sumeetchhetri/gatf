@@ -117,6 +117,7 @@ public final class BiDiTransport implements BrowserControl {
     private Network routeNetwork;          // the beforeRequestSent subscription that answers blocked requests
     private static final java.util.concurrent.atomic.AtomicBoolean ABORT_REASON_WARNED = new java.util.concurrent.atomic.AtomicBoolean();
     private volatile Thread videoPoller;
+    private volatile String routeScope;    // H3: the one top-level browsing context the intercept covers (null = all)
 
     BiDiTransport(WebDriver driver) { this(driver, new TraceConfig()); }
     BiDiTransport(WebDriver driver, TraceConfig cfg) { this.driver = driver; this.cfg = cfg == null ? new TraceConfig() : cfg; }
@@ -241,7 +242,7 @@ public final class BiDiTransport implements BrowserControl {
             // while addIntercept is in flight its id is unknown: a request it blocks meanwhile counts as ours
             addingIntercept = true;
             try {
-                Map<String, Object> r = BidiRaw.send(driver, "network.addIntercept", com.gatf.selenium.route.BidiRoutes.interceptParams());
+                Map<String, Object> r = BidiRaw.send(driver, "network.addIntercept", com.gatf.selenium.route.BidiRoutes.interceptParams(routeScope));
                 Object id = r == null ? null : r.get("intercept");
                 if (id == null) {
                     routesOn = false;
@@ -254,6 +255,21 @@ public final class BiDiTransport implements BrowserControl {
             }
         }
         return true;
+    }
+
+    /** H3 (Δ153): an intercept limited to one top-level browsing context (a per-test context's tab). */
+    @Override
+    public synchronized boolean enableRoutes(com.gatf.selenium.route.RouteTable table, boolean keepResponseStage, String browsingContext) {
+        if (interceptId != null && !java.util.Objects.equals(routeScope, browsingContext)) disableRoutes();   // re-scope
+        routeScope = browsingContext;
+        return enableRoutes(table, keepResponseStage);
+    }
+
+    /** H3 (Δ153): browser.createUserContext / browsingContext.create / browser.removeUserContext as raw BiDi. */
+    @Override
+    public com.gatf.selenium.context.ContextOps contextOps() {
+        if (!hasBiDi()) return null;
+        return com.gatf.selenium.context.ContextCalls.bidi((m, p) -> BidiRaw.send(driver, m, p));
     }
 
     // Blocked by one of this transport's intercepts (a later transport on a reused session answers its own). The

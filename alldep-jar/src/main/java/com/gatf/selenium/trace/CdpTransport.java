@@ -187,6 +187,34 @@ public final class CdpTransport implements BrowserControl {
     @Override
     public void disableConsole() { this.consoleOn = false; }
 
+    /**
+     * H3 (Δ153): Target.createBrowserContext / createTarget / disposeBrowserContext. Chromium refuses these on a page
+     * target ("Not allowed"), so they go over their own browser-level connection (no session id), opened on first use
+     * from the session's se:cdp / debuggerAddress and closed by {@code ContextOps.close()}.
+     */
+    @Override
+    public com.gatf.selenium.context.ContextOps contextOps() {
+        if (!(driver instanceof org.openqa.selenium.HasCapabilities)) return null;
+        final java.util.concurrent.atomic.AtomicReference<org.openqa.selenium.devtools.Connection> conn = new java.util.concurrent.atomic.AtomicReference<>();
+        com.gatf.selenium.context.ContextOps.Sender s = (m, p) -> {
+            org.openqa.selenium.devtools.Connection c = conn.get();
+            if (c == null) {
+                c = org.openqa.selenium.devtools.SeleniumCdpConnection.create(driver)
+                        .orElseThrow(() -> new IllegalStateException("no browser-level CDP endpoint (se:cdp / debuggerAddress)"));
+                conn.set(c);
+            }
+            @SuppressWarnings({ "unchecked", "rawtypes" })
+            Map<String, Object> r = (Map<String, Object>) c.sendAndWait(null, new Command<Map>(m, p, Map.class), java.time.Duration.ofSeconds(30));
+            return r == null ? new HashMap<String, Object>() : r;
+        };
+        return com.gatf.selenium.context.ContextCalls.cdp(s, () -> {
+            org.openqa.selenium.devtools.Connection c = conn.getAndSet(null);
+            if (c != null) {
+                try { c.close(); } catch (Exception ignored) {}
+            }
+        });
+    }
+
     @Override
     public String captureDomSnapshot() {
         try {

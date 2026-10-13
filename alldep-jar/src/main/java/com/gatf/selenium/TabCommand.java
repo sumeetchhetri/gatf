@@ -82,7 +82,7 @@ public class TabCommand extends Command {
         String javacode() {
             if(name.trim().isEmpty() || name.equalsIgnoreCase("0")) {
             	StringBuilder b = new StringBuilder();
-            	b.append("___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
+            	b.append("___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
             	if(children.size()>0) {
             		for (Command c : children) {
                     	b.append(genDebugInfo(c));
@@ -101,7 +101,7 @@ public class TabCommand extends Command {
                     try {
                         int index = Integer.parseInt(name);
                         String acvn = state.varname();
-                        String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n"
+                        String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (__handles__(___ocw___));\n"
                                 + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
                         b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;\nbreak;}");
                     } catch (Exception e) {
@@ -121,7 +121,7 @@ public class TabCommand extends Command {
                 try {
                     int index = Integer.parseInt(name);
                     String acvn = state.varname();
-                    String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n"
+                    String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (__handles__(___ocw___));\n"
                             + "if("+state.currvarname()+"!=null && "+index+">=0 && "+state.currvarname()+".size()>"+index+")\n{\n";
                     b.append(whl + "___cw___ = ___ocw___.switchTo().window("+acvn+".get("+index+"));\n___sc___1 = ___cw___;}");
                 } catch (Exception e) {
@@ -139,7 +139,7 @@ public class TabCommand extends Command {
                 b.append("sleep("+sleepGranularity+");\n");
                 b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
                 b.append("}\n");
-                b.append("___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
+                b.append("___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");
                 return b.toString();
             }
         }

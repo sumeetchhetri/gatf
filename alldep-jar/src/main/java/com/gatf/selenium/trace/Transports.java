@@ -54,6 +54,22 @@ public final class Transports {
     }
 
     /**
+     * H3 (Δ153): the per-test context operations over {@code protocol} (cdp / bidi, as ContextMatrix decided), or
+     * null when the session cannot serve them. Neither transport opens a DevTools session for this.
+     */
+    public static com.gatf.selenium.context.ContextOps contextOps(WebDriver driver, String protocol) {
+        TraceConfig cfg = new TraceConfig();
+        BrowserControl bc = "bidi".equals(protocol) ? new BiDiTransport(driver, cfg)
+                : "cdp".equals(protocol) ? new CdpTransport(driver, null, cfg) : null;
+        return bc == null ? null : bc.contextOps();
+    }
+
+    /** H3 (Δ153): whether the driver sends raw CDP (local Chromium). */
+    public static boolean hasCdp(WebDriver driver) {
+        return driver instanceof org.openqa.selenium.chromium.HasCdp;
+    }
+
+    /**
      * Print the current page to PDF without tracing and without pinning a CDP version (D-2). In order:
      * <ol>
      *  <li>raw CDP {@code Page.printToPDF} (Chromium, incl. an augmented Grid driver);</li>

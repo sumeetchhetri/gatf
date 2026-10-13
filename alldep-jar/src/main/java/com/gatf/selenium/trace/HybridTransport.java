@@ -84,8 +84,28 @@ final class HybridTransport implements BrowserControl {
     @Override public String drainPageVitals() { BrowserControl v = vitalsSide; return v == null ? null : v.drainPageVitals(); }
     @Override public void disablePageVitals() { BrowserControl v = vitalsSide; if (v != null) v.disablePageVitals(); }
 
-    @Override public boolean enableRoutes(com.gatf.selenium.route.RouteTable t, boolean keepResponseStage) { return route(Capability.ROUTE).enableRoutes(t, keepResponseStage); }
-    @Override public void disableRoutes() { route(Capability.ROUTE).disableRoutes(); }
+    @Override public boolean enableRoutes(com.gatf.selenium.route.RouteTable t, boolean keepResponseStage) {
+        String sc = routeScope;   // H3: re-enabled after `unroute all`: keep the scoped BiDi intercept
+        return sc != null ? enableRoutes(t, keepResponseStage, sc) : route(Capability.ROUTE).enableRoutes(t, keepResponseStage);
+    }
+    @Override public void disableRoutes() {
+        if (scopedRoutes) { scopedRoutes = false; bidi.disableRoutes(); return; }
+        route(Capability.ROUTE).disableRoutes();
+    }
+    // H3 (Δ153): only BiDi scopes an intercept to one tab (disableRoutes then goes to BiDi too)
+    private volatile boolean scopedRoutes;
+    private volatile String routeScope;
+    @Override public boolean enableRoutes(com.gatf.selenium.route.RouteTable t, boolean keepResponseStage, String browsingContext) {
+        if (browsingContext == null) return enableRoutes(t, keepResponseStage);
+        scopedRoutes = bidi.enableRoutes(t, keepResponseStage, browsingContext);
+        if (scopedRoutes) routeScope = browsingContext;   // a failed scope must not capture the 2-arg fallback
+        return scopedRoutes;
+    }
+    // contexts: BiDi first (as ContextMatrix), else CDP
+    @Override public com.gatf.selenium.context.ContextOps contextOps() {
+        com.gatf.selenium.context.ContextOps o = bidi.contextOps();
+        return o != null ? o : cdp.contextOps();
+    }
 
     @Override public void startCpu() { cdp.startCpu(); }
     @Override public String stopCpu() { return cdp.stopCpu(); }

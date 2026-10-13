@@ -123,7 +123,7 @@ switchToFrame(___ocw___, "");
 while(true) {
 
 try {
-List<String> ___w___3 = new java.util.ArrayList<String> (___ocw___.getWindowHandles());
+List<String> ___w___3 = new java.util.ArrayList<String> (__handles__(___ocw___));
 if(___w___3!=null && 1>=0 && ___w___3.size()>1)
 {
 ___cw___ = ___ocw___.switchTo().window(___w___3.get(1));
@@ -135,7 +135,7 @@ break;
 sleep(1000);
 if(___vd___2++==60)throw new RuntimeException("Unable to move to tab (1)");
 }
-___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());
+___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());
 ___cw___ = ___ocw___;
 ___sc___1 = ___cw___;
 

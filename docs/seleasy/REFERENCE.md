@@ -932,6 +932,8 @@ Examples :-
 
 A failing `beforeAll` fails the script; a failing `beforeEach` fails that subtest (its body is not run). When the script or subtest has already failed, a failing `afterEach` / `afterAll` is logged and the first failure is reported. Hooks run like funcs and are defined at the top level, one of each kind per script; an `import`ed file lends its subtests and funcs but not its hooks. Suite-wide setup is `globalSetup` / `globalTeardown` in the config: scripts run once before the UI suite (before `loginOnce`) and once after its last round, also when scripts failed (also after a failing `globalSetup`); a failing `globalSetup` stops the run. With `loginOnce` set, `globalSetup` does not load `storageState` (loginOnce is about to replace it).
 
+With `browserContexts: subtest` in the config, every top-level subtest (and its `beforeEach` / `afterEach`) runs in a fresh browser context in the same browser and starts on `about:blank`: no cookies, storage, cache, routes, emulation or fake clock from the script or other subtests, plus the project's `storageState` when set. `beforeAll` / `afterAll` and the script body use the browser's default context. Inside it, `tab` / `window` / `close others` see only the context's tabs, and only the browser current at the subtest's start gets a context. The context is disposed when the subtest ends (pass, fail, timeout or stop). See docs/browser-modes.md for which browsers support it.
+
 ### Subtest markers
 
 ```

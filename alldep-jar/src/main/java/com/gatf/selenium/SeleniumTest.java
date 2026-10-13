@@ -294,7 +294,10 @@ public abstract class SeleniumTest {
 		GatfExecutorConfig rcfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
 		boolean chromiumNeedsBidi = System.getenv("SELENIUM_REMOTE_URL") != null || System.getProperty("gatf.selenium.remoteUrl") != null
 				|| "bidi".equalsIgnoreCase(__routeProtocol__(rcfg));
-		if(__routeBidi__ && (!chromium || chromiumNeedsBidi)
+		// H3: per-test contexts are created over WebDriver BiDi on Chromium and Firefox (CDP refuses Target.*Context on a
+		// page target; its browser-level fallback is used only when the session has no BiDi socket)
+		boolean ctxOn = rcfg != null && "subtest".equals(rcfg.browserContextMode());
+		if(((__routeBidi__ && (!chromium || chromiumNeedsBidi)) || (ctxOn && (chromium || browserName.equals("firefox"))))
 				&& capabilities instanceof org.openqa.selenium.MutableCapabilities) {
 			((org.openqa.selenium.MutableCapabilities) capabilities).setCapability("webSocketUrl", true);
 		}
@@ -876,10 +879,12 @@ public abstract class SeleniumTest {
 		getSession().__subtestname__ = __subtestname__;
 		// M2: soft failures recorded before the call belong to the caller, not to this subtest
 		__softStack__.push(new java.util.AbstractMap.SimpleEntry<String, List<String>>(prior, __soft__.drain()));
+		if(prior == null && __subtestname__ != null) __ctxEnter__();   // H3: a top-level subtest gets a fresh context
 	}
 	
 	protected void reset__subtestname__(String __subtestname__)
 	{
+		if(__subtestname__ == null) __ctxExit__();   // H3: back from a top-level subtest (runs in its finally)
 		getSession().__subtestname__ = __subtestname__;
 		// pops only the entry its set__subtestname__ pushed (a set that threw pushed nothing)
 		Entry<String, List<String>> top = __softStack__.peek();
@@ -1000,6 +1005,7 @@ public abstract class SeleniumTest {
 	}
 	
 	public void quit(SeleniumTestSession sess) {
+		__ctxCloseAll__();   // H3: no per-test context outlives the script (pass, fail, timeout or abort)
 		if(sess.__trace__!=null) { try { sess.__trace__.stop(); } catch (Exception e) {} }
 		// M5: the loginOnce script leaves its authenticated state for the suite
 		GatfExecutorConfig __scfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
@@ -2286,7 +2292,22 @@ public abstract class SeleniumTest {
 			}
 		}*/
 		
-		if(wd instanceof HasDevTools && wd instanceof JavascriptExecutor) {
+		if(__ctxOf__(wd) != null && wd instanceof org.openqa.selenium.chromium.HasCdp && wd instanceof JavascriptExecutor) {
+			// H3: the DevTools session is bound to the script's own tab; inside a per-test context use the current tab's CDP
+			org.openqa.selenium.chromium.HasCdp cdp = (org.openqa.selenium.chromium.HasCdp) wd;
+			String cssSelctor = (String)((JavascriptExecutor)wd).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
+			Map<String, Object> dom = cdp.executeCdpCommand("DOM.getDocument", new HashMap<String, Object>());
+			Map<String, Object> qa = new HashMap<String, Object>();
+			qa.put("nodeId", ((Map<?, ?>) dom.get("root")).get("nodeId"));
+			qa.put("selector", cssSelctor);
+			Map<String, Object> q = cdp.executeCdpCommand("DOM.querySelector", qa);
+			List<String> files = new ArrayList<String>();
+			for(int i=0;i<Math.max(1, count);i++) files.add(filePath);
+			Map<String, Object> sa = new HashMap<String, Object>();
+			sa.put("nodeId", q.get("nodeId"));
+			sa.put("files", files);
+			cdp.executeCdpCommand("DOM.setFileInputFiles", sa);
+		} else if(wd instanceof HasDevTools && wd instanceof JavascriptExecutor) {
 			DevTools devTools = ((HasDevTools)wd).getDevTools();
 			try {
 				String cssSelctor = (String)((JavascriptExecutor)wd).executeScript("return window.GatfUtil.getCssSelector($(arguments[0]))", ret.get(0));
@@ -2444,6 +2465,7 @@ public abstract class SeleniumTest {
 				public Map<String, Object> send(String method, Map<String, Object> params) { return cdp.executeCdpCommand(method, params); }
 				public String context() { return null; }
 				public String origin() { return null; }
+				public String userContext() { return __ctxOf__(d); }   // H3: permission grants name the per-test context
 			};
 		}
 		if (com.gatf.selenium.trace.BidiRaw.available(d)) {
@@ -2451,6 +2473,7 @@ public abstract class SeleniumTest {
 				public boolean cdp() { return false; }
 				public Map<String, Object> send(String method, Map<String, Object> params) { return com.gatf.selenium.trace.BidiRaw.send(d, method, params); }
 				public String context() { return d.getWindowHandle(); }   // a BiDi browsing-context id is the window handle
+				public String userContext() { return __ctxOf__(d); }   // H3: permission grants name the per-test context
 				public String origin() {
 					try {
 						java.net.URI u = java.net.URI.create(d.getCurrentUrl());
@@ -2607,11 +2630,24 @@ public abstract class SeleniumTest {
 			}
 			com.gatf.selenium.route.RouteTable table = new com.gatf.selenium.route.RouteTable();
 			GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+			// H3: inside a per-test context the intercept is BiDi, scoped to the context's tab (CDP Fetch stays on the
+			// script's DevTools tab); with contexts on, a BiDi intercept in the default context is scoped to its tab too
+			boolean inCtx = __ctxOf__(d) != null;
+			String rproto = inCtx ? "bidi" : __routeProtocol__(cfg);
+			String rscope = null;
+			if(inCtx || (cfg != null && "subtest".equals(cfg.browserContextMode()))) {
+				try { rscope = d.getWindowHandle(); } catch (RuntimeException e) { if(inCtx) throw e; }   // no window: unscoped, as before
+			}
 			com.gatf.selenium.trace.TraceConfig tc = new com.gatf.selenium.trace.TraceConfig()
-					.setProtocol(__routeProtocol__(cfg));
+					.setProtocol(rproto);
 			com.gatf.selenium.trace.BrowserControl bc = com.gatf.selenium.trace.Transports.create(d, tc);
-			if(bc == null || !bc.supports(com.gatf.selenium.trace.Capability.ROUTE) || !bc.enableRoutes(table, state.hasNetapixCommand)) {
-				throw new RuntimeException("route: this browser session cannot intercept requests (needs CDP on Chromium, or a BiDi session: webSocketUrl)");
+			// a BiDi intercept (whatever transport create() picked) is scoped; CDP refuses a scope, and outside a
+			// context CDP Fetch is per tab anyway, so it then intercepts unscoped as before
+			boolean on = bc != null && bc.supports(com.gatf.selenium.trace.Capability.ROUTE)
+					&& (bc.enableRoutes(table, state.hasNetapixCommand, rscope) || (!inCtx && rscope != null && bc.enableRoutes(table, state.hasNetapixCommand)));
+			if(!on) {
+				throw new RuntimeException(inCtx ? "route: inside a browser context routes need a WebDriver BiDi session (webSocketUrl)"
+						: "route: this browser session cannot intercept requests (needs CDP on Chromium, or a BiDi session: webSocketUrl)");
 			}
 			rs = new Object[] { table, bc, Boolean.TRUE };
 			__routes__.put(d, rs);
@@ -2645,6 +2681,128 @@ public abstract class SeleniumTest {
 		}
 	}
 
+	/** H3 (Δ153): the per-test browser context scope of each driver (browserContexts=subtest). */
+	private final Map<WebDriver, com.gatf.selenium.context.ContextScope> __ctx__ = new java.util.IdentityHashMap<WebDriver, com.gatf.selenium.context.ContextScope>();
+	/** H3: the driver whose context the running top-level subtest opened. */
+	private WebDriver __ctxDriver__;
+	/** H3: set while a skip marker or a simulator check names a subtest: those drive no browser. */
+	private boolean __ctxQuiet__;
+
+	private boolean __ctxOn__() {
+		GatfExecutorConfig cfg = ___cxt___ != null ? ___cxt___.getGatfExecutorConfig() : null;
+		return cfg != null && "subtest".equals(cfg.browserContextMode());
+	}
+
+	/** H3: the open per-test context of {@code d}, or null (the default context). */
+	protected String __ctxOf__(WebDriver d) {
+		com.gatf.selenium.context.ContextScope s = d == null ? null : __ctx__.get(d);
+		return s == null ? null : s.context();
+	}
+
+	private com.gatf.selenium.context.ContextScope __ctxScope__(final WebDriver d) {
+		com.gatf.selenium.context.ContextScope s = __ctx__.get(d);
+		if(s != null) return s;
+		com.gatf.selenium.context.ContextMatrix.Decision dec = com.gatf.selenium.context.ContextMatrix.decide(System.getProperty("gatf.contextProtocol"),
+				com.gatf.selenium.trace.Transports.hasCdp(d), com.gatf.selenium.trace.BidiRaw.available(d));
+		List<com.gatf.selenium.context.ContextOps> ops = new ArrayList<com.gatf.selenium.context.ContextOps>();
+		for (String proto : new String[] { dec.protocol, dec.alternate }) {
+			if(proto == null) continue;
+			try {
+				com.gatf.selenium.context.ContextOps o = com.gatf.selenium.trace.Transports.contextOps(d, proto);
+				if(o != null) ops.add(o);
+			} catch (RuntimeException e) { /* that channel is not usable */ }
+		}
+		com.gatf.selenium.context.ContextScope.Window w = new com.gatf.selenium.context.ContextScope.Window() {
+			public String current() { return d.getWindowHandle(); }
+			public void switchTo(String h) { d.switchTo().window(h); }
+			public Set<String> handles() { return d.getWindowHandles(); }
+		};
+		List<com.gatf.selenium.context.ContextScope.Slot> slots = new ArrayList<com.gatf.selenium.context.ContextScope.Slot>();
+		slots.add(new com.gatf.selenium.context.ContextScope.Slot() {   // route (Δ127/128)
+			public Object stash() { return __routes__.remove(d); }
+			public void teardown() {
+				Object[] rs = __routes__.remove(d);
+				if(rs != null && Boolean.TRUE.equals(rs[2])) ((com.gatf.selenium.trace.BrowserControl) rs[1]).disableRoutes();
+			}
+			public void restore(Object st) { if(st != null) __routes__.put(d, (Object[]) st); }
+			public void drop() {   // removing a BiDi intercept needs no tab: do it even when the context's tab is gone
+				Object[] rs = __routes__.remove(d);
+				if(rs != null && Boolean.TRUE.equals(rs[2])) ((com.gatf.selenium.trace.BrowserControl) rs[1]).disableRoutes();
+			}
+		});
+		slots.add(new com.gatf.selenium.context.ContextScope.Slot() {   // emulate permission grants (Δ137)
+			public Object stash() { return __granted__.remove(d); }
+			public void teardown() { __granted__.remove(d); }
+			@SuppressWarnings("unchecked")
+			public void restore(Object st) { if(st != null) __granted__.put(d, (java.util.Set<String>) st); }
+			public void drop() { __granted__.remove(d); }
+		});
+		slots.add(new com.gatf.selenium.context.ContextScope.Slot() {   // clock preload (Δ138)
+			public Object stash() { return __clockPreload__.remove(d); }
+			public void teardown() { clockUnregister(d); }
+			public void restore(Object st) { if(st != null) __clockPreload__.put(d, (Object[]) st); }
+			public void drop() { __clockPreload__.remove(d); }
+		});
+		s = new com.gatf.selenium.context.ContextScope(ops, w, slots, m -> System.out.println(m));
+		if(!dec.supported()) s.warnFallback(dec.reason);
+		else if(ops.isEmpty()) s.warnFallback(dec.protocol + " cannot create contexts on this session");
+		__ctx__.put(d, s);
+		return s;
+	}
+
+	/** H3: entering a top-level subtest: a fresh context in the same browser, loaded with the project's storageState. */
+	private void __ctxEnter__() {
+		if(__ctxQuiet__ || __ctxDriver__ != null || !__ctxOn__() || Boolean.TRUE.equals(LOGIN_ONCE_RUN.get())) return;
+		WebDriver d = getSession() == null ? null : get___d___();
+		if(d == null) return;
+		try {
+			String ctx = __ctxScope__(d).open();
+			if(ctx == null) return;
+			__ctxDriver__ = d;
+			BrowserState.userContext(d, ctx);
+			__traceAction__("context", "opened " + ctx);
+			GatfExecutorConfig cfg = ___cxt___.getGatfExecutorConfig();
+			if(StringUtils.isNotBlank(cfg.getStorageState()) && !Boolean.TRUE.equals(SKIP_STATE_LOAD.get())) {
+				File sf = stateFile(cfg.getStorageState().trim());
+				if(sf.isFile()) System.out.println(BrowserState.load(d, sf));
+			}
+		} catch (Exception e) {
+			System.out.println("browserContexts: " + e.getMessage());
+		}
+	}
+
+	/** H3: leaving a top-level subtest (pass, fail, timeout or abort): tear down and dispose its context. */
+	private void __ctxExit__() {
+		WebDriver d = __ctxDriver__;
+		if(d == null) return;
+		__ctxDriver__ = null;
+		BrowserState.userContext(d, null);
+		com.gatf.selenium.context.ContextScope s = __ctx__.get(d);
+		if(s == null || s.context() == null) return;
+		String ctx = s.context();
+		s.close();
+		try { __traceAction__("context", "closed " + ctx); } catch (Exception e) {}
+	}
+
+	/**
+	 * H3: the windows a {@code tab} / {@code window} / {@code close others} statement may index: inside a per-test
+	 * context only that context's tabs (its own first), else every window as before. Emitted by codegen.
+	 */
+	protected Set<String> __handles__(WebDriver d) {
+		com.gatf.selenium.context.ContextScope s = d == null ? null : __ctx__.get(d);
+		return s == null ? d.getWindowHandles() : s.handles();
+	}
+
+	/** H3: script end: close every open context and retry any that could not be disposed. */
+	private void __ctxCloseAll__() {
+		__ctxDriver__ = null;
+		BrowserState.userContext(null, null);
+		for (com.gatf.selenium.context.ContextScope s : new ArrayList<com.gatf.selenium.context.ContextScope>(__ctx__.values())) {
+			try { s.closeAll(); } catch (Exception e) {}
+		}
+		__ctx__.clear();
+	}
+
 	/** M2: soft ({@code ??~}) assertion failures, drained into the next pushed result. */
 	final SoftFailures __soft__ = new SoftFailures();
 	/** The caller's pending soft failures, set aside while a subtest runs (key: the caller's subtest name). */
@@ -2667,7 +2825,12 @@ public abstract class SeleniumTest {
 	/** M6: emitted for a subtest call that must not run (skip / fixme marker, or another subtest is marked only). */
 	protected void __skip_subtest__(String stname, String sfname, String reason) {
 		String prev = get__subtestname__();
-		set__subtestname__(stname, sfname);   // clears the not-run placeholder, adds provider details to the name
+		__ctxQuiet__ = true;   // H3: a skipped subtest drives no browser: no context
+		try {
+			set__subtestname__(stname, sfname);   // clears the not-run placeholder, adds provider details to the name
+		} finally {
+			__ctxQuiet__ = false;
+		}
 		try {
 			pushResult(SeleniumTestResult.skipped(this, reason));
 			System.out.println("Skipped subtest " + get__subtestname__() + " (" + reason + ")");
@@ -4879,7 +5042,8 @@ public abstract class SeleniumTest {
 	protected void checkMail(String tname, String from, String to, String subject, String content, int timeout) {
 		String stname = get__subtestname__();
 		try {
-			set__subtestname__(tname, tname);
+			__ctxQuiet__ = true;   // H3: a simulator check drives no browser: no context
+			try { set__subtestname__(tname, tname); } finally { __ctxQuiet__ = false; }
 			if(___cxt___.simulatorEventCheck("mail", new Object[] {from, to, subject, content, timeout})) {
 				throw new PassSubTestException(tname);
 			}
@@ -4892,7 +5056,8 @@ public abstract class SeleniumTest {
 	protected boolean checkHttpRequest(String tname, String from, String to, String content, int timeout) {
 		String stname = get__subtestname__();
 		try {
-			set__subtestname__(tname, tname);
+			__ctxQuiet__ = true;   // H3: a simulator check drives no browser: no context
+			try { set__subtestname__(tname, tname); } finally { __ctxQuiet__ = false; }
 			if(___cxt___.simulatorEventCheck("http", new Object[] {from, to, content, timeout})) {
 				throw new PassSubTestException(tname);
 			}

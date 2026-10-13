@@ -53,6 +53,25 @@ final class BrowserState {
 
     private BrowserState() {}
 
+    /**
+     * H3 (Δ153): the per-test BiDi user context of this thread's open browser context, or null. BiDi storage and
+     * preload commands without one act on the default user context / every context; CDP needs nothing (its
+     * commands already go to the current tab's context).
+     */
+    private static final ThreadLocal<Object[]> USER_CONTEXT = new ThreadLocal<Object[]>();
+
+    /** H3: {@code d}'s open per-test user context (null clears); other drivers on this thread are unaffected. */
+    static void userContext(WebDriver d, String userContext) {
+        if (userContext == null) USER_CONTEXT.remove();
+        else USER_CONTEXT.set(new Object[] { d, userContext });
+    }
+
+    private static Map<String, Object> bidi(WebDriver d, String method, Map<String, Object> params) {
+        Object[] uc = USER_CONTEXT.get();
+        String u = uc != null && uc[0] == d ? (String) uc[1] : null;
+        return BidiRaw.send(d, method, com.gatf.selenium.context.ContextCalls.inUserContext(method, params, u));
+    }
+
     /** Saves (merging into an existing file); returns a one-line summary. */
     static String save(WebDriver d, File f) throws Exception {
         StorageState s = new StorageState();
@@ -103,7 +122,7 @@ final class BrowserState {
         }
         if (BidiRaw.available(d)) {
             try {
-                Map<String, Object> r = BidiRaw.send(d, "storage.getCookies", new HashMap<String, Object>());
+                Map<String, Object> r = bidi(d, "storage.getCookies", new HashMap<String, Object>());
                 List<CookieRules.C> out = new ArrayList<CookieRules.C>();
                 if (r != null && r.get("cookies") instanceof List) for (Object o : (List<Object>) r.get("cookies")) if (o instanceof Map) out.add(StorageState.fromBidi((Map<?, ?>) o));
                 return out;
@@ -146,7 +165,7 @@ final class BrowserState {
             int n = 0;
             for (CookieRules.C c : cs) {
                 try {
-                    BidiRaw.send(d, "storage.setCookie", StorageState.toBidi(c));
+                    bidi(d, "storage.setCookie", StorageState.toBidi(c));
                     n++;
                 } catch (Exception e) {
                     LOG.warn("state load: cookie '{}' ({}) not set over BiDi: {}", c.name, c.domain, e.toString());
@@ -203,7 +222,7 @@ final class BrowserState {
             if (BidiRaw.available(d)) {
                 Map<String, Object> p = new HashMap<String, Object>();
                 p.put("functionDeclaration", "() => {" + js + "}");
-                BidiRaw.send(d, "script.addPreloadScript", p);
+                bidi(d, "script.addPreloadScript", p);
             }
         } catch (Exception e) {
             LOG.warn("state load: storage will only apply to the open page ({})", e.toString());

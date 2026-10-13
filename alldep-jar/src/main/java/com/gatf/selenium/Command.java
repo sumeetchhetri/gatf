@@ -3819,7 +3819,7 @@ public class Command {
         	if(StringUtils.isNotBlank(name)) {
         		StringBuilder b = new StringBuilder();
         		String acvn = state.varname();
-        		String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (___ocw___.getWindowHandles());\n";
+        		String whl = "List<String> "+acvn+" = new java.util.ArrayList<String> (__handles__(___ocw___));\n";
         		if(name.equals("others")) {
         			String cntvar = state.varnamerandom();
 	        		whl += "for(int "+cntvar+"=1;"+cntvar+"<"+state.currvarname()+".size();"+cntvar+"++)\n{\n";

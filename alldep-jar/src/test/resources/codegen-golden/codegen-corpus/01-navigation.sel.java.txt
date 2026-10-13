@@ -112,11 +112,11 @@ newWindow(___lp___);
 ___sc___1 = ___cw___;
 /*GATF_LINE@<ROOT>/tests/01-navigation.sel:13*/__set__cln__("<ROOT>/tests/01-navigation.sel:13");window(0);___cw___ = get___d___();
 ___sc___1 = ___cw___;
-/*GATF_LINE@<ROOT>/tests/01-navigation.sel:14*/__set__cln__("<ROOT>/tests/01-navigation.sel:14");___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());
+/*GATF_LINE@<ROOT>/tests/01-navigation.sel:14*/__set__cln__("<ROOT>/tests/01-navigation.sel:14");___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());
 ___cw___ = ___ocw___;
 ___sc___1 = ___cw___;
 
-/*GATF_LINE@<ROOT>/tests/01-navigation.sel:15*/__set__cln__("<ROOT>/tests/01-navigation.sel:15");___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());
+/*GATF_LINE@<ROOT>/tests/01-navigation.sel:15*/__set__cln__("<ROOT>/tests/01-navigation.sel:15");___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());
 ___cw___ = ___ocw___;
 ___sc___1 = ___cw___;
 
@@ -126,12 +126,12 @@ ___sc___1 = ___cw___;
 
 /*GATF_LINE@<ROOT>/tests/01-navigation.sel:18*/__set__cln__("<ROOT>/tests/01-navigation.sel:18");switchToFrame(___ocw___, "2");
 
-/*GATF_LINE@<ROOT>/tests/01-navigation.sel:19*/__set__cln__("<ROOT>/tests/01-navigation.sel:19");List<String> ___w___1 = new java.util.ArrayList<String> (___ocw___.getWindowHandles());
+/*GATF_LINE@<ROOT>/tests/01-navigation.sel:19*/__set__cln__("<ROOT>/tests/01-navigation.sel:19");List<String> ___w___1 = new java.util.ArrayList<String> (__handles__(___ocw___));
 if(___w___1!=null && 1>=0 && ___w___1.size()>1)
 {
 ___ocw___.switchTo().window(___w___1.get(1)).close();
 }
-/*GATF_LINE@<ROOT>/tests/01-navigation.sel:20*/__set__cln__("<ROOT>/tests/01-navigation.sel:20");List<String> ___w___2 = new java.util.ArrayList<String> (___ocw___.getWindowHandles());
+/*GATF_LINE@<ROOT>/tests/01-navigation.sel:20*/__set__cln__("<ROOT>/tests/01-navigation.sel:20");List<String> ___w___2 = new java.util.ArrayList<String> (__handles__(___ocw___));
 for(int ___vd___1=1;___vd___1<___w___2.size();___vd___1++)
 {
 ___ocw___.switchTo().window(___w___2.get(___vd___1)).close();

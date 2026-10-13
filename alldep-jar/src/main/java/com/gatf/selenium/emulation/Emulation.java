@@ -52,6 +52,8 @@ public final class Emulation {
         String context();
         /** Origin of the current page (permission grants on BiDi), e.g. https://shop.test; null if unknown. */
         String origin();
+        /** H3 (Δ153): the per-test browser context the current tab belongs to (null: the default context). */
+        default String userContext() { return null; }
     }
 
     /** One protocol call. */
@@ -396,11 +398,29 @@ public final class Emulation {
     }
 
     /**
+     * H3 (Δ153): permission grants are browser-level, so inside a per-test context they name it: CDP
+     * {@code Browser.grantPermissions / resetPermissions} take {@code browserContextId}, BiDi
+     * {@code permissions.setPermission} takes {@code userContext}. Other calls are tab-level already.
+     */
+    static Call scoped(Call c, String userContext) {
+        String key = c.method.startsWith("Browser.") && c.method.endsWith("Permissions") ? "browserContextId"
+                : "permissions.setPermission".equals(c.method) ? "userContext" : null;
+        if (key == null || userContext == null) return c;
+        Map<String, Object> p = c.params == null ? new java.util.LinkedHashMap<String, Object>() : new java.util.LinkedHashMap<String, Object>(c.params);
+        p.put(key, userContext);
+        return new Call(c.method, p);
+    }
+
+    /**
      * Sends this statement's calls over {@code ch}; returns a one-line summary (warnings included). A BiDi command the
      * browser does not implement yet fails with the method named.
      */
     public String apply(Devices.Device device, Channel ch, java.util.Set<String> granted) {
         Plan p = ch.cdp() ? cdp(device, granted) : bidi(device, ch.context(), ch.origin());
+        String uc = ch.userContext();
+        if (uc != null) {
+            for (int i = 0; i < p.calls.size(); i++) p.calls.set(i, scoped(p.calls.get(i), uc));
+        }
         for (Call c : p.calls) {
             try {
                 ch.send(c.method, c.params);
