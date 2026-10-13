@@ -1,0 +1,417 @@
+[
+ {
+  "name": "form",
+  "html": "<!DOCTYPE html><html><head><title>Shop</title><style>.x{display:none}</style></head><body>\n<header><nav aria-label=\"Main\"><a href=\"/home\">Home</a><a>not a link</a></nav></header>\n<main>\n<h1>Welcome back</h1>\n<h2 id=\"sub\">Orders <small>(3)</small></h2>\n<form id=\"f1\">\n<label for=\"email\">Email address</label><input id=\"email\" type=\"email\" placeholder=\"you@example.com\">\n<label>Password <input id=\"pw\" type=\"password\" data-pick=\"pw\"></label>\n<span id=\"lbl-q\">Search</span><input id=\"q\" type=\"search\" aria-labelledby=\"lbl-q\">\n<input id=\"age\" type=\"number\" aria-label=\"Age\" data-pick=\"age\">\n<input type=\"checkbox\" id=\"tos\" checked><label for=\"tos\">Accept terms</label>\n<select id=\"country\" title=\"Country\"><option>India</option><option selected>Nepal</option></select>\n<button type=\"submit\" data-testid=\"save-btn\" class=\"btn primary\" data-pick=\"save\">Save</button>\n<button type=\"button\" data-qa=\"cancel\" class=\"btn\" data-pick=\"cancel\">Cancel</button>\n<button type=\"button\" hidden>Save</button>\n<button type=\"button\" aria-pressed=\"true\">Bold</button>\n<input type=\"submit\" value=\"Save draft\" data-pick=\"draft\">\n</form>\n<img src=\"a.png\" alt=\"Company logo\"><img src=\"b.png\" alt=\"\">\n<p>Total: <b>42</b> items</p>\n<p>Saved &nbsp;  at noon</p>\n<div role=\"dialog\" aria-labelledby=\"dlg-t\"><h3 id=\"dlg-t\">Confirm</h3><button data-pick=\"ok\">OK</button></div>\n<div style=\"display: none\"><button>Ghost</button></div>\n<div style=\"visibility:hidden\"><button>Phantom</button><button style=\"visibility: visible\" data-pick=\"vis\">Phantom</button></div>\n<div aria-hidden=\"true\"><button>Muted</button></div>\n<span title=\"Close panel\">x</span>\n<ul><li><a href=\"#a\" class=\"item\">Item</a></li><li><a href=\"#b\" class=\"item\" data-pick=\"item2\">Item</a></li><li><a href=\"#c\" class=\"item\">Other</a></li></ul>\n<fieldset><legend>Shipping &amp; billing</legend><input name=\"zip\" data-pick=\"zip\"></fieldset>\n<table><caption>Orders table</caption><tr><th>Id</th><td>1</td></tr></table>\n<x-card id=\"card\"><template shadowrootmode=\"open\"><label for=\"inner\">Coupon</label><input id=\"inner\" data-pick=\"inner\"><button>Apply</button><p>In shadow text</p></template><span>light</span></x-card>\n<template><button>Inert</button></template>\n<section aria-label=\"Promo\"><button title=\"Promo close\">X</button></section>\n<article><header>Art head</header></article>\n<footer>Foot</footer>\n<input type=\"hidden\" name=\"csrf\" value=\"t\">\n<div class=\"dup\"><span class=\"dup\">a</span></div><div class=\"dup\" data-pick=\"dup2\"><span>b</span></div>\n</main></body></html>",
+  "specs": [
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Save"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "save draft"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "contains",
+    "value": "Save"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Save",
+    "includeHidden": true
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "exact",
+    "value": "Ghost"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Phantom"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Muted"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Inert"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Apply"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "OK"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Promo close"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "pressed": true
+   },
+   {
+    "kind": "role",
+    "role": "link",
+    "mode": "full",
+    "value": "Item"
+   },
+   {
+    "kind": "role",
+    "role": "link"
+   },
+   {
+    "kind": "role",
+    "role": "heading",
+    "level": 2
+   },
+   {
+    "kind": "role",
+    "role": "heading",
+    "mode": "full",
+    "value": "Orders (3)"
+   },
+   {
+    "kind": "role",
+    "role": "checkbox",
+    "checked": true
+   },
+   {
+    "kind": "role",
+    "role": "textbox",
+    "mode": "full",
+    "value": "Email address"
+   },
+   {
+    "kind": "role",
+    "role": "searchbox",
+    "mode": "full",
+    "value": "Search"
+   },
+   {
+    "kind": "role",
+    "role": "spinbutton",
+    "mode": "full",
+    "value": "Age"
+   },
+   {
+    "kind": "role",
+    "role": "combobox",
+    "mode": "full",
+    "value": "Country"
+   },
+   {
+    "kind": "role",
+    "role": "group",
+    "mode": "full",
+    "value": "Shipping & billing"
+   },
+   {
+    "kind": "role",
+    "role": "table",
+    "mode": "full",
+    "value": "Orders table"
+   },
+   {
+    "kind": "role",
+    "role": "dialog",
+    "mode": "full",
+    "value": "Confirm"
+   },
+   {
+    "kind": "role",
+    "role": "navigation",
+    "mode": "full",
+    "value": "Main"
+   },
+   {
+    "kind": "role",
+    "role": "region",
+    "mode": "full",
+    "value": "Promo"
+   },
+   {
+    "kind": "role",
+    "role": "banner"
+   },
+   {
+    "kind": "role",
+    "role": "contentinfo"
+   },
+   {
+    "kind": "role",
+    "role": "img",
+    "mode": "full",
+    "value": "Company logo"
+   },
+   {
+    "kind": "role",
+    "role": "presentation"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Email address"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Password"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Coupon"
+   },
+   {
+    "kind": "label",
+    "mode": "contains",
+    "value": "e"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Accept terms"
+   },
+   {
+    "kind": "placeholder",
+    "mode": "full",
+    "value": "you@example.com"
+   },
+   {
+    "kind": "testid",
+    "mode": "exact",
+    "value": "save-btn"
+   },
+   {
+    "kind": "alt",
+    "mode": "full",
+    "value": "company logo"
+   },
+   {
+    "kind": "title",
+    "mode": "full",
+    "value": "Close panel"
+   },
+   {
+    "kind": "text",
+    "mode": "exact",
+    "value": "Saved at noon"
+   },
+   {
+    "kind": "text",
+    "mode": "regex",
+    "value": "^total",
+    "flags": "i"
+   },
+   {
+    "kind": "text",
+    "mode": "exact",
+    "value": "light"
+   },
+   {
+    "kind": "text",
+    "mode": "exact",
+    "value": "In shadow text"
+   },
+   {
+    "kind": "text",
+    "mode": "exact",
+    "value": "Item"
+   }
+  ],
+  "picks": [
+   "pw",
+   "age",
+   "save",
+   "cancel",
+   "draft",
+   "ok",
+   "vis",
+   "item2",
+   "zip",
+   "inner",
+   "dup2"
+  ],
+  "css": [
+   "#email",
+   "button.btn",
+   "button.btn.primary",
+   "li:nth-of-type(2) > a",
+   "main a.item",
+   "ul > li > a",
+   "[data-qa=cancel]",
+   "input[name=\"zip\"]",
+   "div.dup",
+   "form#f1 button",
+   "span",
+   "x-card span",
+   "button"
+  ]
+ },
+ {
+  "name": "dupes",
+  "html": "<html><body><div id=\"app\"><div class=\"row\"><button class=\"go\">Go</button></div><div class=\"row\"><button class=\"go\" data-pick=\"g2\">Go</button></div>\n<div data-testid=\"t1\"><input aria-label=\"Qty\" data-pick=\"q1\"></div><div data-testid=\"t1\"><input aria-label=\"Qty\"></div>\n<label>Name<select data-pick=\"sel\"><option>A</option></select></label>\n<div role=\"button\" tabindex=\"0\" data-pick=\"rb\">Custom   button</div>\n<a href=\"/x\" title=\"Go home\" data-pick=\"ah\"><img alt=\"Home\"></a>\n<p>Hello <span>world</span></p><p>Hello world</p>\n</div></body></html>",
+  "specs": [
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Go"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Custom button"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Qty"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Name"
+   },
+   {
+    "kind": "testid",
+    "mode": "exact",
+    "value": "t1"
+   },
+   {
+    "kind": "role",
+    "role": "link",
+    "mode": "full",
+    "value": "Home"
+   },
+   {
+    "kind": "text",
+    "mode": "exact",
+    "value": "Hello world"
+   },
+   {
+    "kind": "role",
+    "role": "combobox",
+    "mode": "full",
+    "value": "Name"
+   }
+  ],
+  "picks": [
+   "g2",
+   "q1",
+   "sel",
+   "rb",
+   "ah"
+  ],
+  "css": [
+   ".go",
+   "div.row:nth-of-type(2) > button",
+   "#app > div",
+   "div > div",
+   "button.go"
+  ]
+ },
+ {
+  "name": "labels-and-parsing",
+  "html": "<html><body>\n<form><label for=\"email\">Email</label><input id=\"email\" data-pick=\"e1\"><input id=\"email\" data-pick=\"e2\"></form>\n<label for=\"ph\">Phone</label><div id=\"ph\">x</div><input id=\"ph\" data-pick=\"ph\">\n<label for=\"nick\">Nick <input id=\"other\" data-pick=\"other\"></label><input id=\"nick\" data-pick=\"nick\">\n<label>Wrap <input id=\"w1\" data-pick=\"w1\"><input id=\"w2\" data-pick=\"w2\"></label>\n<div role=\"&nbsp;button\" data-pick=\"nb\">Nbsp</div>\n<select size=\"3px\" data-pick=\"s3\"><option>a</option></select>\n<select size=\" 4\" data-pick=\"s4\"><option>b</option></select>\n<div role=\"heading\" aria-level=\"&nbsp;2\">Lvl</div>\n<h3 aria-level=\"2x\">Lvl2</h3>\n<input type=\"SUBMIT\" value=\"Go\"><input type=\"submit\" value=\"Go\">\n</body></html>",
+  "specs": [
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Email"
+   },
+   {
+    "kind": "role",
+    "role": "textbox",
+    "mode": "full",
+    "value": "Email"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Phone"
+   },
+   {
+    "kind": "label",
+    "mode": "contains",
+    "value": "Nick"
+   },
+   {
+    "kind": "label",
+    "mode": "full",
+    "value": "Wrap"
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Nbsp"
+   },
+   {
+    "kind": "role",
+    "role": "listbox"
+   },
+   {
+    "kind": "role",
+    "role": "combobox"
+   },
+   {
+    "kind": "role",
+    "role": "heading",
+    "level": 2
+   },
+   {
+    "kind": "role",
+    "role": "button",
+    "mode": "full",
+    "value": "Go"
+   }
+  ],
+  "picks": [
+   "e1",
+   "e2",
+   "ph",
+   "other",
+   "nick",
+   "w1",
+   "w2",
+   "nb",
+   "s3",
+   "s4"
+  ],
+  "css": [
+   "input[type=submit]",
+   "#email",
+   "input#email",
+   "[type=\"submit\"]",
+   "label > input"
+  ]
+ }
+]

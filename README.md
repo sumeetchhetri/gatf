@@ -126,6 +126,7 @@ GATF can start an embedded **SMTP/IMAP mail server** and an **HTTP server** duri
 - `-validate-sel` compiles a script without running it.
 - **Watch:** the editor's **Watch** button runs the script beside the editor and re-runs it on every save, with the live browser screencast next to the step list (the Run and Debug views show it too). The frames are the trace video's, so turn on `traceVideo`. `gatf test --watch` does the same for the CLI.
 - **Coding agents (MCP):** `gatf mcp` is a Model Context Protocol server over stdio. An agent (Claude Code, Claude Desktop, IDE agents) can list the tests, lint a script, run the suite (`gatf test` with grep/tag/trace/retries), read the failed tests from the last run, condense a trace zip (last actions, console errors, failed and slow requests, checks, web vitals), and record or crawl new scripts. Register it with, for example, `claude mcp add gatf -- java -jar gatf-alldep-jar-<version>.jar mcp --root /path/to/project`.
+- **Healer (core, opt-in AI):** turns a failed step plus its trace's failure snapshot (`traceDomSnapshots` on) into proposed fixes, as a diff; it never edits the script. It tries a wait or a strict locator for the element the old locator meant first, and asks the model configured in `<ai>` only when that finds nothing. Every proposal must match exactly one element in the snapshot. Without `<ai>`, nothing changes.
 
 ### Traces and the Trace Viewer
 Each UI run can produce a `trace.zip` containing:

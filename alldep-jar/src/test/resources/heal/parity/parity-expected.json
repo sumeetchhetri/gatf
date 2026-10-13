@@ -1,0 +1,744 @@
+{
+ "form": {
+  "specs": [
+   1,
+   1,
+   2,
+   2,
+   0,
+   1,
+   0,
+   0,
+   1,
+   1,
+   0,
+   1,
+   2,
+   4,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   0,
+   1,
+   1,
+   1,
+   1,
+   1,
+   4,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   1,
+   2
+  ],
+  "picks": {
+   "pw": {
+    "info": {
+     "role": "textbox",
+     "name": "Password",
+     "label": "Password",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Password",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Password",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "id",
+     "v": "pw",
+     "n": 1
+    }
+   },
+   "age": {
+    "info": {
+     "role": "spinbutton",
+     "name": "Age",
+     "label": "Age",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "spinbutton",
+      "name": "Age",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Age",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "id",
+     "v": "age",
+     "n": 1
+    }
+   },
+   "save": {
+    "info": {
+     "role": "button",
+     "name": "Save",
+     "label": "",
+     "placeholder": "",
+     "testid": "save-btn",
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "testid",
+      "v": "save-btn",
+      "n": 1
+     },
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Save",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "button.btn:nth-of-type(1)",
+     "n": 1
+    }
+   },
+   "cancel": {
+    "info": {
+     "role": "button",
+     "name": "Cancel",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Cancel",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "button.btn:nth-of-type(2)",
+     "n": 1
+    }
+   },
+   "draft": {
+    "info": {
+     "role": "button",
+     "name": "Save draft",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Save draft",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "input:nth-of-type(5)",
+     "n": 1
+    }
+   },
+   "ok": {
+    "info": {
+     "role": "button",
+     "name": "OK",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "OK",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div:nth-of-type(1) > button",
+     "n": 1
+    }
+   },
+   "vis": {
+    "info": {
+     "role": "button",
+     "name": "Phantom",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Phantom",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div:nth-of-type(3) > button:nth-of-type(2)",
+     "n": 1
+    }
+   },
+   "item2": {
+    "info": {
+     "role": "link",
+     "name": "Item",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "link",
+      "name": "Item",
+      "n": 2
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "li:nth-of-type(2) > a.item",
+     "n": 1
+    }
+   },
+   "zip": {
+    "info": {
+     "role": "textbox",
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "name",
+     "v": "zip",
+     "n": 1
+    }
+   },
+   "inner": {
+    "info": {
+     "role": "textbox",
+     "name": "Coupon",
+     "label": "Coupon",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Coupon",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Coupon",
+      "n": 1
+     }
+    ],
+    "fallback": null
+   },
+   "dup2": {
+    "info": {
+     "role": null,
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "css",
+     "v": "div.dup:nth-of-type(6)",
+     "n": 1
+    }
+   }
+  },
+  "css": {
+   "#email": 1,
+   "button.btn": 2,
+   "button.btn.primary": 1,
+   "li:nth-of-type(2) > a": 1,
+   "main a.item": 3,
+   "ul > li > a": 3,
+   "[data-qa=cancel]": 1,
+   "input[name=\"zip\"]": 1,
+   "div.dup": 2,
+   "form#f1 button": 4,
+   "span": 5,
+   "x-card span": 1,
+   "button": 10
+  }
+ },
+ "dupes": {
+  "specs": [
+   2,
+   1,
+   2,
+   1,
+   2,
+   1,
+   2,
+   1
+  ],
+  "picks": {
+   "g2": {
+    "info": {
+     "role": "button",
+     "name": "Go",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Go",
+      "n": 2
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div.row:nth-of-type(2) > button.go",
+     "n": 1
+    }
+   },
+   "q1": {
+    "info": {
+     "role": "textbox",
+     "name": "Qty",
+     "label": "Qty",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Qty",
+      "n": 2
+     },
+     {
+      "s": "label",
+      "v": "Qty",
+      "n": 2
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div:nth-of-type(3) > input",
+     "n": 1
+    }
+   },
+   "sel": {
+    "info": {
+     "role": "combobox",
+     "name": "Name",
+     "label": "Name",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "combobox",
+      "name": "Name",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Name",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "select",
+     "n": 1
+    }
+   },
+   "rb": {
+    "info": {
+     "role": "button",
+     "name": "Custom button",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Custom button",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div:nth-of-type(5)",
+     "n": 1
+    }
+   },
+   "ah": {
+    "info": {
+     "role": "link",
+     "name": "Home",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": "Go home"
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "link",
+      "name": "Home",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "a",
+     "n": 1
+    }
+   }
+  },
+  "css": {
+   ".go": 2,
+   "div.row:nth-of-type(2) > button": 1,
+   "#app > div": 5,
+   "div > div": 5,
+   "button.go": 2
+  }
+ },
+ "labels-and-parsing": {
+  "specs": [
+   2,
+   2,
+   1,
+   1,
+   1,
+   1,
+   2,
+   0,
+   2,
+   2
+  ],
+  "picks": {
+   "e1": {
+    "info": {
+     "role": "textbox",
+     "name": "Email",
+     "label": "Email",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Email",
+      "n": 2
+     },
+     {
+      "s": "label",
+      "v": "Email",
+      "n": 2
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "form > input:nth-of-type(1)",
+     "n": 1
+    }
+   },
+   "e2": {
+    "info": {
+     "role": "textbox",
+     "name": "Email",
+     "label": "Email",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Email",
+      "n": 2
+     },
+     {
+      "s": "label",
+      "v": "Email",
+      "n": 2
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "form > input:nth-of-type(2)",
+     "n": 1
+    }
+   },
+   "ph": {
+    "info": {
+     "role": "textbox",
+     "name": "Phone",
+     "label": "Phone",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Phone",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Phone",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "body > input:nth-of-type(1)",
+     "n": 1
+    }
+   },
+   "other": {
+    "info": {
+     "role": "textbox",
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "id",
+     "v": "other",
+     "n": 1
+    }
+   },
+   "nick": {
+    "info": {
+     "role": "textbox",
+     "name": "Nick",
+     "label": "Nick",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Nick",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Nick",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "id",
+     "v": "nick",
+     "n": 1
+    }
+   },
+   "w1": {
+    "info": {
+     "role": "textbox",
+     "name": "Wrap",
+     "label": "Wrap",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "textbox",
+      "name": "Wrap",
+      "n": 1
+     },
+     {
+      "s": "label",
+      "v": "Wrap",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "id",
+     "v": "w1",
+     "n": 1
+    }
+   },
+   "w2": {
+    "info": {
+     "role": "textbox",
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "id",
+     "v": "w2",
+     "n": 1
+    }
+   },
+   "nb": {
+    "info": {
+     "role": "button",
+     "name": "Nbsp",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [
+     {
+      "s": "role",
+      "role": "button",
+      "name": "Nbsp",
+      "n": 1
+     }
+    ],
+    "fallback": {
+     "s": "css",
+     "v": "div:nth-of-type(2)",
+     "n": 1
+    }
+   },
+   "s3": {
+    "info": {
+     "role": "listbox",
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "css",
+     "v": "select:nth-of-type(1)",
+     "n": 1
+    }
+   },
+   "s4": {
+    "info": {
+     "role": "listbox",
+     "name": "",
+     "label": "",
+     "placeholder": "",
+     "testid": null,
+     "alt": "",
+     "title": ""
+    },
+    "candidates": [],
+    "fallback": {
+     "s": "css",
+     "v": "select:nth-of-type(2)",
+     "n": 1
+    }
+   }
+  },
+  "css": {
+   "input[type=submit]": 2,
+   "#email": 2,
+   "input#email": 2,
+   "[type=\"submit\"]": 2,
+   "label > input": 3
+  }
+ }
+}

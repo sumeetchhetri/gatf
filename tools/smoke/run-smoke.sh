@@ -114,6 +114,14 @@ else
   note "a11y check runner test skipped (node/jsdom not present)"
 fi
 
+# H1 (Δ149) healer: the Java snapshot resolver's pinned counts still match the page resolver on jsdom.
+if command -v node >/dev/null 2>&1 && [ -d frontend/node_modules/jsdom ]; then
+  node tools/smoke/test-heal-parity.mjs >/dev/null
+  note "healer snapshot-resolver parity test passed"
+else
+  note "healer snapshot-resolver parity test skipped (node/jsdom not present)"
+fi
+
 if [ "${LINT_ONLY}" = "1" ]; then
   log "done (--lint-only)"; exit 0
 fi

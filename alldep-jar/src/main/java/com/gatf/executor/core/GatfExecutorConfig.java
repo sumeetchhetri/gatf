@@ -234,6 +234,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
     
     private MailSimulatorConfig mailSimulator;
     
+    // H1 (Δ149): opt-in AI provider (healer / planner / generator). Absent = AI not configured, no behaviour change.
+    private com.gatf.ai.AiConfig ai;
+    
     private HttpServerSimulatorConfig htttpServerSimulator;
 
 	private boolean autoPauseOnElNotFound = false;
@@ -949,6 +952,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public void setMailSimulator(MailSimulatorConfig mailSimulator) {
 		this.mailSimulator = mailSimulator;
 	}
+
+	public com.gatf.ai.AiConfig getAi() { return ai; }
+	public void setAi(com.gatf.ai.AiConfig ai) { this.ai = ai; }
 
 	public HttpServerSimulatorConfig getHtttpServerSimulator() {
 		return htttpServerSimulator;

@@ -222,6 +222,25 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
 
 </details>
 
+### AI provider (opt-in)
+
+`<ai>` turns on the AI features (the healer for now). Leave it out and nothing calls a model. The key is never in this file: it is read from the environment variable named by `apiKeyEnv` (default `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`) or from the first line of `apiKeyFile`, and it never appears in reports, traces or logs.
+
+```xml
+<ai>
+    <provider>anthropic</provider>            <!-- anthropic | openai | local (OpenAI-compatible) | a plugin provider -->
+    <model>your-model-id</model>
+    <!-- <endpoint>http://localhost:11434/v1/chat/completions</endpoint>   required for local -->
+    <!-- <apiKeyEnv>ANTHROPIC_API_KEY</apiKeyEnv> or <apiKeyFile>/path/to/key</apiKeyFile> -->
+    <timeoutMs>30000</timeoutMs>              <!-- per call -->
+    <retries>2</retries>                      <!-- on timeouts, 429 and 5xx -->
+    <maxCallsPerRun>10</maxCallsPerRun>
+    <maxTokensPerRun>50000</maxTokensPerRun>
+    <maxOutputTokens>1024</maxOutputTokens>
+    <!-- <maxCostPerRun>1.0</maxCostPerRun> with <inputCostPerMTok>/<outputCostPerMTok> prices -->
+</ai>
+```
+
 ## API test cases
 
 A test file holds `<TestCases>` with one or more `<TestCase>` (XML, the most expressive format), a JSON array, or
