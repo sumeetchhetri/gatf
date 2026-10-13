@@ -492,6 +492,8 @@ Examples :-
 	hoverclick id@'hoverele' id@'clickele'
 ```
 
+`hoverclick` waits for both elements itself; it can't follow a `??` wait (`?? id@a hoverclick` is a parse error).
+
 ### Multiple Chained Actions
 
 ```
@@ -740,6 +742,8 @@ Examples :-
 ```
 
 ## Variables, data & files
+
+> **Two or more data providers in scope:** a value is templated once per provider loop, so `#[[…]]#` (how the recorder and crawler carry a literal `$`) protects it for one pass only. Don't nest recorded or crawled lines inside two provider loops.
 
 ### Data Source Query definition
 

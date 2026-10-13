@@ -69,7 +69,7 @@ export interface RebuildOptions {
 export const BLANK_GIF = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
 
 export const SNAPSHOT_CSP =
-  "default-src 'none'; img-src blob: data:; style-src blob: data: 'unsafe-inline'; font-src blob: data:; media-src blob: data:; frame-src 'self' about: blob:";
+  "default-src 'none'; img-src blob: data:; style-src blob: data: 'unsafe-inline'; font-src blob: data:; media-src blob: data:; frame-src about: blob:";
 
 const dec = new TextDecoder('utf-8');
 const MAX_FRAME_DEPTH = 3;
@@ -840,12 +840,14 @@ export function escapeRawText(doc: Document): void {
  * still reference is stopped by the CSP (default-src 'none'; only blob:/data: for images, styles, fonts, media).
  */
 export function guardHtml(html: string, rw?: { stats: RebuildStats }): string {
-  const r = guardDoc(html, 0);
+  // Δ145c: its own srcdoc budget (the rebuild's MAX_SRCDOC_FRAMES, all depths together), so a raw fan-out passed in
+  // directly stays bounded; the rebuild never emits more than that, so a rebuilt snapshot never reaches it
+  const r = guardDoc(html, 0, { left: MAX_SRCDOC_FRAMES });
   if (rw) rw.stats.guardFixes += r.fixes;
   return r.html;
 }
 
-function guardDoc(html: string, depth: number): { html: string; fixes: number } {
+function guardDoc(html: string, depth: number, budget: { left: number }): { html: string; fixes: number } {
   const doc = new DOMParser().parseFromString(html, 'text/html');
   let fixes = 0;
   const okUrl = (v: string) => /^\s*(blob:|data:|#)/i.test(v) && !isDangerous(v);
@@ -868,9 +870,12 @@ function guardDoc(html: string, depth: number): { html: string; fixes: number } 
       if (n.startsWith('on')) { el.removeAttribute(a.name); fixes++; continue; }
       if (n === 'src' && (tag === 'iframe' || tag === 'frame')) { el.removeAttribute(a.name); fixes++; continue; }
       if (n === 'srcdoc') {
+        // Δ145c: only a frame renders a srcdoc (the rebuild counts only those); elsewhere it is inert text
+        if (tag !== 'iframe' && tag !== 'frame') continue;
         // the rebuild keeps srcdoc only above this depth
-        if (depth >= MAX_FRAME_DEPTH) { el.removeAttribute(a.name); fixes++; continue; }
-        const inner = guardDoc(a.value, depth + 1);
+        if (depth >= MAX_FRAME_DEPTH || budget.left <= 0) { el.removeAttribute(a.name); fixes++; continue; }
+        budget.left--;
+        const inner = guardDoc(a.value, depth + 1, budget);
         if (inner.fixes) { el.setAttribute(a.name, inner.html); fixes += inner.fixes; }
         continue;
       }

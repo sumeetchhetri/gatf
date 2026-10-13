@@ -1,0 +1,21 @@
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Delta 145c transpiler fixes: a double-click under global timeouts double-clicks; hoverclick is not force-wrapped;
+// a frame/tab block keeps the timeout granularity in effect where it is written (a later timeout line does not change it).
+open chrome
+doubleclick id@'ele1'
+dblclick id@'ele2'
+??5 id@'ele3' doubleclick
+hoverclick id@'menu' id@'item'
+frame "early-frame"
+{
+    click id@'in-early'
+}
+tab 1
+{
+    click id@'in-tab'
+}
+timeout 30 1 500
+frame "late-frame"
+{
+    click id@'in-late'
+}

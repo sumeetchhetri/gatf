@@ -40,7 +40,7 @@ class ImportersTest {
                 .contains("goto https://demo.gatf.example/login")   // beforeEach inlined into each test
                 .contains("type \"Asha\" css@\"input.patient-fname\"")
                 .contains("?? css@\"div.toast-success\" text =\"Patient registered\"")
-                .contains("??+ text@\"Welcome\"");                   // expect(getByText) no longer mis-parsed
+                .contains("?? text@\"Welcome\"");                    // expect(getByText) no longer mis-parsed; Δ145c: found = ??
         assertThat(r.stats.get("hooks")).isEqualTo(1);
     }
 
@@ -55,6 +55,30 @@ class ImportersTest {
         assertThat(r.content).contains("goto https://x.test/login\n  back\n  refresh\n  sleep 1500\n")
                 .contains("?? id@name attr@value =\"bob\"")
                 .contains("?? id@agree attr@checked =\"true\"");
+    }
+
+    @Test
+    void playwrightWaitDirection() {
+        // Δ145c: ?? waits until found, ??+ until no longer found (REFERENCE.md); the importer had them inverted
+        String src = "test('w', async ({ page }) => {\n"
+                + "  await page.waitForSelector('#a');\n"
+                + "  await page.waitForSelector('#b', { state: 'detached' });\n"
+                + "  await page.locator('#c').waitFor();\n"
+                + "  await page.locator('#d').waitFor({ state: 'hidden' });\n"
+                + "  await expect(page.locator('#e')).toBeVisible();\n"
+                + "  await expect(page.locator('#f')).toBeAttached();\n"
+                + "  await expect(page.locator('#g')).toBeEnabled();\n"
+                + "  await expect(page.locator('#h')).toBeHidden();\n"
+                + "  await expect(page.locator('#i')).toBeDisabled();\n"
+                + "  await expect(page.locator('#j')).toHaveText('x');\n"
+                + "  await expect(page.getByText('k')).toContainText('k');\n"
+                + "  await page.waitForSelector(\"text=Order state: 'hidden'\");\n});\n";   // the selector text is not an option
+        String c = new PlaywrightImporter().importSource(src, "w").content;
+        assertThat(c).contains("  ?? id@a\n").contains("  ??+ id@b\n").contains("  ?? id@c\n").contains("  ??+ id@d\n")
+                .contains("  ?? id@e\n").contains("  ?? id@f\n").contains("  ?? id@g\n")
+                .contains("  ??+ id@h\n").contains("  ??+ id@i\n")
+                .contains("  ?? id@j text =\"x\"\n").contains("  ?? text@\"k\"\n").contains("  ?? text@\"Order state: 'hidden'\"\n")
+                .doesNotContain("??-");
     }
 
     @Test

@@ -106,8 +106,9 @@ class SpaCrawlerUnsafeTest {
         };
         for (String[] c : cases) {
             String out = emit(page(c[0], "T"));
-            String want = c[1] != null ? c[1] : PickLocator.skipped("crawl", "goto");
-            assertTrue(out.contains("\n" + want + "\nsleep 1000\n"), c[0] + " ->\n" + out);
+            // Δ145c: a skipped goto skips the page's whole block (one line, no sleep)
+            String want = c[1] != null ? c[1] + "\nsleep 1000\n" : SpaCrawler.SKIPPED_PAGE + "\n\n";
+            assertTrue(out.contains("\n" + want), c[0] + " ->\n" + out);
             if (c[1] == null) assertFalse(out.contains("\ngoto "), c[0]);   // no goto statement at all
             for (String line : out.split("\n", -1)) {
                 assertFalse(line.matches("(?s).*[\\r\\u2028\\u2029\\u0085].*"), c[0] + ": " + line);
@@ -124,7 +125,25 @@ class SpaCrawlerUnsafeTest {
         assertFalse(out.contains("evil.test"), out);
         List<String> statements = new ArrayList<String>();
         for (String l : out.split("\n")) if (!l.isEmpty() && !l.startsWith("//")) statements.add(l);
-        assertEquals(java.util.Arrays.asList("open chrome", "maximize", "sleep 1000"), statements);
+        assertEquals(java.util.Arrays.asList("open chrome", "maximize"), statements);   // Δ145c: no sleep for a skipped page
+    }
+
+    @Test
+    void aSkippedGotoSkipsThePagesFormsAndInputs() {
+        // Δ145c: with the goto skipped, the page's form and loose-input steps would run against the previous page
+        Map<String, Object> field = m("sel", m("s", "id", "v", "q"), "tag", "input", "type", "text");
+        Map<String, Object> form = m("method", "get", "fields", java.util.Arrays.asList(field), "submit", m("s", "id", "v", "go"));
+        SpaCrawler.PageInfo bad = page("https://evil.test/a b", "Bad");
+        bad.forms.add(form);
+        bad.loose.add(field);
+        SpaCrawler.PageInfo ok = page("http://app.test/next", "Next");
+        ok.forms.add(form);
+        String out = emit(page("http://app.test/", "Home"), bad, ok);
+        List<String> statements = new ArrayList<String>();
+        for (String l : out.split("\n")) if (!l.isEmpty() && !l.startsWith("//")) statements.add(l);
+        assertEquals(java.util.Arrays.asList("open chrome", "maximize", "goto http://app.test/", "sleep 1000",
+                "goto http://app.test/next", "sleep 1000", "type \"sample\" id@q", "click id@go", "sleep 1000"), statements, out);
+        assertEquals(1, out.split(java.util.regex.Pattern.quote(SpaCrawler.SKIPPED_PAGE), -1).length - 1, out);
     }
 
     @Test

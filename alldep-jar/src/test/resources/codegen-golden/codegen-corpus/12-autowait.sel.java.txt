@@ -98,7 +98,7 @@ List<WebElement> ___ce___ = null;
 
 /*GATF_LINE@<ROOT>/tests/12-autowait.sel:9*/__set__cln__("<ROOT>/tests/12-autowait.sel:9");__nowait__();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "clear", null, null, "Element not found by selector id@'ele1' at line number 9 ", false, 1000, false, "<ROOT>/tests/12-autowait.sel", 9 ,"");
 
-/*GATF_LINE@<ROOT>/tests/12-autowait.sel:10*/__set__cln__("<ROOT>/tests/12-autowait.sel:10");__nowait__();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele1' at line number 10 ", false, 1000, false, "<ROOT>/tests/12-autowait.sel", 10 ,"");
+/*GATF_LINE@<ROOT>/tests/12-autowait.sel:10*/__set__cln__("<ROOT>/tests/12-autowait.sel:10");__nowait__();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "doubleclick", null, null, "Element not found by selector id@'ele1' at line number 10 ", false, 1000, false, "<ROOT>/tests/12-autowait.sel", 10 ,"");
 
 /*GATF_LINE@<ROOT>/tests/12-autowait.sel:11*/__set__cln__("<ROOT>/tests/12-autowait.sel:11");__nowait__();___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele2"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'ele2' at line number 11 ", false, 1000, false, "<ROOT>/tests/12-autowait.sel", 11 ,"");
 

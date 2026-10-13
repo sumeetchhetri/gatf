@@ -14,7 +14,8 @@
     limitations under the License.
 */
 import { describe, it, expect } from 'vitest';
-import { SELEASY } from './seleasyLang';
+import { StringStream } from '@codemirror/language';
+import { SELEASY, seleasyStreamParser, type SelState } from './seleasyLang';
 
 describe('SELEASY keyword map', () => {
   it('includes core seleasy commands and locators', () => {
@@ -38,5 +39,63 @@ describe('SELEASY keyword map', () => {
 
   it('has the full command vocabulary', () => {
     expect(Object.keys(SELEASY).length).toBeGreaterThan(150);
+  });
+});
+
+/** Style of the token covering `needle` on each line, carrying the tokenizer state across lines as the editor does. */
+function styleAt(lines: string[], idx: number, needle: string): string | null {
+  const st = seleasyStreamParser.startState!(2) as SelState;
+  for (let i = 0; i < lines.length; i++) {
+    const s = new StringStream(lines[i], 4, 2);
+    const col = lines[i].indexOf(needle);
+    let guard = 0;
+    while (!s.eol() && guard++ < 10000) {
+      s.start = s.pos;
+      const style = seleasyStreamParser.token(s, st);
+      if (s.pos === s.start) s.pos++;
+      if (i === idx && col >= s.start && col < s.pos) return style;
+    }
+  }
+  return null;
+}
+
+/** Every token moves the stream forward (the base tokenizer reset the position to 1 on a mid-line '/*'). */
+function advancesEveryToken(line: string): boolean {
+  const st = seleasyStreamParser.startState!(2) as SelState;
+  const s = new StringStream(line, 4, 2);
+  let guard = 0;
+  while (!s.eol() && guard++ < 1000) {
+    s.start = s.pos;
+    seleasyStreamParser.token(s, st);
+    if (s.pos <= s.start) return false;
+  }
+  return s.eol();
+}
+
+describe('block comments (Δ145c: as Command.parse since Δ145b)', () => {
+  it('a mid-line /* never moves the tokenizer backwards', () => {
+    for (const l of ['click xpath@//div/*/a', 'route **/api/* fulfill 200 users.json', 'type "a /* b" id@x', '/* c */']) {
+      expect(advancesEveryToken(l), l).toBe(true);
+    }
+  });
+
+  it("'/*' inside a statement is not a comment opener", () => {
+    const xp = ['click xpath@//div/*/a', 'open chrome'];
+    expect(styleAt(xp, 0, '/*/a')).not.toBe('comment');
+    expect(styleAt(xp, 1, 'open')).toBe('keyword');
+    const rt = ['route **/api/* fulfill 200 users.json', 'click id@x'];
+    expect(styleAt(rt, 0, '/* fulfill')).not.toBe('comment');
+    expect(styleAt(rt, 1, 'click')).not.toBe('comment');
+  });
+
+  it("'/*' at the start of a statement opens one; a quoted '*/' does not close it; the closing line's rest is comment", () => {
+    const blk = ['  /* block', 'click id@x', '"a */ b" still comment', 'end */ trailing', 'open chrome'];
+    expect(styleAt(blk, 0, '/*')).toBe('comment');
+    expect(styleAt(blk, 1, 'click')).toBe('comment');
+    expect(styleAt(blk, 2, 'still')).toBe('comment');
+    expect(styleAt(blk, 3, 'trailing')).toBe('comment');
+    expect(styleAt(blk, 4, 'open')).toBe('keyword');
+    expect(styleAt(['/* one */', 'open chrome'], 1, 'open')).toBe('keyword');
+    expect(styleAt(["/* it's open */", 'open chrome'], 1, 'open')).toBe('keyword');   // an unclosed quote masks nothing
   });
 });

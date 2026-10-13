@@ -692,7 +692,7 @@ describe('guardHtml hardening (Δ147e)', () => {
     const fs = run('<!DOCTYPE html><html><head></head><frameset><frame id="g" src="blob:https://app.test/1" srcdoc="x"></frameset></html>');
     expect(parse(fs.out).getElementById('g')!.hasAttribute('src')).toBe(false);
     expect(fs.out).not.toContain('blob:');
-    expect(SNAPSHOT_CSP).toMatch(/frame-src 'self' about: blob:$/);
+    expect(SNAPSHOT_CSP).toMatch(/frame-src about: blob:$/);   // Δ145c: no 'self' (a frame never carries a src)
     expect(SNAPSHOT_CSP.split(';').find((d) => d.trim().startsWith('frame-src'))).not.toMatch(/data:/);
   });
 
@@ -779,6 +779,44 @@ describe('srcdoc cost (Δ148a)', () => {
     // 4 rebuild parses (top + 3 levels) + the top guard's 4 (top + its recursion); Δ148 guarded at every depth too (10)
     expect(spy.mock.calls.length).toBe(8);
     spy.mockRestore();
+  });
+
+  it('Δ145c: guardHtml called directly on a raw 30x3 fan-out stays bounded (its own MAX_SRCDOC_FRAMES budget)', () => {
+    // 30 frames per document, 3 levels: 30 + 900 + 27 000 srcdoc documents unguarded by any rebuild cap
+    let h = '<html><body><p>leaf</p></body></html>';
+    for (let k = 0; k < 3; k++) h = `<html><body>${Array.from({ length: 30 }, () => `<iframe class="f" srcdoc="${esc(h)}"></iframe>`).join('')}</body></html>`;
+    const spy = vi.spyOn(DOMParser.prototype, 'parseFromString');
+    const holder = { stats: { guardFixes: 0 } as rebuildMod.RebuildStats };
+    const t0 = performance.now();
+    const out = rebuildMod.guardHtml(h, holder);
+    const ms = performance.now() - t0;
+    const parses = spy.mock.calls.length;
+    spy.mockRestore();
+    expect(ms).toBeLessThan(2000);
+    expect(parses).toBe(1 + rebuildMod.MAX_SRCDOC_FRAMES);   // the top document + one parse per budgeted srcdoc
+    expect(docs(out)).toBe(rebuildMod.MAX_SRCDOC_FRAMES);
+    // depth-first: the budget is spent inside the first top-level frame; every srcdoc reached after that is removed
+    expect(holder.stats.guardFixes).toBeGreaterThan(0);
+    expect(out).toContain('leaf');
+  });
+
+  it('Δ145c: only frame srcdoc counts against the guard budget (a <div srcdoc> is inert)', () => {
+    const frames = Array.from({ length: 64 }, () => `<iframe srcdoc="${esc('<p>x</p>')}"></iframe>`).join('');
+    const holder = { stats: { guardFixes: 0 } as rebuildMod.RebuildStats };
+    const out = rebuildMod.guardHtml(`<html><body><div srcdoc="${esc('<p>d</p>')}"></div>${frames}</body></html>`, holder);
+    expect(holder.stats.guardFixes).toBe(0);
+    expect(parse(out).querySelectorAll('iframe[srcdoc]').length).toBe(64);
+    const over = { stats: { guardFixes: 0 } as rebuildMod.RebuildStats };
+    rebuildMod.guardHtml(`<html><body>${frames}<iframe srcdoc="x"></iframe></body></html>`, over);
+    expect(over.stats.guardFixes).toBe(1);   // the 65th frame document is over the budget
+  });
+
+  it('Δ145c: a rebuilt snapshot never reaches the guard budget (the rebuild caps first)', () => {
+    let h = '<p>leaf</p>';
+    for (let k = 0; k < 3; k++) h = `<html><body>${Array.from({ length: 30 }, () => `<iframe class="f" srcdoc="${esc(h)}"></iframe>`).join('')}</body></html>`;
+    const r = lite(h);
+    expect(docs(r.html)).toBe(rebuildMod.MAX_SRCDOC_FRAMES);
+    expect(r.stats.guardFixes).toBe(0);
   });
 
   it('a hostile nested srcdoc is still cleaned (the top guard reaches every level)', () => {

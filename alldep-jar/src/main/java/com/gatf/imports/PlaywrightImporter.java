@@ -202,7 +202,8 @@ public class PlaywrightImporter {
                     continue;
                 }
                 if (method.equals("waitforselector") || method.equals("waitfor")) {
-                    if (!a.isEmpty()) { out.append("  ??+ ").append(pwSelector(unquote(a.get(0)))).append("\n"); actions++; }
+                    // Δ145c: `??` waits until found, `??+` until no longer found (was inverted)
+                    if (!a.isEmpty()) { out.append("  ").append(waitPrefix(a.size() > 1 ? joinFrom(a, 1) : "")).append(" ").append(pwSelector(unquote(a.get(0)))).append("\n"); actions++; }
                     continue;
                 }
                 if (method.equals("waitforloadstate") || method.equals("waitfornavigation")) {
@@ -261,7 +262,7 @@ public class PlaywrightImporter {
         }
         if (method.equals("clear")) return "clear " + selector;
         if (method.equals("scrollintoviewifneeded")) return "scroll " + selector;
-        if (method.equals("waitfor")) return "??+ " + selector;
+        if (method.equals("waitfor")) return waitPrefix(args) + " " + selector;
         res.unsupported(lineNo, trunc(stmt), "unrecognised action '" + method + "'");
         return null;
     }
@@ -270,15 +271,16 @@ public class PlaywrightImporter {
     private String emitExpect(String subject, String matcher, String args, String stmt, int lineNo, ImportResult res) {
         String sel = subjectSelector(subject);
         List<String> a = splitArgs(args);
+        // Δ145c: `??` = wait until found, `??+` = until no longer found (REFERENCE.md); both were inverted
         if (matcher.equals("tobevisible") || matcher.equals("tobeattached") || matcher.equals("tobeenabled")) {
-            return sel != null ? "??+ " + sel : reportExpect(subject, matcher, lineNo, res);
+            return sel != null ? "?? " + sel : reportExpect(subject, matcher, lineNo, res);
         }
         if (matcher.equals("tohavetext") && sel != null && !a.isEmpty()) {
             return "?? " + sel + " text =\"" + escSel(unquote(a.get(0))) + "\"";   // exact text of the subject
         }
         if (matcher.equals("tohavetext") || matcher.equals("tocontaintext")) {
             String t = a.isEmpty() ? "" : unquote(a.get(0));
-            return "??+ text@\"" + escSel(t) + "\"";
+            return "?? text@\"" + escSel(t) + "\"";
         }
         if (matcher.equals("tohavevalue") && sel != null) {
             String v = a.isEmpty() ? "" : unquote(a.get(0));
@@ -288,11 +290,16 @@ public class PlaywrightImporter {
             return "?? " + sel + " attr@checked =\"true\"";
         }
         if (matcher.equals("tobehidden") || matcher.equals("tobedisabled")) {
-            return sel != null ? "??- " + sel : reportExpect(subject, matcher, lineNo, res);
+            return sel != null ? "??+ " + sel : reportExpect(subject, matcher, lineNo, res);
         }
         // toHaveURL / toHaveTitle / toHaveValue / toHavecount etc. have no clean 1-line seleasy equivalent.
         res.unsupported(lineNo, trunc(stmt), "assertion '" + matcher + "' has no direct seleasy equivalent");
         return "// UNSUPPORTED assert: " + trunc(stmt);
+    }
+
+    /** Δ145c: waitFor / waitForSelector with {@code state: 'detached' | 'hidden'} waits until gone ({@code ??+}); otherwise until found. */
+    static String waitPrefix(String args) {
+        return args != null && Pattern.compile("state\\s*:\\s*[\"'`](?:detached|hidden)[\"'`]").matcher(args).find() ? "??+" : "??";
     }
 
     private String reportExpect(String subject, String matcher, int lineNo, ImportResult res) {

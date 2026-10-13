@@ -120,9 +120,17 @@ def build_grammar(cmds):
                     "match": r"(?:^\s*|(?<=\s))//.*$",
                 },
                 {
+                    # Δ145c: as Command.parse since Δ145b — '/*' opens a comment only at the start of a statement
+                    # (after optional whitespace), so `xpath@//div/*/a` is not one; a quoted '*/' does not close it;
+                    # text after the closing '*/' on that line is ignored by the transpiler, so it stays comment too
                     "name": "comment.block.seleasy",
-                    "begin": r"/\*",
-                    "end": r"\*/",
+                    "begin": r"^\s*/\*",
+                    "end": r"\*/.*$",
+                    "patterns": [
+                        # the quoted strings Command's sanitize() masks (same regexes): an unclosed quote masks nothing
+                        {"match": r'"(?:\\"|[^"])*"'},
+                        {"match": r"'(?:\\'|[^'])*'"},
+                    ],
                 },
             ]
         },

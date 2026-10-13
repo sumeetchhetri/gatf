@@ -720,7 +720,7 @@ public final class SelParser {
                 s.target = locator(p.get(0));
                 s.args.put("waited", "true");
                 if (verb.startsWith("randomize")) return s.unsupported("randomize (random test data)");
-                if (verb.equals("hoverclick")) return s.unsupported("hoverclick after ?? (two locators in one find)");
+                if (verb.equals("hoverclick")) return s.unsupported("hoverclick cannot follow a ?? wait (a seleasy parse error since Δ145c): write hoverclick <hover-locator> <click-locator>");
                 boolean withValue = (typeLike && !verb.startsWith("randomize")) || verb.equals("select") || verb.equals("upload");
                 int extraFrom = withValue ? 3 : 2;
                 if (withValue && p.size() < 3) return s.unsupported(verb + " needs a value");

@@ -88,5 +88,45 @@ has('conditional ??', '?? id@el', '??', 'keyword');
 not('url // not a comment', 'goto https://example.com', '://example.com', 'comment');
 not('url // (the slashes)', 'goto https://example.com', '//example', 'comment');
 
+// Δ145c: '/*' opens a block comment only at the start of a statement, as Command.parse (Δ145b)
+// scopes of `needle` on line `idx` of a multi-line document (the rule stack carries across lines)
+function scopesInDoc(lines, idx, needle) {
+  let stack = vsctm.INITIAL;
+  for (let i = 0; i < lines.length; i++) {
+    const r = grammar.tokenizeLine(lines[i], stack);
+    if (i === idx) {
+      const col = lines[i].indexOf(needle);
+      const tok = r.tokens.find((t) => col >= t.startIndex && col < t.endIndex);
+      return tok ? tok.scopes : [];
+    }
+    stack = r.ruleStack;
+  }
+  return [];
+}
+function docHas(name, lines, idx, needle, frag, want = true) {
+  const sc = scopesInDoc(lines, idx, needle);
+  const ok = sc.some((s) => s.includes(frag)) === want;
+  if (ok) pass++;
+  else fail++;
+  console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}  [${needle}]${want ? '' : ' should NOT be ' + frag} -> ${sc.join(' ')}`);
+}
+const xp = ['click xpath@//div/*/a', 'open chrome'];
+docHas('xpath /* is not a comment', xp, 0, '/*/a', 'comment', false);
+docHas('…nor is the next line', xp, 1, 'open', 'comment', false);
+docHas('…which is still a keyword', xp, 1, 'open', 'keyword');
+const rt = ['route **/api/* fulfill 200 users.json', 'click id@x'];
+docHas('route glob /* is not a comment', rt, 0, '/* fulfill', 'comment', false);
+docHas('…nor is the next line', rt, 1, 'click', 'comment', false);
+const blk = ['  /* block', 'click id@x', '"a */ b" still comment', 'end */ trailing', 'open chrome'];
+docHas('indented /* opens a block', blk, 0, '/*', 'comment.block');
+docHas('lines inside the block', blk, 1, 'click', 'comment.block');
+docHas('a quoted */ does not close it', blk, 2, 'still', 'comment.block');
+docHas('text after the closing */ (ignored by the transpiler)', blk, 3, 'trailing', 'comment.block');
+docHas('the block is closed after */', blk, 4, 'open', 'comment', false);
+const uq = ['/* it\'s open */', 'open chrome'];
+docHas('an unclosed quote masks nothing: */ still closes', uq, 1, 'open', 'comment', false);
+docHas('one-line /* … */', ['/* one */', 'open chrome'], 0, 'one', 'comment.block');
+docHas('…closes on its line', ['/* one */', 'open chrome'], 1, 'open', 'comment', false);
+
 console.log(`\ngrammar: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

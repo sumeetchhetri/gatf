@@ -100,7 +100,7 @@ List<WebElement> ___ce___ = null;
 
 /*GATF_LINE@<ROOT>/tests/02-elements.sel:10*/__set__cln__("<ROOT>/tests/02-elements.sel:10");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "clicknf", null, null, "Element not found by selector id@'ele1' at line number 10 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 10 ,"");
 
-/*GATF_LINE@<ROOT>/tests/02-elements.sel:11*/__set__cln__("<ROOT>/tests/02-elements.sel:11");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'ele1' at line number 11 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 11 ,"");
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:11*/__set__cln__("<ROOT>/tests/02-elements.sel:11");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "doubleclick", null, null, "Element not found by selector id@'ele1' at line number 11 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 11 ,"");
 
 /*GATF_LINE@<ROOT>/tests/02-elements.sel:12*/__set__cln__("<ROOT>/tests/02-elements.sel:12");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "submit", null, null, "Element not found by selector id@'ele1' at line number 12 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 12 ,"");
 
@@ -136,8 +136,15 @@ List<WebElement> ___ce___ = null;
 
 /*GATF_LINE@<ROOT>/tests/02-elements.sel:28*/__set__cln__("<ROOT>/tests/02-elements.sel:28");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("abc"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "hover", null, null, "Element not found by selector id@'abc' at line number 28 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 28 ,"");
 
-/*GATF_LINE@<ROOT>/tests/02-elements.sel:29*/__set__cln__("<ROOT>/tests/02-elements.sel:29");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("hoverele"), evaluate("")}, new String[]{"id", ""}, evaluate("id@'clickele'"), false, null, new String[]{}, null, null, null, "Element not found by selector id@'hoverele' at line number 29 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 29 ,"");
+/*GATF_LINE@<ROOT>/tests/02-elements.sel:29*/__set__cln__("<ROOT>/tests/02-elements.sel:29");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("hoverele"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'hoverele' at line number 29 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 29 ,"");
 
+GatfAssert.assertTrue("Element not found by selector id@'hoverele' at line number 29 ", ___ce___!=null && !___ce___.isEmpty());
+List<WebElement> ___w___1 = ___ce___;
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("clickele"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector id@'clickele' at line number 29 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 29 ,"");
+
+GatfAssert.assertTrue("Element not found by selector id@'clickele' at line number 29 ", ___ce___!=null && !___ce___.isEmpty());
+org.openqa.selenium.interactions.Actions ___w___2 = new org.openqa.selenium.interactions.Actions(___cw___);
+___w___2.moveToElement(___w___1.get(0)).click(___ce___.get(0)).perform();
 /*GATF_LINE@<ROOT>/tests/02-elements.sel:30*/__set__cln__("<ROOT>/tests/02-elements.sel:30");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("ele1"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "upload", null, evaluate("/path/to/file.txt"), "Element not found by selector id@'ele1' at line number 30 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 30 ,"");
 
 /*GATF_LINE@<ROOT>/tests/02-elements.sel:31*/__set__cln__("<ROOT>/tests/02-elements.sel:31");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("asds"), evaluate("")}, new String[]{"xpath", ""}, null, false, null, new String[]{}, null, null, null, "Element not found by selector xpath@'asds' at line number 31 ", false, 1000, false, "<ROOT>/tests/02-elements.sel", 31 ,"");

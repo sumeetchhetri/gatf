@@ -42,13 +42,16 @@ Each `test('name', …)` becomes a file-scope `subtest "name" { … }` (auto-run
 | `page.setInputFiles(sel, file)` | `upload "file" <sel>` |
 | `page.waitForTimeout(ms)` | `sleep <ms>` (seleasy sleep is milliseconds) |
 | `page.goBack/goForward/reload()` | `back` / `forward` / `refresh` |
-| `page.waitForSelector(sel)` | `??+ <sel>` |
-| `expect(loc).toBeVisible()` | `??+ <sel>` |
+| `page.waitForSelector(sel)`, `loc.waitFor()` | `?? <sel>` (wait until found) |
+| … with `{ state: 'detached' \| 'hidden' }` | `??+ <sel>` (wait until no longer found) |
+| `expect(loc).toBeVisible/toBeAttached/toBeEnabled()` | `?? <sel>` |
 | `expect(loc).toHaveText(t)` | `?? <sel> text ="t"` |
-| `expect(loc).toContainText(t)` | `??+ text@"t"` |
+| `expect(loc).toContainText(t)` | `?? text@"t"` |
 | `expect(loc).toHaveValue(v)` | `?? <sel> attr@value ="v"` |
 | `expect(loc).toBeChecked()` | `?? <sel> attr@checked ="true"` |
-| `expect(loc).toBeHidden()` | `??- <sel>` |
+| `expect(loc).toBeHidden/toBeDisabled()` | `??+ <sel>` |
+
+Δ145c: the wait direction was inverted before (found ↔ gone); re-import suites imported earlier.
 
 Hooks: `test.beforeEach/afterEach` are inlined at the start/end of every test's subtest;
 `test.beforeAll/afterAll` become a first/last subtest.

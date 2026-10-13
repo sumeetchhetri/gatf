@@ -259,4 +259,69 @@ class CommandTest {
         assertThat(((IfCommand) parseLine("?! id@x", st)).negation).isTrue();
         assertThat(parseLine("else", st)).isInstanceOf(Command.ElseCommand.class);
     }
+
+    @Test
+    void forcedDoubleClickDoubleClicks() {
+        // Δ145c: under global timeouts (the default) `doubleclick` / `dblclick` became a wait with action null (no double-click)
+        Command.CommandState st = new Command.CommandState();
+        for (String s : new String[] { "doubleclick id@x", "dblclick id@x", "?? id@x doubleclick", "??5 id@x dblclick" }) {
+            WaitTillElementVisibleOrInvisibleCommand w = (WaitTillElementVisibleOrInvisibleCommand) parseLine(s, st);
+            assertThat(w.children).as(s).hasSize(1);
+            assertThat(w.children.get(0)).as(s).isInstanceOf(Command.DoubleClickCommand.class);
+            assertThat(w.javacode()).as(s).contains("new String[]{}, \"doubleclick\", null, null, \"Element not found by selector id@'x' ");
+        }
+    }
+
+    @Test
+    void hoverclickIsNotForceWrappedAndClicksTheSecondElement() {
+        // Δ145c: a forced `hoverclick A B` produced only "wait for A"; HoverAndClickCommand waits for both itself
+        Command.CommandState st = new Command.CommandState();
+        Command c = parseLine("hoverclick id@a id@b", st);
+        assertThat(c).isInstanceOf(Command.HoverAndClickCommand.class);
+        String code = c.javacode();
+        assertThat(code).doesNotContain("null[0]").doesNotContain("(List<WebElement>)null");
+        int a = code.indexOf("evaluate(\"a\")"), keep = code.indexOf("List<WebElement> ___w___"), b = code.indexOf("evaluate(\"b\")");
+        assertThat(a).isGreaterThanOrEqualTo(0);
+        assertThat(keep).isGreaterThan(a);   // the hover match is kept before the second find overwrites ___ce___
+        assertThat(b).isGreaterThan(keep);
+        assertThat(code).containsPattern("___w___\\d+\\.moveToElement\\(___w___\\d+\\.get\\(0\\)\\)\\.click\\(___ce___\\.get\\(0\\)\\)\\.perform\\(\\);");
+    }
+
+    @Test
+    void hoverclickAfterAWaitIsAParseError() {
+        // Δ145c: `?? <loc> hoverclick` built no action at all (a silent no-op)
+        Command.CommandState st = new Command.CommandState();
+        for (String s : new String[] { "?? id@a hoverclick", "??10 id@a hoverclick id@b", "??- id@a hoverclick" }) {
+            assertThatThrownBy(() -> parseLine(s, st)).as(s).isInstanceOf(Command.GatfSelCodeParseError.class)
+                    .satisfies(e -> assertThat(e.getCause()).hasMessageContaining("hoverclick cannot follow a ?? wait"));
+        }
+    }
+
+    @Test
+    void frameAndTabKeepTheGranularityWhereTheyAreWritten() {
+        // Δ145c (finishes Δ156b): a later `timeout` line changed the retry sleep of every frame/tab block written before it
+        Command.CommandState st = new Command.CommandState();
+        Command.FrameCommand f = (Command.FrameCommand) parseLine("frame \"f\"", st);
+        f.children.add(parseLine("click id@x", st));
+        TabCommand t = (TabCommand) parseLine("tab 1", st);
+        TabCommand tn = (TabCommand) parseLine("tab \"named\"", st);
+        parseLine("timeout 30 1 250", st);
+        assertThat(st.timeoutSleepGranularity).isEqualTo(250L);
+        assertThat(f.javacode()).contains("sleep(1000);").doesNotContain("sleep(250);");
+        assertThat(t.javacode()).contains("sleep(1000);").doesNotContain("sleep(250);");
+        assertThat(tn.javacode()).contains("sleep(1000);").doesNotContain("sleep(250);");
+        assertThat(((Command.FrameCommand) parseLine("frame \"g\"", st)).sleepGranularity).isEqualTo(250L);
+    }
+
+    @Test
+    void ifAndElseIfRoundTripKeepTheNegation() {
+        // Δ145c: toCmd() wrote "?" / ":?" for ?! / :?! / ifnot / else ifnot
+        Command.CommandState st = new Command.CommandState();
+        assertThat(parseLine("?! id@x", st).toCmd()).startsWith("?!");
+        assertThat(parseLine("ifnot id@x", st).toCmd()).startsWith("?!");
+        assertThat(parseLine("? id@x", st).toCmd()).startsWith("?").doesNotStartWith("?!");
+        assertThat(parseLine(":?! id@x", st).toCmd()).startsWith(":?!");
+        assertThat(parseLine("else ifnot id@x", st).toCmd()).startsWith(":?!");
+        assertThat(parseLine(":? id@x", st).toCmd()).startsWith(":?").doesNotStartWith(":?!");
+    }
 }

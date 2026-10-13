@@ -99,8 +99,20 @@ function tokenComment(stream: StringStream, state: SelState): string {
     ch: string | void;
   while ((ch = stream.next())) {
     if (ch === '/' && maybeEnd) {
+      // Δ145c: the transpiler ignores the rest of the closing line, so it stays comment
+      stream.skipToEnd();
       state.tokenize = tokenSeleasy;
       break;
+    }
+    if (ch === '"' || ch === "'") {
+      // Δ145c: a quoted '*/' does not close the comment: Command.parse masks quoted text first, with these regexes
+      // (sanitize()); an unclosed quote masks nothing
+      const m = (ch === '"' ? /^"(?:\\"|[^"])*"/ : /^'(?:\\'|[^'])*'/).exec(stream.string.slice(stream.pos - 1));
+      if (m) {
+        stream.pos += m[0].length - 1;
+        maybeEnd = false;
+        continue;
+      }
     }
     maybeEnd = ch === '*';
   }
@@ -209,15 +221,12 @@ function tokenSeleasy(stream: StringStream, state: SelState): string | null {
     return tokenChain(stream, state, [ch], 'string');
   }
   if (ch === '`') return tokenChain(stream, state, [ch], 'variable-2');
-  if (ch === '/' && stream.string.substring(stream.start).startsWith('/*')) {
-    stream.pos = 1;
-    if (stream.eat('*')) {
-      state.tokenize = tokenComment;
-      return tokenComment(stream, state);
-    } else if (stream.eat('/')) {
-      stream.skipToEnd();
-      return ret('comment', 'comment');
-    }
+  // Δ145c: '/*' opens a block comment only at the start of a statement (after optional whitespace), as Command.parse
+  // since Δ145b, so `xpath@//div/*/a` and `route **/api/*` are not comment openers
+  if (ch === '/' && stream.string.substring(stream.start).startsWith('/*') && /^\s*$/.test(stream.string.slice(0, stream.start))) {
+    stream.pos = stream.start + 2;
+    state.tokenize = tokenComment;
+    return tokenComment(stream, state);
   }
   if (ch === '/' && stream.string.substring(stream.start).startsWith('//')) {
     // Phase 7: a `//` is a comment only at line start or when whitespace-preceded, so a

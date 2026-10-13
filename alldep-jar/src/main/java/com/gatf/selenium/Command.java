@@ -989,7 +989,8 @@ public class Command {
                 || cmd.toLowerCase().startsWith("clear ") || cmd.toLowerCase().equals("clear")
                 || cmd.toLowerCase().startsWith("submit ") || cmd.toLowerCase().equals("submit")
                 || cmd.toLowerCase().startsWith("upload ")) {
-        	if(state.modeEnableGlobalTimeouts) {
+        	// Δ145c: hoverclick is never force-wrapped: HoverAndClickCommand waits for both of its elements itself
+        	if(state.modeEnableGlobalTimeouts && !cmd.toLowerCase().startsWith("hoverclick ")) {
         		comd = new WaitTillElementVisibleOrInvisibleCommand(state.timeoutNum+"", cmd, cmdDetails, state, false, true);
         	} else {
         		comd = handleActions(cmd, null, cmdDetails, state);
@@ -2977,7 +2978,7 @@ public class Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append(":?");
+            b.append(negation?":?!":":?");   // Δ145c: was ":?" — the round-trip text lost the negation
             for (FindCommand fcmd : conds) {
             	b.append(fcmd.toCmd());
             	b.append(" ");
@@ -3703,6 +3704,9 @@ public class Command {
     }
 
     public static class FrameCommand extends Command {
+        // Δ145c: the `timeout ... <granularity>` in effect where this frame is written (as FindCommand): a later
+        // `timeout` line must not change this statement's retry sleep
+        long sleepGranularity = state.timeoutSleepGranularity;
         FrameCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = unSantizedUnQuoted(cmd, state);
@@ -3727,7 +3731,7 @@ public class Command {
                     b.append("\n");
                 }
         		b.append("\nbreak;\n} catch(Exception e){}\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                b.append("sleep("+sleepGranularity+");\n");
                 b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to frame ("+name+")\");\n");
                 b.append("}\n");
         		b.append("switchToFrame(___ocw___, \"\");\n");//Switch to main frame
@@ -4532,15 +4536,17 @@ public class Command {
                 b.append(cond.javacodeonly());
                 //b.append("\nAssert.assertTrue("+condHe.condition()+");");
             }
-            String hevarnm = state.currvarname();
+            // Δ145c: both finds now leave their match in ___ce___ (handleWaitFuncWL); keep the hover match before the
+            // second find overwrites it (was currvarname()/topele(), which no longer name the found elements → null[0])
+            String hevarnm = state.varname();
+            b.append("\nList<WebElement> "+hevarnm+" = ___ce___;\n");
             if(condCe!=null) {
                 b.append(condCe.javacodeonly());
             }
-            String cevarnm = condCe.topele();
             String hvvrnm = state.varname();
             b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
             if(state.autoWait) b.append("\nawaitActionable(___cw___, "+hevarnm+".get(0), \"hover\");");
-            b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).click(((List<WebElement>)"+cevarnm+"[0]).get(0)).perform();");
+            b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).click("+(condCe!=null?"___ce___":hevarnm)+".get(0)).perform();");
             return b.toString();
         }
         String selcode(String varnm) {

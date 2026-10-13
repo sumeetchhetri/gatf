@@ -82,7 +82,7 @@ public class IfCommand extends Command {
         }
         String toCmd() {
             StringBuilder b = new StringBuilder();
-            b.append("?");
+            b.append(negation?"?!":"?");   // Δ145c: was "?" — the round-trip text lost the negation
             for (FindCommand fcmd : conds) {
             	b.append(fcmd.toCmd());
             	b.append(" ");

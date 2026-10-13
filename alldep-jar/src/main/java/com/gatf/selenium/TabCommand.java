@@ -63,6 +63,9 @@ import com.gatf.selenium.plugins.XmlPlugin;
 /** G8 — promoted verbatim from the nested Command.TabCommand (inherits the same members/nested types). */
 @SuppressWarnings("unused")
 public class TabCommand extends Command {
+        // Δ145c: the `timeout ... <granularity>` in effect where this tab is written (as FindCommand): a later
+        // `timeout` line must not change this statement's retry sleep
+        long sleepGranularity = state.timeoutSleepGranularity;
         TabCommand(String cmd, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
             name = unSantizedUnQuoted(cmd, state);
@@ -105,7 +108,7 @@ public class TabCommand extends Command {
                         b.append("___cw___ = ___ocw___.switchTo().window(\""+esc(name)+"\");\n___sc___1 = ___cw___;\nbreak;\n");
                     }
                     b.append("\n} catch(Exception e){}\n");
-                    b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                    b.append("sleep("+sleepGranularity+");\n");
                     b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
                     b.append("}\n");
                     return b.toString();
@@ -133,7 +136,7 @@ public class TabCommand extends Command {
                     }
             	}
                 b.append("\nbreak;\n} catch(Exception e){}\n");
-                b.append("sleep("+state.timeoutSleepGranularity+");\n");
+                b.append("sleep("+sleepGranularity+");\n");
                 b.append("if("+cntvar+"++=="+state.timeoutNum+")throw new RuntimeException(\"Unable to move to tab ("+name+")\");\n");
                 b.append("}\n");
                 b.append("___ocw___.switchTo().window(___ocw___.getWindowHandles().iterator().next());\n___cw___ = ___ocw___;\n___sc___1 = ___cw___;\n");

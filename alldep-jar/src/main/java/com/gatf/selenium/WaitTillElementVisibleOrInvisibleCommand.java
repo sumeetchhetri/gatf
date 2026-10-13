@@ -110,6 +110,10 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
                     {
                         cmd += parts[i] + " ";
                     }
+                    if(parts[1].equalsIgnoreCase("hoverclick")) {
+                    	// Δ145c: `?? <loc> hoverclick` built no action (a silent no-op); hoverclick waits for both of its elements itself
+                    	throwParseError(null, new RuntimeException("hoverclick cannot follow a ?? wait; write `hoverclick <hover-locator> <click-locator>` (it waits for both elements)"));
+                    }
                     String cstr = parts[0];
                     if((parts[1].toLowerCase().matches(typeExStr) && !parts[1].toLowerCase().startsWith("randomize")) 
         					|| parts[1].toLowerCase().equals("select") || parts[1].toLowerCase().equals("upload")) {
@@ -130,12 +134,11 @@ public class WaitTillElementVisibleOrInvisibleCommand extends FindCommandImpl {
                     if(!cmd.isEmpty()) {
                         if (cmd.toLowerCase().toLowerCase().matches(typeSwStr) || cmd.toLowerCase().startsWith("select ") 
                         		|| cmd.toLowerCase().matches(clickExStr) || cmd.toLowerCase().equals("hover")
-                                || cmd.toLowerCase().startsWith("hoverclick") || cmd.toLowerCase().equals("clear")
+                                || cmd.toLowerCase().equals("doubleclick") || cmd.toLowerCase().equals("dblclick")   // Δ145c: was dropped → wait, no double-click
+                                || cmd.toLowerCase().equals("clear")
                                 || cmd.toLowerCase().equals("submit") || cmd.toLowerCase().startsWith("upload ")) {
                             //cmd = unsanitize(cmd);
                             Command comd = handleActions(cmd, cond, cmdDetails, state);
-                            // a forced (global-timeout) `hoverclick A B` lands here as just "hoverclick": handleActions builds
-                            // nothing for it, and a null child broke every walker of the tree (the generated code is unchanged)
                             if(comd!=null) children.add(comd);
                         }
                     }
