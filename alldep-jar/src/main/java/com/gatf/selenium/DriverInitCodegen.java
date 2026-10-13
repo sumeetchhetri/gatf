@@ -75,6 +75,12 @@ final class DriverInitCodegen {
 
 	private DriverInitCodegen() {}
 
+	/** Δ157 (H5): a plain local key ('open chrome') keeps its local driver, unless a device cloud is selected (GATF_CLOUD) and
+	 *  no SELENIUM_REMOTE_URL is set: then it goes through getDockerDriver like the -dkr forms. Unset: output unchanged. */
+	private static boolean plainLocal(SeleniumDriverConfig config, String plain) {
+		return config.getName().equals(plain) && !CloudDrivers.routesPlainKeys();
+	}
+
 	static void append(StringBuilder b, SeleniumDriverConfig config, String rUrl, Object[] fileLineDetails) {
             if(config.getName().startsWith("chrome")) {
                 b.append("org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();\n");
@@ -108,7 +114,7 @@ final class DriverInitCodegen {
                 	b.append("___dc___.setExperimentalOption(\"prefs\", __prefs);\n");
                 }
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!config.getName().equals("chrome")) {
+            	if(!plainLocal(config, "chrome")) {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.chrome.ChromeDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
@@ -144,7 +150,7 @@ final class DriverInitCodegen {
                 }
                 b.append("___dc___.setProfile(___dcprf___);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!config.getName().equals("firefox")) {
+            	if(!plainLocal(config, "firefox")) {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.firefox.FirefoxDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
@@ -165,7 +171,7 @@ final class DriverInitCodegen {
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!config.getName().equals("ie")) {
+            	if(!plainLocal(config, "ie")) {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.ie.InternetExplorerDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
@@ -182,7 +188,7 @@ final class DriverInitCodegen {
                 }
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
-            	if(!config.getName().equals("safari")) {
+            	if(!plainLocal(config, "safari")) {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
             		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.safari.SafariDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool

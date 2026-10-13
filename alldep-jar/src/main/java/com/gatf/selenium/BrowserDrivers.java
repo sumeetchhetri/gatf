@@ -185,6 +185,9 @@ final class BrowserDrivers {
 				}
 			}
 		} catch (Exception __ignore) { /* never block driver creation */ }
+		// Δ157 (H5): device-cloud preset (GATF_CLOUD / -Dgatf.cloud); null when unset or when SELENIUM_REMOTE_URL wins
+		WebDriver __cloud = CloudDrivers.createIfSelected(browserName, caps, ___cxt___);
+		if (__cloud != null) return __cloud;
 		// G11: SELENIUM_REMOTE_URL / -Dgatf.selenium.remoteUrl, or an on-demand official Grid (GATF_WITH_GRID)
 		String __gridUrl = SeleniumGrid.remoteUrl(browserName);
 		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {

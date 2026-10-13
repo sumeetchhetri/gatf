@@ -388,6 +388,7 @@ public abstract class SeleniumTest {
 			result.executionTime = System.nanoTime() - getSession().__subtestexecutiontime__;
 			getSession().__result__.get(getSession().browserName).__cresult__.put(getSession().__subtestname__, result);
 		}
+		CloudDrivers.onResult(getSession(), state.name);   // Δ157 (H5): status to the device-cloud dashboard; no-op without GATF_CLOUD
 		if(result!=null && ((!result.isStatus() && !result.isContinue) || result.cause instanceof WarnSubTestException)) {
 			FailureException fe = new FailureException(result.getCause());
 			if(state.cfileName!=null) {
@@ -1032,7 +1033,7 @@ public abstract class SeleniumTest {
 	 */
 	protected WebDriver __workerDriver__(String bkey) {
 		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
-		if(p == null) return null;
+		if(p == null || CloudDrivers.routesPlainKeys()) return null;   // Δ154/157 merge: a device-cloud session is never pooled (its dashboard name/status is per session)
 		return p.acquire(Thread.currentThread(), this, __workerKey__(bkey), this::__workerOpen__);
 	}
 
@@ -1043,7 +1044,7 @@ public abstract class SeleniumTest {
 	 */
 	protected WebDriver __workerAdopt__(String bkey, WebDriver d) {
 		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
-		if(p == null || d == null) return d;
+		if(p == null || d == null || CloudDrivers.routesPlainKeys()) return d;   // Δ154/157 merge: cloud sessions stay per script
 		GatfExecutorConfig cfg = ___cxt___.getGatfExecutorConfig();
 		boolean tracing = cfg != null && cfg.captureTraceThisRun() && !cfg.isLoadTestingEnabled()
 				&& (cfg.getConcurrentUserSimulationNum()==null || cfg.getConcurrentUserSimulationNum()<=1);
