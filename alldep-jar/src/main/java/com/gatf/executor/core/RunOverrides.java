@@ -17,7 +17,7 @@ package com.gatf.executor.core;
 
 /**
  * Q7: per-run overrides from {@code gatf test} (--trace / --retries / --workers / --forbid-only / --shard), applied to the loaded config just
- * before the run starts. Unset values leave the config file's settings alone; never used by the UI server.
+ * before the run starts; plus {@code -Dgatf.browserContexts} (Δ154). Unset values leave the config file's settings alone; never used by the UI server.
  */
 public final class RunOverrides {
 
@@ -65,5 +65,8 @@ public final class RunOverrides {
         if (workers != null) c.setNumConcurrentExecutions(workers);
         if (forbidOnly != null) c.setForbidOnly(forbidOnly);
         if (updateSnapshots != null) c.setUpdateSnapshots(updateSnapshots);
+        // H3 (Δ154): -Dgatf.browserContexts=worker|subtest|off overrides the config for this JVM's runs
+        String bc = System.getProperty("gatf.browserContexts");
+        if (bc != null && !bc.trim().isEmpty()) c.setBrowserContexts(bc.trim());
     }
 }

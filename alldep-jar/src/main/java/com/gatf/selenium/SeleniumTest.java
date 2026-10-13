@@ -1004,6 +1004,64 @@ public abstract class SeleniumTest {
 		Integer f(Object[] args);
 	}
 	
+	/** H3 (Δ154): this run's worker pool (browserContexts=worker), or null: never for the loginOnce script. */
+	private com.gatf.selenium.context.WorkerPool<WebDriver> __workerPool__() {
+		if(___cxt___ == null || Boolean.TRUE.equals(LOGIN_ONCE_RUN.get())) return null;
+		return com.gatf.selenium.context.WorkerDrivers.pool(___cxt___);
+	}
+
+	/** H3 (Δ154): the pooling key of the browser {@code bkey} is about to launch (BiDi socket requested first). */
+	private String __workerKey__(String bkey) {
+		Capabilities c = state.driverCaps.get(bkey);
+		if(com.gatf.selenium.context.WorkerDrivers.wantsBidi(bkey) && c instanceof org.openqa.selenium.MutableCapabilities) {
+			((org.openqa.selenium.MutableCapabilities) c).setCapability("webSocketUrl", true);
+		}
+		return com.gatf.selenium.context.WorkerPool.fingerprint(bkey, c == null ? null : c.asMap());
+	}
+
+	/** H3 (Δ154): open this script's fresh context in a worker browser and make its tab current (null = refused). */
+	private String __workerOpen__(WebDriver d) {
+		String ctx = __ctxScope__(d).open();
+		if(ctx != null) BrowserState.userContext(d, ctx);
+		return ctx;
+	}
+
+	/**
+	 * H3 (Δ154): emitted by codegen before a browser is launched: this worker's pooled browser, its fresh context open
+	 * and current, or null (launch one and pass it to {@link #__workerAdopt__}). Always null unless browserContexts=worker.
+	 */
+	protected WebDriver __workerDriver__(String bkey) {
+		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
+		if(p == null) return null;
+		return p.acquire(Thread.currentThread(), this, __workerKey__(bkey), this::__workerOpen__);
+	}
+
+	/**
+	 * H3 (Δ154): emitted by codegen around a newly launched browser: offer it to the worker pool (which opens the
+	 * script's context in it) and return it unchanged. Without a pool, or where contexts are unsupported, the browser
+	 * stays the script's own and is quit at script end, as before.
+	 */
+	protected WebDriver __workerAdopt__(String bkey, WebDriver d) {
+		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
+		if(p == null || d == null) return d;
+		GatfExecutorConfig cfg = ___cxt___.getGatfExecutorConfig();
+		boolean tracing = cfg != null && cfg.captureTraceThisRun() && !cfg.isLoadTestingEnabled()
+				&& (cfg.getConcurrentUserSimulationNum()==null || cfg.getConcurrentUserSimulationNum()<=1);
+		// a CDP trace is bound to the default context: trace this run over BiDi, or (no BiDi) do not pool (logged once)
+		if(cfg != null && p.trace(tracing, cfg.getTraceProtocol(), d instanceof HasDevTools, com.gatf.selenium.trace.BidiRaw.available(d))
+				== com.gatf.selenium.context.WorkerPool.Trace.BIDI) {
+			cfg.setTraceProtocol("bidi");
+		}
+		p.adopt(Thread.currentThread(), this, __workerKey__(bkey), d, com.gatf.selenium.context.WorkerDrivers.refusal(d), this::__workerOpen__);
+		return d;
+	}
+
+	/** H3 (Δ154): script end: true when {@code d} is a worker browser, kept by the pool (never quit here). */
+	private boolean __workerRelease__(WebDriver d) {
+		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
+		return p != null && p.release(this, d);
+	}
+
 	public void quit(SeleniumTestSession sess) {
 		__ctxCloseAll__();   // H3: no per-test context outlives the script (pass, fail, timeout or abort)
 		if(sess.__trace__!=null) { try { sess.__trace__.stop(); } catch (Exception e) {} }
@@ -1036,7 +1094,9 @@ public abstract class SeleniumTest {
 				} catch (Exception e) {
 				}
 				try {
-					if((sessionId!=null && !state.wdmSessions.containsKey(sessionId)) || sessionId==null) {
+					if(__workerRelease__(d)) {
+						// H3 (Δ154): a worker browser: its context is already disposed (__ctxCloseAll__), the pool keeps it
+					} else if((sessionId!=null && !state.wdmSessions.containsKey(sessionId)) || sessionId==null) {
 						d.quit();
 					}
 				} catch (Exception e) {

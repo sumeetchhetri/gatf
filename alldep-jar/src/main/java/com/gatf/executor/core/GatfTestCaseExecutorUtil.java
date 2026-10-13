@@ -946,6 +946,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
         }
 
         startTime = System.currentTimeMillis();
+        // H3 (Δ154): browserContexts=worker: each worker keeps one browser, a fresh context per script (no-op otherwise)
+        com.gatf.selenium.context.WorkerDrivers.begin(context, context.getGatfExecutorConfig());
 
         int runNum = 0;
         List<String> failedFiles = Collections.synchronizedList(new ArrayList<>());
@@ -1100,6 +1102,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 break;
             }
         }
+        com.gatf.selenium.context.WorkerDrivers.end(context);   // H3 (Δ154): quit the worker browsers
 
         if (numberOfRuns > 1) {
             threadPool.shutdown();

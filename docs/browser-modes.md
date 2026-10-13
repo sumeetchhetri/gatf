@@ -93,3 +93,12 @@ What a context isolates:
 | Trace network / console / video, `netapix` | CDP: default context only (they ride the script's DevTools session); BiDi: all contexts |
 
 Only the driver that is current when a subtest starts gets a context (a script with several `open` browsers keeps the others shared). A subtest starts on `about:blank`; `beforeAll` / `afterAll` and the script body run in the default context. A refused command at run time falls back to the shared context with a run-log line for that subtest; a context that could not be disposed is retried at script end.
+
+### Workers on contexts (`browserContexts: worker`, Δ154)
+
+Opt-in (default off: every script launches and quits its own browser, unchanged). Each worker launches one browser on its first script and runs every script in a fresh context of it, disposed when the script ends (pass, fail, timeout or stop); the browser is quit at run end, relaunched every `-Dgatf.contextRecycle=N` scripts (default 50, `0` = never), and replaced when it crashes, leaks a context it cannot dispose, or a script asks for another browser or other options. `-Dgatf.browserContexts=worker` sets it for one run. The context isolates what a per-subtest context does (table below), and `storageState` (`loginOnce`: one login, before the pool starts) is loaded into each context.
+
+- **worker and subtest:** contexts cannot nest, so under `worker` a script's subtests run inside the script's context (no context per subtest). Use `subtest` for a context per subtest in a browser per script.
+- **Fallback:** where contexts are unsupported (matrix above: Safari, IE, a session without CDP or BiDi) scripts launch their own browser as today; the run log says so once. `remote-*` / `appium-*` configs are never pooled.
+- **Traces:** a CDP trace is bound to the default context and would record nothing in a pooled context, so a run with tracing on and `traceProtocol` cdp/hybrid traces over WebDriver BiDi (hybrid loses CPU / coverage / video), or keeps a browser per script when the session has no BiDi; logged once either way.
+- **Log:** at run end, `browserContexts: worker: N browser launch(es), M script(s) on a reused browser, …`.

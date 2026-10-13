@@ -587,10 +587,9 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 	public String getLoginOnce() { return loginOnce; }
 	public String getBrowserContexts() { return browserContexts; }
 	public void setBrowserContexts(String browserContexts) { this.browserContexts = browserContexts; }
-	/** H3: the effective context mode, "subtest" or "off" (unknown values are off). Not a bean property. */
+	/** H3: the effective context mode, "subtest", "worker" (Δ154) or "off" (unknown values are off). Not a bean property. */
 	public String browserContextMode() {
-		String m = browserContexts == null ? "" : browserContexts.trim().toLowerCase(java.util.Locale.ROOT);
-		return "subtest".equals(m) ? "subtest" : "off";
+		return com.gatf.selenium.context.ContextMode.of(browserContexts);
 	}
 	public void setLoginOnce(String loginOnce) { this.loginOnce = loginOnce; }
 	public String getGlobalSetup() { return globalSetup; }

@@ -59,7 +59,7 @@ ___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".tr
 Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
 ___dc___.setExperimentalOption("prefs", __prefs);
 String __bkey__ = addWdm("chrome", ___dc___);
-set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));
+{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.chrome.ChromeDriver(___dc___))); }
 initBrowser(get___d___(), logconsole, logdebug, lognw, false);
 
 }

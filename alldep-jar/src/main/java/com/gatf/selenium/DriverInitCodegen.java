@@ -109,9 +109,9 @@ final class DriverInitCodegen {
                 }
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("chrome")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.chrome.ChromeDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.chrome.ChromeDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().startsWith("firefox")) {
             	b.append("org.openqa.selenium.firefox.FirefoxProfile ___dcprf___ = new org.openqa.selenium.firefox.FirefoxProfile();\n");
@@ -145,9 +145,9 @@ final class DriverInitCodegen {
                 b.append("___dc___.setProfile(___dcprf___);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("firefox")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.firefox.FirefoxDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.firefox.FirefoxDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().equalsIgnoreCase("ie")) {
                 b.append("org.openqa.selenium.ie.InternetExplorerOptions ___dc___ = new org.openqa.selenium.ie.InternetExplorerOptions();\n");
@@ -166,9 +166,9 @@ final class DriverInitCodegen {
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("ie")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.ie.InternetExplorerDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.ie.InternetExplorerDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().equalsIgnoreCase("safari")) {
                 b.append("org.openqa.selenium.safari.SafariOptions ___dc___ = new org.openqa.selenium.safari.SafariOptions();\n");
@@ -183,9 +183,9 @@ final class DriverInitCodegen {
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("safari")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.safari.SafariDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.safari.SafariDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().equalsIgnoreCase("opera")) {
                 b.append("org.openqa.selenium.opera.OperaOptions ___dc___ = new org.openqa.selenium.opera.OperaOptions();\n");
@@ -204,9 +204,9 @@ final class DriverInitCodegen {
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("opera")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.opera.OperaDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.opera.OperaDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().equalsIgnoreCase("edge")) {
             	b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\");\n");
@@ -222,9 +222,9 @@ final class DriverInitCodegen {
                 b.append("___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);\n");
                 b.append("String __bkey__ = addWdm(\""+config.getName().toLowerCase().trim()+"\", ___dc___);\n");
             	if(!config.getName().equals("edge")) {
-            		b.append("set___d___(getDockerDriver(__bkey__));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, getDockerDriver(__bkey__))); }\n");   // H3 (Δ154): worker browser pool
             	} else {
-            		b.append("set___d___(new org.openqa.selenium.edge.EdgeDriver(___dc___));\n");
+            		b.append("{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.edge.EdgeDriver(___dc___))); }\n");   // H3 (Δ154): worker browser pool
             	}
             } else if(config.getName().equalsIgnoreCase("remote-chrome")) {
                 b.append("DesiredCapabilities ___dc___ = DesiredCapabilities.chrome();\n");
