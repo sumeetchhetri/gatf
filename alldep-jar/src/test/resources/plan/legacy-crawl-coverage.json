@@ -1,0 +1,80 @@
+{
+  "seed": "http://legacy.test/",
+  "spec": {},
+  "credentialed": false,
+  "stats": {},
+  "pages": [
+    {
+      "url": "http://legacy.test/",
+      "finalUrl": "http://legacy.test/",
+      "depth": 0,
+      "status": 200,
+      "contentType": "text/html",
+      "title": "Legacy",
+      "links": [],
+      "forms": [
+        {
+          "action": "/find",
+          "method": "get",
+          "inputs": [
+            {
+              "tag": "input",
+              "type": "text",
+              "name": "term",
+              "id": "",
+              "xpath": "//input[@name='term']"
+            },
+            {
+              "tag": "input",
+              "type": "submit",
+              "name": "",
+              "id": "go",
+              "xpath": "//*[@id='go']"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "url": "http://legacy.test/contact",
+      "finalUrl": "http://legacy.test/contact",
+      "depth": 1,
+      "status": 200,
+      "contentType": "text/html",
+      "title": "Contact",
+      "links": [],
+      "forms": [
+        {
+          "action": "/send",
+          "method": "post",
+          "inputs": [
+            {
+              "tag": "textarea",
+              "type": "",
+              "name": "msg",
+              "id": "msg",
+              "xpath": "//*[@id='msg']"
+            },
+            {
+              "tag": "input",
+              "type": "hidden",
+              "name": "csrf",
+              "id": "",
+              "xpath": "x"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "url": "http://legacy.test/gone",
+      "finalUrl": "http://legacy.test/gone",
+      "depth": 1,
+      "status": 404,
+      "contentType": "",
+      "title": "",
+      "links": [],
+      "forms": []
+    }
+  ]
+}

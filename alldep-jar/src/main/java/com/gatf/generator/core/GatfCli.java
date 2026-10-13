@@ -146,6 +146,11 @@ public final class GatfCli {
     			// Δ160: `gatf export playwright <file.sel|dir> [-o out] [--strict-locators] [--force]` (seleasy -> Playwright TS)
     			exitCode = ExportCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
     		}
+    		else if(args[0].equals("plan"))
+    		{
+    			// Δ151: `gatf plan <crawl-coverage.json> [-o plan.json] [--md plan.md] [--config cfg] [--no-ai] [--max-routes N] [--coverage-run dir] [--force]`
+    			exitCode = PlanCli.run(java.util.Arrays.copyOfRange(args, 1, args.length), new java.io.File(System.getProperty("user.dir")), System.out, System.err);
+    		}
     		else if(args[0].equals("merge-reports"))
     		{
     			// M7: `gatf merge-reports <dir>... [-o out]` joins the out dirs of a sharded run into one report
@@ -183,6 +188,7 @@ public final class GatfCli {
 					"java -jar gatf-plugin-{version}.jar " + ImportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + ExportCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + DocsCli.USAGE.substring("gatf ".length()) + "\n" +
+					"java -jar gatf-plugin-{version}.jar " + PlanCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + com.gatf.log.ReportMerger.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar " + com.gatf.mcp.McpCli.USAGE.substring("gatf ".length()) + "\n" +
 					"java -jar gatf-plugin-{version}.jar -generator {generator-config-file}.xml\n" +

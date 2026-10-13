@@ -66,7 +66,7 @@ public final class GatfMcpTools {
     public static final String INSTRUCTIONS =
             "GATF test automation (UI seleasy .sel scripts + API XML test cases). Debug loop: list_tests → run (grep to narrow) → "
           + "get_report (failed tests, errors, trace zips) → summarise_trace on a trace zip (last actions, console errors, failed "
-          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts. heal proposes fixes for a failed step from its trace (never writes).";
+          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts. heal proposes fixes for a failed step from its trace (never writes). plan turns a saved crawl map into a test plan (never writes).";
 
     public McpServer register(McpServer s) {
         s.register(McpTool.of("list_tests", "List the project's tests: seleasy scripts (ui, with @tags and subtests) and API test-case XML (api).",
@@ -137,6 +137,8 @@ public final class GatfMcpTools {
 
         // H1 (Δ150): heal a failed step from its trace; read-only
         s.register(new HealTool(root, om, this::healAi).tool());
+        // H1 (Δ151): crawl map → test plan; read-only
+        s.register(new PlanTool(root, om, this::healAi).tool());
         return s;
     }
 

@@ -425,10 +425,80 @@ public class SpaCrawler {
             if (btn > 0) why.add(btn + " action button(s)");
             if (why.isEmpty()) why.add("navigation / content only");
             m.put("reasons", String.join(", ", why));
+            m.put("elements", planElements(pi));   // Δ151: what the planner may reference (crawl locator data, bounded)
             plan.add(m);
         }
         plan.sort((a, b) -> Integer.compare((Integer) b.get("score"), (Integer) a.get("score")));
         return plan;
+    }
+
+    /** Δ151: most elements a page contributes to the crawl map. */
+    static final int MAX_PLAN_ELEMENTS = 40;
+    static final int MAX_PLAN_CANDIDATES = 8;
+
+    /**
+     * Δ151 (H1 Planner): the page's addressable elements as the planner reads them from the saved crawl map: per element
+     * its kind ({@code field} / {@code submit} / {@code button}), form number and method, tag, type, name, label or text,
+     * required flag, option count, and the locator data the page reported ({@code sel} = the legacy {s,v}, {@code cand} =
+     * the semantic candidates with their match counts). Locators are not rendered here: {@code com.gatf.ai.plan.CrawlMap}
+     * re-ranks them with {@link com.gatf.selenium.LocatorRanking} at plan time, so a hand-edited map cannot plant one.
+     * Bounded: {@link #MAX_PLAN_ELEMENTS} per page, {@link #MAX_PLAN_CANDIDATES} candidates each, strings capped.
+     */
+    static List<Map<String, Object>> planElements(PageInfo pi) {
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        int fi = 0;
+        for (Map<String, Object> f : pi.forms) {
+            List<Map<String, Object>> fields = list(f.get("fields"));
+            if (fields.isEmpty()) continue;
+            fi++;
+            String method = str(f.get("method"));
+            for (Map<String, Object> fl : fields) addPlanElement(out, "field", fi, method, fl, fl.get("cand"), fl.get("sel"), null);
+            if (!map(f.get("submit")).isEmpty()) addPlanElement(out, "submit", fi, method, null, f.get("submitCand"), f.get("submit"), null);
+        }
+        for (Map<String, Object> fl : pi.loose) addPlanElement(out, "field", 0, null, fl, fl.get("cand"), fl.get("sel"), null);
+        for (Map<String, Object> b : pi.buttons) addPlanElement(out, "button", 0, null, null, b.get("cand"), b.get("sel"), str(b.get("text")));
+        return out;
+    }
+
+    private static void addPlanElement(List<Map<String, Object>> out, String kind, int form, String method, Map<String, Object> fl,
+            Object cand, Object sel, String text) {
+        if (out.size() >= MAX_PLAN_ELEMENTS) return;
+        Map<String, Object> e = new LinkedHashMap<String, Object>();
+        e.put("kind", kind);
+        if (form > 0) {
+            e.put("form", form);
+            e.put("method", cap(method, 8));
+        }
+        if (fl != null) {
+            e.put("tag", cap(str(fl.get("tag")), 16));
+            e.put("type", cap(str(fl.get("type")), 16));
+            e.put("name", cap(str(fl.get("name")), 60));
+            e.put("label", cap(str(fl.get("label")), 60));
+            e.put("required", Boolean.TRUE.equals(fl.get("required")));
+            if (fl.get("options") instanceof Number) e.put("options", ((Number) fl.get("options")).intValue());
+        }
+        if (text != null) e.put("text", cap(text, 60));
+        Map<String, Object> s = map(sel);
+        if (!s.isEmpty()) {
+            Map<String, Object> so = new LinkedHashMap<String, Object>();
+            so.put("s", cap(str(s.get("s")), 8));
+            so.put("v", cap(str(s.get("v")), 1024));
+            e.put("sel", so);
+        }
+        List<Map<String, Object>> cs = new ArrayList<Map<String, Object>>();
+        for (Map<String, Object> c : list(cand)) {
+            if (cs.size() >= MAX_PLAN_CANDIDATES) break;
+            Map<String, Object> co = new LinkedHashMap<String, Object>();
+            for (String k : new String[] { "s", "v", "role", "name" }) if (c.get(k) != null) co.put(k, cap(str(c.get(k)), 200));
+            if (c.get("n") instanceof Number) co.put("n", c.get("n"));
+            cs.add(co);
+        }
+        e.put("cand", cs);
+        out.add(e);
+    }
+
+    private static String cap(String v, int n) {
+        return v == null ? "" : v.length() > n ? v.substring(0, n) : v;
     }
 
     // ------------------------------------------------------------------ helpers

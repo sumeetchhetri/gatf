@@ -45,6 +45,7 @@ import com.gatf.mcp.McpServer;
 /**
  * H1 (Δ149) secrets: a provider key read from the environment never reaches a heal result, an error, stdout/stderr,
  * the serialized config, or any file in the trace — even when the provider echoes it back in an error or a reply.
+ * Δ151: nor a test plan (JSON, Markdown, notes, AI summary) or the MCP {@code plan} reply.
  */
 public class AiKeyLeakTest {
 
@@ -217,5 +218,66 @@ public class AiKeyLeakTest {
         assertEquals("AI not configured: <apiKeyFile> is missing, empty or unreadable", none.status());
         assertEquals("AI not configured: no <ai> block in the config", HealAi.open(null, cfgDir, plugins, n -> KEY, sender, null).status());
         plugins.close();
+    }
+
+    /** Δ151: the planner's outputs and the MCP {@code plan} reply never carry the key, even when the provider echoes it. */
+    @Test
+    void thePlanAndTheMcpPlanReplyNeverCarryTheKey(@TempDir Path dir) throws Exception {
+        ObjectMapper om = new ObjectMapper();
+        Path root = Files.createDirectories(dir.resolve("proj"));
+        Path tests = Files.createDirectories(root.resolve("tests"));
+        byte[] crawl;
+        try (java.io.InputStream in = AiKeyLeakTest.class.getResourceAsStream("/plan/shop-coverage.json")) {
+            crawl = in.readAllBytes();
+        }
+        Files.write(tests.resolve("shop-coverage.json"), crawl);
+        AiConfig cfg = AiFakes.config();
+        cfg.setRetries(0);
+        String echo = "{\"routes\":[{\"id\":\"r2\",\"priority\":\"low\",\"note\":\"" + KEY + "\",\"journeys\":[{\"goal\":\"negative\",\"name\":\"" + KEY
+                + "\",\"steps\":[{\"intent\":\"fill\",\"ref\":\"e1\",\"data\":\"invalid\",\"value\":\"" + KEY + "\"},{\"intent\":\"click\",\"ref\":\"e3\"}]}]}]} " + KEY;
+        AiFakes.Sender sender = new AiFakes.Sender()
+                .then(AiFakes.status(401, "{\"error\":{\"message\":\"bad key " + KEY + "\"}}"))
+                .then(AiFakes.io("proxy said x-fake-key: " + KEY))
+                .then(AiFakes.ok(AiFakes.reply(echo, 10, 10)))
+                .then(AiFakes.ok(AiFakes.reply(echo, 10, 10)));
+        List<String> found = new ArrayList<String>();
+        List<String> outputs = new ArrayList<String>();
+        PrintStream sysOut = System.out, sysErr = System.err;
+        ByteArrayOutputStream cap = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(cap, true, "UTF-8"));
+            System.setErr(new PrintStream(cap, true, "UTF-8"));
+            for (int i = 0; i < 3; i++) {
+                com.gatf.ai.plan.Planner.Result r = com.gatf.ai.plan.Planner.plan("shop-coverage.json",
+                        com.gatf.ai.plan.Planner.readMap(tests.resolve("shop-coverage.json"), om), AiFakes.client(cfg, KEY, sender),
+                        new com.gatf.ai.plan.Planner.Options(), om);
+                outputs.add(om.writeValueAsString(r.json));
+                outputs.add(r.markdown);
+                System.out.println(outputs.get(outputs.size() - 2));
+            }
+            assertTrue(outputs.get(0).contains("AI chunk 1 of 1: http"), outputs.get(0));
+            assertTrue(outputs.get(2).contains("AI chunk 1 of 1: io"), outputs.get(2));
+            assertTrue(outputs.get(4).contains("\"journeysAdded\":1"), outputs.get(4));
+            McpServer s = new McpServer("gatf", "t", "h");
+            s.register(new com.gatf.mcp.PlanTool(root, om, c -> AiFakes.client(cfg, KEY, sender)).tool());
+            String mcp = s.handleLine("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"plan\",\"arguments\":"
+                    + "{\"crawl\":\"tests/shop-coverage.json\",\"markdown\":true}}}");
+            outputs.add(mcp);
+            assertTrue(mcp.contains("gatf-test-plan") && mcp.contains("\"isError\":false"), mcp);
+        } finally {
+            System.setOut(sysOut);
+            System.setErr(sysErr);
+        }
+        assertEquals(4, sender.urls.size());
+        for (int i = 0; i < sender.urls.size(); i++) {
+            assertEquals(KEY, sender.headers.get(i).get("x-fake-key"), "the header is the one place it goes");
+            found.addAll(leaks("plan request body " + i, sender.bodies.get(i)));
+        }
+        for (int i = 0; i < outputs.size(); i++) found.addAll(leaks("plan output " + i, outputs.get(i)));
+        found.addAll(leaks("stdout/stderr", cap.toString(StandardCharsets.UTF_8)));
+        try (Stream<Path> files = Files.walk(root)) {   // the MCP tool never writes
+            assertEquals(1L, files.filter(Files::isRegularFile).count());
+        }
+        assertEquals(List.of(), found);
     }
 }
