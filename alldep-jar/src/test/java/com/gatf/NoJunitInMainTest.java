@@ -44,6 +44,9 @@ class NoJunitInMainTest {
         try (Stream<Path> s = Files.walk(main)) {
             hits = s.filter(Files::isRegularFile)
                     .filter(p -> p.toString().matches(".*\\.(java|vm|txt|properties|xml|json)$"))
+                    // Δ161: the Selenium Java exporter writes JUnit 5 imports into the tests it exports (user output, not
+                    // GATF's runtime); it is checked separately below for a real import
+                    .filter(p -> !p.endsWith(EXPORTER))
                     .filter(p -> {
                         try {
                             String text = new String(Files.readAllBytes(p), StandardCharsets.UTF_8);
@@ -56,5 +59,15 @@ class NoJunitInMainTest {
                     .collect(Collectors.toList());
         }
         assertEquals("[]", hits.toString());
+        // the exporter itself must not depend on JUnit: no import / static import of it
+        Path exporter = main.resolve(EXPORTER);
+        if (Files.isRegularFile(exporter)) {
+            for (String line : Files.readAllLines(exporter, StandardCharsets.UTF_8)) {
+                String t = line.trim();
+                assertTrue(!(t.startsWith("import ") && needles.stream().anyMatch(t::contains)), "exporter imports JUnit: " + t);
+            }
+        }
     }
+
+    private static final Path EXPORTER = Paths.get("java", "com", "gatf", "export", "SeleniumJavaExporter.java");
 }
