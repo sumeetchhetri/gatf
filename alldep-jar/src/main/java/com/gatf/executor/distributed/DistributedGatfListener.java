@@ -107,8 +107,9 @@ public class DistributedGatfListener {
 	private static void handleCommand(Input ois, final Output oos, final String workingDir) throws Exception {
 		
 		logger.info("Got a new distributed GATF request...");
-		if(!DistributedTransport.serverHandshake(ois)) {
-			logger.info("Rejected distributed request - shared-secret handshake failed");
+		final int protocol = DistributedTransport.serverHandshakeVersion(ois);   // H8 (delta 162): a v1 coordinator gets no trace frames
+		if(protocol==0) {
+			logger.info("Rejected distributed request - shared-secret or protocol-version handshake failed");
 			return;
 		}
 		
@@ -387,7 +388,14 @@ public class DistributedGatfListener {
                         logger.info("Selenium Test Request");
                         
                         GatfTestCaseExecutorUtil mojo = new GatfTestCaseExecutorUtil();
-                        DistributedTestStatus report = mojo.handleDistributedSeleniumTests(context, tests, tContext);
+                        // H8 (delta 162): collect the trace zips this run writes, for a protocol-v2 coordinator
+                        DistributedTraces.Collector traceCol = protocol>=DistributedTraces.TRACE_PROTOCOL ? DistributedTraces.open(context.getNode(), "DRun-" + tContext.getIndex()) : null;
+                        DistributedTestStatus report;
+                        try {
+                            report = mojo.handleDistributedSeleniumTests(context, tests, tContext);
+                        } finally {
+                            if(traceCol!=null) traceCol.close();
+                        }
                         mojo.shutdown();
                         Thread.sleep(2000);
                         
@@ -402,8 +410,22 @@ public class DistributedGatfListener {
                         fileName = UUID.randomUUID().toString()+".zip";
                         report.setZipFileName(fileName);
                         
+                        // H8 (delta 162): references in the result, then the zips as frames on this channel
+                        File traceRoot = new File(workingDir, context.getConfig().getOutFilesDir());
+                        long traceCap = DistributedTraces.effectiveCap(tContext.getTraceMaxBytes());
+                        if(traceCol!=null) {
+                            report.setTraces(traceCol.references(traceRoot, context.getNode(), traceCap, DistributedTraces.maxCount()));
+                            if(traceCol.dropped()>0) {
+                                logger.info("Distributed traces: " + traceCol.dropped() + " trace file(s) left out (outside the out dir, a symlink, gone, or over the count cap)");
+                            }
+                        }
+                        
                         DistributedAcceptanceContext.ser(oos, report);
                         oos.flush();
+                        if(traceCol!=null) {
+                            DistributedTraces.writeFrames(oos, traceRoot.toPath(), report.getTraces(), traceCap);
+                            oos.flush();
+                        }
                         logger.info("Writing Selenium results...");
                         
                         File resource = new File(workingDir, context.getConfig().getOutFilesDir());

@@ -60,12 +60,18 @@ import com.fasterxml.jackson.databind.SerializationFeature;
  *      attachment paths (JSON and JUnit {@code [[ATTACHMENT|…]]}) are rewritten to those copies.</li>
  *  <li>{@code index.data.json} ({@code type: merged-index}) + an {@code index.html} redirect stub: the merged report
  *      index for the console's report viewer, linking every shard's own report sidecars.</li>
+ *  <li>H8 (Δ162): every input's {@code distributed-traces.json} (the traces a distributed run's workers streamed back)
+ *      is joined into {@code distributed-traces.json} + {@code distributed-traces.html} and the index's {@code traces}:
+ *      one row per trace with its worker and status; only a stored, present zip gets a link.</li>
  * </ul>
  * Pure file-in/file-out; Jackson + the JDK XML APIs only.
  */
 public final class ReportMerger {
 
     public static final String USAGE = "gatf merge-reports <dir> <dir>... [-o out-dir]   (default out-dir: merged-report)";
+
+    /** H8: the distributed-trace manifest and page in a report dir (written by the coordinator and by a merge). */
+    public static final String TRACES_MANIFEST = "distributed-traces.json", TRACES_PAGE = "distributed-traces.html";
 
     private static final ObjectMapper OM = new ObjectMapper().enable(SerializationFeature.INDENT_OUTPUT);
 
@@ -98,6 +104,8 @@ public final class ReportMerger {
             out.println("  JUnit:  " + new File(dest, "gatf-junit.xml").getAbsolutePath());
             out.println("  JSON:   " + new File(dest, "gatf-results.json").getAbsolutePath());
             out.println("  Report: " + new File(dest, "index.html").getAbsolutePath());
+            if (s.traces > 0) out.println("  Traces: " + (s.traces - s.tracesUnavailable) + " linked, " + s.tracesUnavailable
+                    + " unavailable: " + new File(dest, TRACES_PAGE).getAbsolutePath());
             for (String w : s.warnings) out.println("  warning: " + w);
             return s.failed > 0 || s.junitFailures > 0 ? 1 : 0;
         } catch (IllegalArgumentException | IOException e) {
@@ -117,6 +125,8 @@ public final class ReportMerger {
         public long durationMs, workers;
         /** Failures in the merged JUnit XML (covers shards that wrote JUnit only). */
         public int junitFailures;
+        /** H8: distributed traces listed / without a usable link (missing, oversized, checksum, rejected). */
+        public int traces, tracesUnavailable;
         public final List<String> warnings = new ArrayList<String>();
     }
 
@@ -236,6 +246,23 @@ public final class ReportMerger {
             if (m.find()) s.junitFailures = Integer.parseInt(m.group(1));
         }
 
+        // 3b) H8: distributed traces of every input, linked to the shard copies
+        List<Map<String, Object>> traces = new ArrayList<Map<String, Object>>();
+        for (int i = 0; i < dirs.size(); i++) traces.addAll(traceRows(new File(dest, names.get(i)), names.get(i)));
+        if (!traces.isEmpty()) {
+            for (Map<String, Object> t : traces) if (t.get("href") == null) s.tracesUnavailable++;
+            s.traces = traces.size();
+            if (s.tracesUnavailable > 0) s.warnings.add(s.tracesUnavailable + " distributed trace(s) have no usable zip (see " + TRACES_PAGE + ")");
+            Map<String, Object> tm = new LinkedHashMap<String, Object>();
+            tm.put("type", "distributed-traces");
+            tm.put("format", 1);
+            tm.put("run", "merged");
+            tm.put("generated", System.currentTimeMillis());
+            tm.put("traces", traces);
+            OM.writeValue(new File(dest, TRACES_MANIFEST), tm);
+            Files.write(new File(dest, TRACES_PAGE).toPath(), tracesHtml(traces, "GATF merged distributed traces").getBytes(StandardCharsets.UTF_8));
+        }
+
         // 4) merged index sidecar + redirect stub
         Map<String, Object> idx = new LinkedHashMap<String, Object>();
         idx.put("type", "merged-index");
@@ -245,6 +272,7 @@ public final class ReportMerger {
         idx.put("shards", shardRows);
         idx.put("flaky", flaky);
         idx.put("failures", failures);
+        if (!traces.isEmpty()) idx.put("traces", traces);
         OM.writeValue(new File(dest, "index.data.json"), idx);
         Files.write(new File(dest, "index.html").toPath(), REDIRECT_STUB.getBytes(StandardCharsets.UTF_8));
         return s;
@@ -325,6 +353,107 @@ public final class ReportMerger {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    // ---- H8: distributed traces -----------------------------------------------------------------------------------
+
+    /**
+     * The rows of {@code copyDir}'s {@link #TRACES_MANIFEST} with links rewritten to {@code shard/<href>}. A row keeps
+     * its link only if it was stored ({@code ok}), its href is a plain relative path and the zip exists in the copy;
+     * otherwise its link is dropped and an {@code ok} row becomes {@code missing}. No manifest: no rows.
+     */
+    @SuppressWarnings("unchecked")
+    static List<Map<String, Object>> traceRows(File copyDir, String shard) {
+        List<Map<String, Object>> out = new ArrayList<Map<String, Object>>();
+        File mf = new File(copyDir, TRACES_MANIFEST);
+        Map<String, Object> m;
+        try {
+            m = readJson(mf);
+        } catch (IOException | RuntimeException e) {
+            m = null;
+        }
+        if (m == null || !(m.get("traces") instanceof List)) return out;
+        for (Object o : (List<Object>) m.get("traces")) {
+            if (!(o instanceof Map)) continue;
+            Map<String, Object> t = new LinkedHashMap<String, Object>();
+            for (Map.Entry<?, ?> e : ((Map<?, ?>) o).entrySet()) {
+                Object v = e.getValue();
+                if (v == null || v instanceof String || v instanceof Number || v instanceof Boolean) t.put(String.valueOf(e.getKey()), v);
+            }
+            t.put("shard", shard);
+            Object href = t.get("href");
+            String status = t.get("status") == null ? "missing" : String.valueOf(t.get("status"));
+            boolean linked = "ok".equals(status) && href instanceof String
+                    && com.gatf.executor.distributed.DistributedTraces.safeRelPath((String) href)
+                    && Files.isRegularFile(new File(copyDir, (String) href).toPath(), java.nio.file.LinkOption.NOFOLLOW_LINKS);
+            if (linked) {
+                t.put("href", shard + "/" + href);
+            } else {
+                t.put("href", null);
+                if ("ok".equals(status)) {
+                    t.put("status", "missing");
+                    t.put("reason", "zip not found in the report");
+                }
+            }
+            out.add(t);
+        }
+        return out;
+    }
+
+    /**
+     * A self-contained page listing every distributed trace: worker, script, session, worker run and status; an
+     * {@code ok} row links the zip and opens it in the console's Trace Viewer ({@code /app/?trace=}). Every value is
+     * HTML-escaped; rows without a link show their status and reason instead.
+     */
+    public static String tracesHtml(List<Map<String, Object>> rows, String title) {
+        StringBuilder b = new StringBuilder(4096);
+        b.append("<!doctype html><html><head><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex\"><title>")
+                .append(esc(title)).append("</title><style>body{font-family:system-ui;background:#1b1b1f;color:#d7d7db;padding:24px}")
+                .append("table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #333;padding:6px 8px;text-align:left;font-size:13px}")
+                .append("a{color:#4ea1ff}.ok{color:#5fd17a}.bad{color:#ff8a80}</style></head><body><h2>").append(esc(title)).append("</h2>");
+        int ok = 0;
+        for (Map<String, Object> r : rows) {
+            if (r.get("href") instanceof String && com.gatf.executor.distributed.DistributedTraces.safeRelPath((String) r.get("href"))) ok++;
+        }
+        b.append("<p>").append(rows.size()).append(" trace(s): ").append(ok).append(" linked, ").append(rows.size() - ok).append(" unavailable</p>");
+        b.append("<table><thead><tr><th>Worker</th><th>Script</th><th>Session</th><th>Run</th><th>Status</th><th>Trace</th></tr></thead><tbody>");
+        for (Map<String, Object> r : rows) {
+            Object href = r.get("href");
+            if (!(href instanceof String) || !com.gatf.executor.distributed.DistributedTraces.safeRelPath((String) href)) href = null;   // defence in depth
+            String status = r.get("status") == null ? "missing" : String.valueOf(r.get("status"));
+            b.append("<tr><td>").append(esc(r.get("shard") != null ? r.get("shard") + " / " + str(r.get("worker")) : str(r.get("worker"))))
+                    .append("</td><td>").append(esc(str(r.get("script")))).append("</td><td>").append(esc(str(r.get("session"))))
+                    .append("</td><td>").append(esc(str(r.get("workerRun")))).append("</td><td class=\"").append(href != null ? "ok" : "bad").append("\">")
+                    .append(esc(status)).append(r.get("reason") != null ? " (" + esc(str(r.get("reason"))) + ")" : "").append("</td><td>");
+            if (href != null) {
+                String h = esc(String.valueOf(href));
+                b.append("<a href=\"").append(h).append("\" download>zip</a> · <a class=\"tv\" data-h=\"").append(h).append("\" href=\"").append(h).append("\">open</a>");
+            } else {
+                b.append("—");
+            }
+            b.append("</td></tr>");
+        }
+        b.append("</tbody></table><script>document.querySelectorAll('a.tv').forEach(function(a){")
+                .append("a.href='/app/?trace='+encodeURIComponent(new URL(a.getAttribute('data-h'),location.href).pathname);});</script></body></html>");
+        return b.toString();
+    }
+
+    private static String str(Object o) { return o == null ? "" : String.valueOf(o); }
+
+    private static String esc(String s) {
+        StringBuilder b = new StringBuilder(s.length() + 16);
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            switch (c) {
+                case '&': b.append("&amp;"); break;
+                case '<': b.append("&lt;"); break;
+                case '>': b.append("&gt;"); break;
+                case '"': b.append("&quot;"); break;
+                case '\'': b.append("&#39;"); break;
+                default: b.append(c < 0x20 && c != '\t' ? ' ' : c);
+            }
+        }
+        return b.toString();
     }
 
     // ---- JUnit ---------------------------------------------------------------------------------------------------
@@ -446,7 +575,8 @@ public final class ReportMerger {
         for (File f : old) {
             String n = f.getName();
             if (f.isDirectory() && n.startsWith("shard-")) deleteTree(f.toPath());
-            else if (f.isFile() && (n.equals("gatf-junit.xml") || n.equals("gatf-results.json") || n.equals("index.data.json") || n.equals("index.html"))) Files.delete(f.toPath());
+            else if (f.isFile() && (n.equals("gatf-junit.xml") || n.equals("gatf-results.json") || n.equals("index.data.json") || n.equals("index.html")
+                    || n.equals(TRACES_MANIFEST) || n.equals(TRACES_PAGE))) Files.delete(f.toPath());
         }
     }
 

@@ -48,8 +48,17 @@ import com.esotericsoftware.kryo.io.Output;
  */
 public class DistributedTransport {
 
-    /** Wire protocol version; bump when the coordinator<->node framing/payload changes incompatibly. */
-    public static final int PROTOCOL_VERSION = 1;
+    /**
+     * Wire protocol version; bump when the coordinator<->node framing/payload changes incompatibly.
+     * 2 (H8, Δ162): a Selenium result carries trace references and is followed by the trace frames
+     * ({@link DistributedTraces}). A node accepts {@link #MIN_PROTOCOL_VERSION}..{@link #PROTOCOL_VERSION} and answers
+     * in the version it was spoken to; a coordinator whose v2 handshake is refused (a v1 node drops it) retries once
+     * with v1, without traces.
+     */
+    public static final int PROTOCOL_VERSION = 2;
+
+    /** Oldest version a node still serves. */
+    public static final int MIN_PROTOCOL_VERSION = 1;
 
     public static boolean tls() {
         return Boolean.getBoolean("gatf.dist.tls");
@@ -90,11 +99,16 @@ public class DistributedTransport {
      * mid-deserialization.
      */
     public static void clientHandshake(Output out) {
+        clientHandshake(out, PROTOCOL_VERSION);
+    }
+
+    /** Coordinator side: the handshake, stamping {@code version} (the v1 fallback for older nodes). */
+    public static void clientHandshake(Output out, int version) {
         String sec = secret();
         if (sec != null) {
             out.writeString(sec);
         }
-        out.writeInt(PROTOCOL_VERSION);
+        out.writeInt(version);
         out.flush();
     }
 
@@ -104,14 +118,23 @@ public class DistributedTransport {
      * truncated handshake.
      */
     public static boolean serverHandshake(Input in) {
+        return serverHandshakeVersion(in) != 0;
+    }
+
+    /**
+     * Node side: as {@link #serverHandshake}, returning the coordinator's protocol version
+     * ({@link #MIN_PROTOCOL_VERSION}..{@link #PROTOCOL_VERSION}), or 0 to drop the connection.
+     */
+    public static int serverHandshakeVersion(Input in) {
         try {
             String sec = secret();
             if (sec != null && !constantTimeEquals(sec, in.readString())) {
-                return false;
+                return 0;
             }
-            return in.readInt() == PROTOCOL_VERSION;
+            int v = in.readInt();
+            return v >= MIN_PROTOCOL_VERSION && v <= PROTOCOL_VERSION ? v : 0;
         } catch (Exception e) {
-            return false;
+            return 0;
         }
     }
 

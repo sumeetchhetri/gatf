@@ -1324,6 +1324,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     if(__tzp!=null) {
                                         __traceRel = fileName + "-trace.zip";
                                         __traceAbs = __tzp.toAbsolutePath().toString();
+                                        com.gatf.executor.distributed.DistributedTraces.recorded(node, runPrefix, (String) retvals[0], keykey, runPrefix + "-" + (index + 1) + "-" + runNum, __tzp);   // H8 (delta 162): a distributed worker returns it to the coordinator (no-op locally)
                                     }
                                 } else {
                                     sess.__trace__.discard();

@@ -32,6 +32,9 @@ public class DistributedTestContext implements Serializable {
 	private int index;
 	
 	private int numberOfRuns;
+	
+	/** H8 (delta 162): the coordinator's per-trace size cap, so a worker never sends a zip it would refuse (-1 = not set). */
+	private long traceMaxBytes = -1;
 
 	public List<TestCase> getSimTestCases() {
 		return simTestCases;
@@ -63,5 +66,13 @@ public class DistributedTestContext implements Serializable {
 
 	public void setRelativeFileNames(Set<String> relativeFileNames) {
 		this.relativeFileNames = relativeFileNames;
+	}
+
+	public long getTraceMaxBytes() {
+		return traceMaxBytes;
+	}
+
+	public void setTraceMaxBytes(long traceMaxBytes) {
+		this.traceMaxBytes = traceMaxBytes;
 	}
 }

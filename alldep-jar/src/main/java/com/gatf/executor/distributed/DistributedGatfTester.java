@@ -23,6 +23,7 @@ import java.net.Socket;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.Callable;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.FutureTask;
 
 import org.apache.commons.io.IOUtils;
@@ -46,6 +47,9 @@ public class DistributedGatfTester {
 		private String node;
 		private Output oos = null;
 		private Input ois = null;
+		/** H8 (Δ162): the protocol version the node accepted; the node as configured (host[@port]). */
+		private int protocol = DistributedTransport.PROTOCOL_VERSION;
+		private String id;
 		
 		public String toString()
 		{
@@ -53,10 +57,32 @@ public class DistributedGatfTester {
 		}
 	}
 	
+	/** H8 (Δ162): nodes already reported as refusing protocol v2 (logged once per node). */
+	private static final Set<String> LEGACY_NODES = ConcurrentHashMap.newKeySet();
+	
 	public DistributedConnection distributeContext(String node, AcceptanceTestContext context, List<Object[]> testdata)
+	{
+		// H8 (Δ162): speak protocol v2 (trace frames). A node that drops the v2 handshake (an older GATF listener) gets
+		// one retry in v1, which works as before, without traces; logged once per node.
+		boolean[] connected = new boolean[1];
+		DistributedConnection conn = distributeContext(node, context, testdata, DistributedTransport.PROTOCOL_VERSION, connected);
+		if(conn==null && connected[0]) {
+			if(LEGACY_NODES.add(node)) {
+				logger.warn("Node " + node + " refused distributed protocol v" + DistributedTransport.PROTOCOL_VERSION
+						+ " (an older GATF listener, or a shared-secret mismatch); retrying with v" + DistributedTransport.MIN_PROTOCOL_VERSION
+						+ ": no distributed traces from this node");
+			}
+			connected[0] = false;
+			conn = distributeContext(node, context, testdata, DistributedTransport.MIN_PROTOCOL_VERSION, connected);
+		}
+		return conn;
+	}
+	
+	private DistributedConnection distributeContext(String node, AcceptanceTestContext context, List<Object[]> testdata, int protocol, boolean[] connected)
 	{
 		Socket client = null;
 		DistributedConnection conn = null;
+		final String nodeId = node;
 		try {
 			logger.info("Connecting to node " + node);
 			
@@ -72,11 +98,12 @@ public class DistributedGatfTester {
 	        }
 			
 			client = DistributedTransport.clientSocket(node, port);
+			connected[0] = true;
 			DistributedAcceptanceContext disContext = context.getDistributedContext(node, testdata);
 			
 			Output oos = new Output(client.getOutputStream());
 			Input ois = new Input(client.getInputStream());
-			DistributedTransport.clientHandshake(oos);
+			DistributedTransport.clientHandshake(oos, protocol);
 			
 			logger.info("Sending GATF configuration to node " + node);
 			oos.writeInt(Command.CONFIG_SHARE_REQ.ordinal());
@@ -91,6 +118,8 @@ public class DistributedGatfTester {
 				conn.node = node;
 				conn.ois = ois;
 				conn.oos = oos;
+				conn.protocol = protocol;
+				conn.id = nodeId;
 				logger.info("Sending GATF configuration Successful to node " + node);
 				// NOTE: do not close ois here — this Input is stored in conn.ois and reused by
 				// distributeTests(); it is closed with the socket in the result task's finally.
@@ -98,8 +127,10 @@ public class DistributedGatfTester {
 				logger.info("Sending GATF configuration Failed to node " + node);
 			}
 		} catch (Exception e) {
-			e.printStackTrace();
-			logger.info("Sending GATF configuration Failed to node " + node);
+			if(!(connected[0] && protocol>DistributedTransport.MIN_PROTOCOL_VERSION)) {   // H8: a refused v2 handshake is retried in v1, quietly
+				e.printStackTrace();
+				logger.info("Sending GATF configuration Failed to node " + node);
+			}
 			if(client!=null)
 			{
 				try {
@@ -151,7 +182,7 @@ public class DistributedGatfTester {
 							res = DistributedAcceptanceContext.unser(connection.ois, DistributedTestStatus.class);
 							logger.info("Received GATF tests Results from node " + connection.node);
 							
-							String fileName = "dist-" + res.getZipFileName();
+							String fileName = "dist-" + DistributedTraces.token(res.getZipFileName(), 80);   // H8 (Δ162): a node-supplied name, never a path
 							File basePath = null;
 				        	if(context.getGatfExecutorConfig().getOutFilesBasePath()!=null)
 				        		basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
@@ -224,6 +255,11 @@ public class DistributedGatfTester {
             DistributedTestContext testContext = new DistributedTestContext();
             testContext.setIndex(index);
             testContext.setNumberOfRuns(numberOfRuns);
+            // H8 (Δ162): traces of every node of this run land under one run id; the node honours our size cap
+            final String traceRun = DistributedTraces.runIdFor(testClassesZip);
+            if(connection.protocol>=DistributedTraces.TRACE_PROTOCOL) {
+                testContext.setTraceMaxBytes(DistributedTraces.maxBytes());
+            }
             
 			logger.info("Sending GATF Selenium tests to node " + connection.node);
 			connection.oos.writeInt(Command.SELENIUM_REQ.ordinal());
@@ -256,7 +292,7 @@ public class DistributedGatfTester {
 	                            res = DistributedAcceptanceContext.unser(connection.ois, DistributedTestStatus.class);
 	                            logger.info("Received GATF Selenium tests Results from node " + connection.node);
 	                            
-	                            String fileName = "dist-" + res.getZipFileName();
+	                            String fileName = "dist-" + DistributedTraces.token(res.getZipFileName(), 80);   // H8 (Δ162): a node-supplied name, never a path
 	                            File basePath = null;
 	                            if(context.getGatfExecutorConfig().getOutFilesBasePath()!=null)
 	                                basePath = new File(context.getGatfExecutorConfig().getOutFilesBasePath());
@@ -266,6 +302,22 @@ public class DistributedGatfTester {
 	                            }
 	                            File resource = new File(basePath, context.getGatfExecutorConfig().getOutFilesDir());
 	                            
+	                            // H8 (Δ162): the node's trace frames come before its results zip; stored and verified here,
+	                            // re-checked and linked once the results zip is extracted into the same dir
+	                            String traceNode = connection.id!=null ? connection.id : connection.node;
+	                            DistributedTraces.Received traces = null;
+	                            if(connection.protocol>=DistributedTraces.TRACE_PROTOCOL) {
+	                                traces = DistributedTraces.receive(connection.ois, res.getTraces(), resource, traceRun,
+	                                        traceNode, DistributedTraces.maxBytes(), DistributedTraces.maxCount());
+	                                logger.info(traces.summary(traceNode));
+	                                if(!traces.inSync) {
+	                                    DistributedTraces.publish(resource, traceRun, traces.entries);
+	                                    logger.info("Skipping the result files of node " + traceNode + ": its trace stream was malformed");
+	                                    return res;
+	                                }
+	                            }
+	                            
+	                            try {
 	                            File zipFile = new File(resource, fileName);
 	                            FileOutputStream fos = new FileOutputStream(zipFile);
 	                            IOUtils.copy(connection.ois, fos);
@@ -273,6 +325,14 @@ public class DistributedGatfTester {
 	                            fos.close();
 	                            
 	                            ReportHandler.unzipZipFile(zipFile, resource.getAbsolutePath());
+	                            } finally {
+	                                if(traces!=null) {
+	                                    DistributedTraces.reverify(resource, traces.entries);
+	                                    if(!DistributedTraces.publish(resource, traceRun, traces.entries)) {
+	                                        logger.info("Could not write the distributed trace manifest for node " + traceNode);
+	                                    }
+	                                }
+	                            }
 								
 								logger.info("Done Receiving GATF Selenium tests Results from node " + connection.node);
 							} catch (Exception e) {

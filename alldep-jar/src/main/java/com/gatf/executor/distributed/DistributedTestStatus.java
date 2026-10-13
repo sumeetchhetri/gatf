@@ -39,6 +39,9 @@ public class DistributedTestStatus implements Serializable {
 	
 	Map<String, Map<Integer, String>> indexes;
 	
+	/** H8 (delta 162): the functional traces the worker wrote (protocol v2; null from older nodes). Untrusted on the coordinator. */
+	private List<TraceRef> traces;
+	
 	public String getNode() {
 		return node;
 	}
@@ -93,5 +96,13 @@ public class DistributedTestStatus implements Serializable {
 
     public void setIndexes(Map<String, Map<Integer, String>> indexes) {
         this.indexes = indexes;
+    }
+
+    public List<TraceRef> getTraces() {
+        return traces;
+    }
+
+    public void setTraces(List<TraceRef> traces) {
+        this.traces = traces;
     }
 }
