@@ -1,0 +1,236 @@
+package com.gatf.selenium;
+import java.io.Serializable;
+import com.gatf.selenium.SeleniumException;
+import org.openqa.selenium.remote.DesiredCapabilities;
+import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.remote.CapabilityType;
+import org.openqa.selenium.logging.Logs;
+import java.util.List;
+import org.openqa.selenium.SearchContext;
+import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.WebElement;
+import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.TakesScreenshot;
+import org.openqa.selenium.OutputType;
+import com.gatf.executor.core.AcceptanceTestContext;
+import com.gatf.selenium.SeleniumTest;
+import com.gatf.selenium.SeleniumTest.Util;
+import com.gatf.selenium.SeleniumTestSession;
+import org.openqa.selenium.Dimension;
+import org.openqa.selenium.Point;
+import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.WebDriverWait;
+import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.interactions.Actions;
+import java.util.function.Function;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import org.apache.commons.io.FileUtils;
+import java.io.File;
+import groovy.lang.Binding;
+import groovy.lang.GroovyShell;
+import org.jruby.embed.LocalVariableBehavior;
+import org.jruby.embed.ScriptingContainer;
+import org.python.util.PythonInterpreter;
+import org.python.core.*;
+import java.util.Map;
+import com.gatf.GatfAssert;
+import com.gatf.GatfAssert.Assert;
+import org.openqa.selenium.Keys;
+import ru.yandex.qatools.ashot.AShot;
+import ru.yandex.qatools.ashot.shooting.ShootingStrategies;
+
+@SuppressWarnings({"unused", "unchecked", "serial"})
+/*GATF_ST_CLASS_START_*/public class STC_<N> extends SeleniumTest implements Serializable {
+public STC_<N>(AcceptanceTestContext ___cxt___, int index) {
+/*GATF_ST_CLASS_INIT_*/super("<ROOT>/tests/24-transpiler-fixes-3.sel", ___cxt___, index);
+}
+public void close() {
+/*GATF_ST_CLASS_CLOSE_*/if(get___d___()!=null)get___d___().close();
+}
+public SeleniumTest copy(AcceptanceTestContext ctx, int index) {
+return new STC_<N>(ctx, index);}
+public void setupDriverchrome(LoggingPreferences ___lp___) throws Exception {
+boolean logconsole = false, logdebug = false, lognw = false;
+/*GATF_ST_DRIVER_INIT_CHROME*/org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
+___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);
+___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
+___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".trim());
+Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
+___dc___.setExperimentalOption("prefs", __prefs);
+String __bkey__ = addWdm("chrome", ___dc___);
+{ WebDriver __wd__ = __workerDriver__(__bkey__); set___d___(__wd__ != null ? __wd__ : __workerAdopt__(__bkey__, new org.openqa.selenium.chrome.ChromeDriver(___dc___))); }
+initBrowser(get___d___(), logconsole, logdebug, lognw, false);
+
+}
+public List<SeleniumTestSession> execute(LoggingPreferences ___lp___, String outPath) throws Exception {
+this.setOutPath(outPath);
+/*GATF_ST_START_*/addTest(null, "chrome");
+
+
+setSession(null, 0, true);
+quit();
+/*GATF_OP_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:4*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:4");setupDriverchrome(___lp___);
+_execute(___lp___);
+return get__sessions__();
+}
+public int concurrentExecutionNum() {
+return 0;
+}
+public void _execute(LoggingPreferences ___lp___) throws Exception {
+WebDriver ___ocw___ = null;
+try {
+SearchContext ___sc___1 = get___d___();
+WebDriver ___cw___ = get___d___();
+___ocw___ = ___cw___;
+List<WebElement> ___ce___ = null;
+// Q1 codegen keyword corpus - transpiled by CodegenGoldenTest only (never executed).
+// Delta 145d: frame/tab blocks, finds (wait, if, transient provider) and screenshot-compare masks keep the timeout
+// counts in effect where they are written; the later timeout line changes only the statements after it.
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:5*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:5");int ___vd___1 = 0;
+
+while(true) {
+
+try {
+switchToFrame(___ocw___, "early-frame");
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:7*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:7");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("in-early"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'in-early' at line number 7 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 7 ,"");
+
+
+break;
+} catch(Exception e){}
+sleep(1000);
+if(___vd___1++==60)throw new RuntimeException("Unable to move to frame (early-frame)");
+}
+switchToFrame(___ocw___, "");
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:9*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:9");int ___vd___2 = 0;
+
+while(true) {
+
+try {
+List<String> ___w___1 = new java.util.ArrayList<String> (__handles__(___ocw___));
+if(___w___1!=null && 1>=0 && ___w___1.size()>1)
+{
+___cw___ = ___ocw___.switchTo().window(___w___1.get(1));
+___sc___1 = ___cw___;}/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:11*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:11");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("in-tab"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'in-tab' at line number 11 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 11 ,"");
+
+
+break;
+} catch(Exception e){}
+sleep(1000);
+if(___vd___2++==60)throw new RuntimeException("Unable to move to tab (1)");
+}
+___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());
+___cw___ = ___ocw___;
+___sc___1 = ___cw___;
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:13*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:13");boolean ___ifcnt___1 = false;try{
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("early-if"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 13 ,"");
+___ifcnt___1 = ___ce___!=null && !___ce___.isEmpty();
+GatfAssert.assertTrue("Element not found by selector id@'early-if' at line number 13 ", ___ifcnt___1);
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:15*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:15");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("early-then"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'early-then' at line number 15 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 15 ,"");
+
+
+}
+catch(AssertionError ___e___2){}
+catch(Exception ___e___1){
+System.out.println(___e___1.getMessage());throw ___e___1;}
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:17*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:17");newProvider("prov1");
+List<String[]> ___w___2 = null;
+___w___2 = transientProviderDataWL(___cw___, ___sc___1, ___ce___, 60, "", new String[] {evaluate("early-tp"), evaluate("")}, new String[]{"id", ""}, evaluate("text,attr@abc"), false, null, new String[]{}, null, null, null, "Element not found by selector id@'early-tp' at line number 17 ", false, 1000, false, "");
+
+for(int ___w___3=0;___w___3<___w___2.size();___w___3++) {
+addToProviderTestDataMap("prov1", "var1", ___w___2.get(___w___3)[0]);
+
+addToProviderTestDataMap("prov1", "var2", ___w___2.get(___w___3)[1]);
+}Map<String, Object> ___w___4 = get__loopcontext__();
+
+set__loopcontext__("");
+
+set__loopcontext__(___w___4);
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:18*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:18");{
+List<WebElement> ___vmask___ = new java.util.ArrayList<WebElement>();
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 1, "", new String[] {evaluate("early-mask"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 18 ,"");
+if(___ce___!=null) ___vmask___.addAll(___ce___);
+__screenshotCompare__(get___d___(), evaluate("early"), 0.2, null, ___vmask___);
+}
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:19*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:19");
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:20*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:20");int ___vd___3 = 0;
+
+while(true) {
+
+try {
+switchToFrame(___ocw___, "late-frame");
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:22*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:22");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 30, "", new String[] {evaluate("in-late"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'in-late' at line number 22 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 22 ,"");
+
+
+break;
+} catch(Exception e){}
+sleep(1000);
+if(___vd___3++==30)throw new RuntimeException("Unable to move to frame (late-frame)");
+}
+switchToFrame(___ocw___, "");
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:24*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:24");int ___vd___4 = 0;
+
+while(true) {
+
+try {
+List<String> ___w___5 = new java.util.ArrayList<String> (__handles__(___ocw___));
+if(___w___5!=null && 2>=0 && ___w___5.size()>2)
+{
+___cw___ = ___ocw___.switchTo().window(___w___5.get(2));
+___sc___1 = ___cw___;}/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:26*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:26");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 30, "", new String[] {evaluate("in-late-tab"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'in-late-tab' at line number 26 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 26 ,"");
+
+
+break;
+} catch(Exception e){}
+sleep(1000);
+if(___vd___4++==30)throw new RuntimeException("Unable to move to tab (2)");
+}
+___ocw___.switchTo().window(__handles__(___ocw___).iterator().next());
+___cw___ = ___ocw___;
+___sc___1 = ___cw___;
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:28*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:28");boolean ___ifcnt___2 = false;try{
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 5, "", new String[] {evaluate("late-if"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 28 ,"");
+___ifcnt___2 = ___ce___!=null && !___ce___.isEmpty();
+GatfAssert.assertTrue("Element not found by selector id@'late-if' at line number 28 ", ___ifcnt___2);
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:30*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:30");___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 30, "", new String[] {evaluate("late-then"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, "click", null, null, "Element not found by selector id@'late-then' at line number 30 ", false, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 30 ,"");
+
+
+}
+catch(AssertionError ___e___4){}
+catch(Exception ___e___3){
+System.out.println(___e___3.getMessage());throw ___e___3;}
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:32*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:32");newProvider("prov2");
+List<String[]> ___w___6 = null;
+___w___6 = transientProviderDataWL(___cw___, ___sc___1, ___ce___, 30, "", new String[] {evaluate("late-tp"), evaluate("")}, new String[]{"id", ""}, evaluate("text,attr@abc"), false, null, new String[]{}, null, null, null, "Element not found by selector id@'late-tp' at line number 32 ", false, 1000, false, "");
+
+for(int ___w___7=0;___w___7<___w___6.size();___w___7++) {
+addToProviderTestDataMap("prov2", "var3", ___w___6.get(___w___7)[0]);
+
+addToProviderTestDataMap("prov2", "var4", ___w___6.get(___w___7)[1]);
+}Map<String, Object> ___w___8 = get__loopcontext__();
+
+set__loopcontext__("");
+
+set__loopcontext__(___w___8);
+
+/*GATF_LINE@<ROOT>/tests/24-transpiler-fixes-3.sel:33*/__set__cln__("<ROOT>/tests/24-transpiler-fixes-3.sel:33");{
+List<WebElement> ___vmask___ = new java.util.ArrayList<WebElement>();
+___ce___ = handleWaitFuncWL(___cw___, ___sc___1, ___ce___, 5, "", new String[] {evaluate("late-mask"), evaluate("")}, new String[]{"id", ""}, null, false, null, new String[]{}, null, null, null, null, true, 1000, false, "<ROOT>/tests/24-transpiler-fixes-3.sel", 33 ,"");
+if(___ce___!=null) ___vmask___.addAll(___ce___);
+__screenshotCompare__(get___d___(), evaluate("late"), 0.2, null, ___vmask___);
+}
+
+pushResult(new SeleniumTestResult(get___d___(), this, ___lp___));
+}
+catch(Throwable ___e___5)
+{pushResult(new SeleniumTestResult(get___d___(), this, ___e___5, getOutDir() + java.io.File.separator + "<UUID>.png", ___lp___, null));
+}}
+}
