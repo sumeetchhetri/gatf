@@ -241,6 +241,8 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
 </ai>
 ```
 
+The `<ai>` block is used by the healer (Trace Viewer, editor, MCP `heal`) and the planner (`gatf plan`, MCP `plan`); see the [Tier 3 release notes](release-notes/tier-3.md).
+
 ## API test cases
 
 A test file holds `<TestCases>` with one or more `<TestCase>` (XML, the most expressive format), a JSON array, or
