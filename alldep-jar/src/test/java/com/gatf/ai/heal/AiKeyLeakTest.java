@@ -46,6 +46,8 @@ import com.gatf.mcp.McpServer;
  * H1 (Δ149) secrets: a provider key read from the environment never reaches a heal result, an error, stdout/stderr,
  * the serialized config, or any file in the trace — even when the provider echoes it back in an error or a reply.
  * Δ151: nor a test plan (JSON, Markdown, notes, AI summary) or the MCP {@code plan} reply.
+ * Δ152: nor a generated script, the {@code gatf generate} summary or console, the MCP {@code generate} reply, or a
+ * repair request body.
  */
 public class AiKeyLeakTest {
 
@@ -278,6 +280,69 @@ public class AiKeyLeakTest {
         try (Stream<Path> files = Files.walk(root)) {   // the MCP tool never writes
             assertEquals(1L, files.filter(Files::isRegularFile).count());
         }
+        assertEquals(List.of(), found);
+    }
+
+    @Test
+    void generatedScriptsTheSummaryAndTheMcpGenerateReplyNeverCarryTheKey(@TempDir Path dir) throws Exception {
+        ObjectMapper om = new ObjectMapper();
+        Path root = Files.createDirectories(dir.resolve("proj"));
+        Files.write(root.resolve("shop-plan.json"), com.gatf.ai.gen.GenFixtures.shopPlanJson().getBytes(StandardCharsets.UTF_8));
+        Files.write(root.resolve("gatf-config.json"), "{}".getBytes(StandardCharsets.UTF_8));
+        AiConfig cfg = AiFakes.config();
+        cfg.setRetries(0);
+        // the provider echoes the key: in a 401, an I/O error, and inside replies (as an edit, a field, around the JSON)
+        String echo = KEY + " {\"edits\":[\"drop-step 3\",\"" + KEY + "\",\"set-data e1 " + KEY + "\"],\"why\":\"" + KEY + "\"} " + KEY;
+        AiFakes.Sender sender = new AiFakes.Sender()
+                .then(AiFakes.status(401, "{\"error\":{\"message\":\"bad key " + KEY + "\"}}"))
+                .then(AiFakes.io("proxy said x-fake-key: " + KEY));
+        for (int i = 0; i < 12; i++) sender.then(AiFakes.ok(AiFakes.reply(echo, 10, 10)));
+        // every script whose text has a title assertion fails the gate, so the repair loop asks the model
+        java.util.function.Supplier<com.gatf.ai.gen.GenFixtures.FakeGate> gate = () -> {
+            com.gatf.ai.gen.GenFixtures.FakeGate g = new com.gatf.ai.gen.GenFixtures.FakeGate();
+            g.fail = (f, t) -> t.contains("?? title") ? List.of(new com.gatf.ai.gen.SelGate.Diag(f, 6, null, "error", "Error parsing command at line 6")) : null;
+            return g;
+        };
+        List<String> found = new ArrayList<String>();
+        List<String> outputs = new ArrayList<String>();
+        PrintStream sysOut = System.out, sysErr = System.err;
+        ByteArrayOutputStream cap = new ByteArrayOutputStream();
+        try {
+            System.setOut(new PrintStream(cap, true, "UTF-8"));
+            System.setErr(new PrintStream(cap, true, "UTF-8"));
+            for (int i = 0; i < 2; i++) {   // first run: 401 then io (two failures in a row stop AI); second: echoing replies
+                int rc = com.gatf.generator.core.GenerateCli.run(new String[] { "shop-plan.json", "-o", "gen" + i }, root.toFile(), System.out, System.err,
+                        f -> AiFakes.client(cfg, KEY, sender), (r, c) -> gate.get(), false);
+                assertTrue(rc == 0 || rc == 2, "rc " + rc);
+            }
+            McpServer s = new McpServer("gatf", "t", "h");
+            s.register(new com.gatf.mcp.GenerateTool(root, om, c -> AiFakes.client(cfg, KEY, sender), (r, c) -> gate.get()).tool());
+            String mcp = s.handleLine("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"generate\",\"arguments\":"
+                    + "{\"plan\":\"shop-plan.json\"}}}");
+            outputs.add(mcp);
+            assertTrue(mcp.contains("\"isError\":false") && mcp.contains("repairRounds"), mcp);
+        } finally {
+            System.setOut(sysOut);
+            System.setErr(sysErr);
+        }
+        String console = cap.toString(StandardCharsets.UTF_8);
+        assertTrue(console.contains("AI stopped") || console.contains("repair stopped"), console);
+        assertTrue(sender.urls.size() >= 4, "the model was asked: " + sender.urls.size());
+        for (int i = 0; i < sender.urls.size(); i++) {
+            assertEquals(KEY, sender.headers.get(i).get("x-fake-key"), "the header is the one place it goes");
+            found.addAll(leaks("generate request body " + i, sender.bodies.get(i)));
+        }
+        for (int i = 0; i < outputs.size(); i++) found.addAll(leaks("generate output " + i, outputs.get(i)));
+        found.addAll(leaks("stdout/stderr", console));
+        int files = 0;
+        try (Stream<Path> w = Files.walk(root)) {
+            for (Path p : (Iterable<Path>) w::iterator) {
+                if (!Files.isRegularFile(p)) continue;
+                files++;
+                found.addAll(leaks("file " + root.relativize(p), new String(Files.readAllBytes(p), StandardCharsets.UTF_8)));
+            }
+        }
+        assertTrue(files > 2, "scripts were written");
         assertEquals(List.of(), found);
     }
 }

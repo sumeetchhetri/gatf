@@ -66,7 +66,7 @@ public final class GatfMcpTools {
     public static final String INSTRUCTIONS =
             "GATF test automation (UI seleasy .sel scripts + API XML test cases). Debug loop: list_tests → run (grep to narrow) → "
           + "get_report (failed tests, errors, trace zips) → summarise_trace on a trace zip (last actions, console errors, failed "
-          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts. heal proposes fixes for a failed step from its trace (never writes). plan turns a saved crawl map into a test plan (never writes).";
+          + "requests, checks) → edit the .sel → lint → run again. record/crawl produce new .sel scripts. heal proposes fixes for a failed step from its trace (never writes). plan turns a saved crawl map into a test plan (never writes). generate turns a plan into linted seleasy scripts (writes nothing in the project).";
 
     public McpServer register(McpServer s) {
         s.register(McpTool.of("list_tests", "List the project's tests: seleasy scripts (ui, with @tags and subtests) and API test-case XML (api).",
@@ -77,7 +77,7 @@ public final class GatfMcpTools {
                 a -> TestLister.list(inRoot(McpTool.str(a, "dir") == null ? "." : McpTool.str(a, "dir")), McpTool.str(a, "kind"),
                         McpTool.str(a, "grep"), McpTool.num(a, "limit", 200, 1, 5000))));
 
-        s.register(McpTool.of("lint", "Parse and compile a seleasy script without running it. Returns {status: SUCCESS|FAILURE, error}.",
+        s.register(McpTool.of("lint", "Parse and compile a seleasy script without running it. Returns {status: SUCCESS|FAILURE, error, diagnostics: [{file, line, column?, severity, message}]}.",
                 McpTool.schema("file*", "string", "the .sel file, relative to the project root",
                         "config", "string", "config file name in the project root (default gatf-config.json, else gatf-config.xml)"),
                 this::lint));
@@ -139,6 +139,8 @@ public final class GatfMcpTools {
         s.register(new HealTool(root, om, this::healAi).tool());
         // H1 (Δ151): crawl map → test plan; read-only
         s.register(new PlanTool(root, om, this::healAi).tool());
+        // H1 (Δ152): test plan → gated seleasy scripts; writes nothing in the project
+        s.register(new GenerateTool(root, om, this::healAi, (r, c) -> new com.gatf.selenium.SelSuiteGate(r, c)).tool());
         return s;
     }
 
@@ -173,6 +175,7 @@ public final class GatfMcpTools {
         @SuppressWarnings("unchecked")
         Map<String, Object> m = om.readValue(res, Map.class);
         m.put("file", root.relativize(f).toString().replace('\\', '/'));
+        m.put("diagnostics", com.gatf.ai.gen.LintDiagnostics.json(m));   // Δ152 (carried Δ141): status and error unchanged
         return m;
     }
 

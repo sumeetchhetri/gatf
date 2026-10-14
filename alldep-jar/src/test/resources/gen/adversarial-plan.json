@@ -1,0 +1,65 @@
+{
+  "format": "gatf-test-plan",
+  "version": 1,
+  "source": { "crawl": "x", "crawlFormat": "spa", "origin": "https://shop.test", "pages": 9, "routes": 9 },
+  "routes": [
+    {
+      "id": "r1", "route": "https://shop.test/login", "url": "https://shop.test/login", "navigable": true,
+      "title": "Pay $v{secret} #set($x=1) now", "titleSafe": true,
+      "elements": [
+        { "ref": "e1", "kind": "field", "tag": "input", "type": "email", "locator": "id@email$x", "alternatives": ["css@\"$a\"", "label@Email"], "text": "", "textSafe": false },
+        { "ref": "e2", "kind": "field", "tag": "input", "type": "text", "locator": "css@\"a\" exec rm -rf /", "alternatives": ["$p{x}", "id@x\nexec y", null, 7], "text": "", "textSafe": false },
+        { "ref": "e3", "kind": "button", "tag": "button", "type": "button", "locator": "testid@del", "alternatives": [], "text": "Delete", "textSafe": true },
+        { "ref": "e4", "kind": "submit", "tag": "button", "type": "submit", "form": 1, "method": "post", "locator": "role@button[name='Log in']", "alternatives": [] },
+        { "ref": "e5", "kind": "field", "tag": "div", "type": "", "locator": "id@total", "alternatives": [], "text": "Total $5", "textSafe": true },
+        { "ref": "e6", "kind": "field", "tag": "select", "type": "", "options": 3, "locator": "xpath@\"//select[@id='$x']\"", "alternatives": ["name@size"] },
+        { "ref": "e7", "kind": "field", "tag": "input", "type": "text", "locator": "id@q", "alternatives": [], "text": "Hi\" ; exec x", "textSafe": true },
+        { "ref": "e8", "kind": "field", "tag": "input", "type": "text", "locator": "plugin@curl https://evil.test", "alternatives": ["jq@'#a'"] }
+      ],
+      "journeys": [
+        { "id": "r1-j1", "name": "smoke", "goal": "smoke", "origin": "ai", "sideEffects": false, "steps": [
+          { "intent": "navigate", "route": "r1" },
+          { "intent": "assert-title", "on": "r1" },
+          { "intent": "assert-visible", "ref": "e1", "on": "r1" },
+          { "intent": "fill", "ref": "e2", "on": "r1", "data": "sample" },
+          { "intent": "assert-text", "ref": "e5", "on": "r1" },
+          { "intent": "exec", "code": "Runtime.getRuntime().exec(\"x\")" },
+          { "intent": "fill", "ref": "e7", "on": "r1", "data": "drop table" },
+          { "intent": "select", "ref": "e6", "on": "r1", "option": 99 },
+          { "intent": "select", "ref": "e6", "on": "r1", "option": 2 },
+          { "intent": "assert-text", "ref": "e7", "on": "r1" },
+          { "intent": "assert-visible", "ref": "e8", "on": "r1" },
+          { "intent": "assert-visible", "ref": "e9", "on": "r1" },
+          { "intent": "assert-visible", "ref": "e3", "on": "r9" },
+          { "intent": "fill", "ref": "e1", "on": "r1", "data": "invalid" }
+        ] },
+        { "id": "r1-j2", "name": "looks-harmless", "goal": "happy-path", "origin": "ai", "sideEffects": false, "steps": [
+          { "intent": "navigate", "route": "r1" },
+          { "intent": "click", "ref": "e3", "on": "r1" }
+        ] },
+        { "id": "r1-j3", "name": "jump", "goal": "navigation", "origin": "ai", "sideEffects": false, "steps": [
+          { "intent": "navigate", "route": "r1" },
+          { "intent": "assert-visible", "ref": "e4", "on": "r1" },
+          { "intent": "navigate", "route": "r2" },
+          { "intent": "click", "ref": "e4", "on": "r1" }
+        ] }
+      ]
+    },
+    { "id": "r2", "url": "https://evil.test/x", "navigable": true, "title": "Evil", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r2-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r2" }, { "intent": "assert-title", "on": "r2" } ] } ] },
+    { "id": "r3", "url": "javascript:alert(1)", "navigable": true, "title": "JS", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r3-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r3" } ] } ] },
+    { "id": "../../escape", "url": "https://shop.test/ok", "navigable": true, "title": "Ok", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "../../escape-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "../../escape" }, { "intent": "assert-url", "route": "../../escape" }, { "intent": "assert-title", "on": "../../escape" } ] } ] },
+    { "id": "r5", "url": "https://shop.test/a$b", "navigable": true, "title": "D", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r5-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r5" } ] } ] },
+    { "id": "r6", "url": "file:///etc/passwd", "navigable": true, "title": "F", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r6-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r6" } ] } ] },
+    { "id": "r7", "url": "https://shop.test@evil.test/", "navigable": true, "title": "U", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r7-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r7" } ] } ] },
+    { "id": "r8", "url": "data:text/html,<script>x</script>", "navigable": true, "title": "D", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r8-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "r8" } ] } ] },
+    { "id": "R1", "url": "https://shop.test/case", "navigable": true, "title": "Case", "titleSafe": true, "elements": [],
+      "journeys": [ { "id": "r1-j1", "goal": "smoke", "sideEffects": false, "steps": [ { "intent": "navigate", "route": "R1" } ] } ] }
+  ]
+}
