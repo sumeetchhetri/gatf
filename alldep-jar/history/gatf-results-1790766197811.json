@@ -1,9 +1,0 @@
-{
-  "dir": "/Users/sumeetc/Projects/GitHub/gatf/alldep-jar",
-  "summary": {"total": 3, "passed": 3, "failed": 0, "flaky": 0, "skipped": 0, "softFailures": 0, "durationMs": 3, "workers": 1, "shard": null},
-  "tests": [
-    {"suite": "ui/login.sel", "name": "[chrome]", "title": "[chrome] › ui/login.sel", "status": "passed", "attempts": 1, "durationMs": 5, "startMs": 0, "worker": 0, "error": null, "softFailures": 0, "tags": ["@smoke", "@auth"], "attachments": []},
-    {"suite": "api/u.xml", "name": "List @crud", "title": "api/u.xml › List @crud", "status": "passed", "attempts": 1, "durationMs": 5, "startMs": 0, "worker": 0, "error": null, "softFailures": 0, "tags": ["@crud", "@smoke"], "attachments": []},
-    {"suite": "api/u.xml", "name": "Other", "title": "api/u.xml › Other", "status": "passed", "attempts": 1, "durationMs": 5, "startMs": 0, "worker": 0, "error": null, "softFailures": 0, "tags": [], "attachments": []}
-  ]
-}

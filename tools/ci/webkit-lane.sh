@@ -67,7 +67,7 @@ echo "appUrl=http://127.0.0.1:${APP_PORT}/app/" > "${WORK}/func/tests/app.props"
 
 if [ "${LANE}" = "safari" ]; then
   log "safari: $(sw_vers -productVersion 2>/dev/null || echo '?') / $(safaridriver --version 2>/dev/null || echo 'safaridriver not found')"
-  unset SELENIUM_REMOTE_URL   # local SafariDriver; GATF's safari key never goes through a Grid
+  unset SELENIUM_REMOTE_URL   # local SafariDriver: since Δ145d Safari uses a Grid only with an explicit SELENIUM_REMOTE_URL
 else
   command -v WebKitWebDriver >/dev/null || { echo "WebKitWebDriver not found (apt-get install webkit2gtk-driver)." >&2; exit 1; }
   MINI="${WEBKIT_MINIBROWSER:-$(find /usr/lib /usr/libexec -type f -name MiniBrowser -path '*webkit2gtk-4.1*' 2>/dev/null | head -1 || true)}"

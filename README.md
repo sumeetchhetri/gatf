@@ -434,8 +434,8 @@ Set `GATF_CLOUD=browserstack|saucelabs|lambdatest` (or `-Dgatf.cloud`) and the v
 | [Windows support](docs/WINDOWS-SUPPORT.md) | Windows-specific notes |
 | [VS Code extension](vscode-extension/README.md) | Language server and debugger |
 | [End-to-end tests](e2e/README.md) | How GATF tests itself |
-| [Roadmap](GATF_REVIEW_AND_ROADMAP.md) | Engineering review and Phase 13, Playwright parity+. Status: Tiers 0–2 delivered (auto-wait and web-first assertions, semantic locators, network mocking, auth state and hooks, workers/sharding, report parity, visual and accessibility checks, emulation and clock, plugin and perf-engine SPIs, MCP server, watch mode, GatfAssert, flow → load); Tier 3 next |
-| [Tier 3 release notes](docs/release-notes/tier-3.md) | Tier 3 (DOM time-travel, AI healer and planner, browser contexts, coverage and `--changed`, device clouds and Appium 2, WebKit/Safari lane, export, distributed traces): how to switch each on, behaviour changes, upgrade notes. Status: delivered; Δ152 Generator pending; live cloud/device/Safari checks open |
+| [Roadmap](GATF_REVIEW_AND_ROADMAP.md) | Engineering review and Phase 13, Playwright parity+. Status: Tiers 0–2 delivered (auto-wait and web-first assertions, semantic locators, network mocking, auth state and hooks, workers/sharding, report parity, visual and accessibility checks, emulation and clock, plugin and perf-engine SPIs, MCP server, watch mode, GatfAssert, flow → load); Tier 3 delivered (see the Tier 3 release notes) |
+| [Tier 3 release notes](docs/release-notes/tier-3.md) | Tier 3 (DOM time-travel, AI healer and planner, browser contexts, coverage and `--changed`, device clouds and Appium 2, WebKit/Safari lane, export, distributed traces): how to switch each on, behaviour changes, upgrade notes. Status: delivered (Δ146–Δ163a); live cloud/device/Safari checks open |
 
 Related: [test-html-generator-plugin](https://github.com/sumeetchhetri/test-html-generator-plugin) generates HTML pages for your REST endpoints.
 

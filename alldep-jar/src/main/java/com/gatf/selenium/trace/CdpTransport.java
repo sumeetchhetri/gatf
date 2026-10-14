@@ -36,7 +36,6 @@ import org.openqa.selenium.devtools.v150.network.Network;
 import org.openqa.selenium.devtools.v150.network.model.Headers;
 import org.openqa.selenium.devtools.v150.network.model.RequestId;
 import org.openqa.selenium.devtools.v150.page.Page;
-import org.openqa.selenium.devtools.v150.page.model.ScreencastFrame;
 import org.openqa.selenium.devtools.v150.performance.Performance;
 import org.openqa.selenium.devtools.v150.performance.model.Metric;
 import org.openqa.selenium.devtools.v150.runtime.Runtime;

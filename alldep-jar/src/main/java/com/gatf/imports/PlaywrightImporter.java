@@ -21,6 +21,9 @@ import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.gatf.record.PickLocator;
+import com.gatf.selenium.LocatorRanking;
+
 /**
  * Best-effort importer: Playwright test specs (.spec.ts / .spec.js) → a seleasy suite.
  *
@@ -188,7 +191,13 @@ public class PlaywrightImporter {
                 String argsRaw = argsAfter(s, pm.end() - 1);
                 List<String> a = splitArgs(argsRaw);
                 if (method.equals("goto")) {
-                    if (!a.isEmpty()) { out.append("  goto ").append(unquote(a.get(0))).append("\n"); actions++; }
+                    if (!a.isEmpty()) {
+                        // Δ163a: an imported URL goes through the recorder's gotoUrl check ('$' literal; quotes, spaces, other schemes refused)
+                        String g = PickLocator.gotoUrl(unquote(a.get(0)));
+                        if (g != null) out.append("  goto ").append(g).append("\n");
+                        else out.append("  ").append(refused("goto", "its URL is not a plain http(s)/file URL", s, lineNo, res)).append("\n");
+                        actions++;
+                    }
                     continue;
                 }
                 if (method.equals("waitfortimeout")) {
@@ -232,17 +241,19 @@ public class PlaywrightImporter {
     // Map a Playwright action verb (+ selector + remaining args) to a seleasy line, or null if unsupported.
     private String emitAction(String method, String selector, String args, String stmt, int lineNo, ImportResult res) {
         List<String> a = splitArgs(args);
+        // Δ163a: imported text reaches a step only through the Δ148 gates (LocatorRanking.unsafe / PickLocator.stepValue)
+        if (selector != null && LocatorRanking.unsafe(selector)) return refused(method, UNSAFE_SELECTOR, stmt, lineNo, res);
         if (method.equals("click")) return "click " + selector;
         if (method.equals("dblclick")) return "doubleclick " + selector;
         if (method.equals("hover")) return "hover " + selector;
         if (method.equals("check") || method.equals("uncheck")) return "click " + selector;
         if (method.equals("fill") || method.equals("type")) {
-            String v = a.isEmpty() ? "" : unquote(a.get(0));
-            return "type \"" + escSel(v) + "\" " + selector;
+            String v = PickLocator.stepValue(a.isEmpty() ? "" : unquote(a.get(0)));
+            return v == null ? refused(method, UNSAFE_VALUE, stmt, lineNo, res) : "type \"" + v + "\" " + selector;
         }
         if (method.equals("press")) {
-            String key = a.isEmpty() ? "" : unquote(a.get(0));
-            return "sendkeys \"" + escSel(key) + "\" " + selector;
+            String key = PickLocator.stepValue(a.isEmpty() ? "" : unquote(a.get(0)));
+            return key == null ? refused(method, UNSAFE_VALUE, stmt, lineNo, res) : "sendkeys \"" + key + "\" " + selector;
         }
         if (method.equals("selectoption")) {
             if (a.isEmpty()) return "select first@0 " + selector;
@@ -251,14 +262,15 @@ public class PlaywrightImporter {
             Matcher lbl = Pattern.compile("label\\s*:\\s*([\"'`])(.*?)\\1").matcher(arg);
             Matcher idx = Pattern.compile("index\\s*:\\s*(\\d+)").matcher(arg);
             Matcher val = Pattern.compile("value\\s*:\\s*([\"'`])(.*?)\\1").matcher(arg);
-            if (lbl.find()) return "select text@\"" + escSel(lbl.group(2)) + "\" " + selector;
-            if (idx.find()) return "select index@" + idx.group(1) + " " + selector;
-            if (val.find()) return "select value@\"" + escSel(val.group(2)) + "\" " + selector;
-            return "select value@\"" + escSel(unquote(arg)) + "\" " + selector;
+            boolean hasLbl = lbl.find(), hasIdx = idx.find(), hasVal = val.find();
+            if (!hasLbl && hasIdx) return "select index@" + idx.group(1) + " " + selector;
+            String kind = hasLbl ? "text" : "value";
+            String v = PickLocator.stepValue(hasLbl ? lbl.group(2) : hasVal ? val.group(2) : unquote(arg));   // Δ163a
+            return v == null ? refused(method, UNSAFE_VALUE, stmt, lineNo, res) : "select " + kind + "@\"" + v + "\" " + selector;
         }
         if (method.equals("setinputfiles")) {
-            String f = a.isEmpty() ? "" : unquote(a.get(0));
-            return "upload \"" + escSel(f) + "\" " + selector;
+            String f = PickLocator.stepValue(a.isEmpty() ? "" : unquote(a.get(0)));
+            return f == null ? refused(method, UNSAFE_VALUE, stmt, lineNo, res) : "upload \"" + f + "\" " + selector;
         }
         if (method.equals("clear")) return "clear " + selector;
         if (method.equals("scrollintoviewifneeded")) return "scroll " + selector;
@@ -271,20 +283,23 @@ public class PlaywrightImporter {
     private String emitExpect(String subject, String matcher, String args, String stmt, int lineNo, ImportResult res) {
         String sel = subjectSelector(subject);
         List<String> a = splitArgs(args);
+        if (sel != null && LocatorRanking.unsafe(sel)) return refused(matcher, UNSAFE_SELECTOR, stmt, lineNo, res);   // Δ163a
         // Δ145c: `??` = wait until found, `??+` = until no longer found (REFERENCE.md); both were inverted
         if (matcher.equals("tobevisible") || matcher.equals("tobeattached") || matcher.equals("tobeenabled")) {
             return sel != null ? "?? " + sel : reportExpect(subject, matcher, lineNo, res);
         }
         if (matcher.equals("tohavetext") && sel != null && !a.isEmpty()) {
-            return "?? " + sel + " text =\"" + escSel(unquote(a.get(0))) + "\"";   // exact text of the subject
+            String t = PickLocator.stepValue(unquote(a.get(0)));   // Δ163a
+            return t == null ? refused(matcher, UNSAFE_VALUE, stmt, lineNo, res) : "?? " + sel + " text =\"" + t + "\"";   // exact text of the subject
         }
         if (matcher.equals("tohavetext") || matcher.equals("tocontaintext")) {
             String t = a.isEmpty() ? "" : unquote(a.get(0));
+            if (LocatorRanking.unsafe(t) || t.contains("\"")) return refused(matcher, UNSAFE_VALUE, stmt, lineNo, res);   // Δ163a: a locator
             return "?? text@\"" + escSel(t) + "\"";
         }
         if (matcher.equals("tohavevalue") && sel != null) {
-            String v = a.isEmpty() ? "" : unquote(a.get(0));
-            return "?? " + sel + " attr@value =\"" + escSel(v) + "\"";              // getAttribute("value") = live value
+            String v = PickLocator.stepValue(a.isEmpty() ? "" : unquote(a.get(0)));   // Δ163a
+            return v == null ? refused(matcher, UNSAFE_VALUE, stmt, lineNo, res) : "?? " + sel + " attr@value =\"" + v + "\"";   // getAttribute("value") = live value
         }
         if (matcher.equals("tobechecked") && sel != null) {
             return "?? " + sel + " attr@checked =\"true\"";
@@ -458,6 +473,15 @@ public class PlaywrightImporter {
         } catch (Exception e) {
             return def;
         }
+    }
+
+    static final String UNSAFE_SELECTOR = "its selector has '$', '#' before a letter or a control character (seleasy would template it)";
+    static final String UNSAFE_VALUE = "its value cannot be carried literally (']]#', '$v{', '$p{' or a quote in a text locator)";
+
+    /** Δ163a: the fixed comment written instead of an imported step whose text cannot be carried safely; reported too. */
+    private String refused(String what, String why, String stmt, int lineNo, ImportResult res) {
+        res.unsupported(lineNo, trunc(stmt), "'" + what + "' not converted: " + why);
+        return "// UNSUPPORTED: '" + what + "' not converted: " + why;
     }
 
     private String escSel(String v) {

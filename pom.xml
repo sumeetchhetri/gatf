@@ -26,9 +26,9 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<manifold.version>2021.1.33</manifold.version>
 		<selenium.version>4.48.0</selenium.version>
-		<!-- T0-5: JaCoCo line-coverage floor (bundle). 0.00 until the first CI run measures the baseline;
-		     then set it just below that number and only ever raise it (ratchet). -->
-		<gatf.coverage.line.min>0.00</gatf.coverage.line.min>
+		<!-- T0-5: JaCoCo line-coverage floor (bundle). Δ163a: set from the Tier 3 green run (54.07 % lines, so 0.52);
+		     only ever raise it (ratchet). A targeted run (-Dtest=...) measures less: add -Djacoco.skip=true to it. -->
+		<gatf.coverage.line.min>0.52</gatf.coverage.line.min>
 	</properties>
 
 	<repositories>

@@ -17,7 +17,6 @@ package com.gatf.executor.distributed;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
@@ -35,7 +34,6 @@ import com.esotericsoftware.kryo.io.Output;
 import com.gatf.executor.core.AcceptanceTestContext;
 import com.gatf.executor.core.TestCase;
 import com.gatf.executor.distributed.DistributedAcceptanceContext.Command;
-import com.gatf.executor.report.ReportHandler;
 import com.gatf.executor.report.RuntimeReportUtil;
 
 public class DistributedGatfTester {

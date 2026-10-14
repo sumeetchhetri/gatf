@@ -2195,7 +2195,9 @@ public class Command {
     public static class CommentCommand extends Command {
         String val;
         String javacode() {
-            return "//" + val;
+            // Δ163a: javac decodes backslash-u unicode escapes before it reads comments, so an escaped line feed in the text (a crawled page
+            // title, an imported line) would end this comment and compile the rest as code; doubled backslashes are inert
+            return "//" + val.replace("\\", "\\\\");
         }
         CommentCommand(String val, Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);
@@ -2213,7 +2215,7 @@ public class Command {
         StringBuilder b = new StringBuilder();
         String javacode() {
             // Δ145b: a quoted '*/' in the comment text must not end the generated Java comment early
-            return "/*" + b.substring(2).replace("*/", "* /") + "*/";
+            return "/*" + b.substring(2).replace("\\", "\\\\").replace("*/", "* /") + "*/";   // Δ163a: backslash-u escapes inert, as above
         }
         MultiCommentCommand(Object[] cmdDetails, CommandState state) {
             super(cmdDetails, state);

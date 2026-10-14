@@ -58,6 +58,8 @@ EXCLUDES=(
   'dependency-reduced-pom.xml'      # shade-plugin generated pom
   'gatf.ctrl'                       # runtime server control file
   'gatf-src-*.zip' 'gatf-delta-*.zip'   # don't nest previously packaged zips
+  'alldep-jar/history/*' 'alldep-jar/gatf-junit.xml' 'alldep-jar/gatf-results.json'   # Δ163a: run output
+  'dump.rdb' 'commits_*.csv' 'gatf-tier*-handoff.zip'                                  # Δ163a: local strays
 )
 
 XARGS=()

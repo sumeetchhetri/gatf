@@ -49,3 +49,10 @@ cmds
 commits.csv
 export-dates.sh
 gatf.ctrl
+# Δ163a: run output and local stray files (the reporters write into the module's working dir during mvn verify)
+alldep-jar/history/
+alldep-jar/gatf-junit.xml
+alldep-jar/gatf-results.json
+dump.rdb
+commits_*.csv
+gatf-tier*-handoff.zip

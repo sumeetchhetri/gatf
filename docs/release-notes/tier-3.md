@@ -13,7 +13,7 @@ Tier 3 adds the "high" items of the Playwright-parity plan:
 Almost everything is **opt-in**: an existing config runs as before unless you switch a feature on. The exceptions are listed under [Behaviour changes](#behaviour-changes). Read that section before you upgrade.
 
 Status at release:
-- Every card except Δ152 is in the tree.
+- Every card, Δ146–Δ163a, is in the tree.
 - The live checks still open are listed under [Not yet verified live](#not-yet-verified-live).
 
 ---
@@ -55,7 +55,12 @@ Status at release:
   - **Output:** a JSON + Markdown test plan that covers every crawled route.
   - **With or without AI:** the model can only enrich the plan; it can't add or drop routes.
   - **Older crawl maps:** SPA maps saved before Tier 3 carry no element data. Re-crawl to get form journeys.
-- **Generator (Δ152):** *pending — filled by the orchestrator at merge.*
+- **Generator (Δ152):** `gatf generate <n>-plan.json [-o dir] [--config cfg] [--no-ai] [--include-side-effects] [--force]` turns a planner plan into one `.sel` per journey, written to `tests/generated/<plan>/` by default.
+  - Every line comes from a fixed template; the model never writes seleasy. URLs must be same-origin and locators are re-checked; fill data is GATF's own.
+  - Journeys that click a button or submit a non-GET form are skipped unless `--include-side-effects` is given.
+  - **Gate:** each script must pass `validateSel`, and all scripts are compiled together as one suite (no browser). Only passing scripts are written.
+  - **Repair loop:** with AI configured, the model may only drop a step, switch to an alternative locator or change the data kind. It is capped at 3 rounds per file.
+  - **MCP:** `generate` returns the scripts and writes nothing in the project. MCP `lint` now also returns a `diagnostics` list (`status`/`error` are unchanged).
 
 ### Browser contexts and workers on contexts (H3, opt-in)
 - **`browserContexts: subtest`** runs every top-level subtest in a fresh browser context of the same browser. Each context gets its own cookies, storage, cache, routes, emulation, clock and `storageState`.
@@ -160,6 +165,18 @@ These apply without any new setting.
 - **Protocol version 2.** A coordinator speaks distributed protocol v2 and retries an older node once with v1; that node then sends no traces, and the fallback is logged once per node.
 - **Disk:** trace transfer is on by default for distributed UI runs, so trace zips are stored on the coordinator under `<out>/dist-traces/`. Old run folders are not cleaned up.
 
+**Generated scripts and imports (Δ163a)**
+- **Comments in generated Java:** a seleasy comment's backslashes are doubled in the generated Java. A backslash-u escape in a comment (for example a crawled page title) can no longer end the comment and run as code.
+- **Portal crawler:**
+  - Crawled URLs go through the same check as the SPA crawler. An unsafe URL skips its whole page block with a comment.
+  - Page titles in comments are one line.
+  - Locators use a page's id/name/class only when it is a plain token, else the positional XPath.
+  - The login steps write `${username}` / `${password}`. The configured password no longer appears in the generated script, so define both in a properties file.
+- **Playwright importer:**
+  - An imported `$` is now literal, not a seleasy template; for example, a `${BASE}` URL is reported as not converted.
+  - Values that can't be carried safely, unsafe URLs and selectors with `$` (for example the CSS `[href$=…]`) become `// UNSUPPORTED:` lines and appear in the import report.
+- **Coverage floor:** the build now fails below 52 % line coverage (`gatf.coverage.line.min`). Add `-Djacoco.skip=true` to targeted `-Dtest=` runs.
+
 **Other**
 - **Sample projects:** the sample project and dogfood configs now set `traceDomSnapshots=full`.
 - **Generated classes:** the generated-class folder (`$TMP/gatf-code`) is no longer wiped at the start of each run; only files older than 24 h are removed. This fixes a race between parallel debug sessions.
@@ -182,11 +199,12 @@ Existing goldens changed in three places:
 
 1. **Re-generate goldens.** If you keep your own codegen goldens, re-generate them once with `-Dgatf.golden.update=true` and review the diff. Expect the driver line and any lines listed above.
 2. **Re-import Playwright suites** that were imported before Tier 3.
-3. **Check recorded and crawled scripts** for `// GATF record:` / `// GATF crawl:` skip comments and add a safe locator by hand where needed.
-4. **Desktop scripts using touch commands** now fail those steps. Remove them, or run them under `open appium-android|appium-ios`.
-5. **Distributed runs:** upgrade nodes and coordinator together to get traces. A mixed fleet still runs, without traces from old nodes.
-6. **Custom result files from nodes:** if a node sent extra files in its results zip, only the allow-listed names are kept now.
-7. **AI features** need an `<ai>` block and a key in the environment. Nothing changes without it.
+3. **Portal-crawled suites** generated with a login: replace the literal credentials with `${username}` / `${password}` from a properties file, as new crawls now write.
+4. **Check recorded and crawled scripts** for `// GATF record:` / `// GATF crawl:` skip comments and add a safe locator by hand where needed.
+5. **Desktop scripts using touch commands** now fail those steps. Remove them, or run them under `open appium-android|appium-ios`.
+6. **Distributed runs:** upgrade nodes and coordinator together to get traces. A mixed fleet still runs, without traces from old nodes.
+7. **Custom result files from nodes:** if a node sent extra files in its results zip, only the allow-listed names are kept now.
+8. **AI features** need an `<ai>` block and a key in the environment. Nothing changes without it.
 
 ## Not yet verified live
 

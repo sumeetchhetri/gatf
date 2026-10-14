@@ -240,6 +240,20 @@ class CommandTest {
     }
 
     @Test
+    void commentTextCannotSmuggleUnicodeEscapesIntoTheGeneratedJava() {
+        // Δ163a: javac decodes backslash-u escapes before comments, so an escaped line feed in a comment (a crawled page
+        // title, an imported line) would end the Java comment and compile what follows; the backslashes are doubled
+        String bs = "\\";
+        Command.CommandState st = new Command.CommandState();
+        Command line = parseLine("// Shop " + bs + "u000a static { pwned(); }", st);
+        assertThat(line).isInstanceOf(Command.CommentCommand.class);
+        assertThat(line.javacode()).contains(bs + bs + "u000a").doesNotContain(" " + bs + "u000a");
+        Command.MultiCommentCommand block = (Command.MultiCommentCommand) parseLine("/*", st);
+        block.b.append(bs + "u002a/ static { pwned(); }\n");
+        assertThat(block.javacode()).contains(bs + bs + "u002a/").doesNotContain("\n" + bs + "u002a");
+    }
+
+    @Test
     void elseIfnotIsNegatedWithAnySpacing() {
         // Δ145b: was startsWith("else ifnot  ") (two spaces) + substring(8), so `else ifnot x` ran as `else if` on "ot x"
         Command.CommandState st = new Command.CommandState();
