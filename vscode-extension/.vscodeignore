@@ -5,5 +5,5 @@ esbuild.mjs
 tsconfig.json
 **/*.map
 **/*.ts
-!dist/**
+!dist/**/*.js
 .gitignore

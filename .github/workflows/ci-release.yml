@@ -1,7 +1,7 @@
-name: Release (jar, distribution zip, installers, Docker image)
+name: Release (jar, distribution zip, installers, VS Code extension, Docker image)
 
 # Δ163b: runs when a version tag (e.g. 5.0.0) is pushed, including the tag that "Create release" in the GitHub UI
-# makes. Works whether the release already exists (made in the UI) or not (made here); assets are uploaded with
+# makes. Assets: jar, distribution zip, installers and the VS Code extension (.vsix). Works whether the release already exists (made in the UI) or not (made here); assets are uploaded with
 # --clobber, so a re-run replaces them. The Docker Hub push is last and optional: it never blocks the release.
 on:
   push:
@@ -54,6 +54,19 @@ jobs:
     - name: Build distribution zip + installers
       run: bash dist/build-dist.sh "/tmp/gatf-alldep-${{ steps.tag.outputs.tag }}.jar" "${{ steps.tag.outputs.tag }}" /tmp/gatf-dist
 
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Package the VS Code extension (seleasy-<tag>.vsix)
+      run: |
+        TAG="${{ steps.tag.outputs.tag }}"
+        cd vscode-extension
+        cp ../LICENSE .
+        npm ci
+        npm version "$TAG" --no-git-tag-version --allow-same-version
+        npx --yes @vscode/vsce@3.2.1 package --no-dependencies -o "/tmp/seleasy-$TAG.vsix"
+
     - name: Create the release if it does not exist yet
       env:
         GH_TOKEN: ${{ github.token }}
@@ -73,7 +86,8 @@ jobs:
         cd /tmp/gatf-dist
         gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
           "/tmp/gatf-alldep-$TAG.jar" /tmp/run_gatf.sh \
-          gatf.zip gatf.zip.sha256 "gatf-$TAG.zip" "gatf-$TAG.zip.sha256" install.sh install.ps1
+          gatf.zip gatf.zip.sha256 "gatf-$TAG.zip" "gatf-$TAG.zip.sha256" install.sh install.ps1 \
+          "/tmp/seleasy-$TAG.vsix"
         gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
 
     - name: Push the Docker image (optional; skipped without Docker Hub secrets)
@@ -88,3 +102,19 @@ jobs:
         docker push "$JAR_IMAGE:$TAG"
         docker tag "$JAR_IMAGE:$TAG" "$JAR_IMAGE:latest"
         docker push "$JAR_IMAGE:latest"
+
+    - name: Publish the extension to the VS Code Marketplace (optional; skipped without VSCE_PAT)
+      continue-on-error: true
+      env:
+        VSCE_PAT: ${{ secrets.VSCE_PAT }}
+      run: |
+        if [ -z "$VSCE_PAT" ]; then echo "no VSCE_PAT: not published to the Marketplace"; exit 0; fi
+        npx --yes @vscode/vsce@3.2.1 publish --packagePath "/tmp/seleasy-${{ steps.tag.outputs.tag }}.vsix" --pat "$VSCE_PAT"
+
+    - name: Publish the extension to Open VSX (optional; skipped without OVSX_PAT)
+      continue-on-error: true
+      env:
+        OVSX_PAT: ${{ secrets.OVSX_PAT }}
+      run: |
+        if [ -z "$OVSX_PAT" ]; then echo "no OVSX_PAT: not published to Open VSX"; exit 0; fi
+        npx --yes ovsx@0.10.1 publish "/tmp/seleasy-${{ steps.tag.outputs.tag }}.vsix" --pat "$OVSX_PAT"
