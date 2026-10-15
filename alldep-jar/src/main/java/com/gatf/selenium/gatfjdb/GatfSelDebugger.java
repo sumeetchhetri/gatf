@@ -84,6 +84,32 @@ public class GatfSelDebugger {
 	private volatile String currFile;
 	private volatile int state = 0;
 	private Command allcmds;
+	// Δ163i: the init response shows the first line as paused before the debuggee has reached it (its JVM is still
+	// starting). A step / continue sent in that window found no breakpoint event and was dropped ("Please suspend the
+	// debugger first"), leaving the session paused on line 1 for good. Commands now wait for the first real pause.
+	private volatile boolean pausedOnce = false;
+	static final long FIRST_PAUSE_WAIT_MS = 60_000;
+
+	/** Δ163i: wait (bounded) until the debuggee has paused at least once, or the session has ended. */
+	boolean awaitFirstPause(long timeoutMs) throws InterruptedException {
+		long end = System.currentTimeMillis() + timeoutMs;
+		synchronized (changeLock) {
+			while (!pausedOnce && running == 1) {
+				long w = end - System.currentTimeMillis();
+				if (w <= 0) break;
+				changeLock.wait(w);
+			}
+		}
+		return pausedOnce;
+	}
+
+	private void awaitFirstPause() {
+		try {
+			awaitFirstPause(FIRST_PAUSE_WAIT_MS);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
+	}
 	
 	public boolean isActivityObserved() {
 		// delta-075: returned true on both branches → the idle reaper never reaped an abandoned session
@@ -361,6 +387,7 @@ public class GatfSelDebugger {
 
     public boolean enableStepIntoRequest(String line) throws AbsentInformationException {
     	activity.incrementAndGet();
+    	awaitFirstPause();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
         	Object[] fld = Command.getSubtestFromCall(line, null, null, allcmds);
         	if(fld!=null) {
@@ -383,6 +410,7 @@ public class GatfSelDebugger {
 
     public boolean enableStepOutRequest() throws AbsentInformationException {
     	activity.incrementAndGet();
+    	awaitFirstPause();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1 && selFiles.size()>0) {
         	currFile = selFiles.pop();
         	resolveLines(false);
@@ -395,6 +423,7 @@ public class GatfSelDebugger {
 
     public boolean enableStepOverRequest() throws AbsentInformationException {
     	activity.incrementAndGet();
+    	awaitFirstPause();
         if(cbe!=null && cbe.location().toString().indexOf(debugClass.getName()+":")!=-1) {
         	setTempBreakPoint(resolveLines(true));
         	dvm.resume();
@@ -407,6 +436,7 @@ public class GatfSelDebugger {
     
     public void resume() {
     	activity.incrementAndGet();
+    	awaitFirstPause();
     	dvm.resume();
     	setState(-4);
     }
@@ -468,6 +498,8 @@ public class GatfSelDebugger {
     	} catch (Exception e) {
     		changed();
     	}
+    	pausedOnce = true;   // after the lines resolve, so a waiting command sees the paused location
+    	changed();
     }
 
     public static GatfSelDebugger debugSession(Class<? extends SeleniumTest> testClass, String[] args, Map<String, List<List<Integer[]>>> selToJavaLineMap, Command out) throws Exception {

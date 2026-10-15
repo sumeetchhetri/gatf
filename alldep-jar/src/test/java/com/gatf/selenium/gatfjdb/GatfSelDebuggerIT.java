@@ -49,6 +49,40 @@ class GatfSelDebuggerIT {
         }
     }
 
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    private static Map<String, List<List<Integer[]>>> toyMap() throws Exception {
+        List<String> src = Files.readAllLines(Paths.get("src/test/java/com/gatf/selenium/gatfjdb/DebuggeeToy.java"));
+        List<Integer[]> lines = new ArrayList<Integer[]>();
+        for (int i = 0; i < src.size(); i++) {
+            int k = src.get(i).indexOf("// L");
+            if (k >= 0) lines.add(new Integer[] { Integer.parseInt(src.get(i).substring(k + 4).trim()), i + 1, 2 });
+        }
+        Map<String, List<List<Integer[]>>> map = new LinkedHashMap<String, List<List<Integer[]>>>();
+        List<List<Integer[]>> fl = new ArrayList<List<Integer[]>>();
+        fl.add(lines);
+        map.put("toy.sel", fl);
+        return map;
+    }
+
+    /**
+     * Δ163i: the UI shows line 1 as paused as soon as the session starts, while the debuggee JVM is still starting
+     * (DebuggeeToy sleeps 200 ms first). A step sent then used to be refused ("Please suspend the debugger first") and
+     * the session stayed on line 1; it now waits for the first pause and steps.
+     */
+    @Test
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    void aStepSentBeforeTheFirstPauseIsNotLost() throws Exception {
+        d = GatfSelDebugger.debugSession((Class<? extends SeleniumTest>) (Class) DebuggeeToy.class, new String[0], toyMap(), null);
+        try {
+            assertThat(d.enableStepOverRequest()).isTrue();   // no wait for the initial pause
+            await(() -> d.getPrevLine() == 2, "step over sent before the first pause");
+            d.resume();
+            await(() -> !d.getRunning(), "run to completion");
+        } finally {
+            d.destroy();
+        }
+    }
+
     @Test
     @SuppressWarnings({ "unchecked", "rawtypes" })
     void breakpointsStepContinueAndTeardown() throws Exception {
