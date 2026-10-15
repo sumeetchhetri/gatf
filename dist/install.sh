@@ -19,7 +19,7 @@
 # Per-user, no sudo. Needs Java 21+ — a JRE is enough (tests compile with the bundled ECJ); only the
 # online debugger needs a JDK (jdk.jdi + jdk.jdwp.agent). Detects installed Java (preferring a JDK), else
 # offers a private Temurin 21 download (JDK by default, --jre for the smaller runtime).
-# Options: --version X | --zip FILE | --jdk/--java DIR | --jre | --yes | --with-tools vegeta,autocannon
+# Options: --version X | --zip FILE | --jdk/--java DIR | --jre | --yes | --with-tools wperfk,vegeta,autocannon
 #          --no-tools | --uninstall [--purge]
 # bash 3.2 compatible (stock macOS bash).
 set -eu
@@ -245,7 +245,7 @@ esac
 
 # ---------------------------------------------------------------- optional load tools
 if [ "$NO_TOOLS" = 0 ]; then
-  if [ -z "$TOOLS" ] && ask "Also set up the load-test tools (vegeta, and autocannon with a private Node.js)?"; then TOOLS="vegeta,autocannon"; fi
+  if [ -z "$TOOLS" ] && ask "Also set up the load-test tools (wperfk, the default engine; vegeta; and autocannon with a private Node.js)?"; then TOOLS="wperfk,vegeta,autocannon"; fi
   if [ -n "$TOOLS" ]; then
     # shellcheck disable=SC2046
     "$BIN_DIR/gatf" tools install $(printf '%s' "$TOOLS" | tr ',' ' ') || warn "tool setup failed — they will auto-provision on first use"

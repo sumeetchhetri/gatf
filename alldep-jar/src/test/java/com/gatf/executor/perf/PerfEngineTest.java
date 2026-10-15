@@ -110,6 +110,9 @@ class PerfEngineTest {
         assertThat(PerfArgs.wrk("wrk", none)).containsExactly("-c", "10", "-d", "10s", "-t", "10");
         assertThat(PerfArgs.wrk("wrk2", none)).containsExactly("-c", "10", "-R", "1000", "-d", "10s", "-t", "10", "--u_latency");
         assertThat(PerfArgs.wrk("wperfk", none)).containsExactly("-c", "10", "-d", "10s", "-t", "10");   // closed loop without a rate
+        PerformanceConfig few = new PerformanceConfig();
+        few.setConnections(5);   // Δ163m: wperfk/wrk refuse "-t 10 -c 5" ("number of connections must be >= threads")
+        assertThat(PerfArgs.wrk("wperfk", few)).containsExactly("-c", "5", "-d", "10s", "-t", "5");
     }
 
     @Test

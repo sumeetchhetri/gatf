@@ -288,11 +288,11 @@ export const testcaseSchema: CfgSchema = {
           "type": "string",
           "enum": [
             "none",
-            "wrk",
-            "wrk2",
+            "wperfk",
             "vegeta",
             "autocannon",
-            "wperfk"
+            "wrk",
+            "wrk2"
           ]
         },
         "connections": {

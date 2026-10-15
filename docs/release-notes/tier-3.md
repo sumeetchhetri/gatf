@@ -135,6 +135,9 @@ These apply without any new setting.
 - **`open edge` / `open edge-dkr` now compile.** Before, the generated code did not compile.
 - **A requested Grid now applies to plain keys too (Δ163g).** With `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` or `GATF_WITH_GRID` / `-Dgatf.withGrid` set, `open chrome|firefox|edge|ie` runs on that Grid, as the browser-modes docs describe. Before, only the `-dkr` keys did, and a plain key started a local browser. With neither set, nothing changes.
 - **Stop in the online debugger now quits the script's browser** (Δ163g). Before, Stop killed the debugged JVM outright, and a Grid or device-cloud session stayed open (holding its slot) until the Grid's idle timeout, 5 minutes by default.
+- **Grid sessions get DevTools** (Δ163k). A Grid session that advertises `se:cdp` now supports tracing, network inspection, console capture and the other DevTools features, as a local browser does. Before, they silently did nothing on a Grid.
+- **wperfk is the default load engine** (Δ163m). GATF downloads it from its [v0.1-alpha](https://github.com/sumeetchhetri/wperfk/releases/tag/v0.1-alpha) release and checks it against the release's SHA-256 file on first use, like vegeta. Flow → load (`gatf import flow`, **⚡ Load test this flow**) now writes `perfConfig.type` `wperfk` (was `vegeta`); pass `--engine vegeta` for the old output. Existing test cases keep the `type` they name. A wperfk test with no binary and no download falls back to vegeta with a `NOTICE:`.
+- **The wrk family never gets more threads than connections** (Δ163m): `-t` is capped at `-c`, which wrk and wperfk require. Before, fewer than 10 connections with the default 10 threads failed.
 
 **seleasy language**
 - **`*/` ends a block comment only inside one**, and a one-line `/* … */` is a complete comment.

@@ -62,7 +62,7 @@ exit /b 0
 
 :usage
 echo gatf ui [port] [dir]          web console (default 9080, current dir)
-echo gatf tools install [tool...]  set up load tools (vegeta autocannon)
+echo gatf tools install [tool...]  set up load tools (wperfk, the default; vegeta autocannon)
 echo gatf grid up^|down^|status [b]  official selenium/standalone-^<b^> container on :4444
 echo gatf version                  GATF + JDK versions
 echo gatf ^<args^>                   passed to the jar (-executor ^| -selenium ^| -listener ...)

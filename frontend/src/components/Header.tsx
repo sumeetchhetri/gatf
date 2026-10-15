@@ -83,7 +83,7 @@ export function Header({
             className="btn"
             disabled={loadBusy}
             onClick={onLoadTest}
-            title="Save this run's API/document requests as a load test (one case per step, vegeta, 10 users × 30 s) and run it"
+            title="Save this run's API/document requests as a load test (one case per step, wperfk, 10 users × 30 s) and run it"
           >
             {loadBusy ? 'Creating load test…' : '⚡ Load test this flow'}
           </button>

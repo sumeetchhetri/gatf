@@ -67,6 +67,11 @@ class FlowToLoadTest {
     @Test
     void theWholeFlowIsAVegetaJsonTargetsFile() throws Exception {
         ImportResult r = FlowToLoad.convert(res("recording.har"), "checkout", null, null);
+        // Δ163m: wperfk is the default engine; its closed loop of N connections needs no vegeta-style extras
+        for (TestCase tc : r.testCases) {
+            assertEquals("wperfk", tc.getPerfConfig().getType());
+            assertEquals(null, tc.getPerfConfig().getExtras());
+        }
         String t = r.sideFiles.get(FlowToLoad.TARGETS_SUFFIX);
         List<JsonNode> lines = new ArrayList<JsonNode>();
         ObjectMapper om = new ObjectMapper();

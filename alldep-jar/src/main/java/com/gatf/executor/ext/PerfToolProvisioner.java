@@ -51,8 +51,11 @@ import com.gatf.executor.core.GatfExecutorConfig;
  * Cache dir: -Dgatf.tools.dir, else $GATF_TOOLS_DIR, else ~/.gatf/tools/&lt;os&gt;-&lt;arch&gt;.
  *
  * delta-077 policy — least resistance per OS, host binaries first:
- *   vegeta, autocannon  DEFAULT engines, auto-set-up on every OS (vegeta: official release binary;
- *                       autocannon: host node, else a portable Node LTS from nodejs.org, SHA-256 checked).
+ *   wperfk              Δ163m: THE DEFAULT engine (decision D-5), auto-downloaded on every OS from its GitHub
+ *                       release (SHA-256 checked); if that fails (offline, no asset for this OS) the test falls
+ *                       back to vegeta with a notice.
+ *   vegeta, autocannon  auto-set-up on every OS (vegeta: official release binary; autocannon: host node, else a
+ *                       portable Node LTS from nodejs.org, SHA-256 checked).
  *   wrk, wrk2           configured path → cache → PATH (brew/apt) → `docker exec` into the gatf-loadgen
  *                       container wherever Docker is running ({@link DockerLoadgen}) → otherwise the test
  *                       FALLS BACK to vegeta with an explicit reduced-capability notice. GATF no longer
@@ -60,6 +63,8 @@ import com.gatf.executor.core.GatfExecutorConfig;
  * Use {@link #command} (full launch prefix) rather than {@link #resolve} (single path, legacy).
  *
  * Per-tool download strategy (verified asset naming):
+ *   wperfk     — GitHub release (tag v&lt;ver&gt;): wperfk_&lt;ver&gt;_&lt;os&gt;_&lt;arch&gt;.tar.gz ; windows: .zip ;
+ *                os=linux|darwin|windows|freebsd, arch=amd64|arm64; checked against wperfk_&lt;ver&gt;_checksums.txt.
  *   vegeta     — GitHub release binary. unix: vegeta_&lt;ver&gt;_&lt;os&gt;_&lt;arch&gt;.tar.gz ;
  *                windows: vegeta_&lt;ver&gt;_windows_&lt;arch&gt;.zip . os=linux|darwin, arch=amd64|arm64.
  *   autocannon — Node CLI. `npm i --prefix &lt;cache&gt;/autocannon autocannon@&lt;ver&gt;` →
@@ -67,7 +72,7 @@ import com.gatf.executor.core.GatfExecutorConfig;
  *   wrk / wrk2 — no official prebuilt binaries and no native Windows port: host install or Docker only.
  *   node       — portable nodejs.org build (tar.gz / win zip) + SHASUMS256.txt verification.
  *
- * Versions are pinned but overridable: -Dgatf.vegeta.version (default 12.12.0),
+ * Versions are pinned but overridable: -Dgatf.wperfk.version (default 0.1-alpha), -Dgatf.vegeta.version (default 12.12.0),
  * -Dgatf.autocannon.version (default 7), -Dgatf.node.version (exact; default newest LTS in
  * <base>/index.json), -Dgatf.node.baseUrl (mirror / air-gapped; default https://nodejs.org/dist).
  *
@@ -79,6 +84,8 @@ import com.gatf.executor.core.GatfExecutorConfig;
 public class PerfToolProvisioner {
 
     private static final String DEFAULT_VEGETA_VERSION = "12.12.0";
+    /** Δ163m: the wperfk release GATF downloads (tag {@code v<ver>}; the asset names drop the 'v'). */
+    static final String DEFAULT_WPERFK_VERSION = "0.1-alpha";
     private static final String DEFAULT_AUTOCANNON_VERSION = "7";
     private static final String DEFAULT_NODE_BASE = "https://nodejs.org/dist";
 
@@ -136,10 +143,46 @@ public class PerfToolProvisioner {
         if (onPath != null) return onPath;
 
         // 4. download / install
+        if ("wperfk".equals(key)) return provisionWperfk();
         if ("vegeta".equals(key)) return provisionVegeta();
         if ("autocannon".equals(key)) return null; // node-hosted: use command("autocannon")
         if ("node".equals(key)) return provisionNode();
-        return null; // wrk / wrk2: host install or Docker only; wperfk: host install (see command())
+        return null; // wrk / wrk2: host install or Docker only (see command())
+    }
+
+    // ---------------------------------------------------------------- wperfk (Δ163m: the default engine)
+
+    /** The release asset for this machine, e.g. {@code wperfk_0.1-alpha_linux_amd64.tar.gz}. */
+    static String wperfkAsset(String ver) {
+        String os = SystemUtils.IS_OS_WINDOWS ? "windows" : SystemUtils.IS_OS_MAC ? "darwin"
+                : SystemUtils.IS_OS_FREE_BSD ? "freebsd" : "linux";
+        return "wperfk_" + ver + "_" + os + "_" + vegetaArch() + (SystemUtils.IS_OS_WINDOWS ? ".zip" : ".tar.gz");
+    }
+
+    private static String provisionWperfk() throws Exception {
+        String ver = prop("gatf.wperfk.version", DEFAULT_WPERFK_VERSION);
+        if (ver.startsWith("v")) ver = ver.substring(1);
+        String asset = wperfkAsset(ver);
+        String base = "https://github.com/sumeetchhetri/wperfk/releases/download/v" + ver + "/";
+        File dir = toolDir("wperfk");
+        dir.mkdirs();
+        File archive = new File(dir, asset);
+        download(base + asset, archive);
+        verifySha256(base + "wperfk_" + ver + "_checksums.txt", "wperfk", asset, archive);
+        if (SystemUtils.IS_OS_WINDOWS) {
+            ZipUtil.unpack(archive, dir);
+        } else {
+            extractTarGz(archive, dir);
+        }
+        archive.delete();
+        File bin = new File(dir, exeName("wperfk"));
+        if (!bin.exists()) {
+            File found = findFile(dir, exeName("wperfk"));
+            if (found != null) bin = found;
+        }
+        if (!bin.exists()) throw new IllegalStateException("wperfk binary not found after extracting " + asset);
+        makeExecutable(bin);
+        return bin.getAbsolutePath();
     }
 
     // ---------------------------------------------------------------- vegeta
@@ -180,11 +223,16 @@ public class PerfToolProvisioner {
     // SHA-256 against the release's vegeta_<ver>_checksums.txt. A mismatch aborts (tampered/corrupt);
     // an unreachable checksums file only warns (e.g. a mirror without it).
     private static void verifyVegeta(String ver, String asset, File archive) throws Exception {
-        File sums = new File(archive.getParentFile(), "vegeta_" + ver + "_checksums.txt");
+        verifySha256("https://github.com/tsenart/vegeta/releases/download/v" + ver + "/vegeta_" + ver + "_checksums.txt", "vegeta", asset, archive);
+    }
+
+    // Δ163m: shared by vegeta and wperfk (both publish a GoReleaser-style "<sha256>  <asset>" checksums file)
+    private static void verifySha256(String sumsUrl, String tool, String asset, File archive) throws Exception {
+        File sums = new File(archive.getParentFile(), sumsUrl.substring(sumsUrl.lastIndexOf('/') + 1));
         try {
-            download("https://github.com/tsenart/vegeta/releases/download/v" + ver + "/" + sums.getName(), sums);
+            download(sumsUrl, sums);
         } catch (Exception e) {
-            System.err.println("[gatf] WARNING: could not fetch vegeta checksums (" + e.getMessage() + ") — archive not verified");
+            System.err.println("[gatf] WARNING: could not fetch " + tool + " checksums (" + e.getMessage() + ") — archive not verified");
             return;
         }
         try {
@@ -235,7 +283,7 @@ public class PerfToolProvisioner {
      *   vegeta     → [vegeta]
      *   autocannon → [autocannonPath] | [node, &lt;cache&gt;/autocannon/node_modules/autocannon/autocannon.js]
      *   wrk, wrk2  → [path] (configured / cache / PATH) | [docker, exec, -i, &lt;container&gt;, wrk] | null
-     *   wperfk     → [path] (wperfkPath / cache / PATH) | null
+     *   wperfk     → [path] (wperfkPath / cache / PATH / download) | null (→ vegeta)
      */
     public static List<String> command(String tool, GatfExecutorConfig cfg) {
         String key = tool == null ? "" : tool.trim().toLowerCase(Locale.ROOT);
@@ -254,7 +302,7 @@ public class PerfToolProvisioner {
             }
         }
         if ("wperfk".equals(key)) {
-            String p = resolve(key, cfg); // configured → cache → PATH; no download yet, no Docker image
+            String p = resolve(key, cfg); // configured → cache → PATH → release download (Δ163m); no Docker image
             return isRunnableFile(p) ? Arrays.asList(p) : null;
         }
         if ("wrk".equals(key) || "wrk2".equals(key)) {
@@ -550,13 +598,13 @@ public class PerfToolProvisioner {
 
     /**
      * CLI: pre-provision one or more tools (handy for CI / air-gapped prep / Windows validation).
-     * Usage: java -cp gatf.jar com.gatf.executor.ext.PerfToolProvisioner [vegeta] [autocannon] [wrk] [wrk2]
+     * Usage: java -cp gatf.jar com.gatf.executor.ext.PerfToolProvisioner [wperfk] [vegeta] [autocannon] [wrk] [wrk2]
      * Prints the launch command each tool resolves to on this machine (UNAVAILABLE → vegeta fallback).
      */
     public static void main(String[] args) {
         String[] tools = (args != null && args.length > 0)
                 ? args
-                : new String[] { "vegeta", "autocannon", "wrk", "wrk2", "wperfk" };
+                : new String[] { "wperfk", "vegeta", "autocannon", "wrk", "wrk2" };
         Map<String, String> results = new LinkedHashMap<String, String>();
         for (String t : tools) {
             List<String> c = command(t, null);

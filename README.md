@@ -45,9 +45,9 @@ Java 21 jar with a web console, a trace viewer, a step debugger and a VS Code ex
 ### Performance, concurrent users, load and distributed testing
 - **Performance mode:** run a case N times (`numberOfExecutions`) with timing statistics and percentile ("TA") reports.
 - **Concurrent-user simulation:** N users with ramp-up, optionally each with its own credentials from a data provider (`authDataProvider`). Runs on virtual threads.
-- **Load testing:** time-boxed suite replay on the embedded engine, with live charts. A test case can instead delegate to **vegeta**, **autocannon**, **wrk/wrk2** or **wperfk** (`perfConfig`), or to your own engine from `plugins/`; vegeta and autocannon are auto-provisioned and checksum-verified, wrk/wrk2 fall back to Docker, and wperfk ships prebuilt binaries for Linux, macOS, Windows and FreeBSD from [v0.1-alpha](https://github.com/sumeetchhetri/wperfk/releases/tag/v0.1-alpha) ([details and install](docs/load-tools.md#installing-wperfk)).
+- **Load testing:** time-boxed suite replay on the embedded engine, with live charts. A test case can instead delegate to a load tool (`perfConfig`): **[wperfk](https://github.com/sumeetchhetri/wperfk)**, the default (wrk/wrk2-compatible with Lua scripts, any OS, downloaded from its [v0.1-alpha](https://github.com/sumeetchhetri/wperfk/releases/tag/v0.1-alpha) release and checksum-verified on first use), or **vegeta**, **autocannon**, **wrk/wrk2**, or your own engine from `plugins/`. vegeta and autocannon are auto-provisioned too, wrk/wrk2 fall back to Docker, and any tool that can't be set up falls back to vegeta with a notice ([details](docs/load-tools.md)).
 - **UI load:** the same concurrency applies to seleasy suites.
-- **Flow → load:** in the Trace Viewer, **⚡ Load test this flow** turns a UI run's API and document requests (static assets, preflights and cookies dropped, as in the HAR import) into `<script>-load.xml`: one case per step, named `METHOD /path`, each with a `perfConfig` (vegeta, 10 users, 30 s). The file is saved in the test directory and the console starts it right away in Execute. Beside it, `<script>-load.targets.jsonl` holds the whole flow as vegeta JSON targets (`vegeta attack -format=json -targets=…`). From the CLI: `gatf import flow network.har [--users N] [--duration S] [--rate R] [--engine vegeta|autocannon|wrk|wrk2|wperfk]`, which also prints the `loadConfig` keys for a concurrent-users run of the flow.
+- **Flow → load:** in the Trace Viewer, **⚡ Load test this flow** turns a UI run's API and document requests (static assets, preflights and cookies dropped, as in the HAR import) into `<script>-load.xml`: one case per step, named `METHOD /path`, each with a `perfConfig` (wperfk, 10 users, 30 s). The file is saved in the test directory and the console starts it right away in Execute. Beside it, `<script>-load.targets.jsonl` holds the whole flow as vegeta JSON targets (`vegeta attack -format=json -targets=…`). From the CLI: `gatf import flow network.har [--users N] [--duration S] [--rate R] [--engine wperfk|vegeta|autocannon|wrk|wrk2]` (engine default: wperfk), which also prints the `loadConfig` keys for a concurrent-users run of the flow.
 - **Distributed load:** `gatf -listener` agents on other machines, over a TLS, shared-secret-authenticated transport. The console shows aggregated live results per node.
 - **Distributed traces:** UI runs on `gatf -listener` agents stream each kept `trace.zip` back to the coordinator, which verifies it (size cap, SHA-256, zip only, never extracted) and stores it under `<out>/dist-traces/<run>/<node>/`. `<out>/distributed-traces.html` (and `.json`) links every trace and marks missing, oversized or rejected ones; `gatf merge-reports` carries the links over. Caps: `-Dgatf.dist.trace.maxBytes` (default 256 MiB, `0` = no transfer) and `-Dgatf.dist.trace.maxCount` (default 2000). Older agents keep working, without traces.
 - **Distributed results:** the coordinator extracts only a node's expected report files from its results zip (top-level `*.html`/`*.csv`, or `DRun-<index>…` for UI runs; no paths, links or duplicates), capped at 1 GiB per node (`-Dgatf.distributed.resultsMaxBytes` / `GATF_DISTRIBUTED_RESULTS_MAX_BYTES`); anything else is skipped with a log line.
@@ -264,7 +264,7 @@ goto https://example.com/login
 | `gatf -validate-sel <file.sel> <config>` | Parse and compile a script without running it |
 | `gatf -generator <config>` | Generate API test cases from JAX-RS / Spring controllers or WSDL |
 | `gatf -listener` | Start a distributed-execution agent |
-| `gatf tools install …` | Provision the load tools (vegeta, autocannon, wrk/wrk2) |
+| `gatf tools install …` | Provision the load tools ahead of first use (wperfk, vegeta, autocannon, wrk/wrk2) |
 | `gatf version` | Print the installed version |
 
 JVM flags go in `GATF_JAVA_OPTS` (for example `GATF_JAVA_OPTS="-Dgatf.log.level=debug"`).
@@ -430,7 +430,7 @@ Set `GATF_CLOUD=browserstack|saucelabs|lambdatest` (or `-Dgatf.cloud`) and the v
 | [seleasy language reference](docs/seleasy/REFERENCE.md) | Every statement, grouped by task, with examples |
 | [Configuration and test cases](docs/configuration.md) | Executor config (all options), API test case fields and formats, data sources and providers, Maven plugin, test generator |
 | [Browser modes](docs/browser-modes.md) | Local, chrome-headless-shell, or Selenium Grid |
-| [Load tools](docs/load-tools.md) | vegeta, autocannon, wrk/wrk2 and the embedded engine |
+| [Load tools](docs/load-tools.md) | wperfk (default), vegeta, autocannon, wrk/wrk2 and the embedded engine |
 | [Windows support](docs/WINDOWS-SUPPORT.md) | Windows-specific notes |
 | [VS Code extension](vscode-extension/README.md) | Language server and debugger |
 | [End-to-end tests](e2e/README.md) | How GATF tests itself |

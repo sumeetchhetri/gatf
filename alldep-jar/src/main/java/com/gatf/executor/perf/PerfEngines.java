@@ -69,7 +69,7 @@ public final class PerfEngines {
                 (c, tc, tcr, s) -> WrkTestCaseExecutor.execute(c, tc, tcr, s, "wrk")));
         add(new Builtin("wrk2", "constant rate (-R), corrected latency (host / Docker, else vegeta)",
                 (c, tc, tcr, s) -> WrkTestCaseExecutor.execute(c, tc, tcr, s, "wrk2")));
-        add(new Builtin("wperfk", "wrk/wrk2-compatible, any OS, Lua scripts (wperfkPath / PATH, else vegeta)",
+        add(new Builtin("wperfk", "the default: wrk/wrk2-compatible, any OS, Lua scripts (auto-downloaded; else vegeta)",
                 (c, tc, tcr, s) -> WrkTestCaseExecutor.execute(c, tc, tcr, s, "wperfk")));
     }
 

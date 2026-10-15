@@ -52,7 +52,7 @@ public class VegetaTestCaseExecutor {
 	}
 
 	static String fallbackNotice(String from, boolean hadScript) {
-		return "NOTICE: " + from + " is not available here (no configured/PATH binary" + ("wperfk".equals(from) ? "" : ", no Docker for the gatf-loadgen container") + ") — "
+		return "NOTICE: " + from + " is not available here (no configured/PATH binary" + ("wperfk".equals(from) ? ", and the release download failed" : ", no Docker for the gatf-loadgen container") + ") — "
 				+ "this test ran on vegeta instead. Reduced capabilities: no Lua scripting"
 				+ (hadScript ? " (perfConfig.filePath was ignored)" : "")
 				+ "; vegeta's report format/percentiles instead of wrk's; "
@@ -60,7 +60,7 @@ public class VegetaTestCaseExecutor {
 						: "wperfk".equals(from) ? "constant-rate attack when perfConfig.rate is set (as wperfk -R), else an open-loop max-rate attack."
 						: "open-loop max-rate attack approximates wrk's closed-loop max throughput.")
 				+ ("wperfk".equals(from)
-						? " For native wperfk: download a release from github.com/sumeetchhetri/wperfk and set wperfkPath, or put it on PATH (see docs/load-tools.md)."
+						? " For native wperfk: allow the download from github.com/sumeetchhetri/wperfk (or run `gatf tools install wperfk` once online), or set wperfkPath (see docs/load-tools.md)."
 						: " For native " + from + ": install it (brew/apt), set " + from + "Path, or run Docker (see docs/load-tools.md).");
 	}
 

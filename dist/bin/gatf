@@ -33,7 +33,7 @@ usage() {
   cat <<USAGE
 gatf $(cat "$GATF_DIR/VERSION" 2>/dev/null)
   gatf ui [port] [dir]          web console (default 9080, current dir; host \$GATF_UI_HOST or 127.0.0.1)
-  gatf tools install [tool...]  set up load tools (vegeta autocannon; wrk/wrk2 via host or Docker)
+  gatf tools install [tool...]  set up load tools (wperfk, the default; vegeta autocannon; wrk/wrk2 via host or Docker)
   gatf grid up|down|status [b]  official selenium/standalone-<b> container on :4444 (b: chrome|firefox|edge)
   gatf version                  GATF + JDK versions
   gatf <args>                   passed to the jar, e.g. -executor gatf-config.json | -selenium ... | -listener ...

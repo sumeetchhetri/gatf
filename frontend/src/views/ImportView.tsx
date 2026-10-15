@@ -59,7 +59,7 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
     label: 'Flow → load',
     accept: '.har,.json,application/json',
     ext: '.xml',
-    hint: "A UI run's network.har (inside its trace zip). Each API/document request becomes a load-test case (vegeta, 10 users, 30 s; change them in the file or with gatf import flow --users/--duration), and <name>.targets.jsonl holds the whole flow for vegeta. Faster: Load test this flow in the Trace Viewer.",
+    hint: "A UI run's network.har (inside its trace zip). Each API/document request becomes a load-test case (wperfk, 10 users, 30 s; change them in the file or with gatf import flow --users/--duration/--engine), and <name>.targets.jsonl holds the whole flow for vegeta. Faster: Load test this flow in the Trace Viewer.",
   },
 };
 

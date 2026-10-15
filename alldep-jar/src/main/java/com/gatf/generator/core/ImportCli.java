@@ -33,7 +33,7 @@ final class ImportCli {
 
     static final String USAGE = "gatf import <" + String.join("|", Importers.TYPES) + "> <file|-> [-o <out-file>] "
             + "[--name <suite>] [--filter <url-regex>] [--negative] [--force]\n"
-            + "          flow (a run's network.har → load test): [--users N] [--duration S] [--rate R] [--engine vegeta|autocannon|wrk|wrk2|wperfk]";
+            + "          flow (a run's network.har → load test): [--users N] [--duration S] [--rate R] [--engine wperfk|vegeta|autocannon|wrk|wrk2] (default wperfk)";
 
     private ImportCli() {}
 

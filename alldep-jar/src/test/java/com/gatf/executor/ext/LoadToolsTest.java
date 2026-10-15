@@ -54,6 +54,17 @@ class LoadToolsTest {
                 "-i", body.getAbsolutePath(), "-H", "X-Q=x&y|z", "http://h/p?a=1&b=2");
     }
 
+    /** Δ163m: wperfk is downloaded by name; this machine's asset must be one the v0.1-alpha release publishes. */
+    @Test
+    void wperfkAssetIsAPublishedReleaseFile() {
+        List<String> published = Arrays.asList(
+                "wperfk_0.1-alpha_darwin_amd64.tar.gz", "wperfk_0.1-alpha_darwin_arm64.tar.gz", "wperfk_0.1-alpha_darwin_universal.tar.gz",
+                "wperfk_0.1-alpha_freebsd_amd64.tar.gz", "wperfk_0.1-alpha_linux_amd64.tar.gz", "wperfk_0.1-alpha_linux_arm64.tar.gz",
+                "wperfk_0.1-alpha_windows_amd64.zip", "wperfk_0.1-alpha_windows_arm64.zip");
+        assertThat(published).contains(PerfToolProvisioner.wperfkAsset(PerfToolProvisioner.DEFAULT_WPERFK_VERSION));
+        assertThat(VegetaTestCaseExecutor.fallbackNotice("wperfk", false)).contains("release download failed").contains("gatf tools install wperfk");
+    }
+
     @Test
     void fallbackNoticeNamesTheLoss() {
         assertThat(VegetaTestCaseExecutor.fallbackNotice("wrk2", true)).contains("no Lua scripting")

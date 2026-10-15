@@ -46,20 +46,22 @@ public final class FlowToLoad {
     public static final String TARGETS_SUFFIX = ".targets.jsonl";
     /** perfConfig.extras for native vegeta: a closed loop of {@code connections} workers (see VegetaRunner.closedLoopWorkers). */
     public static final String CLOSED_LOOP = "closed=1";
-    public static final List<String> ENGINES = List.of("vegeta", "autocannon", "wrk", "wrk2", "wperfk");
+    public static final List<String> ENGINES = List.of("wperfk", "vegeta", "autocannon", "wrk", "wrk2");
+    /** Δ163m: wperfk is the default load engine (decision D-5). */
+    public static final String DEFAULT_ENGINE = "wperfk";
 
     public static final class Options {
         public int users = 10;
         public int durationSeconds = 30;
         /** requests/second for rate-driven engines (vegeta, wrk2); 0 = the engine's default */
         public int rate = 0;
-        public String engine = "vegeta";
+        public String engine = DEFAULT_ENGINE;
 
         public Options validate() {
             if (users < 1 || users > 100_000) throw new IllegalArgumentException("users must be 1..100000");
             if (durationSeconds < 1 || durationSeconds > 24 * 3600) throw new IllegalArgumentException("duration must be 1..86400 seconds");
             if (rate < 0) throw new IllegalArgumentException("rate must be >= 0");
-            engine = engine == null ? "vegeta" : engine.trim().toLowerCase(Locale.ROOT);
+            engine = engine == null ? DEFAULT_ENGINE : engine.trim().toLowerCase(Locale.ROOT);
             if (!ENGINES.contains(engine)) throw new IllegalArgumentException("engine must be one of " + ENGINES);
             return this;
         }

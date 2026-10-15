@@ -33,7 +33,8 @@ public final class PerfArgs {
     /** Defaults shared by the wrk family: 10 connections, 10 s, 10 threads; wrk2 needs a rate (1000/s). */
     public static int connections(PerformanceConfig pc) { return pc.getConnections() > 0 ? pc.getConnections() : 10; }
     public static int duration(PerformanceConfig pc) { return pc.getDurationSeconds() > 0 ? pc.getDurationSeconds() : 10; }
-    public static int threads(PerformanceConfig pc) { return pc.getThreads() > 0 ? pc.getThreads() : 10; }
+    /** Δ163m: never more threads than connections: the wrk family refuses that ("number of connections must be >= threads"). */
+    public static int threads(PerformanceConfig pc) { return Math.min(pc.getThreads() > 0 ? pc.getThreads() : 10, connections(pc)); }
 
     /**
      * wrk / wrk2 / wperfk flags: {@code -c -R -d -t [--timeout] [--latency] [--u_latency]}. wrk2 always sends a rate

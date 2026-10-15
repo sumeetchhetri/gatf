@@ -15,7 +15,7 @@
 # GATF installer — Windows (x64 / ARM64), Windows PowerShell 5.1+ or PowerShell 7.
 #   online :  irm https://github.com/sumeetchhetri/gatf/releases/latest/download/install.ps1 | iex
 #             (options when piped: set $env:GATF_VERSION / GATF_YES=1 / GATF_JDK / GATF_WITH_TOOLS first,
-#              or: & ([scriptblock]::Create((irm <url>))) -Yes -WithTools vegeta,autocannon)
+#              or: & ([scriptblock]::Create((irm <url>))) -Yes -WithTools wperfk,vegeta,autocannon)
 #   offline:  powershell -ExecutionPolicy Bypass -File .\gatf-<ver>\install.ps1
 # Per-user (no admin): %LOCALAPPDATA%\gatf, user PATH. Needs Java 21+ — a JRE is enough (tests compile with
 # the bundled ECJ); only the online debugger needs a JDK (jdk.jdi + jdk.jdwp.agent). Detects installed Java
@@ -213,7 +213,7 @@ try {
     # -------------------------------------------------------------- optional load tools
     if (-not $NoTools -and $IsWin) {
         $tools = $WithTools
-        if (-not $tools -and (Ask 'Also set up the load-test tools (vegeta, and autocannon with a private Node.js)?')) { $tools = 'vegeta,autocannon' }
+        if (-not $tools -and (Ask 'Also set up the load-test tools (wperfk, the default engine; vegeta; and autocannon with a private Node.js)?')) { $tools = 'wperfk,vegeta,autocannon' }
         if ($tools) {
             & (Join-Path $BinShim 'gatf.cmd') tools install @($tools -split ',')
             if ($LASTEXITCODE -ne 0) { Write-Warning 'tool setup failed - they will auto-provision on first use' }

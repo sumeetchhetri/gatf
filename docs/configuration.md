@@ -290,7 +290,7 @@ CSV rows. GATF discovers every file under `testCaseDir` (ordered by file name wh
 | `workflowContextParameterMap` | Capture values for later tests: response nodes, `#responseHeader[..]`, `#responseCookie[..]`, `#responseMappedValue[..]`, `#responseMappedCount[..]` |
 | `repeatScenarios` / `repeatScenarioProviderName` | Run the same case once per scenario row (inline or from a data provider) |
 | `numberOfExecutions` | Performance mode: run N times and report timings |
-| `perfConfig` | Hand the case to a load tool: `type` (`vegeta`, `autocannon`, `wrk`, `wrk2`, `wperfk`, or a plugins/ engine), `threads`, `connections`, `durationSeconds`, `rate`, `timeout`, `filePath` |
+| `perfConfig` | Hand the case to a load tool: `type` (`wperfk`, the default choice; `vegeta`, `autocannon`, `wrk`, `wrk2`, or a plugins/ engine), `threads`, `connections`, `durationSeconds`, `rate`, `timeout`, `filePath` |
 | `relatedTestName` | Run another named case as a dependency |
 | `executeOnCondition` | Velocity expression; when false the case is skipped (the condition is recorded as the reason) |
 | `preWaitMs`, `postWaitMs` | Delays around the call |
