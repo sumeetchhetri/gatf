@@ -81,6 +81,9 @@ jobs:
         env:
           # advertise se:cdp / BiDi websocket URLs on the address the runner can reach
           SE_NODE_GRID_URL: http://localhost:4444
+          # Δ163f: more than the default single browser slot, so one spec's session never queues another's
+          SE_NODE_MAX_SESSIONS: '4'
+          SE_NODE_OVERRIDE_MAX_SESSIONS: 'true'
     steps:
     - uses: actions/checkout@v4
 

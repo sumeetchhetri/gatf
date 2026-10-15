@@ -30,6 +30,9 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 10_000 },
   fullyParallel: false, // one shared GATF server instance
+  // Δ163f: files also run one at a time on CI: the Grid-gated specs (debugger, workflow) share one Grid, and a
+  // second file's session made the debugger's `open chrome` wait in the Grid queue past the step timeout
+  workers: process.env.CI ? 1 : undefined,
   retries: 0,
   reporter: 'list',
   use: {
