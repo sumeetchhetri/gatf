@@ -95,17 +95,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v150.dom.DOM;
-import org.openqa.selenium.devtools.v150.dom.model.Node;
-import org.openqa.selenium.devtools.v150.dom.model.NodeId;
-import org.openqa.selenium.devtools.v150.fetch.Fetch;
-import org.openqa.selenium.devtools.v150.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v150.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v150.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v150.log.Log;
-import org.openqa.selenium.devtools.v150.network.Network;
-import org.openqa.selenium.devtools.v150.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v150.target.Target;
+import org.openqa.selenium.devtools.latest.dom.DOM;
+import org.openqa.selenium.devtools.latest.dom.model.Node;
+import org.openqa.selenium.devtools.latest.dom.model.NodeId;
+import org.openqa.selenium.devtools.latest.fetch.Fetch;
+import org.openqa.selenium.devtools.latest.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.latest.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.latest.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.latest.log.Log;
+import org.openqa.selenium.devtools.latest.network.Network;
+import org.openqa.selenium.devtools.latest.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.latest.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.interactions.Pause;
 import org.openqa.selenium.interactions.PointerInput;
@@ -171,6 +171,15 @@ final class BrowserDrivers {
 
 	private BrowserDrivers() {}
 
+	/** Δ163k: the Grid session with its advertised extras (se:cdp → HasDevTools); the plain driver if augmenting fails. */
+	static WebDriver augmented(RemoteWebDriver d) {
+		try {
+			return new Augmenter().augment(d);
+		} catch (RuntimeException e) {
+			return d;
+		}
+	}
+
 	static WebDriver create(String browserName, org.openqa.selenium.Capabilities caps, AcceptanceTestContext ___cxt___) {
 		// G9: tracing over WebDriver BiDi needs the session to negotiate a BiDi socket ('webSocketUrl').
 		// Non-Chromium browsers (Firefox, Safari) have no CDP, so they always trace over BiDi; Chrome/Edge
@@ -193,7 +202,9 @@ final class BrowserDrivers {
 		String __gridUrl = "safari".equals(browserName) ? SeleniumGrid.explicitRemoteUrl() : SeleniumGrid.remoteUrl(browserName);
 		if (__gridUrl != null && !__gridUrl.trim().isEmpty()) {
 			try {
-				return new RemoteWebDriver(new URL(__gridUrl.trim()), caps);
+				// Δ163k: augment, so a Grid session that advertises se:cdp is a HasDevTools like a local one. A plain
+				// RemoteWebDriver never is, so tracing (and every other DevTools feature) silently did nothing on a Grid.
+				return augmented(new RemoteWebDriver(new URL(__gridUrl.trim()), caps));
 			} catch (java.net.MalformedURLException e) {
 				throw new RuntimeException("Invalid SELENIUM_REMOTE_URL: " + __gridUrl, e);
 			}

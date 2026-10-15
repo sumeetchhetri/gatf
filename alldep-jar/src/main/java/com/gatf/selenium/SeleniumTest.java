@@ -95,17 +95,17 @@ import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.devtools.DevTools;
 import org.openqa.selenium.devtools.HasDevTools;
-import org.openqa.selenium.devtools.v150.dom.DOM;
-import org.openqa.selenium.devtools.v150.dom.model.Node;
-import org.openqa.selenium.devtools.v150.dom.model.NodeId;
-import org.openqa.selenium.devtools.v150.fetch.Fetch;
-import org.openqa.selenium.devtools.v150.fetch.model.HeaderEntry;
-import org.openqa.selenium.devtools.v150.fetch.model.RequestPattern;
-import org.openqa.selenium.devtools.v150.fetch.model.RequestStage;
-import org.openqa.selenium.devtools.v150.log.Log;
-import org.openqa.selenium.devtools.v150.network.Network;
-import org.openqa.selenium.devtools.v150.page.Page.PrintToPDFResponse;
-import org.openqa.selenium.devtools.v150.target.Target;
+import org.openqa.selenium.devtools.latest.dom.DOM;
+import org.openqa.selenium.devtools.latest.dom.model.Node;
+import org.openqa.selenium.devtools.latest.dom.model.NodeId;
+import org.openqa.selenium.devtools.latest.fetch.Fetch;
+import org.openqa.selenium.devtools.latest.fetch.model.HeaderEntry;
+import org.openqa.selenium.devtools.latest.fetch.model.RequestPattern;
+import org.openqa.selenium.devtools.latest.fetch.model.RequestStage;
+import org.openqa.selenium.devtools.latest.log.Log;
+import org.openqa.selenium.devtools.latest.network.Network;
+import org.openqa.selenium.devtools.latest.page.Page.PrintToPDFResponse;
+import org.openqa.selenium.devtools.latest.target.Target;
 import org.openqa.selenium.interactions.Actions;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
@@ -4367,7 +4367,7 @@ public abstract class SeleniumTest {
 			devTools.createSession();
 			devTools.clearListeners();
 			devTools.send(Network.setCacheDisabled(true));
-			devTools.send(org.openqa.selenium.devtools.v150.security.Security.setIgnoreCertificateErrors(true));
+			devTools.send(org.openqa.selenium.devtools.latest.security.Security.setIgnoreCertificateErrors(true));
 			
 			if(logconsole) {
 				devTools.send(Log.enable());
@@ -4431,7 +4431,7 @@ public abstract class SeleniumTest {
 								}
 								headerMap.put(he.getName(), he.getValue());
 							}
-							org.openqa.selenium.devtools.v150.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
+							org.openqa.selenium.devtools.latest.fetch.Fetch.GetResponseBodyResponse firsb = devTools.send(Fetch.getResponseBody(requestPaused.getRequestId()));
 							String body = firsb.getBody();
 							if(firsb.getBase64Encoded()) {
 								try {
@@ -4578,7 +4578,7 @@ public abstract class SeleniumTest {
 			});
 			devTools.addListener(Network.responseReceived(), responseReceived -> {
 				if(NETWORK_INSPECTION.containsKey(sessionId) && responseReceived.getRequestId().toString().equals(NETWORK_INSPECTION.get(sessionId)[2])) {
-					org.openqa.selenium.devtools.v150.network.model.Response response = responseReceived.getResponse();
+					org.openqa.selenium.devtools.latest.network.model.Response response = responseReceived.getResponse();
 					System.out.println("Matched inspection request [" + method + "@" + murl + "] on CDP session " + devTools.getCdpSession().toString());
 					Headers headers = response.getHeaders();
 					String mimeType = null;

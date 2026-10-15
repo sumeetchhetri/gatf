@@ -122,7 +122,7 @@ jobs:
     - name: Trace e2e (full recorder suite, validated by validate-trace.mjs)
       env:
         SELENIUM_REMOTE_URL: http://localhost:4444
-      run: tools/smoke/trace-e2e.sh
+      run: bash tools/smoke/trace-e2e.sh
 
     - name: Upload e2e artifacts
       if: failure()

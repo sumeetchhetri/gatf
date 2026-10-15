@@ -10,22 +10,19 @@ Phase-0 delta; nothing here changes runtime behaviour.
 | Thing | Value | Where |
 |-------|-------|-------|
 | Selenium | `4.48.0` | `pom.xml` → `<selenium.version>` |
-| DevTools/CDP binding | `v150` (primary) | imports `org.openqa.selenium.devtools.v150.*` |
-| DevTools/CDP binding | `v124` (one stray) | a single `devtools.v124.network.model` import |
+| DevTools/CDP binding | `latest` (Δ163k; was `v150`) | imports `org.openqa.selenium.devtools.latest.*` (`selenium-devtools-latest`, a `selenium-java` dependency) |
 | Appium client | `io.appium:java-client` | `pom.xml` |
 | Java target | `11` | build target (compiles under a newer JDK) |
 
 The CDP domain classes (`network`, `page`, `fetch`, `log`, `dom`, `security`,
-`target`, …) are **version-pinned**: they live in the `devtools.vNNN` package
-that ships inside a specific Selenium release. Bumping Selenium moves that
-package (e.g. `v150` → `v151`), so every `devtools.vNNN.*` import — in both the
-overrides below and the recorders/interceptors — must be re-pointed in lockstep.
-That lockstep is the "CDP vNNN pinning pain"; decision **D-2** removes it by
-adding a BiDi transport (Grid-native, version-agnostic) behind the same
-interface, so CDP can be switched off by config once BiDi reaches parity.
-
-The stray `v124` import should be unified onto `v150` in a later phase (trivial,
-but a code change, so out of Phase-0 hygiene scope).
+`target`, …) used to be **version-pinned** to a `devtools.vNNN` package, which each Selenium
+release drops after ~3 Chrome versions, so every Selenium bump meant re-pointing every import.
+**Δ163k** moved them to `devtools.latest`, the package Selenium republishes in every release
+with its newest CDP binding. A Selenium bump is now the `selenium.version` property alone,
+unless a CDP command GATF calls changed its signature (the compiler says so). Δ163k checked
+v150 → latest(v152) for every class in the domains GATF uses: only additions, plus two changed
+signatures (`DOM.forceShowPopover`, `Page.createIsolatedWorld`) GATF does not call. Decision
+**D-2** (BiDi behind the same interface) still removes the CDP dependency over time.
 
 ## The overrides GATF ships (Selenium classpath shadowing)
 
@@ -92,7 +89,6 @@ Later phases:
 
 ### Tracked follow-ups (not Phase 0)
 
-- Unify the stray `devtools.v124` import onto `v150`.
 - Retire the custom browser images + `ci-release.yml` image push; document the
   Selenium dynamic-Grid deployment recipe from D-1 instead.
 - Remove the override classes once the transport abstraction repoints CDP.
