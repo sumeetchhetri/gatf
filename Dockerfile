@@ -1,4 +1,5 @@
-FROM ubuntu:latest
+# Δ163e: pinned (ubuntu:latest moved to a newer release with gcc 15); matches the ubuntu-24.04 runners
+FROM ubuntu:24.04
   
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -15,7 +16,8 @@ RUN npm install -g autocannon
 
 RUN git clone https://github.com/wg/wrk.git wrk
 WORKDIR /tmp/wrk
-ENV LDFLAGS="-O3 -march=native -flto"
+# Δ163e: no -march=native (the image runs on other CPUs) and no -flto (the LTO link of the LuaJIT bytecode object failed)
+ENV LDFLAGS="-O2"
 ENV CFLAGS="-I /usr/include/luajit-2.1 $LDFLAGS"
 RUN make WITH_LUAJIT=/usr WITH_OPENSSL=/usr -j "$(nproc)"
 RUN cp wrk /usr/local/bin
@@ -43,6 +45,6 @@ RUN rm -rf wrk wrk2
 # git-clone GitHub and build the hard-coded tag 5.0.0 with JDK 11, so every image/release shipped old code.
 # Tests are skipped here: CI runs them (mvn install) before this image is built.
 COPY . /tmp/gatf
-RUN cd /tmp/gatf && mvn --quiet -DskipTests install \
+RUN cd /tmp/gatf && mvn -B -ntp -DskipTests install \
  && cp "$(ls alldep-jar/target/gatf-alldep-jar-*.jar | grep -Ev -- '-(sources|javadoc)\.jar$' | head -1)" /gatf-alldep.jar \
  && cd / && rm -rf /tmp/gatf /root/.m2

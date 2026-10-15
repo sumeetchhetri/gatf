@@ -1,4 +1,6 @@
 **/node_modules
+# Δ163e: the frontend plugin's Node install; copied without its node_modules/npm it looks installed but has no npm
+**/.mvn-node
 **/target
 .git
 frontend/dist
