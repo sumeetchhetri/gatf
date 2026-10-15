@@ -80,7 +80,7 @@ class JavaEscapingTest {
         Path out = Files.createDirectories(tmp.resolve("out"));
         JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         StringWriter diag = new StringWriter();
-        boolean ok = javac.getTask(diag, null, null, Arrays.asList("-encoding", "UTF-8", "-Xlint:all", "-d", out.toString()), null,
+        boolean ok = javac.getTask(diag, null, null, Arrays.asList("-encoding", "UTF-8", "-Xlint:all", "-proc:none", "-d", out.toString()), null,
                 javac.getStandardFileManager(null, null, StandardCharsets.UTF_8).getJavaFileObjects(file.toFile())).call();
         assertTrue(ok, "javac failed:\n" + diag + "\n" + src);
         assertEquals("", diag.toString().trim(), "javac warnings");

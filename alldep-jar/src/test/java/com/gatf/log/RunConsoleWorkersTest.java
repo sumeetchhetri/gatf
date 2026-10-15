@@ -36,10 +36,16 @@ import com.gatf.log.RunConsole.Status;
 /** M7: RunConsole stays line-atomic with parallel workers; results carry the worker lane + start offset. */
 class RunConsoleWorkersTest {
 
+    @org.junit.jupiter.api.BeforeEach
+    void plain() {
+        System.setProperty("gatf.color", "never");   // Δ163d: GITHUB_ACTIONS turns colour on; these tests read plain lines
+    }
+
     @AfterEach
     void reset() {
         RunConsole.sink = null;
         RunConsole.setShard(null);
+        System.clearProperty("gatf.color");
     }
 
     @Test

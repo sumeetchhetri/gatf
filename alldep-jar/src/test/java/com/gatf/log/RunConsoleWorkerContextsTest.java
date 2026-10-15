@@ -41,6 +41,7 @@ class RunConsoleWorkerContextsTest {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         final PrintStream ps = new PrintStream(buf, true, "UTF-8");
         RunConsole.sink = ps;
+        System.setProperty("gatf.color", "never");   // Δ163d: GITHUB_ACTIONS turns colour on; this test reads plain lines
         try {
             RunConsole.activate();
             RunConsole.suite("UI (seleasy)", null, 4, true);
@@ -92,6 +93,7 @@ class RunConsoleWorkerContextsTest {
             RunConsole.finish();
         } finally {
             RunConsole.sink = null;
+            System.clearProperty("gatf.color");
         }
     }
 }

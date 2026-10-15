@@ -56,3 +56,4 @@ alldep-jar/gatf-results.json
 dump.rdb
 commits_*.csv
 gatf-tier*-handoff.zip
+artifacts/
