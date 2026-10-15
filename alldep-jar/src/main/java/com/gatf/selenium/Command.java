@@ -5218,7 +5218,7 @@ public class Command {
         
         AcceptanceTestContext c = new AcceptanceTestContext(); 
         c.setGatfExecutorConfig(config);
-        c.validateAndInit(true);
+        c.validateAndInit(true, false);   // Δ163h: validating never cleans the out dir
         c.getWorkflowContextHandler().initializeSuiteContext(1);
         
         if(args[1].indexOf(File.separator)==-1) {

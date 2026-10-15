@@ -557,6 +557,17 @@ public class AcceptanceTestContext {
 	
 	public void validateAndInit(boolean flag) throws Exception
 	{
+		validateAndInit(flag, true);
+	}
+
+	/**
+	 * Δ163h: {@code cleanOut=false} never deletes anything under the out dir (it only makes sure the dir exists).
+	 * The debugger's debuggee JVM, -validate-sel and the generate gate pass false: they run beside a live run, and the
+	 * old clean-up (which keeps only the run dirs registered in THIS JVM) wiped the live run's out/&lt;runId&gt;/ from a
+	 * second JVM that had none registered, so the run's reports failed with FileNotFoundException.
+	 */
+	public void validateAndInit(boolean flag, boolean cleanOut) throws Exception
+	{
 		gatfExecutorConfig.validate();
 		
 		if(gatfExecutorConfig.getOutFilesBasePath()!=null)
@@ -596,7 +607,14 @@ public class AcceptanceTestContext {
 		{
 			try
 			{
-				if(gatfExecutorConfig.getOutFilesBasePath()!=null)
+				if(!cleanOut)
+				{
+					File basePath = new File(gatfExecutorConfig.getOutFilesBasePath()!=null ? gatfExecutorConfig.getOutFilesBasePath() : System.getProperty("user.dir"));
+					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
+					resource.mkdirs();
+					GatfAssert.assertTrue("Out files directory could not be created...", resource.isDirectory());
+				}
+				else if(gatfExecutorConfig.getOutFilesBasePath()!=null)
 				{
 					File basePath = new File(gatfExecutorConfig.getOutFilesBasePath());
 					File resource = new File(basePath, gatfExecutorConfig.getOutFilesDir());
@@ -667,7 +685,9 @@ public class AcceptanceTestContext {
 			File resource = new File(basePath, "out");
 			List<String> paths1 = ReportHandler.getRDirs("api");
 			List<String> paths2 = ReportHandler.getRDirs("sel");
-			if(paths1.size()==0 || paths2.size()==0) {
+			if(!cleanOut) {
+				resource.mkdirs();
+			} else if(paths1.size()==0 || paths2.size()==0) {
 				if(flag)
 				{
 					removeFolder(resource);

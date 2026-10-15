@@ -133,8 +133,8 @@ These apply without any new setting.
   - A Grid is used for Safari only when `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` is set explicitly; `GATF_WITH_GRID` never starts one for Safari.
   - `open safari` now goes through the common driver path, so tracing can request a BiDi socket.
 - **`open edge` / `open edge-dkr` now compile.** Before, the generated code did not compile.
-- **A requested Grid now applies to plain keys too (Δ163h).** With `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` or `GATF_WITH_GRID` / `-Dgatf.withGrid` set, `open chrome|firefox|edge|ie` runs on that Grid, as the browser-modes docs describe. Before, only the `-dkr` keys did, and a plain key started a local browser. With neither set, nothing changes.
-- **Stop in the online debugger now quits the script's browser** (Δ163h). Before, Stop killed the debugged JVM outright, and a Grid or device-cloud session stayed open (holding its slot) until the Grid's idle timeout, 5 minutes by default.
+- **A requested Grid now applies to plain keys too (Δ163g).** With `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` or `GATF_WITH_GRID` / `-Dgatf.withGrid` set, `open chrome|firefox|edge|ie` runs on that Grid, as the browser-modes docs describe. Before, only the `-dkr` keys did, and a plain key started a local browser. With neither set, nothing changes.
+- **Stop in the online debugger now quits the script's browser** (Δ163g). Before, Stop killed the debugged JVM outright, and a Grid or device-cloud session stayed open (holding its slot) until the Grid's idle timeout, 5 minutes by default.
 
 **seleasy language**
 - **`*/` ends a block comment only inside one**, and a one-line `/* … */` is a complete comment.

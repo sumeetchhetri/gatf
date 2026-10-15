@@ -1172,7 +1172,7 @@ public abstract class SeleniumTest {
 			} catch (RestartsubtestException e) {
 				___cxt___.unRestartSubtest();
 				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
-			} catch (InvocationTargetException e) {e.printStackTrace();
+			} catch (InvocationTargetException e) {   // Δ163h: no printStackTrace: the cause is rethrown and reported once
 				if(e.getCause() instanceof RestartsubtestException) {
 					___cxt___.unRestartSubtest();
 					return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
@@ -1463,7 +1463,12 @@ public abstract class SeleniumTest {
 						} else if(cause.getMessage().contains("is not a valid XPath expression")) {
 							java.lang.System.out.println("Invalid xpath expression provided, check if your xpath expression contains spaces and use single quotes(') instead of double quotes(\") for your xpath expressions");
 						} else {
-							cause.printStackTrace();
+							if(stackAlreadyPrinted(cause)) {
+								// Δ163h: the sub-test's own result printed this failure's stack trace already
+								java.lang.System.out.println(firstLine(cause.getMessage()));
+							} else {
+								cause.printStackTrace();
+							}
 							java.lang.System.out.println(img);
 							screenshotAsFile(d, img);
 						}
@@ -1490,6 +1495,21 @@ public abstract class SeleniumTest {
 					this.logs.put("gatf", new SerializableLogEntries(entries));
 				}
 			}
+		}
+		/**
+		 * Δ163h: a raw (non-GatfRunTimeError) RuntimeException printed its stack trace when its first result was made
+		 * (the "else if(cause instanceof RuntimeException)" branch above); pushResult then rethrows it wrapped in a
+		 * FailureException, which the enclosing script prints again with the line number. Print that one as a line.
+		 */
+		static boolean stackAlreadyPrinted(Throwable cause) {
+			if(!(cause instanceof FailureException)) return false;
+			Throwable err = ((FailureException)cause).err;
+			return err instanceof RuntimeException && !(err instanceof GatfRunTimeError);
+		}
+		static String firstLine(String msg) {
+			if(msg == null) return "";
+			int nl = msg.indexOf('\n');
+			return (nl < 0 ? msg : msg.substring(0, nl)).trim();
 		}
 		public SeleniumTestResult(SeleniumTest test, Throwable cause) {
 			this.cause = cause;
@@ -4171,7 +4191,7 @@ public abstract class SeleniumTest {
         
         AcceptanceTestContext c = new AcceptanceTestContext();
         c.setGatfExecutorConfig(config);
-        c.validateAndInit(true);
+        c.validateAndInit(true, false);   // Δ163h: never clean the out dir from here (a run may be writing to it)
         c.getWorkflowContextHandler().initializeSuiteContext(1);
     	
         try {
@@ -4179,10 +4199,16 @@ public abstract class SeleniumTest {
         	SeleniumTest dyn = (SeleniumTest)Class.forName(args[0]).getDeclaredConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {c, 0});
         	System.out.println(dyn!=null?"SUCCESS":"FAILURE");
         	if(dyn!=null) {
-        		// Δ163h: the debugger's Stop ends this JVM; quit its browser sessions on the way out, or a Grid / device-cloud
+        		// Δ163g: the debugger's Stop ends this JVM; quit its browser sessions on the way out, or a Grid / device-cloud
         		// session stays open (holding its slot) until the Grid's idle timeout. quit() skips sessions already quit.
+        		// Δ163h: the script thread is still running and its in-flight command fails once its session is gone;
+        		// silence this JVM's output first, so Stop doesn't print that expected WebDriverException.
         		final SeleniumTest __dyn = dyn;
         		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        			try {
+        				System.setOut(new java.io.PrintStream(java.io.OutputStream.nullOutputStream()));
+        				System.setErr(new java.io.PrintStream(java.io.OutputStream.nullOutputStream()));
+        			} catch (Throwable ignore) { }
         			try { __dyn.quitAll(); } catch (Throwable ignore) { }
         		}, "gatf-debuggee-quit"));
         	}

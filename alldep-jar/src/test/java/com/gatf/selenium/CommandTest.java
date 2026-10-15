@@ -496,7 +496,7 @@ class CommandTest {
 
     @Test
     void aRequestedGridRoutesPlainKeysThroughGetDockerDriver() throws Exception {
-        // Δ163h: docs/browser-modes.md Mode C: with SELENIUM_REMOTE_URL (or -Dgatf.selenium.remoteUrl / GATF_WITH_GRID) set,
+        // Δ163g: docs/browser-modes.md Mode C: with SELENIUM_REMOTE_URL (or -Dgatf.selenium.remoteUrl / GATF_WITH_GRID) set,
         // plain `open chrome` must reach the Grid; it used to build a local ChromeDriver regardless (CI e2e debugger failure)
         org.junit.jupiter.api.Assumptions.assumeTrue(System.getenv("SELENIUM_REMOTE_URL") == null && System.getenv("GATF_WITH_GRID") == null,
                 "a Grid is set in this environment");

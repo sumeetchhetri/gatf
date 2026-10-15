@@ -184,7 +184,7 @@ public final class SelSuiteGate implements SelGate {
             GatfExecutorConfig c = Command.getConfig(config.toString(), root.toString());
             AcceptanceTestContext x = new AcceptanceTestContext();
             x.setGatfExecutorConfig(c);
-            x.validateAndInit(true);
+            x.validateAndInit(true, false);   // Δ163h: the gate never cleans the out dir
             x.getWorkflowContextHandler().initializeSuiteContext(1);
             ctx = x;
         }

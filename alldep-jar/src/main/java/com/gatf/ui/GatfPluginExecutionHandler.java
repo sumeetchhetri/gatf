@@ -158,7 +158,12 @@ public class GatfPluginExecutionHandler extends HttpHandler {
     							}
 								initializeMojoProps(executorMojo, mojo);
 							} catch (Throwable e) {
-								e.printStackTrace();
+								if(e instanceof GatfRunTimeErrors) {
+									// Δ163h: the run's "some scripts failed" signal; each failure was printed (with its line) as it happened
+									System.out.println(((GatfRunTimeErrors)e).getAll().size() + " seleasy script failure(s) in this run: see above and the run's report");
+								} else {
+									e.printStackTrace();
+								}
 								if(e instanceof GatfRunTimeError) {
 									Map<String, Object> h = new HashMap<>();
 									h.put("error", ((GatfRunTimeError)e).getDetails());
