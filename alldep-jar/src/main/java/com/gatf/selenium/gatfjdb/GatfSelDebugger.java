@@ -421,8 +421,28 @@ public class GatfSelDebugger {
     	// delta-075: bounded — was an unbounded wait (runs under the handler's execution lock) and threw
     	// VMDisconnectedException when the VM had already gone
     	try {
-    		dvm.exit(0);
+    		// Δ163h: end the debuggee with a normal termination (SIGTERM) so its shutdown hook quits its WebDriver sessions
+    		// (SeleniumTest.main); dvm.exit() halts it at once and leaked every Grid / cloud session until the Grid's idle timeout.
+    		// Breakpoints go first and every thread is resumed, so the hook is not left waiting on a suspended thread.
+    		Process pr = proc;
+    		if(pr!=null && pr.isAlive()) {
+    			try { dvm.eventRequestManager().deleteAllBreakpoints(); } catch (Exception ignore) { }
+    			try {
+    				// the VM-wide suspend count also suspends threads started later (the shutdown hook's own thread), so
+    				// resume the VM until no thread is suspended, then any per-thread counts
+    				for (int i = 0; i < 32 && anySuspended(); i++) dvm.resume();
+    				for (com.sun.jdi.ThreadReference t : dvm.allThreads()) {
+    					while (t.suspendCount() > 0) t.resume();
+    				}
+    			} catch (Exception ignore) { }
+    			pr.destroy();
+    			if(!pr.waitFor(10, java.util.concurrent.TimeUnit.SECONDS)) dvm.exit(0);
+    		} else {
+    			dvm.exit(0);
+    		}
     	} catch (VMDisconnectedException alreadyGone) {
+    	} catch (InterruptedException ie) {
+    		Thread.currentThread().interrupt();
     	}
     	long end = System.currentTimeMillis() + 10000;
     	try {
@@ -433,6 +453,11 @@ public class GatfSelDebugger {
     		Thread.currentThread().interrupt();
     	}
     	setState(-6);
+    }
+
+    private boolean anySuspended() {
+    	for (com.sun.jdi.ThreadReference t : dvm.allThreads()) if (t.suspendCount() > 0) return true;
+    	return false;
     }
 
     // paused at a breakpoint/step: temp breakpoints are spent; resolve the paused SEL line and push it

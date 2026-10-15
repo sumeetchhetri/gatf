@@ -4178,6 +4178,14 @@ public abstract class SeleniumTest {
         	final LoggingPreferences lp = SeleniumCodeGeneratorAndUtil.getLp(config);
         	SeleniumTest dyn = (SeleniumTest)Class.forName(args[0]).getDeclaredConstructor(new Class[] {AcceptanceTestContext.class, int.class}).newInstance(new Object[] {c, 0});
         	System.out.println(dyn!=null?"SUCCESS":"FAILURE");
+        	if(dyn!=null) {
+        		// Δ163h: the debugger's Stop ends this JVM; quit its browser sessions on the way out, or a Grid / device-cloud
+        		// session stays open (holding its slot) until the Grid's idle timeout. quit() skips sessions already quit.
+        		final SeleniumTest __dyn = dyn;
+        		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+        			try { __dyn.quitAll(); } catch (Throwable ignore) { }
+        		}, "gatf-debuggee-quit"));
+        	}
             if(dyn!=null) {
             	try {
                     dyn.execute(lp, "");
