@@ -1,90 +1,90 @@
-name: Build, Create and Release jar file + Push jar image to docker hub
+name: Release (jar, distribution zip, installers, Docker image)
 
+# Δ163b: runs when a version tag (e.g. 5.0.0) is pushed, including the tag that "Create release" in the GitHub UI
+# makes. Works whether the release already exists (made in the UI) or not (made here); assets are uploaded with
+# --clobber, so a re-run replaces them. The Docker Hub push is last and optional: it never blocks the release.
 on:
   push:
-    # Sequence of patterns matched against refs/tags
     tags:
       - '[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to (re)build the release for, e.g. 5.0.0'
+        required: true
+
+permissions:
+  contents: write
+
 env:
   JAR_IMAGE: sumeetchhetri/gatf-jar
 
 jobs:
-  ubuntu:
+  release:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-
-    - name: Build gatf jar
+    - name: Resolve the tag
+      id: tag
       run: |
-        docker build . --file Dockerfile --tag $JAR_IMAGE
-    - name: Login to the registry
-      run: echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u ${{ secrets.DOCKER_USERNAME }} --password-stdin
+        TAG="${{ github.event.inputs.tag }}"
+        [ -n "$TAG" ] || TAG="${GITHUB_REF#refs/tags/}"
+        echo "$TAG" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$' || { echo "not a version tag: $TAG" >&2; exit 1; }
+        echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
-    - name: Push gatf jar image
-      run: |
-        IMAGE_ID=$JAR_IMAGE
-        # Change all uppercase to lowercase
-        IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-        # Strip git ref prefix from version
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-        # Use Docker `latest` tag convention
-        [ "$VERSION" == "master" ] && VERSION=latest
-        echo IMAGE_ID=$IMAGE_ID
-        echo VERSION=$VERSION
-        docker tag $JAR_IMAGE $IMAGE_ID:$VERSION
-        docker push $IMAGE_ID:$VERSION
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ steps.tag.outputs.tag }}
 
-    - name: Extract branch name
-      shell: bash
-      run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/tags/})"
-      id: extract_branch
-    - name: Build gatf jar for release
+    - name: Check the pom version matches the tag
       run: |
-        VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-        docker build -f Dockerfile -t $JAR_IMAGE:$VERSION .
-        docker create -ti --name gatf $JAR_IMAGE:$VERSION bash
-        docker cp gatf:/gatf-alldep.jar /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
+        TAG="${{ steps.tag.outputs.tag }}"
+        POM=$(tr -d '\r' < pom.xml | sed -n 's:.*<version>\(.*\)</version>.*:\1:p' | head -1)
+        [ "$POM" = "$TAG" ] || { echo "pom.xml version $POM does not match tag $TAG: bump the poms first" >&2; exit 1; }
+
+    - name: Build the jar (Docker image builds the checked-out tree, tests skipped; CI ran them on master)
+      run: |
+        TAG="${{ steps.tag.outputs.tag }}"
+        docker build . --file Dockerfile --tag "$JAR_IMAGE:$TAG"
+        docker create --name gatf "$JAR_IMAGE:$TAG" true
+        docker cp gatf:/gatf-alldep.jar "/tmp/gatf-alldep-$TAG.jar"
+        docker rm gatf
         cp run_gatf.sh /tmp/
+        unzip -p "/tmp/gatf-alldep-$TAG.jar" META-INF/MANIFEST.MF | head -20
 
-    - name: Create Release
-      uses: actions/create-release@latest
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        draft: false
-        prerelease: false
-        release_name: Release ${{ steps.extract_branch.outputs.branch }}
-        tag_name: ${{ github.ref }}
+    - name: Build distribution zip + installers
+      run: bash dist/build-dist.sh "/tmp/gatf-alldep-${{ steps.tag.outputs.tag }}.jar" "${{ steps.tag.outputs.tag }}" /tmp/gatf-dist
 
-    - name: upload jar file
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
-        asset_name: gatf-alldep-${{ steps.extract_branch.outputs.branch }}.jar
-        asset_content_type: application/java-archive
-
-    - name: upload script file
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /tmp/run_gatf.sh
-        asset_name: run_gatf.sh
-        asset_content_type: application/x-shellscript
-
-    - name: Build distribution zip + installers (G1)
-      run: |
-        TAG="${GITHUB_REF#refs/tags/}"
-        bash dist/build-dist.sh "/tmp/gatf-alldep-${TAG}.jar" "$TAG" /tmp/gatf-dist
-    - name: Upload distribution to the release
+    - name: Create the release if it does not exist yet
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
-        TAG="${GITHUB_REF#refs/tags/}"
+        TAG="${{ steps.tag.outputs.tag }}"
+        if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          echo "release $TAG already exists: uploading assets to it"
+        else
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "Release $TAG" --verify-tag --generate-notes
+        fi
+
+    - name: Upload the assets
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        TAG="${{ steps.tag.outputs.tag }}"
         cd /tmp/gatf-dist
-        gh release upload "$TAG" gatf.zip gatf.zip.sha256 "gatf-${TAG}.zip" "gatf-${TAG}.zip.sha256" install.sh install.ps1 --clobber --repo "$GITHUB_REPOSITORY"
+        gh release upload "$TAG" --repo "$GITHUB_REPOSITORY" --clobber \
+          "/tmp/gatf-alldep-$TAG.jar" /tmp/run_gatf.sh \
+          gatf.zip gatf.zip.sha256 "gatf-$TAG.zip" "gatf-$TAG.zip.sha256" install.sh install.ps1
+        gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name'
+
+    - name: Push the Docker image (optional; skipped without Docker Hub secrets)
+      continue-on-error: true
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        if [ -z "$DOCKER_USERNAME" ] || [ -z "$DOCKER_PASSWORD" ]; then echo "no Docker Hub secrets: image not pushed"; exit 0; fi
+        TAG="${{ steps.tag.outputs.tag }}"
+        echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
+        docker push "$JAR_IMAGE:$TAG"
+        docker tag "$JAR_IMAGE:$TAG" "$JAR_IMAGE:latest"
+        docker push "$JAR_IMAGE:latest"
