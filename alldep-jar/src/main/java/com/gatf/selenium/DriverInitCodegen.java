@@ -78,7 +78,11 @@ final class DriverInitCodegen {
 	/** Δ157 (H5): a plain local key ('open chrome') keeps its local driver, unless a device cloud is selected (GATF_CLOUD) and
 	 *  no SELENIUM_REMOTE_URL is set: then it goes through getDockerDriver like the -dkr forms. Unset: output unchanged. */
 	private static boolean plainLocal(SeleniumDriverConfig config, String plain) {
-		return config.getName().equals(plain) && !CloudDrivers.routesPlainKeys();
+		// Δ163h: a requested Grid (SELENIUM_REMOTE_URL / -Dgatf.selenium.remoteUrl, GATF_WITH_GRID / -Dgatf.withGrid) also
+		// routes plain keys through getDockerDriver, as docs/browser-modes.md documents; plain 'open chrome' used to start a
+		// local driver whatever the Grid setting. Nothing set: output unchanged.
+		return config.getName().equals(plain) && !CloudDrivers.routesPlainKeys()
+				&& SeleniumGrid.explicitRemoteUrl() == null && SeleniumGrid.withGridRequest() == null;
 	}
 
 	static void append(StringBuilder b, SeleniumDriverConfig config, String rUrl, Object[] fileLineDetails) {

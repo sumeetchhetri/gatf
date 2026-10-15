@@ -8,10 +8,53 @@ GATF picks, per OS, the option with the least setup. Explicit host paths always 
 | **autocannon** (default) | `autocannonPath` → Node (`nodePath` → PATH → portable Node LTS from nodejs.org, SHA-256 checked) + `npm i autocannon` into the cache | ✅ auto | ✅ auto | ✅ auto |
 | **wrk** | `wrkPath` → cache → PATH → `docker exec` into **gatf-loadgen** → **vegeta fallback** | Docker, else vegeta | brew/Docker, else vegeta | apt/Docker, else vegeta |
 | **wrk2** | `wrk2Path` → cache → PATH → `docker exec` into **gatf-loadgen** (amd64 only) → **vegeta fallback** | Docker (x64), else vegeta | Intel: Docker; Apple Silicon: vegeta | x64: Docker; arm64: vegeta |
-| **wperfk** | `wperfkPath` → cache (`<tools>/wperfk/wperfk`) → PATH → **vegeta fallback**. No auto-download or Docker yet: get a release from [github.com/sumeetchhetri/wperfk](https://github.com/sumeetchhetri/wperfk) | release binary, else vegeta | release binary, else vegeta | release binary, else vegeta |
+| **wperfk** | `wperfkPath` → cache (`<tools>/wperfk/wperfk`) → PATH → **vegeta fallback**. Not auto-downloaded yet: install a prebuilt binary once ([below](#installing-wperfk)) | prebuilt (x64, arm64), else vegeta | prebuilt (Intel, Apple Silicon, universal), else vegeta | prebuilt static (x64, arm64), else vegeta |
 
 Tools are cached under `~/.gatf/tools/<os>-<arch>/` (`-Dgatf.tools.dir` / `$GATF_TOOLS_DIR`). Print what each type resolves to on a machine:
 `java -cp gatf-alldep-jar-<ver>.jar com.gatf.executor.ext.PerfToolProvisioner`
+
+## Installing wperfk
+Prebuilt binaries are published from tag **v0.1-alpha** (version `0.1-alpha`) on [github.com/sumeetchhetri/wperfk/releases](https://github.com/sumeetchhetri/wperfk/releases/tag/v0.1-alpha):
+- Linux amd64 and arm64 (static, no dependencies);
+- macOS amd64, arm64 and universal;
+- Windows amd64 and arm64;
+- FreeBSD amd64.
+
+File names use the version without the tag's `v`:
+- archives: `wperfk_0.1-alpha_<os>_<arch>.tar.gz` (`.zip` on Windows), where `<os>_<arch>` is `linux_amd64`, `linux_arm64`, `darwin_amd64`, `darwin_arm64`, `darwin_universal`, `windows_amd64`, `windows_arm64` or `freebsd_amd64`;
+- checksums: `wperfk_0.1-alpha_checksums.txt`.
+
+Download URLs keep the `v`: `https://github.com/sumeetchhetri/wperfk/releases/download/v0.1-alpha/<file>`. It's a pre-release, so `/releases/latest` doesn't point to it: always use the tag.
+
+To install, check the archive and put the binary where GATF finds it without any config, the tools cache:
+
+```bash
+# Linux / macOS. Set PLAT (release name) and CACHE (GATF's tools dir name) for your machine:
+#   Linux x64: linux_amd64 / linux-amd64   Linux arm64: linux_arm64 / linux-arm64
+#   macOS Intel: darwin_amd64 / mac-amd64  Apple Silicon: darwin_arm64 / mac-arm64
+TAG=v0.1-alpha VER=0.1-alpha PLAT=linux_amd64 CACHE=linux-amd64
+base=https://github.com/sumeetchhetri/wperfk/releases/download/$TAG
+curl -fLO "$base/wperfk_${VER}_${PLAT}.tar.gz" -fLO "$base/wperfk_${VER}_checksums.txt"
+sha256sum -c --ignore-missing "wperfk_${VER}_checksums.txt"        # macOS: shasum -a 256 -c --ignore-missing …
+d=~/.gatf/tools/$CACHE/wperfk && mkdir -p "$d" && tar xzf "wperfk_${VER}_${PLAT}.tar.gz" -C "$d"
+xattr -d com.apple.quarantine "$d/wperfk" 2>/dev/null || true      # macOS: the binary is not notarized
+"$d/wperfk" --version                                               # wperfk 0.1-alpha [...]
+```
+
+```powershell
+# Windows x64 (on arm64: windows_arm64 / win-arm64)
+$Tag = 'v0.1-alpha'; $Ver = '0.1-alpha'; $Plat = 'windows_amd64'; $Cache = 'win-amd64'
+$base = "https://github.com/sumeetchhetri/wperfk/releases/download/$Tag"
+Invoke-WebRequest "$base/wperfk_${Ver}_${Plat}.zip" -OutFile "wperfk_${Ver}_${Plat}.zip"
+Invoke-WebRequest "$base/wperfk_${Ver}_checksums.txt" -OutFile "wperfk_${Ver}_checksums.txt"
+$want = (Select-String -SimpleMatch "wperfk_${Ver}_${Plat}.zip" "wperfk_${Ver}_checksums.txt").Line.Split(' ')[0]
+if ((Get-FileHash "wperfk_${Ver}_${Plat}.zip" -Algorithm SHA256).Hash -ne $want) { throw 'checksum mismatch' }
+$d = "$HOME\.gatf\tools\$Cache\wperfk"; New-Item -ItemType Directory -Force $d | Out-Null
+Expand-Archive "wperfk_${Ver}_${Plat}.zip" -DestinationPath $d -Force
+& "$d\wperfk.exe" --version
+```
+
+Alternatively, put `wperfk` on `PATH` or set `wperfkPath`. `PerfToolProvisioner` (above) prints which binary GATF will use.
 
 ## Reduced capabilities (read before choosing)
 - **vegeta / autocannon have no Lua.** Method, headers and body come from the test case (`content` / `contentFile`; for vegeta also `perfConfig.filePath` as the body file).

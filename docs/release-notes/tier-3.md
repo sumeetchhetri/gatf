@@ -133,6 +133,7 @@ These apply without any new setting.
   - A Grid is used for Safari only when `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` is set explicitly; `GATF_WITH_GRID` never starts one for Safari.
   - `open safari` now goes through the common driver path, so tracing can request a BiDi socket.
 - **`open edge` / `open edge-dkr` now compile.** Before, the generated code did not compile.
+- **A requested Grid now applies to plain keys too (Δ163h).** With `SELENIUM_REMOTE_URL` / `-Dgatf.selenium.remoteUrl` or `GATF_WITH_GRID` / `-Dgatf.withGrid` set, `open chrome|firefox|edge|ie` runs on that Grid, as the browser-modes docs describe. Before, only the `-dkr` keys did, and a plain key started a local browser. With neither set, nothing changes.
 
 **seleasy language**
 - **`*/` ends a block comment only inside one**, and a one-line `/* … */` is a complete comment.

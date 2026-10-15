@@ -493,4 +493,25 @@ class CommandTest {
         assertThat(compileDriverBlock("safari", safari)).isEmpty();
         assertThat(driverBlock("chrome")).contains("ACCEPT_INSECURE_CERTS");   // others unchanged
     }
+
+    @Test
+    void aRequestedGridRoutesPlainKeysThroughGetDockerDriver() throws Exception {
+        // Δ163h: docs/browser-modes.md Mode C: with SELENIUM_REMOTE_URL (or -Dgatf.selenium.remoteUrl / GATF_WITH_GRID) set,
+        // plain `open chrome` must reach the Grid; it used to build a local ChromeDriver regardless (CI e2e debugger failure)
+        org.junit.jupiter.api.Assumptions.assumeTrue(System.getenv("SELENIUM_REMOTE_URL") == null && System.getenv("GATF_WITH_GRID") == null,
+                "a Grid is set in this environment");
+        assertThat(driverBlock("chrome")).contains("new org.openqa.selenium.chrome.ChromeDriver(___dc___)");   // nothing set: unchanged
+        for (String prop : new String[] { "gatf.selenium.remoteUrl", "gatf.withGrid" }) {
+            System.setProperty(prop, prop.endsWith("Url") ? "http://localhost:4444" : "chrome");
+            try {
+                for (String key : new String[] { "chrome", "firefox", "edge", "ie" }) {
+                    String code = driverBlock(key);
+                    assertThat(code).as(prop + " " + key).contains("getDockerDriver(__bkey__)").doesNotContain("Driver(___dc___)))");
+                }
+                assertThat(compileDriverBlock("chrome", driverBlock("chrome"))).isEmpty();
+            } finally {
+                System.clearProperty(prop);
+            }
+        }
+    }
 }
