@@ -393,7 +393,7 @@ Run a suite as part of a Maven build (goals: `gatf-executor`, `gatf-generator`, 
         <plugin>
             <groupId>com.github.sumeetchhetri.gatf</groupId>
             <artifactId>gatf-plugin</artifactId>
-            <version>5.0.0</version>
+            <version>5.0.1</version>
             <executions>
                 <execution>
                     <id>gatf-execution</id>
@@ -484,7 +484,7 @@ compliant.
 		<plugin>
 			<groupId>com.github.sumeetchhetri.gatf</groupId>
 			<artifactId>gatf-plugin</artifactId>
-			<version>5.0.0</version>
+			<version>5.0.1</version>
 			<executions>
 				<execution>
 					<id>gatf-rest-json-xml</id>

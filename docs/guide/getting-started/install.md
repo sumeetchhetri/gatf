@@ -93,6 +93,6 @@ cd gatf
 mvn -B install
 ```
 
-The jar is `alldep-jar/target/gatf-alldep-jar-5.0.0.jar`. `mvn -B install -DskipTests` skips the tests; `-DskipFrontend=true` skips rebuilding the web console.
+The jar is `alldep-jar/target/gatf-alldep-jar-5.0.1.jar`. `mvn -B install -DskipTests` skips the tests; `-DskipFrontend=true` skips rebuilding the web console.
 
 Next: [your first API test](first-api-test.md).

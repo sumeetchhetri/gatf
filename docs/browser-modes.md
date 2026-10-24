@@ -7,7 +7,7 @@ Run a selenium suite with **`SELENIUM_REMOTE_URL` unset**. Selenium Manager (bui
 
 ```bash
 # SELENIUM_REMOTE_URL must NOT be set
-java -jar gatf-alldep-jar-5.0.0.jar -selenium gatf-config.xml
+java -jar gatf-alldep-jar-5.0.1.jar -selenium gatf-config.xml
 ```
 **Footprint:** a few hundred MB (Chrome for Testing + chromedriver), one-time.
 
@@ -16,9 +16,9 @@ Same as Mode A but on Chrome for Testing's **chrome-headless-shell**. GATF auto-
 
 ```bash
 export GATF_CHROME_BINARY=headless-shell          # or -Dgatf.chrome.binary=headless-shell
-java -jar gatf-alldep-jar-5.0.0.jar -selenium gatf-config.xml
+java -jar gatf-alldep-jar-5.0.1.jar -selenium gatf-config.xml
 ```
-Cached under `~/.gatf/tools/<os>-<arch>/chrome-for-testing/<version>/` (override the root with `-Dgatf.tools.dir` / `$GATF_TOOLS_DIR`). Version = current Stable unless pinned with `-Dgatf.cft.version` / `$GATF_CFT_VERSION`; offline, the newest cached version is used. Mirror / air-gapped: `-Dgatf.cft.baseUrl=<mirror>` (same `<ver>/<platform>/*.zip` layout) and `-Dgatf.cft.versionsUrl`, or pre-provision once with `java -cp gatf-alldep-jar-5.0.0.jar com.gatf.selenium.ChromeForTesting` and copy the cache. No linux-arm64 CfT build exists — there, set `GATF_CHROME_BINARY` to a system chromium path. Minimal Linux images still need Chrome's shared libs (libnss3, libgbm, …).
+Cached under `~/.gatf/tools/<os>-<arch>/chrome-for-testing/<version>/` (override the root with `-Dgatf.tools.dir` / `$GATF_TOOLS_DIR`). Version = current Stable unless pinned with `-Dgatf.cft.version` / `$GATF_CFT_VERSION`; offline, the newest cached version is used. Mirror / air-gapped: `-Dgatf.cft.baseUrl=<mirror>` (same `<ver>/<platform>/*.zip` layout) and `-Dgatf.cft.versionsUrl`, or pre-provision once with `java -cp gatf-alldep-jar-5.0.1.jar com.gatf.selenium.ChromeForTesting` and copy the cache. No linux-arm64 CfT build exists — there, set `GATF_CHROME_BINARY` to a system chromium path. Minimal Linux images still need Chrome's shared libs (libnss3, libgbm, …).
 
 Any other `GATF_CHROME_BINARY` value is used as a binary path (any Chrome/CfT binary; chromedriver then comes from Selenium Manager). Local `chrome` only (ignored for Grid and non-chrome).
 
@@ -31,7 +31,7 @@ Set `SELENIUM_REMOTE_URL`; GATF connects with `RemoteWebDriver` and `se:cdp` res
 
 ```bash
 export SELENIUM_REMOTE_URL=http://localhost:4444
-java -jar gatf-alldep-jar-5.0.0.jar -selenium gatf-config.xml
+java -jar gatf-alldep-jar-5.0.1.jar -selenium gatf-config.xml
 ```
 | Endpoint | Footprint |
 |---|---|
