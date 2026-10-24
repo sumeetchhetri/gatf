@@ -13,30 +13,49 @@
     See the License for the specific language governing permissions and
     limitations under the License.
 */
-/* Site theme. System font stacks only: no web fonts are fetched. */
+/* Site theme. Brand colours only (website/static/img/brand/README of gatf-brand-assets): ink #0E1726, signal #0E9670,
+   signal on dark #2BD39E, paper #F3F5F9. The --ifm-color-primary-* shades are Infima's usual +/-10/15/30 % lightness
+   steps of signal (light) and signal on dark (dark). Contrast (WCAG): link text = primary-darkest #0A694E on white
+   6.7:1; primary buttons carry ink text, 4.8:1 on signal and 9.3:1 on signal on dark (white on signal would be 3.7:1).
+   System font stacks only: no web fonts are fetched. */
 :root {
-  --ifm-color-primary: #1f6f8b;
-  --ifm-color-primary-dark: #1c647d;
-  --ifm-color-primary-darker: #1a5e76;
-  --ifm-color-primary-darkest: #154d61;
-  --ifm-color-primary-light: #227a99;
-  --ifm-color-primary-lighter: #2480a0;
-  --ifm-color-primary-lightest: #2991b5;
+  --gatf-ink: #0e1726;
+  --gatf-paper: #f3f5f9;
+  --gatf-signal: #0e9670;
+  --gatf-signal-on-dark: #2bd39e;
+
+  --ifm-color-primary: #0e9670;
+  --ifm-color-primary-dark: #0d8765;
+  --ifm-color-primary-darker: #0c805f;
+  --ifm-color-primary-darkest: #0a694e;
+  --ifm-color-primary-light: #0fa57b;
+  --ifm-color-primary-lighter: #10ac81;
+  --ifm-color-primary-lightest: #12c392;
+  --ifm-link-color: var(--ifm-color-primary-darkest);
   --ifm-font-family-base: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --ifm-font-family-monospace: ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
   --ifm-code-font-size: 92%;
-  --gatf-hero-bg: #eef5f8;
-  --gatf-card-border: #d5e3ea;
+  --ifm-footer-background-color: var(--gatf-ink);
+  --gatf-hero-bg: var(--gatf-paper);
+  --gatf-card-border: var(--ifm-color-emphasis-300);
 }
 
-[data-theme='dark'] {
-  --ifm-color-primary: #5fb6d4;
-  --ifm-color-primary-dark: #45aacd;
-  --ifm-color-primary-darker: #38a4c9;
-  --ifm-color-primary-darkest: #2c88a9;
-  --ifm-color-primary-light: #79c2dc;
-  --ifm-color-primary-lighter: #86c8df;
-  --ifm-color-primary-lightest: #addaea;
-  --gatf-hero-bg: #16232a;
-  --gatf-card-border: #2c3e47;
+html[data-theme='dark'] {
+  --ifm-color-primary: #2bd39e;
+  --ifm-color-primary-dark: #27be8e;
+  --ifm-color-primary-darker: #25b386;
+  --ifm-color-primary-darkest: #1e946f;
+  --ifm-color-primary-light: #3fd8a8;
+  --ifm-color-primary-lighter: #4adaad;
+  --ifm-color-primary-lightest: #6ae1bb;
+  --ifm-link-color: var(--ifm-color-primary);
+  --ifm-background-color: var(--gatf-ink);
+  --ifm-navbar-background-color: var(--gatf-ink);
+  --ifm-footer-background-color: var(--gatf-ink);
+  --gatf-hero-bg: var(--gatf-ink);
+}
+
+.button--primary,
+.button--primary:hover {
+  color: var(--gatf-ink);
 }

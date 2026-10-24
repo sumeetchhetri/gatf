@@ -1,0 +1,14 @@
+{
+  "name": "GATF",
+  "short_name": "GATF",
+  "description": "One tool for API, workflow, load, UI and RPA testing",
+  "start_url": ".",
+  "scope": ".",
+  "display": "browser",
+  "background_color": "#0E1726",
+  "theme_color": "#0E1726",
+  "icons": [
+    { "src": "img/brand/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "img/brand/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

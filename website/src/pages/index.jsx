@@ -17,6 +17,8 @@ import React from 'react';
 import Link from '@docusaurus/Link';
 import Layout from '@theme/Layout';
 import CodeBlock from '@theme/CodeBlock';
+import ThemedImage from '@theme/ThemedImage';
+import useBaseUrl from '@docusaurus/useBaseUrl';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import { useDocPath } from '../components/docLinks';
 import styles from './index.module.css';
@@ -126,10 +128,16 @@ const COMPARE = {
 
 function Hero() {
   const docPath = useDocPath();
+  const logo = {
+    light: useBaseUrl('/img/brand/gatf-logo-stacked.svg'),
+    dark: useBaseUrl('/img/brand/gatf-logo-stacked-dark.svg'),
+  };
   return (
     <header className={styles.hero}>
       <div className="container">
-        <h1 className={styles.title}>GATF</h1>
+        <h1 className={styles.title}>
+          <ThemedImage sources={logo} alt="GATF" width={154} height={211} className={styles.logo} />
+        </h1>
         <p className={styles.lead}>
           One tool for API, workflow, performance, load, distributed, comparative and UI/RPA testing: a single Java 21
           jar with a web console, a trace viewer, a step debugger and a VS Code extension.

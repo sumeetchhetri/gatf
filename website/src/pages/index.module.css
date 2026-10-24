@@ -18,8 +18,12 @@
   padding: 4rem 0 3rem;
 }
 .title {
-  font-size: 3rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  line-height: 0;
+}
+.logo {
+  height: 9rem;
+  width: auto;
 }
 .lead {
   font-size: 1.25rem;

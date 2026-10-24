@@ -55,7 +55,15 @@ const linkRoots = [
 const config = {
   title: 'GATF',
   tagline: 'One tool for API, workflow, load, UI and RPA testing',
-  favicon: 'img/favicon.svg',
+  // Icons (gatf-brand-assets): favicon.svg follows the browser's theme; favicon.ico is the fallback for browsers
+  // without SVG favicons; apple-touch-icon.png and the manifest's icon-192/512.png for home screens.
+  headTags: [
+    { tagName: 'link', attributes: { rel: 'icon', href: `${baseUrl}img/brand/favicon.ico`, sizes: '32x32' } },
+    { tagName: 'link', attributes: { rel: 'icon', href: `${baseUrl}img/brand/favicon.svg`, type: 'image/svg+xml' } },
+    { tagName: 'link', attributes: { rel: 'apple-touch-icon', href: `${baseUrl}img/brand/apple-touch-icon.png` } },
+    { tagName: 'link', attributes: { rel: 'manifest', href: `${baseUrl}manifest.webmanifest` } },
+    { tagName: 'meta', attributes: { name: 'theme-color', content: '#0E1726' } },
+  ],
   url: siteUrl,
   baseUrl,
   trailingSlash: false,
@@ -124,10 +132,16 @@ const config = {
   ],
 
   themeConfig: {
+    image: 'img/brand/gatf-og.png', // default og:image / twitter:image (1200x630)
     colorMode: { defaultMode: 'light', respectPrefersColorScheme: true },
     navbar: {
-      title: 'GATF',
-      logo: { alt: 'GATF', src: 'img/logo.svg' },
+      logo: {
+        alt: 'GATF',
+        src: 'img/brand/gatf-logo.svg',
+        srcDark: 'img/brand/gatf-logo-dark.svg',
+        width: 84,
+        height: 32,
+      },
       items: [
         { type: 'docSidebar', sidebarId: 'docs', position: 'left', label: 'Docs' },
         { to: '/downloads', label: 'Downloads', position: 'left' },
