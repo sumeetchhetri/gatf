@@ -15,8 +15,10 @@
 */
 // Runs before every start/build (npm prestart/prebuild). It writes only git-ignored files:
 //   1. versioned_docs/version-<v>/ + versioned_sidebars/: each released docs version (versions.json), materialised from
-//      a git ref (version-refs.json, overridable with GATF_DOCS_REF_<v with . as _>, e.g. GATF_DOCS_REF_5_0). When the
-//      ref does not exist (or there is no git), the working-tree ../docs is used and a warning says so. "next" is
+//      a git ref: by default ("auto" in version-refs.json) the newest release tag of that line (5.0 -> the highest
+//      5.0.x tag, e.g. 5.0.1), so a patch release refreshes its docs with no extra tag. version-refs.json may instead
+//      name any ref, and GATF_DOCS_REF_<v with . as _> (e.g. GATF_DOCS_REF_5_0) overrides both. When there is no such
+//      ref (or no git), the working-tree ../docs is used and a warning says so. "next" is
 //      ../docs itself, read in place. No docs are copied into the repository.
 //   2. .site-meta.json: what each version was built from (read by docusaurus.config.mjs for source links).
 //   3. static/CNAME: only when GATF_SITE_CNAME is set; otherwise any stale one is removed.
@@ -42,6 +44,25 @@ export function validCname(v) {
 
 function git(args, opts = {}) {
   return execFileSync('git', ['-C', REPO, ...args], { stdio: ['ignore', 'pipe', 'ignore'], ...opts });
+}
+
+/** Pure: the highest X.Y.Z tag of a version line ("5.0" -> "5.0.1" over "5.0.0"), or null. */
+export function newestPatchTag(version, tags) {
+  const re = new RegExp('^' + version.replace(/\./g, '\\.') + '\\.(\\d+)$');
+  let best = null;
+  for (const t of tags) {
+    const m = re.exec(t.trim());
+    if (m && (!best || Number(m[1]) > best.n)) best = { tag: t.trim(), n: Number(m[1]) };
+  }
+  return best ? best.tag : null;
+}
+
+function listTags() {
+  try {
+    return git(['tag', '--list']).toString().split('\n').filter(Boolean);
+  } catch {
+    return [];
+  }
 }
 
 function resolveRef(ref) {
@@ -90,7 +111,8 @@ export function main(env = process.env) {
   const meta = { versions: {} };
   fs.mkdirSync(path.join(SITE, 'versioned_sidebars'), { recursive: true });
   for (const v of versions) {
-    const ref = env[refEnvName(v)] || refs[v] || null;
+    const configured = env[refEnvName(v)] || refs[v] || 'auto';
+    const ref = configured === 'auto' ? newestPatchTag(v, listTags()) || `${v}.x (no release tag yet)` : configured;
     meta.versions[v] = materialise(v, ref);
     fs.writeFileSync(
       path.join(SITE, 'versioned_sidebars', `version-${v}-sidebars.json`),

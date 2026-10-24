@@ -20,7 +20,7 @@ import path from 'node:path';
 import { rewriteRepoLink, imageOutsideDocs, gitStat } from '../plugins/remark-repo-links.mjs';
 import { describe, byOrder } from '../plugins/release-notes.mjs';
 import { siteEnv, normaliseBase } from '../plugins/site-env.mjs';
-import { validCname, refEnvName } from '../scripts/prepare.mjs';
+import { validCname, refEnvName, newestPatchTag } from '../scripts/prepare.mjs';
 
 const REPO = '/r';
 const ROOTS = [
@@ -104,6 +104,13 @@ test('site settings from env', () => {
   assert.equal(normaliseBase('//a/b//'), '/a/b/');
   assert.throws(() => siteEnv({ GATF_SITE_URL: 'https://h/path' }), /origin/);
   assert.throws(() => siteEnv({ GATF_SITE_URL: 'h.org' }), /origin/);
+});
+
+test('a released docs version follows the newest patch tag of its line', () => {
+  assert.equal(newestPatchTag('5.0', ['5.0.0', '5.0.1', '4.9.9', '5.1.0']), '5.0.1');
+  assert.equal(newestPatchTag('5.0', ['5.0.2', '5.0.10', '5.0.9']), '5.0.10', 'numeric, not string order');
+  assert.equal(newestPatchTag('5.0', ['50.0.1', '5.0.1-rc1', 'v5.0.1', '5x0.1', 'docs-5.0']), null);
+  assert.equal(newestPatchTag('5.0', []), null);
 });
 
 test('CNAME validation and ref env names', () => {
