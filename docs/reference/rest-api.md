@@ -198,7 +198,7 @@ Values of `action`:
 Manages the test files in the test-case directory (`.xml`, `.sel`, `.props`). `POST` creates an empty file, `PUT` renames it or stores `extras`, `DELETE` removes it, and `GET` lists the files (or answers subtest and referenced-file lookups). File names are passed as the `testcaseFileName` query parameter; `config` picks the config file.
 
 - Handler: `GatfTestCaseFilesHandler`
-- Query parameters: `allsubtests`, `config`, `extras`, `possibleSubtestFuncCall`, `referencedFile`, `testcaseFileName`, `testcaseFileNameTo`
+- Query parameters: `allsubtests`, `config`, `extras`, `overwrite`, `possibleSubtestFuncCall`, `referencedFile`, `testcaseFileName`, `testcaseFileNameTo`, `upload`
 
 ## /testcases
 

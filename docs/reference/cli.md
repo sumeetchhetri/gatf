@@ -252,5 +252,5 @@ gatf -listener
 `-validate-sel <file.sel> [config] [workdir] [log]` compiles a seleasy script without running it and prints `SUCCESS` or `FAILURE` (with the compile error on stderr). `config` defaults to `gatf-config.json` if present in `workdir`, else `gatf-config.xml`; `workdir` defaults to `/workdir`, and a `file` without a path separator is looked up under `/workdir/`. A fifth value `true` enables logging. The process exits 0 in both cases.
 
 ```text
-gatf -validate-sel {file-name/relative/to/workdir}
+gatf -validate-sel {file-name/relative/to/workdir} [{config-file} [{workdir, default /workdir}]]   (exits 1 when the script does not validate)
 ```
