@@ -14,10 +14,7 @@
     limitations under the License.
 */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { fileNode, HAS_BROWSER } from './helpers';
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
+import { clearFixtures, fileNode, HAS_BROWSER } from './helpers';
 
 // Δ163o bug 9: a failed subtest yields a trace.zip linked from ITS report row, with tracing left at the default (no
 // traceMode, enableTrace false -> retain-on-failure since Δ163o), for runs from the editor (Run), the Execute view and
@@ -76,9 +73,9 @@ test.describe('Δ163o bug 9: trace.zip for a failed subtest (needs a browser)', 
     await rq.dispose();
   });
   test.afterAll(async ({ playwright, baseURL }) => {
-    if (!saved) return;
     const rq = await playwright.request.newContext({ baseURL });
-    await rq.post('/configure?configType=executor', { data: saved });
+    if (saved) await rq.post('/configure?configType=executor', { data: saved });
+    await clearFixtures(rq);   // Δ163p: later specs (e.g. a Run of every script) must not see this file's fixtures
     await rq.dispose();
   });
 
@@ -206,23 +203,21 @@ test.describe('Δ163o: valued state assertions and hoverclick under autoWait (ne
     await rq.dispose();
   });
   test.afterAll(async ({ playwright, baseURL }) => {
-    if (!saved) return;
     const rq = await playwright.request.newContext({ baseURL });
-    await rq.post('/configure?configType=executor', { data: saved });
+    if (saved) await rq.post('/configure?configType=executor', { data: saved });
+    await clearFixtures(rq);   // Δ163p: later specs (e.g. a Run of every script) must not see this file's fixtures
     await rq.dispose();
   });
 
   test('each case passes or fails as it should', async ({ request }) => {
     test.setTimeout(600_000);
-    const page = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'gatf-163o-')), 'state.html');
-    fs.writeFileSync(page, STATE_PAGE);
-    fs.chmodSync(path.dirname(page), 0o755);
-    fs.chmodSync(page, 0o644);   // the server's browser may run as another user (base runs)
+    // Δ163p: a data: URL, not a file on this machine - a Grid browser (e.g. in Docker) cannot read the host's files
+    const page = 'data:text/html;base64,' + Buffer.from(STATE_PAGE).toString('base64');
     const c = (await (await request.get('/configure?configType=executor')).json()) as Record<string, unknown>;
     Object.assign(c, { traceMode: 'off', autoWait: true, actionTimeout: 5000, webFirstAssertions: true, assertTimeout: 3000 });
     expect((await request.post('/configure?configType=executor', { data: c })).ok()).toBe(true);
     for (const [name, step] of CASES) {
-      await upload(request, `${name}.sel`, ['open chrome', `goto file://${page}`, '@call "x"', '', 'subtest "x"', '{', `    ${step}`, '}', ''].join('\n'));
+      await upload(request, `${name}.sel`, ['open chrome', `goto ${page}`, '@call "x"', '', 'subtest "x"', '{', `    ${step}`, '}', ''].join('\n'));
     }
     const start = await request.put('/execute?pluginType=executor-sel', { data: CASES.map(([n]) => `${n}.sel`) });
     expect(start.ok()).toBe(true);

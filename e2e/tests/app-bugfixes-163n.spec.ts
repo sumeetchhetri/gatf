@@ -40,6 +40,11 @@ test.describe('Δ163n reported bugs', () => {
     await clearFixtures(rq);   // Δ163p: leftovers from an earlier run on a reused server
     await rq.dispose();
   });
+  test.afterAll(async ({ playwright, baseURL }) => {
+    const rq = await playwright.request.newContext({ baseURL });
+    await clearFixtures(rq);   // Δ163p: later specs (e.g. a Run of every script) must not see this file's fixtures
+    await rq.dispose();
+  });
 
   test('bug 1: the file list is a narrow column, names ellipsised with the full path, hide/show remembered', async ({ page, request }) => {
     await putFile(request, 'ui/b1-a-very-long-file-name-that-will-not-fit-in-the-column.sel', 'open chrome\n');
@@ -263,6 +268,11 @@ test.describe('Δ163n reported bugs', () => {
 });
 
 test.describe('Δ163n bug 5: restart the current subtest in the debugger (needs a browser)', () => {
+  test.afterAll(async ({ playwright, baseURL }) => {
+    const rq = await playwright.request.newContext({ baseURL });
+    await clearFixtures(rq);   // Δ163p
+    await rq.dispose();
+  });
   test.skip(!HAS_BROWSER, 'set GATF_SELENIUM_GRID or GATF_E2E_CHROMEDRIVER');
 
   const curLine = async (page: Page) => Number(await page.locator('.dbg-cur .dbg-ln').innerText());
@@ -272,7 +282,7 @@ test.describe('Δ163n bug 5: restart the current subtest in the debugger (needs 
     test.setTimeout(300_000);
     const sel = [
       'open chrome', //                       1
-      `goto ${baseURL}/app/`, //              2
+      'goto about:blank', //                  2  (Δ163p: no host URL - a Grid browser in Docker cannot reach 127.0.0.1)
       '@call "st1"', //                       3
       '?? css@"body"', //                     4
       '', //                                  5
@@ -284,7 +294,7 @@ test.describe('Δ163n bug 5: restart the current subtest in the debugger (needs 
       '{', //                                11
       '    ?? css@"body"', //                12
       '    @call "f1"', //                   13
-      '    ?? css@"#root"', //               14
+      '    ??5 css@"body"', //               14
       '}', //                                15
     ].join('\n');
     await putFile(request, 'b5-restart.sel', sel + '\n');
