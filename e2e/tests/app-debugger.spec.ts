@@ -14,13 +14,13 @@
     limitations under the License.
 */
 import { test, expect, type Page } from '@playwright/test';
-import { fileNode } from './helpers';
+import { fileNode, HAS_BROWSER } from './helpers';
 
 // G5 — online debugger end-to-end: breakpoint add/REMOVE (removal was broken server-side before delta-075),
 // initial pause + current-line highlight, F6 step-over advances, F8 continue runs to the breakpoint /
 // completion, Stop tears the session down. Plus a protocol check that the /gatfjdb WebSocket pushes
 // frames for a live session. Needs the server-side selenium toolchain → Grid-gated like the T4c specs.
-const NEEDS_GRID = !process.env.GATF_SELENIUM_GRID;
+const NEEDS_GRID = !HAS_BROWSER; // Δ163n: or a local chromedriver (GATF_E2E_CHROMEDRIVER)
 
 // Debug needs a RUNNABLE script (one with its own `open`): library files like ui/lib/auth.sel only
 // define subtests and fail with "No open command found". sample-project's trace-smoke.sel is standalone.

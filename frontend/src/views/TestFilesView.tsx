@@ -14,8 +14,24 @@
     limitations under the License.
 */
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { api } from '../api';
+import { api, getActiveConfig } from '../api';
 import type { TestcaseFileEntry, SelParseError, ApiTestCase } from '../api';
+import {
+  allDirs,
+  ancestors,
+  buildTree,
+  filesHash,
+  kindOf,
+  loadCollapsed,
+  loadListHidden,
+  normPath,
+  pathFromHash,
+  saveCollapsed,
+  saveListHidden,
+  tfMemory,
+  type Kind,
+  type TreeNode,
+} from './testFilesState';
 import CodeEditor, { type EditorMarker } from '../components/CodeEditor';
 import TestCaseEditor from '../components/TestCaseEditor';
 import SelDebugger from '../components/SelDebugger';
@@ -27,9 +43,6 @@ import { useHeal } from '../editor/heal';
 // CodeMirror 6 is heavy (~120KB gzip); load it only when a .sel file is opened.
 const SelCodeMirror = lazy(() => import('../components/SelCodeMirror'));
 
-type Kind = 'sel' | 'xml' | 'other';
-const kindOf = (p: string): Kind =>
-  p.toLowerCase().endsWith('.sel') ? 'sel' : p.toLowerCase().endsWith('.xml') ? 'xml' : 'other';
 const baseName = (p: string) => {
   const i = p.lastIndexOf('/');
   return i === -1 ? p : p.slice(i + 1);
@@ -47,14 +60,6 @@ interface Tab {
   cases: ApiTestCase[] | null; // .xml structured
 }
 
-// tree node: a directory (has children) or a file (has kind)
-interface TreeNode {
-  name: string;
-  path: string;
-  kind?: Kind;
-  children?: TreeNode[];
-}
-
 export default function TestFilesView({ pendingOpen, onConsumePending }: { pendingOpen?: string; onConsumePending?: () => void } = {}) {
   const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,7 +71,17 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
   const [activePath, setActivePath] = useState<string | null>(null);
   const [back, setBack] = useState<string[]>([]);
   const [fwd, setFwd] = useState<string[]>([]);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set()); // collapsed dir paths
+  const cfg = getActiveConfig() ?? '';
+  // Δ163n (bug 2): collapsed folders are remembered per viewer + config; (bug 1) the file list can be hidden
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => loadCollapsed(cfg)); // collapsed dir paths
+  const [listHidden, setListHidden] = useState<boolean>(loadListHidden);
+  const listRef = useRef<HTMLDivElement>(null);
+  // Δ163n (bug 8): upload test files / a project zip into a folder
+  const [upOpen, setUpOpen] = useState(false);
+  const [upDir, setUpDir] = useState('');
+  const [upOverwrite, setUpOverwrite] = useState(false);
+  const [upMsg, setUpMsg] = useState<string | null>(null);
+  const upRef = useRef<HTMLInputElement>(null);
 
   // transient state for the ACTIVE tab (reset when the active tab changes)
   const [saving, setSaving] = useState(false);
@@ -142,47 +157,15 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
     setError(null);
     api
       .testcaseFiles()
-      .then(setFiles)
+      .then((fs) => setFiles(fs.map((f) => ({ ...f, path: normPath(f.path) }))))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   };
   useEffect(loadFiles, []);
 
   // ---- directory tree ----
-  const tree = useMemo(() => {
-    const root: TreeNode = { name: '', path: '', children: [] };
-    for (const f of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
-      const parts = f.path.split('/');
-      let cur = root;
-      let acc = '';
-      for (let i = 0; i < parts.length; i++) {
-        const part = parts[i];
-        acc = acc ? acc + '/' + part : part;
-        if (i === parts.length - 1) {
-          cur.children!.push({ name: part, path: f.path, kind: kindOf(f.path) });
-        } else {
-          let dir = cur.children!.find((c) => c.children && c.name === part);
-          if (!dir) {
-            dir = { name: part, path: acc, children: [] };
-            cur.children!.push(dir);
-          }
-          cur = dir;
-        }
-      }
-    }
-    const sortRec = (n: TreeNode) => {
-      if (!n.children) return;
-      n.children.sort((a, b) => {
-        const ad = !!a.children,
-          bd = !!b.children;
-        if (ad !== bd) return ad ? -1 : 1; // directories first
-        return a.name.localeCompare(b.name);
-      });
-      n.children.forEach(sortRec);
-    };
-    sortRec(root);
-    return root;
-  }, [files]);
+  const tree = useMemo(() => buildTree(files.map((f) => f.path)), [files]);
+  const dirs = useMemo(() => allDirs(tree), [tree]);
 
   const toggleDir = (p: string) =>
     setCollapsed((s) => {
@@ -191,6 +174,27 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
       else n.add(p);
       return n;
     });
+  useEffect(() => saveCollapsed(cfg, collapsed), [cfg, collapsed]);
+  // the tree's scroll position comes back with the view (bug 7)
+  const listRestored = useRef(false);
+  useEffect(() => {
+    if (listRestored.current || files.length === 0 || !listRef.current) return;
+    listRestored.current = true;
+    listRef.current.scrollTop = tfMemory.listScroll.get(cfg) ?? 0;
+  }, [files, cfg]);
+  useEffect(() => saveListHidden(listHidden), [listHidden]);
+  // auto-expand to the active file
+  useEffect(() => {
+    if (!activePath) return;
+    const anc = ancestors(activePath);
+    if (anc.some((d) => collapsed.has(d)))
+      setCollapsed((s) => {
+        const n = new Set(s);
+        anc.forEach((d) => n.delete(d));
+        return n;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePath]);
 
   // ---- tab / history navigation ----
   const openPaths = useMemo(() => new Set(tabs.map((t) => t.path)), [tabs]);
@@ -245,6 +249,50 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
     onConsumePending?.();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingOpen]);
+
+  // ---- Δ163n (bug 7): the selected file lives in the URL (#/testfiles?path=…): it survives leaving the view (Reports
+  // and back), is deep-linkable, and browser back/forward moves between the files opened here ----
+  const activeRef = useRef<string | null>(null);
+  activeRef.current = activePath;
+  const openRef = useRef(openFile);
+  openRef.current = openFile;
+  const urlMode = useRef<'push' | 'replace' | 'none'>('replace'); // how the next activePath change updates the URL
+  useEffect(() => {
+    if (!pendingOpen) {
+      const p = pathFromHash(window.location.hash) ?? tfMemory.lastPath.get(cfg) ?? null;
+      if (p) openFile(p);
+    }
+    const onHash = () => {
+      const h = pathFromHash(window.location.hash);
+      if (h && h !== activeRef.current) {
+        urlMode.current = 'none';
+        openRef.current(h);
+      } else if (!h && activeRef.current && window.location.hash === filesHash(null)) {
+        // the Test Files nav button again: keep the open file and put it back in the URL
+        window.history.replaceState(null, '', filesHash(activeRef.current));
+      }
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (activePath) tfMemory.lastPath.set(cfg, activePath);
+    else tfMemory.lastPath.delete(cfg);
+    const want = filesHash(activePath);
+    // a no-op (mount with no file yet, or the URL already says it) keeps the pending mode for the next change, so the
+    // file restored on mount REPLACES #/testfiles instead of adding a second history entry (verifier round)
+    if (window.location.hash === want) {
+      if (urlMode.current === 'none') urlMode.current = 'push'; // back/forward already moved the URL
+      return;
+    }
+    if (window.location.hash !== filesHash(null) && pathFromHash(window.location.hash) === null) return; // another view
+    const mode = urlMode.current;
+    urlMode.current = 'push';
+    if (mode === 'none') return;
+    if (mode === 'replace') window.history.replaceState(null, '', want);
+    else window.location.hash = want; // a new history entry: browser back returns to the previous file
+  }, [activePath, cfg]);
 
   const closeTab = (path: string) => {
     const t = tabs.find((x) => x.path === path);
@@ -354,7 +402,10 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
         setTabs((ts) => ts.map((t) => (t.path === from ? { ...t, path: to, kind: kindOf(to) } : t)));
         setBack((b) => b.map((p) => (p === from ? to : p)));
         setFwd((f) => f.map((p) => (p === from ? to : p)));
-        if (activePath === from) setActivePath(to);
+        if (activePath === from) {
+          urlMode.current = 'replace'; // the old path no longer exists: don't leave it in the history
+          setActivePath(to);
+        }
         loadFiles();
       })
       .catch((e) => setError(e.message))
@@ -379,9 +430,39 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
       .finally(() => setBusy(null));
   };
 
+  // Δ163n (bug 3): an error in an imported file is listed below but not marked on this file's line
+  const errFile = (e: SelParseError) => (typeof e[2] === 'string' && e[2] ? normPath(e[2]) : null);
   const markers: EditorMarker[] = parseErrors
-    .map((e) => ({ line: Number(e[1]), message: String(e[3] ?? e[2] ?? 'Parse error') }))
+    .filter((e) => !active || errFile(e) === null || errFile(e) === active.path)
+    .map((e) => ({ line: Number(e[1]), message: String(e[3] || e[2] || 'Parse error') }))
     .filter((m) => Number.isFinite(m.line) && m.line > 0);
+
+  // ---- Δ163n (bug 8): upload ----
+  const doUpload = async (list: FileList | null) => {
+    if (!list || list.length === 0) return;
+    const dir = normPath(upDir.trim());
+    setBusy('Uploading…');
+    setUpMsg(null);
+    const written: string[] = [];
+    const problems: string[] = [];
+    for (const f of Array.from(list)) {
+      const target = (dir ? dir + '/' : '') + f.name;
+      try {
+        const r = await api.uploadTestFile(target, f, upOverwrite);
+        written.push(...r.written);
+        problems.push(...r.skipped);
+      } catch (e) {
+        problems.push(f.name + ': ' + (e as Error).message);
+      }
+    }
+    setBusy(null);
+    if (upRef.current) upRef.current.value = '';
+    setUpMsg(
+      `Uploaded ${written.length} file(s)` + (problems.length ? `; skipped ${problems.length}: ${problems.join('; ')}` : '') + '.',
+    );
+    loadFiles();
+    if (written.length === 1 && /\.(sel|xml|props)$/i.test(written[0])) openFile(written[0]);
+  };
 
   const renderNode = (n: TreeNode, depth: number): JSX.Element => {
     const pad = { paddingLeft: 8 + depth * 14 };
@@ -389,9 +470,16 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
       const isCollapsed = collapsed.has(n.path);
       return (
         <div key={'d:' + n.path}>
-          <div className="tf-node tf-dir mono small" style={pad} onClick={() => toggleDir(n.path)}>
+          <div
+            className="tf-node tf-dir mono small"
+            style={pad}
+            title={n.path}
+            role="treeitem"
+            aria-expanded={!isCollapsed}
+            onClick={() => toggleDir(n.path)}
+          >
             <span className="tf-caret">{isCollapsed ? '▸' : '▾'}</span>
-            <span className="tf-dir-name">{n.name || '(root)'}</span>
+            <span className="tf-dir-name ellipsis">{n.name || '(root)'}</span>
           </div>
           {!isCollapsed && n.children.map((c) => renderNode(c, depth + 1))}
         </div>
@@ -450,12 +538,51 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
           <button className="btn ghost small" onClick={() => setNewOpen((o) => !o)}>
             + New file
           </button>
+          <button
+            className="btn ghost small"
+            onClick={() => {
+              setUpOpen((o) => !o);
+              setUpDir(activePath && activePath.includes('/') ? activePath.slice(0, activePath.lastIndexOf('/')) : '');
+            }}
+          >
+            ⇪ Upload
+          </button>
           <button className="btn ghost small" onClick={loadFiles}>
             Refresh
           </button>
         </div>
       </div>
 
+      {upOpen && (
+        <div className="tf-new tf-upload">
+          <input
+            className="sf-input"
+            placeholder="into folder (blank = top level)"
+            value={upDir}
+            onChange={(e) => setUpDir(e.target.value)}
+          />
+          <label className="small muted">
+            <input type="checkbox" checked={upOverwrite} onChange={(e) => setUpOverwrite(e.target.checked)} /> overwrite
+          </label>
+          <input
+            ref={upRef}
+            type="file"
+            multiple
+            hidden
+            data-testid="tf-upload"
+            accept=".sel,.xml,.props,.csv,.json,.txt,.zip"
+            onChange={(e) => doUpload(e.target.files)}
+          />
+          <button className="btn primary small" onClick={() => upRef.current?.click()}>
+            Choose files…
+          </button>
+          <span className="muted small">.sel .xml .props .csv .json .txt, or a project .zip (unpacked into the folder)</span>
+          <button className="btn ghost small" onClick={() => setUpOpen(false)}>
+            Close
+          </button>
+        </div>
+      )}
+      {upMsg && <div className="view-note tf-upmsg">{upMsg}</div>}
       {busy && <div className="view-note">{busy}</div>}
       {loading && <div className="view-note">Loading…</div>}
       {error && <div className="view-error">{error}</div>}
@@ -483,14 +610,36 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
         </div>
       )}
 
-      {!loading && !error && (
-        <div className="tf-split">
-          <div className="tf-list">
-            {files.length === 0 ? (
-              <div className="view-note">No test files. Create one with “+ New file”.</div>
-            ) : (
-              <div className="tf-tree">{tree.children!.map((c) => renderNode(c, 0))}</div>
-            )}
+      {/* Δ163n: a refresh (rename, upload) or an action error no longer unmounts the editor */}
+      {(files.length > 0 || (!loading && !error)) && (
+        <div className={'tf-split' + (listHidden ? ' tf-list-hidden' : '')}>
+          <div className="tf-list" ref={listRef} onScroll={(e) => tfMemory.listScroll.set(cfg, e.currentTarget.scrollTop)}>
+            <div className="tf-list-head">
+              <button
+                className="tf-iconbtn"
+                title={listHidden ? 'Show the file list' : 'Hide the file list'}
+                aria-label={listHidden ? 'Show the file list' : 'Hide the file list'}
+                onClick={() => setListHidden((h) => !h)}
+              >
+                {listHidden ? '»' : '«'}
+              </button>
+              {!listHidden && dirs.length > 0 && (
+                <>
+                  <button className="tf-iconbtn" title="Expand all folders" onClick={() => setCollapsed(new Set())}>
+                    ⊞
+                  </button>
+                  <button className="tf-iconbtn" title="Collapse all folders" onClick={() => setCollapsed(new Set(dirs))}>
+                    ⊟
+                  </button>
+                </>
+              )}
+            </div>
+            {!listHidden &&
+              (files.length === 0 ? (
+                <div className="view-note">No test files. Create one with “+ New file”.</div>
+              ) : (
+                <div className="tf-tree">{tree.children!.map((c) => renderNode(c, 0))}</div>
+              ))}
           </div>
 
           <div className="tf-content">
@@ -683,6 +832,8 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                             onNavigate={onNavigate}
                             onNavError={flashNav}
                             markLine={healLine}
+                            initialScroll={tfMemory.scroll.get(cfg + '|' + active.path)}
+                            onScrollTop={(y) => tfMemory.scroll.set(cfg + '|' + active.path, y)}
                           />
                         </Suspense>
                         </>
@@ -693,15 +844,18 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                       {saveMsg && <div className="view-error">{saveMsg}</div>}
                       {parseErrors.length > 0 && (
                         <div className="tf-problems">
-                          <div className="tf-problems-h small">{parseErrors.length} parse error(s) — file not saved</div>
+                          <div className="tf-problems-h small">
+                            {parseErrors.length} error(s) — written to disk, but the script will not run until they are fixed
+                          </div>
                           {parseErrors.map((e, i) => {
                             const ln = Number(e[1]);
-                            const msg = String(e[3] ?? e[2] ?? 'Parse error');
+                            const ef = errFile(e);
+                            const msg = (ef && ef !== active.path ? ef + ': ' : '') + String(e[3] || e[2] || 'Parse error');
                             return (
                               <div
                                 key={i}
                                 className="tf-problem"
-                                onClick={() => Number.isFinite(ln) && ln > 0 && jumpTo(ln)}
+                                onClick={() => Number.isFinite(ln) && ln > 0 && (ef && ef !== active.path ? openFile(ef, ln) : jumpTo(ln))}
                               >
                                 <span className="tf-problem-ln">{Number.isFinite(ln) && ln > 0 ? `L${ln}` : '—'}</span>
                                 <span className="tf-problem-msg">{msg}</span>
@@ -712,7 +866,7 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
                       )}
                       <div className="view-note muted small">
                         {active.kind === 'sel'
-                          ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parse-validates server-side; a backup .bk is kept.'
+                          ? 'Ctrl/Cmd-S saves; Ctrl-Space autocompletes. Saving parses, transpiles and compiles server-side; a backup .bk is kept.'
                           : 'Saving parse-validates the script server-side; a backup .bk is kept.'}
                       </div>
                     </div>

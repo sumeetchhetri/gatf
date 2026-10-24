@@ -222,6 +222,8 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
 
 </details>
 
+**Browser driver arguments** (`seleniumDriverConfigs[].arguments`, JSON configs): space-separated browser flags, each passed to the browser as its own argument, e.g. `"arguments": "--headless=new --no-sandbox"`. A flag's value cannot contain spaces (the string is split on whitespace). Earlier builds passed the whole string as a single argument, so Chrome ignored every flag in it.
+
 ### AI provider (opt-in)
 
 `<ai>` turns on the AI features (the healer for now). Leave it out and nothing calls a model. The key is never in this file: it is read from the environment variable named by `apiKeyEnv` (default `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`) or from the first line of `apiKeyFile`, and it never appears in reports, traces or logs.

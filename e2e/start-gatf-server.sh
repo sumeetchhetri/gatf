@@ -24,7 +24,8 @@ PORT="${1:-9223}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-JAR="$(ls -t "${REPO_ROOT}"/alldep-jar/target/gatf-alldep-jar-*.jar 2>/dev/null | grep -Ev '\-(sources|javadoc)\.jar$' | head -1 || true)"
+JAR="${GATF_E2E_JAR:-}"   # Δ163n: run the suite against a given jar (e.g. the base build, to show a spec fails there)
+[ -n "${JAR}" ] || JAR="$(ls -t "${REPO_ROOT}"/alldep-jar/target/gatf-alldep-jar-*.jar 2>/dev/null | grep -Ev '\-(sources|javadoc)\.jar$' | head -1 || true)"
 if [ -z "${JAR:-}" ]; then
   echo "No shaded jar found. Build it first:  mvn -q -pl alldep-jar -am package -DskipTests" >&2
   exit 1
@@ -37,6 +38,16 @@ cd "${PROJ}"
 # Isolation guard: a config that pins absolute base paths would make the server read/write THAT tree
 # (this is how e2e edits once landed in the repo). Drop them so everything resolves to the scratch copy.
 node -e 'const fs=require("fs"),f="gatf-config.json";if(fs.existsSync(f)){const c=JSON.parse(fs.readFileSync(f,"utf8"));delete c.testCasesBasePath;delete c.outFilesBasePath;fs.writeFileSync(f,JSON.stringify(c,null,2))}'
+# Δ163n: a LOCAL headless Chrome instead of a Grid for the selenium specs (debugger, runs). GATF_E2E_CHROMEDRIVER is a
+# chromedriver matching the Chrome at GATF_E2E_CHROME_BINARY (optional; default: the one Selenium Manager finds).
+if [ -n "${GATF_E2E_CHROMEDRIVER:-}" ]; then
+  # headless + no-sandbox (containers run as root) go in the chrome driver config's arguments
+  node -e 'const fs=require("fs"),f="gatf-config.json";const c=JSON.parse(fs.readFileSync(f,"utf8"));const d=(c.seleniumDriverConfigs||[]).find(x=>x.name==="chrome");
+    if(d){d.path=process.env.GATF_E2E_CHROMEDRIVER;d.arguments=((d.arguments||"")+" --headless=new --no-sandbox --disable-dev-shm-usage").trim();}
+    fs.writeFileSync(f,JSON.stringify(c,null,2))'
+  [ -n "${GATF_E2E_CHROME_BINARY:-}" ] && export GATF_CHROME_BINARY="${GATF_E2E_CHROME_BINARY}"
+  echo "GATF e2e: local chrome, driver=${GATF_E2E_CHROMEDRIVER} binary=${GATF_E2E_CHROME_BINARY:-<default>}"
+fi
 echo "GATF e2e server: jar=${JAR} proj=${PROJ} port=${PORT}"
 # The GATF server uses SELENIUM_REMOTE_URL for selenium runs (T4c). Take it from GATF_SELENIUM_GRID so
 # it reaches GATF *without* Playwright seeing it (Playwright reserves SELENIUM_REMOTE_URL to route its
@@ -46,4 +57,4 @@ if [ -n "${GATF_SELENIUM_GRID:-}" ]; then
   echo "GATF e2e: Selenium Grid = ${SELENIUM_REMOTE_URL}"
 fi
 # main(): -configtool <port> <ip> <rootdir>  ('.' == cwd). Blocks until killed (Playwright teardown).
-exec java -cp "${JAR}" com.gatf.ui.GatfConfigToolUtil -configtool "${PORT}" 127.0.0.1 .
+exec java ${GATF_E2E_CHROMEDRIVER:+-Dwebdriver.chrome.driver=${GATF_E2E_CHROMEDRIVER}} -cp "${JAR}" com.gatf.ui.GatfConfigToolUtil -configtool "${PORT}" 127.0.0.1 .

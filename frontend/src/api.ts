@@ -445,7 +445,7 @@ async function postJson<T>(url: string, body: unknown): Promise<T> {
 async function sendReq(
   method: string,
   url: string,
-  body?: string,
+  body?: BodyInit,
   contentType?: string,
   extraHeaders?: Record<string, string>,
 ): Promise<string> {
@@ -570,6 +570,7 @@ export const DBG = {
   SUSPEND: '-5',
   TERMINATE: '-6',
   HEARTBEAT: '-7',
+  RESTART_SUBTEST: '-8', // Δ163n (bug 5): restart the subtest the debuggee is paused in
   addBreakpoint: (line1: number) => 'b' + (line1 - 1),
   removeBreakpoint: (line1: number) => 'r' + (line1 - 1),
 } as const;
@@ -928,6 +929,17 @@ export const api = {
   renameTestcaseFile: (from: string, to: string) =>
     sendReq('PUT', '/testcasefiles?' + tcf(from) + '&testcaseFileNameTo=' + encPath(to)),
   deleteTestcaseFile: (path: string) => sendReq('DELETE', '/testcasefiles?' + tcf(path)),
+  // Δ163n (bug 8): upload one test file, or a .zip unpacked into its folder; raw body (no multipart)
+  uploadTestFile: async (path: string, body: Blob, overwrite = false): Promise<{ written: string[]; skipped: string[] }> => {
+    const text = await sendReq(
+      'POST',
+      '/testcasefiles?' + tcf(path) + '&upload=true' + (overwrite ? '&overwrite=true' : ''),
+      body,
+      'application/octet-stream',
+    );
+    const j = JSON.parse(text) as { written?: string[]; skipped?: string[] };
+    return { written: j.written ?? [], skipped: j.skipped ?? [] };
+  },
   // structured .xml API test-case CRUD (TestCase JSON; server validates)
   addCase: (path: string, tc: ApiTestCase, configType?: string) =>
     sendReq(

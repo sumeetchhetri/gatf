@@ -15,6 +15,7 @@
 */
 import { useRef, useState } from 'react';
 import { api, type ImportBundle, type ImportResultDto, type ImportType } from '../api';
+import { importText } from './importFile';
 
 type Kind = ImportType;
 
@@ -45,7 +46,7 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
   },
   har: {
     label: 'HAR',
-    accept: '.har,.json,application/json',
+    accept: '.har,.json,.zip,application/json,application/zip',
     ext: '.xml',
     hint: 'A HAR recording (browser dev tools "Save all as HAR"). XHR/fetch calls become API test cases with the recorded status.',
   },
@@ -57,7 +58,7 @@ const META: Record<Kind, { label: string; accept: string; ext: string; hint: str
   },
   flow: {
     label: 'Flow → load',
-    accept: '.har,.json,application/json',
+    accept: '.har,.json,.zip,application/json,application/zip',
     ext: '.xml',
     hint: "A UI run's network.har (inside its trace zip). Each API/document request becomes a load-test case (wperfk, 10 users, 30 s; change them in the file or with gatf import flow --users/--duration/--engine), and <name>.targets.jsonl holds the whole flow for vegeta. Faster: Load test this flow in the Trace Viewer.",
   },
@@ -113,10 +114,17 @@ export default function ImportView({ onOpenTestFiles }: { onOpenTestFiles: () =>
   const onFile = async (list: FileList | File[] | null | undefined) => {
     const all = list ? Array.from(list) : [];
     if (!all.length) return;
-    const { main: f, text, bundle: b } = kind === 'openapi' ? await readBundle(all) : { main: all[0], text: await all[0].text(), bundle: null };
+    let picked: { main: File; text: string; bundle: ImportBundle | null };
+    try {
+      picked = kind === 'openapi' ? await readBundle(all) : { main: all[0], text: await importText(kind, all[0]), bundle: null };
+    } catch (e) {
+      setErr((e as Error).message);
+      return;
+    }
+    const { main: f, text, bundle: b } = picked;
     setSource(text);
     setBundle(b);
-    let base = f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|yaml|yml|sh|txt|curl)$/i, '');
+    let base = f.name.replace(/\.(jmx|spec\.ts|spec\.js|ts|js|har|json|yaml|yml|sh|txt|curl|zip)$/i, '').replace(/-trace$/i, '');
     if (kind === 'openapi') base = base.replace(/\.(openapi|swagger)$/i, ''); // petstore.openapi.json -> petstore.xml (+ petstore.openapi.json spec)
     if (!fileName) setFileName(base + meta.ext);
     setResult(null);

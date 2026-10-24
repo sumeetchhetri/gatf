@@ -74,8 +74,13 @@ const TO_HASH: Record<ViewKey, string> = {
   report: '#/reports',
 };
 
+// Δ163n (bug 7): a view's hash may carry state after '?' (#/testfiles?path=ui/a.sel); route on the part before it
+export function viewOfHash(hash: string): ViewKey {
+  const q = hash.indexOf('?');
+  return HASH[q === -1 ? hash : hash.slice(0, q)] ?? 'reports';
+}
 function currentView(): ViewKey {
-  return HASH[window.location.hash] ?? 'reports';
+  return viewOfHash(window.location.hash);
 }
 
 function initialReport(): string | undefined {
@@ -95,6 +100,8 @@ export default function Shell() {
   const [cfg, setCfg] = useState<string>(getActiveConfig() ?? '');
   const changeCfg = (name: string) => {
     setActiveConfig(name || null); // set module state synchronously so the remounted view refetches with it
+    // Δ163n: the file in #/testfiles?path= belongs to the old config; the remounted view opens the new config's last file
+    if (viewOfHash(window.location.hash) === 'testfiles') window.history.replaceState(null, '', TO_HASH.testfiles);
     setCfg(name);
   };
 
@@ -114,7 +121,8 @@ export default function Shell() {
   // M17: a load test created from a trace — Execute opens with it selected and starts it
   const [pendingRun, setPendingRun] = useState<string | undefined>(undefined);
   const navigate = (v: ViewKey) => {
-    if (window.location.hash !== TO_HASH[v]) window.location.hash = TO_HASH[v];
+    // same view already in the URL (maybe with its ?state): leave the URL alone
+    if (viewOfHash(window.location.hash) !== v || !window.location.hash.startsWith(TO_HASH[v])) window.location.hash = TO_HASH[v];
     setView(v);
   };
 

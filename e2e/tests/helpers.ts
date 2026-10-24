@@ -15,6 +15,45 @@
 */
 import { expect, type Locator, type Page } from '@playwright/test';
 
+/** Δ163n: selenium-backed specs run with a Grid (GATF_SELENIUM_GRID) or a local chromedriver (GATF_E2E_CHROMEDRIVER). */
+export const HAS_BROWSER = !!(process.env.GATF_SELENIUM_GRID || process.env.GATF_E2E_CHROMEDRIVER);
+
+/** Δ163n: a minimal STORED (uncompressed) zip, so upload specs need no zip dependency. */
+export function storedZip(files: Record<string, string>): Buffer {
+  const crcTable = Array.from({ length: 256 }, (_, n) => {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+    return c >>> 0;
+  });
+  const crc32 = (b: Buffer) => {
+    let c = 0xffffffff;
+    for (const x of b) c = crcTable[(c ^ x) & 0xff] ^ (c >>> 8);
+    return (c ^ 0xffffffff) >>> 0;
+  };
+  const locals: Buffer[] = [];
+  const centrals: Buffer[] = [];
+  let off = 0;
+  for (const [name, text] of Object.entries(files)) {
+    const nb = Buffer.from(name, 'utf8');
+    const data = Buffer.from(text, 'utf8');
+    const crc = crc32(data);
+    const lh = Buffer.alloc(30);
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt32LE(crc, 14);
+    lh.writeUInt32LE(data.length, 18); lh.writeUInt32LE(data.length, 22); lh.writeUInt16LE(nb.length, 26);
+    const ch = Buffer.alloc(46);
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt32LE(crc, 16);
+    ch.writeUInt32LE(data.length, 20); ch.writeUInt32LE(data.length, 24); ch.writeUInt16LE(nb.length, 28); ch.writeUInt32LE(off, 42);
+    locals.push(lh, nb, data);
+    centrals.push(ch, nb);
+    off += 30 + nb.length + data.length;
+  }
+  const cd = Buffer.concat(centrals);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(Object.keys(files).length, 8); end.writeUInt16LE(Object.keys(files).length, 10);
+  end.writeUInt32LE(cd.length, 12); end.writeUInt32LE(off, 16);
+  return Buffer.concat([...locals, cd, end]);
+}
+
 /**
  * Open the Test Files view and return the first file node (optionally containing `text`).
  * Waits for the tree to finish loading first. Folders render EXPANDED by default (delta-045), so only

@@ -308,7 +308,19 @@ public abstract class SeleniumTest {
 		return BrowserDrivers.create(browserName, state.driverCaps.get(browserName), ___cxt___);   // G8: moved to BrowserDrivers
 	}
 	
+	/**
+	 * Δ163n (bug 5): set by the debugger (JDI, while the debuggee is suspended) to the method name ({@code __st__N}) of the
+	 * subtest to restart. The next statement start throws {@link RestartsubtestException} for it, synchronously: no
+	 * async thread stop, no interrupt flag. Single debug thread per debuggee JVM, so one static slot is enough.
+	 */
+	public static volatile String __restart_target__ = null;
+
 	protected void __set__cln__(String line_) {
+		String rt = __restart_target__;
+		if(rt != null) {
+			__restart_target__ = null;
+			throw new RestartsubtestException(rt);
+		}
 		try {
 			state.cfileName = line_.split(":")[0];
 			state.line = Integer.valueOf(line_.split(":")[1]);
@@ -1158,7 +1170,7 @@ public abstract class SeleniumTest {
 			try {
 				return (List<WebElement>) method.invoke(tst_, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
 			} catch (InvocationTargetException e) {
-				if(e.getCause() instanceof RestartsubtestException) {
+				if(e.getCause() instanceof RestartsubtestException && ((RestartsubtestException)e.getCause()).replays(stName)) {   // Δ163n: only the targeted subtest replays
 					___cxt___.unRestartSubtest();
 					return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
 				} else {
@@ -1170,10 +1182,11 @@ public abstract class SeleniumTest {
 			try {
 				return (List<WebElement>) method.invoke(this, new Object[] { __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___ });
 			} catch (RestartsubtestException e) {
+				if(!e.replays(stName)) throw e;   // Δ163n: a func / hook between the statement and the targeted subtest unwinds
 				___cxt___.unRestartSubtest();
 				return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
 			} catch (InvocationTargetException e) {   // Δ163h: no printStackTrace: the cause is rethrown and reported once
-				if(e.getCause() instanceof RestartsubtestException) {
+				if(e.getCause() instanceof RestartsubtestException && ((RestartsubtestException)e.getCause()).replays(stName)) {   // Δ163n: only the targeted subtest replays
 					___cxt___.unRestartSubtest();
 					return ___invoke_sub_test_dyn___(claz, stName, __sfname__, ___cw___, ___ocw___, ___sc___1, ___lp___);
 				} else {
@@ -1320,6 +1333,10 @@ public abstract class SeleniumTest {
 			}
 		}
 		public SeleniumTestResult(WebDriver d, SeleniumTest test, Throwable exc, String img, LoggingPreferences ___lp___, String subTestName) {
+			// Δ163n (bug 5): a restart request is not a failure. Every generated subtest builds its failure result inside
+			// catch(Throwable); pushResult then wrapped the restart in a FailureException, so ___invoke_sub_test_dyn___
+			// never saw it and the subtest failed instead of restarting. Rethrow it before anything is recorded.
+			if(exc instanceof RestartsubtestException) throw (RestartsubtestException) exc;
 			this.attachments = test.drainAttachments();
 			this.cause = exc;
 			this.status = false;
@@ -1440,7 +1457,9 @@ public abstract class SeleniumTest {
 				if(cause instanceof RuntimeException) {
 					if(cause.getCause()!=null) {
 						if(subTestName!=null) {
-							stImg = ((SubTestException)cause.getCause()).img;
+							// Δ163n: any other cause (a wrapped WebDriverException, an InterruptedException) threw ClassCastException here
+							// and hid the subtest's real failure
+							if(cause.getCause() instanceof SubTestException) stImg = ((SubTestException)cause.getCause()).img;
 							entries.add(new LogEntry(Level.ALL, new Date().getTime(), "Subtest " + subTestName + " Failed"));
 						} else {
 							entries.add(new LogEntry(Level.ALL, new Date().getTime(), cause.getMessage()));
@@ -2766,6 +2785,8 @@ public abstract class SeleniumTest {
 
 	/** M6: an afterEach / afterAll hook failed after the script had already failed: logged, the first failure is reported. */
 	protected void __hook_failed__(String hook, Throwable t) {
+		// Δ163n: a debugger restart that lands in a hook unwinds to the subtest; it is not a hook failure
+		if(t instanceof RestartsubtestException) throw (RestartsubtestException) t;
 		System.out.println(hook + " hook failed: " + t.getMessage());
 		__traceAction__("hookfail", hook + ": " + t.getMessage());
 	}
@@ -4227,6 +4248,13 @@ public abstract class SeleniumTest {
     }
 	
 	public static class RestartsubtestException extends RuntimeException {
+		private static final long serialVersionUID = 1L;
+		/** Δ163n: the subtest method ({@code __st__N}) to replay; null = the innermost one (run-mode restart). */
+		public final String target;
+		public RestartsubtestException() { this(null); }
+		public RestartsubtestException(String target) { this.target = target; }
+		/** Should the ___invoke_sub_test_dyn___ of {@code stName} replay it (else let the restart unwind further)? */
+		public boolean replays(String stName) { return target == null || target.equals(stName); }
 	}
 	public static class GatfRunTimeErrors extends RuntimeException {
 		private List<? extends GatfRunTimeError> errors;

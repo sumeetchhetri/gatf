@@ -319,6 +319,8 @@ Examples :-
 	?? text@'=Order placed'
 ```
 
+An `xpath@` selector that is not valid XPath 1.0 syntax (`xpath@"//div["`) is a parse error on its line, so saving the script in the console marks the line. Templated xpaths (`$v{…}`, `@index`) and functions outside the XPath 1.0 core are checked in the browser when the script runs.
+
 ### Value
 
 ```

@@ -446,6 +446,64 @@ public class GatfSelDebugger {
     	dvm.suspend();
     	setState(-5);
     }
+
+    /**
+     * Δ163n (bug 5): restart the subtest the debuggee is paused in. Sets {@code SeleniumTest.__restart_target__} to that
+     * subtest's method in the (suspended) debuggee and resumes: the next statement start throws a RestartsubtestException
+     * for it, every func / hook in between unwinds through its own finally blocks, and that subtest's
+     * {@code ___invoke_sub_test_dyn___} replays it; a temp breakpoint pauses the replay on its first statement. Before,
+     * the debugger had no restart, and the run-mode flag ({@code ctx.restartSubtest()}) lives in the server JVM.
+     * (A first version threw the exception with JDI ThreadReference.stop: asynchronous, and it sets the thread's
+     * interrupt flag, so hooks run during the unwind failed with InterruptedException; verifier round.)
+     * @return null on success, else the reason
+     */
+    public synchronized String restartSubtest() {
+    	activity.incrementAndGet();
+    	awaitFirstPause();
+    	LocatableEvent ev = cbe;
+    	if(ev == null) return "Please suspend the debugger first";
+    	try {
+    		com.sun.jdi.ThreadReference th = ev.thread();
+    		List<StackFrame> frames = th.frames();
+    		List<String> names = new java.util.ArrayList<>();
+    		for (StackFrame f : frames) {
+    			Location l = f.location();
+    			names.add(l.declaringType().name().equals(debugClass.getName()) ? l.method().name() : "");
+    		}
+    		int idx = RestartPlan.innermostSubtest(names, Command.subtestMethodNames(allcmds));
+    		if(idx < 0) return "Not paused inside a subtest";
+    		com.sun.jdi.Method m = frames.get(idx).location().method();
+    		Map<Integer, Integer> javaToSel = new java.util.HashMap<>();
+    		for (List<List<Integer[]>> fl : selToJavaLineMap.values()) {
+    			for (List<Integer[]> fset : fl) for (Integer[] linf : fset) javaToSel.putIfAbsent(linf[1], linf[0]);
+    		}
+    		List<Location> locs = m.allLineLocations();
+    		List<Integer> lns = new java.util.ArrayList<>();
+    		for (Location l : locs) lns.add(l.lineNumber());
+    		int fi = RestartPlan.firstBodyLine(lns, javaToSel);
+    		List<com.sun.jdi.ReferenceType> st = dvm.classesByName(SeleniumTest.class.getName());
+    		if(st.isEmpty()) return "Restart subtest failed: SeleniumTest is not loaded in the debuggee";
+    		ClassType stc = (ClassType) st.get(0);
+    		com.sun.jdi.Field target = stc.fieldByName("__restart_target__");
+    		if(target == null) return "Restart subtest failed: the debuggee's GATF has no restart support";
+    		synchronized (bpLock) {
+    			clearTempBreakpoints();
+    			if(fi >= 0) {
+    				BreakpointRequest bp = dvm.eventRequestManager().createBreakpointRequest(locs.get(fi));
+    				tempBps.add(bp);
+    				bp.enable();
+    			}
+    		}
+    		stc.setValue(target, dvm.mirrorOf(m.name()));
+    		cbe = null;
+    		dvm.resume();
+    		setState(-8);
+    		return null;
+    	} catch (Exception e) {
+    		LOG.warn("Restart subtest failed", e);
+    		return "Restart subtest failed: " + e.getMessage();
+    	}
+    }
     
     public void destroy() {
     	// delta-075: bounded — was an unbounded wait (runs under the handler's execution lock) and threw

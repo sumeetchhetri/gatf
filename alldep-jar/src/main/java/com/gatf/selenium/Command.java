@@ -475,6 +475,19 @@ public class Command {
         return className;
     }
 
+    /** Δ163n (bug 5): generated method names ({@code __st__N}) of the real subtests (not funcs, not hooks) of a parsed script. */
+    public static java.util.Set<String> subtestMethodNames(Command root) {
+        java.util.Set<String> s = new java.util.HashSet<String>();
+        if(root!=null && root.state!=null && root.state.allSubTests!=null) {
+            for(Command c: root.state.allSubTests) {
+                if(c instanceof SubTestCommand && !((SubTestCommand)c).isAFunc && ((SubTestCommand)c).hook==null) {
+                    s.add(((SubTestCommand)c).fName);
+                }
+            }
+        }
+        return s;
+    }
+
     public static class GatfSelCodeParseError extends GatfRunTimeError {
     	Object[] details;
     	List<GatfSelCodeParseError> multiple = new ArrayList<GatfSelCodeParseError>();
@@ -503,6 +516,9 @@ public class Command {
     }
 
     void throwParseError(Object[] o, Throwable e) {
+        // Δ163n: 25 call sites pass null; GatfSelCodeParseError dereferences o, so the user saw an NPE message
+        // ("Cannot load from object array because o is null") instead of the reason, on no line. Use this command's line.
+        if(o==null) o = fileLineDetails;
         if(e!=null) {
             if(o!=null) {
                 throw new GatfSelCodeParseError("Error parsing command at line "+o[1]+" in file "+o[2]+" ("+o[0].toString().trim()+")", o, e);

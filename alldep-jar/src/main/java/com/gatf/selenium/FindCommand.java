@@ -164,7 +164,7 @@ public class FindCommand extends Command {
 						classifierPinvXp = true;
 						classifierPinvXps = new String[] {cmdDetails[0].toString(), cmdDetails[1].toString(), ((File)cmdDetails[2]).getAbsolutePath()};
 						System.out.println("Warning: Possible invalid xpath expression " + classifier + ", check if your xpath expression contains spaces and use single quotes(') instead of double quotes(\") for your xpath expressions");
-						//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
+						String __xe = XpathCheck.syntaxError(state.factory, classifier); if(__xe!=null) throwError(cmdDetails, new RuntimeException(__xe));   // Δ163n
 					}
                 }
             	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector|role|label|placeholder|testid|alt|title") || classifier.isEmpty()) {
@@ -199,7 +199,7 @@ public class FindCommand extends Command {
 								classifierPinvXp = true;
 								classifierPinvXps = new String[] {cmdDetails[0].toString(), cmdDetails[1].toString(), ((File)cmdDetails[2]).getAbsolutePath()};
 								System.out.println("Warning: Possible invalid xpath expression " + classifier + ", check if your xpath expression contains spaces and use single quotes(') instead of double quotes(\") for your xpath expressions");
-								//throwError(cmdDetails, new RuntimeException("Invalid xpath expression " + classifier));
+								String __xe = XpathCheck.syntaxError(state.factory, classifier); if(__xe!=null) throwError(cmdDetails, new RuntimeException(__xe));   // Δ163n
 							}
 	                    }
 	                	if(!by.toLowerCase().matches("id|name|class|classname|tag|tagname|xpath|text|partiallinktext|linktext|jquery|jq|\\$|css|cssselector|role|label|placeholder|testid|alt|title") || classifier.isEmpty()) {

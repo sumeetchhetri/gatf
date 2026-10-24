@@ -41,6 +41,7 @@ import com.gatf.executor.core.WorkflowContextHandler;
 import com.gatf.executor.finder.XMLTestCaseFinder;
 import com.gatf.selenium.Command;
 import com.gatf.selenium.Command.GatfSelCodeParseError;
+import com.gatf.selenium.SeleniumCodeGeneratorAndUtil;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeError;
 import com.gatf.selenium.SeleniumTest.GatfRunTimeErrors;
 
@@ -135,8 +136,17 @@ public class GatfTestCaseHandler extends HttpHandler {
     		        if(!isNotSel) {
 	    		    	try {
 	        		    	GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
-	    					executorMojo.initilaizeContext(gatfConfig, true);
+	    					executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163n: a save never cleans out/
 	        		    	Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), true);
+	        		    	// Δ163n (bug 3): also transpile + ECJ-compile, as a run would, so transpile errors (e.g. break outside
+	        		    	// a loop) and Java compile errors come back as {error, others} on their .sel line for the editor's X
+	        		    	try {
+	        		    		SeleniumCodeGeneratorAndUtil.getSeleniumTest(testcaseFileName, Command.class.getClassLoader(), executorMojo.getContext(),
+	        		    				new Object[5], gatfConfig, false, null, null);
+	        		    	} catch (RuntimeException noOpen) {
+	        		    		// an import-only library (subtests/funcs, no `open`) parses but is not a runnable script on its own
+	        		    		if(!"No open command found...".equals(noOpen.getMessage())) throw noOpen;
+	        		    	}
 						}  catch (GatfSelCodeParseError e) {
 							List<GatfRunTimeError> allErrors = new ArrayList<>();
 			        		e.printStackTrace();

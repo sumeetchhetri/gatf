@@ -1912,13 +1912,18 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     }
 
     public void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception {
+        initilaizeContext(configuration, flag, flag);
+    }
+
+    /** Δ163n: {@code cleanOut} false for anything that is not a real run (e.g. a save-time compile), per the out-dir rule. */
+    public void initilaizeContext(GatfExecutorConfig configuration, boolean flag, boolean cleanOut) throws Exception {
         if(context!=null) {
             context.projectClassLoader = fcl.apply(null);
         } else {
             context = new AcceptanceTestContext(configuration, fcl.apply(null));
         }
         try {
-            context.validateAndInit(flag);
+            context.validateAndInit(flag, cleanOut);
             if (flag) {
                 setupTestCaseHooks(context);
             }

@@ -20,7 +20,9 @@ import java.io.FilenameFilter;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.ws.rs.core.MediaType;
 
@@ -50,12 +52,65 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 		this.mojo = mojo;
 	}
 
+	// the directory test-file paths are relative to (basepath[/testCaseDir]), as every branch below builds it
+	private File testCaseBase(GatfExecutorConfig gatfConfig) {
+		String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
+		File base = gatfConfig.getTestCaseDir()!=null ? new File(basepath, gatfConfig.getTestCaseDir()) : new File(basepath);
+		if(!base.exists()) base.mkdirs();
+		return base;
+	}
+
 	@Override
 	public void service(Request request, Response response) throws Exception {
 		AcceptanceTestContext.checkAuthAndSetCors(mojo, request, response);
 		if(response.getStatus()==401) return;
 	    response.setHeader("Cache-Control", "no-cache, no-store");
-    	if(request.getMethod().equals(Method.POST)) {
+    	if(request.getMethod().equals(Method.POST) && "true".equals(request.getParameter("upload"))) {
+    		// Δ163n (bug 8): upload a test file (raw body), or a .zip of a project/folder that is unpacked into the
+    		// target's folder. Paths go through TestFilePaths (no '..', no absolute, zip-slip safe).
+    		try {
+    			String ctype = request.getContentType();
+    			if(ctype != null && ctype.toLowerCase().startsWith("application/x-www-form-urlencoded")) {
+    				// Grizzly reads such a body as form fields: the file would arrive empty
+    				GatfConfigToolUtil.handleError(new IllegalArgumentException("Send the file as application/octet-stream (got " + ctype + ")"), response, HttpStatus.UNSUPPORTED_MEDIA_TYPE_415);
+    				return;
+    			}
+    			GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
+    			File base = testCaseBase(gatfConfig);
+    			String target = TestFilePaths.normalize(request.getParameter("testcaseFileName"));
+    			boolean overwrite = "true".equals(request.getParameter("overwrite"));
+    			Map<String, Object> out = new LinkedHashMap<>();
+    			if(target.toLowerCase().endsWith(".zip")) {
+    				TestFilePaths.Extracted x = TestFilePaths.extractZip(request.getInputStream(), base, TestFilePaths.dirOf(target), overwrite, 2000, 200L * 1024 * 1024);
+    				out.put("written", x.written);
+    				out.put("skipped", x.skipped);
+    			} else {
+    				if(!TestFilePaths.uploadable(target)) {
+    					throw new IllegalArgumentException("File type not allowed: " + target + " (.sel .xml .props .csv .json .txt or a .zip)");
+    				}
+    				File f = TestFilePaths.resolve(base, target);
+    				if(f.exists() && !overwrite) {
+    					throw new IllegalArgumentException("Testcase file already exists: " + target);
+    				}
+    				try (java.io.InputStream in = request.getInputStream()) {
+    					TestFilePaths.copyCapped(in, f, 50L * 1024 * 1024, "A test file upload is limited to 50 MB");
+    				}
+    				out.put("written", java.util.Collections.singletonList(target));
+    				out.put("skipped", java.util.Collections.emptyList());
+    			}
+    			String json = WorkflowContextHandler.OM.writeValueAsString(out);
+    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
+    			response.setContentLength(json.getBytes("UTF-8").length);
+    			response.getWriter().write(json);
+    			response.setStatus(HttpStatus.OK_200);
+    		} catch (IllegalArgumentException e) {
+    			GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+    		} catch (TestFilePaths.LimitException e) {
+    			GatfConfigToolUtil.handleError(e, response, HttpStatus.REQUEST_ENTITY_TOO_LARGE_413);
+    		} catch (Exception e) {
+    			GatfConfigToolUtil.handleError(e, response, null);
+    		}
+    	} else if(request.getMethod().equals(Method.POST)) {
     		try {
     			String testcaseFileName = request.getParameter("testcaseFileName");
     			String extras = request.getParameter("extras");
@@ -65,21 +120,20 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			{
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel)");
         			}
-        			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String filePath = null;
-        			if(gatfConfig.getTestCaseDir()!=null) {
-	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-	    				if(!new File(dirPath).exists()) {
-	    					new File(dirPath).mkdir();
-	    				}
-	    				filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
-        			} else {
-        				filePath = basepath + File.separator + testcaseFileName;
+        			// Δ163n: '/' or '\\' paths, no '..' / absolute target, and a new sub-folder is created (+ New file
+        			// "newdir/x.sel" failed: createNewFile without mkdirs)
+        			String filePath;
+        			try {
+        				filePath = TestFilePaths.resolve(testCaseBase(gatfConfig), testcaseFileName).getPath();
+        			} catch (IllegalArgumentException e) {
+        				GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+        				return;
         			}
         			
         			if(new File(filePath).exists()) {
         				throw new RuntimeException("Testcase file already exists");
         			}
+        			new File(filePath).getParentFile().mkdirs();
         			new File(filePath).createNewFile();
         			if(testcaseFileName.toLowerCase().endsWith(".xml")) {
         				FileUtils.writeStringToFile(new File(filePath), "<TestCases></TestCases>", "UTF-8");
@@ -109,44 +163,38 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     			String extras = request.getParameter("extras");
     			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(testcaseFileNameTo)) {
     				GatfExecutorConfig gatfConfig = GatfConfigToolUtil.getGatfExecutorConfig(mojo, null, request.getParameter("config"));
-        			if(!(testcaseFileName.toLowerCase().endsWith(".xml") && testcaseFileNameTo.toLowerCase().endsWith(".xml")) && 
-        			        !(testcaseFileName.toLowerCase().endsWith(".sel") && testcaseFileNameTo.toLowerCase().endsWith(".sel")) && 
-        			        !(testcaseFileName.toLowerCase().endsWith(".props") && testcaseFileNameTo.toLowerCase().endsWith(".props")))
-        			{
-        			    throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
-        			}
-        			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String filePath = basepath + File.separator + testcaseFileName;
-        			String tofilePath = basepath + File.separator + testcaseFileNameTo;
-        			if(gatfConfig.getTestCaseDir()!=null) {
-	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-	    				if(!new File(dirPath).exists()) {
-	    					new File(dirPath).mkdir();
-	    				}
-	        			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
-	        			tofilePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileNameTo;
-        			}
-    				
+    				// Δ163n (bug 4): compare the DIRECTORIES of '/'-separated client paths (the old check compared the names
+    				// after the last File.separator, so every rename inside a folder failed), refuse '..' / absolute targets.
+    				String[] ft;
     				try {
-    					String pfrom = testcaseFileName.indexOf(File.separator)!=-1?testcaseFileName.substring(testcaseFileName.lastIndexOf(File.separator)+1):"";
-    					String pto = testcaseFileNameTo.indexOf(File.separator)!=-1?testcaseFileNameTo.substring(testcaseFileNameTo.lastIndexOf(File.separator)+1):"";
-						if(!pfrom.equals(pto)) {
-							throw new RuntimeException("Source and Target filenames should have the same directory tree");
-						}
-					} catch (Exception e) {
-						throw new RuntimeException("Source and Target filenames should be valid");
-					}
-    				
-        			if(new File(filePath).exists()) {
-        			    try
-                        {
-        			    	if(!filePath.equals(tofilePath))
-        			    		FileUtils.moveFile(new File(filePath), new File(tofilePath));
-                        }
-                        catch (Exception e)
-                        {
-                            throw new RuntimeException("File rename operation failed");
-                        }
+    					ft = TestFilePaths.checkRename(testcaseFileName, testcaseFileNameTo);
+    				} catch (IllegalArgumentException e) {
+    					GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+    					return;
+    				}
+    				File base = testCaseBase(gatfConfig);
+    				File from = TestFilePaths.resolve(base, ft[0]);
+    				File to = TestFilePaths.resolve(base, ft[1]);
+        			if(from.exists()) {
+        				if(!from.equals(to)) {
+        					// a case-only rename (a.sel -> A.sel) on a case-insensitive file system: the target "exists" as the source
+        					boolean sameFile = to.exists() && java.nio.file.Files.isSameFile(from.toPath(), to.toPath());
+        					File attr = new File(from.getPath() + ".attr"), toAttr = new File(to.getPath() + ".attr");
+        					if(!sameFile && (to.exists() || toAttr.exists())) {   // a stale target .attr would attach itself to the renamed file
+        						GatfConfigToolUtil.handleError(new IllegalArgumentException("Target file already exists: " + ft[1] + (to.exists() ? "" : ".attr")), response, HttpStatus.CONFLICT_409);
+        						return;
+        					}
+        					try {
+        						if(sameFile) {
+        							java.nio.file.Files.move(from.toPath(), to.toPath());   // same inode: changes the name's case
+        						} else {
+        							FileUtils.moveFile(from, to);
+        						}
+        						if(attr.exists() && !sameFile) FileUtils.moveFile(attr, toAttr);
+        					} catch (Exception e) {
+        						throw new RuntimeException("File rename operation failed");
+        					}
+        				}
         			} else {
         				throw new RuntimeException("Source Testcase file does not exist");
         			}
@@ -186,14 +234,13 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
         			{
         				throw new RuntimeException("Testcase File should be an xml or sel file, extension should be (.xml/.sel/.props)");
         			}
-        			String basepath = gatfConfig.getTestCasesBasePath()==null?mojo.getRootDir():gatfConfig.getTestCasesBasePath();
-        			String filePath = basepath + File.separator + testcaseFileName;
-        			if(gatfConfig.getTestCaseDir()!=null) {
-	        			String dirPath = basepath + File.separator + gatfConfig.getTestCaseDir();
-	    				if(!new File(dirPath).exists()) {
-	    					new File(dirPath).mkdir();
-	    				}
-	        			filePath = basepath + File.separator + gatfConfig.getTestCaseDir() + File.separator + testcaseFileName;
+        			// Δ163n: same guard as create / rename / upload (a '../' name deleted files outside the test dir)
+        			String filePath;
+        			try {
+        				filePath = TestFilePaths.resolve(testCaseBase(gatfConfig), testcaseFileName).getPath();
+        			} catch (IllegalArgumentException e) {
+        				GatfConfigToolUtil.handleError(e, response, HttpStatus.BAD_REQUEST_400);
+        				return;
         			}
         			if(new File(filePath).exists()) {
         				new File(filePath).delete();
@@ -277,11 +324,8 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 		        	Collection<File> dirs = FileUtils.listFilesAndDirs(mdir, FalseFileFilter.FALSE, TrueFileFilter.INSTANCE);
 		        	for (File f : dirs) {
 		    			if(new File(f, "main.sel").exists()) {
-		    				String sfpath = new File(f, "main.sel").getAbsolutePath().replaceFirst(mdir.getAbsolutePath(), StringUtils.EMPTY);
-		    				if(sfpath.charAt(0)==File.separatorChar) {
-		    					sfpath = sfpath.substring(1);
-		    				}
-		    				fileNames.add(new String[] {sfpath, null});
+		    				String sfpath = TestCaseFinder.getRelativePath(new File(f, "main.sel"), mdir);   // Δ163n: was replaceFirst(<path as regex>)
+		    				fileNames.add(new String[] {TestFilePaths.toClient(sfpath), null});
 		    			}
 		    		}
 		        	
@@ -319,7 +363,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
     					ext = new String(Base64.getDecoder().decode(ext.getBytes("UTF-8")), "UTF-8");
 					} catch (Exception e) {
 					}
-    				fileNames.add(new String[] {TestCaseFinder.getRelativePath(file, dirFPath), ext});
+    				fileNames.add(new String[] {TestFilePaths.toClient(TestCaseFinder.getRelativePath(file, dirFPath)), ext});   // Δ163n: '/' on Windows too
 				}
     			
     			String json = WorkflowContextHandler.OM.writeValueAsString(fileNames);

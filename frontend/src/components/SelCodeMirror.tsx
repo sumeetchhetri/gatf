@@ -37,37 +37,14 @@ import { insertPickedLine } from '../editor/pastePick';
 import { LivePicker, type LiveState } from '../editor/livePicker';
 import { matchText } from '../trace/picker';
 import { api } from '../api';
+import { selThemeSpec } from './selTheme';
 
 export interface EditorDiag {
   line: number; // 1-based
   message: string;
 }
 
-const cmTheme = EditorView.theme({
-  '&': {
-    height: '55vh',
-    minHeight: '320px',
-    fontSize: '12.5px',
-    backgroundColor: 'var(--panel)',
-    color: 'var(--fg)',
-    border: '1px solid var(--border)',
-    borderRadius: '6px',
-  },
-  '.cm-content': { fontFamily: 'var(--mono, monospace)', caretColor: 'var(--fg)' },
-  '.cm-gutters': {
-    backgroundColor: 'var(--panel2, rgba(127,127,127,.06))',
-    color: 'var(--muted)',
-    border: 'none',
-    borderRight: '1px solid var(--border)',
-  },
-  '.cm-activeLine': { backgroundColor: 'rgba(127,127,127,.06)' },
-  '.cm-activeLineGutter': { backgroundColor: 'rgba(127,127,127,.10)' },
-  '&.cm-focused': { outline: 'none' },
-  '.cm-scroller': { overflow: 'auto', lineHeight: '1.5' },
-  '.cm-tooltip': { backgroundColor: 'var(--panel)', color: 'var(--fg)', border: '1px solid var(--border)' },
-  '.cm-tooltip-autocomplete ul li[aria-selected]': { backgroundColor: 'var(--accent, #2b6cb0)', color: '#fff' },
-  '.cm-heal-line': { backgroundColor: 'rgba(248, 81, 73, 0.14)' },
-});
+const cmTheme = EditorView.theme(selThemeSpec); // Δ163n: spec + rationale in selTheme.ts
 
 // H1 (Δ150): the line a heal proposal would replace, marked until the heal is accepted or closed
 const setHealMark = StateEffect.define<number | null>();
@@ -98,6 +75,8 @@ export default function SelCodeMirror({
   onNavigate,
   onNavError,
   markLine,
+  initialScroll,
+  onScrollTop,
 }: {
   value: string;
   onChange?: (v: string) => void;
@@ -109,6 +88,9 @@ export default function SelCodeMirror({
   onNavigate?: (path: string, line?: number) => void;
   onNavError?: (msg: string) => void;
   markLine?: number | null;
+  /** Δ163n (bug 7): scrollTop to restore when the editor is created, and a report of later scrolls. */
+  initialScroll?: number;
+  onScrollTop?: (y: number) => void;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -118,6 +100,8 @@ export default function SelCodeMirror({
   const gotoLineRef = useRef(gotoLine);
   const onNavigateRef = useRef(onNavigate);
   const onNavErrorRef = useRef(onNavError);
+  const onScrollTopRef = useRef(onScrollTop);
+  onScrollTopRef.current = onScrollTop;
   onChangeRef.current = onChange;
   onSaveRef.current = onSave;
   pathRef.current = filePath;
@@ -166,7 +150,14 @@ export default function SelCodeMirror({
     });
     const view = new EditorView({ state, parent: hostRef.current });
     viewRef.current = view;
+    const onScroll = () => onScrollTopRef.current?.(view.scrollDOM.scrollTop);
+    view.scrollDOM.addEventListener('scroll', onScroll, { passive: true });
+    if (initialScroll) {
+      // after the first measure, so the content height is known
+      view.requestMeasure({ read: () => null, write: () => { view.scrollDOM.scrollTop = initialScroll; } });
+    }
     return () => {
+      view.scrollDOM.removeEventListener('scroll', onScroll);
       view.destroy();
       viewRef.current = null;
     };

@@ -57,7 +57,7 @@ boolean logconsole = false, logdebug = false, lognw = false;
 /*GATF_ST_DRIVER_INIT_CHROME*/org.openqa.selenium.chrome.ChromeOptions ___dc___ = new org.openqa.selenium.chrome.ChromeOptions();
 ___dc___.setCapability(org.openqa.selenium.chrome.ChromeOptions.LOGGING_PREFS, ___lp___);
 ___dc___.setCapability(CapabilityType.ACCEPT_INSECURE_CERTS, true);
-___dc___.addArguments(" --ignore-certificate-errors --remote-allow-origins=*".trim());
+___dc___.addArguments(java.util.Arrays.asList(" --ignore-certificate-errors --remote-allow-origins=*".trim().split("\\s+")));
 Map<String, Object> __prefs = new java.util.HashMap<String, Object>();
 ___dc___.setExperimentalOption("prefs", __prefs);
 String __bkey__ = addWdm("chrome", ___dc___);

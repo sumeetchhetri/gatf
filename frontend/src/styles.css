@@ -348,7 +348,7 @@ button { font-family: inherit; cursor: pointer; }
 
 /* test-files split */
 .tf-split { display: flex; gap: 14px; min-height: 0; }
-.tf-list { flex: 0 0 42%; max-width: 480px; overflow: auto; }
+.tf-list { flex: 0 0 240px; max-width: 300px; min-width: 0; overflow: auto; }   /* Δ163n (bug 1): was 42% / 480px; the editor takes the width */
 .tf-content { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 .tf-content-head { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
 .tf-pre { flex: 1; max-height: none; }
@@ -874,3 +874,13 @@ select.sf-input { max-width: none; }
 .crawl-bar { height: 4px; background: rgba(127,127,127,.2); border-radius: 2px; margin: 6px 0; overflow: hidden; }
 .crawl-bar > div { height: 100%; background: var(--accent, #4f8cff); transition: width .4s; }
 .crawl-log { max-height: 260px; overflow: auto; background: rgba(127,127,127,.06); padding: 8px; border-radius: 4px; }
+
+/* Δ163n (bugs 1, 2, 8): Test Files list column — hide/show toggle, expand/collapse all, ellipsised names, upload row */
+.tf-split.tf-list-hidden .tf-list { flex: 0 0 auto; overflow: visible; }
+.tf-list-head { display: flex; gap: 4px; position: sticky; top: 0; z-index: 1; background: var(--bg); padding: 0 0 4px; }
+.tf-iconbtn { border: 1px solid var(--border); background: var(--panel); color: var(--fg); border-radius: var(--r-1); padding: 1px 7px; font-size: 12px; line-height: 18px; cursor: pointer; }
+.tf-iconbtn:hover { border-color: var(--accent); }
+.tf-node { min-width: 0; }
+.tf-node .tf-item-name, .tf-node .tf-dir-name { min-width: 0; flex: 1 1 auto; }
+.tf-upload { flex-wrap: wrap; }
+.tf-upload .sf-input { max-width: 260px; }

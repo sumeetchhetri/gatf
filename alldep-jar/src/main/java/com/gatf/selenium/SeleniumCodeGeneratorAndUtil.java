@@ -298,9 +298,11 @@ public class SeleniumCodeGeneratorAndUtil {
                     Iterable<? extends JavaFileObject> compilationUnit = fileManager.getJavaFileObjectsFromFiles(Arrays.asList(srcfile));
                     boolean ok = compiler.getTask(null, fileManager, diagnostics, optionList, null, compilationUnit).call();
                     boolean errCd = false;
+                    List<Diagnostic<? extends JavaFileObject>> errDiags = new ArrayList<>();
                     for (Diagnostic<? extends JavaFileObject> diagnostic : diagnostics.getDiagnostics()) {
                         if(diagnostic.getKind() == Kind.ERROR) {
                             errCd = true;
+                            errDiags.add(diagnostic);
                             if(retvals.length == 5) { retvals[4] += diagnostic.toString(); }
                             System.out.format("Error on line %d in %s%n", diagnostic.getLineNumber(), diagnostic.getSource()!=null?diagnostic.getSource().toUri():"<source>");
                         }
@@ -308,6 +310,10 @@ public class SeleniumCodeGeneratorAndUtil {
                     }
                     try { fileManager.close(); } catch (Exception ce) {}
                     if(!ok || errCd) {
+                        // Δ163n (bug 3): report ECJ errors on the .sel line (GATF_LINE markers) instead of returning null,
+                        // which callers turned into "Unable to compile seleasy script" with no line for the editor's X marker
+                        Command.GatfSelCodeParseError mapped = mapCompileErrors(sourceCode, errDiags, context);
+                        if(mapped != null) throw mapped;
                         return null;
                     }
 
@@ -338,6 +344,40 @@ public class SeleniumCodeGeneratorAndUtil {
         return (SeleniumTest) unit.cls.getConstructor(new Class[]{AcceptanceTestContext.class, int.class}).newInstance(new Object[]{context, 1});
 	}
 	
+	// Δ163n: ECJ diagnostics -> parse errors on the .sel line that produced the failing Java line (null when none map)
+	static Command.GatfSelCodeParseError mapCompileErrors(String sourceCode, List<Diagnostic<? extends JavaFileObject>> errs, AcceptanceTestContext context) {
+		List<String> lines = sourceCode.lines().collect(Collectors.toList());
+		String tcdir = null;
+		try {
+			tcdir = context != null && context.getTestCasesDir() != null ? context.getTestCasesDir().getAbsolutePath() : null;
+		} catch (Exception ignore) {
+		}
+		List<Command.GatfSelCodeParseError> all = new ArrayList<>();
+		for (Diagnostic<? extends JavaFileObject> d : errs) {
+			Object[] sl = SelCompileErrors.selLineFor(lines, d.getLineNumber());
+			if(sl == null) continue;
+			String abs = (String) sl[0];
+			int ln = (Integer) sl[1];
+			String rel = abs;
+			if(tcdir != null && abs.startsWith(tcdir)) {
+				rel = abs.substring(tcdir.length());
+				if(rel.startsWith(File.separator) || rel.startsWith("/")) rel = rel.substring(1);
+			}
+			String text = "";
+			try {
+				text = java.nio.file.Files.readAllLines(java.nio.file.Paths.get(abs)).get(ln - 1);
+			} catch (Exception ignore) {
+			}
+			String msg = SelCompileErrors.message(d.getMessage(java.util.Locale.ROOT), d.getLineNumber());
+			all.add(new Command.GatfSelCodeParseError("Compile error at line " + ln + " in file " + rel + " (" + text.trim() + "): " + msg,
+					new Object[] { text, ln, abs, null, null, rel }, new RuntimeException(msg)));
+		}
+		if(all.isEmpty()) return null;
+		Command.GatfSelCodeParseError first = all.get(0);
+		first.multiple = all;
+		return first;
+	}
+
 	public static File zipSeleniumTests() {
 		File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
 		String fileName = UUID.randomUUID().toString()+".zip";

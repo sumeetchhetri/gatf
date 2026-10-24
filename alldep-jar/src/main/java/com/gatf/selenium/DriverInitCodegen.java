@@ -105,7 +105,9 @@ final class DriverInitCodegen {
                 if(!config.getName().equals("chrome")) {
                 	__cargs = withManagedArgs(__cargs, "--disable-dev-shm-usage", "--no-sandbox");
                 }
-                b.append("___dc___.addArguments(\""+esc(__cargs)+"\".trim());\n");
+                // Δ163n: one argv entry per flag. addArguments("--a --b") handed Chrome ONE malformed switch ("Ignoring switch with
+                // invalid name: ignore-certificate-errors --remote-allow-origins"), so no flag after the first was ever applied
+                b.append("___dc___.addArguments(java.util.Arrays.asList(\""+esc(__cargs)+"\".trim().split(\"\\\\s+\")));\n");
                 
                 
                 if(config.getProperties()!=null)
@@ -143,7 +145,7 @@ final class DriverInitCodegen {
                 		: withManagedArgs(config.getArguments(), "--disable-dev-shm-usage");
                 if(StringUtils.isNotBlank(__fargs))
                 {
-                	b.append("___dc___.addArguments(\""+esc(__fargs)+"\".trim());\n");
+                	b.append("___dc___.addArguments(java.util.Arrays.asList(\""+esc(__fargs)+"\".trim().split(\"\\\\s+\")));\n");   // Δ163n: one argv entry per flag
                 }
                 if(config.getProperties()!=null)
                 {

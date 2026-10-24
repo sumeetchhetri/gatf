@@ -33,6 +33,17 @@ export GATF_SELENIUM_GRID=http://localhost:4444   # e.g. selenium/standalone-chr
 cd e2e && npm test
 ```
 
+Or with a **local** headless Chrome instead of a Grid (Δ163n), give a chromedriver that matches the installed Chrome; the
+launcher adds `--headless=new --no-sandbox --disable-dev-shm-usage` to the scratch config's chrome driver arguments:
+
+```bash
+GATF_E2E_CHROMEDRIVER=/path/to/chromedriver [GATF_E2E_CHROME_BINARY=/path/to/chrome] npm test
+```
+
+`GATF_E2E_JAR=/path/to/gatf-alldep-jar.jar` runs the suite against a given build (e.g. the previous release, to show a
+new spec fails there). `app-bugfixes-163n` holds one spec per bug fixed in Δ163n (Test Files list/tree/URL state,
+error markers, rename, upload, editor cursor, debugger restart); its debugger spec needs a Grid or a local chromedriver.
+
 ## 2. Recorder e2e — `tools/smoke/trace-e2e.sh` (Selenium-facing)
 Runs the full recorder suite against a real Selenium Grid over a live click, then validates the
 produced `trace.zip` with `tools/smoke/validate-trace.mjs` (node). This is the run that de-risks the

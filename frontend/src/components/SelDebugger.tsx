@@ -202,6 +202,19 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
   const stepOver = () => cmd(DBG.STEP_OVER);
   const cont = () => cmd(DBG.CONTINUE);
   const suspend = () => cmd(DBG.SUSPEND);
+  // Δ163n (bug 5): re-run the subtest the debuggee is paused in (also from inside a func it calls); it pauses again on
+  // the subtest's first line
+  const restartSubtest = () => {
+    setBusy(true);
+    api
+      .dbg(DBG.RESTART_SUBTEST, filePath, tc, sessionRef.current)
+      .then((d) => {
+        // status comes from the pushed frames (the replay's pause can arrive before this response)
+        setMsg(d.s === false ? d.m || 'Restart rejected.' : 'Subtest restarted.');
+      })
+      .catch((e) => setMsg(e.message))
+      .finally(() => setBusy(false));
+  };
   const terminate = () => {
     doneRef.current = true;
     stopStream();
@@ -262,6 +275,9 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
         </button>
         <button className="btn small" title="Step out (F7)" disabled={!canStep} onClick={stepOut}>
           ↰ Out
+        </button>
+        <button className="btn small" title="Restart the current subtest from its first line" disabled={!canStep} onClick={restartSubtest}>
+          ⟲ Restart subtest
         </button>
         <button className="btn small" title="Suspend" disabled={!active || busy} onClick={suspend}>
           ⏸ Suspend

@@ -168,6 +168,17 @@ final class GatfDebugDispatcher {
 									GatfReportsHandler.dbgSessions.remove(sessionId, dbgSession);
 									break;
 								}
+								case -8: {
+									// Δ163n (bug 5): restart the subtest the debuggee is paused in; pauses again on its first line
+									String why = dbgSession.restartSubtest();
+									if(why != null) {
+		        	                    out.put("s", false);
+		        	                    out.put("m", why);
+		        	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
+		        	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
+									}
+									break;
+								}
 								case -7: {
 									//Status check call 1 - running, 0 - stopped
 	        	                    out.put("s", true);

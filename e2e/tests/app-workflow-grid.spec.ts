@@ -14,7 +14,7 @@
     limitations under the License.
 */
 import { test, expect, type Page } from '@playwright/test';
-import { fileNode } from './helpers';
+import { fileNode, HAS_BROWSER } from './helpers';
 
 // T4c — full workflows that need the server-side selenium toolchain / a Selenium Grid:
 // saving a .sel (server-side transpile+compile parse-validation), running a selenium script, and the
@@ -22,7 +22,7 @@ import { fileNode } from './helpers';
 // is set — start-gatf-server.sh maps it to SELENIUM_REMOTE_URL for the GATF server only (Playwright
 // reserves SELENIUM_REMOTE_URL for routing its OWN browser, so we must not set that here). These are
 // slow (compile + browser launch), so per-test timeouts are generous.
-const NEEDS_GRID = !process.env.GATF_SELENIUM_GRID;
+const NEEDS_GRID = !HAS_BROWSER; // Δ163n: or a local chromedriver (GATF_E2E_CHROMEDRIVER)
 
 test.describe('GATF /app full workflows (Selenium Grid)', () => {
   test.skip(NEEDS_GRID, 'set GATF_SELENIUM_GRID to a Selenium Grid endpoint to run these');
