@@ -1,0 +1,47 @@
+{
+  "name": "gatf-website",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The GATF website: docs (sourced from ../docs), downloads, release notes and blog. Docusaurus 3.",
+  "license": "Apache-2.0",
+  "scripts": {
+    "prepare-site": "node scripts/prepare.mjs",
+    "prestart": "node scripts/prepare.mjs",
+    "start": "docusaurus start",
+    "prebuild": "node scripts/prepare.mjs",
+    "build": "docusaurus build",
+    "serve": "docusaurus serve",
+    "clear": "docusaurus clear",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=20.0"
+  },
+  "browserslist": {
+    "production": [
+      ">0.5%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "dependencies": {
+    "@docusaurus/core": "3.10.2",
+    "@docusaurus/plugin-content-blog": "3.10.2",
+    "@docusaurus/plugin-content-docs": "3.10.2",
+    "@docusaurus/plugin-content-pages": "3.10.2",
+    "@docusaurus/plugin-sitemap": "3.10.2",
+    "@docusaurus/theme-classic": "3.10.2",
+    "@docusaurus/theme-common": "3.10.2",
+    "@easyops-cn/docusaurus-search-local": "0.55.3",
+    "@mdx-js/react": "3.1.1",
+    "clsx": "2.1.1",
+    "prism-react-renderer": "2.4.1",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  }
+}

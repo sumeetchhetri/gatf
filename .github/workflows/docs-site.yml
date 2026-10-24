@@ -1,0 +1,102 @@
+name: Docs site (website/, GitHub Pages)
+
+# Δ205: builds the Docusaurus site in website/ on every PR that can change it, and deploys it to GitHub Pages on push
+# to master, on a release tag (e.g. 5.0.0) and on a docs snapshot tag (docs-<version>, e.g. docs-5.0: the commit a
+# released docs version is built from, see website/version-refs.json). A broken link fails the build. Not part of the
+# Maven build.
+on:
+  pull_request:
+    paths:
+      - 'website/**'
+      - 'docs/**'
+      - 'vscode-extension/syntaxes/**'
+      - '.github/workflows/docs-site.yml'
+  push:
+    branches: [master]
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+      - 'docs-*'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # PRs: one build per PR, newer pushes cancel older ones. Deploys: one at a time, never cancelled mid-deploy.
+  group: docs-site-${{ github.event_name == 'pull_request' && github.ref || 'deploy' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A tag push rebuilds the site from the default branch (website/ and "next" = its docs/), never from the
+          # tagged commit, so tagging an older commit can't roll the live site back. The tag's docs reach the site
+          # through the version snapshot (website/version-refs.json). PRs and branch pushes build their own commit.
+          ref: ${{ startsWith(github.ref, 'refs/tags/') && github.event.repository.default_branch || '' }}
+          fetch-depth: 0 # tags: docs version snapshots (docs-*) and the newest release for the Downloads page
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      - name: Configure Pages (deploys only)
+        id: pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+
+      - name: Install
+        working-directory: website
+        run: npm ci
+
+      - name: Unit tests (grammar converter, link rewriting, settings)
+        working-directory: website
+        run: npm test
+
+      - name: Build
+        working-directory: website
+        env:
+          PAGES_ORIGIN: ${{ steps.pages.outputs.origin }}
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          GATF_SITE_CNAME: ${{ vars.GATF_SITE_CNAME }}
+        run: |
+          # Deploys take the URL Pages reports (custom domain included); PR builds use the config defaults.
+          if [ -n "$PAGES_ORIGIN" ]; then
+            export GATF_SITE_URL="$PAGES_ORIGIN"
+            export GATF_SITE_BASE="${PAGES_BASE_PATH}/"
+          fi
+          # Downloads name the newest release tag, if there is one (else the config default).
+          latest=$(git tag --list '[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1 || true)
+          if [ -n "$latest" ]; then
+            export GATF_RELEASE_VERSION="$latest"
+          fi
+          start=$(date +%s)
+          npm run build
+          echo "built in $(( $(date +%s) - start ))s, $(du -sh build | cut -f1)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the site (deploys only)
+        if: github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: website/build
+
+  deploy:
+    needs: build
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

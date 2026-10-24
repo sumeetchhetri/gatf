@@ -1,0 +1,12 @@
+# Docusaurus build output and caches
+/node_modules/
+/build/
+/.docusaurus/
+/.cache-loader/
+# Written by scripts/prepare.mjs on every start/build (never committed)
+/versioned_docs/
+/versioned_sidebars/
+/.site-meta.json
+/.snap-*/
+/static/CNAME
+/src/prism/seleasy.generated.js
