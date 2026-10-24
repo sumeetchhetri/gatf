@@ -112,6 +112,19 @@ public final class GenDocs {
         this.repo = repo.toAbsolutePath().normalize();
     }
 
+    /** The release version: the parent pom's own version (what ci-release.yml checks against the tag), so a release
+     *  bump (tools/release/bump-version.mjs) changes the generated pages with no edit here. */
+    String gatfVersion() {
+        try {
+            Matcher m = Pattern.compile("<artifactId>gatf-parent</artifactId>\\s*<version>([^<]+)</version>")
+                    .matcher(new String(Files.readAllBytes(repo.resolve("pom.xml")), StandardCharsets.UTF_8));
+            if (m.find()) return m.group(1).trim();
+        } catch (IOException e) {
+            throw new java.io.UncheckedIOException(e);
+        }
+        throw new IllegalStateException("gen-docs: no gatf-parent <version> in " + repo.resolve("pom.xml"));
+    }
+
     // ------------------------------------------------------------------------------------------------ entry points
 
     public static void main(String[] args) throws Exception {
@@ -252,7 +265,7 @@ public final class GenDocs {
         StringBuilder b = new StringBuilder(frontMatter("Reference", 1));
         b.append("# Reference\n\n");
         b.append(String.format(GEN_NOTE, "*.properties")).append("\n\n");
-        b.append("These pages are generated from the GATF 5.0.0 sources, so they list everything the code accepts, and a docs check "
+        b.append("These pages are generated from the GATF " + gatfVersion() + " sources, so they list everything the code accepts, and a docs check "
                 + "(`DocsDriftTest`) fails the build when the sources and these pages disagree.\n\n");
         b.append("| Page | Generated from |\n|---|---|\n");
         b.append("| [Configuration](configuration.md) | `GatfExecutorConfig` and every type it nests |\n");
@@ -496,7 +509,7 @@ public final class GenDocs {
         StringBuilder b = new StringBuilder(frontMatter("CLI reference", 4));
         b.append("# CLI reference\n\n").append(String.format(GEN_NOTE, df)).append("\n\n");
         b.append("The installer puts a `gatf` launcher on your `PATH`. Without the installer, run the jar directly: "
-                + "`java -jar gatf-alldep-5.0.0.jar <command> …` (the release asset; a source build produces `gatf-alldep-jar-5.0.0.jar`) accepts every jar command below (not the launcher-only ones). "
+                + "`java -jar gatf-alldep-" + gatfVersion() + ".jar <command> …` (the release asset; a source build produces `gatf-alldep-jar-" + gatfVersion() + ".jar`) accepts every jar command below (not the launcher-only ones). "
                 + "Exit codes: `0` when every test passed or was flaky, `1` when a test failed, the run aborted or the command line was invalid "
                 + "(`gatf generate` also uses `2`; see its flags).\n\n");
         // launcher

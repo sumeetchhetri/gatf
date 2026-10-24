@@ -25,7 +25,9 @@
 //   - the version of every GATF Maven coordinate (groupId com.github.sumeetchhetri.gatf, artifactId gatf-*) in poms
 //     and in Markdown examples: the parent pom, each module's <parent>, the plugin's gatf-alldep-jar dependency, and
 //     the gatf-plugin snippets in the docs;
-//   - gatf-alldep-jar-<old>.jar in Markdown examples;
+//   - release artifact names and links in Markdown: gatf-alldep-jar-<v>.jar (source build), gatf-alldep-<v>.jar,
+//     gatf-<v>.zip, seleasy-<v>.vsix, releases/tag/<v>, releases/download/<v>/, ~/.gatf/versions/<v>, a "gatf <v>"
+//     version-output line, and the link texts "[<v> release]" / "<v> release asset|page" (Δ205f);
 //   - the gatf-bin*:<old> image tags in run_gatf.sh.
 // Then, when tools/gen-docs/GenDocs.java exists (Δ191), it regenerates the generated docs (docs/reference/**) and
 // runs their check, so the release commit passes DocsDriftTest; those files are never text-edited by this script.
@@ -36,7 +38,7 @@ import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SEMVER = /^\d+\.\d+\.\d+$/;
-const HISTORY = /^(docs\/release-notes\/|docs\/deltas\/|website\/blog\/)|package-lock\.json$/;
+const HISTORY = /^(docs\/release-notes\/|docs\/deltas\/|website\/blog\/)|(^|\/)release-notes\.md$|package-lock\.json$/;
 const GENERATED = /^docs\/reference\//; // GenDocs output: regenerated below, never text-edited
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -58,7 +60,24 @@ export function bump(path, text, from, to) {
       '$1' + to + '$2',
     ]);
   }
-  if (/\.md$/.test(path)) rules.push([new RegExp('(gatf-alldep-jar-)' + esc(from) + '(\\.jar)', 'g'), '$1' + to + '$2']);
+  if (/\.md$/.test(path)) {
+    const v = esc(from);
+    // Artifact names and release links only. Prose such as "in GATF <v> …" describes that release's behaviour and is
+    // left for a human (it is listed under "still mentions").
+    for (const [pre, post] of [
+      ['(gatf-alldep-jar-)', '(\\.jar)'],
+      ['(gatf-alldep-)', '(\\.jar)'],
+      ['(gatf-)', '(\\.zip)'],
+      ['(gatf-)', '([\\/\\\\]install\\.(?:sh|ps1))'],
+      ['(seleasy-)', '(\\.vsix)'],
+      ['(releases\\/tag\\/)', '(?![\\w.-])()'],
+      ['(releases\\/download\\/)', '(\\/)'],
+      ['(\\.gatf\\/versions\\/)', '(?![\\w.-])()'],
+      ['(^gatf )', '(\\r?$)'],
+      ['(\\[)', '( release\\])'],
+      ['(\\b)', '( release (?:asset|page)\\b)'],
+    ]) rules.push([new RegExp(pre + v + post, 'gm'), '$1' + to + '$2']);
+  }
   if (path === 'run_gatf.sh') rules.push([new RegExp('(gatf-bin(?:-ff|-vnc)?:)' + esc(from) + '(?![\\w.])', 'g'), '$1' + to]);
   let n = 0;
   for (const [re, rep] of rules) text = text.replace(re, (...a) => (n++, rep.replace(/\$(\d)/g, (_, i) => a[i])));
@@ -123,7 +142,9 @@ function main(argv) {
   } catch {
     left = '';
   }
-  const rest = left.split('\n').filter((l) => l && !changed.some((c) => l.startsWith(c + ':')));
+  // After a real run the files hold the new text, so every line still naming the old version is listed, changed files
+  // included (prose such as "in GATF <v> ..." is deliberately left). A dry run writes nothing, so it lists none.
+  const rest = dry ? [] : left.split('\n').filter(Boolean);
   if (rest.length) {
     console.log(`\nstill mentions ${from} (left as is; check these are history/comments):`);
     for (const l of rest) console.log('  ' + l.slice(0, 160));

@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
-      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.0/gatf-alldep-5.0.0.jar
+      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.1/gatf-alldep-5.0.1.jar
       - run: java -jar gatf.jar test gatf-config.xml --reporter junit,json,github
         env:
           SELENIUM_REMOTE_URL: 'http://localhost:4444'
@@ -62,7 +62,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
-      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.0/gatf-alldep-5.0.0.jar
+      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.1/gatf-alldep-5.0.1.jar
       - run: java -jar gatf.jar test gatf-config.xml --shard ${{ matrix.shard }}/4 --workers 50% --reporter junit,json
         env: { SELENIUM_REMOTE_URL: 'http://localhost:4444' }
       - uses: actions/upload-artifact@v4
@@ -75,7 +75,7 @@ jobs:
     steps:
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '21' }
-      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.0/gatf-alldep-5.0.0.jar
+      - run: curl -fsSL -o gatf.jar https://github.com/sumeetchhetri/gatf/releases/download/5.0.1/gatf-alldep-5.0.1.jar
       - uses: actions/download-artifact@v4          # one folder per artifact: out-1 … out-4
       - run: |
           dirs=""

@@ -13,7 +13,7 @@ Register it with your agent, pointing `--root` at the project folder. For Claude
 claude mcp add gatf -- gatf mcp --root /path/to/project
 ```
 
-Without the installer, use `java -jar gatf-alldep-5.0.0.jar mcp --root /path/to/project` as the command.
+Without the installer, use `java -jar gatf-alldep-5.0.1.jar mcp --root /path/to/project` as the command.
 
 | Tool | Does |
 |---|---|

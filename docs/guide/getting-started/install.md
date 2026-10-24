@@ -16,7 +16,7 @@ curl -fsSL https://github.com/sumeetchhetri/gatf/releases/latest/download/instal
 The installer:
 
 - looks for Java 21 or newer (a JDK is preferred). If there is none, it offers to download a private Eclipse Temurin 21 into `~/.gatf` (`--jre` picks the smaller runtime);
-- installs GATF under `~/.gatf/versions/5.0.0` and a `gatf` launcher in `~/.local/bin`, which it adds to your `PATH` in your shell profile;
+- installs GATF under `~/.gatf/versions/5.0.1` and a `gatf` launcher in `~/.local/bin`, which it adds to your `PATH` in your shell profile;
 - offers to set up the load tools.
 
 Open a new terminal (or run the `export PATH=…` line the installer prints), then check the install:
@@ -26,7 +26,7 @@ gatf version
 ```
 
 ```text
-gatf 5.0.0
+gatf 5.0.1
 openjdk version "21.0.12.1" 2026-08-18
 ```
 
@@ -62,14 +62,14 @@ Windows specifics (paths, load tools, pre-provisioning) are in [Running GATF on 
 
 ## Offline install
 
-Download `gatf-5.0.0.zip` from the [5.0.0 release](https://github.com/sumeetchhetri/gatf/releases/tag/5.0.0) on a machine with internet access, copy it over, then:
+Download `gatf-5.0.1.zip` from the [5.0.1 release](https://github.com/sumeetchhetri/gatf/releases/tag/5.0.1) on a machine with internet access, copy it over, then:
 
 ```bash
-unzip gatf-5.0.0.zip
-./gatf-5.0.0/install.sh --yes
+unzip gatf-5.0.1.zip
+./gatf-5.0.1/install.sh --yes
 ```
 
-On Windows, unzip it and run `powershell -ExecutionPolicy Bypass -File .\gatf-5.0.0\install.ps1`. The load tools are downloaded on first use, so on a machine without internet access set them up by hand: see [wperfk offline install](../../load-tools.md#offline--air-gapped-install).
+On Windows, unzip it and run `powershell -ExecutionPolicy Bypass -File .\gatf-5.0.1\install.ps1`. The load tools are downloaded on first use, so on a machine without internet access set them up by hand: see [wperfk offline install](../../load-tools.md#offline--air-gapped-install).
 
 ## Set up the load tools
 
@@ -83,7 +83,7 @@ Without a tool name it sets up all of them (`wperfk`, `vegeta`, `autocannon`, an
 
 ## Without the installer
 
-The release also has the plain jar (`gatf-alldep-5.0.0.jar`). Any `gatf <command>` in these docs works as `java -jar gatf-alldep-5.0.0.jar <command>`, except the launcher-only commands: use `-configtool 9080 127.0.0.1 .` for `gatf ui`, and `java -cp gatf-alldep-5.0.0.jar com.gatf.executor.ext.PerfToolProvisioner wperfk` for `gatf tools install wperfk`. See the [CLI reference](../../reference/cli.md).
+The release also has the plain jar (`gatf-alldep-5.0.1.jar`). Any `gatf <command>` in these docs works as `java -jar gatf-alldep-5.0.1.jar <command>`, except the launcher-only commands: use `-configtool 9080 127.0.0.1 .` for `gatf ui`, and `java -cp gatf-alldep-5.0.1.jar com.gatf.executor.ext.PerfToolProvisioner wperfk` for `gatf tools install wperfk`. See the [CLI reference](../../reference/cli.md).
 
 ## From source
 
