@@ -70,3 +70,19 @@ export async function fileNode(page: Page, text?: string): Promise<Locator> {
   }
   return files.first();
 }
+
+/**
+ * Δ163p: delete the files the bug-fix specs create (b<N>-*, b8/*, st-* / hc-* at any depth), so the suite can run
+ * again on a reused server (no CI: reuseExistingServer) without tripping over its own leftovers.
+ */
+export async function clearFixtures(request: import('@playwright/test').APIRequestContext) {
+  const r = await request.get('/testcasefiles');
+  if (!r.ok()) return;
+  const files = (await r.json()) as [string, string][];
+  for (const [p] of files) {
+    const n = p.replace(/\\/g, '/');
+    if (/^b8\//.test(n) || /(^|\/)(b\d+-|st-|hc-)[^/]*$/.test(n)) {
+      await request.delete('/testcasefiles?testcaseFileName=' + encodeURIComponent(n));
+    }
+  }
+}

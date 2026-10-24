@@ -31,8 +31,10 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false, // one shared GATF server instance
   // Δ163f: files also run one at a time on CI: the Grid-gated specs (debugger, workflow) share one Grid, and a
-  // second file's session made the debugger's `open chrome` wait in the Grid queue past the step timeout
-  workers: process.env.CI ? 1 : undefined,
+  // second file's session made the debugger's `open chrome` wait in the Grid queue past the step timeout.
+  // Δ163p: one worker locally too. Every spec shares ONE server, project and executor, so parallel files saw each
+  // other's .sel files, got "already in progress" from /execute and raced the debugger (Sumeet's 4 failures on macOS).
+  workers: 1,
   retries: 0,
   reporter: 'list',
   use: {

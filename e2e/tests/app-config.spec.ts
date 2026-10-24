@@ -23,7 +23,7 @@ test('edits and saves the executor config', async ({ page }) => {
 
   const firstField = page.locator('.sf').getByRole('textbox').first();
   await expect(firstField).toBeVisible();
-  await firstField.fill('https://e2e.example');
+  await firstField.fill('https://e2e.example/' + Date.now());   // Δ163p: a new value each run, or a re-run on a reused server is not dirty
 
   const save = page.getByRole('button', { name: 'Save' });
   await expect(save).toBeEnabled(); // becomes enabled once the form is dirty

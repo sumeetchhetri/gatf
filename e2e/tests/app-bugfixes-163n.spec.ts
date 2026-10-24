@@ -14,7 +14,7 @@
     limitations under the License.
 */
 import { test, expect, type APIRequestContext, type Page } from '@playwright/test';
-import { fileNode, HAS_BROWSER, storedZip } from './helpers';
+import { clearFixtures, fileNode, HAS_BROWSER, storedZip } from './helpers';
 
 // Δ163n: one spec per bug Sumeet reported on 2026-10-24 (editor, files, debugger), on the real server + SPA. Each one
 // fails on the Δ163m build (see DELTA-163n.md for the base-vs-fixed runs). Every spec writes its own fixture files
@@ -35,6 +35,12 @@ const fileRow = (page: Page, name: string) => page.locator('.tf-node.tf-file', {
 const dirRow = (page: Page, name: string) => page.locator('.tf-node.tf-dir', { has: page.locator('.tf-dir-name', { hasText: new RegExp('^' + name + '$') }) });
 
 test.describe('Δ163n reported bugs', () => {
+  test.beforeAll(async ({ playwright, baseURL }) => {
+    const rq = await playwright.request.newContext({ baseURL });
+    await clearFixtures(rq);   // Δ163p: leftovers from an earlier run on a reused server
+    await rq.dispose();
+  });
+
   test('bug 1: the file list is a narrow column, names ellipsised with the full path, hide/show remembered', async ({ page, request }) => {
     await putFile(request, 'ui/b1-a-very-long-file-name-that-will-not-fit-in-the-column.sel', 'open chrome\n');
     await page.setViewportSize({ width: 1400, height: 900 });
@@ -86,7 +92,12 @@ test.describe('Δ163n reported bugs', () => {
     await expect(fileRow(page, 'auth.sel')).toBeVisible();
     await page.getByTitle('Collapse all folders').click();
     await expect(page.locator('.tf-node.tf-dir .tf-caret', { hasText: '▾' })).toHaveCount(0);
-    await expect(page.locator('.tf-node.tf-file')).toHaveCount(1); // only the top-level trace-smoke.sel
+    // only the top-level files remain (trace-smoke.sel on a fresh server; Δ163p: a reused server also has the files
+    // other specs created at the root, so count what the server lists instead of assuming 1)
+    const listing = (await (await page.request.get('/testcasefiles')).json()) as [string, string][];
+    const topLevel = listing.filter(([p]) => !/[\\/]/.test(p)).length;
+    expect(topLevel).toBeGreaterThan(0);
+    await expect(page.locator('.tf-node.tf-file')).toHaveCount(topLevel);
     // opening a file inside collapsed folders expands to it
     await page.goto('/app/#/testfiles?path=ui/lib/auth.sel');
     await expect(page.locator('.tf-node.tf-file.sel')).toContainText('auth.sel');

@@ -17,6 +17,10 @@ npm test
 copies `sample-project` to a scratch dir, and starts `GatfConfigToolUtil -configtool <port> 127.0.0.1 .`
 (serving `/app`). Playwright waits for `/app/`, runs the specs, then tears the server down.
 
+The specs run one file at a time (`workers: 1`), always: they all share one server, one scratch project and one
+executor. Without `CI`, Playwright reuses a GATF server already listening on the port; the bug-fix specs clear their
+own leftover fixtures first, so re-running on a reused server works.
+
 Specs: `app-smoke` (shell + primary-tab navigation), `app-testfiles` (the `/testcasefiles` → SPA path),
 `app-editor` (open a `.sel` in the CodeMirror editor), `app-config` (edit + save the executor config),
 `app-execute` (the Execute controls render). These 6 run by default.
