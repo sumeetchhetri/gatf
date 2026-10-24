@@ -54,7 +54,7 @@ class RunConsoleWorkersTest {
         PrintStream ps = new PrintStream(buf, true, "UTF-8");
         RunConsole.sink = ps;
         RunConsole.activate();
-        RunConsole.suite("UI (seleasy)", null, 8, true);
+        RunConsole.suite("UI (seleasy)", "target/runconsole-test", 8, true);
         int threads = 8, per = 150;
         CountDownLatch go = new CountDownLatch(1);
         List<Thread> ts = new ArrayList<Thread>();

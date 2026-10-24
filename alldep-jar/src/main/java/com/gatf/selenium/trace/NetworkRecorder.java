@@ -108,7 +108,8 @@ public final class NetworkRecorder implements NetworkListener {
             for (Map.Entry<String, String> e : h.entrySet()) {
                 if (!first) b.append(',');
                 first = false;
-                b.append(new Json.Obj().put("name", e.getKey()).put("value", e.getValue()).end());
+                // Δ163o: credentials are never written to a trace (TraceRedact)
+                b.append(new Json.Obj().put("name", e.getKey()).put("value", TraceRedact.headerValue(e.getKey(), e.getValue())).end());
             }
         }
         return b.append(']').toString();

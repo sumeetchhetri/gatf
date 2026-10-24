@@ -91,7 +91,7 @@ public class GatfDebugWebSocket extends WebSocketApplication {
 
     private void pushLoop(WebSocket socket, String sessionId) {
         int lp = Integer.MIN_VALUE, ln = Integer.MIN_VALUE, lv = Integer.MIN_VALUE;
-        boolean lr = true, first = true;
+        boolean lr = true, lo = false, first = true;
         String lt = null;
         long ver = -1;
         try {
@@ -118,11 +118,12 @@ public class GatfDebugWebSocket extends WebSocketApplication {
                 boolean r = s.getRunning();
                 int p = s.getPrevLine(), n = s.getNextLine(), v = s.getState();
                 String t = s.getCurrFile();
-                boolean changed = first || p != lp || n != ln || v != lv || r != lr
+                boolean o = s.isPausedOnce();   // Δ163o: the first real pause is usually on the same line as the init one
+                boolean changed = first || p != lp || n != ln || v != lv || r != lr || o != lo
                         || (t == null ? lt != null : !t.equals(lt));
                 if (changed) {
-                    socket.send(frame(r, p, n, v, t));
-                    lp = p; ln = n; lv = v; lr = r; lt = t; first = false;
+                    socket.send(frame(r, p, n, v, t, s.getTraceUrl(), o));
+                    lp = p; ln = n; lv = v; lr = r; lt = t; lo = o; first = false;
                 }
                 if (!r) {
                     GatfReportsHandler.dbgSessions.remove(sessionId, s);
@@ -141,7 +142,7 @@ public class GatfDebugWebSocket extends WebSocketApplication {
         }
     }
 
-    private static String frame(boolean r, int p, int n, int v, String t) {
+    private static String frame(boolean r, int p, int n, int v, String t, String z, boolean o) {
         Map<String, Object> out = new HashMap<String, Object>();
         out.put("s", Boolean.TRUE);
         out.put("r", r);
@@ -149,6 +150,8 @@ public class GatfDebugWebSocket extends WebSocketApplication {
         out.put("n", n);
         out.put("v", v);
         out.put("t", t);
+        if (z != null) out.put("z", z);   // Δ163o: the session's kept trace.zip (after it ended)
+        out.put("o", o);   // Δ163o: the debuggee has really paused at least once
         try {
             return WorkflowContextHandler.OM.writeValueAsString(out);
         } catch (Exception e) {

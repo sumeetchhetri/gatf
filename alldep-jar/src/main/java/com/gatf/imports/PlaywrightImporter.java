@@ -285,8 +285,13 @@ public class PlaywrightImporter {
         List<String> a = splitArgs(args);
         if (sel != null && LocatorRanking.unsafe(sel)) return refused(matcher, UNSAFE_SELECTOR, stmt, lineNo, res);   // Δ163a
         // Δ145c: `??` = wait until found, `??+` = until no longer found (REFERENCE.md); both were inverted
-        if (matcher.equals("tobevisible") || matcher.equals("tobeattached") || matcher.equals("tobeenabled")) {
+        if (matcher.equals("tobevisible") || matcher.equals("tobeattached")) {
             return sel != null ? "?? " + sel : reportExpect(subject, matcher, lineNo, res);
+        }
+        // Δ163o: enabled / disabled are states of a FOUND element: `??+` (wait until not found) never passed for a
+        // disabled-but-rendered element; `?? sel enabled` only checked presence before
+        if (matcher.equals("tobeenabled") || matcher.equals("tobedisabled")) {
+            return sel != null ? "?? " + sel + (matcher.equals("tobedisabled") ? " enabled =\"false\"" : " enabled") : reportExpect(subject, matcher, lineNo, res);
         }
         if (matcher.equals("tohavetext") && sel != null && !a.isEmpty()) {
             String t = PickLocator.stepValue(unquote(a.get(0)));   // Δ163a
@@ -304,7 +309,7 @@ public class PlaywrightImporter {
         if (matcher.equals("tobechecked") && sel != null) {
             return "?? " + sel + " attr@checked =\"true\"";
         }
-        if (matcher.equals("tobehidden") || matcher.equals("tobedisabled")) {
+        if (matcher.equals("tobehidden")) {
             return sel != null ? "??+ " + sel : reportExpect(subject, matcher, lineNo, res);
         }
         // toHaveURL / toHaveTitle / toHaveValue / toHavecount etc. have no clean 1-line seleasy equivalent.

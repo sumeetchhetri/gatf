@@ -64,7 +64,7 @@ public class GatfProfileHandler  extends HttpHandler {
     			}
     			try {
     				GatfPlugin executorMojo = f.apply("executor");
-					executorMojo.initilaizeContext(gatfConfig, true);
+					executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163o: profiling never cleans out/
 					DataSourceProfiler profiler = new DataSourceProfiler(executorMojo.getContext());
 					Map<String, List<List<String>>> retval = profiler.getProfileStats(dsnames);
 					String configJson = WorkflowContextHandler.OM.writeValueAsString(retval);

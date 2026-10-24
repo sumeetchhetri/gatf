@@ -97,6 +97,12 @@ public class GatfReportsHandler extends HttpHandler {
 					GatfDebugDispatcher.streamDebug(request, response);
 					return;
 				}
+				// Δ163o (sweep): Reports probes the last CLI run's summary on every visit; before any CLI run that was a 404
+				// (a console error on the default route). No summary yet -> 204, which the SPA treats as "none".
+				if("/reports/gatf-results.json".equals(request.getRequestURI()) && !new File(dirPath, "gatf-results.json").isFile()) {
+					response.setStatus(HttpStatus.NO_CONTENT_204);
+					return;
+				}
 			    new CacheLessStaticHttpHandler(GatfConfigToolUtil.authSrc!=null, dirPath).service(request, response);
 			} else if(request.getMethod().equals(Method.PUT) ) {
 			    String action = request.getParameter("action");

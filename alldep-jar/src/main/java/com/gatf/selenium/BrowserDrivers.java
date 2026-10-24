@@ -186,12 +186,9 @@ final class BrowserDrivers {
 		// only when traceProtocol is bidi|hybrid (default cdp keeps today's behaviour). Local + Grid alike.
 		try {
 			GatfExecutorConfig __tcfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
-			if (__tcfg!=null && __tcfg.captureTraceThisRun() && caps instanceof org.openqa.selenium.MutableCapabilities) {
-				String __tp = __tcfg.getTraceProtocol();
-				boolean __chromium = "chrome".equals(browserName) || "edge".equals(browserName);
-				if (!__chromium || "bidi".equals(__tp) || "hybrid".equals(__tp)) {
-					((org.openqa.selenium.MutableCapabilities) caps).setCapability("webSocketUrl", true);
-				}
+			// Δ163o: TraceGate (same rule as before for explicit tracing; never for the implicit default)
+			if (com.gatf.selenium.trace.TraceGate.wantsBidiSocket(__tcfg, browserName) && caps instanceof org.openqa.selenium.MutableCapabilities) {
+				((org.openqa.selenium.MutableCapabilities) caps).setCapability("webSocketUrl", true);
 			}
 		} catch (Exception __ignore) { /* never block driver creation */ }
 		// Δ157 (H5): device-cloud preset (GATF_CLOUD / -Dgatf.cloud); null when unset or when SELENIUM_REMOTE_URL wins

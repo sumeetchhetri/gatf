@@ -269,6 +269,10 @@ public final class RunConsole {
         LOG.info("retry round {}: {} script(s)", round, scripts);
     }
 
+    private static volatile long lastTotal = -1;
+    /** Δ163o: tests counted by the last {@link #finish} (-1 before one ran); 0 = nothing was executed. */
+    public static long lastTotal() { return lastTotal; }
+
     /** Prints the summary and writes the CI reports; returns the number of failed tests (the CLI's exit code source). */
     public static synchronized int finish() {
         if (!active) return 0;
@@ -313,7 +317,8 @@ public final class RunConsole {
         else if (total > 0) o.println(dim("  (" + dur(ms) + ")"));
         o.println();
         if (reportDir != null) o.println(dim("  Report: " + reportDir));
-        for (String f : CiReports.write(new ArrayList<Rec>(recs.values()), reportDir, ms)) {
+        lastTotal = total;
+        for (String f : CiReports.write(new ArrayList<Rec>(recs.values()), reportDir, ms, perTest && reportDir != null)) {
             o.println(dim("  " + f));
         }
         o.println(dim("  Log:    " + GatfLogging.logFile()));

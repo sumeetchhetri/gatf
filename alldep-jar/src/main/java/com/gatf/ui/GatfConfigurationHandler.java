@@ -78,7 +78,7 @@ public class GatfConfigurationHandler extends HttpHandler {
     				GatfPlugin executorMojo = f.apply(configType);
         			if(executorMojo instanceof GatfTestCaseExecutorUtil) {
     					try {
-    						((GatfTestCaseExecutorUtil)executorMojo).initilaizeContext(gatfConfig, true);
+    						((GatfTestCaseExecutorUtil)executorMojo).initilaizeContext(gatfConfig, true, false);   // Δ163o: saving the config never cleans out/
     						initializeMojoProps(executorMojo, mojo);
     						String configJson = WorkflowContextHandler.OM.writeValueAsString(gatfConfig);
     						response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");

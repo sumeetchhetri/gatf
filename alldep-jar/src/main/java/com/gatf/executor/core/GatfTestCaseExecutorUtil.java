@@ -591,7 +591,12 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
     		Map<String, List<List<Integer[]>>> selToJavaLineMap = new LinkedHashMap<>();
     		SeleniumTest dyn = SeleniumCodeGeneratorAndUtil.getSeleniumTest(selscript, fcl.apply(null), context, retvals, configuration, false, selToJavaLineMap, out);
     		String[] args = new String[] {dyn.getClass().getName(), configPath};
+    		// Δ163o (bug 9): the debuggee keeps a failed run's trace here (SeleniumTest.keepDebugTraces); drop a stale one first
+    		java.io.File traceFile = com.gatf.selenium.trace.TraceKeep.debugTraceFile(context.getOutDir(), dyn.getClass().getName(), 0);
+    		java.nio.file.Files.deleteIfExists(traceFile.toPath());
+    		com.gatf.selenium.trace.TraceKeep.pruneDebug(context.getOutDir(), 20);   // class names are unique per compile
     		session = GatfSelDebugger.debugSession(dyn.getClass(), args, selToJavaLineMap, out[0]);
+    		session.setTraceFile(traceFile);
     		session.setSelscript(selscript);
     		session.setSrcCode(retvals[1].toString());
     	} catch (GatfSelCodeParseError e) {
@@ -895,7 +900,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 }
 
                 if (distConnections.size() > 0) {
-                    File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests();
+                    File selClsFilesZip = SeleniumCodeGeneratorAndUtil.zipSeleniumTests(testClassNames);   // Δ163o: only this run's classes
                     for (int i = 0; i < distConnections.size(); i++) {
                         DistributedConnection conn = distConnections.get(i);
                         indexes.put(conn.toString(), new HashMap<Integer, String>());
@@ -951,6 +956,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
 
         int runNum = 0;
         List<String> failedFiles = Collections.synchronizedList(new ArrayList<>());
+        try {   // Δ163o (AUDIT F9): an exception in the run loop still quits the worker browsers (body not re-indented)
         while (tests.size() > 0) {
             boolean dorep = false;
 
@@ -1102,7 +1108,9 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                 break;
             }
         }
+        } finally {
         com.gatf.selenium.context.WorkerDrivers.end(context);   // H3 (Δ154): quit the worker browsers
+        }
 
         if (numberOfRuns > 1) {
             threadPool.shutdown();
@@ -1254,6 +1262,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                         }
 
                         SeleniumResult res = e.getValue();
+                        String __traceRel = null, __traceAbs = null;   // Δ163o: also read by the subtest rows below
                         if (res.getResult() == null) {
                             consoleSelResult((String) retvals[0], keykey, null, null);
                             summLst.get((String) retvals[0]).get(keykey).add(new Object[] {"-", "#", "UNKNOWN", StringUtils.EMPTY, "0s"});
@@ -1270,7 +1279,8 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                             tim += "s";
                             // Q9/Q10: budgets + passive security checks over the session's (stopped) trace, before the
                             // result is summarised and before the keep/discard decision (a breach keeps the trace)
-                            if (dorep && sess.__trace__ != null) {
+                            // Δ163o: not for the implicit trace default (they ran only with tracing set explicitly before)
+                            if (dorep && sess.__trace__ != null && com.gatf.selenium.trace.TraceGate.runChecks(context.getGatfExecutorConfig())) {
                                 try {
                                     com.gatf.selenium.checks.TraceChecks.Report __chk = com.gatf.selenium.checks.TraceChecks.run(
                                             sess.__trace__.workDir(), context.getGatfExecutorConfig().getPerfBudgets(),
@@ -1290,7 +1300,7 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     && context.getGatfExecutorConfig().getPerfBudgets() != null) {
                                 checksWarned = true;
                                 org.apache.logging.log4j.LogManager.getLogger(GatfTestCaseExecutorUtil.class)
-                                        .warn("perfBudgets are set but no trace was captured for {} - budgets need traceMode on or retain-on-failure (Chromium or BiDi browsers)", retvals[0]);
+                                        .warn("perfBudgets are set but not checked for {} - budgets need traceMode on or retain-on-failure set explicitly (Chromium or BiDi browsers)", retvals[0]);
                             }
                             if (dorep && !sess.__a11y__.isEmpty()) {
                                 // M10: a11y check results join the report's checks tab (budgets / security) under "a11y"
@@ -1313,7 +1323,6 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                     !res.getResult().isStatus() ? msg : StringUtils.EMPTY, tim});
                             // Q3: keep or drop the session's trace per traceMode (retain-on-failure drops passing scripts').
                             // "Failed" = the script or any of its subtests failed. One trace bundle per session.
-                            String __traceRel = null, __traceAbs = null;
                             if (dorep && sess.__trace__ != null) {
                                 boolean __failed = !res.getResult().isStatus();
                                 for (SeleniumTestResult __st : res.getSubTestResults().values()) {
@@ -1388,9 +1397,11 @@ public class GatfTestCaseExecutorUtil implements GatfPlugin {
                                         + e1.getKey().replaceAll("[^a-zA-Z0-9-_\\.]", "_");
                                 summLst.get((String) retvals[0]).get(keykey).add(new Object[] {e1.getKey(), fileName + ".html", e1.getValue().isStatus() ? "SUCCESS" : "FAILED",
                                         !e1.getValue().isStatus() ? msg : StringUtils.EMPTY, tim});
-                                consoleSelResult((String) retvals[0], keykey, e1.getKey(), e1.getValue());
+                                // Δ163o (bug 9): a subtest's row links the session's kept trace.zip (same report dir; one trace per session),
+                                // and the console line of a failed subtest names it, as the script's line already did
+                                consoleSelResult((String) retvals[0], keykey, e1.getKey(), e1.getValue(), e1.getValue().isStatus() ? null : __traceAbs);
                                 if (dorep) {
-                                    ReportHandler.doSeleniumTestReport(path, fileName, retvals, e1.getValue(), context, null);
+                                    ReportHandler.doSeleniumTestReport(path, fileName, retvals, e1.getValue(), context, __traceRel);
                                     if(!isLoadTestingEnabled) {
 	                                    String prefix = runPrefix + "-" + (index + 1) + "-" + (runNum) + "-" + (findex + 1) + "-" + counter;
 	                                    reportList.add(TestFileReporter.addSubTestO(counter++, node, runNum, keykey, e1.getValue().getSubtestName(), tim, e1.getValue().isStatus(), msg, fileName + ".html", prefix, null, null, null));

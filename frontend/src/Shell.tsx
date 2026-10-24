@@ -188,7 +188,7 @@ export default function Shell() {
           />
         )}
         {view === 'config' && <ConfigView key={cfg} />}
-        {view === 'testfiles' && <TestFilesView key={cfg} pendingOpen={pendingTestFile} onConsumePending={() => setPendingTestFile(undefined)} />}
+        {view === 'testfiles' && <TestFilesView key={cfg} pendingOpen={pendingTestFile} onConsumePending={() => setPendingTestFile(undefined)} onOpenTrace={openTrace} />}
         {view === 'execute' && (
           <ExecuteView
             key={cfg}

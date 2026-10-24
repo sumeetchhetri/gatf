@@ -75,8 +75,8 @@ class ImportersTest {
                 + "  await page.waitForSelector(\"text=Order state: 'hidden'\");\n});\n";   // the selector text is not an option
         String c = new PlaywrightImporter().importSource(src, "w").content;
         assertThat(c).contains("  ?? id@a\n").contains("  ??+ id@b\n").contains("  ?? id@c\n").contains("  ??+ id@d\n")
-                .contains("  ?? id@e\n").contains("  ?? id@f\n").contains("  ?? id@g\n")
-                .contains("  ??+ id@h\n").contains("  ??+ id@i\n")
+                .contains("  ?? id@e\n").contains("  ?? id@f\n").contains("  ?? id@g enabled\n")
+                .contains("  ??+ id@h\n").contains("  ?? id@i enabled =\"false\"\n")   // Δ163o: disabled is a state, not "not found"
                 .contains("  ?? id@j text =\"x\"\n").contains("  ?? text@\"k\"\n").contains("  ?? text@\"Order state: 'hidden'\"\n")
                 .doesNotContain("??-");
     }

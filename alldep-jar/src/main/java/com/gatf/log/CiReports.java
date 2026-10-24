@@ -45,8 +45,16 @@ final class CiReports {
 
     /** Writes the enabled reports; returns display lines ("JUnit:  /path/…") for the summary. Never throws. */
     static List<String> write(List<Rec> recs, String dir, long totalMs) {
+        return write(recs, dir, totalMs, false);
+    }
+
+    /**
+     * Δ163o: {@code functional} = a per-test run: it writes its (possibly empty) results, so an empty shard leaves a
+     * gatf-results.json that merge-reports accepts (it wrote nothing before).
+     */
+    static List<String> write(List<Rec> recs, String dir, long totalMs, boolean functional) {
         List<String> shown = new ArrayList<String>();
-        if (recs.isEmpty()) return shown;   // load / multi-user runs: the HTML report covers them
+        if (recs.isEmpty() && !functional) return shown;   // load / multi-user runs: the HTML report covers them
         String sel = System.getProperty("gatf.reporters", "junit,json,github").toLowerCase(Locale.ROOT);
         if (sel.contains("none")) return shown;
         File out = new File(dir != null ? dir : ".");

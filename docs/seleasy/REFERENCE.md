@@ -24,7 +24,7 @@ subtest "login"                               // reusable, individually reported
 - **Soft assertions:** `??~` (optionally `??~N`) asserts like `??` but a failure is recorded instead of stopping the script; the script or subtest fails at the end, listing every soft failure with its file and line.
 - **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`, `nowait actions draganddrop id@a id@b`). The opt-out applies to that line only.
 - **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots and skip hidden elements (append `[include-hidden]` to any value, e.g. `text@=Saved[include-hidden]`); empty values and invalid regexes fail when the script is compiled. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates (loops `#`/`##` and `#transient-provider` may match many). A semantic locator can also be the anchor: `relative tag@input rightof label@Email`.
-- **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
+- **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list). The state properties `selected` and `enabled` take no value, or `="false"` for the opposite state: `?? id@save enabled ="false"` asserts a disabled button. Any other value asserts the state itself. A find waits for a visible element, so assert a hidden one with `??+` (wait until invisible), not `visible ="false"`.
 - **Comments:** `// line` and `/* block */`; `/* … */` may sit on one line. `*/` closes only an open block comment, so `route **/api/x` and `xpath@//div/*/a` are ordinary statements.
 
 The catalog of statement keywords used by the editor and linter is generated from the parser: [`commands.json`](commands.json).
@@ -494,7 +494,7 @@ Examples :-
 	hoverclick id@'hoverele' id@'clickele'
 ```
 
-`hoverclick` waits for both elements itself; it can't follow a `??` wait (`?? id@a hoverclick` is a parse error).
+`hoverclick` waits for both elements itself; it can't follow a `??` wait (`?? id@a hoverclick` is a parse error). With `autoWait` on, it hovers first and then waits for the click target to become clickable, so a menu item that only appears on hover is found.
 
 ### Multiple Chained Actions
 

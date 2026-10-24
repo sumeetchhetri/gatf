@@ -269,6 +269,38 @@ public abstract class SeleniumTest {
 		sess.ccStatus = false;
 	}*/
 	
+	/** Δ163o: a state subselector's value asks for the negated state ("false", any case/whitespace). */
+	static boolean isStateSubselector(String subselector) {
+		return "selected".equalsIgnoreCase(subselector) || "enabled".equalsIgnoreCase(subselector) || "visible".equalsIgnoreCase(subselector);
+	}
+
+	static boolean stateFalse(String value) {
+		return value != null && "false".equalsIgnoreCase(value.trim());
+	}
+
+	/** Δ163o (#3): the configured Chrome binary override (env first, then the system property), or null. */
+	static String chromeBinaryOverride(String env, String prop) {
+		String v = env != null && !env.trim().isEmpty() ? env : prop;
+		return v == null || v.trim().isEmpty() ? null : v.trim();
+	}
+
+	static void applyChromeBinary(org.openqa.selenium.chrome.ChromeOptions o, String bin) {
+		if(bin == null) return;
+		if(ChromeForTesting.isHeadlessShellRequest(bin)) {
+			try {
+				ChromeForTesting.Install cft = ChromeForTesting.headlessShell();
+				o.setBinary(cft.browser.getAbsolutePath());
+				System.setProperty("webdriver.chrome.driver", cft.driver.getAbsolutePath());   // its matching driver
+			} catch (RuntimeException e) {
+				throw e;
+			} catch (Exception e) {
+				throw new RuntimeException("chrome-headless-shell provisioning failed: " + e.getMessage(), e);
+			}
+		} else {
+			o.setBinary(bin);
+		}
+	}
+
 	protected String addWdm(String browserName, Capabilities capabilities) {
 		if(browserName.endsWith("-rec")) {
 			browserName= browserName.replaceFirst("-rec", "");
@@ -283,6 +315,11 @@ public abstract class SeleniumTest {
 				break;
 			default:
 				throw new RuntimeException("Invalid browser name specified for browser");
+		}
+		// Δ163o (#3): GATF_CHROME_BINARY / -Dgatf.chrome.binary applied only to `open chrome-dkr` (BrowserDrivers); a plain
+		// `open chrome` builds its ChromeOptions in the generated code and ignored it. Local sessions only (not a Grid).
+		if(browserName.equals("chrome") && capabilities instanceof org.openqa.selenium.chrome.ChromeOptions && SeleniumGrid.remoteUrl("chrome") == null) {
+			applyChromeBinary((org.openqa.selenium.chrome.ChromeOptions) capabilities, chromeBinaryOverride(System.getenv("GATF_CHROME_BINARY"), System.getProperty("gatf.chrome.binary")));
 		}
 		// M4: route on Firefox/Safari needs WebDriver BiDi. Chromium intercepts over CDP, except where it has none:
 		// a Grid session (a plain RemoteWebDriver), traceProtocol bidi or -Dgatf.routeProtocol=bidi, which then need the BiDi socket too.
@@ -1058,8 +1095,7 @@ public abstract class SeleniumTest {
 		com.gatf.selenium.context.WorkerPool<WebDriver> p = __workerPool__();
 		if(p == null || d == null || CloudDrivers.routesPlainKeys()) return d;   // Δ154/157 merge: cloud sessions stay per script
 		GatfExecutorConfig cfg = ___cxt___.getGatfExecutorConfig();
-		boolean tracing = cfg != null && cfg.captureTraceThisRun() && !cfg.isLoadTestingEnabled()
-				&& (cfg.getConcurrentUserSimulationNum()==null || cfg.getConcurrentUserSimulationNum()<=1);
+		boolean tracing = com.gatf.selenium.trace.TraceGate.poolTracing(cfg);   // Δ163o: the implicit default never switches the protocol
 		// a CDP trace is bound to the default context: trace this run over BiDi, or (no BiDi) do not pool (logged once)
 		if(cfg != null && p.trace(tracing, cfg.getTraceProtocol(), d instanceof HasDevTools, com.gatf.selenium.trace.BidiRaw.available(d))
 				== com.gatf.selenium.context.WorkerPool.Trace.BIDI) {
@@ -3266,7 +3302,9 @@ public abstract class SeleniumTest {
 		Object resp = ret;
 		boolean flag = true;
 		if(ret!=null) {
-			if(action==null && (StringUtils.isNotBlank(value) || (values!=null && values.length>0)) && subselector!=null && !subselector.isEmpty()) {
+			// Δ163o: the state properties (selected / enabled / visible) are handled below with their value (`="false"`); this
+			// generic branch had no rhs for them, so a valued state assertion passed whatever the element's state
+			if(action==null && (StringUtils.isNotBlank(value) || (values!=null && values.length>0)) && subselector!=null && !subselector.isEmpty() && !isStateSubselector(subselector)) {
 				if(value!=null)
 				{
 					if(byselsame)
@@ -3662,13 +3700,16 @@ public abstract class SeleniumTest {
 					}
 				}
 			} else if("selected".equalsIgnoreCase(subselector) || "enabled".equalsIgnoreCase(subselector) || "visible".equalsIgnoreCase(subselector)) {
+				// Δ163o: `enabled ="false"` / `visible ="false"` / `selected ="false"` assert the opposite (the value was ignored,
+				// so an imported toBeDisabled had no faithful seleasy form)
+				boolean want = !stateFalse(value);
 				for(final WebElement we: ret) {
 					if(subselector.equalsIgnoreCase("selected")) {
-						flag &= we.isSelected();
+						flag &= we.isSelected() == want;
 					} else if(subselector.equalsIgnoreCase("enabled")) {
-						flag &= we.isEnabled();
+						flag &= we.isEnabled() == want;
 					} else if(subselector.equalsIgnoreCase("visible")) {
-						flag &= we.isDisplayed();
+						flag &= we.isDisplayed() == want;
 					}
 					break;
 				}
@@ -4234,10 +4275,12 @@ public abstract class SeleniumTest {
         		}, "gatf-debuggee-quit"));
         	}
             if(dyn!=null) {
+            	List<SeleniumTestSession> __ss = null;
             	try {
-                    dyn.execute(lp, "");
+                    __ss = dyn.execute(lp, "");
                 } catch (Throwable e) {
                 }
+                keepDebugTraces(__ss != null ? __ss : dyn.get__sessions__(), c, args[0]);   // Δ163o (bug 9)
                 dyn.quitAll();
             }
         } catch (GatfSelCodeParseError e) {
@@ -4247,6 +4290,42 @@ public abstract class SeleniumTest {
         }
     }
 	
+	/**
+	 * Δ163o (bug 9): a debug session (this JVM) keeps or drops each session's trace by the config's traceMode, like a suite
+	 * run does, into {@code <outDir>/debug/<class>-trace.zip} (the debugger links it when the session ends). Before, the
+	 * trace was never written, so a failed subtest in the debugger left no trace.zip.
+	 */
+	static void keepDebugTraces(List<SeleniumTestSession> sessions, AcceptanceTestContext c, String className) {
+		if(sessions == null) return;
+		int i = 0;
+		for (SeleniumTestSession s : sessions) {
+			if(s == null || s.__trace__ == null) continue;
+			try {
+				Boolean script = null;
+				List<Boolean> subs = new ArrayList<Boolean>();
+				for (SeleniumTestSession.SeleniumResult r : s.getResult().values()) {
+					if(r == null) continue;
+					if(r.getResult() != null) script = (script == null || script) && r.getResult().isStatus();
+					for (SeleniumTestResult st : r.getSubTestResults().values()) {
+						if(st != null && st.getSkipReason() == null) subs.add(st.isStatus());
+					}
+				}
+				boolean failed = com.gatf.selenium.trace.TraceKeep.failed(script, subs);
+				if(c.getGatfExecutorConfig().keepTrace(failed)) {
+					File f = com.gatf.selenium.trace.TraceKeep.debugTraceFile(c.getOutDir(), className, i++);
+					java.nio.file.Path p = s.__trace__.writeZip(f.toPath(), failed ? "failed" : "passed");
+					if(p != null) System.out.println("Trace: " + p.toAbsolutePath());
+				} else {
+					s.__trace__.discard();
+				}
+			} catch (Throwable e) {
+				System.out.println("Trace not kept: " + e.getMessage());
+			} finally {
+				s.__trace__ = null;
+			}
+		}
+	}
+
 	public static class RestartsubtestException extends RuntimeException {
 		private static final long serialVersionUID = 1L;
 		/** Δ163n: the subtest method ({@code __st__N}) to replay; null = the innermost one (run-mode restart). */
@@ -4487,8 +4566,9 @@ public abstract class SeleniumTest {
 				// config so no Command.java codegen change is needed. Never breaks browser init.
 				GatfExecutorConfig __cfg = ___cxt___!=null ? ___cxt___.getGatfExecutorConfig() : null;
 				// Q3: traceMode decides whether this round traces (off / on / retain-on-failure / on-first-retry)
-				if(__cfg!=null && __cfg.captureTraceThisRun() && !__cfg.isLoadTestingEnabled()
-						&& (__cfg.getConcurrentUserSimulationNum()==null || __cfg.getConcurrentUserSimulationNum()<=1)
+				// Δ163o: TraceGate - the implicit default (no traceMode / enableTrace) traces Chromium over CDP outside a
+				// worker pool only, so it never changes how existing configs run (capabilities, pooling, protocol)
+				if(com.gatf.selenium.trace.TraceGate.startTrace(__cfg, driver instanceof HasDevTools, __workerPool__()!=null)
 						&& getSession()!=null && getSession().__trace__==null) {
 					String __sid = ((RemoteWebDriver)driver).getSessionId().toString();
 					com.gatf.selenium.trace.TraceConfig __tc = new com.gatf.selenium.trace.TraceConfig()
@@ -4508,6 +4588,7 @@ public abstract class SeleniumTest {
 							.setVideoQuality(__cfg.getTraceVideoQuality())
 							.setVideoEveryNthFrame(__cfg.getTraceVideoEveryNthFrame())
 							.setDomSnapshots(__cfg.getTraceDomSnapshots());
+					if(__cfg.traceImplicit()) __tc.setCaptureBodies(false);   // Δ163o: default traces keep no response bodies (tokens)
 					if(__cfg.getTraceDomSnapshotMaxMb()!=null && __cfg.getTraceDomSnapshotMaxMb()>0) {
 						__tc.setSnapshotMaxTotalBytes((long)__cfg.getTraceDomSnapshotMaxMb()*1024L*1024L);
 					}

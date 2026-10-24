@@ -305,6 +305,12 @@ export const executorSchema: CfgSchema = {
     "loginOnce": {
       "type": "string"
     },
+    // Δ163o (AUDIT-T3 F8): browser contexts (docs/browser-modes.md): off = shared context, subtest = a fresh context per
+    // top-level subtest, worker = one browser per worker with a fresh context per script. Blank = off.
+    "browserContexts": {
+      "type": "string",
+      "options": ["off", "subtest", "worker"]
+    },
     "browserApiStorageToken": {
       "type": "string"
     },

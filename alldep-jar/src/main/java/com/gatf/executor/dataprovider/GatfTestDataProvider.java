@@ -69,6 +69,11 @@ public class GatfTestDataProvider implements Serializable {
 		this.enabled = enabled;
 	}
 
+	/** Δ163o (#4): true when the config gave no {@code enabled} (not a bean property; isEnabled() reads it as false). */
+	public boolean enabledUnset() {
+		return enabled == null;
+	}
+
 	public String getDataSourceName() {
 		return dataSourceName;
 	}

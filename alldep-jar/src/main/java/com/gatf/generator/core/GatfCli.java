@@ -177,7 +177,13 @@ public final class GatfCli {
     		}
     		else if(args[0].equals("-validate-sel"))
     		{
-    			Command.validateSel(args, null, false);
+    			// Δ163o: exit 1 on FAILURE (it always exited 0, so a CI step using it could not fail)
+    			try {
+    				exitCode = validateSelExit(Command.validateSel(args, null, false), System.err);
+    			} catch (Exception e) {   // e.g. no config in the workdir: a message, not a stack trace
+    				System.err.println("Validation failed: " + (e.getMessage() != null ? e.getMessage() : e.toString()));
+    				exitCode = 1;
+    			}
     		}
     		else
     		{
@@ -201,8 +207,9 @@ public final class GatfCli {
 					"java -jar gatf-plugin-{version}.jar -executor {executor-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -selenium {selenium-config-file}.xml\n" +
 					"java -jar gatf-plugin-{version}.jar -configtool {http_port} {ip_address} {project_folder}\n" + 
-					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir}\n" + 
-					"java -jar gatf-plugin-{version}.jar -listener\n");
+					"java -jar gatf-plugin-{version}.jar -validate-sel {file-name/relative/to/workdir} [{config-file} [{workdir, default /workdir}]]   (exits 1 when the script does not validate)\n" + 
+					"java -jar gatf-plugin-{version}.jar -listener\n" +
+					"Exit codes: 0 = every test passed; 1 = invalid usage, a failed or aborted run, or no test executed (Δ163o).\n");
     	}
     	
 		System.exit(showHelp ? 1 : exitCode);   // non-zero on invalid usage, an aborted run, or any failed test
@@ -233,7 +240,12 @@ public final class GatfCli {
     	RunConsole.activate();
     	try {
     		GatfTestCaseExecutorUtil.main(args);
-    		return RunConsole.finish() > 0 ? 1 : 0;
+    		int failed = RunConsole.finish();
+    		int rc = suiteExit(failed, RunConsole.lastTotal());
+    		if (failed == 0 && rc != 0) {
+    			GatfLogging.out().println("  Exit 1: no test was executed (see the log for why, e.g. the browser could not start).");
+    		}
+    		return rc;
     	} catch (Throwable e) {
     		// Throwable, not Exception: execute() wraps every failure in an AssertionError, so a UI run whose scripts
     		// failed (GatfRunTimeErrors) used to escape here with no summary and no CI reports.
@@ -251,5 +263,26 @@ public final class GatfCli {
     		if (!RunConsole.hasResults() || RunConsole.finish() == 0) RunConsole.abort(cause);
     		return 1;
     	}
+    }
+
+    /**
+     * Δ163o (#1): a finished run's exit code: 1 when a test failed, and 1 when nothing was executed although the run
+     * completed (e.g. the browser or its driver could not start, or --grep matched nothing) so CI does not go green with
+     * no tests. An empty shard does not get here (it exits 0 from the EmptyShardException path).
+     */
+    static int suiteExit(int failed, long total) {
+        return failed > 0 || total == 0 ? 1 : 0;
+    }
+
+    /** Δ163o: -validate-sel's exit code from Command.validateSel's {"status", "error"} JSON (FAILURE or unreadable -> 1). */
+    static int validateSelExit(String json, java.io.PrintStream err) {
+        try {
+            java.util.Map<?, ?> m = new com.fasterxml.jackson.databind.ObjectMapper().readValue(json, java.util.Map.class);
+            if ("SUCCESS".equals(m.get("status"))) return 0;
+            err.println("Validation failed: " + m.get("error"));
+        } catch (Exception e) {
+            err.println("Validation failed: " + json);
+        }
+        return 1;
     }
 }

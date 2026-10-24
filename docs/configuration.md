@@ -224,6 +224,14 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
 
 **Browser driver arguments** (`seleniumDriverConfigs[].arguments`, JSON configs): space-separated browser flags, each passed to the browser as its own argument, e.g. `"arguments": "--headless=new --no-sandbox"`. A flag's value cannot contain spaces (the string is split on whitespace). Earlier builds passed the whole string as a single argument, so Chrome ignored every flag in it.
 
+**Traces** (`traceMode`): `off`, `on`, `retain-on-failure` or `on-first-retry`. Left unset (and `enableTrace` false), a failed script or subtest still keeps a `trace.zip`, linked from its report row, for runs from the CLI, the Execute view, the editor's Run and the debugger. This default trace is recorded on Chromium over CDP only, outside a `browserContexts: worker` pool, without response bodies. It does not run `perfBudgets` or `securityChecks`. Set `traceMode` (or `enableTrace: true`, which means `on`) for full traces and those checks; set `"traceMode": "off"` to keep no traces. Credential headers (Authorization, cookies, API keys, tokens) are written to a trace's `network.har` as `[redacted]`. Before Δ163o, an unset `traceMode` with `enableTrace` false meant `off`. Distributed runs store their workers' traces under `<out>/dist-traces/<run>/`, and only the newest 50 runs are kept; change that with `-Dgatf.distTraces.keep=N`.
+
+**Chrome binary** (`GATF_CHROME_BINARY`, or the system property `gatf.chrome.binary`): a path to the Chrome or Chromium executable, used by a local `open chrome` as well as by `open chrome-dkr`. The environment variable wins over the property.
+
+**Data providers**: a provider runs only with `"enabled": true`. A provider without `enabled` is disabled, and GATF logs a warning naming it.
+
+**Exit codes**: `gatf test` (and `-selenium`) exits 1 when no test was executed, for example because the browser could not start or `--grep` matched nothing; before, it printed `No tests were executed.` and exited 0. A shard (`--shard i/n`) that gets no tests exits 0. `-validate-sel <file> [<config> [<workdir>]]` (the workdir defaults to `/workdir`) exits 1 when validation fails and prints the reason. A shard that ran no tests still writes `gatf-results.json`, so `gatf merge-reports` accepts its folder.
+
 ### AI provider (opt-in)
 
 `<ai>` turns on the AI features (the healer for now). Leave it out and nothing calls a model. The key is never in this file: it is read from the environment variable named by `apiKeyEnv` (default `ANTHROPIC_API_KEY` / `OPENAI_API_KEY`) or from the first line of `apiKeyFile`, and it never appears in reports, traces or logs.

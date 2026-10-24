@@ -157,6 +157,22 @@ public class GatfSelDebugger {
     public String getSrcCode() {
 		return srcCode;
 	}
+
+	// Δ163o (bug 9): where the debuggee keeps a (failed) run's trace; the push frames carry its URL once the session ended
+	private volatile File traceFile;
+	public void setTraceFile(File f) {
+		traceFile = f;
+	}
+	/** Δ163o (sweep): has the debuggee really paused yet? The init response shows line 1 before its JVM got there. */
+	public boolean isPausedOnce() {
+		return pausedOnce;
+	}
+
+	/** The kept trace.zip's console URL after the session ended, else null. */
+	public String getTraceUrl() {
+		File f = traceFile;
+		return running == 0 && f != null && f.isFile() ? com.gatf.selenium.trace.TraceKeep.debugTraceUrl(f) : null;
+	}
 	
     public String getCurrFile() {
 		return currFile;

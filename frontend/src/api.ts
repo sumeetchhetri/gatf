@@ -585,6 +585,8 @@ export interface DbgResponse {
   r?: boolean; // running (heartbeat)
   v?: number; // debugger state (heartbeat = last action code)
   t?: string; // current file (heartbeat)
+  z?: string; // Δ163o: the ended session's kept trace.zip URL (retain-on-failure / on)
+  o?: boolean; // Δ163o: the debuggee has really paused at least once (false while it is still starting)
   m?: string; // error message
   [k: string]: unknown;
 }

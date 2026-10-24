@@ -60,7 +60,11 @@ interface Tab {
   cases: ApiTestCase[] | null; // .xml structured
 }
 
-export default function TestFilesView({ pendingOpen, onConsumePending }: { pendingOpen?: string; onConsumePending?: () => void } = {}) {
+export default function TestFilesView({
+  pendingOpen,
+  onConsumePending,
+  onOpenTrace,
+}: { pendingOpen?: string; onConsumePending?: () => void; onOpenTrace?: (url: string) => void } = {}) {
   const [files, setFiles] = useState<TestcaseFileEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -803,7 +807,7 @@ export default function TestFilesView({ pendingOpen, onConsumePending }: { pendi
 
                 {!active.loading && !active.err && active.kind !== 'xml' &&
                   (debugging && active.kind === 'sel' ? (
-                    <SelDebugger filePath={active.path} onExit={() => setDebugging(false)} />
+                    <SelDebugger filePath={active.path} onExit={() => setDebugging(false)} onOpenTrace={onOpenTrace} />
                   ) : running && active.kind === 'sel' ? (
                     <SelRunner filePath={active.path} code={active.draft} onExit={() => setRunning(false)} />
                   ) : (

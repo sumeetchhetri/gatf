@@ -33,7 +33,12 @@ class TraceModeTest {
 
     @Test
     void blankModeFallsBackToEnableTrace() {
-        assertThat(cfg(null, false, 0).effectiveTraceMode()).isEqualTo("off");
+        // Δ163o (Sumeet, 2026-10-24): neither set -> retain-on-failure (was "off"); traceMode off opts out
+        assertThat(cfg(null, false, 0).effectiveTraceMode()).isEqualTo("retain-on-failure");
+        assertThat(cfg(null, false, 0).captureTraceThisRun()).isTrue();
+        assertThat(cfg(null, false, 0).keepTrace(false)).isFalse();
+        assertThat(cfg(null, false, 0).keepTrace(true)).isTrue();
+        assertThat(cfg("off", false, 0).captureTraceThisRun()).isFalse();
         assertThat(cfg(null, true, 0).effectiveTraceMode()).isEqualTo("on");
         assertThat(cfg("  ", true, 0).getTraceMode()).isNull();
         assertThat(cfg("Retain-On-Failure", false, 0).effectiveTraceMode()).isEqualTo("retain-on-failure");
@@ -67,5 +72,15 @@ class TraceModeTest {
         assertThatThrownBy(() -> cfg("retain-on-fail", false, 0))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("off, on, retain-on-failure, on-first-retry");
+    }
+
+    @Test
+    void onlyTheDefaultIsImplicit() {
+        // Δ163o verifier round: the implicit default traces quietly (no capability / pool / protocol change, no checks)
+        assertThat(cfg(null, false, 0).traceImplicit()).isTrue();
+        assertThat(cfg("  ", false, 0).traceImplicit()).isTrue();
+        assertThat(cfg(null, true, 0).traceImplicit()).isFalse();
+        assertThat(cfg("retain-on-failure", false, 0).traceImplicit()).isFalse();
+        assertThat(cfg("off", false, 0).traceImplicit()).isFalse();
     }
 }

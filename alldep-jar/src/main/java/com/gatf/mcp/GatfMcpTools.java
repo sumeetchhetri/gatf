@@ -106,9 +106,9 @@ public final class GatfMcpTools {
 
         s.register(McpTool.of("summarise_trace", "Condense a trace (*-trace.zip or its directory): last actions, console errors, failed and slowest "
                         + "requests, passive checks, web vitals, screenshots.",
-                McpTool.schema("path*", "string", "the trace zip or directory (absolute, or relative to the project root)",
+                McpTool.schema("path*", "string", "the trace zip or directory inside the project root (absolute, or relative to it)",
                         "limit", "integer", "entries per section (default 10)"),
-                a -> TraceSummary.summarise(anyPath(McpTool.req(a, "path")), McpTool.num(a, "limit", 10, 1, 200), om)));
+                a -> TraceSummary.summarise(traceInRoot(McpTool.req(a, "path")), McpTool.num(a, "limit", 10, 1, 200), om)));
 
         s.register(McpTool.of("record", "Record a seleasy script from a visible local browser the user drives. "
                         + "action=start (url, browser) → sessionId; steps → lines so far; stop (saveAs) → the script, optionally saved and linted.",
@@ -365,6 +365,16 @@ public final class GatfMcpTools {
     Path anyPath(String p) {
         Path x = Paths.get(p);
         return x.isAbsolute() ? x.normalize() : inRoot(p);
+    }
+
+    /**
+     * Δ163o (AUDIT F10): summarise_trace reads the trace zip, so it takes heal_from_trace's rule: an existing path inside
+     * the project root with symlinks resolved (it accepted any absolute path before).
+     */
+    Path traceInRoot(String p) {
+        Path t = HealTool.inside(root, p);
+        if (t == null) throw new McpTool.ToolError("trace must be an existing zip or directory inside the project root: " + p);
+        return t;
     }
 
     String configName(String given) {

@@ -273,7 +273,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 				
     			if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(referencedFile)) {
     				GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
-					executorMojo.initilaizeContext(gatfConfig, true);
+					executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163o: a lookup never cleans out/
 					File tfl = executorMojo.getContext().getResourceFile(testcaseFileName);
 					if(tfl.exists()) {
 						File par = tfl.getParentFile();
@@ -298,7 +298,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					}
     			} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(possibleSubtestFuncCall)) {
 					GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
-					executorMojo.initilaizeContext(gatfConfig, true);
+					executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163o: a lookup never cleans out/
 					Object[] fld = Command.getSubtestFromCall(possibleSubtestFuncCall, testcaseFileName, executorMojo.getContext(), null);
 					String json = WorkflowContextHandler.OM.writeValueAsString(new Object[] {fld[5], fld[1]});
 	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");
@@ -308,7 +308,7 @@ public class GatfTestCaseFilesHandler extends HttpHandler {
 					return;
 				} else if(StringUtils.isNotBlank(testcaseFileName) && StringUtils.isNotBlank(allsubtests)) {
 					GatfTestCaseExecutorUtil executorMojo = new GatfTestCaseExecutorUtil();
-					executorMojo.initilaizeContext(gatfConfig, true);
+					executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163o: a lookup never cleans out/
 					List<String> lst = Command.getSubtestsForFile(testcaseFileName, executorMojo.getContext(), false);
 					String json = WorkflowContextHandler.OM.writeValueAsString(lst);
 	    			response.setContentType(MediaType.APPLICATION_JSON + "; charset=utf-8");

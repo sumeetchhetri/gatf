@@ -98,6 +98,11 @@ public final class HealTool {
 
     /** An existing path inside the root (relative to it, or absolute), symlinks resolved; null otherwise. */
     Path inside(String p) {
+        return inside(root, p);
+    }
+
+    /** Δ163o (AUDIT F10): the shared rule, also used by summarise_trace. */
+    static Path inside(Path root, String p) {
         if (p == null || p.indexOf('\0') >= 0) return null;
         try {
             Path realRoot = root.toRealPath();

@@ -436,11 +436,75 @@ public final class DistributedTraces {
     static Path[] storeDir(File outRoot, String run, String node) throws IOException {
         Path root = outRoot.toPath();
         Files.createDirectories(root);
-        Path dir = root.resolve(STORE_DIR).resolve(token(run, 64)).resolve(token(node, 96));
+        Path runDir = root.resolve(STORE_DIR).resolve(token(run, 64));
+        boolean newRun = !Files.isDirectory(runDir);
+        Path dir = runDir.resolve(token(node, 96));
         Files.createDirectories(dir);
         Path realRoot = root.toRealPath(), realDir = dir.toRealPath();
         if (!realDir.startsWith(realRoot)) throw new IOException("trace store escapes the report dir");
+        // AUDIT F11: prune only after the escape check, and only a store that is a real directory inside the report dir
+        // (verifier round: a symlinked dist-traces was pruned before the check refused it)
+        Path store = root.resolve(STORE_DIR);
+        if (newRun && !Files.isSymbolicLink(store) && store.toRealPath().equals(realRoot.resolve(STORE_DIR))) {
+            prune(store, runDir.getFileName().toString(), keepRuns());
+        }
         return new Path[] {realDir, realRoot};
+    }
+
+    /** Δ163o (AUDIT F11): how many dist-traces run folders are kept ({@code -Dgatf.distTraces.keep}, default 50, as history). */
+    static int keepRuns() {
+        return Math.max(1, Integer.getInteger("gatf.distTraces.keep", 50));
+    }
+
+    /**
+     * Δ163o (AUDIT F11): deletes the oldest run folders under {@code store} beyond {@code keep} (by modification time),
+     * never {@code current}. Only real directories directly under the store are touched; symlinks are not followed.
+     * Never throws; returns the number removed.
+     */
+    static int prune(Path store, String current, int keep) {
+        List<Path> runs = new ArrayList<Path>();
+        try (java.util.stream.Stream<Path> s = Files.list(store)) {
+            s.filter(p -> Files.isDirectory(p, LinkOption.NOFOLLOW_LINKS) && !p.getFileName().toString().equals(current)).forEach(runs::add);
+        } catch (IOException e) {
+            return 0;
+        }
+        int excess = runs.size() + 1 - Math.max(1, keep);   // + 1: the current run counts
+        if (excess <= 0) return 0;
+        runs.sort((a, b) -> Long.compare(mtime(a), mtime(b)));
+        int n = 0;
+        for (int i = 0; i < excess && i < runs.size(); i++) {
+            if (deleteTree(runs.get(i))) n++;
+        }
+        return n;
+    }
+
+    private static long mtime(Path p) {
+        try {
+            return Files.getLastModifiedTime(p, LinkOption.NOFOLLOW_LINKS).toMillis();
+        } catch (IOException e) {
+            return Long.MAX_VALUE;   // unreadable: treat as newest (kept)
+        }
+    }
+
+    private static boolean deleteTree(Path dir) {
+        try {
+            Files.walkFileTree(dir, new java.nio.file.SimpleFileVisitor<Path>() {   // does not follow symlinks
+                @Override
+                public java.nio.file.FileVisitResult visitFile(Path f, java.nio.file.attribute.BasicFileAttributes a) throws IOException {
+                    Files.delete(f);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public java.nio.file.FileVisitResult postVisitDirectory(Path d, IOException e) throws IOException {
+                    Files.delete(d);
+                    return java.nio.file.FileVisitResult.CONTINUE;
+                }
+            });
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
     }
 
     /** Streams exactly {@code len} bytes; keeps them only for a matching sha256 + zip magic. Stream errors propagate. */

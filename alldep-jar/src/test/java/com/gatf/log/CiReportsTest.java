@@ -132,4 +132,24 @@ class CiReportsTest {
         assertThat(((org.w3c.dom.Element) d.getElementsByTagName("skipped").item(1)).hasAttribute("message")).isFalse();
         assertThat(((org.w3c.dom.Element) d.getElementsByTagName("testsuites").item(0)).getAttribute("skipped")).isEqualTo("2");
     }
+
+    @org.junit.jupiter.api.io.TempDir
+    java.nio.file.Path tmp;
+
+    @Test
+    void anEmptyFunctionalShardWritesResultsThatMergeReportsAccepts() throws Exception {
+        // Δ163o (#9): an empty shard wrote nothing, and merge-reports refused its folder
+        java.io.File shard = tmp.resolve("shard-2").toFile();
+        assertThat(CiReports.write(List.of(), shard.getPath(), 0)).isEmpty();   // non-functional (load) runs: unchanged
+        assertThat(new java.io.File(shard, "gatf-results.json")).doesNotExist();
+        CiReports.write(List.of(), shard.getPath(), 0, true);
+        assertThat(new java.io.File(shard, "gatf-results.json")).exists();
+        java.io.File one = tmp.resolve("shard-1").toFile();
+        CiReports.write(List.of(rec("ui/a.sel", "[chrome]", null, Status.PASSED)), one.getPath(), 1000, true);   // merge exits 1 on failures
+        java.io.ByteArrayOutputStream o = new java.io.ByteArrayOutputStream(), e = new java.io.ByteArrayOutputStream();
+        int rc = ReportMerger.run(new String[] { one.getPath(), shard.getPath(), "-o", tmp.resolve("m").toString() }, tmp.toFile(),
+                new java.io.PrintStream(o, true), new java.io.PrintStream(e, true));
+        assertThat(rc).as(e.toString()).isZero();
+        assertThat(tmp.resolve("m/gatf-results.json")).exists();
+    }
 }

@@ -31,6 +31,10 @@ public interface GatfPlugin {
 	void setProject(Object project);
 	void shutdown();
 	void initilaizeContext(GatfExecutorConfig configuration, boolean flag) throws Exception;
+	/** Δ163o: {@code cleanOut=false} for anything that is not a real run (lookups, config save, profile, debug init). */
+	default void initilaizeContext(GatfExecutorConfig configuration, boolean flag, boolean cleanOut) throws Exception {
+		initilaizeContext(configuration, flag);
+	}
 	AcceptanceTestContext getContext();
 	void setContext(AcceptanceTestContext context);
 	List<TestCase> getAllTestCases(AcceptanceTestContext context, Set<String> relativeFileNames, List<String> targetFileNames);

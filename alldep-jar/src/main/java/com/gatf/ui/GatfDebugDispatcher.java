@@ -56,18 +56,21 @@ final class GatfDebugDispatcher {
 					if(dsDbg==null) {
 						dsW.write("data: {\"s\":false,\"m\":\"No debug session\"}\n\n"); dsW.flush(); return;
 					}
-					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsFirst=true; String dsLt=null; long dsVer=-1;
+					int dsLp=Integer.MIN_VALUE, dsLn=Integer.MIN_VALUE, dsLv=Integer.MIN_VALUE; boolean dsLr=true, dsLo=false, dsFirst=true; String dsLt=null; long dsVer=-1;
 					try {
 						while(true) {
 							GatfSelDebugger dsS = GatfReportsHandler.dbgSessions.get(dsSessionId);
 							if(dsS==null) { dsW.write("data: {\"s\":true,\"r\":false}\n\n"); dsW.flush(); break; }
 							boolean dsR=dsS.getRunning(); int dsP=dsS.getPrevLine(); int dsN=dsS.getNextLine(); int dsV=dsS.getState(); String dsT=dsS.getCurrFile();
-							boolean dsCh = dsFirst || dsP!=dsLp || dsN!=dsLn || dsV!=dsLv || dsR!=dsLr || (dsT==null?dsLt!=null:!dsT.equals(dsLt));
+							boolean dsO = dsS.isPausedOnce();   // Δ163o
+							boolean dsCh = dsFirst || dsP!=dsLp || dsN!=dsLn || dsV!=dsLv || dsR!=dsLr || dsO!=dsLo || (dsT==null?dsLt!=null:!dsT.equals(dsLt));
 							if(dsCh) {
 								Map<String, Object> dsOut = new HashMap<>();
 								dsOut.put("s", true); dsOut.put("r", dsR); dsOut.put("p", dsP); dsOut.put("n", dsN); dsOut.put("v", dsV); dsOut.put("t", dsT);
+								String dsZ = dsS.getTraceUrl(); if(dsZ != null) dsOut.put("z", dsZ);   // Δ163o: kept trace.zip
+								dsOut.put("o", dsO);
 								dsW.write("data: " + WorkflowContextHandler.OM.writeValueAsString(dsOut) + "\n\n"); dsW.flush();
-								dsLp=dsP; dsLn=dsN; dsLv=dsV; dsLr=dsR; dsLt=dsT; dsFirst=false;
+								dsLp=dsP; dsLn=dsN; dsLv=dsV; dsLr=dsR; dsLt=dsT; dsLo=dsO; dsFirst=false;
 							}
 							if(!dsR) { GatfReportsHandler.dbgSessions.remove(dsSessionId, dsS); break; }
 							dsVer = dsS.awaitChange(dsVer, 1000); // delta-075: event-driven (was a 150 ms poll)
@@ -103,13 +106,14 @@ final class GatfDebugDispatcher {
     	        					configPath = new File(mojo.getRootDir(), "gatf-config.xml").getAbsolutePath();
     	        				}
     	        			}
-    	                    executorMojo.initilaizeContext(gatfConfig, true);
+    	                    executorMojo.initilaizeContext(gatfConfig, true, false);   // Δ163o: starting a debug session never cleans out/
     	                    dbgSession = executorMojo.debugSeleniumTest(gatfConfig, testcaseFileName, configPath);
     	                    GatfReportsHandler.dbgSessions.put(sessionId, dbgSession);
     	                    out.put("s", true);
     	                    out.put("c", dbgSession.getSrcCode());
     	                    out.put("l", dbgSession.getDebuggableLines());
     	                    out.put("i", dbgSession.getPrevLine());
+    	                    out.put("o", dbgSession.isPausedOnce());   // Δ163o: false until the debuggee really paused
     	                    byte[] respo = WorkflowContextHandler.OM.writeValueAsBytes(out);
     	                    return new Object[]{HttpStatus.OK_200, respo, MediaType.APPLICATION_JSON, null};
                     	} else {
@@ -187,6 +191,8 @@ final class GatfDebugDispatcher {
 	        	                    out.put("n", dbgSession.getNextLine());
 	        	                    out.put("v", dbgSession.getState());
 	        	                    out.put("t", dbgSession.getCurrFile());
+	        	                    if(dbgSession.getTraceUrl() != null) out.put("z", dbgSession.getTraceUrl());   // Δ163o
+	        	                    out.put("o", dbgSession.isPausedOnce());
 	        	                    if(!dbgSession.getRunning()) {
 	        	                    	GatfReportsHandler.dbgSessions.remove(sessionId);
 	        	                    }

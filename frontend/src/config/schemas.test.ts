@@ -32,6 +32,11 @@ describe('config schemas (extracted verbatim from the legacy config-tool)', () =
     expect(executorSchema.properties!.traceMode.options).toEqual(['off', 'on', 'retain-on-failure', 'on-first-retry']);
   });
 
+  it('executor schema exposes browserContexts (AUDIT-T3 F8) with the ContextMode values', () => {
+    // must match com.gatf.selenium.context.ContextMode OFF / SUBTEST / WORKER (anything else reads as off)
+    expect(executorSchema.properties!.browserContexts.options).toEqual(['off', 'subtest', 'worker']);
+  });
+
   it('executor schema exposes browserApiSession with exactly the values the backend accepts', () => {
     // must match SessionBridge.MODES; the backend rejects anything else when the config is saved
     expect(executorSchema.properties!.browserApiSession.options).toEqual(['sync', 'send', 'off']);

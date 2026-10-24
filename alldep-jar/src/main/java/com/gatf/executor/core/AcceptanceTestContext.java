@@ -1135,8 +1135,10 @@ public class AcceptanceTestContext {
 			}
 			
 			
-			if(provider.isEnabled()==null) {
-				provider.setEnabled(true);
+			// Δ163o (#4): isEnabled() is never null, so the old "null -> enabled" default here never ran and a provider
+			// without "enabled": true was disabled with only an INFO line. Behaviour kept (disabled); now it says why.
+			if(provider.enabledUnset()) {
+				logger.warn("Provider " + provider.getProviderName() + " has no \"enabled\" setting and is DISABLED; add \"enabled\": true to use it");
 			}
 			
 			providerMetaDataMap.put(provider.getProviderName(), provider);

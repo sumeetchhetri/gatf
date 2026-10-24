@@ -379,17 +379,52 @@ public class SeleniumCodeGeneratorAndUtil {
 	}
 
 	public static File zipSeleniumTests() {
+		return zipSeleniumTests(null);
+	}
+
+	/**
+	 * Δ163o sweep: ships only {@code classNames}' class files (and their nested {@code $} classes), under the same
+	 * {@code gatf-code/<package path>/} layout, instead of the whole shared gatf-code dir (every script ever compiled,
+	 * and their .java sources). {@code null} or empty: the whole dir, as before.
+	 */
+	public static File zipSeleniumTests(java.util.Collection<String> classNames) {
 		File gcdir = new File(FileUtils.getTempDirectory(), "gatf-code");
 		String fileName = UUID.randomUUID().toString()+".zip";
 		File zipFile = new File(System.getProperty("java.io.tmpdir"), fileName);
 		try {
 			ZipFile zf = new ZipFile(zipFile);
-        	zf.addFolder(gcdir);
+			if (classNames == null || classNames.isEmpty()) {
+				zf.addFolder(gcdir);
+			} else {
+				for (String rel : classFilesFor(gcdir, classNames)) {
+					net.lingala.zip4j.model.ZipParameters zp = new net.lingala.zip4j.model.ZipParameters();
+					zp.setFileNameInZip("gatf-code/" + rel);
+					zf.addFile(new File(gcdir, rel), zp);
+				}
+			}
         	zf.close();
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
 		return zipFile;
+	}
+
+	/** Δ163o: '/'-separated paths under {@code gcdir} of each class's .class file and its nested classes, sorted. */
+	static java.util.List<String> classFilesFor(File gcdir, java.util.Collection<String> classNames) {
+		java.util.TreeSet<String> out = new java.util.TreeSet<String>();
+		for (String cn : classNames) {
+			if (cn == null || !cn.matches("[A-Za-z_$][A-Za-z0-9_$]*(\\.[A-Za-z_$][A-Za-z0-9_$]*)*")) continue;
+			int dot = cn.lastIndexOf('.');
+			String pkg = dot < 0 ? "" : cn.substring(0, dot).replace('.', '/') + "/";
+			String simple = cn.substring(dot + 1);
+			File[] fs = new File(gcdir, pkg).listFiles();
+			if (fs == null) continue;
+			for (File f : fs) {
+				String n = f.getName();
+				if (f.isFile() && (n.equals(simple + ".class") || (n.startsWith(simple + "$") && n.endsWith(".class")))) out.add(pkg + n);
+			}
+		}
+		return new java.util.ArrayList<String>(out);
 	}
 	
 	public static LoggingPreferences getLp(GatfExecutorConfig configuration) {

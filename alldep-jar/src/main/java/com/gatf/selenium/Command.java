@@ -212,6 +212,23 @@ public class Command {
             	subtestDetails.add(new Object[]{st.subt.name, st.sessionName, st.sessionId+"", st.fileLineDetails, st.subt.fName, false, st.subt.isAFunc});
             }
         }
+
+        /**
+         * Δ163o: the parser peeks at the statement after a var / plugin / frame / tab / window / transient-provider line
+         * (nextCommand) and, when no block follows, rewinds and parses it again. Constructing a subtest/func or an @call
+         * registers it, so the re-parse failed with "Duplicate subtest defined" (or listed the call twice). Undo that.
+         */
+        void unpeek(Command peeked) {
+            if(peeked instanceof SubTestCommand) {
+                SubTestCommand st = (SubTestCommand) peeked;
+                allSubTests.remove(st);
+                if(st.hook == null) subtestDups.remove(st.name);
+            } else if(peeked instanceof ExecSubTestCommand && !subtestDetails.isEmpty()) {
+                ExecSubTestCommand ec = (ExecSubTestCommand) peeked;
+                Object[] last = subtestDetails.get(subtestDetails.size() - 1);
+                if(last[3] == ec.fileLineDetails) subtestDetails.remove(subtestDetails.size() - 1);
+            }
+        }
         Map<String, String> qss = new HashMap<String, String>();
         Set<String> visitedFiles = new HashSet<String>();
 
@@ -509,6 +526,21 @@ public class Command {
         public List<GatfSelCodeParseError> getAllErrors() {
         	return multiple;
         }
+    }
+
+    /** Δ163o: one line per parse error ("<message>: <cause>"), for -validate-sel's error text. */
+    static String parseErrorText(GatfSelCodeParseError e) {
+        List<GatfSelCodeParseError> all = e.multiple != null && !e.multiple.isEmpty() ? e.multiple : java.util.Collections.singletonList(e);
+        StringBuilder b = new StringBuilder();
+        for (GatfSelCodeParseError x : all) {
+            String m = x.getMessage() == null ? "" : x.getMessage().trim();
+            String why = x.details != null && x.details.length > 3 && x.details[3] != null ? x.details[3].toString().trim() : "";
+            if (!why.isEmpty() && !m.contains(why)) m = m.isEmpty() ? why : m + ": " + why;
+            if (m.isEmpty()) continue;
+            if (b.length() > 0) b.append('\n');
+            b.append(m);
+        }
+        return b.length() > 0 ? b.toString() : "parse error";
     }
 
     void throwParseError(Object[] o) {
@@ -888,8 +920,8 @@ public class Command {
             cmd = cmd.substring(10).trim();
             FindCommand cond = new FindCommand(cmd, cmdDetails, state);
             comd = new ScopedLoopCommand(cmdDetails, state, cond);
-        } else if (cmd.startsWith("readfile ")) {
-            comd = new ReadFileCommand(cmd.substring(9).trim(), cmdDetails, state);
+        } else if (cmd.startsWith("readfile ") || cmd.startsWith("#readfile ")) {   // Δ163o: #readfile is the documented form
+            comd = new ReadFileCommand(cmd.substring(cmd.indexOf("readfile ") + 9).trim(), cmdDetails, state);
         } else if (cmd.startsWith("filevar ")) {
             comd = new FileVarCommand(cmd.substring(8).trim(), cmdDetails, state);
         } else if (cmd.startsWith("dsq ")) {
@@ -1332,6 +1364,7 @@ public class Command {
         	        		tmp.children.remove(tmp.children.size()-1);
         	        		state.ends--;
                     	} else {
+                    		state.unpeek(tmpn);   // Δ163o
                     		iter.previous();
         	        		get(parent, iter, state, allSynErrs);
                     	}
@@ -1343,6 +1376,7 @@ public class Command {
                         }
             		} else if(!(tmpn instanceof StartCommand) && (tmp instanceof TransientProviderCommand || tmp instanceof PluginCommand
                         || tmp instanceof VarCommand || tmp instanceof FrameCommand|| tmp instanceof TabCommand|| tmp instanceof WindowCommand)) {
+            			state.unpeek(tmpn);   // Δ163o
             			iter.previous();
                     	parent.children.add(tmp);
                     	
@@ -1358,6 +1392,7 @@ public class Command {
         	        		tmp.children.remove(tmp.children.size()-1);
         	        		state.ends--;
                     	} else {
+                    		state.unpeek(tmpn);   // Δ163o
                     		iter.previous();
         	        		get(parent, iter, state, allSynErrs);
                     	}
@@ -4560,6 +4595,18 @@ public class Command {
             // second find overwrites it (was currvarname()/topele(), which no longer name the found elements → null[0])
             String hevarnm = state.varname();
             b.append("\nList<WebElement> "+hevarnm+" = ___ce___;\n");
+            if(state.autoWait && condCe!=null) {
+                // Δ163o: under autoWait, hover first and only then find the CLICK target and wait until it is actionable:
+                // a menu item that the hover reveals (CSS :hover, or inserted on mouseover) does not exist / is hidden before it
+                String hvvrnm = state.varname();
+                b.append("\norg.openqa.selenium.interactions.Actions "+hvvrnm+" = new org.openqa.selenium.interactions.Actions(___cw___);");
+                b.append("\nawaitActionable(___cw___, "+hevarnm+".get(0), \"hover\");");
+                b.append("\n"+hvvrnm+".moveToElement("+hevarnm+".get(0)).perform();");
+                b.append(condCe.javacodeonly());
+                b.append("\nawaitActionable(___cw___, ___ce___.get(0), \"click\");");
+                b.append("\nnew org.openqa.selenium.interactions.Actions(___cw___).moveToElement(___ce___.get(0)).click().perform();");
+                return b.toString();
+            }
             if(condCe!=null) {
                 b.append(condCe.javacodeonly());
             }
@@ -5204,6 +5251,10 @@ public class Command {
 
     public static String validateSel(String[] args, String className, boolean testExecution) throws Exception {
         GatfExecutorConfig config = getConfig(args.length>2?args[2].trim():(new File(args.length>3?args[3].trim():"/workdir", "gatf-config.json").exists()?"gatf-config.json":"gatf-config.xml"), args.length>3?args[3].trim():"/workdir");
+        if(config==null) {   // Δ163o: was an NPE on the next line
+            throw new IllegalArgumentException("no gatf-config.json / gatf-config.xml found in " + (args.length>3?args[3].trim():"/workdir")
+                    + "; use -validate-sel <file> [<config> [<workdir>]] (the workdir defaults to /workdir)");
+        }
         config.setSeleniumLoggerPreferences("browser(OFF),client(OFF),driver(OFF),performance(OFF),profiler(OFF),server(OFF)");
         for (SeleniumDriverConfig selConf : config.getSeleniumDriverConfigs())
         {
@@ -5278,7 +5329,7 @@ public class Command {
         	}
         	Map<String, String> mpe = new HashMap<String, String>();
         	mpe.put("status", "FAILURE");
-        	mpe.put("error", e.getMessage());
+        	mpe.put("error", parseErrorText(e));   // Δ163o: was e.getMessage(), "" for the multi-error wrapper
             return WorkflowContextHandler.OM.writeValueAsString(mpe);
         } catch (Throwable e) {
         	e.printStackTrace();

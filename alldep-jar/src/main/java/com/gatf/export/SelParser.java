@@ -473,7 +473,7 @@ public final class SelParser {
         if (cmd.startsWith("## ")) return unsupported(line, "##", "element loop (##)");
         if (cmd.startsWith("# ")) return unsupported(line, "#", "element loop (#)");
         if (cmd.startsWith("loop over ")) return unsupported(line, "loop over", "element loop (loop over)");
-        if (cmd.startsWith("readfile ")) return unsupported(line, "readfile", "file line loop");
+        if (cmd.startsWith("readfile ") || cmd.startsWith("#readfile ")) return unsupported(line, "readfile", "file line loop");   // Δ163o: #readfile = readfile
         if (cmd.startsWith("filevar ")) return unsupported(line, "filevar", "file variable");
         if (cmd.startsWith("dsq ")) return unsupported(line, "dsq", "data-source query");
         if (cmd.startsWith("ds query ")) return unsupported(line, "ds query", "data-source query");

@@ -44,7 +44,7 @@ class RunConsoleWorkerContextsTest {
         System.setProperty("gatf.color", "never");   // Δ163d: GITHUB_ACTIONS turns colour on; this test reads plain lines
         try {
             RunConsole.activate();
-            RunConsole.suite("UI (seleasy)", null, 4, true);
+            RunConsole.suite("UI (seleasy)", "target/runconsole-test", 4, true);
             final WorkerPool<Object> pool = new WorkerPool<Object>(new WorkerPool.Port<Object>() {
                 public boolean alive(Object b) { return true; }
                 public List<String> contexts(Object b) { return new ArrayList<String>(); }

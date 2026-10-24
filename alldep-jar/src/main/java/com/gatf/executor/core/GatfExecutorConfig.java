@@ -532,15 +532,25 @@ public class GatfExecutorConfig implements Serializable, GatfPluginConfig {
 		throw new IllegalArgumentException("Invalid traceMode '" + v + "' - expected one of: " + String.join(", ", TRACE_MODES));
 	}
 
-	/** Q3: the effective trace mode (traceMode if set, else enableTrace -> on/off). Not a bean property. Normalised
-	 *  here too, because a deserializer may write the field directly rather than through setTraceMode. */
+	/** Q3: the effective trace mode (traceMode if set, else enableTrace -> on, else retain-on-failure). Not a bean
+	 *  property. Normalised here too, because a deserializer may write the field directly rather than through setTraceMode.
+	 *  Δ163o: with neither set, a failed script now keeps its trace.zip (was: off); traceMode "off" turns tracing off. */
 	public String effectiveTraceMode() {
 		String m = traceMode == null ? "" : traceMode.trim().toLowerCase(java.util.Locale.ROOT);
-		return !m.isEmpty() ? m : (enableTrace ? "on" : "off");
+		return !m.isEmpty() ? m : (enableTrace ? "on" : "retain-on-failure");
 	}
 
 	/** Q3: should the browser session opened in the current round start a trace? on-first-retry = only in the first
 	 *  retry round (retryCounter == 2: 1 = the normal round when retries are enabled, 2 = retry round 1). */
+	/**
+	 * Δ163o: tracing is on only through the default (neither traceMode nor enableTrace set). Such a run traces quietly:
+	 * Chromium over CDP only, no session capability change, no worker-pool protocol switch, no response bodies, and no
+	 * budget / security-check enforcement (those still need traceMode or enableTrace set explicitly, as before).
+	 */
+	public boolean traceImplicit() {
+		return (traceMode == null || traceMode.trim().isEmpty()) && !enableTrace;
+	}
+
 	public boolean captureTraceThisRun() {
 		String m = effectiveTraceMode();
 		if ("off".equals(m)) return false;

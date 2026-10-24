@@ -27,11 +27,20 @@ const uid = () =>
     ? crypto.randomUUID()
     : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
 
-export default function SelDebugger({ filePath, onExit }: { filePath: string; onExit: () => void }) {
+export default function SelDebugger({
+  filePath,
+  onExit,
+  onOpenTrace,
+}: {
+  filePath: string;
+  onExit: () => void;
+  onOpenTrace?: (url: string) => void;
+}) {
   const tc = ''; // whole-file .sel debug uses an empty test-case name
   const sessionRef = useRef<string>(uid());
   const [status, setStatus] = useState<Status>('initializing');
   const [msg, setMsg] = useState<string>('Starting debugger…');
+  const [traceUrl, setTraceUrl] = useState<string | null>(null); // Δ163o (bug 9): the run's kept trace.zip
   const [code, setCode] = useState('');
   const [currentFile, setCurrentFile] = useState(filePath);
   const [currentLine, setCurrentLine] = useState<number | null>(null);
@@ -76,11 +85,17 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
         if (d.s) {
           setCode(String(d.c ?? ''));
           setCurrentFile(filePath);
-          setCurrentLine(typeof d.i === 'number' ? d.i : null);
           lFullRef.current = d.l;
           setDebuggable(debugLinesFor(d.l, filePath));
-          setStatus('paused');
-          setMsg('Paused.');
+          if (d.o === false) {
+            // Δ163o (sweep): the debuggee's JVM + browser are still starting; it has not paused anywhere yet, so don't
+            // claim a pause (steps sent now used to wait server-side, the UI looked stuck on "Paused")
+            setMsg('Starting the browser… (breakpoints can be set now)');
+          } else {
+            setCurrentLine(typeof d.i === 'number' ? d.i : null);
+            setStatus('paused');
+            setMsg('Paused.');
+          }
           startStream();
         } else {
           setStatus('error');
@@ -115,12 +130,14 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
     }
     if (d.r === false) {
       doneRef.current = true;
+      if (typeof d.z === 'string' && d.z) setTraceUrl(d.z);
       setStatus('done');
       setMsg('Debug session completed — see the Reports tab.');
       setCurrentLine(null);
       stopStream();
       return;
     }
+    if (d.o === false) return; // Δ163o: not really paused yet (still initializing)
     const line = typeof d.p === 'number' ? d.p : currentLineRef.current;
     // stepped into another file → load its source
     if (d.t && d.t !== currentFileRef.current) {
@@ -138,6 +155,7 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
       setCurrentLine(typeof line === 'number' ? line : null);
     }
     setStatus(typeof line === 'number' && line > 0 ? 'paused' : 'running');
+    if (d.o === true) setMsg((m) => (m.startsWith('Starting the browser') ? 'Paused.' : m));
   };
 
   // SSE fallback (delta-040): server pushes on change; EventSource auto-reconnects on a transient drop.
@@ -299,6 +317,21 @@ export default function SelDebugger({ filePath, onExit }: { filePath: string; on
           <button className="btn ghost small" style={{ marginLeft: 10 }} onClick={onExit}>
             Back to editor
           </button>
+        )}
+        {traceUrl && (
+          <a
+            className="btn small"
+            style={{ marginLeft: 10 }}
+            href={traceUrl}
+            data-testid="dbg-trace"
+            onClick={(e) => {
+              if (!onOpenTrace) return; // no viewer hook: plain download
+              e.preventDefault();
+              onOpenTrace(traceUrl);
+            }}
+          >
+            Open trace
+          </a>
         )}
       </div>
       <div className="dbg-split">
