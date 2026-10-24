@@ -39,7 +39,7 @@ jobs:
       run: |
         TAG="${{ steps.tag.outputs.tag }}"
         POM=$(tr -d '\r' < pom.xml | sed -n 's:.*<version>\(.*\)</version>.*:\1:p' | head -1)
-        [ "$POM" = "$TAG" ] || { echo "pom.xml version $POM does not match tag $TAG: bump the poms first" >&2; exit 1; }
+        [ "$POM" = "$TAG" ] || { echo "pom.xml version $POM does not match tag $TAG: run node tools/release/bump-version.mjs $TAG --tag first" >&2; exit 1; }
 
     - name: Build the jar (Docker image builds the checked-out tree, tests skipped; CI ran them on master)
       run: |

@@ -19,7 +19,7 @@
 //   GATF_SITE_BASE  base path, default /gatf/ (set but empty: /)
 //   GATF_SITE_CNAME custom domain; prepare.mjs writes static/CNAME only when it is set
 //   GATF_REPO_URL   source links, default https://github.com/sumeetchhetri/gatf
-//   GATF_RELEASE_VERSION  the release the Downloads page names, default 5.0.0
+//   GATF_RELEASE_VERSION  the release the Downloads page names, default: the version in ../pom.xml
 // No analytics, no third-party scripts or fonts: search is local (@easyops-cn/docusaurus-search-local).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -31,7 +31,10 @@ import { siteEnv } from './plugins/site-env.mjs';
 const SITE = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(SITE, '..');
 
-const { siteUrl, baseUrl, repoUrl, release } = siteEnv(process.env);
+const pomVersion = (/<artifactId>gatf-parent<\/artifactId>\s*<version>([^<]+)<\/version>/.exec(
+  fs.readFileSync(path.join(REPO, 'pom.xml'), 'utf8'),
+) || [])[1];
+const { siteUrl, baseUrl, repoUrl, release } = siteEnv({ GATF_RELEASE_VERSION: pomVersion, ...process.env });
 const branch = 'master';
 
 const metaFile = path.join(SITE, '.site-meta.json');
