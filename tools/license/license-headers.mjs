@@ -26,7 +26,8 @@
 // files and runtime/scratch dirs are skipped (no comment syntax / not source). Line endings are
 // preserved (CRLF files stay CRLF).
 
-import { readdirSync, readFileSync, writeFileSync, statSync } from 'node:fs';
+import { readdirSync, readFileSync, writeFileSync, statSync, existsSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import { join, relative, basename, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -89,6 +90,27 @@ function* walk(dir) {
   }
 }
 
+// Δ205b: in a git checkout, list what git would commit (tracked + new files that are not git-ignored), so ignored
+// build output (website/build, sample-project/app, …) is never checked or rewritten. The same directory rules as
+// walk() apply. Outside git (e.g. an unpacked source zip) it falls back to walk().
+function* sourceFiles(root) {
+  let listed;
+  try {
+    listed = execFileSync('git', ['-C', root, 'ls-files', '-z', '--cached', '--others', '--exclude-standard'], {
+      stdio: ['ignore', 'pipe', 'ignore'], maxBuffer: 1 << 28,
+    }).toString().split('\0').filter(Boolean);
+  } catch {
+    yield* walk(root);
+    return;
+  }
+  for (const rel of listed) {
+    const dirs = rel.split('/').slice(0, -1);
+    if (dirs.some((d) => SKIP_DIRS.has(d) || (d.startsWith('.') && d !== '.github'))) continue;
+    const f = join(root, rel);
+    if (existsSync(f) && statSync(f).isFile()) yield f; // tracked but deleted in the work tree → nothing to check
+  }
+}
+
 // Return {status, text?, reason?} for one file.
 function processFile(path) {
   const name = basename(path);
@@ -145,7 +167,7 @@ const check = process.argv.includes('--check');
 const verbose = process.argv.includes('--verbose');
 const tally = { ok: 0, add: 0, update: 0, skip: 0 };
 const need = [];
-for (const f of walk(ROOT)) {
+for (const f of sourceFiles(ROOT)) {
   const r = processFile(f);
   const rel = relative(ROOT, f);
   tally[r.status]++;
