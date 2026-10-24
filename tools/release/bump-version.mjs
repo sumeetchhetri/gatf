@@ -27,14 +27,17 @@
 //     the gatf-plugin snippets in the docs;
 //   - gatf-alldep-jar-<old>.jar in Markdown examples;
 //   - the gatf-bin*:<old> image tags in run_gatf.sh.
+// Then, when tools/gen-docs/GenDocs.java exists (Δ191), it regenerates the generated docs (docs/reference/**) and
+// runs their check, so the release commit passes DocsDriftTest; those files are never text-edited by this script.
 import { execFileSync } from 'node:child_process';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SEMVER = /^\d+\.\d+\.\d+$/;
 const HISTORY = /^(docs\/release-notes\/|docs\/deltas\/|website\/blog\/)|package-lock\.json$/;
+const GENERATED = /^docs\/reference\//; // GenDocs output: regenerated below, never text-edited
 const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 /** The parent pom's own version (the one ci-release.yml compares with the tag). */
@@ -85,7 +88,7 @@ function main(argv) {
   }
   const changed = [];
   for (const path of git(['ls-files']).split('\n').filter(Boolean)) {
-    if (HISTORY.test(path) || !(/(^|\/)pom\.xml$|\.md$/.test(path) || path === 'run_gatf.sh')) continue;
+    if (HISTORY.test(path) || GENERATED.test(path) || !(/(^|\/)pom\.xml$|\.md$/.test(path) || path === 'run_gatf.sh')) continue;
     const before = readFileSync(join(ROOT, path), 'latin1'); // byte-preserving round trip
     const [after, n] = bump(path, before, from, to);
     if (n) {
@@ -95,6 +98,24 @@ function main(argv) {
     }
   }
   if (!changed.includes('pom.xml')) throw new Error('pom.xml was not bumped');
+  // Generated docs are rebuilt from the bumped sources, never text-edited.
+  const gen = join(ROOT, 'tools', 'gen-docs', 'GenDocs.java');
+  if (!dry && existsSync(gen)) {
+    for (const mode of ['generate', 'check']) {
+      try {
+        execFileSync('java', [gen, mode], { cwd: ROOT, stdio: ['ignore', 'inherit', 'inherit'] });
+      } catch {
+        console.error(`java tools/gen-docs/GenDocs.java ${mode} failed (Java 21 on PATH?): files are bumped but nothing is committed or tagged`);
+        process.exit(1);
+      }
+    }
+    for (const p of git(['diff', '--name-only']).split('\n').filter(Boolean)) {
+      if (!changed.includes(p)) {
+        changed.push(p);
+        console.log(`regenerated  ${p}`);
+      }
+    }
+  }
   // Anything else that still says the old version, for a human to judge (comments, history, other tools).
   let left = '';
   try {
