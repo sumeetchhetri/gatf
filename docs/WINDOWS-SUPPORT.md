@@ -51,7 +51,7 @@ returns no binary rather than failing silently.
 
 Download/install the cross-platform tools ahead of time:
 
-```
+```bash
 java -cp gatf.jar com.gatf.executor.ext.PerfToolProvisioner vegeta autocannon
 ```
 

@@ -15,7 +15,7 @@ The executor runs API suites (`-executor`) and seleasy suites (`-selenium`). A f
 every element is optional unless noted, and the smallest useful config is just `baseUrl`, `testCaseDir` and
 `outFilesDir` (plus `isSeleniumExecutor` + `seleniumScripts` for UI runs; or `seleniumScript`: a folder under the
 test-case dir whose *.sel all run, a single .sel, or a list file with one script per line). The runnable
-[`sample-project/`](../sample-project/) configs are a better starting point than this exhaustive list.
+[`sample-project/`](https://github.com/sumeetchhetri/gatf/tree/master/sample-project) configs are a better starting point than this exhaustive list.
 
 <details>
 <summary>Sample executor config (XML, all options)</summary>
@@ -68,7 +68,7 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
     <!-- The number of concurrent users to simulate, default 0 -->
     <concurrentUserSimulationNum>1</concurrentUserSimulationNum>
     <!-- The number of concurrent connections to the Base environment HTTP Server, default 1.
-         UI suites: the number of scripts run in parallel (file-level workers, no fixed cap); `gatf test --workers` overrides it -->
+         UI suites: the number of scripts run in parallel (file-level workers, no fixed cap); `gatf test -j N` overrides it -->
     <numConcurrentExecutions>1</numConcurrentExecutions>
   
     <!-- The provider name that will be used to fetch user/password details for user credentials -->
@@ -221,16 +221,6 @@ test-case dir whose *.sel all run, a single .sel, or a list file with one script
 ```
 
 </details>
-
-**Browser driver arguments** (`seleniumDriverConfigs[].arguments`, JSON configs): space-separated browser flags, each passed to the browser as its own argument, e.g. `"arguments": "--headless=new --no-sandbox"`. A flag's value cannot contain spaces (the string is split on whitespace). Earlier builds passed the whole string as a single argument, so Chrome ignored every flag in it.
-
-**Traces** (`traceMode`): `off`, `on`, `retain-on-failure` or `on-first-retry`. Left unset (and `enableTrace` false), a failed script or subtest still keeps a `trace.zip`, linked from its report row, for runs from the CLI, the Execute view, the editor's Run and the debugger. This default trace is recorded on Chromium over CDP only, outside a `browserContexts: worker` pool, without response bodies. It does not run `perfBudgets` or `securityChecks`. Set `traceMode` (or `enableTrace: true`, which means `on`) for full traces and those checks; set `"traceMode": "off"` to keep no traces. Credential headers (Authorization, cookies, API keys, tokens) are written to a trace's `network.har` as `[redacted]`. Before Δ163o, an unset `traceMode` with `enableTrace` false meant `off`. Distributed runs store their workers' traces under `<out>/dist-traces/<run>/`, and only the newest 50 runs are kept; change that with `-Dgatf.distTraces.keep=N`.
-
-**Chrome binary** (`GATF_CHROME_BINARY`, or the system property `gatf.chrome.binary`): a path to the Chrome or Chromium executable, used by a local `open chrome` as well as by `open chrome-dkr`. The environment variable wins over the property.
-
-**Data providers**: a provider runs only with `"enabled": true`. A provider without `enabled` is disabled, and GATF logs a warning naming it.
-
-**Exit codes**: `gatf test` (and `-selenium`) exits 1 when no test was executed, for example because the browser could not start or `--grep` matched nothing; before, it printed `No tests were executed.` and exited 0. A shard (`--shard i/n`) that gets no tests exits 0. `-validate-sel <file> [<config> [<workdir>]]` (the workdir defaults to `/workdir`) exits 1 when validation fails and prints the reason. A shard that ran no tests still writes `gatf-results.json`, so `gatf merge-reports` accepts its folder.
 
 ### AI provider (opt-in)
 

@@ -22,6 +22,8 @@ Cached under `~/.gatf/tools/<os>-<arch>/chrome-for-testing/<version>/` (override
 
 Any other `GATF_CHROME_BINARY` value is used as a binary path (any Chrome/CfT binary; chromedriver then comes from Selenium Manager). Local `chrome` only (ignored for Grid and non-chrome).
 
+**Known issue in 5.0.0:** `GATF_CHROME_BINARY` (a path or `headless-shell`) is applied on the `-dkr` route (`open chrome-dkr` without a Grid); a plain local `open chrome` ignores it and uses the Chrome Selenium Manager finds.
+
 **Footprint:** ~150 MB (shell + chromedriver) — Playwright parity. This is the leanest option; the WebDriver-blessed headless path remains Chrome for Testing with `--headless=new` (Mode A), so prefer Mode A if you hit shell-specific quirks.
 
 ## Mode C — Grid (distributed / parallel)
@@ -62,7 +64,7 @@ GATF still manages **no** browser containers by default (D-1). Session resolutio
 3. Otherwise → a local driver via Selenium Manager. If that fails, the error lists the options: `gatf grid up`, `GATF_WITH_GRID`, or the raw `docker run`.
 
 Explicit control (the container keeps running until `down`):
-```
+```bash
 gatf grid up [chrome|firefox|edge]     # prints: export SELENIUM_REMOTE_URL=http://localhost:4444
 gatf grid status
 gatf grid down [browser]

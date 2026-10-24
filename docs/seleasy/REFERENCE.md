@@ -4,14 +4,15 @@ seleasy is GATF's UI / RPA automation language. A `.sel` script is compiled in-p
 
 ## Essentials
 
-```
+```sel
 open chrome                                   // start a browser session (one per 'open')
 goto https://example.com                      // navigate
 ??10 id@username type "user"                  // wait up to 10s for the element, then act on it
 ?? css@"h1" text ="Welcome"                   // wait (global timeout) and assert the element text
 ??+ id@spinner                                // wait until no longer found;  ??- until found
 var who "alice"                               // variables: reference as $v{who} (or @who in exec code)
-subtest "login"                               // reusable, individually reported block
+// a subtest is a reusable, individually reported block (no comment after the subtest line)
+subtest "login"
 {
     ??10 id@password type "secret"
 }
@@ -24,7 +25,7 @@ subtest "login"                               // reusable, individually reported
 - **Soft assertions:** `??~` (optionally `??~N`) asserts like `??` but a failure is recorded instead of stopping the script; the script or subtest fails at the end, listing every soft failure with its file and line.
 - **Opting out:** add `!` to the verb (`click! css@#fast-btn`, `type! 'abc' id@q`) or prefix the line with `nowait` (`nowait click id@x`, `nowait ??10 id@x click`, `nowait actions draganddrop id@a id@b`). The opt-out applies to that line only.
 - **Semantic locators:** `role@button[name=Save]` (implicit or explicit ARIA role plus accessible name; also `[level=N]`, `[checked]`, `[disabled]`, `[expanded]`, `[pressed]`, `[selected]`, `[include-hidden]`), `label@Email`, `placeholder@Search`, `testid@save-btn` (attribute from `testIdAttribute`, default `data-testid`), `alt@Logo`, `title@Close`, and `text@=Exact text` / `text@/regex/i` (plain `text@x` still means "contains"). Values: plain = whole text, case-insensitive; `~x` = contains; `=x` = exact; `/re/flags` = regex; quote values with spaces (`label@'Email address'`). They pierce open shadow roots and skip hidden elements (append `[include-hidden]` to any value, e.g. `text@=Saved[include-hidden]`); empty values and invalid regexes fail when the script is compiled. With `strictLocators` in the config a semantic locator matching more than one element fails and lists the candidates (loops `#`/`##` and `#transient-provider` may match many). A semantic locator can also be the anchor: `relative tag@input rightof label@Email`.
-- **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list). The state properties `selected` and `enabled` take no value, or `="false"` for the opposite state: `?? id@save enabled ="false"` asserts a disabled button. Any other value asserts the state itself. A find waits for a visible element, so assert a hidden one with `??+` (wait until invisible), not `visible ="false"`.
+- **Assertions:** a find expression followed by a property (`text`, `tagname`, `attr@x`, `cssvalue@x`, `selected`, `enabled`, `visible`, `title`, `currentUrl`, ...) and `=value` or `=[list]` (value must be one of the list).
 - **Comments:** `// line` and `/* block */`; `/* … */` may sit on one line. `*/` closes only an open block comment, so `route **/api/x` and `xpath@//div/*/a` are ordinary statements.
 
 The catalog of statement keywords used by the editor and linter is generated from the parser: [`commands.json`](commands.json).
@@ -44,12 +45,13 @@ The catalog of statement keywords used by the editor and linter is generated fro
 - [Mail & HTTP simulator checks](#mail--http-simulator-checks)
 - [Mobile (Appium)](#mobile-appium)
 - [Plugins](#plugins)
+- [Word forms and short forms](#word-forms-and-short-forms)
 
 ## Browsers, sessions & settings
 
 ### Define test mode
 
-```
+```sel
 	mode {normal|integration} {true|false}
 Examples :-
 	mode normal
@@ -58,13 +60,13 @@ Examples :-
 
 ### Maximize window
 
-```
+```sel
 	maximize
 ```
 
 ### Define Screen No-activity layers
 
-```
+```sel
 	layer {find-expr}
 Examples :-
 	layer id@"loader-icon"
@@ -73,7 +75,7 @@ Examples :-
 
 ### Open Browser
 
-```
+```sel
 	open {chrome|firefox|edge|safari|ie|appium-android|appium-ios..} {optional session-name}
 		Legacy suffixes -hdl / -dkr / -rec are accepted and resolve to the same browser; headless, Grid
 		and chrome-headless-shell are chosen by configuration (see docs/browser-modes.md)
@@ -84,7 +86,7 @@ Examples :-
 
 ### Add Settings
 
-```
+```sel
 	setting {width|height|posx|posy|clk_focus} {value} {value}?
 Examples :-
 	setting width 100
@@ -96,13 +98,13 @@ Examples :-
 
 ### Wait Till Browser/Dowument is ready, called after application level logouts or reloads
 
-```
+```sel
 	waitready
 ```
 
 ### Define Global timeout
 
-```
+```sel
 	timeout {timeout-secs} {if-timeout-secs}} {sleep-granularity-millis}
 Examples :-
 	timeout 60 1 1000
@@ -110,7 +112,7 @@ Examples :-
 
 ### Emulate a device, location, locale, time zone, permissions, colour scheme or network (CDP / WebDriver BiDi)
 
-```
+```sel
 	emulate device {device-name} {optional landscape}
 	emulate viewport {width} {height} {optional scale}
 	emulate geolocation {latitude} {longitude} {optional accuracy}
@@ -140,7 +142,7 @@ Examples :-
 
 ### Control the page's clock (fake Date, timers and animation frames)
 
-```
+```sel
 	clock install {optional time: ISO date-time, date or epoch ms}
 	clock set {time}
 	clock fastforward {duration: ms, 30s, 5m, 1h30m or mm:ss}
@@ -167,7 +169,7 @@ Examples :-
 
 ### Open URL in window
 
-```
+```sel
 	goto {url}
 Examples :-
 	goto http://abc.com/testpage.html
@@ -175,7 +177,7 @@ Examples :-
 
 ### Capture network API calls (netapix)
 
-```
+```sel
 	netapix on {api-method} {api-url}
 	netapix off {status|header|json} {header-name|json-path}?
 Examples :-
@@ -187,7 +189,7 @@ Examples :-
 
 ### Save / load the browser's authenticated state (cookies + local/session storage)
 
-```
+```sel
 	state save {file}
 	state load {file}
 Examples :-
@@ -199,7 +201,7 @@ The file is Playwright's `storageState` JSON (plus `sessionStorage`), relative t
 
 ### Mock network requests (route)
 
-```
+```sel
 	route {METHOD}? {url-glob} fulfill {status} {'body'|body-file}? {type content-type}? {header 'Name: value'}*
 	route {METHOD}? {url-glob} abort {reason}?
 	route {METHOD}? {url-glob} continue {header 'Name: value'}*
@@ -220,7 +222,7 @@ Routes apply to the current browser session from that line on: a quoted body is 
 
 ### Scroll [Javascript based]
 
-```
+```sel
 	scroll {up|down|pageup|pagedown|top|bottom|left|right|find-expr}
 Examples :-
 	scroll up
@@ -229,19 +231,19 @@ Examples :-
 
 ### Navigate Forward/Next
 
-```
+```sel
 	forward
 ```
 
 ### Refresh window
 
-```
+```sel
 	refresh
 ```
 
 ### Select frame or use a scoped frame block
 
-```
+```sel
 	frame main|parent|1..N|{some-name}
 Examples :-
 	frame main
@@ -255,7 +257,7 @@ Examples :-
 
 ### Save URL passed to window.open
 
-```
+```sel
 	wopensave {on|off} {num-window-opens|filepath}? {text}? {openPos}?
 Examples :-
 	wopensave on
@@ -267,13 +269,13 @@ Examples :-
 
 ### Navigate Back/Previous
 
-```
+```sel
 	back
 ```
 
 ### Close window
 
-```
+```sel
 	close {tab-index|others}?
 Examples :-
 	close
@@ -283,7 +285,7 @@ Examples :-
 
 ### Select a tab or use a scoped tab block
 
-```
+```sel
 	tab main|0..N|{some-name}
 Examples :-
 	tab main
@@ -297,7 +299,7 @@ Examples :-
 
 ### Select/Open Window
 
-```
+```sel
 	window {optional main|0}
 Examples :-
 	window
@@ -309,7 +311,7 @@ Examples :-
 
 ### Find Expression
 
-```
+```sel
 	{eval|browser-scope|session-scope|relative}? {id|name|class|xpath|tag|cssselector|css|text|partialLinkText|linkText|jq|$|jquery|role|label|placeholder|testid|alt|title|active|this|current}(@selector) (title|currentUrl|pageSource|width|height|xpos|ypos|alerttext) {matching-value|matching-value-in-list}
 	semantic: role@button[name=Save][level=N][checked] label@Email placeholder@Search testid@id alt@Logo title@Close text@=exact text@/regex/i
 	value: plain = whole text, case-insensitive | ~x = contains | =x = exact | /re/flags = regex
@@ -319,11 +321,9 @@ Examples :-
 	?? text@'=Order placed'
 ```
 
-An `xpath@` selector that is not valid XPath 1.0 syntax (`xpath@"//div["`) is a parse error on its line, so saving the script in the console marks the line. Templated xpaths (`$v{…}`, `@index`) and functions outside the XPath 1.0 core are checked in the browser when the script runs.
-
 ### Value
 
-```
+```sel
 	{primtive-value}
 Examples :-
 	'abc'
@@ -333,7 +333,7 @@ Examples :-
 
 ### Value List
 
-```
+```sel
 	[{primtive-value},...,{primtive-value}]
 Examples :-
 	['abc', 'sss']
@@ -343,7 +343,7 @@ Examples :-
 
 ### Wait for element to be found / no longer found
 
-```
+```sel
 	??(+|-) {find-expr}
 	'+' - wait till the element is no longer found (same as: wait till visible {find-expr})
 	'-' - wait till the element is found, like ?? (same as: wait for {find-expr}); neither checks visibility
@@ -356,7 +356,7 @@ Examples :-
 
 ### Sleep for milliseconds
 
-```
+```sel
 	sleep {time-in-ms}
 Examples :-
 	sleep 10000
@@ -366,7 +366,7 @@ Examples :-
 
 ### Send keys using Robot
 
-```
+```sel
 	robot keydown|keyup|keypress {key-code1} ... keydown|keyup|keypress|keyrelease|key {key-codeN}
 	scrollup
 	scrolldown
@@ -385,7 +385,7 @@ Examples :-
 
 ### Submit element
 
-```
+```sel
 	submit {find-expr}
 Examples :-
 	submit id@'ele1'
@@ -393,7 +393,7 @@ Examples :-
 
 ### Select value from dropdown element
 
-```
+```sel
 	select {text|index|value|first|last}@{value} {find-expr}
 Examples :-
 	select text@'first' id@'abc'
@@ -405,7 +405,7 @@ Examples :-
 
 ### Double Click element
 
-```
+```sel
 	doubleclick {find-expr}
 	dblclick {find-expr}
 Examples :-
@@ -414,7 +414,7 @@ Examples :-
 
 ### Click element
 
-```
+```sel
 	click(fo|nf) {find-expr}
 Examples :-
 	click id@'ele1'
@@ -424,7 +424,7 @@ Examples :-
 
 ### Type Value in input/textarea elements
 
-```
+```sel
 	(type|sendkeys|chord|randomize)(bl|ch|bk|cl|fo) {text} {find-expr}
 	where 
 		bl->Trigger Blur
@@ -441,7 +441,7 @@ Examples :-
 
 ### Type UTF-8 or normal ASCII characters in input/textarea elements
 
-```
+```sel
 	chord(bl|ch|bk|cl|fo) {utf-8 character1}{utf-8 character2}...{utf-8 characterN} {find-expr}
 Examples :-
 	chord \u0048\u0065\u006c\u006c\u006f\u0020\u0057\u006f\u0072\u006c\u0064 id@'abc'
@@ -449,7 +449,7 @@ Examples :-
 
 ### Hover over an element
 
-```
+```sel
 	hover {find-expr}
 Examples :-
 	hover id@'abc'
@@ -457,7 +457,7 @@ Examples :-
 
 ### Type random values in input/textarea elements
 
-```
+```sel
 	randomize(bl|ch|bk|cl|fo) {find-expr} alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc {optional character count|range start} {count of space separated random words(for eg, name of person)|range end}
 Examples :-
 	randomize id@'ele1' alphanumeric 12
@@ -472,7 +472,7 @@ Examples :-
 
 ### Clear element value
 
-```
+```sel
 	clear {find-expr}
 Examples :-
 	clear id@'ele1'
@@ -480,7 +480,7 @@ Examples :-
 
 ### Upload file
 
-```
+```sel
 	upload {filepath} {find-expr}
 Examples :-
 	upload '/path/to/file.txt' id@'ele1'
@@ -488,17 +488,17 @@ Examples :-
 
 ### Hover over an element and click some other element
 
-```
+```sel
 	hoverclick {find-expr} {find-expr}
 Examples :-
 	hoverclick id@'hoverele' id@'clickele'
 ```
 
-`hoverclick` waits for both elements itself; it can't follow a `??` wait (`?? id@a hoverclick` is a parse error). With `autoWait` on, it hovers first and then waits for the click target to become clickable, so a menu item that only appears on hover is found.
+`hoverclick` waits for both elements itself; it can't follow a `??` wait (`?? id@a hoverclick` is a parse error).
 
 ### Multiple Chained Actions
 
-```
+```sel
 	actions movetoelement|moveto {find-expr} ({click|clickandhold|release|dblclick|doubleclick|contextclick|clickhold|rightclick} {find-expr}?|{keydown|keyup|sendkeys|type {value}}|{movetoelement|moveto {find-expr}}|{draganddrop|dragdrop|draganddrop1|dragdrop1 {find-expr} {find-expr}}|randomize {alphanumeric|alpha|alphanumericlc|alphalc|alphanumericuc|alphauc|numeric|value|range|prefixed|prefixed_|fuzzyn|fuzzya|fuzzyauc|fuzzyalc|fuzzyan|fuzzyanuc|fuzzyanlc} {arg1} {arg2} {arg3}?}|{movebyoffset|moveby {x-offset} {y-offset}}) ... movetoelement|moveto {find-expr} ... ({click|clickan...
 Examples :-
 	actions movetoelement id@'ele' click moveto id@'ele2' clickandhold moveto id@'ele3' release type '123'
@@ -510,7 +510,7 @@ Examples :-
 
 ### Draw a circle on a canvas element
 
-```
+```sel
 	canvas {find-expr}
 Examples :-
 	canvas xpath@"asds"
@@ -520,7 +520,7 @@ Examples :-
 
 ### Show alert with message
 
-```
+```sel
 	alert {value}
 Examples :-
 	alert
@@ -529,7 +529,7 @@ Examples :-
 
 ### Handle Confirm Dialog
 
-```
+```sel
 	confirm ok|cancel|yes|no {optional button-text-to-check}
 Examples :-
 	confirm ok
@@ -543,7 +543,7 @@ Examples :-
 
 ### If block
 
-```
+```sel
 	? {find-expr} & {find-expr}?
 	{
 		code
@@ -581,7 +581,7 @@ Examples :-
 
 ### Java control command, block statements
 
-```
+```sel
 	#j{if|try|catch|finally|else|else if|while|for|continue|break|\{|\}|synchronized} {java statement}
 Examples :-
 	#jif(1==1) {} else {}
@@ -590,7 +590,7 @@ Examples :-
 
 ### Loop block
 
-```
+```sel
 	## {find-expr}
 	{
 		code
@@ -605,7 +605,7 @@ Examples :-
 
 ### Else block, needs to be superseded by an If or Else-If block
 
-```
+```sel
 	:
 	{
 		code
@@ -619,7 +619,7 @@ Examples :-
 
 ### Provider Loop block
 
-```
+```sel
 	#provider {find-expr}
 	{
 		code
@@ -719,7 +719,7 @@ Examples :-
 
 ### Else-If block, needs to be superseded by an If block
 
-```
+```sel
 	:? {find-expr}
 	{
 		code
@@ -733,13 +733,13 @@ Examples :-
 
 ### Continue in loop
 
-```
+```sel
 	continue
 ```
 
 ### Break from loop
 
-```
+```sel
 	break
 ```
 
@@ -749,7 +749,7 @@ Examples :-
 
 ### Data Source Query definition
 
-```
+```sel
 	#dsq {dsn} {query}
 Examples :-
 	#dsq sqldb "update some_table set cola = 'value' where colb = 1"
@@ -757,7 +757,7 @@ Examples :-
 
 ### File Variable definition
 
-```
+```sel
 	filevar {var1,var2,..} {regex} {var1-pattern,var2-pattern..}
 Examples :-
 	filevar v1,@v2,@v3 "(.*)|(.*),(.*)" "$1,ABC_$2,BCD$3EFG"
@@ -766,7 +766,7 @@ Examples :-
 
 ### Transient Variable definition
 
-```
+```sel
 	#transient-variable {variable-name} {find-expr} {sub-selector}
 Examples :-
 	#transient-variable var1 id@'abc' text
@@ -779,7 +779,7 @@ Examples :-
 
 ### Transient Provider definition
 
-```
+```sel
 	#transient-provider {provider-name} {variableName1,...,variableNameN} {find-expr} {sub-selector1,...,sub-selectorN} {lazy}?
 Examples :-
 	#transient-provider prov1 var1,var2 id@'abc' text,attr@abc
@@ -788,7 +788,7 @@ Examples :-
 
 ### Import dynamic (code vars) properties file, dynamic variables provide support for configurable code
 
-```
+```sel
 	dynprops {file-path}
 Examples :-
 	dynprops a/b/c/t1.props
@@ -797,7 +797,7 @@ Examples :-
 
 ### Import config properties file
 
-```
+```sel
 	config {file-path}
 Examples :-
 	config a/b/c/t1.props
@@ -806,7 +806,7 @@ Examples :-
 
 ### Js Variable definition
 
-```
+```sel
 	jsvar {javascript statement returning value}
 Examples :-
 	jsvar var1 'return "123"'
@@ -815,7 +815,7 @@ Examples :-
 
 ### Variable definition
 
-```
+```sel
 	var name @{another-variable-name}|plugin ...|{primitive-value}
 Examples :-
 	var var0 "Some text"
@@ -829,7 +829,7 @@ Examples :-
 
 ### Read File line by line
 
-```
+```sel
 	#readfile {file-path} {binary}?
 	{
 		code
@@ -849,11 +849,13 @@ Examples :-
 	}
 ```
 
+In GATF 5.0.0 the statement is written `readfile`, without the `#`: `readfile "/path/to/file.txt"` compiles, while the `#readfile` spelling above fails with `No func/subtest with that name found - #readfile`.
+
 ## Structure & reuse
 
 ### Block level comment
 
-```
+```sel
 	/*
 	 Some multi line comment
 	 Some multi line comment 2
@@ -862,7 +864,7 @@ Examples :-
 
 ### Fail test/sub-test and continue
 
-```
+```sel
 	warn {error string}
 Examples :-
 	warn "Test failed"
@@ -871,7 +873,7 @@ Examples :-
 
 ### Subtest definition
 
-```
+```sel
 	subtest "name" session-name|@session-id (args)
 	{
 		code
@@ -893,7 +895,7 @@ Examples :-
 
 ### Function definition
 
-```
+```sel
 	func "name" (args)
 	{
 		code
@@ -913,7 +915,7 @@ Examples :-
 
 ### Hooks
 
-```
+```sel
 	beforeAll|beforeEach|afterEach|afterAll
 	{
 		code
@@ -938,7 +940,7 @@ With `browserContexts: subtest` in the config, every top-level subtest (and its 
 
 ### Subtest markers
 
-```
+```sel
 	only|skip|fixme subtest "name" ...
 where
 	skip / fixme - the subtest is not run and is reported as skipped
@@ -958,7 +960,7 @@ Skipped subtests pass the script and show as skipped in the console (with the re
 
 ### Include other seleasy scripts inline
 
-```
+```sel
 	include {script-path}
 Examples :-
 	include a/b/c/t1.sel
@@ -967,7 +969,7 @@ Examples :-
 
 ### Pass test/sub-test
 
-```
+```sel
 	pass {some string}?
 Examples :-
 	pass
@@ -977,7 +979,7 @@ Examples :-
 
 ### Fail test/sub-test
 
-```
+```sel
 	fail {error string}
 Examples :-
 	fail "Test failed"
@@ -986,7 +988,7 @@ Examples :-
 
 ### Import only subtests/functions from other seleasy scripts
 
-```
+```sel
 	import {script-path}
 Examples :-
 	import a/b/c/t1.sel
@@ -995,7 +997,7 @@ Examples :-
 
 ### Subtest/Function execution
 
-```
+```sel
 	@call "name" session-name|@session-id (args)
 where
 	session-name - the browser session name for which to run this sub test
@@ -1010,7 +1012,7 @@ Examples :-
 
 ### Single line comment
 
-```
+```sel
 	//...
 ```
 
@@ -1018,7 +1020,7 @@ Examples :-
 
 ### Execute java code
 
-```
+```sel
 	exec {java statement}
 Available variables in context -
 	1. @driver - WebDriver instance
@@ -1043,7 +1045,7 @@ Examples :-
 
 ### Specify Java Imports
 
-```
+```sel
 	require fqcn|[{fqcn1},..{fqcnN}]
 Examples :-
 	require java.util.Date
@@ -1052,7 +1054,7 @@ Examples :-
 
 ### Execute embedded code in java/js/ruby/groovy/python
 
-```
+```sel
 	<<<(java|js|ruby|groovy|python) a,b,c
 	{code}
 	>>>
@@ -1091,7 +1093,7 @@ Java blocks and `#j` statements assert with `GatfAssert` (JUnit 4's method names
 
 ### Execute javascript code from file in the browser
 
-```
+```sel
 	execjsfile {javascript file path}
 Examples :-
 	execjsfile 'file.js'
@@ -1099,7 +1101,7 @@ Examples :-
 
 ### Execute javascript code in the browser
 
-```
+```sel
 	execjs {javascript statement}
 Examples :-
 	execjs 'console.log("Hello");'
@@ -1110,7 +1112,7 @@ Examples :-
 
 ### Save element image to file
 
-```
+```sel
 	imgsave {element-selector} {optional image-file-path-to-save-screenshot-to}
 Examples :-
 	imgsave id@'eleid'
@@ -1119,7 +1121,7 @@ Examples :-
 
 ### Print the page to a PDF file
 
-```
+```sel
 	printpdf {pdf-filepath} {text?} {col-separator}?
 Examples :-
 	printpdf '/path/to/page.pdf'
@@ -1133,7 +1135,7 @@ Examples :-
 
 ### Take screenshot
 
-```
+```sel
 	screenshot {image-file-path-to-save-screenshot-to}
 Examples :-
 	screenshot
@@ -1142,7 +1144,7 @@ Examples :-
 
 ### Read text from an element image using OCR (Captcha)
 
-```
+```sel
 	readimgtext {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
 	ocr {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
 Examples :-
@@ -1153,7 +1155,7 @@ Examples :-
 
 ### Read text from a QR code or a Bar code
 
-```
+```sel
 	readqrbar {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
 	qrcode {element-selector} {varname}  {optional image-file-path-to-save-screenshot-to}
 	barcode {element-selector} {varname} {optional image-file-path-to-save-screenshot-to}
@@ -1166,7 +1168,7 @@ Examples :-
 
 ### Take element screenshot
 
-```
+```sel
 	ele-screenshot {element-selector} {optional image-file-path-to-save-screenshot-to}
 Examples :-
 	ele-screenshot id@'eleid'
@@ -1175,7 +1177,7 @@ Examples :-
 
 ### Compare the page with its baseline screenshot (visual regression)
 
-```
+```sel
 	screenshot compare {name} {optional threshold 0..1} {optional maxdiff N|N%} {optional mask {locator}}...
 Examples :-
 	screenshot compare home
@@ -1190,7 +1192,7 @@ Examples :-
 
 ### Check the page for accessibility violations (axe-core)
 
-```
+```sel
 	a11y check {optional include {css@…|id@…}}... {optional exclude {css@…|id@…}}... {optional impact>=minor|moderate|serious|critical} {optional report}
 Examples :-
 	a11y check
@@ -1207,7 +1209,7 @@ Examples :-
 
 ### Check whether an http request was received from a given sender, for a given receiver and matching the given content with timeout period
 
-```
+```sel
 	http {name}  {from} {to} {content} {timeout}?
 Examples :-
 	http 'http request message for sms' 'from' 'to' 'How are you doing today'
@@ -1217,7 +1219,7 @@ Examples :-
 
 ### Check whether email was received from a given sender, for a given receiver, with a given subject and matching the given content with timeout period
 
-```
+```sel
 	mail {name}  {from} {to} {subject} {content}? {timeout}?
 Examples :-
 	mail 'mail for appointment' 'abc@a.com' 'abc@b.com' 'Hello There'
@@ -1232,13 +1234,13 @@ Appium 2: `open appium-android|appium-ios` starts a UiAutomator2 / XCUITest sess
 
 ### Mobile shake
 
-```
+```sel
 	shake
 ```
 
 ### Mobile Tap
 
-```
+```sel
 	tap ({find-expr}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {x-co-ordinate} {y-co-ordinate} {duration})
 Examples :-
 	tap id@'ele'
@@ -1251,19 +1253,19 @@ Examples :-
 
 ### Mobile hide keypad
 
-```
+```sel
 	hidekeypad
 ```
 
 ### Mobile rotate
 
-```
+```sel
 	rotate
 ```
 
 ### Mobile Zoom
 
-```
+```sel
 	zoom ({x-co-ordinate} {y-co-ordinate}|{find-expr})
 Examples :-
 	zoom 123 234
@@ -1272,7 +1274,7 @@ Examples :-
 
 ### Mobile Touch
 
-```
+```sel
 	touch ({press|moveto|tap {find-expr}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{x-co-ordinate} {y-co-ordinate}}|longpress|{longpress {find-expr} {x-co-ordinate} {y-co-ordinate} {duration}|{find-expr} {x-co-ordinate} {y-co-ordinate}|{find-expr} {duration}|{x-co-ordinate} {y-co-ordinate} {duration}|{x-co-ordinate} {y-co-ordinate}}|{wait {duration}}|release) ... ({press|moveto|tap {find-ex...
 Examples :-
 	touch moveto id@'ele' longpress moveto id@'ele2' wait 1000 release
@@ -1281,7 +1283,7 @@ Examples :-
 
 ### Mobile Swipe
 
-```
+```sel
 	swipe {start-x-co-ordinate} {start-y-co-ordinate} {end-x-co-ordinate} {end-y-co-ordinate}
 Examples :-
 	swipe 123 234 200 300
@@ -1289,7 +1291,7 @@ Examples :-
 
 ### Mobile Pinch
 
-```
+```sel
 	pinch ({x-co-ordinate} {y-co-ordinate}|{find-expr})
 Examples :-
 	pinch 123 234
@@ -1334,7 +1336,7 @@ How names and classes resolve:
 
 ### XML Plugin
 
-```
+```sel
 	xmlread {xml-text}
 	xmlwrite {optional-path-to-file} {xml-object-or-map-list-set}
 	xmlpath {xml-text} {xpath-string}
@@ -1346,7 +1348,7 @@ Examples :-
 
 ### Curl Plugin
 
-```
+```sel
 	curl get|put|post|delete {url}
 	{
 		[
@@ -1368,7 +1370,7 @@ Examples :-
 
 ### JSON Plugin
 
-```
+```sel
 	jsonread {json-text}
 	jsonwrite {optional-path-to-file} {jackson-annotated-json-object-or-map-list-set}
 	jsonpath {json-text} {json-path-string}
@@ -1380,9 +1382,58 @@ Examples :-
 
 ### API Plugin
 
-```
+```sel
 	api {optional test-case-file-name}@{test-name}
 Examples :-
 	api api-name
 	api test-case-file-path@api-name
+```
+
+## Word forms and short forms
+
+The parser also accepts these spellings. Each one behaves exactly like the statement it stands for.
+
+| Write | Same as | Notes |
+|---|---|---|
+| `if {find-expr}` | `? {find-expr}` | If block |
+| `ifnot {find-expr}`, `?! {find-expr}` | `? {find-expr}`, negated | The block runs when the element is **not** found |
+| `else if {find-expr}` | `:? {find-expr}` | Else-If block |
+| `else ifnot {find-expr}`, `:?! {find-expr}` | `:? {find-expr}`, negated | |
+| `else` | `:` | Else block |
+| `loop over {find-expr}` | `## {find-expr}` | Loop over the matching elements |
+| `begin code in {lang} {args}?` … `end code` | `<<<({lang}) {args}?` … `>>>` | Embedded code; `{lang}` is `java`, `js`, `groovy`, `ruby` or `python` |
+| `ds query {dsn} {query}`, `dsq {dsn} {query}` | `#dsq {dsn} {query}` | The query is one argument: quote it |
+| `#p-sf {provider}`, `#provider-sf {provider}` | `#p {provider}` | Stateful provider loop |
+| `#o {dynprop}`, `#optional {dynprop}` | none | The block runs only when the `dynprops` variable is `yes`, `true`, `1`, `enabled` or `on` |
+| `^{dynprop} {statement}` | none | One statement that runs only when the `dynprops` variable is `yes`, `true`, `1`, `enabled` or `on`; otherwise the line is skipped |
+
+`dynprops` variables come from a [dynprops file](#import-dynamic-code-vars-properties-file-dynamic-variables-provide-support-for-configurable-code).
+
+```sel
+open chrome
+goto https://example.com
+if id@banner
+{
+	exec @print("banner shown")
+}
+else ifnot css@.cookie-notice
+{
+	exec @print("no cookie notice")
+}
+else
+{
+	exec @print("neither")
+}
+loop over css@a
+{
+	exec @print(@index)
+}
+begin code in java
+System.out.println("from embedded java");
+end code
+#o runSmoke
+{
+	exec @print("smoke checks on")
+}
+^runSmoke goto https://example.com/smoke
 ```
